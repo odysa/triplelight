@@ -69,6 +69,122 @@ impl MemorySnapshot {
         }
         store
     }
+    /// Writes a portable snapshot stream, including dictionary IDs and all six indexes.
+    /// The caller owns atomic file replacement and durability (flush/fsync).
+    pub fn write_snapshot(&self, mut out: impl std::io::Write) -> std::io::Result<()> {
+        out.write_all(b"RDFSNP01")?;
+        out.write_all(&(self.reverse.len() as u64).to_le_bytes())?;
+        let mut entries: Vec<_> = self.reverse.iter().collect();
+        entries.sort_unstable_by_key(|(id, _)| **id);
+        for (id, term) in entries {
+            let text = term.to_string();
+            out.write_all(&id.0.to_le_bytes())?;
+            out.write_all(&(text.len() as u64).to_le_bytes())?;
+            out.write_all(text.as_bytes())?;
+        }
+        for index in &self.indexes {
+            out.write_all(&(index.len() as u64).to_le_bytes())?;
+            for row in index {
+                for id in row {
+                    out.write_all(&id.0.to_le_bytes())?;
+                }
+            }
+        }
+        Ok(())
+    }
+    /// Reads and validates a snapshot stream. Not a memory-mapped on-disk index.
+    pub fn read_snapshot(mut input: impl std::io::Read) -> std::io::Result<Self> {
+        use std::io::{Error, ErrorKind};
+        fn num(r: &mut impl std::io::Read) -> std::io::Result<u64> {
+            let mut b = [0; 8];
+            r.read_exact(&mut b)?;
+            Ok(u64::from_le_bytes(b))
+        }
+        fn bad() -> Error {
+            Error::new(ErrorKind::InvalidData, "invalid RDF snapshot")
+        }
+        let mut magic = [0; 8];
+        input.read_exact(&mut magic)?;
+        if &magic != b"RDFSNP01" {
+            return Err(bad());
+        }
+        let mut snapshot = Self {
+            dictionary: HashMap::new(),
+            reverse: HashMap::new(),
+            indexes: Default::default(),
+        };
+        let n = num(&mut input)?;
+        // An explicit safety cap limits allocation when reading corrupt/untrusted files.
+        if n > 100_000_000 {
+            return Err(bad());
+        }
+        for _ in 0..n {
+            let id = TermId(num(&mut input)?);
+            let len = num(&mut input)?;
+            if id.0 == 0 || len > 16_777_216 {
+                return Err(bad());
+            }
+            let mut bytes = vec![0; len as usize];
+            input.read_exact(&mut bytes)?;
+            let text = std::str::from_utf8(&bytes).map_err(|_| bad())?;
+            let term: Term = text.parse().map_err(|_| bad())?;
+            let tag = id.0 >> 60;
+            let valid_tag = match &term {
+                Term::NamedNode(_) => tag == 1,
+                Term::BlankNode(_) => tag == 2,
+                Term::Literal(_) => {
+                    if let Some(expected) = inline(&term) {
+                        expected == id
+                    } else {
+                        tag == 3
+                    }
+                }
+            };
+            if !valid_tag
+                || snapshot.dictionary.insert(term.clone(), id).is_some()
+                || snapshot.reverse.insert(id, term).is_some()
+            {
+                return Err(bad());
+            }
+        }
+        for index in &mut snapshot.indexes {
+            let count = num(&mut input)?;
+            if count > 100_000_000 {
+                return Err(bad());
+            }
+            for _ in 0..count {
+                let row = [
+                    TermId(num(&mut input)?),
+                    TermId(num(&mut input)?),
+                    TermId(num(&mut input)?),
+                ];
+                if row.iter().any(|id| !snapshot.reverse.contains_key(id))
+                    || index.last().is_some_and(|prev| prev >= &row)
+                {
+                    return Err(bad());
+                }
+                index.push(row);
+            }
+        }
+        // Ensure every permutation represents exactly the same RDF triple set.
+        let base = &snapshot.indexes[0];
+        for perm in Perm::ALL {
+            let order = perm.order();
+            let mut expected: Vec<_> = base
+                .iter()
+                .map(|r| [r[order[0]], r[order[1]], r[order[2]]])
+                .collect();
+            expected.sort_unstable();
+            if expected != snapshot.indexes[slot(perm)] {
+                return Err(bad());
+            }
+        }
+        let mut trailing = [0];
+        if input.read(&mut trailing)? != 0 {
+            return Err(bad());
+        }
+        Ok(snapshot)
+    }
     fn intern(&mut self, term: Term) -> TermId {
         if let Some(&id) = self.dictionary.get(&term) {
             return id;
@@ -200,6 +316,28 @@ mod tests {
         assert!(
             MemorySnapshot::from_turtle(b"@prefix ex: <urn:example:> . ex:s".as_slice()).is_err()
         );
+    }
+    #[test]
+    fn snapshot_roundtrip_and_corruption() {
+        let source = MemorySnapshot::from_triples([triple("urn:s", "urn:p", "hello")]);
+        let mut bytes = Vec::new();
+        source.write_snapshot(&mut bytes).unwrap();
+        let restored = MemorySnapshot::read_snapshot(bytes.as_slice()).unwrap();
+        for perm in Perm::ALL {
+            let a: Vec<_> = source
+                .scan(perm, &[])
+                .flat_map(|b| b.cols[0].clone())
+                .collect();
+            let b: Vec<_> = restored
+                .scan(perm, &[])
+                .flat_map(|b| b.cols[0].clone())
+                .collect();
+            assert_eq!(a, b);
+            assert_eq!(source.count(perm, &[]), restored.count(perm, &[]));
+        }
+        assert!(MemorySnapshot::read_snapshot(&bytes[..bytes.len() - 1]).is_err());
+        bytes.push(0);
+        assert!(MemorySnapshot::read_snapshot(bytes.as_slice()).is_err());
     }
     #[test]
     fn rdf_terms_do_not_collapse_lexical_forms() {
