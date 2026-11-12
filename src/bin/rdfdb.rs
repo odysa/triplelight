@@ -64,7 +64,12 @@ fn main() {
                         tiny_http::Response::from_string(b).with_header(tiny_http::Header::from_bytes("Content-Type", ct).unwrap())
                     }
                     Some((Ok(Err(e)), _)) => tiny_http::Response::from_string(e.to_string()).with_status_code(400),
-                    Some((Err(_), _)) => tiny_http::Response::from_string("unsupported query feature").with_status_code(501),
+                    Some((Err(e), _)) => {
+                        // Panics: unsupported features (501) or storage failures (500); never an empty result.
+                        let msg = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_default();
+                        let code = if msg.contains("not supported") { 501 } else { 500 };
+                        tiny_http::Response::from_string(msg).with_status_code(code)
+                    }
                     None => tiny_http::Response::from_string("missing query").with_status_code(400),
                 };
                 let _ = req.respond(resp);
