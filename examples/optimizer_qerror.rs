@@ -191,7 +191,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             };
             for (mode, wcoj) in modes {
                 let QueryResult::Solutions { rows, .. } =
-                    query_with(&snapshot, &query, &Options { stats: mode, wcoj })?
+                    query_with(&snapshot, &query, &Options { stats: mode, wcoj, raw_ids: false })?
                 else {
                     unreachable!()
                 };

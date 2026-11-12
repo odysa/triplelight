@@ -40,6 +40,7 @@ impl Dictionary for Graph {
     fn resolve(&self, _: TermId) -> Term {
         panic!("not used")
     }
+    fn resolve_ref(&self, _: TermId) -> oxrdf::TermRef<'_> { panic!("not used") }
 }
 impl Snapshot for Graph {
     fn scan<'a>(
@@ -611,6 +612,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                 &Options {
                     stats: None,
                     wcoj: false,
+                    raw_ids: false,
                 },
             )
             .unwrap(),
@@ -622,6 +624,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                 &Options {
                     stats: Some(&stats),
                     wcoj: false,
+                    raw_ids: false,
                 },
             )
             .unwrap(),
@@ -635,6 +638,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                     &Options {
                         stats: mode,
                         wcoj: true,
+                        raw_ids: false,
                     },
                 )
                 .unwrap(),
@@ -662,6 +666,7 @@ impl Dictionary for Faulty<'_> {
     fn resolve(&self, id: TermId) -> Term {
         self.inner.resolve(id)
     }
+    fn resolve_ref(&self, id: TermId) -> oxrdf::TermRef<'_> { self.inner.resolve_ref(id) }
 }
 impl Snapshot for Faulty<'_> {
     fn scan<'a>(
@@ -759,6 +764,7 @@ fn optimizer_count_failure_reaches_query_error() {
         &Options {
             stats: Some(&stats),
             wcoj: false,
+            raw_ids: false,
         },
     )
     .unwrap_err();

@@ -1,9 +1,8 @@
 //! `rdfdb serve <data.nt|data.ttl> [port]` — load into memory and serve the SPARQL 1.1 protocol at /sparql.
 //! `rdfdb query <data> <query>` — run one query and print JSON results.
-use rdfdb::exec::{query, query_with, Options, results::serialize};
+use rdfdb::exec::{query, query_with, Options, QueryResult, results::{serialize, serialize_ids}};
 use rdfdb::opt::stats::Stats;
 use rdfdb::storage::MemorySnapshot;
-use std::io::Read;
 use std::time::Instant;
 
 fn load(path: &str) -> MemorySnapshot {
@@ -57,7 +56,7 @@ fn main() {
                 st
             });
             eprintln!("optimizer statistics: {}", if stats.is_some() { "on" } else { "off" });
-            let opts = Options { stats: stats.as_ref(), wcoj: true };
+            let opts = Options { stats: stats.as_ref(), wcoj: true, raw_ids: true };
             let opts = &opts;
             let server = tiny_http::Server::http(format!("127.0.0.1:{port}")).expect("bind");
             eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql");
@@ -75,7 +74,10 @@ fn main() {
                 };
                 let resp = match q.map(|q| (std::panic::catch_unwind(|| query_with(snap, &q, opts)), q)) {
                     Some((Ok(Ok(r)), _)) => {
-                        let (ct, b) = serialize(&r);
+                        let (ct, b) = match &r {
+                            QueryResult::Ids(sol) => ("application/sparql-results+json", serialize_ids(sol, snap)),
+                            r => serialize(r),
+                        };
                         tiny_http::Response::from_string(b).with_header(tiny_http::Header::from_bytes("Content-Type", ct).unwrap())
                     }
                     Some((Ok(Err(e)), _)) => tiny_http::Response::from_string(e.to_string()).with_status_code(400),
