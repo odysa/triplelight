@@ -39,7 +39,9 @@ Independently computed phase medians need not add up to a total median.
 
 ## Correctness and limits
 
-39 tests pass, including 756 bit-identical original/compiled star-subset estimates.
+39 tests passed on the fixed profiling base, including 756 bit-identical
+original/compiled star-subset estimates. After integrating the arena/ID-output
+main and adapting the example to Options::raw_ids, all 41 tests pass.
 All 14 saved LUBM-10 and all 20 WatDiv SF1 queries have identical complete result
 multisets across index loops, old WCOJ and stats-enabled WCOJ, with Jena counts.
 Estimate TSVs are byte-identical to the prior readouts. Q9's estimation error and
@@ -63,3 +65,6 @@ Run a separately built pinned old binary for F4/S1, then the rewritten binary.
 Use separate target directories or copied binaries to avoid cross-worktree Cargo
 artifact reuse. Loading and initial statistics construction are outside the query
 intervals. Runtime logging requires explicit opt-in and is disabled normally.
+
+The recorded profiling source hashes precede that compatibility-only example
+change; set raw_ids=false to retain the measured decoded-result API on current main.
