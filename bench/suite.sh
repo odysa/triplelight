@@ -23,7 +23,7 @@ for sys in "$@"; do
   until curl -s -o /dev/null --data-urlencode 'query=ASK{?s ?p ?o}' $url; do sleep 2; kill -0 $pid 2>/dev/null || break; done
   echo "$sys ready after $(( $(date +%s) - start ))s" | tee -a $OUT/$sys.server.log
   python3 -I run.py lubm $sys=$url > $OUT/$sys.txt 2>&1
-  mv results_lubm_*.json $OUT/$sys.json 2>/dev/null
+  f=$(ls -t results_lubm_*.json | head -1); mv "$f" $OUT/$sys.json
   ps -o rss= -p $pid | awk '{printf "rss_mb %d\n", $1/1024}' >> $OUT/$sys.server.log
   kill $pid; wait $pid 2>/dev/null
 done
