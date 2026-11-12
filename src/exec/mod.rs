@@ -50,6 +50,16 @@ pub struct Options<'a> {
 impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true } } }
 
 pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(snap, text, opts))) {
+        Ok(r) => r,
+        Err(p) => match p.downcast::<StorageFailure>() {
+            Ok(f) => Err(QueryError(format!("storage error: {}", f.0))),
+            Err(p) => std::panic::resume_unwind(p),
+        },
+    }
+}
+
+fn run<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     let q = spargebra::SparqlParser::new().parse_query(text).map_err(|e| QueryError(e.to_string()))?;
     let mut ctx = Ctx::new(snap);
     ctx.wcoj = opts.wcoj;
@@ -134,6 +144,13 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn var_name(&mut self, name: &str) -> usize {
         let n = self.vars.len();
         *self.vars.entry(name.to_string()).or_insert(n)
+    }
+
+    // Storage reads are fallible; an error aborts the whole query (caught in `query_with`), never yields "no rows".
+    fn count(&self, perm: Perm, prefix: &[TermId]) -> u64 { self.snap.count(perm, prefix).unwrap_or_else(|e| storage_failure(e)) }
+    fn seek(&self, perm: Perm, prefix: &[TermId], t: TermId) -> Option<TermId> { self.snap.seek(perm, prefix, t).unwrap_or_else(|e| storage_failure(e)) }
+    fn scan(&self, perm: Perm, prefix: &[TermId]) -> impl Iterator<Item = crate::model::TripleBatch> + '_ {
+        self.snap.scan(perm, prefix).map(|b| b.unwrap_or_else(|e| storage_failure(e)))
     }
 
     pub(crate) fn resolve(&self, id: TermId) -> Term {
@@ -416,7 +433,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let consts_count = |p: &[Slot; 3]| {
             let fixed: Vec<Option<TermId>> = p.iter().map(|s| if let Slot::Const(c) = s { *c } else { None }).collect();
             let (perm, prefix) = choose_perm(&fixed);
-            self.snap.count(perm, &prefix)
+            self.count(perm, &prefix)
         };
         let counts: Vec<u64> = pats.iter().map(consts_count).collect();
         // Variable-free patterns never join on anything; they only gate the result.
@@ -464,7 +481,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             let mut i = 0;
             while agreed < its.len() {
                 let (perm, prefix) = &its[i];
-                let Some(y) = self.snap.seek(*perm, prefix, x) else { break 'outer };
+                let Some(y) = self.seek(*perm, prefix, x) else { break 'outer };
                 if y == x { agreed += 1 } else { x = y; agreed = 1 }
                 i = (i + 1) % its.len();
             }
@@ -483,7 +500,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             _ => None,
         }).collect();
         let (perm, prefix) = choose_perm(&fixed);
-        let n = self.snap.count(perm, &prefix) as f64;
+        let n = self.count(perm, &prefix) as f64;
         let connected = pat.iter().any(|s| matches!(s, Slot::Var(v) if bound.contains(v)));
         if bound.is_empty() || connected { n } else { n * 1e6 } // avoid cross products
     }
@@ -499,11 +516,11 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             let (perm, prefix) = choose_perm(&fixed);
             // Fully bound pattern: a membership probe, no scan or batch allocation.
             if prefix.len() == 3 {
-                if self.snap.count(perm, &prefix) > 0 { out.push(row) }
+                if self.count(perm, &prefix) > 0 { out.push(row) }
                 continue;
             }
             let order = perm.order();
-            for batch in self.snap.scan(perm, &prefix) {
+            for batch in self.scan(perm, &prefix) {
                 'rows: for i in 0..batch.len() {
                     let mut spo = [UNBOUND; 3];
                     for (k, &pos) in order.iter().enumerate() { spo[pos] = batch.cols[k][i]; }
@@ -530,6 +547,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
     pub(crate) fn exists(&self, p: &GraphPattern, r: &Row) -> bool { !self.eval(p, vec![r.clone()]).is_empty() }
 }
+
+/// Marker payload for storage failures raised inside evaluation.
+struct StorageFailure(String);
+fn storage_failure(e: crate::storage::StorageError) -> ! { std::panic::panic_any(StorageFailure(e.to_string())) }
 
 #[derive(Copy, Clone)]
 enum Slot { Const(Option<TermId>), Var(usize) }
