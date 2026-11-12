@@ -28,6 +28,7 @@ fn slot(p: Perm) -> usize {
 pub struct MemorySnapshot {
     dictionary: HashMap<Term, TermId>,
     reverse: HashMap<TermId, Term>,
+    direct: Vec<Option<(TermId, Term)>>,
     indexes: [Vec<[TermId; 3]>; 6],
     first_keys: [Vec<(TermId, usize)>; 6],
 }
@@ -51,6 +52,7 @@ impl MemorySnapshot {
         let mut store = Self {
             dictionary: HashMap::new(),
             reverse: HashMap::new(),
+            direct: Vec::new(),
             indexes: Default::default(),
             first_keys: Default::default(),
         };
@@ -122,6 +124,7 @@ impl MemorySnapshot {
         let mut snapshot = Self {
             dictionary: HashMap::new(),
             reverse: HashMap::new(),
+            direct: Vec::new(),
             indexes: Default::default(),
             first_keys: Default::default(),
         };
@@ -195,6 +198,14 @@ impl MemorySnapshot {
         if input.read(&mut trailing)? != 0 {
             return Err(bad());
         }
+        snapshot.direct.resize(snapshot.reverse.len(), None);
+        for (&id, term) in &snapshot.reverse {
+            if id.0 >> 60 != 15 {
+                let index = (id.0 & 0x0fff_ffff_ffff_ffff) as usize;
+                if index >= snapshot.direct.len() || snapshot.direct[index].is_some() { return Err(bad()); }
+                snapshot.direct[index] = Some((id, term.clone()));
+            }
+        }
         snapshot.rebuild_first_keys();
         Ok(snapshot)
     }
@@ -211,6 +222,7 @@ impl MemorySnapshot {
             TermId((kind << 60) | self.reverse.len() as u64)
         });
         self.dictionary.insert(term.clone(), id);
+        self.direct.push(if id.0 >> 60 == 15 { None } else { Some((id, term.clone())) });
         self.reverse.insert(id, term);
         id
     }
@@ -249,7 +261,10 @@ impl Dictionary for MemorySnapshot {
             )
             .into();
         }
-        self.reverse.get(&id).expect("unknown term ID").clone()
+        let index = (id.0 & 0x0fff_ffff_ffff_ffff) as usize;
+        let (stored_id, term) = self.direct.get(index).and_then(Option::as_ref).expect("unknown term ID");
+        assert_eq!(*stored_id, id, "unknown term ID");
+        term.clone()
     }
 }
 impl Snapshot for MemorySnapshot {
