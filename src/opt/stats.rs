@@ -112,11 +112,14 @@ pub struct Stats {
     pub subject_count: u64,
     pub duplicate_triples_ignored: u64,
     pub characteristic_sets: Arc<Vec<CharacteristicSet>>,
+    cs_lookup: Arc<HashMap<Vec<TermId>, usize>>,
     predicates: Arc<BTreeMap<TermId, Property>>,
     objects: Distinct,
     equality: [u64; 8],
     exact_counts: HashMap<TriplePattern, u64>,
     exact_object_cs_counts: HashMap<TriplePattern, Vec<u64>>,
+    star_estimates: HashMap<Vec<TriplePattern>, f64>,
+    planning_domains: HashMap<TriplePattern, BTreeMap<u32, f64>>,
 }
 
 #[derive(Debug)]
@@ -226,11 +229,7 @@ impl Stats {
                             predicates.extend(b.cols[1].iter().copied());
                         }
                         let key: Vec<_> = predicates.into_iter().collect();
-                        if let Some(index) = self
-                            .characteristic_sets
-                            .iter()
-                            .position(|cs| cs.predicates == key)
-                        {
+                        if let Some(&index) = self.cs_lookup.get(&key) {
                             counts[index] += 1;
                         }
                     }
@@ -240,6 +239,8 @@ impl Stats {
         }
         self.exact_counts = exact_counts;
         self.exact_object_cs_counts = exact_object_cs_counts;
+        self.star_estimates.clear();
+        self.planning_domains.clear();
         Ok(())
     }
     pub fn estimate_pattern(&self, pattern: &TriplePattern) -> Estimate {
@@ -353,6 +354,9 @@ impl Stats {
         rows
     }
     fn estimate_star(&self, group: &[TriplePattern]) -> Option<f64> {
+        if let Some(rows) = self.star_estimates.get(group) {
+            return Some(*rows);
+        }
         if group.len() < 2 || group.iter().any(|p| !matches!(p.p, Slot::Const(_))) {
             return None;
         }
@@ -401,9 +405,115 @@ impl Stats {
         }
         Some(cardinal(total))
     }
+    /// Compile star-subset estimates once for a bounded DP query. Each CS property
+    /// is looked up once per pattern; subset products reuse the same ascending
+    /// multiplication/division order as estimate_star, preserving its rounding.
+    pub(crate) fn for_planning(&self, patterns: &[TriplePattern]) -> Self {
+        let mut prepared = self.clone();
+        prepared.star_estimates.clear();
+        prepared.planning_domains.clear();
+        for p in patterns {
+            prepared
+                .planning_domains
+                .insert(*p, self.variable_domains(&[*p]));
+        }
+        let mut groups: BTreeMap<(u8, u64), Vec<TriplePattern>> = BTreeMap::new();
+        for p in patterns {
+            let key = match p.s {
+                Slot::Var(v) => (0, u64::from(v)),
+                Slot::Const(id) => (1, id.0),
+            };
+            let group = groups.entry(key).or_default();
+            if !group.contains(p) {
+                group.push(*p);
+            }
+        }
+        for group in groups.into_values() {
+            let n = group.len();
+            if !(2..=10).contains(&n) || group.iter().any(|p| !matches!(p.p, Slot::Const(_))) {
+                continue;
+            }
+            let mut objects = BTreeSet::new();
+            if group
+                .iter()
+                .any(|p| matches!(p.o, Slot::Var(v) if p.s == p.o || !objects.insert(v)))
+            {
+                continue;
+            }
+            if matches!(group[0].s, Slot::Const(_))
+                && group.iter().all(|p| self.exact_counts.contains_key(p))
+            {
+                continue;
+            }
+            let full = 1usize << n;
+            let mut totals = vec![0.0; full];
+            let mut products = vec![0.0; full];
+            let mut matching = vec![0.0; n];
+            for (cs_index, cs) in self.characteristic_sets.iter().enumerate() {
+                let mut present = 0usize;
+                for (i, p) in group.iter().enumerate() {
+                    let Slot::Const(pred) = p.p else {
+                        unreachable!()
+                    };
+                    matching[i] = cs.properties.get(&pred).map_or(0.0, |prop| match p.o {
+                        Slot::Const(o) => self.exact_object_cs_counts.get(p).map_or_else(
+                            || prop.frequencies.estimate(o),
+                            |counts| counts[cs_index] as f64,
+                        ),
+                        Slot::Var(_) => prop.triples as f64,
+                    });
+                    if matching[i] > 0.0 {
+                        present |= 1 << i;
+                    }
+                }
+                if present.count_ones() < 2 {
+                    continue;
+                }
+                products[0] = cs.subjects as f64;
+                for mask in 1usize..full {
+                    if mask & !present != 0 {
+                        continue;
+                    }
+                    let i = (usize::BITS - 1 - mask.leading_zeros()) as usize;
+                    let prior = mask ^ (1 << i);
+                    products[mask] = cardinal(products[prior] * matching[i] / cs.subjects as f64);
+                    if mask.count_ones() >= 2 {
+                        totals[mask] = cardinal(totals[mask] + products[mask]);
+                    }
+                }
+            }
+            for (mask, total) in totals.into_iter().enumerate().skip(1) {
+                if mask.count_ones() < 2 {
+                    continue;
+                }
+                let key = group
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| mask & (1 << i) != 0)
+                    .map(|(_, p)| *p)
+                    .collect();
+                let rows = if matches!(group[0].s, Slot::Const(_)) {
+                    total / self.subject_count.max(1) as f64
+                } else {
+                    total
+                };
+                prepared.star_estimates.insert(key, cardinal(rows));
+            }
+        }
+        prepared
+    }
     pub(crate) fn variable_domains(&self, patterns: &[TriplePattern]) -> BTreeMap<u32, f64> {
         let mut result: BTreeMap<u32, f64> = BTreeMap::new();
         for p in patterns {
+            if let Some(domains) = self.planning_domains.get(p) {
+                for (&var, &domain) in domains {
+                    result
+                        .entry(var)
+                        .and_modify(|old| *old = old.min(domain))
+                        .or_insert(domain);
+                }
+                continue;
+            }
             let property = if let Slot::Const(id) = p.p {
                 self.predicates.get(&id)
             } else {
@@ -494,6 +604,14 @@ impl Builder {
     }
     fn finish(mut self) -> Stats {
         self.flush_subject();
+        self.stats.cs_lookup = Arc::new(
+            self.stats
+                .characteristic_sets
+                .iter()
+                .enumerate()
+                .map(|(i, cs)| (cs.predicates.clone(), i))
+                .collect(),
+        );
         self.stats
     }
 }
@@ -569,6 +687,54 @@ pub fn q_error(estimate: f64, actual: u64) -> f64 {
 #[cfg(test)]
 mod sketch_tests {
     use super::*;
+    #[test]
+    fn compiled_star_subsets_preserve_estimate_bits() {
+        for seed in 0..12u64 {
+            let mut triples = Vec::new();
+            for subject in 1..=80u64 {
+                for pred in 10..=15u64 {
+                    if (subject * 3 + pred + seed) % 5 == 0 {
+                        continue;
+                    }
+                    for degree in 0..1 + (subject + pred + seed) % 3 {
+                        triples.push([
+                            TermId(subject),
+                            TermId(pred),
+                            TermId(100 + (subject + degree + seed) % 7),
+                        ]);
+                    }
+                }
+            }
+            triples.sort();
+            triples.dedup();
+            let stats = Stats::from_spo(triples).unwrap();
+            let patterns: Vec<_> = (0..6u32)
+                .map(|i| TriplePattern {
+                    s: Slot::Var(0),
+                    p: Slot::Const(TermId(10 + u64::from(i))),
+                    o: if i == 3 {
+                        Slot::Const(TermId(100 + seed % 7))
+                    } else {
+                        Slot::Var(i + 1)
+                    },
+                })
+                .collect();
+            let compiled = stats.for_planning(&patterns);
+            for mask in 1usize..1 << patterns.len() {
+                let subset: Vec<_> = patterns
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| mask & (1 << i) != 0)
+                    .map(|(_, p)| *p)
+                    .collect();
+                assert_eq!(
+                    stats.estimate_bgp(&subset).to_bits(),
+                    compiled.estimate_bgp(&subset).to_bits(),
+                    "seed={seed} mask={mask}"
+                );
+            }
+        }
+    }
     #[test]
     fn hll_is_bounded_and_reasonable_for_tagged_sequential_terms() {
         let mut d = Distinct::default();

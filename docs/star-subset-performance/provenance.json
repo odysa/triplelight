@@ -1,0 +1,25 @@
+{
+  "base_commit": "77d89ebc52eb5fef531f7d45b1eccc1728f57801",
+  "before_binary_sha256": "56729f7be151f06717916d9b83ab781843e3eb1310b3755191bc73641a9cad78",
+  "after_binary_sha256": "8ced4dac1512eb83504bfa1a7d0ea240e6ca5ff1bf8b1d68ef862305f7912a1e",
+  "after_sources": {
+    "src/opt/stats.rs": "d353875594516b6763a39184cc007be90259b225e3faa1a2ae05cf2964014648",
+    "src/opt/planner.rs": "f8fa7b6421ebc4ccd722c345a627450af6f660351ec871cc9d748e8f92f333de",
+    "src/exec/mod.rs": "357fb9397627ccb1d543aff90d535489df48a713ff9d12bce569e6c0b150a42a",
+    "examples/optimizer_hotpath.rs": "c1467c47bc041cd6f8990c0e6df6c29e16ea7e61a0defdb013947d9fa90761c8"
+  },
+  "queries": {
+    "F4": "e1bf628631e42871912e710bef831386ac333ca56a510135239c33ad501bbbb7",
+    "S1": "ac3f4e2c687e921ce8a927fdd9366c4d9eb73e7d1f2af14284a4ea2b577ff027",
+    "C3": "84f8202c2c8f02573a467c5c9ae7497c5f548afd355bfd581bfee61a1a421b57"
+  },
+  "data": "lead benchmark tools/watdiv100.nt; official generated SF100, no inference",
+  "unique_triples": 10914314,
+  "characteristic_sets": 13113,
+  "data_hash_note": "Not recomputed during this profile; data file supplied by the benchmark owner. Query hashes and exact binary hashes are captured.",
+  "sampling": "five sequential requests per mode, statistics off then on; before binary then after binary",
+  "threads": "RAYON_NUM_THREADS=1",
+  "timing": "pure query API, no HTTP or JSON serialization; opt-in RDFDB_PROFILE_PLAN=1",
+  "pilot": "pilot-overlap/ is excluded from final comparison due possible compilation overlap reported by Alex45746569",
+  "validation": "39 tests; 756 bit-identical star-subset estimates; LUBM14 and WatDivSF1 20 full three-way result multisets and Jena counts"
+}

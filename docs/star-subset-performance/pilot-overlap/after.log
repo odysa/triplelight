@@ -1,0 +1,51 @@
+synopsis triples=10914314 characteristic_sets=13113
+profile_begin query=bench/watdiv/F4.rq stats=false sample=0
+profile_end query_ns=2934416 rows=0
+profile_begin query=bench/watdiv/F4.rq stats=false sample=1
+profile_end query_ns=494666 rows=0
+profile_begin query=bench/watdiv/F4.rq stats=false sample=2
+profile_end query_ns=522334 rows=0
+profile_begin query=bench/watdiv/F4.rq stats=false sample=3
+profile_end query_ns=568666 rows=0
+profile_begin query=bench/watdiv/F4.rq stats=false sample=4
+profile_end query_ns=491458 rows=0
+profile_begin query=bench/watdiv/F4.rq stats=true sample=0
+planning_profile clone_ns=500 prefix_ns=8663542 search_ns=22704292 total_ns=31374958
+profile_end query_ns=32584208 rows=0
+profile_begin query=bench/watdiv/F4.rq stats=true sample=1
+planning_profile clone_ns=1291 prefix_ns=9023791 search_ns=15163125 total_ns=24195375
+profile_end query_ns=25387417 rows=0
+profile_begin query=bench/watdiv/F4.rq stats=true sample=2
+planning_profile clone_ns=1333 prefix_ns=8720833 search_ns=14926000 total_ns=23654333
+profile_end query_ns=24741041 rows=0
+profile_begin query=bench/watdiv/F4.rq stats=true sample=3
+planning_profile clone_ns=1375 prefix_ns=8509333 search_ns=16473542 total_ns=24990042
+profile_end query_ns=26209375 rows=0
+profile_begin query=bench/watdiv/F4.rq stats=true sample=4
+planning_profile clone_ns=1417 prefix_ns=9125292 search_ns=14722250 total_ns=23855250
+profile_end query_ns=25005417 rows=0
+profile_begin query=bench/watdiv/S1.rq stats=false sample=0
+profile_end query_ns=251042 rows=0
+profile_begin query=bench/watdiv/S1.rq stats=false sample=1
+profile_end query_ns=258875 rows=0
+profile_begin query=bench/watdiv/S1.rq stats=false sample=2
+profile_end query_ns=124500 rows=0
+profile_begin query=bench/watdiv/S1.rq stats=false sample=3
+profile_end query_ns=116375 rows=0
+profile_begin query=bench/watdiv/S1.rq stats=false sample=4
+profile_end query_ns=114708 rows=0
+profile_begin query=bench/watdiv/S1.rq stats=true sample=0
+planning_profile clone_ns=1167 prefix_ns=24875 search_ns=13898708 total_ns=13938708
+profile_end query_ns=14159417 rows=0
+profile_begin query=bench/watdiv/S1.rq stats=true sample=1
+planning_profile clone_ns=1417 prefix_ns=15708 search_ns=13959791 total_ns=13992833
+profile_end query_ns=14376667 rows=0
+profile_begin query=bench/watdiv/S1.rq stats=true sample=2
+planning_profile clone_ns=1500 prefix_ns=24250 search_ns=10438709 total_ns=10470167
+profile_end query_ns=10783292 rows=0
+profile_begin query=bench/watdiv/S1.rq stats=true sample=3
+planning_profile clone_ns=1042 prefix_ns=15708 search_ns=12129541 total_ns=12151500
+profile_end query_ns=12374042 rows=0
+profile_begin query=bench/watdiv/S1.rq stats=true sample=4
+planning_profile clone_ns=834 prefix_ns=10292 search_ns=10050250 total_ns=10065583
+profile_end query_ns=10247250 rows=0
