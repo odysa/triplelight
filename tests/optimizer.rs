@@ -612,6 +612,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                 &Options {
                     stats: None,
                     wcoj: false,
+                    raw_ids: false,
                 },
             )
             .unwrap(),
@@ -623,6 +624,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                 &Options {
                     stats: Some(&stats),
                     wcoj: false,
+                    raw_ids: false,
                 },
             )
             .unwrap(),
@@ -636,6 +638,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                     &Options {
                         stats: mode,
                         wcoj: true,
+                        raw_ids: false,
                     },
                 )
                 .unwrap(),
@@ -761,6 +764,7 @@ fn optimizer_count_failure_reaches_query_error() {
         &Options {
             stats: Some(&stats),
             wcoj: false,
+            raw_ids: false,
         },
     )
     .unwrap_err();
