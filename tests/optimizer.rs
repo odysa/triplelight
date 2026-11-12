@@ -770,3 +770,41 @@ fn shared_synopses_keep_query_caches_isolated() {
         1.0
     );
 }
+
+#[test]
+fn variable_order_search_matches_exhaustive_cost_and_rejects_invalid_orders() {
+    use rdfdb::opt::planner::{choose_variable_order, variable_order_work};
+    let g = Graph::new(
+        (1..=50)
+            .flat_map(|i| [[i, 10, i % 7], [i % 7, 11, i % 3], [i % 3, 12, i]])
+            .collect(),
+    );
+    let stats = g.stats();
+    let patterns = [
+        p(v(0), c(10), v(1)),
+        p(v(1), c(11), v(2)),
+        p(v(2), c(12), v(0)),
+    ];
+    let order = choose_variable_order(&patterns, &stats);
+    let cost = variable_order_work(&patterns, &stats, &order).unwrap();
+    let mut best = f64::INFINITY;
+    for a in 0..3 {
+        for b in 0..3 {
+            for c in 0..3 {
+                if let Some(work) = variable_order_work(&patterns, &stats, &[a, b, c]) {
+                    best = best.min(work);
+                }
+            }
+        }
+    }
+    assert_eq!(cost, best);
+    for bad in [&[0, 0, 2][..], &[0, 1][..], &[0, 1, 99][..]] {
+        assert!(variable_order_work(&patterns, &stats, bad).is_none());
+    }
+    // More than 12 variables use bounded greedy search, preserving the full permutation.
+    let chain: Vec<_> = (0..15).map(|i| p(v(i), c(10), v(i + 1))).collect();
+    let large = choose_variable_order(&chain, &stats);
+    assert_eq!(large.len(), 16);
+    assert!(variable_order_work(&chain, &stats, &large).is_some());
+    assert_eq!(large, choose_variable_order(&chain, &stats));
+}

@@ -82,7 +82,7 @@ fallback until an executor explicitly opts in.
 
 ## Validation status and q-error contract
 
-`cargo test --test optimizer` checks 20 integration cases, including exact prefix
+`cargo test --test optimizer` checks 21 integration cases, including exact prefix
 counts, correlated stars, multiplicities, frequency overflow, repeated variables,
 all constant masks, empty-BGP identity, physical sort/key invariants, both WCOJ
 branches and 60 generated small graphs. A separate relational oracle compares
@@ -134,3 +134,20 @@ saved query and prints median nanoseconds for clone, exact-prefix refinement,
 plan search and total. Parsing, data loading, initial synopsis construction and
 query execution are outside that interval. See `planner-performance/` for the
 fixed-binary comparison and its limits.
+
+## Cost-based trie variable order
+
+`choose_variable_order(patterns, stats)` returns the global variable permutation
+for trie joins. Up to 12 variables use subset DP; larger inputs use greedy prefix
+extension. The work proxy sums projected-prefix binding estimates times the
+number of participating relations and an index-seek factor. Projection sizes are
+capped by estimated relation rows, with uniform NDV overlap for joins. This is a
+heuristic cost model, not an AGM bound or a runtime guarantee; correlations and
+rare-object conditioning remain approximate. It never filters query results.
+
+`variable_order_work` scores a complete order and rejects omitted, duplicated or
+unknown variables. Tests compare the small search with exhaustive permutations,
+check the large-search permutation, and retain the relational oracle's trie-order
+and result-multiset checks. The executor must use this returned order when it
+constructs every relation's trie permutation. Supplying statistics is optional;
+the engine's legacy order remains the fallback without them.
