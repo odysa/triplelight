@@ -137,9 +137,10 @@ pub enum Change { Insert, Delete }
 
 /// How bases are written and opened (the memory/N-Triples format here; the disk snapshot plugs in the same way).
 pub trait BaseFormat: Send + Sync {
-    /// Writes `src` as a new base in the empty directory `dir`; everything is fsynced before returning.
+    /// Creates directory `dir` (which must not exist; fail if it does) and writes `src` into it as a new base.
+    /// Before returning, every file, `dir` itself and its parent directory are fsynced.
     fn write(&self, dir: &Path, src: &dyn Snapshot) -> std::io::Result<()>;
-    /// Creates the first base from an N-Triples file.
+    /// Same contract as `write`, creating the first base from an N-Triples file (or empty).
     fn import(&self, dir: &Path, ntriples: Option<&Path>) -> std::io::Result<()>;
     fn open(&self, dir: &Path) -> std::io::Result<Arc<dyn Snapshot>>;
 }
@@ -149,6 +150,7 @@ pub struct NTriplesBase { pub workers: usize }
 
 impl BaseFormat for NTriplesBase {
     fn write(&self, dir: &Path, src: &dyn Snapshot) -> std::io::Result<()> {
+        std::fs::create_dir(dir)?;
         let path = dir.join("base.nt");
         let mut out = std::io::BufWriter::new(File::create(&path)?);
         for b in src.scan(Perm::Spo, &[]) {
@@ -159,13 +161,16 @@ impl BaseFormat for NTriplesBase {
             }
         }
         out.into_inner().map_err(|e| e.into_error())?.sync_all()?;
-        sync_dir(dir)
+        sync_dir(dir)?;
+        sync_dir(dir.parent().unwrap())
     }
     fn import(&self, dir: &Path, ntriples: Option<&Path>) -> std::io::Result<()> {
+        std::fs::create_dir(dir)?;
         let path = dir.join("base.nt");
         match ntriples { Some(src) => { std::fs::copy(src, &path)?; } None => { File::create(&path)?; } }
         File::open(&path)?.sync_all()?;
-        sync_dir(dir)
+        sync_dir(dir)?;
+        sync_dir(dir.parent().unwrap())
     }
     fn open(&self, dir: &Path) -> std::io::Result<Arc<dyn Snapshot>> {
         Ok(Arc::new(MemorySnapshot::from_ntriples_parallel_file(dir.join("base.nt"), self.workers.max(1))?))
@@ -207,8 +212,8 @@ impl Store {
                 .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 let base0 = dir.join("base-0");
-                let _ = std::fs::remove_dir_all(&base0); // a crashed earlier creation
-                std::fs::create_dir(&base0)?;
+                // No CURRENT means no base was ever committed: a `base-0` here is an abandoned earlier attempt.
+                if base0.exists() { std::fs::remove_dir_all(&base0)?; }
                 format.import(&base0, initial)?;
                 set_current(&dir, 0)?;
                 0
@@ -317,8 +322,8 @@ impl Store {
         let mut generation = self.generation.lock().unwrap();
         let next = *generation + 1;
         let new_dir = self.dir.join(format!("base-{next}"));
-        let _ = std::fs::remove_dir_all(&new_dir);
-        std::fs::create_dir(&new_dir)?;
+        // Not named by CURRENT, so at most an abandoned earlier attempt in this process.
+        if new_dir.exists() { std::fs::remove_dir_all(&new_dir)?; }
         self.format.write(&new_dir, &*cur)?;
         set_current(&self.dir, next)?;
         // The new base is durable and current; only now drop the log.
