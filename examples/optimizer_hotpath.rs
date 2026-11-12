@@ -27,6 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     &Options {
                         stats: mode.then_some(&stats),
                         wcoj: true,
+                        raw_ids: false,
                     },
                 )?;
                 let query_ns = start.elapsed().as_nanos();
