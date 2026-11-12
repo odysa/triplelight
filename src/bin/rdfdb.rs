@@ -7,11 +7,15 @@ use std::time::Instant;
 
 fn load(path: &str, args: &[String]) -> MemorySnapshot {
     let t = Instant::now();
-    let workers = args.iter().find_map(|arg| arg.strip_prefix("--parallel-load="));
-    let s = if let Some(value) = workers {
-        if path.ends_with(".ttl") { eprintln!("parallel loader supports N-Triples only"); std::process::exit(2); }
-        let n: usize = value.parse().expect("parallel-load requires a nonzero integer");
-        MemorySnapshot::from_ntriples_parallel_file(path, n).expect("parallel parse")
+    let configured = args.iter().find_map(|arg| arg.strip_prefix("--parallel-load="));
+    let workers = configured.map(|v| v.parse::<usize>().expect("parallel-load requires a nonzero integer"))
+        .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, |n| n.get()));
+    if workers == 0 { eprintln!("parallel-load requires a nonzero integer"); std::process::exit(2); }
+    if path.ends_with(".ttl") && configured.is_some() && workers > 1 {
+        eprintln!("parallel loader supports N-Triples only"); std::process::exit(2);
+    }
+    let s = if !path.ends_with(".ttl") && workers > 1 {
+        MemorySnapshot::from_ntriples_parallel_file(path, workers).expect("parallel parse")
     } else {
         let f = std::io::BufReader::new(std::fs::File::open(path).expect("open data file"));
         if path.ends_with(".ttl") { MemorySnapshot::from_turtle(f) } else { MemorySnapshot::from_ntriples(f) }.expect("parse")
