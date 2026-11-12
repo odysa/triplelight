@@ -59,8 +59,9 @@ fn main() {
         Some("serve") => {
             let snap = load(&args[2], &args);
             let port = args.get(3).map(String::as_str).unwrap_or("7878");
-            // --stats: build optimizer statistics at load; join and leapfrog orders then come from the cost model.
-            let stats = args.iter().any(|a| a == "--stats").then(|| {
+            // Optimizer statistics are built at load by default (--no-stats disables): join and leapfrog orders then come
+            // from the cost model, which a work gate skips for small queries. Decided on round-2 benchmarks (bench/results).
+            let stats = (!args.iter().any(|a| a == "--no-stats")).then(|| {
                 let t = Instant::now();
                 let st = Stats::from_snapshot(&snap).expect("statistics");
                 eprintln!("statistics built in {:.2}s", t.elapsed().as_secs_f64());
