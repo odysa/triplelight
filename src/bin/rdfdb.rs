@@ -1,6 +1,7 @@
 //! `rdfdb serve <data.nt|data.ttl> [port]` — load into memory and serve the SPARQL 1.1 protocol at /sparql.
 //! `rdfdb query <data> <query>` — run one query and print JSON results.
-use rdfdb::exec::{query, results::serialize};
+use rdfdb::exec::{query, query_with, Options, results::serialize};
+use rdfdb::opt::stats::Stats;
 use rdfdb::storage::MemorySnapshot;
 use std::io::Read;
 use std::time::Instant;
@@ -48,6 +49,16 @@ fn main() {
         Some("serve") => {
             let snap = load(&args[2]);
             let port = args.get(3).map(String::as_str).unwrap_or("7878");
+            // --stats: build optimizer statistics at load; join and leapfrog orders then come from the cost model.
+            let stats = args.iter().any(|a| a == "--stats").then(|| {
+                let t = Instant::now();
+                let st = Stats::from_snapshot(&snap).expect("statistics");
+                eprintln!("statistics built in {:.2}s", t.elapsed().as_secs_f64());
+                st
+            });
+            eprintln!("optimizer statistics: {}", if stats.is_some() { "on" } else { "off" });
+            let opts = Options { stats: stats.as_ref(), wcoj: true };
+            let opts = &opts;
             let server = tiny_http::Server::http(format!("127.0.0.1:{port}")).expect("bind");
             eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql");
             // One worker per core: queries run concurrently against the same immutable snapshot.
@@ -62,7 +73,7 @@ fn main() {
                 let q = if is_query_body { Some(body) } else {
                     url.split_once('?').and_then(|(_, qs)| form_param(qs, "query")).or_else(|| form_param(&body, "query"))
                 };
-                let resp = match q.map(|q| (std::panic::catch_unwind(|| query(snap, &q)), q)) {
+                let resp = match q.map(|q| (std::panic::catch_unwind(|| query_with(snap, &q, opts)), q)) {
                     Some((Ok(Ok(r)), _)) => {
                         let (ct, b) = serialize(&r);
                         tiny_http::Response::from_string(b).with_header(tiny_http::Header::from_bytes("Content-Type", ct).unwrap())
