@@ -1,0 +1,17 @@
+{
+  "base_commit": "1a75abbb04e402606d69525f59edb3897c735f16",
+  "baseline_binary_sha256": "4189306b7cc1cc7017cd8bd04cba65d7638f036fdf3c030451fb5ad4a1f8488d",
+  "discarded_candidate_binary_sha256": "f764f9a6e34ad1e8b4b4a074b2205ae1a1335db215dd7b994a32f212c63abced",
+  "queries": {
+    "C1": "3cd382d2e6ec0587c1417013cef09dfb94604d69b22132eb7f5cae0473d34800",
+    "C2": "a3d25d21a0d84510801b3d26e2804d4fcb58dec6e4c9877c59b40c4aa12ea28e",
+    "C3": "84f8202c2c8f02573a467c5c9ae7497c5f548afd355bfd581bfee61a1a421b57"
+  },
+  "threads": "RAYON_NUM_THREADS=1",
+  "samples": 5,
+  "data": "same benchmark tools/watdiv100.nt,10914314 unique triples,13113CS; hash not re-read for this diagnosis",
+  "diagnosis": "prepare versus whole-query API, no HTTP or JSON serialization",
+  "contamination": "Kaiming reported release compile around18:36Z possibly overlapping candidate timing; do not treat timing differences as isolated causal effects",
+  "final_policy": "wide BGP retains original runtime greedy/trie order, not the discarded stats-cost greedy",
+  "validation": "44 tests before rebasing new store layer; wide high-work 25000-binding full-multiset parity test; no fresh final-policy serving benchmark"
+}

@@ -51,6 +51,9 @@ struct Candidate {
 
 /// Work gate in approximate index seeks plus matched rows, not nanoseconds.
 pub const MIN_OPTIMIZER_WORK: f64 = 100_000.0;
+/// Runtime stats optimization is limited to 128 binary-DP subset states.
+/// Wider queries retain the executor's original index-count greedy/trie order.
+pub const MAX_RUNTIME_DP_PATTERNS: usize = 7;
 
 /// Cheap greedy work proxy: independent per-pattern domains, no CS enumeration,
 /// data reads or subset search. A wrong estimate affects strategy, never answers.
