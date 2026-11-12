@@ -84,7 +84,7 @@ fn serve_store(args: &[String]) {
     let refresh = |stats: &std::sync::RwLock<Option<(usize, std::sync::Arc<Stats>)>>, snap: &rdfdb::store::Overlay| {
         if args.iter().any(|a| a == "--no-stats") { return }
         let st = Stats::from_snapshot(snap.base()).expect("statistics");
-        *stats.write().unwrap() = Some((snap.base() as *const _ as usize, std::sync::Arc::new(st)));
+        *stats.write().unwrap() = Some((snap.base_id(), std::sync::Arc::new(st)));
     };
     refresh(&stats, &store.snapshot());
     let port = args.get(3).filter(|a| !a.starts_with("--")).map(String::as_str).unwrap_or("7878");
@@ -106,7 +106,7 @@ fn serve_store(args: &[String]) {
                         Ok(n) => {
                             let snap = store.snapshot();
                             if snap.delta_len() > 1_000_000 {
-                                if let Err(e) = store.compact(workers) { eprintln!("compaction failed: {e}") } else { refresh(stats, &store.snapshot()) }
+                                if let Err(e) = store.compact() { eprintln!("compaction failed: {e}") } else { refresh(stats, &store.snapshot()) }
                             }
                             tiny_http::Response::from_string(format!("{n} triples changed"))
                         }
@@ -122,7 +122,7 @@ fn serve_store(args: &[String]) {
                     Some(q) => {
                         let snap = store.snapshot();
                         let st = stats.read().unwrap().clone();
-                        let st = st.filter(|(base, _)| snap.delta_len() == 0 && *base == snap.base() as *const _ as usize);
+                        let st = st.filter(|(base, _)| snap.delta_len() == 0 && *base == snap.base_id());
                         let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), wcoj: true, raw_ids: true };
                         answer(&*snap, &q, &opts)
                     }

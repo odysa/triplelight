@@ -1,11 +1,15 @@
 //! Durable updates (task #8). The base snapshot is immutable; committed changes live in a write-ahead log (WAL)
 //! and an in-memory delta layered over the base. Readers take an `Arc<Overlay>`: a consistent snapshot that later
 //! commits never change. Commit = append the change set to the WAL, fsync, then publish a new overlay.
-//! Compaction folds the delta into a new base file and truncates the WAL.
+//! Compaction writes the merged data as a new base and truncates the WAL.
 //!
 //! On-disk layout of a data directory:
-//!   base.nt   the base data (N-Triples), replaced atomically by compaction (write tmp, fsync, rename)
-//!   wal.log   committed change sets since the base was written
+//!   CURRENT    one line: the name of the active base directory
+//!   base-<n>/  an immutable base in some `BaseFormat` (never modified after it is written)
+//!   wal.log    committed change sets since that base was written
+//! Compaction writes `base-<n+1>`, then atomically replaces CURRENT (write tmp, fsync, rename, fsync dir), then
+//! truncates the WAL. A crash leaves either the old base with the full WAL, or the new base with a WAL whose records
+//! re-apply idempotently. Base directories not named by CURRENT are deleted at open.
 //!
 //! WAL record: one line per change, `+ <triple> .` or `- <triple> .` in N-Triples syntax, then a line `C`.
 //! Recovery replays complete records only; a torn tail (crash mid-append) is ignored and truncated.
@@ -50,13 +54,15 @@ impl Delta {
 
 /// A read snapshot: base plus a frozen delta.
 pub struct Overlay {
-    base: Arc<MemorySnapshot>,
+    base: Arc<dyn Snapshot>,
     delta: Arc<Delta>,
 }
 
 impl Overlay {
     pub fn delta_len(&self) -> usize { self.delta.len() }
-    pub fn base(&self) -> &MemorySnapshot { &self.base }
+    pub fn base(&self) -> &dyn Snapshot { &*self.base }
+    /// Identity of the base (stable across overlays sharing it).
+    pub fn base_id(&self) -> usize { Arc::as_ptr(&self.base).cast::<()>() as usize }
 
     fn visible_in_base(&self, spo: [TermId; 3]) -> Result<bool, StorageError> {
         Ok(self.base.count(Perm::Spo, &spo)? > 0 && self.delta.dels[0].binary_search(&spo).is_err())
@@ -129,9 +135,49 @@ impl Snapshot for Overlay {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Change { Insert, Delete }
 
+/// How bases are written and opened (the memory/N-Triples format here; the disk snapshot plugs in the same way).
+pub trait BaseFormat: Send + Sync {
+    /// Writes `src` as a new base in the empty directory `dir`; everything is fsynced before returning.
+    fn write(&self, dir: &Path, src: &dyn Snapshot) -> std::io::Result<()>;
+    /// Creates the first base from an N-Triples file.
+    fn import(&self, dir: &Path, ntriples: Option<&Path>) -> std::io::Result<()>;
+    fn open(&self, dir: &Path) -> std::io::Result<Arc<dyn Snapshot>>;
+}
+
+/// Base = `base.nt` in the directory, loaded into a `MemorySnapshot`.
+pub struct NTriplesBase { pub workers: usize }
+
+impl BaseFormat for NTriplesBase {
+    fn write(&self, dir: &Path, src: &dyn Snapshot) -> std::io::Result<()> {
+        let path = dir.join("base.nt");
+        let mut out = std::io::BufWriter::new(File::create(&path)?);
+        for b in src.scan(Perm::Spo, &[]) {
+            let b = b?;
+            for i in 0..b.len() {
+                let t = |id| src.resolve(id);
+                writeln!(out, "{} {} {} .", t(b.cols[0][i]), t(b.cols[1][i]), t(b.cols[2][i]))?;
+            }
+        }
+        out.into_inner().map_err(|e| e.into_error())?.sync_all()?;
+        sync_dir(dir)
+    }
+    fn import(&self, dir: &Path, ntriples: Option<&Path>) -> std::io::Result<()> {
+        let path = dir.join("base.nt");
+        match ntriples { Some(src) => { std::fs::copy(src, &path)?; } None => { File::create(&path)?; } }
+        File::open(&path)?.sync_all()?;
+        sync_dir(dir)
+    }
+    fn open(&self, dir: &Path) -> std::io::Result<Arc<dyn Snapshot>> {
+        Ok(Arc::new(MemorySnapshot::from_ntriples_parallel_file(dir.join("base.nt"), self.workers.max(1))?))
+    }
+}
+
 /// A persistent store: base file + WAL in a directory.
 pub struct Store {
     dir: PathBuf,
+    format: Box<dyn BaseFormat>,
+    /// Number of the active base directory.
+    generation: Mutex<u64>,
     current: RwLock<Arc<Overlay>>,
     /// Serializes WAL appends; holds the open WAL.
     wal: Mutex<File>,
@@ -140,30 +186,43 @@ pub struct Store {
 }
 
 impl Store {
-    /// Opens `dir`, creating it from `initial` (an N-Triples file) if it has no base yet; replays the WAL.
+    /// Opens `dir` with N-Triples bases, creating it from `initial` if it has no base yet; replays the WAL.
     pub fn open(dir: impl AsRef<Path>, initial: Option<&Path>, workers: usize) -> std::io::Result<Self> {
+        Self::open_with(dir, initial, Box::new(NTriplesBase { workers }))
+    }
+
+    pub fn open_with(dir: impl AsRef<Path>, initial: Option<&Path>, format: Box<dyn BaseFormat>) -> std::io::Result<Self> {
         let dir = dir.as_ref().to_path_buf();
         std::fs::create_dir_all(&dir)?;
-        let base_path = dir.join("base.nt");
-        if !base_path.exists() {
-            let tmp = dir.join("base.nt.tmp");
-            match initial { Some(src) => { std::fs::copy(src, &tmp)?; } None => { File::create(&tmp)?; } }
-            File::open(&tmp)?.sync_all()?;
-            std::fs::rename(&tmp, &base_path)?;
-            sync_dir(&dir)?;
+        let generation = match std::fs::read_to_string(dir.join("CURRENT")) {
+            Ok(s) => s.trim().strip_prefix("base-").and_then(|n| n.parse().ok())
+                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                let base0 = dir.join("base-0");
+                let _ = std::fs::remove_dir_all(&base0); // a crashed earlier creation
+                std::fs::create_dir(&base0)?;
+                format.import(&base0, initial)?;
+                set_current(&dir, 0)?;
+                0
+            }
+            Err(e) => return Err(e),
+        };
+        // Leftovers of crashed compactions or superseded bases.
+        for entry in std::fs::read_dir(&dir)? {
+            let name = entry?.file_name().to_string_lossy().into_owned();
+            if name.starts_with("base-") && name != format!("base-{generation}") { std::fs::remove_dir_all(dir.join(&name))?; }
         }
-        let base = Arc::new(MemorySnapshot::from_ntriples_parallel_file(&base_path, workers.max(1))?);
+        let base = format.open(&dir.join(format!("base-{generation}")))?;
         let mut overlay = Overlay { base, delta: Arc::new(Delta::default()) };
         let wal_path = dir.join("wal.log");
         let (records, valid_len) = read_wal(&wal_path)?;
         for rec in records { overlay = apply(&overlay, &rec)?; }
-        let wal = OpenOptions::new().create(true).read(true).write(true).open(&wal_path)?;
+        let mut wal = OpenOptions::new().create(true).read(true).write(true).open(&wal_path)?;
         wal.set_len(valid_len)?; // drop a torn tail
         wal.sync_all()?;
-        let mut wal = wal;
         use std::io::Seek;
         wal.seek(std::io::SeekFrom::End(0))?;
-        Ok(Store { dir, current: RwLock::new(Arc::new(overlay)), wal: Mutex::new(wal), writer: Mutex::new(()) })
+        Ok(Store { dir, format, generation: Mutex::new(generation), current: RwLock::new(Arc::new(overlay)), wal: Mutex::new(wal), writer: Mutex::new(()) })
     }
 
     /// The current read snapshot.
@@ -196,34 +255,39 @@ impl Store {
         Ok(rec.len())
     }
 
-    /// Folds the delta into a new base file (atomic rename) and empties the WAL. Readers are not blocked; writers are.
-    pub fn compact(&self, workers: usize) -> std::io::Result<()> {
+    /// Writes base and delta as a new base, switches to it atomically, and empties the WAL. Readers are not
+    /// blocked (they keep their snapshot); writers wait.
+    pub fn compact(&self) -> std::io::Result<()> {
         let mut wal = self.wal.lock().unwrap();
         let cur = self.snapshot();
         if cur.delta.is_empty() { return Ok(()) }
-        let tmp = self.dir.join("base.nt.tmp");
-        {
-            let mut out = std::io::BufWriter::new(File::create(&tmp)?);
-            for b in cur.scan(Perm::Spo, &[]) {
-                let b = b?;
-                for i in 0..b.len() {
-                    let t = |id| cur.resolve(id);
-                    writeln!(out, "{} {} {} .", t(b.cols[0][i]), t(b.cols[1][i]), t(b.cols[2][i]))?;
-                }
-            }
-            out.into_inner().map_err(|e| e.into_error())?.sync_all()?;
-        }
-        std::fs::rename(&tmp, self.dir.join("base.nt"))?;
-        sync_dir(&self.dir)?;
-        // The new base is durable; only now drop the log.
+        let mut generation = self.generation.lock().unwrap();
+        let next = *generation + 1;
+        let new_dir = self.dir.join(format!("base-{next}"));
+        let _ = std::fs::remove_dir_all(&new_dir);
+        std::fs::create_dir(&new_dir)?;
+        self.format.write(&new_dir, &*cur)?;
+        set_current(&self.dir, next)?;
+        // The new base is durable and current; only now drop the log.
         wal.set_len(0)?;
         wal.sync_all()?;
         use std::io::Seek;
         wal.seek(std::io::SeekFrom::Start(0))?;
-        let base = Arc::new(MemorySnapshot::from_ntriples_parallel_file(self.dir.join("base.nt"), workers.max(1))?);
+        let base = self.format.open(&new_dir)?;
         *self.current.write().unwrap() = Arc::new(Overlay { base, delta: Arc::new(Delta::default()) });
+        *generation = next;
         Ok(())
     }
+}
+
+/// Atomically points CURRENT at `base-<n>`.
+fn set_current(dir: &Path, n: u64) -> std::io::Result<()> {
+    let tmp = dir.join("CURRENT.tmp");
+    let mut f = File::create(&tmp)?;
+    writeln!(f, "base-{n}")?;
+    f.sync_all()?;
+    std::fs::rename(&tmp, dir.join("CURRENT"))?;
+    sync_dir(dir)
 }
 
 fn sync_dir(dir: &Path) -> std::io::Result<()> { File::open(dir)?.sync_all() }

@@ -62,7 +62,7 @@ fn overlay_matches_rebuilt_snapshot() {
     let rebuilt = MemorySnapshot::from_ntriples(expect.iter().map(|x| format!("{x} .\n")).collect::<String>().as_bytes()).unwrap();
     let store = Store::open(dir.join("db"), None, 2).unwrap();
     for q in QUERIES { assert_eq!(answers(&*store.snapshot(), q), answers(&rebuilt, q), "reopen: {q}"); }
-    store.compact(2).unwrap();
+    store.compact().unwrap();
     assert_eq!(store.snapshot().delta_len(), 0);
     drop(store);
     let store = Store::open(dir.join("db"), None, 2).unwrap();
@@ -130,4 +130,24 @@ fn acknowledged_commits_survive_sigkill() {
     for i in 0..=acked {
         assert_eq!(answers(&*s, &format!("ASK {{ <http://ex/{i}> <http://ex/100> <http://ex/{}> }}", i + 1)), ["true"], "commit {i} lost");
     }
+}
+
+/// A compaction that crashed before switching CURRENT leaves a stray base; open ignores and removes it.
+#[test]
+fn crashed_compaction_leftovers_are_ignored() {
+    let dir = tmp("compact-crash");
+    let store = Store::open(&dir, None, 1).unwrap();
+    store.commit(&[(Change::Insert, t(1, 0, 2))]).unwrap();
+    drop(store);
+    std::fs::create_dir(dir.join("base-1")).unwrap();
+    std::fs::write(dir.join("base-1/base.nt"), "garbage that is not N-Triples").unwrap();
+    let store = Store::open(&dir, None, 1).unwrap();
+    assert!(!dir.join("base-1").exists());
+    assert_eq!(answers(&*store.snapshot(), "ASK { <http://ex/1> <http://ex/100> <http://ex/2> }"), ["true"]);
+    store.compact().unwrap();
+    assert_eq!(std::fs::read_to_string(dir.join("CURRENT")).unwrap().trim(), "base-1");
+    drop(store);
+    let store = Store::open(&dir, None, 1).unwrap();
+    assert!(!dir.join("base-0").exists());
+    assert_eq!(answers(&*store.snapshot(), "ASK { <http://ex/1> <http://ex/100> <http://ex/2> }"), ["true"]);
 }
