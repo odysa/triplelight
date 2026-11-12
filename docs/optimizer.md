@@ -9,7 +9,7 @@ against elapsed time or shown to beat another RDF store.
 
 ```rust,ignore
 let mut stats = Stats::from_snapshot(snapshot)?;
-stats.cache_pattern_counts(&patterns, snapshot); // exact index-prefix counts, no full query execution
+stats.cache_pattern_counts(&patterns, snapshot)?; // exact index-prefix counts, no full query execution
 let plan = plan_bgp(&patterns, &stats);
 // Once a leapfrog executor is available:
 let decision = plan_bgp_with_options(&patterns, &stats,
@@ -81,7 +81,7 @@ fallback until an executor explicitly opts in.
 
 ## Validation status and q-error contract
 
-`cargo test --test optimizer` checks 17 integration cases, including exact prefix
+`cargo test --test optimizer` checks 19 integration cases, including exact prefix
 counts, correlated stars, multiplicities, frequency overflow, repeated variables,
 all constant masks, empty-BGP identity, physical sort/key invariants, both WCOJ
 branches and 60 generated small graphs. A separate relational oracle compares
@@ -114,3 +114,5 @@ algorithm's worst-case optimality up to a logarithmic factor. That result applie
 to an appropriate join implementation, not to this planner's cost estimates or
 its choice between physical algorithms. Runtime integration must separately test
 variable-order consistency, set/bag behavior and result equality.
+
+Storage errors in statistics construction and exact-count refinement return `StatsError::Storage` with the original error as its source. Refinement commits its caches only after all requested reads succeed, so failed reads cannot leave partially refreshed exact counts.

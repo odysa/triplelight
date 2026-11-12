@@ -118,8 +118,9 @@ pub struct Stats {
     exact_object_cs_counts: HashMap<TriplePattern, Vec<u64>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum StatsError {
+    Storage(crate::storage::StorageError),
     UnsortedSpo,
     UnequalBatchColumns,
 }
@@ -128,7 +129,19 @@ impl fmt::Display for StatsError {
         write!(f, "{self:?}")
     }
 }
-impl std::error::Error for StatsError {}
+impl std::error::Error for StatsError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Storage(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+impl From<crate::storage::StorageError> for StatsError {
+    fn from(e: crate::storage::StorageError) -> Self {
+        Self::Storage(e)
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct Estimate {
@@ -149,6 +162,7 @@ impl Stats {
     pub fn from_snapshot(snapshot: &dyn Snapshot) -> Result<Self, StatsError> {
         let mut builder = Builder::default();
         for batch in snapshot.scan(Perm::Spo, &[]) {
+            let batch = batch?;
             let n = batch.cols[0].len();
             if batch.cols[1].len() != n || batch.cols[2].len() != n {
                 return Err(StatsError::UnequalBatchColumns);
@@ -161,7 +175,13 @@ impl Stats {
     }
     /// Fill query-specific exact prefix counts without retaining the snapshot or copying triples.
     /// Repeated-variable patterns need equality filtering; their estimates remain synopsis-based.
-    pub fn cache_pattern_counts(&mut self, patterns: &[TriplePattern], snapshot: &dyn Snapshot) {
+    pub fn cache_pattern_counts(
+        &mut self,
+        patterns: &[TriplePattern],
+        snapshot: &dyn Snapshot,
+    ) -> Result<(), StatsError> {
+        let mut exact_counts = self.exact_counts.clone();
+        let mut exact_object_cs_counts = self.exact_object_cs_counts.clone();
         for pattern in patterns {
             if has_repeated_variable(pattern) {
                 continue;
@@ -177,8 +197,8 @@ impl Stats {
                     _ => unreachable!(),
                 })
                 .collect();
-            let count = snapshot.count(perm, &prefix);
-            self.exact_counts.insert(*pattern, count);
+            let count = snapshot.count(perm, &prefix)?;
+            exact_counts.insert(*pattern, count);
             // A small POS range can repair a bounded histogram's rare-object error without
             // executing a join. Large ranges retain the synopsis to cap planning overhead.
             if let (Slot::Var(_), Slot::Const(pred), Slot::Const(object)) =
@@ -191,11 +211,19 @@ impl Stats {
             {
                 let mut counts = vec![0; self.characteristic_sets.len()];
                 for batch in snapshot.scan(Perm::Pos, &[pred, object]) {
+                    let batch = batch?;
+                    if batch.cols.iter().any(|c| c.len() != batch.cols[0].len()) {
+                        return Err(StatsError::UnequalBatchColumns);
+                    }
                     for subject in &batch.cols[2] {
-                        let predicates: BTreeSet<_> = snapshot
-                            .scan(Perm::Spo, &[*subject])
-                            .flat_map(|b| b.cols[1].clone())
-                            .collect();
+                        let mut predicates = BTreeSet::new();
+                        for b in snapshot.scan(Perm::Spo, &[*subject]) {
+                            let b = b?;
+                            if b.cols.iter().any(|c| c.len() != b.cols[0].len()) {
+                                return Err(StatsError::UnequalBatchColumns);
+                            }
+                            predicates.extend(b.cols[1].iter().copied());
+                        }
                         let key: Vec<_> = predicates.into_iter().collect();
                         if let Some(index) = self
                             .characteristic_sets
@@ -206,9 +234,12 @@ impl Stats {
                         }
                     }
                 }
-                self.exact_object_cs_counts.insert(*pattern, counts);
+                exact_object_cs_counts.insert(*pattern, counts);
             }
         }
+        self.exact_counts = exact_counts;
+        self.exact_object_cs_counts = exact_object_cs_counts;
+        Ok(())
     }
     pub fn estimate_pattern(&self, pattern: &TriplePattern) -> Estimate {
         if let Some(n) = self.exact_counts.get(pattern) {

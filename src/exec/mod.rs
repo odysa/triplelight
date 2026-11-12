@@ -403,7 +403,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let conv = |s: &Slot| match *s { Slot::Const(c) => opt::plan::Slot::Const(c.unwrap()), Slot::Var(v) => opt::plan::Slot::Var(v as u32) };
         let tps: Vec<opt::plan::TriplePattern> = pats.iter().map(|p| opt::plan::TriplePattern { s: conv(&p[0]), p: conv(&p[1]), o: conv(&p[2]) }).collect();
         let mut st = stats.clone();
-        st.cache_pattern_counts(&tps, dynsnap);
+        st.cache_pattern_counts(&tps, dynsnap).unwrap_or_else(|e| storage_failure(std::io::Error::other(e)));
         let tree = opt::planner::plan_bgp(&tps, &st);
         fn leaves(t: &opt::plan::JoinTree, out: &mut Vec<opt::plan::TriplePattern>) {
             use opt::plan::JoinTree::*;

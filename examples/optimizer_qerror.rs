@@ -132,7 +132,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let (estimate, raw, search, kind) = if let Some(patterns) = encoded {
             let raw = stats.estimate_bgp(&patterns);
             let mut cached = stats.clone();
-            cached.cache_pattern_counts(&patterns, &snapshot);
+            cached.cache_pattern_counts(&patterns, &snapshot)?;
             let decision = plan_bgp_with_options(&patterns, &cached, PlannerOptions::default());
             let kind = match decision.tree {
                 JoinTree::Scan { .. } => "scan",
@@ -151,11 +151,17 @@ fn main() -> Result<(), Box<dyn Error>> {
             (0., 0., "absent-constant", "empty")
         };
         if verify {
-            use rdfdb::exec::{QueryResult, query_with_stats};
+            use rdfdb::exec::{Options, QueryResult, query_with};
             let mut solutions = Vec::new();
             for mode in [None, Some(&stats)] {
-                let QueryResult::Solutions { rows, .. } =
-                    query_with_stats(&snapshot, &query, mode)?
+                let QueryResult::Solutions { rows, .. } = query_with(
+                    &snapshot,
+                    &query,
+                    &Options {
+                        stats: mode,
+                        wcoj: false,
+                    },
+                )?
                 else {
                     unreachable!()
                 };
