@@ -68,7 +68,8 @@ fn encode(
 }
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<_> = std::env::args().collect();
-    if args.len() != 4 {
+    let verify = args.len() == 5 && args[4] == "--verify-executor";
+    if args.len() != 4 && !verify {
         return Err(io::Error::other(
             "usage: optimizer_qerror DATA.nt QUERY_DIR REFERENCE_COUNTS.tsv",
         )
@@ -135,6 +136,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let decision = plan_bgp_with_options(&patterns, &cached, PlannerOptions::default());
             let kind = match decision.tree {
                 JoinTree::Scan { .. } => "scan",
+                JoinTree::IndexNestedLoop { .. } => "index_loop",
                 JoinTree::MergeJoin { .. } => "merge",
                 JoinTree::HashJoin { .. } => "hash",
                 JoinTree::Leapfrog { .. } => "leapfrog",
@@ -148,6 +150,33 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
             (0., 0., "absent-constant", "empty")
         };
+        if verify {
+            use rdfdb::exec::{QueryResult, query_with_stats};
+            let mut solutions = Vec::new();
+            for mode in [None, Some(&stats)] {
+                let QueryResult::Solutions { rows, .. } =
+                    query_with_stats(&snapshot, &query, mode)?
+                else {
+                    unreachable!()
+                };
+                let mut normalized: Vec<Vec<Option<String>>> = rows
+                    .into_iter()
+                    .map(|r| r.into_iter().map(|t| t.map(|t| t.to_string())).collect())
+                    .collect();
+                normalized.sort();
+                if normalized.len() as u64 != actual {
+                    return Err(io::Error::other(format!(
+                        "executor/reference count mismatch: {name}"
+                    ))
+                    .into());
+                }
+                solutions.push(normalized);
+            }
+            if solutions[0] != solutions[1] {
+                return Err(io::Error::other(format!("executor multiset mismatch: {name}")).into());
+            }
+            eprintln!("executor_verified={name} rows={actual}");
+        }
         output.push_str(&format!(
             "{name}\t{estimate:.9}\t{actual}\t{}\t{search}\t{kind}\t{raw:.9}\n",
             q_error(estimate, actual)

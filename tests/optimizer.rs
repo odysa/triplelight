@@ -2,7 +2,9 @@ use oxrdf::Term;
 use rdfdb::model::{Perm, TermId, TripleBatch};
 use rdfdb::opt::plan::{JoinTree, Slot, TriplePattern};
 use rdfdb::opt::stats::scan_permutation;
-use rdfdb::opt::{PlannerOptions, Stats, StatsError, plan_bgp, plan_bgp_with_options, q_error};
+use rdfdb::opt::{
+    BinaryJoinMode, PlannerOptions, Stats, StatsError, plan_bgp, plan_bgp_with_options, q_error,
+};
 use rdfdb::storage::{Dictionary, Snapshot};
 use std::collections::{BTreeMap, BTreeSet};
 fn c(x: u64) -> Slot {
@@ -120,6 +122,7 @@ fn eval(g: &Graph, t: &JoinTree) -> Vec<Binding> {
         JoinTree::Empty => vec![],
         JoinTree::Scan { pattern, .. } => scan(g, pattern),
         JoinTree::MergeJoin { left, right, .. } => join(eval(g, left), eval(g, right)),
+        JoinTree::IndexNestedLoop { outer, pattern, .. } => join(eval(g, outer), scan(g, pattern)),
         JoinTree::HashJoin { build, probe, .. } => join(eval(g, build), eval(g, probe)),
         JoinTree::Leapfrog { children, .. } => children
             .iter()
@@ -133,6 +136,13 @@ fn all_vars(t: &JoinTree) -> BTreeSet<u32> {
             .into_iter()
             .filter_map(|s| if let Slot::Var(v) = s { Some(v) } else { None })
             .collect(),
+        JoinTree::IndexNestedLoop { outer, pattern, .. } => {
+            let inner: BTreeSet<_> = [pattern.s, pattern.p, pattern.o]
+                .into_iter()
+                .filter_map(|s| if let Slot::Var(v) = s { Some(v) } else { None })
+                .collect();
+            all_vars(outer).union(&inner).copied().collect()
+        }
         JoinTree::MergeJoin { left, right, .. } => {
             all_vars(left).union(&all_vars(right)).copied().collect()
         }
@@ -161,6 +171,22 @@ fn sorted(t: &JoinTree) -> Option<u32> {
 fn validate_plan(t: &JoinTree) {
     assert!(t.est().is_finite() && t.est() >= 0.0);
     match t {
+        JoinTree::IndexNestedLoop {
+            outer,
+            pattern,
+            perm,
+            ..
+        } => {
+            let bound = all_vars(outer);
+            let slots = [pattern.s, pattern.p, pattern.o];
+            let fixed = |i: usize| match slots[i] {
+                Slot::Const(_) => true,
+                Slot::Var(v) => bound.contains(&v),
+            };
+            let prefix = perm.order().iter().take_while(|i| fixed(**i)).count();
+            assert_eq!(prefix, (0..3).filter(|i| fixed(*i)).count());
+            validate_plan(outer);
+        }
         JoinTree::MergeJoin {
             var, left, right, ..
         } => {
@@ -340,12 +366,28 @@ fn joins_preserve_all_shared_keys_and_physical_sort_property() {
     let g = Graph::new(vec![[1, 10, 2], [1, 10, 3], [1, 11, 3], [1, 11, 4]]);
     let s = g.stats();
     let q = [p(v(0), c(10), v(1)), p(v(0), c(11), v(1))];
-    let t = plan_bgp(&q, &s);
+    let t = plan_bgp_with_options(
+        &q,
+        &s,
+        PlannerOptions {
+            binary_mode: BinaryJoinMode::Materialized,
+            ..Default::default()
+        },
+    )
+    .tree;
     validate_plan(&t);
     assert!(matches!(&t,JoinTree::HashJoin{vars,..}if vars==&vec![0,1]));
     assert_eq!(eval(&g, &t), truth(&g, &q));
     let star = [p(v(0), c(10), v(1)), p(v(0), c(11), v(2))];
-    let t = plan_bgp(&star, &s);
+    let t = plan_bgp_with_options(
+        &star,
+        &s,
+        PlannerOptions {
+            binary_mode: BinaryJoinMode::Materialized,
+            ..Default::default()
+        },
+    )
+    .tree;
     validate_plan(&t);
     assert!(matches!(t, JoinTree::MergeJoin { .. }));
 }
@@ -475,6 +517,7 @@ fn randomized_plan_semantics_match_independent_bgp_oracle() {
                 PlannerOptions {
                     dp_limit,
                     enable_leapfrog: true,
+                    ..Default::default()
                 },
             );
             validate_plan(&d.tree);
@@ -524,4 +567,37 @@ fn fixed_subject_star_uses_exact_leaf_products() {
     stats.cache_pattern_counts(&q, &g);
     assert_eq!(stats.estimate_bgp(&q), 6.0);
     assert_eq!(truth(&g, &q).len(), 6);
+}
+
+#[test]
+fn index_nested_loop_model_matches_runtime_executor_bindings() {
+    use rdfdb::exec::{QueryResult, query_with_stats};
+    use rdfdb::storage::MemorySnapshot;
+    let snapshot=MemorySnapshot::from_ntriples(
+        "<urn:a> <urn:p> <urn:b> .\n<urn:a> <urn:p> <urn:c> .\n<urn:b> <urn:q> <urn:a> .\n<urn:c> <urn:q> <urn:a> .\n<urn:a> <urn:r> <urn:a> .".as_bytes()
+    ).unwrap();
+    let stats = Stats::from_snapshot(&snapshot).unwrap();
+    fn normalized(result: QueryResult) -> Vec<Vec<Option<String>>> {
+        let QueryResult::Solutions { rows, .. } = result else {
+            panic!("SELECT expected")
+        };
+        let mut rows: Vec<_> = rows
+            .into_iter()
+            .map(|r| r.into_iter().map(|t| t.map(|t| t.to_string())).collect())
+            .collect();
+        rows.sort();
+        rows
+    }
+    for text in [
+        "SELECT * WHERE { ?x <urn:p> ?y . ?y <urn:q> ?x }",
+        "SELECT * WHERE { ?x <urn:p> ?y . ?y <urn:q> ?z . ?z <urn:r> ?x }",
+        "SELECT * WHERE { ?x <urn:p> ?y . ?x <urn:p> ?y }",
+        "SELECT * WHERE { ?x <urn:r> ?x . ?x <urn:p> ?y }",
+        "SELECT * WHERE { ?x <urn:missing> ?y . ?x <urn:p> ?z }",
+        "SELECT * WHERE {}",
+    ] {
+        let greedy = normalized(query_with_stats(&snapshot, text, None).unwrap());
+        let planned = normalized(query_with_stats(&snapshot, text, Some(&stats)).unwrap());
+        assert_eq!(greedy, planned, "{text}");
+    }
 }

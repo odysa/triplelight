@@ -15,6 +15,8 @@ pub enum JoinTree {
     Unit,
     /// Range scan of `perm` with the pattern's constants as the key prefix; output sorted by the next key slot.
     Scan { pattern: TriplePattern, perm: Perm, est: f64 },
+    /// Per outer binding, probe the inner triple pattern using constants and bound variables.
+    IndexNestedLoop { outer: Box<JoinTree>, pattern: TriplePattern, perm: Perm, est: f64 },
     /// Both inputs sorted on `var`.
     MergeJoin { var: u32, left: Box<JoinTree>, right: Box<JoinTree>, est: f64 },
     /// Build on `build`, probe with `probe`, keyed on `vars` (may be empty = cross product).
@@ -29,7 +31,8 @@ impl JoinTree {
     pub fn est(&self) -> f64 {
         match self {
             JoinTree::Scan { est, .. } | JoinTree::MergeJoin { est, .. }
-            | JoinTree::HashJoin { est, .. } | JoinTree::Leapfrog { est, .. } => *est,
+            | JoinTree::HashJoin { est, .. } | JoinTree::Leapfrog { est, .. }
+            | JoinTree::IndexNestedLoop { est, .. } => *est,
             JoinTree::Empty => 0.0,
             JoinTree::Unit => 1.0,
         }

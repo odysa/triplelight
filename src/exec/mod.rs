@@ -392,6 +392,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             use opt::plan::JoinTree::*;
             match t {
                 Scan { pattern, .. } => out.push(*pattern),
+                IndexNestedLoop { outer, pattern, .. } => { leaves(outer, out); out.push(*pattern); }
                 MergeJoin { left, right, .. } => { leaves(left, out); leaves(right, out) }
                 HashJoin { build, probe, .. } => { leaves(build, out); leaves(probe, out) }
                 Leapfrog { children, .. } => for c in children { leaves(c, out) },

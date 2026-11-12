@@ -4,18 +4,28 @@ use super::stats::{Stats, cardinal, has_repeated_variable, scan_permutation, slo
 use crate::model::Perm;
 use std::collections::{BTreeMap, BTreeSet};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BinaryJoinMode {
+    /// P1 executor: each outer binding performs an indexed lookup.
+    IndexNestedLoop,
+    /// For an executor that actually materializes merge/hash inputs.
+    Materialized,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct PlannerOptions {
     /// Capped at 12 to bound subset enumeration. Above the threshold, use greedy ordering.
     pub dp_limit: usize,
     /// Set only if the executor implements Leapfrog with the plan contract's variable order.
     pub enable_leapfrog: bool,
+    pub binary_mode: BinaryJoinMode,
 }
 impl Default for PlannerOptions {
     fn default() -> Self {
         Self {
             dp_limit: 10,
             enable_leapfrog: false,
+            binary_mode: BinaryJoinMode::IndexNestedLoop,
         }
     }
 }
@@ -58,9 +68,12 @@ pub fn plan_bgp_with_options(
         return decision(JoinTree::Empty, "empty", "exact empty scan", 0.0, None);
     }
     let (binary, search) = if patterns.len() <= options.dp_limit.min(12) {
-        (dp(patterns, stats), "subset-dp")
+        (dp(patterns, stats, options.binary_mode), "subset-dp")
     } else {
-        (greedy(patterns, stats), "connected-greedy")
+        (
+            greedy(patterns, stats, options.binary_mode),
+            "connected-greedy",
+        )
     };
     let eligible = patterns.len() >= 3
         && patterns.iter().all(|p| !has_repeated_variable(p))
@@ -118,7 +131,7 @@ fn decision(
     }
 }
 
-fn scans(pattern: &TriplePattern, stats: &Stats) -> Vec<Candidate> {
+fn scans(pattern: &TriplePattern, stats: &Stats, mode: BinaryJoinMode) -> Vec<Candidate> {
     let mut by_sort = BTreeMap::new();
     for preferred in variables(pattern)
         .into_iter()
@@ -134,7 +147,12 @@ fn scans(pattern: &TriplePattern, stats: &Stats) -> Vec<Candidate> {
                 perm,
                 est: rows,
             },
-            cost: rows,
+            cost: rows
+                + if mode == BinaryJoinMode::IndexNestedLoop {
+                    index_seek_cost(stats)
+                } else {
+                    0.0
+                },
             sorted,
             vars: variables(pattern),
         });
@@ -152,7 +170,32 @@ fn scan_order(p: &TriplePattern, perm: Perm) -> Option<u32> {
     })
 }
 
-fn joins(left: &Candidate, right: &Candidate, rows: f64) -> Vec<Candidate> {
+fn joins(
+    left: &Candidate,
+    right: &Candidate,
+    rows: f64,
+    stats: &Stats,
+    mode: BinaryJoinMode,
+) -> Vec<Candidate> {
+    if mode == BinaryJoinMode::IndexNestedLoop {
+        let JoinTree::Scan { pattern, .. } = &right.tree else {
+            unreachable!("left-deep inner must be a scan")
+        };
+        let perm = bind_permutation(pattern, &left.vars);
+        // rows_out = rows_in * conditional fanout; avoid unstable division when rows_in is zero.
+        let cost = cardinal(left.cost + left.tree.est() * index_seek_cost(stats) + rows);
+        return vec![Candidate {
+            tree: JoinTree::IndexNestedLoop {
+                outer: Box::new(left.tree.clone()),
+                pattern: *pattern,
+                perm,
+                est: rows,
+            },
+            cost,
+            sorted: None,
+            vars: left.vars.union(&right.vars).copied().collect(),
+        }];
+    }
     let shared: Vec<_> = left.vars.intersection(&right.vars).copied().collect();
     let vars = left.vars.union(&right.vars).copied().collect();
     let input = cardinal(left.tree.est() + right.tree.est());
@@ -196,10 +239,10 @@ fn keep(table: &mut BTreeMap<Option<u32>, Candidate>, candidate: Candidate) {
         table.insert(candidate.sorted, candidate);
     }
 }
-fn dp(patterns: &[TriplePattern], stats: &Stats) -> Candidate {
+fn dp(patterns: &[TriplePattern], stats: &Stats, mode: BinaryJoinMode) -> Candidate {
     let n = patterns.len();
     let full = 1usize << n;
-    let leaves: Vec<_> = patterns.iter().map(|p| scans(p, stats)).collect();
+    let leaves: Vec<_> = patterns.iter().map(|p| scans(p, stats, mode)).collect();
     let mut states: Vec<BTreeMap<Option<u32>, Candidate>> =
         (0..full).map(|_| BTreeMap::new()).collect();
     for (i, leaf) in leaves.iter().enumerate() {
@@ -225,7 +268,7 @@ fn dp(patterns: &[TriplePattern], stats: &Stats) -> Candidate {
             }
             for left in states[mask ^ (1 << i)].values() {
                 for right in leaf {
-                    for c in joins(left, right, rows) {
+                    for c in joins(left, right, rows, stats, mode) {
                         keep(&mut best, c);
                     }
                 }
@@ -239,7 +282,7 @@ fn dp(patterns: &[TriplePattern], stats: &Stats) -> Candidate {
         .unwrap()
         .clone()
 }
-fn greedy(patterns: &[TriplePattern], stats: &Stats) -> Candidate {
+fn greedy(patterns: &[TriplePattern], stats: &Stats, mode: BinaryJoinMode) -> Candidate {
     let first = (0..patterns.len())
         .min_by(|a, b| {
             stats
@@ -249,7 +292,7 @@ fn greedy(patterns: &[TriplePattern], stats: &Stats) -> Candidate {
         })
         .unwrap();
     let mut chosen = vec![first];
-    let mut current = scans(&patterns[first], stats);
+    let mut current = scans(&patterns[first], stats, mode);
     while chosen.len() < patterns.len() {
         let vars = &current[0].vars;
         let connected = (0..patterns.len())
@@ -268,8 +311,8 @@ fn greedy(patterns: &[TriplePattern], stats: &Stats) -> Candidate {
             let rows = stats.estimate_bgp(&subset);
             let mut candidates = BTreeMap::new();
             for left in &current {
-                for right in scans(&patterns[i], stats) {
-                    for c in joins(left, &right, rows) {
+                for right in scans(&patterns[i], stats, mode) {
+                    for c in joins(left, &right, rows, stats, mode) {
                         keep(&mut candidates, c);
                     }
                 }
@@ -370,4 +413,24 @@ fn leapfrog_proxy(patterns: &[TriplePattern], stats: &Stats) -> f64 {
     let min_degree = degrees.values().copied().min().unwrap_or(1) as f64;
     let bound = (log_product / min_degree).min(1e300f64.ln()).exp();
     cardinal(scan_work + bound * 1.5)
+}
+
+/// In-memory sorted-index seek proxy. This is not a measured nanosecond cost.
+fn index_seek_cost(stats: &Stats) -> f64 {
+    (stats.triple_count.max(2) as f64).log2()
+}
+fn bind_permutation(pattern: &TriplePattern, bound: &BTreeSet<u32>) -> Perm {
+    let s = slots(pattern);
+    Perm::ALL
+        .into_iter()
+        .max_by_key(|perm| {
+            perm.order()
+                .iter()
+                .take_while(|i| match s[**i] {
+                    Slot::Const(_) => true,
+                    Slot::Var(v) => bound.contains(&v),
+                })
+                .count()
+        })
+        .unwrap()
 }

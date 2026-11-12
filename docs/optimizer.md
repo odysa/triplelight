@@ -1,7 +1,7 @@
 # P1 optimizer
 
 The optimizer consumes dictionary-encoded `TriplePattern`s and statistics from
-the same read snapshot. It emits scans, merge/hash joins, or a capability-gated
+the same read snapshot. It emits scans, index nested loops, optional merge/hash joins, or a capability-gated
 leapfrog plan. P1 costs are heuristic work units; they have not been calibrated
 against elapsed time or shown to beat another RDF store.
 
@@ -24,7 +24,12 @@ empty plan in the front end.
 
 `JoinTree::Unit` is the identity relation (one empty binding), required by an empty
 BGP. It differs from `Empty` (no bindings). The executor must implement both.
-All shared variables are hash keys. Merge is emitted only when the inputs are
+The default binary cost mode matches the executor: an index nested loop costs
+outer work plus estimated outer rows times log2(graph size), plus estimated
+output rows. Bound outer variables and constants lead the inner index prefix.
+`BinaryJoinMode::Materialized` explicitly selects the alternative hash/merge model.
+
+All shared variables are hash keys in that alternative model. Merge is emitted only when the inputs are
 actually index/merge ordered on their single shared variable. Plans never assume
 that a hash join preserves sorting.
 
@@ -47,7 +52,10 @@ that a hash join preserves sorting.
   not prove an absent object. Memory depends on predicate/CS counts and the largest
   subject group rather than retaining every triple or every subject ID.
 - `cache_pattern_counts` gets exact constant-prefix cardinalities from the store;
-  repeated-variable patterns retain synopsis/equality estimates instead of calling
+  For rare predicate/object constants (at most 4096 matches) whose frequency
+  sketch overflowed, bounded POS and subject lookups refine object counts per
+  characteristic set. Fixed-subject stars use exact leaf-count products.
+  Repeated-variable patterns retain synopsis/equality estimates instead of calling
   an unfiltered prefix count exact. Equality-mask counts handle unbound repeated
   variables. Chains/remaining shared variables use uniform-domain selectivity.
 - Only an **exact zero scan** makes the planner eliminate a BGP. An estimated zero
@@ -73,7 +81,7 @@ fallback until an executor explicitly opts in.
 
 ## Validation status and q-error contract
 
-`cargo test --test optimizer` checks 14 integration cases, including exact prefix
+`cargo test --test optimizer` checks 17 integration cases, including exact prefix
 counts, correlated stars, multiplicities, frequency overflow, repeated variables,
 all constant masks, empty-BGP identity, physical sort/key invariants, both WCOJ
 branches and 60 generated small graphs. A separate relational oracle compares
@@ -88,9 +96,11 @@ harness can call `stats.estimate_bgp(&encoded_patterns)` and compare against the
 exact **BGP binding count**, not a DISTINCT/projection/LIMIT/filtered count with
 different semantics. Repeat the comparison for plan subqueries to diagnose errors.
 
-LUBM/WatDiv q-error and end-to-end performance results are **pending dataset and
-reference-count integration**. The synthetic tests above are not LUBM/WatDiv runs.
-No benchmark win or state-of-the-art accuracy is claimed from them.
+LUBM-10 validation is recorded in [optimizer-lubm10](optimizer-lubm10/README.md).
+All 14 query result multisets agree between greedy and cost-ordered execution,
+and counts match the existing cross-engine reference. The worst q-error remains
+251 on Q9: cyclic correlations are not solved. WatDiv validation remains pending.
+No runtime win or state-of-the-art accuracy is claimed.
 
 ## Research basis
 
