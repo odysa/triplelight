@@ -69,7 +69,8 @@ fn encode(
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<_> = std::env::args().collect();
     let verify = args.len() == 5 && args[4] == "--verify-executor";
-    if args.len() != 4 && !verify {
+    let bench = args.len() == 5 && args[4] == "--bench-planner";
+    if args.len() != 4 && !verify && !bench {
         return Err(io::Error::other(
             "usage: optimizer_qerror DATA.nt QUERY_DIR REFERENCE_COUNTS.tsv",
         )
@@ -130,6 +131,35 @@ fn main() -> Result<(), Box<dyn Error>> {
         let query = fs::read_to_string(&file)?;
         let encoded = encode(&query, &snapshot)?;
         let (estimate, raw, search, kind) = if let Some(patterns) = encoded {
+            if bench {
+                let mut samples = Vec::new();
+                for _ in 0..7 {
+                    let start = Instant::now();
+                    let mut cached = std::hint::black_box(&stats).clone();
+                    let cloned = start.elapsed().as_nanos();
+                    cached.cache_pattern_counts(&patterns, &snapshot)?;
+                    let prepared = start.elapsed().as_nanos();
+                    let plan = plan_bgp_with_options(&patterns, &cached, PlannerOptions::default());
+                    let planned = start.elapsed().as_nanos();
+                    std::hint::black_box(&plan);
+                    samples.push((cloned, prepared - cloned, planned - prepared, planned));
+                }
+                let median = |column: usize| {
+                    let mut ns: Vec<_> = samples
+                        .iter()
+                        .map(|r| [r.0, r.1, r.2, r.3][column])
+                        .collect();
+                    ns.sort();
+                    ns[ns.len() / 2]
+                };
+                eprintln!(
+                    "planner_bench\t{name}\t{}\t{}\t{}\t{}",
+                    median(0),
+                    median(1),
+                    median(2),
+                    median(3)
+                );
+            }
             let raw = stats.estimate_bgp(&patterns);
             let mut cached = stats.clone();
             cached.cache_pattern_counts(&patterns, &snapshot)?;

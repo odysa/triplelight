@@ -5,6 +5,7 @@ use crate::model::{Perm, TermId};
 use crate::storage::Snapshot;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
+use std::sync::Arc;
 
 const HISTOGRAM_SIZE: usize = 64;
 const MAX_CARD: f64 = 1e300;
@@ -110,8 +111,8 @@ pub struct Stats {
     pub triple_count: u64,
     pub subject_count: u64,
     pub duplicate_triples_ignored: u64,
-    pub characteristic_sets: Vec<CharacteristicSet>,
-    predicates: BTreeMap<TermId, Property>,
+    pub characteristic_sets: Arc<Vec<CharacteristicSet>>,
+    predicates: Arc<BTreeMap<TermId, Property>>,
     objects: Distinct,
     equality: [u64; 8],
     exact_counts: HashMap<TriplePattern, u64>,
@@ -451,7 +452,9 @@ impl Builder {
         let new_predicate_subject = self
             .last
             .is_none_or(|last| last[0] != t[0] || last[1] != t[1]);
-        let prop = self.stats.predicates.entry(t[1]).or_default();
+        let prop = Arc::make_mut(&mut self.stats.predicates)
+            .entry(t[1])
+            .or_default();
         prop.add(t);
         if new_predicate_subject {
             prop.subjects += 1;
@@ -476,14 +479,14 @@ impl Builder {
             .into_iter()
             .collect();
         let index = *self.cs_index.entry(key.clone()).or_insert_with(|| {
-            self.stats.characteristic_sets.push(CharacteristicSet {
+            Arc::make_mut(&mut self.stats.characteristic_sets).push(CharacteristicSet {
                 predicates: key,
                 subjects: 0,
                 properties: BTreeMap::new(),
             });
             self.stats.characteristic_sets.len() - 1
         });
-        let cs = &mut self.stats.characteristic_sets[index];
+        let cs = &mut Arc::make_mut(&mut self.stats.characteristic_sets)[index];
         cs.subjects += 1;
         for t in self.current.drain(..) {
             cs.properties.entry(t[1]).or_default().add(t);

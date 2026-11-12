@@ -750,3 +750,23 @@ fn optimizer_count_failure_reaches_query_error() {
     .unwrap_err();
     assert!(e.to_string().contains("planted count failure"));
 }
+
+#[test]
+fn shared_synopses_keep_query_caches_isolated() {
+    let g = Graph::new((1..=130).map(|i| [i, 10, 1000 + i]).collect());
+    let original = g.stats();
+    let before = format!("{original:?}");
+    let mut query_stats = original.clone();
+    assert!(std::sync::Arc::ptr_eq(
+        &original.characteristic_sets,
+        &query_stats.characteristic_sets
+    ));
+    query_stats
+        .cache_pattern_counts(&[p(v(0), c(10), c(1001))], &g)
+        .unwrap();
+    assert_eq!(before, format!("{original:?}"));
+    assert_eq!(
+        query_stats.estimate_pattern(&p(v(0), c(10), c(1001))).rows,
+        1.0
+    );
+}
