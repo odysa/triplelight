@@ -8,6 +8,7 @@ pub mod results;
 
 use crate::model::{Perm, TermId};
 use crate::storage::Snapshot;
+use crate::opt::{self, stats::Stats};
 use oxrdf::{BlankNode, Literal, Term, Variable};
 use spargebra::algebra::{AggregateExpression, AggregateFunction, Expression, GraphPattern, OrderExpression};
 use spargebra::term::{GroundTerm, NamedNodePattern, TermPattern, TriplePattern};
@@ -34,9 +35,16 @@ impl std::fmt::Display for QueryError {
 }
 impl std::error::Error for QueryError {}
 
-pub fn query<S: Snapshot + ?Sized>(snap: &S, text: &str) -> Result<QueryResult, QueryError> {
+pub fn query<S: Snapshot>(snap: &S, text: &str) -> Result<QueryResult, QueryError> {
+    query_with_stats(snap, text, None)
+}
+
+/// With `stats` (built from this same snapshot), BGP join order comes from the cost-based planner (task #3);
+/// without, from a greedy exact-count heuristic.
+pub fn query_with_stats<S: Snapshot>(snap: &S, text: &str, stats: Option<&Stats>) -> Result<QueryResult, QueryError> {
     let q = spargebra::SparqlParser::new().parse_query(text).map_err(|e| QueryError(e.to_string()))?;
     let mut ctx = Ctx::new(snap);
+    ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
     match &q {
         Query::Select { pattern, .. } => {
             let (vars, pattern) = match pattern {
@@ -46,8 +54,17 @@ pub fn query<S: Snapshot + ?Sized>(snap: &S, text: &str) -> Result<QueryResult, 
             ctx.register_all(pattern);
             let rows = ctx.eval(pattern, vec![ctx.empty_row()]);
             let idx: Vec<usize> = vars.iter().map(|v| ctx.var(v)).collect();
-            let rows = rows.into_iter()
-                .map(|r| idx.iter().map(|&i| (r[i] != UNBOUND).then(|| ctx.resolve(r[i]))).collect())
+            // Decoding IDs to terms dominates large results: do it in parallel. Scratch IDs (computed terms)
+            // live in the per-query table, which is not shared across threads, so resolve those first.
+            let scratch: HashMap<TermId, Term> = rows.iter().flat_map(|r| idx.iter().map(move |&i| r[i]))
+                .filter(|id| id.0 >> 60 == 0xe).map(|id| (id, ctx.resolve(id))).collect();
+            use rayon::prelude::*;
+            let rows = rows.par_iter()
+                .with_min_len(4096)
+                .map(|r| idx.iter().map(|&i| {
+                    let id = r[i];
+                    if id == UNBOUND { None } else if let Some(t) = scratch.get(&id) { Some(t.clone()) } else { Some(snap.resolve(id)) }
+                }).collect())
                 .collect();
             Ok(QueryResult::Solutions { vars, rows })
         }
@@ -94,11 +111,12 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     scratch: RefCell<(HashMap<Term, TermId>, Vec<Term>)>,
     /// Row currently being instantiated into a CONSTRUCT template, used by `term_slot`.
     current: RefCell<Option<Row>>,
+    stats: Option<(&'a Stats, &'a dyn Snapshot)>,
 }
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None) }
+        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -324,6 +342,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }).collect();
         // A constant absent from the dictionary can never match.
         if pats.iter().any(|p| p.iter().any(|s| matches!(s, Slot::Const(None)))) { return Vec::new(); }
+        if let Some(order) = self.planned_order(&pats, &rows) {
+            for pi in order { rows = self.extend(&pats[pi], rows); }
+            return rows;
+        }
         let mut remaining: Vec<usize> = (0..pats.len()).collect();
         // Variables bound in every input row (input rows of one call share their bound set except after OPTIONAL).
         let mut bound: HashSet<usize> = match rows.first() {
@@ -339,6 +361,35 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             for s in &pats[pi] { if let Slot::Var(v) = s { bound.insert(*v); } }
         }
         rows
+    }
+
+    /// Pattern order from the cost-based planner: leaves of its join tree, left to right. Used for top-level BGPs
+    /// (a single all-unbound input row); nested BGPs with bound inputs keep the greedy order.
+    fn planned_order(&self, pats: &[[Slot; 3]], rows: &[Row]) -> Option<Vec<usize>> {
+        let (stats, dynsnap) = self.stats?;
+        if pats.len() < 2 || rows.len() != 1 || rows[0].iter().any(|&x| x != UNBOUND) { return None }
+        let conv = |s: &Slot| match *s { Slot::Const(c) => opt::plan::Slot::Const(c.unwrap()), Slot::Var(v) => opt::plan::Slot::Var(v as u32) };
+        let tps: Vec<opt::plan::TriplePattern> = pats.iter().map(|p| opt::plan::TriplePattern { s: conv(&p[0]), p: conv(&p[1]), o: conv(&p[2]) }).collect();
+        let mut st = stats.clone();
+        st.cache_pattern_counts(&tps, dynsnap);
+        let tree = opt::planner::plan_bgp(&tps, &st);
+        fn leaves(t: &opt::plan::JoinTree, out: &mut Vec<opt::plan::TriplePattern>) {
+            use opt::plan::JoinTree::*;
+            match t {
+                Scan { pattern, .. } => out.push(*pattern),
+                MergeJoin { left, right, .. } => { leaves(left, out); leaves(right, out) }
+                HashJoin { build, probe, .. } => { leaves(build, out); leaves(probe, out) }
+                Leapfrog { children, .. } => for c in children { leaves(c, out) },
+                Unit | Empty => {}
+            }
+        }
+        let mut ls = Vec::new();
+        leaves(&tree, &mut ls);
+        let mut used = vec![false; tps.len()];
+        let order: Vec<usize> = ls.iter().filter_map(|l| {
+            let i = (0..tps.len()).find(|&i| !used[i] && tps[i] == *l)?; used[i] = true; Some(i)
+        }).collect();
+        (order.len() == tps.len()).then_some(order)
     }
 
     fn estimate(&self, pat: &[Slot; 3], bound: &HashSet<usize>, sample: &Row) -> f64 {
@@ -362,6 +413,11 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 Slot::Var(v) => (row[*v] != UNBOUND).then_some(row[*v]),
             }).collect();
             let (perm, prefix) = choose_perm(&fixed);
+            // Fully bound pattern: a membership probe, no scan or batch allocation.
+            if prefix.len() == 3 {
+                if self.snap.count(perm, &prefix) > 0 { out.push(row) }
+                continue;
+            }
             let order = perm.order();
             for batch in self.snap.scan(perm, &prefix) {
                 'rows: for i in 0..batch.len() {

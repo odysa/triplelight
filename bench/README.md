@@ -4,7 +4,7 @@
 LUBM UBA 1.7 generator. Reproduce LUBM-10:
 
     java -cp tools/uba/classes edu.lehigh.swat.bench.uba.Generator -univ 10 -index 0 -seed 0 -onto http://swat.cse.lehigh.edu/onto/univ-bench.owl
-    tools/apache-jena-6.2.0/bin/riot --output=ntriples lubm10/*.owl > tools/lubm10.nt      # 1,316,700 triples
+    tools/apache-jena-6.2.0/bin/riot --output=ntriples lubm10/*.owl > tools/lubm10.nt      # 1,316,700 statements, 1,272,953 unique triples
     tools/apache-jena-6.2.0/bin/tdb2.tdbloader --loc tools/tdb2-lubm10 tools/lubm10.nt
     tools/oxigraph load --location tools/oxi-lubm10 --file tools/lubm10.nt
     python3 run.py lubm jena-tdb2=http://127.0.0.1:3030/ds/sparql oxigraph=http://127.0.0.1:7878/query rdfdb=http://127.0.0.1:7979/sparql

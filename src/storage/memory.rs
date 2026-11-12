@@ -206,8 +206,12 @@ impl MemorySnapshot {
             return &[];
         }
         let index = &self.indexes[slot(perm)];
-        let lo = index.partition_point(|row| row[..prefix.len()] < *prefix);
-        let hi = index.partition_point(|row| row[..prefix.len()] <= *prefix);
+        // Pad the prefix to full keys so each probe is a fixed-size array comparison, not a slice comparison.
+        let (mut low, mut high) = ([TermId(0); 3], [TermId(u64::MAX); 3]);
+        low[..prefix.len()].copy_from_slice(prefix);
+        high[..prefix.len()].copy_from_slice(prefix);
+        let lo = index.partition_point(|row| *row < low);
+        let hi = lo + index[lo..].partition_point(|row| *row <= high);
         &index[lo..hi]
     }
 }
