@@ -29,6 +29,7 @@ pub struct MemorySnapshot {
     dictionary: HashMap<Term, TermId>,
     reverse: HashMap<TermId, Term>,
     indexes: [Vec<[TermId; 3]>; 6],
+    first_keys: [Vec<(TermId, usize)>; 6],
 }
 impl MemorySnapshot {
     /// Parse N-Triples and construct a snapshot only if the entire input is valid.
@@ -51,6 +52,7 @@ impl MemorySnapshot {
             dictionary: HashMap::new(),
             reverse: HashMap::new(),
             indexes: Default::default(),
+            first_keys: Default::default(),
         };
         for triple in triples {
             let ids = [
@@ -67,7 +69,16 @@ impl MemorySnapshot {
             index.sort_unstable();
             index.dedup();
         }
+        store.rebuild_first_keys();
         store
+    }
+    fn rebuild_first_keys(&mut self) {
+        for (idx, keys) in self.indexes.iter().zip(&mut self.first_keys) {
+            keys.clear();
+            for (offset, row) in idx.iter().enumerate() {
+                if keys.last().is_none_or(|entry| entry.0 != row[0]) { keys.push((row[0], offset)); }
+            }
+        }
     }
     /// Writes a portable snapshot stream, including dictionary IDs and all six indexes.
     /// The caller owns atomic file replacement and durability (flush/fsync).
@@ -112,6 +123,7 @@ impl MemorySnapshot {
             dictionary: HashMap::new(),
             reverse: HashMap::new(),
             indexes: Default::default(),
+            first_keys: Default::default(),
         };
         let n = num(&mut input)?;
         // An explicit safety cap limits allocation when reading corrupt/untrusted files.
@@ -183,6 +195,7 @@ impl MemorySnapshot {
         if input.read(&mut trailing)? != 0 {
             return Err(bad());
         }
+        snapshot.rebuild_first_keys();
         Ok(snapshot)
     }
     fn intern(&mut self, term: Term) -> TermId {
@@ -205,8 +218,15 @@ impl MemorySnapshot {
         if prefix.len() > 3 {
             return &[];
         }
-        let index = &self.indexes[slot(perm)];
+        let order = slot(perm);
+        let index = &self.indexes[order];
         if prefix.is_empty() { return index; }
+        let keys = &self.first_keys[order];
+        let Ok(group) = keys.binary_search_by_key(&prefix[0], |entry| entry.0) else { return &[]; };
+        let start = keys[group].1;
+        let end = keys.get(group + 1).map_or(index.len(), |entry| entry.1);
+        let index = &index[start..end];
+        if prefix.len() == 1 { return index; }
         // Pad the prefix to full keys so each probe is a fixed-size array comparison, not a slice comparison.
         let (mut low, mut high) = ([TermId(0); 3], [TermId(u64::MAX); 3]);
         low[..prefix.len()].copy_from_slice(prefix);
@@ -250,7 +270,7 @@ impl Snapshot for MemorySnapshot {
     }
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
         if let [a, b, c] = prefix {
-            return Ok(u64::from(self.indexes[slot(perm)].binary_search(&[*a, *b, *c]).is_ok()));
+            return Ok(u64::from(self.matching(perm, &[*a]).binary_search(&[*a, *b, *c]).is_ok()));
         }
         Ok(self.matching(perm, prefix).len() as u64)
     }
@@ -303,6 +323,23 @@ mod tests {
             assert_eq!(store.count(perm, &[]).unwrap(), 3);
             assert_eq!(store.count(perm, &[TermId(0), ordered[1], ordered[2]]).unwrap(), 0);
             assert_eq!(store.seek(perm, &ordered, ordered[0]).unwrap(), None);
+        }
+    }
+    #[test]
+    fn first_key_ranges_match_independent_full_scan() {
+        let triples = (0..1000).map(|i| triple(&format!("urn:s{}",i % 53), &format!("urn:p{}",i % 7), &format!("v{}", i % 31)));
+        let store = MemorySnapshot::from_triples(triples);
+        for perm in Perm::ALL {
+            let all: Vec<[TermId;3]> = store.indexes[slot(perm)].clone();
+            for row in all.iter().step_by(11) {
+                for n in 0..=3 {
+                    let prefix = &row[..n];
+                    let expected: Vec<_> = all.iter().copied().filter(|r| r[..n] == *prefix).collect();
+                    let actual: Vec<_> = store.scan(perm, prefix).map(|b| b.unwrap()).flat_map(|b| (0..b.len()).map(|i|[b.cols[0][i], b.cols[1][i], b.cols[2][i]]).collect::<Vec<_>>()).collect();
+                    assert_eq!(actual, expected);
+                    assert_eq!(store.count(perm,prefix).unwrap(), expected.len() as u64);
+                }
+            }
         }
     }
     #[test]
