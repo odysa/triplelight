@@ -59,9 +59,17 @@ impl IdSolutions {
 }
 
 #[derive(Debug)]
-pub struct QueryError(pub String);
+pub struct QueryError { pub kind: QueryErrorKind, pub message: String }
+
+/// What failed: the caller's query (HTTP 400), a feature we don't implement (501), or the store itself (500).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QueryErrorKind { Syntax, Unsupported, Storage }
+
+impl QueryError {
+    pub fn new(kind: QueryErrorKind, message: impl Into<String>) -> Self { QueryError { kind, message: message.into() } }
+}
 impl std::fmt::Display for QueryError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str(&self.0) }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str(&self.message) }
 }
 impl std::error::Error for QueryError {}
 
@@ -85,14 +93,14 @@ pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Resu
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(snap, text, opts))) {
         Ok(r) => r,
         Err(p) => match p.downcast::<StorageFailure>() {
-            Ok(f) => Err(QueryError(format!("storage error: {}", f.0))),
+            Ok(f) => Err(QueryError::new(QueryErrorKind::Storage, format!("storage error: {}", f.0))),
             Err(p) => std::panic::resume_unwind(p),
         },
     }
 }
 
 fn run<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
-    let q = spargebra::SparqlParser::new().parse_query(text).map_err(|e| QueryError(e.to_string()))?;
+    let q = spargebra::SparqlParser::new().parse_query(text).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
     let mut ctx = Ctx::new(snap);
     ctx.wcoj = opts.wcoj;
     let stats = opts.stats;
@@ -149,7 +157,7 @@ fn run<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryRes
             }
             Ok(QueryResult::Graph(out))
         }
-        Query::Describe { .. } => Err(QueryError("DESCRIBE is not supported yet".into())),
+        Query::Describe { .. } => Err(QueryError::new(QueryErrorKind::Unsupported, "DESCRIBE is not supported yet")),
     }
 }
 

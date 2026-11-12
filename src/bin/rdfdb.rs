@@ -1,6 +1,6 @@
 //! `rdfdb serve <data.nt|data.ttl> [port]` — load into memory and serve the SPARQL 1.1 protocol at /sparql.
 //! `rdfdb query <data> <query>` — run one query and print JSON results.
-use rdfdb::exec::{query, query_with, Options, QueryResult, results::{serialize, serialize_ids}};
+use rdfdb::exec::{query, query_with, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids}};
 use rdfdb::opt::stats::Stats;
 use rdfdb::storage::MemorySnapshot;
 use std::time::Instant;
@@ -92,7 +92,10 @@ fn main() {
                         };
                         tiny_http::Response::from_string(b).with_header(tiny_http::Header::from_bytes("Content-Type", ct).unwrap())
                     }
-                    Some((Ok(Err(e)), _)) => tiny_http::Response::from_string(e.to_string()).with_status_code(400),
+                    Some((Ok(Err(e)), _)) => {
+                        let code = match e.kind { QueryErrorKind::Syntax => 400, QueryErrorKind::Unsupported => 501, QueryErrorKind::Storage => 500 };
+                        tiny_http::Response::from_string(e.to_string()).with_status_code(code)
+                    }
                     Some((Err(e), _)) => {
                         // Panics: unsupported features (501) or storage failures (500); never an empty result.
                         let msg = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_default();
