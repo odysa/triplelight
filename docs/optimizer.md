@@ -1,0 +1,106 @@
+# P1 optimizer
+
+The optimizer consumes dictionary-encoded `TriplePattern`s and statistics from
+the same read snapshot. It emits scans, merge/hash joins, or a capability-gated
+leapfrog plan. P1 costs are heuristic work units; they have not been calibrated
+against elapsed time or shown to beat another RDF store.
+
+## Integration
+
+```rust,ignore
+let mut stats = Stats::from_snapshot(snapshot)?;
+stats.cache_pattern_counts(&patterns, snapshot); // exact index-prefix counts, no full query execution
+let plan = plan_bgp(&patterns, &stats);
+// Once a leapfrog executor is available:
+let decision = plan_bgp_with_options(&patterns, &stats,
+    PlannerOptions { enable_leapfrog: true, ..Default::default() });
+```
+
+`Stats::default()` describes an empty graph, not unknown/missing statistics.
+Build statistics at bulk-load/open time and rebuild or version them on mutation.
+Do not query a new snapshot using old exact-zero statistics. Query constants must
+already have been resolved through the dictionary; an absent term can produce an
+empty plan in the front end.
+
+`JoinTree::Unit` is the identity relation (one empty binding), required by an empty
+BGP. It differs from `Empty` (no bindings). The executor must implement both.
+All shared variables are hash keys. Merge is emitted only when the inputs are
+actually index/merge ordered on their single shared variable. Plans never assume
+that a hash join preserves sorting.
+
+## Statistics and estimates
+
+- `Stats::from_spo` streams SPO-sorted triples, rejects out-of-order input and
+  ignores adjacent duplicates. `from_snapshot` also validates batch-column lengths.
+- Characteristic sets retain exact outgoing-predicate presence and subject counts;
+  each matching set contributes subject count times mean matching multiplicities.
+  This addresses missing-predicate correlations in subject stars. Degree and
+  bound-object correlations **within** one characteristic set remain approximations.
+  For example, the controlled 7-answer multiplicity fixture estimates 6 (q-error
+  7/6), demonstrating that the synopsis is not an exact join counter.
+- Predicate counts and distinct subjects per predicate are exact. Object-domain
+  sizes use 128-register HyperLogLog sketches. Tagged IDs are deterministically
+  mixed before sketching. This is an approximate domain model, not overlap sampling.
+- Each predicate and each CS/predicate has 64-counter Misra-Gries object frequencies.
+  Frequencies are exact before overflow; afterward midpoint estimates use the
+  counter plus half the decrement count. An absent counter after overflow does
+  not prove an absent object. Memory depends on predicate/CS counts and the largest
+  subject group rather than retaining every triple or every subject ID.
+- `cache_pattern_counts` gets exact constant-prefix cardinalities from the store;
+  repeated-variable patterns retain synopsis/equality estimates instead of calling
+  an unfiltered prefix count exact. Equality-mask counts handle unbound repeated
+  variables. Chains/remaining shared variables use uniform-domain selectivity.
+- Only an **exact zero scan** makes the planner eliminate a BGP. An estimated zero
+  changes costs but is never a correctness filter.
+
+## Search and physical choice
+
+Small queries (default at most 10 patterns, hard cap 12) use subset dynamic
+programming over left-deep plans, retaining the cheapest state per available
+output ordering. Larger queries greedily extend connected patterns before cross
+products. Hash builds use the estimated smaller input. The search space does not
+include arbitrary bushy trees, sorts, parallelism or adaptive replanning.
+
+The WCOJ candidate uses GYO reduction of the variable **hypergraph**: a subject
+star is not called cyclic just because many relations share its center. Eligibility
+requires at least three patterns, cyclic structure and no repeated variable within
+a pattern. The cost proxy uses a feasible uniform fractional cover (weights equal
+to reciprocal minimum variable degree) with estimated relation sizes, plus scan
+work. The proxy has no measured accuracy guarantee. A cheaper proxy is selected
+only if `enable_leapfrog` is true. Children use permutations whose unfixed columns
+follow the selected global variable order. The default `plan_bgp` emits a binary
+fallback until an executor explicitly opts in.
+
+## Validation status and q-error contract
+
+`cargo test --test optimizer` checks 14 integration cases, including exact prefix
+counts, correlated stars, multiplicities, frequency overflow, repeated variables,
+all constant masks, empty-BGP identity, physical sort/key invariants, both WCOJ
+branches and 60 generated small graphs. A separate relational oracle compares
+result multisets for DP and greedy plans. This oracle interprets plans; it is not
+a claim that an optimized leapfrog executor has been implemented or benchmarked.
+A library test checks sketch behavior on tagged sequential IDs.
+
+`q_error(estimate, actual)` returns 1 for two zeros, infinity for exactly one zero
+or invalid estimates, and otherwise max(estimate/actual, actual/estimate). Report
+false-zero cases explicitly instead of hiding them with a +1 clamp. The benchmark
+harness can call `stats.estimate_bgp(&encoded_patterns)` and compare against the
+exact **BGP binding count**, not a DISTINCT/projection/LIMIT/filtered count with
+different semantics. Repeat the comparison for plan subqueries to diagnose errors.
+
+LUBM/WatDiv q-error and end-to-end performance results are **pending dataset and
+reference-count integration**. The synthetic tests above are not LUBM/WatDiv runs.
+No benchmark win or state-of-the-art accuracy is claimed from them.
+
+## Research basis
+
+[Neumann and Moerkotte, ICDE 2011](https://bda.snu.ac.kr/images/b/b9/Characteristic_Sets-_Accurate_Cardinality_Estimation_for_RDF_Queries_with_Multiple_Joins.pdf)
+introduce characteristic-set synopses for RDF star correlations. This implementation
+borrows the subject/predicate-set grouping and mean multiplicity idea, with bounded
+object-frequency summaries and simplified chain estimates.
+
+[Veldhuizen, Leapfrog Triejoin](https://arxiv.org/abs/1210.0481) establishes the
+algorithm's worst-case optimality up to a logarithmic factor. That result applies
+to an appropriate join implementation, not to this planner's cost estimates or
+its choice between physical algorithms. Runtime integration must separately test
+variable-order consistency, set/bag behavior and result equality.
