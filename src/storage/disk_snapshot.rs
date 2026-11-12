@@ -35,7 +35,11 @@ fn number(r: &mut impl Read) -> io::Result<u64> {
 fn write_dictionary(source: &MemorySnapshot, path: &Path) -> io::Result<()> {
     let mut out = BufWriter::new(File::create(path)?);
     out.write_all(b"RDFDIC01")?;
-    let mut entries: Vec<_> = source.dictionary.iter().map(|(term, id)| (id, term)).collect();
+    let mut entries: Vec<_> = source
+        .dictionary
+        .iter()
+        .map(|(term, id)| (id, term))
+        .collect();
     entries.sort_unstable_by_key(|(id, _)| **id);
     out.write_all(&(entries.len() as u64).to_le_bytes())?;
     for (id, term) in entries {
@@ -302,6 +306,7 @@ mod tests {
         File::create(dir.join("spo")).unwrap();
         let first = disk.scan(Perm::Spo, &[]).next().unwrap();
         assert!(first.is_err());
+        assert!(crate::exec::query(&disk, "SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 1").is_err());
         drop(disk);
         fs::remove_dir_all(dir).unwrap();
     }
@@ -357,6 +362,18 @@ mod tests {
                     }
                 }
             }
+        }
+        for query in [
+            "SELECT ?s ?o WHERE { ?s <urn:p> ?o } ORDER BY ?s LIMIT 25",
+            "ASK { <urn:s5> <urn:p> \"v1\" }",
+            "SELECT ?s WHERE { ?s <urn:p> \"v2\" } ORDER BY ?s LIMIT 10",
+        ] {
+            let memory = crate::exec::query(&source, query).unwrap();
+            let persisted = crate::exec::query(&disk, query).unwrap();
+            assert_eq!(
+                crate::exec::results::serialize(&memory),
+                crate::exec::results::serialize(&persisted)
+            );
         }
         let t: Term = triples[7].object.clone();
         assert_eq!(disk.lookup(&t), source.lookup(&t));
