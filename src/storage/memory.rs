@@ -104,10 +104,10 @@ impl TermArena {
 }
 
 pub struct MemorySnapshot {
-    dictionary: HashMap<Term, TermId>,
+    pub(super) dictionary: HashMap<Term, TermId>,
     reverse: HashMap<TermId, Term>,
     arena: TermArena,
-    indexes: [Vec<[TermId; 3]>; 6],
+    pub(super) indexes: [Vec<[TermId; 3]>; 6],
     first_keys: [Vec<(TermId, usize)>; 6],
 }
 impl MemorySnapshot {

@@ -129,6 +129,12 @@ impl DiskIndex {
         cache.push_back((block, Arc::clone(&result)));
         Ok(result)
     }
+    pub fn len(&self) -> u64 {
+        self.rows
+    }
+    pub fn is_empty(&self) -> bool {
+        self.rows == 0
+    }
     fn row(&self, index: u64) -> io::Result<[TermId; 3]> {
         if index >= self.rows {
             return Err(io::Error::new(
