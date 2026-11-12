@@ -1,6 +1,6 @@
 //! Storage API (owner: Alex-Chi, task #1). Executor (task #4) and optimizer (task #3) code only against this.
 use crate::model::{Perm, TermId, TripleBatch};
-use oxrdf::Term;
+use oxrdf::{Term, TermRef};
 
 pub type StorageError = std::io::Error;
 
@@ -8,6 +8,8 @@ pub trait Dictionary {
     /// Existing ID for a term, or None if the term never occurs (lets the planner return empty early).
     fn lookup(&self, term: &Term) -> Option<TermId>;
     fn resolve(&self, id: TermId) -> Term;
+    /// Borrow a term from the snapshot; the returned reference cannot outlive it.
+    fn resolve_ref(&self, id: TermId) -> TermRef<'_>;
 }
 
 /// A consistent read view (snapshot) of the store.

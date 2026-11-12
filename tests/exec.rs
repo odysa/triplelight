@@ -60,11 +60,22 @@ fn union_distinct_group_ask() {
 #[test]
 fn leapfrog_matches_bind_join() {
     let q = "SELECT ?a ?b ?c WHERE { ?a <http://ex/knows> ?b . ?b <http://ex/knows> ?c . ?c <http://ex/knows> ?a }";
-    let run = |wcoj| match rdfdb::exec::query_with(&store(), q, &rdfdb::exec::Options { stats: None, wcoj }).unwrap() {
+    let run = |wcoj| match rdfdb::exec::query_with(&store(), q, &rdfdb::exec::Options { stats: None, wcoj, raw_ids: false }).unwrap() {
         QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.iter().map(|r| format!("{r:?}")).collect(); v.sort(); v }
         _ => unreachable!(),
     };
     let (off, on) = (run(false), run(true));
     assert_eq!(off, on);
     assert_eq!(on.len(), 3);
+}
+
+#[test]
+fn id_results_serialize_like_decoded() {
+    let s = store();
+    let q = "SELECT ?x ?n ?d WHERE { ?x <http://ex/age> ?a OPTIONAL { ?x <http://ex/name> ?n } BIND(?a * 2 AS ?d) }";
+    let opts = rdfdb::exec::Options { raw_ids: true, ..Default::default() };
+    let QueryResult::Ids(sol) = rdfdb::exec::query_with(&s, q, &opts).unwrap() else { panic!() };
+    let fast = rdfdb::exec::results::serialize_ids(&sol, &s);
+    let slow = rdfdb::exec::results::serialize(&query(&s, q).unwrap()).1;
+    assert_eq!(fast, slow);
 }

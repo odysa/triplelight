@@ -26,8 +26,36 @@ pub type Row = Vec<TermId>;
 #[derive(Debug)]
 pub enum QueryResult {
     Solutions { vars: Vec<Variable>, rows: Vec<Vec<Option<Term>>> },
+    /// Undecoded solutions (with `Options::raw_ids`): serialize with `results::serialize_ids`.
+    Ids(IdSolutions),
     Boolean(bool),
     Graph(Vec<oxrdf::Triple>),
+}
+
+/// SELECT results as term IDs: `ids` holds `vars.len()` IDs per row (`UNBOUND` = unbound). Computed terms that the
+/// store doesn't know carry scratch IDs, resolved in `scratch`.
+#[derive(Debug)]
+pub struct IdSolutions {
+    pub vars: Vec<Variable>,
+    pub ids: Vec<TermId>,
+    pub scratch: HashMap<TermId, Term>,
+}
+
+impl IdSolutions {
+    pub fn width(&self) -> usize { self.vars.len() }
+    pub fn len(&self) -> usize { if self.vars.is_empty() { 0 } else { self.ids.len() / self.vars.len() } }
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+    /// Decodes to owned terms (in parallel; decoding dominates large results).
+    pub fn decode<D: crate::storage::Dictionary + Sync + ?Sized>(self, dict: &D) -> QueryResult {
+        use rayon::prelude::*;
+        let w = self.width();
+        let rows = if w == 0 { Vec::new() } else {
+            self.ids.par_chunks(w).with_min_len(4096).map(|r| r.iter().map(|&id| {
+                if id == UNBOUND { None } else if let Some(t) = self.scratch.get(&id) { Some(t.clone()) } else { Some(dict.resolve(id)) }
+            }).collect()).collect()
+        };
+        QueryResult::Solutions { vars: self.vars, rows }
+    }
 }
 
 #[derive(Debug)]
@@ -48,8 +76,10 @@ pub struct Options<'a> {
     pub stats: Option<&'a Stats>,
     /// Use the worst-case-optimal leapfrog join for cyclic top-level BGPs.
     pub wcoj: bool,
+    /// Return SELECT results undecoded (`QueryResult::Ids`).
+    pub raw_ids: bool,
 }
-impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true } } }
+impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false } } }
 
 pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(snap, text, opts))) {
@@ -76,19 +106,15 @@ fn run<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryRes
             ctx.register_all(pattern);
             let rows = ctx.eval(pattern, vec![ctx.empty_row()]);
             let idx: Vec<usize> = vars.iter().map(|v| ctx.var(v)).collect();
-            // Decoding IDs to terms dominates large results: do it in parallel. Scratch IDs (computed terms)
-            // live in the per-query table, which is not shared across threads, so resolve those first.
-            let scratch: HashMap<TermId, Term> = rows.iter().flat_map(|r| idx.iter().map(move |&i| r[i]))
-                .filter(|id| id.0 >> 60 == 0xe).map(|id| (id, ctx.resolve(id))).collect();
-            use rayon::prelude::*;
-            let rows = rows.par_iter()
-                .with_min_len(4096)
-                .map(|r| idx.iter().map(|&i| {
-                    let id = r[i];
-                    if id == UNBOUND { None } else if let Some(t) = scratch.get(&id) { Some(t.clone()) } else { Some(snap.resolve(id)) }
-                }).collect())
-                .collect();
-            Ok(QueryResult::Solutions { vars, rows })
+            // Keep results as IDs: projected columns in a flat buffer, plus the few computed (scratch) terms.
+            let w = idx.len();
+            let mut ids = Vec::with_capacity(rows.len() * w);
+            for r in &rows { for &i in &idx { ids.push(r[i]) } }
+            let scratch: HashMap<TermId, Term> = ids.iter().filter(|id| id.0 >> 60 == 0xe)
+                .map(|&id| (id, ctx.resolve(id))).collect();
+            let sol = IdSolutions { vars, ids, scratch };
+            if opts.raw_ids { return Ok(QueryResult::Ids(sol)) }
+            Ok(sol.decode(snap))
         }
         Query::Ask { pattern, .. } => {
             ctx.register_all(pattern);
