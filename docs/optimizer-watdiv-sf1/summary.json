@@ -1,0 +1,16 @@
+{
+  "queries": 20,
+  "positive_results": 8,
+  "zero_results": 12,
+  "positive_result_qerror_median": 2.7142857142857144,
+  "positive_result_qerror_max": 24.0,
+  "zero_actual_positive_estimate": [
+    "C2",
+    "F1",
+    "L5",
+    "S4"
+  ],
+  "positive_actual_zero_estimate": [],
+  "executor_reference_checks": 20,
+  "greedy_vs_index_loop_multiset_checks": 20
+}

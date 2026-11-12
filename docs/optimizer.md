@@ -99,7 +99,9 @@ different semantics. Repeat the comparison for plan subqueries to diagnose error
 LUBM-10 validation is recorded in [optimizer-lubm10](optimizer-lubm10/README.md).
 All 14 query result multisets agree between greedy and cost-ordered execution,
 and counts match the existing cross-engine reference. The worst q-error remains
-251 on Q9: cyclic correlations are not solved. WatDiv validation remains pending.
+251 on Q9: cyclic correlations are not solved. WatDiv SF1 validation is in [optimizer-watdiv-sf1](optimizer-watdiv-sf1/README.md):
+all 20 basic templates match Jena counts; four empty results have positive estimates
+(infinite q-error), and positive-result median/max q-error are 2.714/24.
 No runtime win or state-of-the-art accuracy is claimed.
 
 ## Research basis
