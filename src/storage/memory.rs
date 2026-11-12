@@ -38,6 +38,13 @@ impl MemorySnapshot {
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self::from_triples(triples))
     }
+    /// Parse Turtle and reject the entire load on syntax or I/O errors.
+    pub fn from_turtle(reader: impl std::io::Read) -> Result<Self, oxttl::TurtleParseError> {
+        let triples = oxttl::TurtleParser::new()
+            .for_reader(reader)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Self::from_triples(triples))
+    }
     /// Constructs a complete immutable snapshot from parsed RDF triples.
     pub fn from_triples(triples: impl IntoIterator<Item = Triple>) -> Self {
         let mut store = Self {
@@ -180,6 +187,19 @@ mod tests {
         let snap = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
         assert_eq!(snap.count(Perm::Spo, &[]), 1);
         assert!(MemorySnapshot::from_ntriples(format!("{row}broken").as_bytes()).is_err());
+    }
+    #[test]
+    fn turtle_loader_handles_prefixes_and_errors() {
+        let good = b"@prefix ex: <urn:example:> . ex:s ex:p \"hi\" .";
+        assert_eq!(
+            MemorySnapshot::from_turtle(good.as_slice())
+                .unwrap()
+                .count(Perm::Spo, &[]),
+            1
+        );
+        assert!(
+            MemorySnapshot::from_turtle(b"@prefix ex: <urn:example:> . ex:s".as_slice()).is_err()
+        );
     }
     #[test]
     fn rdf_terms_do_not_collapse_lexical_forms() {
