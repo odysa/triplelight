@@ -1,6 +1,7 @@
-//! A fallible, positional-read disk index primitive. The file is immutable after opening.
-//! This is a building block, not yet a compressed, crash-safe RDF store.
+//! Fallible immutable on-disk ordered index with block checksums.
+//! Checksums detect accidental corruption; the manifest is not authenticated.
 use crate::model::TermId;
+use sha2::{Digest, Sha256};
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{self, ErrorKind, Write};
@@ -8,199 +9,92 @@ use std::os::unix::fs::FileExt;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-const MAGIC: &[u8; 8] = b"RDFIDX01";
-const HEADER: u64 = 16;
+const MAGIC: &[u8; 8] = b"RDFIDX02";
+const HEADER: u64 = 24;
 const ROW: u64 = 24;
 const BLOCK_ROWS: u64 = 256;
+const META: u64 = 56;
 const CACHE_BLOCKS: usize = 128;
-fn invalid(reason: &'static str) -> io::Error {
-    io::Error::new(ErrorKind::InvalidData, reason)
+fn invalid(reason: &'static str) -> io::Error { io::Error::new(ErrorKind::InvalidData, reason) }
+fn decode_row(row: &[u8]) -> [TermId;3] {
+    std::array::from_fn(|i| TermId(u64::from_le_bytes(row[i*8..i*8+8].try_into().unwrap())))
 }
-
-/// Streams strictly increasing keys into a single index file.
-/// The caller must atomically publish the file and arrange durability.
-pub fn write_index(
-    mut out: impl Write,
-    rows: impl ExactSizeIterator<Item = [TermId; 3]>,
-) -> io::Result<()> {
-    let count = rows.len() as u64;
-    out.write_all(MAGIC)?;
-    out.write_all(&count.to_le_bytes())?;
-    let mut previous = None;
-    let mut written = 0u64;
+/// Writes strictly increasing keys, block hashes and a checksummed footer.
+/// The caller owns atomic file publication and durability.
+pub fn write_index(mut out: impl Write, rows: impl ExactSizeIterator<Item=[TermId;3]>) -> io::Result<()> {
+    let count=rows.len() as u64;
+    let mut header=[0u8;24];header[..8].copy_from_slice(MAGIC);header[8..16].copy_from_slice(&count.to_le_bytes());header[16..].copy_from_slice(&BLOCK_ROWS.to_le_bytes());out.write_all(&header)?;
+    let (mut written,mut in_block)=(0u64,0u64);let mut previous=None;let mut hash=Sha256::new();let mut meta=Vec::new();
     for row in rows {
-        if row.iter().any(|id| id.0 == 0) || previous.is_some_and(|p| p >= row) {
-            return Err(invalid("keys must be nonzero, sorted and unique"));
+        if row.iter().any(|id|id.0==0) || previous.is_some_and(|p|p>=row) {return Err(invalid("keys must be nonzero, sorted and unique"));}
+        let mut bytes=[0u8;24];for i in 0..3 {bytes[i*8..i*8+8].copy_from_slice(&row[i].0.to_le_bytes());}
+        out.write_all(&bytes)?;hash.update(bytes);written+=1;in_block+=1;previous=Some(row);
+        if in_block==BLOCK_ROWS || written==count {
+            meta.extend_from_slice(&bytes);meta.extend_from_slice(&hash.finalize_reset());in_block=0;
         }
-        for id in row {
-            out.write_all(&id.0.to_le_bytes())?;
-        }
-        previous = Some(row);
-        written += 1;
     }
-    if written != count {
-        return Err(invalid("iterator length changed"));
-    }
-    Ok(())
+    if written!=count {return Err(invalid("iterator length changed"));}
+    out.write_all(&meta)?;let mut footer=Sha256::new();footer.update(header);footer.update(&meta);out.write_all(&footer.finalize())?;Ok(())
 }
-
-pub struct DiskIndex {
-    file: File,
-    rows: u64,
-    last_keys: Vec<[TermId; 3]>,
-    cache: Mutex<VecDeque<(u64, Arc<Vec<[TermId; 3]>>)>>,
-}
+#[derive(Clone,Copy)]
+struct BlockMeta { last: [TermId;3], checksum: [u8;32] }
+pub struct DiskIndex { file:File, rows:u64, identity:[u8;32], blocks:Vec<BlockMeta>, cache:Mutex<VecDeque<(u64,Arc<Vec<[TermId;3]>>)>> }
 impl DiskIndex {
-    pub fn open(path: impl AsRef<Path>) -> io::Result<Self> {
-        let file = File::open(path)?;
-        let mut header = [0; 16];
-        read_exact_at(&file, &mut header, 0)?;
-        if &header[..8] != MAGIC {
-            return Err(invalid("bad index magic"));
+    pub fn open(path:impl AsRef<Path>)->io::Result<Self> {
+        let file=File::open(path)?;let mut header=[0;24];read_exact_at(&file,&mut header,0)?;
+        if &header[..8]!=MAGIC{return Err(invalid("bad index magic or version"));}
+        let rows=u64::from_le_bytes(header[8..16].try_into().unwrap());
+        if u64::from_le_bytes(header[16..24].try_into().unwrap())!=BLOCK_ROWS {return Err(invalid("bad block size"));}
+        let blocks=rows.div_ceil(BLOCK_ROWS);let data=rows.checked_mul(ROW).ok_or_else(||invalid("index length overflow"))?;
+        let meta=blocks.checked_mul(META).ok_or_else(||invalid("index length overflow"))?;
+        let offset=HEADER.checked_add(data).ok_or_else(||invalid("index length overflow"))?;
+        let expected=offset.checked_add(meta).and_then(|v|v.checked_add(32)).ok_or_else(||invalid("index length overflow"))?;
+        if file.metadata()?.len()!=expected{return Err(invalid("index length mismatch"));}
+        let size=usize::try_from(meta).map_err(|_|invalid("block directory too large"))?;
+        let mut raw=vec![0u8;size];read_exact_at(&file,&mut raw,offset)?;let mut footer=[0;32];read_exact_at(&file,&mut footer,offset+meta)?;
+        let mut check=Sha256::new();check.update(header);check.update(&raw);
+        if check.finalize().as_slice()!=footer{return Err(invalid("index header/directory checksum mismatch"));}
+        let mut entries=Vec::new();for item in raw.chunks_exact(META as usize) {
+            let last=decode_row(&item[..24]);let checksum=item[24..].try_into().unwrap();
+            if last.iter().any(|x|x.0==0) || entries.last().is_some_and(|b:&BlockMeta|b.last>=last){return Err(invalid("invalid block directory"));}
+            entries.push(BlockMeta{last,checksum});
         }
-        let rows = u64::from_le_bytes(header[8..].try_into().unwrap());
-        let expected = rows
-            .checked_mul(ROW)
-            .and_then(|n| n.checked_add(HEADER))
-            .ok_or_else(|| invalid("index length overflow"))?;
-        if file.metadata()?.len() != expected {
-            return Err(invalid("index length mismatch"));
-        }
-        let mut last_keys = Vec::new();
-        for block in 0..rows.div_ceil(BLOCK_ROWS) {
-            let row = ((block + 1) * BLOCK_ROWS).min(rows) - 1;
-            let mut bytes = [0; 24];
-            read_exact_at(&file, &mut bytes, HEADER + row * ROW)?;
-            let key = std::array::from_fn(|i| {
-                TermId(u64::from_le_bytes(
-                    bytes[i * 8..i * 8 + 8].try_into().unwrap(),
-                ))
-            });
-            if last_keys.last().is_some_and(|prev| prev >= &key) {
-                return Err(invalid("unordered block index"));
-            }
-            last_keys.push(key);
-        }
-        Ok(Self {
-            file,
-            rows,
-            last_keys,
-            cache: Mutex::new(VecDeque::new()),
-        })
+        Ok(Self{file,rows,identity:footer,blocks:entries,cache:Mutex::new(VecDeque::new())})
     }
-    fn block(&self, block: u64) -> io::Result<Arc<Vec<[TermId; 3]>>> {
-        let mut cache = self
-            .cache
-            .lock()
-            .map_err(|_| io::Error::other("index cache lock poisoned"))?;
-        if let Some(pos) = cache.iter().position(|(id, _)| *id == block) {
-            let entry = cache.remove(pos).unwrap();
-            let result = Arc::clone(&entry.1);
-            cache.push_back(entry);
-            return Ok(result);
-        }
-        let start = block
-            .checked_mul(BLOCK_ROWS)
-            .ok_or_else(|| invalid("block overflow"))?;
-        if start >= self.rows {
-            return Err(invalid("block out of range"));
-        }
-        let len = (self.rows - start).min(BLOCK_ROWS) as usize;
-        let mut bytes = vec![0; len * ROW as usize];
-        read_exact_at(&self.file, &mut bytes, HEADER + start * ROW)?;
-        let rows: Vec<_> = bytes
-            .chunks_exact(24)
-            .map(|r| {
-                std::array::from_fn(|i| {
-                    TermId(u64::from_le_bytes(r[i * 8..i * 8 + 8].try_into().unwrap()))
-                })
-            })
-            .collect();
-        if rows.iter().any(|r| r.iter().any(|v| v.0 == 0))
-            || rows.windows(2).any(|w| w[0] >= w[1])
-            || rows.last() != self.last_keys.get(block as usize)
-        {
-            return Err(invalid("invalid index block"));
-        }
-        let result = Arc::new(rows);
-        if cache.len() == CACHE_BLOCKS {
-            cache.pop_front();
-        }
-        cache.push_back((block, Arc::clone(&result)));
-        Ok(result)
+    pub fn identity(&self)->[u8;32] {self.identity}
+    pub fn clear_cache(&self)->io::Result<()> { self.cache.lock().map_err(|_|io::Error::other("index cache lock poisoned"))?.clear(); Ok(()) }
+    pub fn len(&self)->u64 {self.rows}
+    pub fn is_empty(&self)->bool {self.rows==0}
+    fn block(&self,id:u64)->io::Result<Arc<Vec<[TermId;3]>>> {
+        let mut cache=self.cache.lock().map_err(|_|io::Error::other("index cache lock poisoned"))?;
+        if let Some(pos)=cache.iter().position(|(key,_)|*key==id){let e=cache.remove(pos).unwrap();let r=Arc::clone(&e.1);cache.push_back(e);return Ok(r);}
+        let start=id.checked_mul(BLOCK_ROWS).ok_or_else(||invalid("block overflow"))?;
+        if start>=self.rows{return Err(invalid("block out of range"));}
+        let n=(self.rows-start).min(BLOCK_ROWS) as usize;let mut bytes=vec![0;n*ROW as usize];
+        read_exact_at(&self.file,&mut bytes,HEADER+start*ROW)?;
+        let meta=self.blocks.get(id as usize).ok_or_else(||invalid("missing block directory entry"))?;
+        if Sha256::digest(&bytes).as_slice()!=meta.checksum{return Err(invalid("index block checksum mismatch"));}
+        let rows:Vec<_>=bytes.chunks_exact(24).map(decode_row).collect();
+        if rows.iter().any(|r|r.iter().any(|id|id.0==0)) || rows.windows(2).any(|w|w[0]>=w[1]) || rows.last()!=Some(&meta.last) || (id>0 && rows[0]<=self.blocks[id as usize-1].last) {return Err(invalid("invalid index block ordering"));}
+        let r=Arc::new(rows);if cache.len()==CACHE_BLOCKS{cache.pop_front();}cache.push_back((id,Arc::clone(&r)));Ok(r)
     }
-    pub fn len(&self) -> u64 {
-        self.rows
+    fn row(&self,i:u64)->io::Result<[TermId;3]> {if i>=self.rows{return Err(io::Error::new(ErrorKind::UnexpectedEof,"index row out of bounds"));}Ok(self.block(i/BLOCK_ROWS)?[(i%BLOCK_ROWS) as usize])}
+    fn bound(&self,key:[TermId;3],upper:bool)->io::Result<u64> {
+        let block=self.blocks.partition_point(|m|m.last<key || (upper&&m.last==key));if block==self.blocks.len(){return Ok(self.rows);}
+        let rows=self.block(block as u64)?;let offset=rows.partition_point(|r|*r<key || (upper&&*r==key));Ok(block as u64*BLOCK_ROWS+offset as u64)
     }
-    pub fn is_empty(&self) -> bool {
-        self.rows == 0
+    pub fn range(&self,prefix:&[TermId])->io::Result<std::ops::Range<u64>> {
+        if prefix.len()>3{return Err(io::Error::new(ErrorKind::InvalidInput,"prefix exceeds three terms"));}
+        let(mut low,mut high)=([TermId(0);3],[TermId(u64::MAX);3]);low[..prefix.len()].copy_from_slice(prefix);high[..prefix.len()].copy_from_slice(prefix);
+        Ok(self.bound(low,false)?..self.bound(high,true)?)
     }
-    fn row(&self, index: u64) -> io::Result<[TermId; 3]> {
-        if index >= self.rows {
-            return Err(io::Error::new(
-                ErrorKind::UnexpectedEof,
-                "index row out of bounds",
-            ));
-        }
-        Ok(self.block(index / BLOCK_ROWS)?[(index % BLOCK_ROWS) as usize])
-    }
-    fn bound(&self, key: [TermId; 3], upper: bool) -> io::Result<u64> {
-        let block = self
-            .last_keys
-            .partition_point(|row| *row < key || (upper && *row == key));
-        if block == self.last_keys.len() {
-            return Ok(self.rows);
-        }
-        let rows = self.block(block as u64)?;
-        let offset = rows.partition_point(|row| *row < key || (upper && *row == key));
-        Ok(block as u64 * BLOCK_ROWS + offset as u64)
-    }
-    /// Finds the half-open range of matching rows, or errors for invalid prefixes or read failures.
-    pub fn range(&self, prefix: &[TermId]) -> io::Result<std::ops::Range<u64>> {
-        if prefix.len() > 3 {
-            return Err(io::Error::new(
-                ErrorKind::InvalidInput,
-                "prefix exceeds three terms",
-            ));
-        }
-        let mut low = [TermId(0); 3];
-        let mut high = [TermId(u64::MAX); 3];
-        low[..prefix.len()].copy_from_slice(prefix);
-        high[..prefix.len()].copy_from_slice(prefix);
-        Ok(self.bound(low, false)?..self.bound(high, true)?)
-    }
-    /// Reads one key in stored permutation order.
-    pub fn get(&self, index: u64) -> io::Result<[TermId; 3]> {
-        self.row(index)
-    }
-    /// Exhaustively validates sort order and term IDs; call before trusting external files.
-    pub fn validate(&self) -> io::Result<()> {
-        let mut previous = None;
-        for i in 0..self.rows {
-            let row = self.row(i)?;
-            if row.iter().any(|id| id.0 == 0) || previous.is_some_and(|p| p >= row) {
-                return Err(invalid("unsorted, duplicate, or unbound key"));
-            }
-            previous = Some(row);
-        }
-        Ok(())
-    }
+    pub fn get(&self,i:u64)->io::Result<[TermId;3]>{self.row(i)}
+    /// Read and verify every data block; can be expensive for large indexes.
+    pub fn validate(&self)->io::Result<()> {for i in 0..self.blocks.len(){self.block(i as u64)?;}Ok(())}
 }
-fn read_exact_at(file: &File, mut buf: &mut [u8], mut offset: u64) -> io::Result<()> {
-    while !buf.is_empty() {
-        match file.read_at(buf, offset) {
-            Ok(0) => return Err(io::Error::new(ErrorKind::UnexpectedEof, "short index read")),
-            Ok(n) => {
-                offset += n as u64;
-                buf = &mut buf[n..];
-            }
-            Err(e) if e.kind() == ErrorKind::Interrupted => {}
-            Err(e) => return Err(e),
-        }
-    }
-    Ok(())
+fn read_exact_at(file:&File,mut buf:&mut[u8],mut offset:u64)->io::Result<()> {
+    while !buf.is_empty(){match file.read_at(buf,offset){Ok(0)=>return Err(io::Error::new(ErrorKind::UnexpectedEof,"short index read")),Ok(n)=>{offset+=n as u64;buf=&mut buf[n..];},Err(e) if e.kind()==ErrorKind::Interrupted=>{},Err(e)=>return Err(e)}}Ok(())
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -225,7 +119,7 @@ mod tests {
         drop(index);
         std::fs::write(&path, &bytes).unwrap();
         let index = DiskIndex::open(&path).unwrap();
-        std::fs::write(&path, &bytes[..bytes.len() - 1]).unwrap();
+        std::fs::write(&path, &bytes[..24 + 699 * 24]).unwrap();
         assert!(index.get(699).is_err());
         std::fs::remove_file(path).unwrap();
     }

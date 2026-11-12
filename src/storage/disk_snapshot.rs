@@ -1,5 +1,5 @@
 //! Read-only disk-backed snapshot with an in-memory dictionary and bounded index caches.
-//! v1 creation starts from an existing memory snapshot; files must remain immutable.
+//! Snapshot files must remain immutable while open.
 use super::disk_index::{DiskIndex, write_index};
 use super::{Dictionary, MemorySnapshot, Snapshot, StorageError};
 use crate::model::{Perm, TermId, TripleBatch};
@@ -85,77 +85,78 @@ fn read_dictionary(path: &Path) -> io::Result<(HashMap<Term, TermId>, HashMap<Te
     }
     Ok((forward, reverse))
 }
+/// Build a disk snapshot from any consistent snapshot. This first implementation
+/// materializes the input and all six sorted indexes in memory; it is not a
+/// bounded-memory external-sort builder.
+pub fn write_disk_snapshot(dir: impl AsRef<Path>, source: &dyn Snapshot) -> io::Result<()> {
+    use oxrdf::{NamedOrBlankNode, Triple};
+    let mut triples = Vec::new();
+    for batch in source.scan(Perm::Spo, &[]) {
+        let batch = batch?;
+        if batch.cols.iter().any(|column| column.len() != batch.len()) {
+            return Err(bad("inconsistent source batch"));
+        }
+        for i in 0..batch.len() {
+            let subject = match source.resolve(batch.cols[0][i]) {
+                Term::NamedNode(n) => NamedOrBlankNode::NamedNode(n),
+                Term::BlankNode(n) => NamedOrBlankNode::BlankNode(n),
+                _ => return Err(bad("invalid triple subject")),
+            };
+            let predicate = match source.resolve(batch.cols[1][i]) {
+                Term::NamedNode(n) => n,
+                _ => return Err(bad("invalid triple predicate")),
+            };
+            triples.push(Triple::new(subject, predicate, source.resolve(batch.cols[2][i])));
+        }
+    }
+    DiskSnapshot::create(dir, &MemorySnapshot::from_triples(triples))
+}
 pub struct DiskSnapshot {
     forward: HashMap<Term, TermId>,
     reverse: HashMap<TermId, Term>,
     indexes: Vec<DiskIndex>,
 }
 impl DiskSnapshot {
-    /// Writes into a new directory; the manifest is published last. Does not replace existing snapshots.
+    /// Writes a new snapshot; the manifest is written last and old paths are never replaced.
     pub fn create(dir: impl AsRef<Path>, source: &MemorySnapshot) -> io::Result<()> {
-        let dir = dir.as_ref();
-        fs::create_dir(dir)?;
-        write_dictionary(source, &dir.join(FILES[0]))?;
-        for (i, name) in FILES[1..].iter().enumerate() {
-            let file = File::create(dir.join(name))?;
-            let mut out = BufWriter::new(file);
-            write_index(&mut out, source.indexes[i].iter().copied())?;
-            out.flush()?;
-            out.get_ref().sync_all()?;
+        let dir=dir.as_ref(); fs::create_dir(dir)?;
+        write_dictionary(source,&dir.join(FILES[0]))?;
+        let mut identities=Vec::new(); identities.push(digest(&dir.join(FILES[0]))?);
+        for (i,name) in FILES[1..].iter().enumerate() {
+            let file=File::create(dir.join(name))?; let mut out=BufWriter::new(file);
+            write_index(&mut out,source.indexes[i].iter().copied())?; out.flush()?; out.get_ref().sync_all()?;
+            let index=DiskIndex::open(dir.join(name))?; index.validate()?; identities.push(index.identity());
         }
-        let mut manifest = BufWriter::new(File::create(dir.join("MANIFEST"))?);
-        manifest.write_all(b"RDFSNAP1")?;
-        for name in FILES {
-            manifest.write_all(&digest(&dir.join(name))?)?;
-        }
-        manifest.flush()?;
-        manifest.get_ref().sync_all()?;
-        File::open(dir)?.sync_all()?;
-        Ok(())
+        let mut manifest=BufWriter::new(File::create(dir.join("MANIFEST"))?);
+        manifest.write_all(b"RDFSNAP2")?;for identity in identities {manifest.write_all(&identity)?;}
+        manifest.flush()?;manifest.get_ref().sync_all()?;File::open(dir)?.sync_all()?;File::open(dir.parent().unwrap_or(Path::new(".")))?.sync_all()?;Ok(())
     }
-    /// Validate digests and sorted indexes before opening; callers must not modify files afterward.
+    /// Checks the dictionary, index lengths and checksummed block directories. Data blocks are checked on cache miss.
+    /// Files must remain immutable after opening; previously cached blocks are not re-read automatically.
     pub fn open(dir: impl AsRef<Path>) -> io::Result<Self> {
-        let dir = dir.as_ref();
-        let mut manifest = BufReader::new(File::open(dir.join("MANIFEST"))?);
-        let mut magic = [0; 8];
-        manifest.read_exact(&mut magic)?;
-        if &magic != b"RDFSNAP1" {
-            return Err(bad("bad snapshot manifest"));
-        }
-        for name in FILES {
-            let mut expected = [0; 32];
-            manifest.read_exact(&mut expected)?;
-            if digest(&dir.join(name))? != expected {
-                return Err(bad("snapshot checksum mismatch"));
-            }
-        }
-        let mut extra = [0];
-        if manifest.read(&mut extra)? != 0 {
-            return Err(bad("manifest trailing bytes"));
-        }
-        let (forward, reverse) = read_dictionary(&dir.join(FILES[0]))?;
-        let mut indexes = Vec::new();
-        for name in &FILES[1..] {
-            let index = DiskIndex::open(dir.join(name))?;
-            index.validate()?;
+        let dir=dir.as_ref();let mut manifest=BufReader::new(File::open(dir.join("MANIFEST"))?);let mut magic=[0;8];manifest.read_exact(&mut magic)?;
+        if &magic!=b"RDFSNAP2" {return Err(bad("bad snapshot manifest or version"));}
+        let mut expected=[[0u8;32];7];for item in &mut expected {manifest.read_exact(item)?;}
+        let mut extra=[0];if manifest.read(&mut extra)?!=0{return Err(bad("manifest trailing bytes"));}
+        if digest(&dir.join(FILES[0]))?!=expected[0]{return Err(bad("dictionary checksum mismatch"));}
+        let (forward,reverse)=read_dictionary(&dir.join(FILES[0]))?;
+        let mut indexes=Vec::new();for (i,name) in FILES[1..].iter().enumerate() {
+            let index=DiskIndex::open(dir.join(name))?;
+            if index.identity()!=expected[i+1] {return Err(bad("index directory checksum mismatch"));}
             indexes.push(index);
         }
-        let rows = indexes[0].len();
-        for index in &indexes {
-            if index.len() != rows {
-                return Err(bad("index counts differ"));
-            }
-            for i in 0..rows {
-                if index.get(i)?.iter().any(|id| !reverse.contains_key(id)) {
-                    return Err(bad("index references unknown term"));
-                }
+        let rows=indexes[0].len();if indexes.iter().any(|index|index.len()!=rows){return Err(bad("index counts differ"));}
+        Ok(Self{forward,reverse,indexes})
+    }
+    /// Re-read every block, check dictionary references, then verify the exact permutation sets.
+    pub fn verify(&self)->io::Result<()> {
+        for index in &self.indexes {
+            index.clear_cache()?; index.validate()?;
+            for i in 0..index.len() {
+                if index.get(i)?.iter().any(|id|!self.reverse.contains_key(id)){return Err(bad("index references unknown term"));}
             }
         }
-        Ok(Self {
-            forward,
-            reverse,
-            indexes,
-        })
+        self.verify_permutations()
     }
     /// Exhaustively check that all permutations describe the same triple set.
     /// This can be expensive; open() does not perform it.
@@ -267,6 +268,27 @@ mod tests {
     use super::*;
     use oxrdf::{Literal, NamedNode, Triple};
     #[test]
+    fn generic_snapshot_writer_reopens_and_refuses_overwrite() {
+        let source = MemorySnapshot::from_triples([Triple::new(
+            NamedNode::new("urn:s").unwrap(), NamedNode::new("urn:p").unwrap(),
+            Literal::new_language_tagged_literal("hello", "en").unwrap(),
+        )]);
+        let parent = std::env::temp_dir().join(format!("rdf-disk-generic-{}", std::process::id()));
+        fs::create_dir(&parent).unwrap();
+        let first = parent.join("first");
+        let second = parent.join("second");
+        write_disk_snapshot(&first, &source).unwrap();
+        let disk = DiskSnapshot::open(&first).unwrap();
+        write_disk_snapshot(&second, &disk).unwrap();
+        assert!(write_disk_snapshot(&second, &disk).is_err());
+        let copy = DiskSnapshot::open(&second).unwrap();
+        copy.verify().unwrap();
+        let q = "SELECT ?s ?p ?o WHERE { ?s ?p ?o }";
+        assert_eq!(format!("{:?}", crate::exec::query(&source, q).unwrap()),
+                   format!("{:?}", crate::exec::query(&copy, q).unwrap()));
+        drop(copy); drop(disk); fs::remove_dir_all(parent).unwrap();
+    }
+    #[test]
     fn deep_verification_finds_consistent_checksum_with_wrong_permutation() {
         let p = NamedNode::new("urn:p").unwrap();
         let t = Triple::new(
@@ -282,12 +304,24 @@ mod tests {
         drop(out);
         let mut manifest = fs::read(dir.join("MANIFEST")).unwrap();
         let offset = 8 + 2 * 32;
-        manifest[offset..offset + 32].copy_from_slice(&digest(&dir.join("sop")).unwrap());
+        manifest[offset..offset + 32].copy_from_slice(&DiskIndex::open(dir.join("sop")).unwrap().identity());
         fs::write(dir.join("MANIFEST"), manifest).unwrap();
         let disk = DiskSnapshot::open(&dir).unwrap();
         assert!(disk.verify_permutations().is_err());
         drop(disk);
         fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn data_corruption_is_lazy_but_verify_and_query_fail() {
+        let p=NamedNode::new("urn:p").unwrap();
+        let source=MemorySnapshot::from_triples([Triple::new(NamedNode::new("urn:s").unwrap(),p,Literal::new_simple_literal("x"))]);
+        let dir=std::env::temp_dir().join(format!("rdf-disk-lazy-{}",std::process::id()));
+        DiskSnapshot::create(&dir,&source).unwrap();
+        let path=dir.join("spo");let mut bytes=fs::read(&path).unwrap();bytes[24]^=1;fs::write(path,bytes).unwrap();
+        let disk=DiskSnapshot::open(&dir).unwrap();
+        assert!(disk.verify().is_err());
+        assert!(disk.scan(Perm::Spo,&[]).next().unwrap().is_err());
+        drop(disk);fs::remove_dir_all(dir).unwrap();
     }
     #[test]
     fn cache_miss_after_truncation_is_an_error() {

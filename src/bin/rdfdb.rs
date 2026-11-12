@@ -161,6 +161,12 @@ fn serve_store(args: &[String]) {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
+        Some("verify") => {
+            if args.len() != 3 { eprintln!("usage: rdfdb verify <directory>"); std::process::exit(2); }
+            let result=DiskSnapshot::open(&args[2]).and_then(|s|s.verify());
+            if let Err(e)=result { eprintln!("verification failed: {e}"); std::process::exit(1); }
+            println!("snapshot verified");
+        }
         Some("build-disk") => {
             if args.len() < 4 || args.iter().any(|a| a == "--disk") {
                 eprintln!("usage: rdfdb build-disk <source.nt|source.ttl> <new-directory> [--parallel-load=N]");
