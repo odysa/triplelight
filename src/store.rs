@@ -178,12 +178,20 @@ pub struct Store {
     format: Box<dyn BaseFormat>,
     /// Number of the active base directory.
     generation: Mutex<u64>,
+    /// What readers see: everything durable.
     current: RwLock<Arc<Overlay>>,
-    /// Serializes WAL appends; holds the open WAL.
-    wal: Mutex<File>,
-    /// Serializes update requests (read-compute-commit).
+    /// Accepted change sets, possibly not yet durable (group commit).
+    pending: Mutex<Pending>,
+    /// The open WAL; whoever holds it flushes all pending records with one fsync.
+    wal: Mutex<Wal>,
+    /// Serializes update requests (read-compute-enqueue), so each sees all earlier ones.
     writer: Mutex<()>,
+    /// Set if a WAL write or fsync failed: in-memory and durable state may differ, so further writes are refused.
+    poisoned: std::sync::atomic::AtomicBool,
 }
+
+struct Pending { latest: Arc<Overlay>, buf: String, seq: u64 }
+struct Wal { file: File, durable: u64 }
 
 impl Store {
     /// Opens `dir` with N-Triples bases, creating it from `initial` if it has no base yet; replays the WAL.
@@ -222,44 +230,89 @@ impl Store {
         wal.sync_all()?;
         use std::io::Seek;
         wal.seek(std::io::SeekFrom::End(0))?;
-        Ok(Store { dir, format, generation: Mutex::new(generation), current: RwLock::new(Arc::new(overlay)), wal: Mutex::new(wal), writer: Mutex::new(()) })
+        let overlay = Arc::new(overlay);
+        Ok(Store {
+            dir, format, generation: Mutex::new(generation),
+            current: RwLock::new(overlay.clone()),
+            pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0 }),
+            wal: Mutex::new(Wal { file: wal, durable: 0 }),
+            writer: Mutex::new(()),
+            poisoned: std::sync::atomic::AtomicBool::new(false),
+        })
     }
 
     /// The current read snapshot.
     pub fn snapshot(&self) -> Arc<Overlay> { self.current.read().unwrap().clone() }
 
-    /// Durably commits a change set; returns once it is fsynced and visible to new readers.
-    /// Changes that are no-ops (inserting a present triple, deleting an absent one) are dropped.
+    /// Durably commits a change set; returns once it is fsynced and visible to new readers. Concurrent commits
+    /// share one fsync (group commit). No-op changes (inserting a present triple, deleting an absent one) are dropped.
     pub fn commit(&self, changes: &[(Change, Triple)]) -> std::io::Result<usize> {
-        let mut wal = self.wal.lock().unwrap();
-        let cur = self.snapshot();
+        let (seq, n) = self.enqueue(changes)?;
+        self.flush_until(seq)?;
+        Ok(n)
+    }
+
+    fn check_poisoned(&self) -> std::io::Result<()> {
+        if self.poisoned.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err(std::io::Error::other("store is read-only after a WAL write failure; reopen it to recover"));
+        }
+        Ok(())
+    }
+
+    /// Validates and appends a change set to the pending state; returns the sequence number to wait for.
+    fn enqueue(&self, changes: &[(Change, Triple)]) -> std::io::Result<(u64, usize)> {
+        self.check_poisoned()?;
+        let mut p = self.pending.lock().unwrap();
+        let cur = p.latest.clone();
         let mut rec = Vec::new();
         // Presence as of the changes applied so far in this set (a set may insert and later delete a triple).
         let mut state: HashMap<Triple, bool> = HashMap::new();
         for (c, t) in changes {
             let present = match state.get(t) {
-                Some(&p) => p,
+                Some(&v) => v,
                 None => match ids_if_known(&cur, t) { Some(spo) => cur.contains(spo)?, None => false },
             };
             if (*c == Change::Insert) != present { rec.push((*c, t.clone())) }
             state.insert(t.clone(), *c == Change::Insert);
         }
-        if rec.is_empty() { return Ok(0) }
-        let mut buf = String::new();
-        for (c, t) in &rec { buf.push_str(if *c == Change::Insert { "+ " } else { "- " }); buf.push_str(&t.to_string()); buf.push_str(" .\n"); }
-        buf.push_str("C\n");
-        wal.write_all(buf.as_bytes())?;
-        wal.sync_data()?;
-        let next = apply(&cur, &rec)?;
-        *self.current.write().unwrap() = Arc::new(next);
-        Ok(rec.len())
+        // Even a no-op must wait for earlier accepted changes it may have observed.
+        if rec.is_empty() { return Ok((p.seq, 0)) }
+        for (c, t) in &rec { p.buf.push_str(if *c == Change::Insert { "+ " } else { "- " }); p.buf.push_str(&t.to_string()); p.buf.push_str(" .\n"); }
+        p.buf.push_str("C\n");
+        p.latest = Arc::new(apply(&cur, &rec)?);
+        p.seq += 1;
+        Ok((p.seq, rec.len()))
+    }
+
+    /// Makes everything up to `seq` durable and visible. One caller writes and fsyncs all pending records; callers
+    /// whose records it covered return without another fsync.
+    fn flush_until(&self, seq: u64) -> std::io::Result<()> {
+        let mut w = self.wal.lock().unwrap();
+        if w.durable >= seq { return Ok(()) }
+        self.check_poisoned()?;
+        let (buf, upto, overlay) = {
+            let mut p = self.pending.lock().unwrap();
+            (std::mem::take(&mut p.buf), p.seq, p.latest.clone())
+        };
+        let written = w.file.write_all(buf.as_bytes()).and_then(|_| w.file.sync_data());
+        if let Err(e) = written {
+            self.poisoned.store(true, std::sync::atomic::Ordering::SeqCst);
+            return Err(e);
+        }
+        w.durable = upto;
+        *self.current.write().unwrap() = overlay;
+        Ok(())
     }
 
     /// Writes base and delta as a new base, switches to it atomically, and empties the WAL. Readers are not
     /// blocked (they keep their snapshot); writers wait.
     pub fn compact(&self) -> std::io::Result<()> {
-        let mut wal = self.wal.lock().unwrap();
-        let cur = self.snapshot();
+        let _writer = self.writer.lock().unwrap();
+        let seq = self.pending.lock().unwrap().seq;
+        self.flush_until(seq)?;
+        let mut w = self.wal.lock().unwrap();
+        let mut p = self.pending.lock().unwrap(); // no new commits while we switch
+        let cur = p.latest.clone();
         if cur.delta.is_empty() { return Ok(()) }
         let mut generation = self.generation.lock().unwrap();
         let next = *generation + 1;
@@ -269,12 +322,14 @@ impl Store {
         self.format.write(&new_dir, &*cur)?;
         set_current(&self.dir, next)?;
         // The new base is durable and current; only now drop the log.
-        wal.set_len(0)?;
-        wal.sync_all()?;
+        w.file.set_len(0)?;
+        w.file.sync_all()?;
         use std::io::Seek;
-        wal.seek(std::io::SeekFrom::Start(0))?;
+        w.file.seek(std::io::SeekFrom::Start(0))?;
         let base = self.format.open(&new_dir)?;
-        *self.current.write().unwrap() = Arc::new(Overlay { base, delta: Arc::new(Delta::default()) });
+        let fresh = Arc::new(Overlay { base, delta: Arc::new(Delta::default()) });
+        p.latest = fresh.clone();
+        *self.current.write().unwrap() = fresh;
         *generation = next;
         Ok(())
     }
@@ -349,10 +404,16 @@ impl Store {
     /// the net change set is committed once (all or nothing). Returns the number of triples changed.
     pub fn update(&self, text: &str) -> Result<usize, crate::exec::QueryError> {
         use crate::exec::{QueryError, QueryErrorKind};
-        // Serializable: no other update commits between reading the snapshot and committing its changes.
-        let _writer = self.writer.lock().unwrap();
-        let snap = self.snapshot();
-        let changes = crate::exec::update_changes(&*snap, text)?;
-        self.commit(&changes).map_err(|e| QueryError::new(QueryErrorKind::Storage, e.to_string()))
+        let storage = |e: std::io::Error| QueryError::new(QueryErrorKind::Storage, e.to_string());
+        let (seq, n) = {
+            // Serializable: the WHERE clause sees every earlier accepted update, durable or not, and no other update
+            // is accepted between reading and enqueueing. The fsync wait happens outside this lock (group commit).
+            let _writer = self.writer.lock().unwrap();
+            let snap = self.pending.lock().unwrap().latest.clone();
+            let changes = crate::exec::update_changes(&*snap, text)?;
+            self.enqueue(&changes).map_err(storage)?
+        };
+        self.flush_until(seq).map_err(storage)?;
+        Ok(n)
     }
 }
