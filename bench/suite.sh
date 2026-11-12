@@ -11,7 +11,7 @@ CP="$R/target/rdf4j-server-1.jar:$R/target/lib/*"
 NT=$T/$D.nt
 for sys in "$@"; do
   case $sys in
-    rdfdb)        cmd=(../target/release/rdfdb serve $NT 7979); # statistics on (default)
+    rdfdb)        cmd=(../target/release/rdfdb serve $NT 7979); url=http://127.0.0.1:7979/sparql ;; # statistics on (default)
     rdfdb-nostats) cmd=(../target/release/rdfdb serve $NT 7979 --no-stats); url=http://127.0.0.1:7979/sparql ;;
     rdfdb-parallel) cmd=(../target/release/rdfdb serve $NT 7979 --parallel-load=4); url=http://127.0.0.1:7979/sparql ;;
     rdfdb-disk)   cmd=(../target/release/rdfdb serve $T/$D.rdfdb-snapshot 7979 --disk); url=http://127.0.0.1:7979/sparql ;;

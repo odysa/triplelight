@@ -18,3 +18,5 @@ The builder currently parses the entire input into an in-memory snapshot before 
 Open reads the full dictionary and block directories, so its time and memory grow with dictionary size. Neither a restarted process nor an empty application block cache guarantees a cold operating-system page cache. No large-scale or performance results have yet been established for this backend.
 
 `write_disk_snapshot` accepts any snapshot and propagates scan errors, but currently materializes all triples and six indexes in memory during construction. Compaction therefore requires memory proportional to the dataset; it is not an external-sort implementation.
+
+For durable updates on a disk base, use `rdfdb serve-store <directory> [port] --disk [--init data.nt]`. Updates are replayed from the WAL on restart; compaction writes another disk generation. Initial loading and compaction currently construct an in-memory snapshot.
