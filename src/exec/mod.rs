@@ -101,11 +101,15 @@ pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Resu
 
 fn run<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     let q = spargebra::SparqlParser::new().parse_query(text).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
+    run_query(snap, &q, opts)
+}
+
+fn run_query<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     let mut ctx = Ctx::new(snap);
     ctx.wcoj = opts.wcoj;
     let stats = opts.stats;
     ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
-    match &q {
+    match q {
         Query::Select { pattern, .. } => {
             let (vars, pattern) = match pattern {
                 GraphPattern::Project { variables, .. } => (variables.clone(), pattern),
@@ -568,4 +572,73 @@ fn walk_expr(e: &Expression, out: &mut Vec<String>) {
         Expression::Coalesce(l) | Expression::FunctionCall(_, l) => for x in l { walk_expr(x, out) },
         Expression::NamedNode(_) | Expression::Literal(_) => {}
     }
+}
+
+/// The change set of a SPARQL 1.1 Update request, computed against `snap` (task #8). Supports INSERT DATA,
+/// DELETE DATA and DELETE/INSERT ... WHERE on the default graph. Every operation's WHERE clause is evaluated on
+/// `snap` (the state before the request); deletions of an operation precede its insertions.
+pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::store::Change, oxrdf::Triple)>, QueryError> {
+    use crate::store::Change;
+    use oxrdf::{NamedOrBlankNode, Triple};
+    use spargebra::term::GraphName;
+    use spargebra::term::{GraphNamePattern, GroundTermPattern};
+    use spargebra::GraphUpdateOperation as Op;
+    let unsupported = |what: &str| QueryError::new(QueryErrorKind::Unsupported, format!("{what} is not supported yet"));
+    let u = spargebra::SparqlParser::new().parse_update(text).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
+    let mut out = Vec::new();
+    for op in &u.operations {
+        match op {
+            Op::InsertData { data } => for q in data {
+                if q.graph_name != GraphName::DefaultGraph { return Err(unsupported("named graphs")) }
+                out.push((Change::Insert, Triple::new(q.subject.clone(), q.predicate.clone(), q.object.clone())));
+            },
+            Op::DeleteData { data } => for q in data {
+                if q.graph_name != GraphName::DefaultGraph { return Err(unsupported("named graphs")) }
+                let o: Term = match &q.object { GroundTerm::NamedNode(n) => n.clone().into(), GroundTerm::Literal(l) => l.clone().into() };
+                out.push((Change::Delete, Triple::new(q.subject.clone(), q.predicate.clone(), o)));
+            },
+            Op::DeleteInsert { delete, insert, using, pattern } => {
+                if using.is_some() { return Err(unsupported("USING")) }
+                if delete.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph))
+                    || insert.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph)) { return Err(unsupported("named graphs")) }
+                let q = Query::Select { dataset: None, pattern: (**pattern).clone(), base_iri: None };
+                let QueryResult::Solutions { vars, rows } = run_query(snap, &q, &Options::default())? else { unreachable!() };
+                let col: HashMap<&str, usize> = vars.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
+                for (n, row) in rows.iter().enumerate() {
+                    let var = |v: &Variable| col.get(v.as_str()).and_then(|&i| row[i].clone());
+                    let ground = |t: &GroundTermPattern| -> Option<Term> { match t {
+                        GroundTermPattern::NamedNode(x) => Some(x.clone().into()),
+                        GroundTermPattern::Literal(x) => Some(x.clone().into()),
+                        GroundTermPattern::Variable(v) => var(v),
+                        #[allow(unreachable_patterns)] _ => None,
+                    } };
+                    let term = |t: &TermPattern| -> Option<Term> { match t {
+                        TermPattern::NamedNode(x) => Some(x.clone().into()),
+                        TermPattern::Literal(x) => Some(x.clone().into()),
+                        TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(format!("{}u{n}", b.as_str())).into()),
+                        TermPattern::Variable(v) => var(v),
+                        #[allow(unreachable_patterns)] _ => None,
+                    } };
+                    let pred = |p: &NamedNodePattern| -> Option<oxrdf::NamedNode> { match p {
+                        NamedNodePattern::NamedNode(x) => Some(x.clone()),
+                        NamedNodePattern::Variable(v) => match var(v) { Some(Term::NamedNode(x)) => Some(x), _ => None },
+                    } };
+                    // Templates with an unbound or ill-typed slot produce no triple for this solution.
+                    for d in delete {
+                        if let (Some(s), Some(p), Some(o)) = (ground(&d.subject), pred(&d.predicate), ground(&d.object)) {
+                            if let Ok(s) = NamedOrBlankNode::try_from(s) { out.push((Change::Delete, Triple::new(s, p, o))) }
+                        }
+                    }
+                    for i in insert {
+                        if let (Some(s), Some(p), Some(o)) = (term(&i.subject), pred(&i.predicate), term(&i.object)) {
+                            if let Ok(s) = NamedOrBlankNode::try_from(s) { out.push((Change::Insert, Triple::new(s, p, o))) }
+                        }
+                    }
+                }
+            }
+            Op::Load { .. } => return Err(unsupported("LOAD")),
+            Op::Clear { .. } | Op::Create { .. } | Op::Drop { .. } => return Err(unsupported("graph management")),
+        }
+    }
+    Ok(out)
 }
