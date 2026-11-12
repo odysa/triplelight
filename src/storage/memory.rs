@@ -1,5 +1,5 @@
 //! Immutable, in-memory reference snapshot. Bulk construction deduplicates RDF triples.
-use super::{Dictionary, Snapshot};
+use super::{Dictionary, Snapshot, StorageError};
 use crate::model::{Perm, TermId, TripleBatch};
 use oxrdf::{Literal, Term, Triple};
 use std::collections::HashMap;
@@ -236,7 +236,7 @@ impl Snapshot for MemorySnapshot {
         &'a self,
         perm: Perm,
         prefix: &[TermId],
-    ) -> Box<dyn Iterator<Item = TripleBatch> + 'a> {
+    ) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
         Box::new(self.matching(perm, prefix).chunks(4096).map(|rows| {
             let mut b = TripleBatch::default();
             for r in rows {
@@ -244,22 +244,22 @@ impl Snapshot for MemorySnapshot {
                     column.push(*value);
                 }
             }
-            b
+            Ok(b)
         }))
     }
-    fn count(&self, perm: Perm, prefix: &[TermId]) -> u64 {
+    fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
         if let [a, b, c] = prefix {
-            return u64::from(self.indexes[slot(perm)].binary_search(&[*a, *b, *c]).is_ok());
+            return Ok(u64::from(self.indexes[slot(perm)].binary_search(&[*a, *b, *c]).is_ok()));
         }
-        self.matching(perm, prefix).len() as u64
+        Ok(self.matching(perm, prefix).len() as u64)
     }
-    fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Option<TermId> {
+    fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
         if prefix.len() >= 3 {
-            return None;
+            return Ok(None);
         }
         let rows = self.matching(perm, prefix);
         let i = rows.partition_point(|row| row[prefix.len()] < target);
-        rows.get(i).map(|row| row[prefix.len()])
+        Ok(rows.get(i).map(|row| row[prefix.len()]))
     }
 }
 
@@ -291,17 +291,17 @@ mod tests {
             let ordered = [values[order[0]], values[order[1]], values[order[2]]];
             for n in 0..=3 {
                 let prefix = &ordered[..n];
-                let batches: Vec<_> = store.scan(perm, prefix).collect();
+                let batches: Vec<_> = store.scan(perm, prefix).collect::<Result<_, _>>().unwrap();
                 let count: usize = batches.iter().map(|x| x.len()).sum();
-                assert_eq!(store.count(perm, prefix), count as u64);
+                assert_eq!(store.count(perm, prefix).unwrap(), count as u64);
                 assert!(count > 0);
                 if n < 3 {
-                    assert_eq!(store.seek(perm, prefix, ordered[n]), Some(ordered[n]));
+                    assert_eq!(store.seek(perm, prefix, ordered[n]).unwrap(), Some(ordered[n]));
                 }
             }
-            assert_eq!(store.count(perm, &[]), 3);
-            assert_eq!(store.count(perm, &[TermId(0), ordered[1], ordered[2]]), 0);
-            assert_eq!(store.seek(perm, &ordered, ordered[0]), None);
+            assert_eq!(store.count(perm, &[]).unwrap(), 3);
+            assert_eq!(store.count(perm, &[TermId(0), ordered[1], ordered[2]]).unwrap(), 0);
+            assert_eq!(store.seek(perm, &ordered, ordered[0]).unwrap(), None);
         }
     }
     #[test]
@@ -309,7 +309,7 @@ mod tests {
         let row = "<urn:s> <urn:p> \"ok\" .\n";
         let data = format!("{row}{row}");
         let snap = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
-        assert_eq!(snap.count(Perm::Spo, &[]), 1);
+        assert_eq!(snap.count(Perm::Spo, &[]).unwrap(), 1);
         assert!(MemorySnapshot::from_ntriples(format!("{row}broken").as_bytes()).is_err());
     }
     #[test]
@@ -318,7 +318,7 @@ mod tests {
         assert_eq!(
             MemorySnapshot::from_turtle(good.as_slice())
                 .unwrap()
-                .count(Perm::Spo, &[]),
+                .count(Perm::Spo, &[]).unwrap(),
             1
         );
         assert!(
@@ -334,14 +334,14 @@ mod tests {
         for perm in Perm::ALL {
             let a: Vec<_> = source
                 .scan(perm, &[])
-                .flat_map(|b| b.cols[0].clone())
+                .flat_map(|b| b.unwrap().cols[0].clone())
                 .collect();
             let b: Vec<_> = restored
                 .scan(perm, &[])
-                .flat_map(|b| b.cols[0].clone())
+                .flat_map(|b| b.unwrap().cols[0].clone())
                 .collect();
             assert_eq!(a, b);
-            assert_eq!(source.count(perm, &[]), restored.count(perm, &[]));
+            assert_eq!(source.count(perm, &[]).unwrap(), restored.count(perm, &[]).unwrap());
         }
         assert!(MemorySnapshot::read_snapshot(&bytes[..bytes.len() - 1]).is_err());
         bytes.push(0);
