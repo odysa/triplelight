@@ -46,7 +46,7 @@ impl Snapshot for Graph {
         &'a self,
         perm: Perm,
         prefix: &[TermId],
-    ) -> Box<dyn Iterator<Item = TripleBatch> + 'a> {
+    ) -> Box<dyn Iterator<Item = Result<TripleBatch, std::io::Error>> + 'a> {
         let order = perm.order();
         let mut rows: Vec<_> = self
             .triples
@@ -61,15 +61,23 @@ impl Snapshot for Graph {
                 b.cols[i].push(id);
             }
         }
-        Box::new(std::iter::once(b))
+        Box::new(std::iter::once(Ok(b)))
     }
-    fn count(&self, perm: Perm, prefix: &[TermId]) -> u64 {
-        self.scan(perm, prefix).map(|b| b.len() as u64).sum()
-    }
-    fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Option<TermId> {
+    fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, std::io::Error> {
         self.scan(perm, prefix)
-            .flat_map(|b| b.cols[prefix.len()].clone())
-            .find(|id| *id >= target)
+            .map(|b| b.map(|b| b.len() as u64))
+            .sum()
+    }
+    fn seek(
+        &self,
+        perm: Perm,
+        prefix: &[TermId],
+        target: TermId,
+    ) -> Result<Option<TermId>, std::io::Error> {
+        Ok(self
+            .scan(perm, prefix)
+            .flat_map(|b| b.unwrap().cols[prefix.len()].clone())
+            .find(|id| *id >= target))
     }
 }
 type Binding = BTreeMap<u32, TermId>;
@@ -260,7 +268,7 @@ fn snapshot_stats_and_exact_counts() {
         p(c(999), c(10), v(0)),
         p(c(1), c(10), c(2)),
     ];
-    s.cache_pattern_counts(&qs, &g);
+    s.cache_pattern_counts(&qs, &g).unwrap();
     for q in qs {
         let e = s.estimate_pattern(&q);
         assert!(e.exact);
@@ -547,7 +555,7 @@ fn bounded_pos_refinement_repairs_rare_object_stars() {
     let mut stats = g.stats();
     let q = [p(v(0), c(10), c(10001)), p(v(0), c(11), v(1))];
     assert!(stats.estimate_bgp(&q) > 1.0);
-    stats.cache_pattern_counts(&q, &g);
+    stats.cache_pattern_counts(&q, &g).unwrap();
     assert_eq!(stats.estimate_bgp(&q), 1.0);
     assert_eq!(truth(&g, &q).len(), 1);
 }
@@ -564,14 +572,14 @@ fn fixed_subject_star_uses_exact_leaf_products() {
     ]);
     let mut stats = g.stats();
     let q = [p(c(1), c(10), v(0)), p(c(1), c(11), v(1))];
-    stats.cache_pattern_counts(&q, &g);
+    stats.cache_pattern_counts(&q, &g).unwrap();
     assert_eq!(stats.estimate_bgp(&q), 6.0);
     assert_eq!(truth(&g, &q).len(), 6);
 }
 
 #[test]
 fn index_nested_loop_model_matches_runtime_executor_bindings() {
-    use rdfdb::exec::{QueryResult, query_with_stats};
+    use rdfdb::exec::{Options, QueryResult, query_with};
     use rdfdb::storage::MemorySnapshot;
     let snapshot=MemorySnapshot::from_ntriples(
         "<urn:a> <urn:p> <urn:b> .\n<urn:a> <urn:p> <urn:c> .\n<urn:b> <urn:q> <urn:a> .\n<urn:c> <urn:q> <urn:a> .\n<urn:a> <urn:r> <urn:a> .".as_bytes()
@@ -596,8 +604,149 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
         "SELECT * WHERE { ?x <urn:missing> ?y . ?x <urn:p> ?z }",
         "SELECT * WHERE {}",
     ] {
-        let greedy = normalized(query_with_stats(&snapshot, text, None).unwrap());
-        let planned = normalized(query_with_stats(&snapshot, text, Some(&stats)).unwrap());
+        let greedy = normalized(
+            query_with(
+                &snapshot,
+                text,
+                &Options {
+                    stats: None,
+                    wcoj: false,
+                },
+            )
+            .unwrap(),
+        );
+        let planned = normalized(
+            query_with(
+                &snapshot,
+                text,
+                &Options {
+                    stats: Some(&stats),
+                    wcoj: false,
+                },
+            )
+            .unwrap(),
+        );
         assert_eq!(greedy, planned, "{text}");
     }
+}
+
+#[derive(Clone, Copy)]
+enum ReadFault {
+    FullScan,
+    Count,
+    ObjectScan,
+    SubjectScan,
+}
+struct Faulty<'a> {
+    inner: &'a dyn Snapshot,
+    fault: ReadFault,
+}
+impl Dictionary for Faulty<'_> {
+    fn lookup(&self, t: &Term) -> Option<TermId> {
+        self.inner.lookup(t)
+    }
+    fn resolve(&self, id: TermId) -> Term {
+        self.inner.resolve(id)
+    }
+}
+impl Snapshot for Faulty<'_> {
+    fn scan<'a>(
+        &'a self,
+        perm: Perm,
+        prefix: &[TermId],
+    ) -> Box<dyn Iterator<Item = Result<TripleBatch, std::io::Error>> + 'a> {
+        let fail = match self.fault {
+            ReadFault::FullScan => prefix.is_empty(),
+            ReadFault::ObjectScan => perm == Perm::Pos,
+            ReadFault::SubjectScan => perm == Perm::Spo && !prefix.is_empty(),
+            ReadFault::Count => false,
+        };
+        if fail {
+            // A successful batch followed by an error must still abort the read.
+            Box::new(
+                std::iter::once(Ok(TripleBatch::default())).chain(std::iter::once(Err(
+                    std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "planted read failure"),
+                ))),
+            )
+        } else {
+            self.inner.scan(perm, prefix)
+        }
+    }
+    fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, std::io::Error> {
+        if matches!(self.fault, ReadFault::Count) {
+            Err(std::io::Error::other("planted count failure"))
+        } else {
+            self.inner.count(perm, prefix)
+        }
+    }
+    fn seek(
+        &self,
+        perm: Perm,
+        prefix: &[TermId],
+        target: TermId,
+    ) -> Result<Option<TermId>, std::io::Error> {
+        self.inner.seek(perm, prefix, target)
+    }
+}
+#[test]
+fn storage_failures_abort_stats_and_atomic_refinement() {
+    use std::error::Error;
+    let g = Graph::new((1..=130).map(|i| [i, 10, 1000 + i]).collect());
+    let error = Stats::from_snapshot(&Faulty {
+        inner: &g,
+        fault: ReadFault::FullScan,
+    })
+    .unwrap_err();
+    assert!(matches!(error, StatsError::Storage(_)));
+    assert!(
+        error
+            .source()
+            .unwrap()
+            .to_string()
+            .contains("planted read failure")
+    );
+    let qs = [p(v(0), c(10), v(1)), p(v(0), c(10), c(1001))];
+    for fault in [
+        ReadFault::Count,
+        ReadFault::ObjectScan,
+        ReadFault::SubjectScan,
+    ] {
+        let mut stats = g.stats();
+        let before = format!("{stats:?}");
+        let e = stats
+            .cache_pattern_counts(&qs, &Faulty { inner: &g, fault })
+            .unwrap_err();
+        assert!(matches!(e, StatsError::Storage(_)));
+        assert_eq!(
+            format!("{stats:?}"),
+            before,
+            "partial cache must not survive failure"
+        );
+        stats.cache_pattern_counts(&qs, &g).unwrap();
+        assert!(stats.estimate_pattern(&qs[0]).exact);
+    }
+}
+#[test]
+fn optimizer_count_failure_reaches_query_error() {
+    use rdfdb::exec::{Options, query_with};
+    use rdfdb::storage::MemorySnapshot;
+    let g = MemorySnapshot::from_ntriples(
+        "<urn:a> <urn:p> <urn:b> .\n<urn:b> <urn:q> <urn:c> .".as_bytes(),
+    )
+    .unwrap();
+    let stats = Stats::from_snapshot(&g).unwrap();
+    let faulty = Faulty {
+        inner: &g,
+        fault: ReadFault::Count,
+    };
+    let e = query_with(
+        &faulty,
+        "SELECT * WHERE { ?x <urn:p> ?y . ?y <urn:q> ?z }",
+        &Options {
+            stats: Some(&stats),
+            wcoj: false,
+        },
+    )
+    .unwrap_err();
+    assert!(e.to_string().contains("planted count failure"));
 }
