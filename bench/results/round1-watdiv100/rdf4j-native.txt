@@ -1,0 +1,21 @@
+query            rdf4j-native
+C1          84.31ms n=8      
+C2         149.25ms n=0      
+C3        1329.75ms n=429276 
+F1           6.38ms n=0      
+F2          10.76ms n=13     
+F3          13.41ms n=85     
+F4           9.25ms n=0      
+F5           4.33ms n=25     
+L1           2.99ms n=2      
+L2          35.96ms n=229    
+L3           2.28ms n=19     
+L4           6.30ms n=68     
+L5          47.04ms n=254    
+S1           2.41ms n=0      
+S2           4.15ms n=16     
+S3          11.15ms n=0      
+S4           9.26ms n=1      
+S5           6.08ms n=0      
+S6           3.06ms n=15     
+S7           1.68ms n=0      

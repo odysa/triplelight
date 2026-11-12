@@ -1,6 +1,6 @@
-loaded tools/watdiv100.nt in 29.28s
-statistics built in 3.35s
+loaded tools/watdiv100.nt in 8.71s
+statistics built in 1.85s
 optimizer statistics: on
 serving SPARQL at http://127.0.0.1:7979/sparql
-rdfdb-stats ready after 37s
-rss_mb 4432
+rdfdb-stats ready after 13s
+rss_mb 5323
