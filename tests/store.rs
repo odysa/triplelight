@@ -151,3 +151,22 @@ fn crashed_compaction_leftovers_are_ignored() {
     assert!(!dir.join("base-0").exists());
     assert_eq!(answers(&*store.snapshot(), "ASK { <http://ex/1> <http://ex/100> <http://ex/2> }"), ["true"]);
 }
+
+/// Concurrent committers (group commit): every commit is visible after return and after reopen.
+#[test]
+fn concurrent_commits_are_all_durable() {
+    let dir = tmp("group");
+    let store = Store::open(&dir, None, 1).unwrap();
+    std::thread::scope(|s| for th in 0..8u64 { let store = &store; s.spawn(move || {
+        for i in 0..50u64 {
+            let k = th * 1000 + i;
+            store.commit(&[(Change::Insert, t(k, 0, k + 1))]).unwrap();
+            let q = format!("ASK {{ <http://ex/{k}> <http://ex/100> <http://ex/{}> }}", k + 1);
+            assert_eq!(answers(&*store.snapshot(), &q), ["true"]);
+        }
+    }); });
+    drop(store);
+    let store = Store::open(&dir, None, 1).unwrap();
+    let n = answers(&*store.snapshot(), "SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }");
+    assert!(n[0].contains("value: \"400\""), "{n:?}");
+}
