@@ -2,11 +2,36 @@
 //! `rdfdb query <data> <query>` — run one query and print JSON results.
 use rdfdb::exec::{query, query_with, Options, QueryResult, results::{serialize, serialize_ids}};
 use rdfdb::opt::stats::Stats;
-use rdfdb::storage::MemorySnapshot;
+use rdfdb::storage::{MemorySnapshot, DiskSnapshot, Dictionary, Snapshot, StorageError};
+use rdfdb::model::{Perm, TermId, TripleBatch};
+use oxrdf::{Term, TermRef};
+
+enum Backend { Memory(MemorySnapshot), Disk(DiskSnapshot) }
+impl Dictionary for Backend {
+    fn lookup(&self, term: &Term) -> Option<TermId> { match self { Self::Memory(s) => s.lookup(term), Self::Disk(s) => s.lookup(term) } }
+    fn resolve(&self, id: TermId) -> Term { match self { Self::Memory(s) => s.resolve(id), Self::Disk(s) => s.resolve(id) } }
+    fn resolve_ref(&self, id: TermId) -> TermRef<'_> { match self { Self::Memory(s) => s.resolve_ref(id), Self::Disk(s) => s.resolve_ref(id) } }
+}
+impl Snapshot for Backend {
+    fn scan<'a>(&'a self, p: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + 'a> {
+        match self { Self::Memory(s) => s.scan(p,prefix), Self::Disk(s) => s.scan(p,prefix) }
+    }
+    fn count(&self, p: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
+        match self { Self::Memory(s) => s.count(p,prefix), Self::Disk(s) => s.count(p,prefix) }
+    }
+    fn seek(&self, p: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
+        match self { Self::Memory(s) => s.seek(p,prefix,target), Self::Disk(s) => s.seek(p,prefix,target) }
+    }
+}
 use std::time::Instant;
 
-fn load(path: &str, args: &[String]) -> MemorySnapshot {
+fn load(path: &str, args: &[String]) -> Backend {
     let t = Instant::now();
+    if args.iter().any(|a| a == "--disk") {
+        let snap = DiskSnapshot::open(path).expect("open disk snapshot");
+        eprintln!("opened disk snapshot {path} in {:.2}s", t.elapsed().as_secs_f64());
+        return Backend::Disk(snap);
+    }
     let configured = args.iter().find_map(|arg| arg.strip_prefix("--parallel-load="));
     let workers = configured.map(|v| v.parse::<usize>().expect("parallel-load requires a nonzero integer"))
         .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, |n| n.get()));
@@ -21,7 +46,7 @@ fn load(path: &str, args: &[String]) -> MemorySnapshot {
         if path.ends_with(".ttl") { MemorySnapshot::from_turtle(f) } else { MemorySnapshot::from_ntriples(f) }.expect("parse")
     };
     eprintln!("loaded {path} in {:.2}s", t.elapsed().as_secs_f64());
-    s
+    Backend::Memory(s)
 }
 
 fn decode(s: &str) -> String {
@@ -48,6 +73,14 @@ fn form_param(body: &str, key: &str) -> Option<String> {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
+        Some("build-disk") => {
+            if args.len() < 4 || args.iter().any(|a| a == "--disk") {
+                eprintln!("usage: rdfdb build-disk <source.nt|source.ttl> <new-directory> [--parallel-load=N]");
+                std::process::exit(2);
+            }
+            let Backend::Memory(source) = load(&args[2], &args) else { unreachable!() };
+            DiskSnapshot::create(&args[3], &source).expect("create disk snapshot");
+        }
         Some("query") => {
             let snap = load(&args[2], &args);
             let t = Instant::now();
