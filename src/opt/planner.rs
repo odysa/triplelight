@@ -466,10 +466,164 @@ fn cyclic(patterns: &[TriplePattern]) -> bool {
     }
 }
 fn variable_order(patterns: &[TriplePattern], stats: &Stats) -> Vec<u32> {
-    let domains = stats.variable_domains(patterns);
-    let mut vars: Vec<_> = domains.keys().copied().collect();
-    vars.sort_by(|a, b| domains[a].total_cmp(&domains[b]).then_with(|| a.cmp(b)));
-    vars
+    choose_variable_order(patterns, stats)
+}
+
+/// Minimize a uniform-domain projection/seek work estimate. This is a heuristic,
+/// not an AGM bound or a guarantee about elapsed time. Up to 12 variables use
+/// subset DP; larger queries use greedy prefix extension.
+pub fn choose_variable_order(patterns: &[TriplePattern], stats: &Stats) -> Vec<u32> {
+    let model = PrefixModel::new(patterns, stats);
+    let n = model.vars.len();
+    if n == 0 {
+        return Vec::new();
+    }
+    if n <= 12 {
+        let full = 1usize << n;
+        let mut cost = vec![f64::INFINITY; full];
+        let mut last = vec![0usize; full];
+        cost[0] = 0.0;
+        for mask in 1usize..full {
+            let selected: Vec<_> = (0..n).filter(|i| mask & (1 << i) != 0).collect();
+            let rows = model.rows(&selected);
+            for &i in &selected {
+                let outer = mask ^ (1 << i);
+                let candidate = cardinal(cost[outer] + rows * model.degree[i] * model.seek);
+                if candidate < cost[mask] {
+                    cost[mask] = candidate;
+                    last[mask] = i;
+                }
+            }
+        }
+        let mut order = Vec::with_capacity(n);
+        let mut mask = full - 1;
+        while mask != 0 {
+            let i = last[mask];
+            order.push(model.vars[i]);
+            mask ^= 1 << i;
+        }
+        order.reverse();
+        order
+    } else {
+        let mut selected = Vec::with_capacity(n);
+        while selected.len() < n {
+            let i = (0..n)
+                .filter(|i| !selected.contains(i))
+                .min_by(|a, b| {
+                    let mut trial = selected.clone();
+                    trial.push(*a);
+                    let ca = cardinal(model.rows(&trial) * model.degree[*a] * model.seek);
+                    *trial.last_mut().unwrap() = *b;
+                    let cb = cardinal(model.rows(&trial) * model.degree[*b] * model.seek);
+                    ca.total_cmp(&cb).then(a.cmp(b))
+                })
+                .unwrap();
+            selected.push(i);
+        }
+        selected.into_iter().map(|i| model.vars[i]).collect()
+    }
+}
+
+/// Estimated work for a complete permutation; None rejects missing, extra or
+/// repeated variables instead of silently scoring an invalid trie order.
+pub fn variable_order_work(
+    patterns: &[TriplePattern],
+    stats: &Stats,
+    order: &[u32],
+) -> Option<f64> {
+    let model = PrefixModel::new(patterns, stats);
+    if order.len() != model.vars.len() {
+        return None;
+    }
+    let mut selected = Vec::with_capacity(order.len());
+    let mut work = 0.0;
+    for v in order {
+        let i = model.vars.binary_search(v).ok()?;
+        if selected.contains(&i) {
+            return None;
+        }
+        selected.push(i);
+        work = cardinal(work + model.rows(&selected) * model.degree[i] * model.seek);
+    }
+    Some(work)
+}
+struct PrefixRelation {
+    rows: f64,
+    domains: Vec<(usize, f64)>,
+}
+struct PrefixModel {
+    vars: Vec<u32>,
+    relations: Vec<PrefixRelation>,
+    degree: Vec<f64>,
+    seek: f64,
+}
+impl PrefixModel {
+    fn new(patterns: &[TriplePattern], stats: &Stats) -> Self {
+        let vars: Vec<_> = patterns
+            .iter()
+            .flat_map(variables)
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        let mut degree = vec![0.0; vars.len()];
+        let mut relations = Vec::new();
+        let mut unique = Vec::new();
+        for p in patterns {
+            if unique.contains(p) {
+                continue;
+            }
+            unique.push(*p);
+            let rows = stats.estimate_pattern(p).rows;
+            let domains = stats
+                .variable_domains(&[*p])
+                .into_iter()
+                .map(|(v, d)| {
+                    let i = vars.binary_search(&v).unwrap();
+                    degree[i] += 1.0;
+                    (i, d.min(rows.max(1.0)))
+                })
+                .collect();
+            relations.push(PrefixRelation { rows, domains });
+        }
+        Self {
+            vars,
+            relations,
+            degree,
+            seek: index_seek_cost(stats),
+        }
+    }
+    fn rows(&self, selected: &[usize]) -> f64 {
+        let mut joined = 1.0;
+        let mut seen = vec![None::<f64>; self.vars.len()];
+        for relation in &self.relations {
+            if relation.rows == 0.0 {
+                return 0.0;
+            }
+            let present: Vec<_> = relation
+                .domains
+                .iter()
+                .filter(|(i, _)| selected.contains(i))
+                .collect();
+            if present.is_empty() {
+                continue;
+            }
+            let projected = present
+                .iter()
+                .fold(1.0, |n, (_, d)| cardinal(n * d))
+                .min(relation.rows);
+            joined = cardinal(joined * projected);
+            for &&(i, d) in &present {
+                let domain = d.min(projected.max(1.0));
+                if let Some(prior) = seen[i] {
+                    joined /= prior.max(domain);
+                    seen[i] = Some(prior.min(domain));
+                } else {
+                    seen[i] = Some(domain);
+                }
+            }
+        }
+        cardinal(joined)
+    }
 }
 fn trie_permutation(p: &TriplePattern, vars: &[u32]) -> Perm {
     let s = slots(p);
