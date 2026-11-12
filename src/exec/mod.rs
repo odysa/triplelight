@@ -430,6 +430,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     /// Leapfrog variable order from the optimizer's cost model (task #5), when statistics are available.
     fn variable_order(&self, pats: &[[Slot; 3]]) -> Option<Vec<usize>> {
         let (stats, _) = self.stats?;
+        if pats.len() > opt::planner::MAX_RUNTIME_DP_PATTERNS { return None; }
         let conv = |s: &Slot| match *s { Slot::Const(c) => opt::plan::Slot::Const(c.unwrap()), Slot::Var(v) => opt::plan::Slot::Var(v as u32) };
         let tps: Vec<opt::plan::TriplePattern> = pats.iter().map(|p| opt::plan::TriplePattern { s: conv(&p[0]), p: conv(&p[1]), o: conv(&p[2]) }).collect();
         if opt::planner::estimated_greedy_work(&tps, stats) < opt::planner::MIN_OPTIMIZER_WORK { return None; }
@@ -448,6 +449,13 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let total_clock = clock();
         let conv = |s: &Slot| match *s { Slot::Const(c) => opt::plan::Slot::Const(c.unwrap()), Slot::Var(v) => opt::plan::Slot::Var(v as u32) };
         let tps: Vec<opt::plan::TriplePattern> = pats.iter().map(|p| opt::plan::TriplePattern { s: conv(&p[0]), p: conv(&p[1]), o: conv(&p[2]) }).collect();
+        if pats.len() > opt::planner::MAX_RUNTIME_DP_PATTERNS {
+            if trace {
+                eprintln!("planning_search kind=runtime-greedy patterns={}", pats.len());
+                eprintln!("planning_profile clone_ns=0 prefix_ns=0 search_ns=0 gate_ns=0 total_ns={}", elapsed(total_clock));
+            }
+            return None;
+        }
         let gate_clock = clock();
         let work = opt::planner::estimated_greedy_work(&tps, stats);
         let gate_ns = elapsed(gate_clock);

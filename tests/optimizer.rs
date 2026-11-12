@@ -40,7 +40,9 @@ impl Dictionary for Graph {
     fn resolve(&self, _: TermId) -> Term {
         panic!("not used")
     }
-    fn resolve_ref(&self, _: TermId) -> oxrdf::TermRef<'_> { panic!("not used") }
+    fn resolve_ref(&self, _: TermId) -> oxrdf::TermRef<'_> {
+        panic!("not used")
+    }
 }
 impl Snapshot for Graph {
     fn scan<'a>(
@@ -666,7 +668,9 @@ impl Dictionary for Faulty<'_> {
     fn resolve(&self, id: TermId) -> Term {
         self.inner.resolve(id)
     }
-    fn resolve_ref(&self, id: TermId) -> oxrdf::TermRef<'_> { self.inner.resolve_ref(id) }
+    fn resolve_ref(&self, id: TermId) -> oxrdf::TermRef<'_> {
+        self.inner.resolve_ref(id)
+    }
 }
 impl Snapshot for Faulty<'_> {
     fn scan<'a>(
@@ -851,4 +855,66 @@ fn work_gate_keeps_small_queries_greedy_and_admits_expanding_stars() {
         p(v(0), c(12), v(3)),
     ];
     assert!(estimated_greedy_work(&star, &large.stats()) >= MIN_OPTIMIZER_WORK);
+}
+
+#[test]
+fn wide_high_work_bgp_preserves_original_runtime_results() {
+    use rdfdb::exec::{Options, QueryResult, query_with};
+    use rdfdb::opt::planner::estimated_greedy_work;
+    use rdfdb::storage::MemorySnapshot;
+    let mut input = String::new();
+    for s in 0..500 {
+        for o in 0..50 {
+            input.push_str(&format!("<urn:s{s}> <urn:p> <urn:o{o}> .\n"));
+        }
+    }
+    let graph = MemorySnapshot::from_ntriples(input.as_bytes()).unwrap();
+    let stats = Stats::from_snapshot(&graph).unwrap();
+    let pred = graph
+        .lookup(&oxrdf::NamedNode::new("urn:p").unwrap().into())
+        .unwrap();
+    let patterns = vec![p(v(0), Slot::Const(pred), v(1)); 8];
+    assert!(estimated_greedy_work(&patterns, &stats) >= 100_000.0);
+    let query = format!("SELECT ?s ?o WHERE {{ {} }}", "?s <urn:p> ?o . ".repeat(8));
+    let normalize = |r| {
+        let QueryResult::Solutions { rows, .. } = r else {
+            panic!("SELECT expected")
+        };
+        let mut rows: Vec<_> = rows
+            .into_iter()
+            .map(|r| {
+                r.into_iter()
+                    .map(|t| t.map(|t| t.to_string()))
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        rows.sort();
+        rows
+    };
+    let expected = normalize(
+        query_with(
+            &graph,
+            &query,
+            &Options {
+                stats: None,
+                wcoj: true,
+                raw_ids: false,
+            },
+        )
+        .unwrap(),
+    );
+    let actual = normalize(
+        query_with(
+            &graph,
+            &query,
+            &Options {
+                stats: Some(&stats),
+                wcoj: true,
+                raw_ids: false,
+            },
+        )
+        .unwrap(),
+    );
+    assert_eq!(actual.len(), 25000);
+    assert_eq!(actual, expected);
 }

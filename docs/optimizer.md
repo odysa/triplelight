@@ -189,3 +189,14 @@ not a latency guarantee. Misestimation can skip a useful plan or admit a costly
 one, but cannot change answers. Query-local compilation reuses per-pattern NDVs;
 rare-object refinement uses a shared CS-signature hash index instead of scanning
 all CS records for every subject.
+
+## Runtime search budget
+
+The server admits cost planning only up to seven triple patterns (at most 128
+binary-DP subset states). Wider BGPs retain the executor's original exact-index-
+count greedy order; wider cyclic BGPs retain its legacy trie variable order.
+This bound is checked before cloning query statistics, refining exact counts or
+compiling star subsets. C3's six-pattern optimization remains eligible.
+Library callers retain the configurable DP/connected-greedy search APIs.
+The policy trades opportunities on wide queries for bounded server preparation;
+it is not a claim that wide queries cannot benefit from cost optimization.

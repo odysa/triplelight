@@ -1,0 +1,106 @@
+{
+  "before": {
+    "C1": {
+      "false": {
+        "clone_ns": 0,
+        "prefix_ns": 0,
+        "search_ns": 0,
+        "gate_ns": 0,
+        "total_ns": 0,
+        "query_ns": 2945500,
+        "outside_plan_ns": 2945500
+      },
+      "true": {
+        "clone_ns": 625,
+        "prefix_ns": 6208,
+        "search_ns": 6887959,
+        "gate_ns": 21791,
+        "total_ns": 6929291,
+        "query_ns": 10631458,
+        "outside_plan_ns": 3650584
+      }
+    },
+    "C2": {
+      "false": {
+        "clone_ns": 0,
+        "prefix_ns": 0,
+        "search_ns": 0,
+        "gate_ns": 0,
+        "total_ns": 0,
+        "query_ns": 8830000,
+        "outside_plan_ns": 8830000
+      },
+      "true": {
+        "clone_ns": 667,
+        "prefix_ns": 15875,
+        "search_ns": 9427458,
+        "gate_ns": 26625,
+        "total_ns": 9484334,
+        "query_ns": 15727917,
+        "outside_plan_ns": 6113375
+      }
+    }
+  },
+  "candidate-greedy": {
+    "C1": {
+      "false": {
+        "clone_ns": 0,
+        "prefix_ns": 0,
+        "search_ns": 0,
+        "gate_ns": 0,
+        "total_ns": 0,
+        "query_ns": 3098375,
+        "outside_plan_ns": 3098375
+      },
+      "true": {
+        "clone_ns": 541,
+        "prefix_ns": 7083,
+        "search_ns": 7275916,
+        "gate_ns": 23750,
+        "total_ns": 7395208,
+        "query_ns": 11132292,
+        "outside_plan_ns": 3771833
+      }
+    },
+    "C2": {
+      "false": {
+        "clone_ns": 0,
+        "prefix_ns": 0,
+        "search_ns": 0,
+        "gate_ns": 0,
+        "total_ns": 0,
+        "query_ns": 10343458,
+        "outside_plan_ns": 10343458
+      },
+      "true": {
+        "clone_ns": 625,
+        "prefix_ns": 14541,
+        "search_ns": 7220833,
+        "gate_ns": 30750,
+        "total_ns": 7300375,
+        "query_ns": 27385417,
+        "outside_plan_ns": 19985542
+      }
+    },
+    "C3": {
+      "false": {
+        "clone_ns": 0,
+        "prefix_ns": 0,
+        "search_ns": 0,
+        "gate_ns": 0,
+        "total_ns": 0,
+        "query_ns": 1231191833,
+        "outside_plan_ns": 1231191833
+      },
+      "true": {
+        "clone_ns": 583,
+        "prefix_ns": 5250,
+        "search_ns": 4469750,
+        "gate_ns": 14500,
+        "total_ns": 4506459,
+        "query_ns": 174818375,
+        "outside_plan_ns": 170311916
+      }
+    }
+  }
+}
