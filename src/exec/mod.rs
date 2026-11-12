@@ -380,13 +380,21 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
         let flat: Vec<TermId> = rows.concat();
         let out = if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(bgp::no_repeated_var) && bgp::cyclic(&pats) {
-            bgp.leapfrog(&pats, &flat)
+            bgp.leapfrog(&pats, &flat, self.variable_order(&pats))
         } else if let Some(order) = self.planned_order(&pats, &rows) {
             bgp.eval_order(&pats, &order, flat)
         } else {
             bgp.eval_greedy(&pats, flat)
         };
         out.chunks_exact(w).map(<[TermId]>::to_vec).collect()
+    }
+
+    /// Leapfrog variable order from the optimizer's cost model (task #5), when statistics are available.
+    fn variable_order(&self, pats: &[[Slot; 3]]) -> Option<Vec<usize>> {
+        let (stats, _) = self.stats?;
+        let conv = |s: &Slot| match *s { Slot::Const(c) => opt::plan::Slot::Const(c.unwrap()), Slot::Var(v) => opt::plan::Slot::Var(v as u32) };
+        let tps: Vec<opt::plan::TriplePattern> = pats.iter().map(|p| opt::plan::TriplePattern { s: conv(&p[0]), p: conv(&p[1]), o: conv(&p[2]) }).collect();
+        Some(opt::planner::choose_variable_order(&tps, stats).into_iter().map(|v| v as usize).collect())
     }
 
     /// Pattern order from the cost-based planner: leaves of its join tree, left to right. Used for top-level BGPs

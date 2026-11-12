@@ -15,6 +15,8 @@ for sys in "$@"; do
     rdf4j-native) cmd=(java -Xmx24g -cp "$CP" Rdf4jServer native $T/rdf4j-native$S - 3040); url=http://127.0.0.1:3040/sparql ;;
     rdf4j-mem)    cmd=(java -Xmx24g -cp "$CP" Rdf4jServer memory x $T/lubm$S.nt 3041); url=http://127.0.0.1:3041/sparql ;;
   esac
+  port=${url#http://127.0.0.1:}; port=${port%%/*}
+  if lsof -nP -iTCP:$port -sTCP:LISTEN >/dev/null; then echo "port $port busy; refusing to measure a stale server" >&2; exit 1; fi
   "${cmd[@]}" > $OUT/$sys.server.log 2>&1 &
   pid=$!
   start=$(date +%s)
