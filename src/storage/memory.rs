@@ -3,6 +3,7 @@ use super::{Dictionary, Snapshot, StorageError};
 use crate::model::{Perm, TermId, TripleBatch};
 use oxrdf::{Literal, Term, Triple};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 const INLINE: u64 = 0xf000_0000_0000_0000;
 fn inline(term: &Term) -> Option<TermId> {
@@ -27,8 +28,8 @@ fn slot(p: Perm) -> usize {
 
 pub struct MemorySnapshot {
     dictionary: HashMap<Term, TermId>,
-    reverse: HashMap<TermId, Term>,
-    direct: Vec<Option<(TermId, Term)>>,
+    reverse: HashMap<TermId, Arc<Term>>,
+    direct: Vec<Option<(TermId, Arc<Term>)>>,
     indexes: [Vec<[TermId; 3]>; 6],
     first_keys: [Vec<(TermId, usize)>; 6],
 }
@@ -157,7 +158,7 @@ impl MemorySnapshot {
             };
             if !valid_tag
                 || snapshot.dictionary.insert(term.clone(), id).is_some()
-                || snapshot.reverse.insert(id, term).is_some()
+                || snapshot.reverse.insert(id, Arc::new(term)).is_some()
             {
                 return Err(bad());
             }
@@ -222,8 +223,9 @@ impl MemorySnapshot {
             TermId((kind << 60) | self.reverse.len() as u64)
         });
         self.dictionary.insert(term.clone(), id);
-        self.direct.push(if id.0 >> 60 == 15 { None } else { Some((id, term.clone())) });
-        self.reverse.insert(id, term);
+        let shared = Arc::new(term);
+        self.direct.push(if id.0 >> 60 == 15 { None } else { Some((id, Arc::clone(&shared))) });
+        self.reverse.insert(id, shared);
         id
     }
     fn matching<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> &'a [[TermId; 3]] {
@@ -264,7 +266,7 @@ impl Dictionary for MemorySnapshot {
         let index = (id.0 & 0x0fff_ffff_ffff_ffff) as usize;
         let (stored_id, term) = self.direct.get(index).and_then(Option::as_ref).expect("unknown term ID");
         assert_eq!(*stored_id, id, "unknown term ID");
-        term.clone()
+        (**term).clone()
     }
 }
 impl Snapshot for MemorySnapshot {
