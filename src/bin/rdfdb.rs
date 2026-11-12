@@ -101,7 +101,11 @@ fn serve_store(args: &[String]) {
     let init = args.iter().position(|a| a == "--init").map(|i| std::path::PathBuf::from(&args[i + 1]));
     let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
     let t = Instant::now();
-    let store = rdfdb::store::Store::open(&args[2], init.as_deref(), workers).expect("open store");
+    let store = if args.iter().any(|a| a == "--disk") {
+        rdfdb::store::Store::open_with(&args[2], init.as_deref(), Box::new(rdfdb::storage::DiskBase { workers }))
+    } else {
+        rdfdb::store::Store::open(&args[2], init.as_deref(), workers)
+    }.expect("open store");
     eprintln!("opened {} in {:.2}s ({} pending changes replayed)", args[2], t.elapsed().as_secs_f64(), store.snapshot().delta_len());
     // Statistics describe the base; they are used only while there are no pending changes (they could otherwise
     // report a predicate as absent that an update added). Compaction rebuilds them.

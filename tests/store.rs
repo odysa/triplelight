@@ -170,3 +170,28 @@ fn concurrent_commits_are_all_durable() {
     let n = answers(&*store.snapshot(), "SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }");
     assert!(n[0].contains("value: \"400\""), "{n:?}");
 }
+
+#[test]
+fn disk_base_replays_and_compacts_updates() {
+    use rdfdb::storage::DiskBase;
+    let dir = tmp("disk-base");
+    let open = || Store::open_with(&dir, None, Box::new(DiskBase { workers: 1 })).unwrap();
+    let store = open();
+    store.commit(&[(Change::Insert, t(1, 0, 2)), (Change::Insert, t(3, 1, 4))]).unwrap();
+    drop(store);
+    let store = open();
+    let before = store.snapshot();
+    let expected = answers(&*before, QUERIES[0]);
+    assert_eq!(expected.len(), 2);
+    store.compact().unwrap();
+    assert_eq!(answers(&*before, QUERIES[0]), expected);
+    assert_eq!(answers(&*store.snapshot(), QUERIES[0]), expected);
+    drop(before); drop(store);
+    let store = open();
+    assert_eq!(answers(&*store.snapshot(), QUERIES[0]), expected);
+    store.commit(&[(Change::Delete, t(1, 0, 2))]).unwrap();
+    drop(store);
+    let store = open();
+    assert_eq!(answers(&*store.snapshot(), QUERIES[0]).len(), 1);
+    drop(store); std::fs::remove_dir_all(dir).unwrap();
+}
