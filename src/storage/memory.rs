@@ -248,6 +248,9 @@ impl Snapshot for MemorySnapshot {
         }))
     }
     fn count(&self, perm: Perm, prefix: &[TermId]) -> u64 {
+        if let [a, b, c] = prefix {
+            return u64::from(self.indexes[slot(perm)].binary_search(&[*a, *b, *c]).is_ok());
+        }
         self.matching(perm, prefix).len() as u64
     }
     fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Option<TermId> {
@@ -297,6 +300,7 @@ mod tests {
                 }
             }
             assert_eq!(store.count(perm, &[]), 3);
+            assert_eq!(store.count(perm, &[TermId(0), ordered[1], ordered[2]]), 0);
             assert_eq!(store.seek(perm, &ordered, ordered[0]), None);
         }
     }
