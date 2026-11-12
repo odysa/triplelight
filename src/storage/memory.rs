@@ -125,8 +125,24 @@ impl MemorySnapshot {
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self::from_triples(triples))
     }
+    /// Parse an N-Triples file in bounded worker threads, then sort the six indexes in parallel.
+    /// Dictionary construction remains serial and the full parsed dataset remains in memory.
+    pub fn from_ntriples_parallel_file(path: impl AsRef<std::path::Path>, workers: usize) -> std::io::Result<Self> {
+        use rayon::prelude::*;
+        if workers == 0 { return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "workers must be nonzero")); }
+        let readers = oxttl::NTriplesParser::new().split_file_for_parallel_parsing(path, workers)?;
+        let pool = rayon::ThreadPoolBuilder::new().num_threads(workers).build().map_err(std::io::Error::other)?;
+        pool.install(|| {
+            let chunks: Result<Vec<Vec<Triple>>, _> = readers.into_par_iter().map(|reader| reader.collect()).collect();
+            let chunks = chunks.map_err(std::io::Error::other)?;
+            Ok(Self::build_triples(chunks.into_iter().flatten(), true))
+        })
+    }
     /// Constructs a complete immutable snapshot from parsed RDF triples.
     pub fn from_triples(triples: impl IntoIterator<Item = Triple>) -> Self {
+        Self::build_triples(triples, false)
+    }
+    fn build_triples(triples: impl IntoIterator<Item = Triple>, parallel_sort: bool) -> Self {
         let mut store = Self {
             dictionary: HashMap::new(),
             reverse: HashMap::new(),
@@ -145,9 +161,11 @@ impl MemorySnapshot {
                 store.indexes[slot(perm)].push([ids[order[0]], ids[order[1]], ids[order[2]]]);
             }
         }
-        for index in &mut store.indexes {
-            index.sort_unstable();
-            index.dedup();
+        if parallel_sort {
+            use rayon::prelude::*;
+            store.indexes.par_iter_mut().for_each(|index| { index.sort_unstable(); index.dedup(); });
+        } else {
+            for index in &mut store.indexes { index.sort_unstable(); index.dedup(); }
         }
         store.rebuild_first_keys();
         store
@@ -485,6 +503,23 @@ mod tests {
         let snap = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
         assert_eq!(snap.count(Perm::Spo, &[]).unwrap(), 1);
         assert!(MemorySnapshot::from_ntriples(format!("{row}broken").as_bytes()).is_err());
+    }
+    #[test]
+    fn parallel_file_load_matches_serial_and_rejects_invalid() {
+        let path=std::env::temp_dir().join(format!("rdf-parallel-load-{}.nt",std::process::id()));
+        let mut text=String::new();
+        for i in 0..4000 { text.push_str(&format!("_:node{} <urn:p> \"value{}\" .\n", i%100, i%113)); }
+        std::fs::write(&path,&text).unwrap();
+        let serial=MemorySnapshot::from_ntriples(text.as_bytes()).unwrap();
+        let parallel=MemorySnapshot::from_ntriples_parallel_file(&path,4).unwrap();
+        for perm in Perm::ALL {
+            let rows=|s:&MemorySnapshot| -> Vec<[TermId;3]> { s.scan(perm,&[]).map(|b|b.unwrap()).flat_map(|b|(0..b.len()).map(|i|[b.cols[0][i],b.cols[1][i],b.cols[2][i]]).collect::<Vec<_>>()).collect() };
+            assert_eq!(rows(&serial),rows(&parallel));
+        }
+        assert!(MemorySnapshot::from_ntriples_parallel_file(&path,0).is_err());
+        text.push_str("not valid");std::fs::write(&path,text).unwrap();
+        assert!(MemorySnapshot::from_ntriples_parallel_file(&path,4).is_err());
+        std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn turtle_loader_handles_prefixes_and_errors() {
