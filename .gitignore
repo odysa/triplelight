@@ -2,3 +2,4 @@ target/
 data/
 *.db
 bench/tools/
+bench/rdf4j-server/target/
