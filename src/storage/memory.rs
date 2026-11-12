@@ -206,6 +206,7 @@ impl MemorySnapshot {
             return &[];
         }
         let index = &self.indexes[slot(perm)];
+        if prefix.is_empty() { return index; }
         // Pad the prefix to full keys so each probe is a fixed-size array comparison, not a slice comparison.
         let (mut low, mut high) = ([TermId(0); 3], [TermId(u64::MAX); 3]);
         low[..prefix.len()].copy_from_slice(prefix);
