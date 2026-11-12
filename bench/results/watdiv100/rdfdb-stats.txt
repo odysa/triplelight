@@ -1,0 +1,21 @@
+query             rdfdb-stats
+C1         191.74ms n=8      
+C2         534.94ms n=0      
+C3         272.43ms n=429276 
+F1          61.99ms n=0      
+F2         237.78ms n=13     
+F3          38.43ms n=85     
+F4         404.74ms n=0      
+F5          32.06ms n=25     
+L1           2.97ms n=2      
+L2           3.74ms n=229    
+L3           1.82ms n=19     
+L4           9.87ms n=68     
+L5           5.75ms n=254    
+S1         264.87ms n=0      
+S2          13.00ms n=16     
+S3          15.61ms n=0      
+S4          11.18ms n=1      
+S5          14.40ms n=0      
+S6          16.46ms n=15     
+S7           0.62ms n=0      
