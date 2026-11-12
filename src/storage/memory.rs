@@ -26,9 +26,9 @@ fn slot(p: Perm) -> usize {
 }
 
 pub struct MemorySnapshot {
-    dictionary: HashMap<Term, TermId>,
-    reverse: HashMap<TermId, Term>,
-    indexes: [Vec<[TermId; 3]>; 6],
+    pub(super) dictionary: HashMap<Term, TermId>,
+    pub(super) reverse: HashMap<TermId, Term>,
+    pub(super) indexes: [Vec<[TermId; 3]>; 6],
 }
 impl MemorySnapshot {
     /// Parse N-Triples and construct a snapshot only if the entire input is valid.
