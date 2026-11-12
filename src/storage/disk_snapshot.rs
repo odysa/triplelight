@@ -288,10 +288,15 @@ impl Snapshot for DiskSnapshot {
                             Ok(rows) => {
                                 pos += rows.len() as u64;
                                 for row in rows {
-                                    for (col, value) in batch.cols.iter_mut().zip(row) { col.push(value); }
+                                    for (col, value) in batch.cols.iter_mut().zip(row) {
+                                        col.push(value);
+                                    }
                                 }
                             }
-                            Err(e) => { pos = range.end; return Some(Err(e)); }
+                            Err(e) => {
+                                pos = range.end;
+                                return Some(Err(e));
+                            }
                         }
                     }
                     Some(Ok(batch))
