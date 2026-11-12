@@ -32,4 +32,4 @@ pub mod disk_index;
 #[cfg(unix)]
 mod disk_snapshot;
 #[cfg(unix)]
-pub use disk_snapshot::DiskSnapshot;
+pub use disk_snapshot::{DiskSnapshot, write_disk_snapshot};
