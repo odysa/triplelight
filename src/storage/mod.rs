@@ -18,3 +18,6 @@ pub trait Snapshot: Dictionary + Send + Sync {
     /// Seek support for leapfrog joins: smallest value >= `target` in key position `prefix.len()` under `prefix`.
     fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Option<TermId>;
 }
+
+mod memory;
+pub use memory::MemorySnapshot;
