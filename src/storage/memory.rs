@@ -252,6 +252,15 @@ impl Dictionary for MemorySnapshot {
     fn lookup(&self, term: &Term) -> Option<TermId> {
         self.dictionary.get(term).copied()
     }
+    fn resolve_ref(&self, id: TermId) -> oxrdf::TermRef<'_> {
+        if id.0 >> 60 == 15 {
+            return self.reverse.get(&id).expect("unknown term ID").as_ref();
+        }
+        let index = (id.0 & 0x0fff_ffff_ffff_ffff) as usize;
+        let (stored_id, term) = self.direct.get(index).and_then(Option::as_ref).expect("unknown term ID");
+        assert_eq!(*stored_id, id, "unknown term ID");
+        term.as_ref()
+    }
     fn resolve(&self, id: TermId) -> Term {
         if id.0 & 0xf000_0000_0000_0000 == INLINE {
             let n = ((id.0 >> 56) & 7) as usize;
@@ -423,6 +432,7 @@ mod tests {
             let id = s.intern(t.clone());
             assert_ne!(id, TermId(0));
             assert_eq!(s.resolve(id), t);
+            assert_eq!(s.resolve_ref(id).into_owned(), t);
         }
     }
 }

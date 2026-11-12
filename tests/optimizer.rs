@@ -40,6 +40,7 @@ impl Dictionary for Graph {
     fn resolve(&self, _: TermId) -> Term {
         panic!("not used")
     }
+    fn resolve_ref(&self, _: TermId) -> oxrdf::TermRef<'_> { panic!("not used") }
 }
 impl Snapshot for Graph {
     fn scan<'a>(
@@ -648,6 +649,7 @@ impl Dictionary for Faulty<'_> {
     fn resolve(&self, id: TermId) -> Term {
         self.inner.resolve(id)
     }
+    fn resolve_ref(&self, id: TermId) -> oxrdf::TermRef<'_> { self.inner.resolve_ref(id) }
 }
 impl Snapshot for Faulty<'_> {
     fn scan<'a>(
