@@ -27,7 +27,7 @@ def canon(res):
 def main():
     qdir = pathlib.Path(sys.argv[1])
     eps = [a.split("=", 1) for a in sys.argv[2:]]
-    queries = sorted(qdir.glob("*.rq"), key=lambda p: int("".join(c for c in p.stem if c.isdigit()) or 0))
+    queries = sorted(qdir.glob("*.rq"), key=lambda p: (p.stem.rstrip("0123456789"), int("".join(c for c in p.stem if c.isdigit()) or 0)))
     out = {}
     print("query  " + "  ".join(f"{n:>22}" for n, _ in eps))
     for qf in queries:
