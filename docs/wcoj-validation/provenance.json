@@ -1,0 +1,20 @@
+{
+  "source_commit": "a98a60315b53b960ccb368333e3410377483e426",
+  "paths": [
+    "index loops without stats",
+    "legacy WCOJ without stats",
+    "cost-ordered WCOJ with stats"
+  ],
+  "reference": "Jena counts from previously committed cohort reference files",
+  "cohorts": {
+    "LUBM-10": 14,
+    "WatDiv SF1": 20
+  },
+  "comparison": "full sorted RDF-term result multisets, not shortened hashes",
+  "query_modifiers": "pure SELECT BGP, no distinct/filter/limit",
+  "data_provenance": [
+    "../optimizer-lubm10/provenance.json",
+    "../optimizer-watdiv-sf1/provenance.json"
+  ],
+  "binary_sha256": "d810848043c014bc59af025d808d2d0de1b20840cc50a7413f3c5283b8bf61f5"
+}
