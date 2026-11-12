@@ -43,18 +43,25 @@ pub fn serialize(r: &QueryResult) -> (&'static str, String) {
             out.push_str("{\"head\":{\"vars\":[");
             for (i, v) in vars.iter().enumerate() { if i > 0 { out.push(',') } esc(v.as_str(), &mut out); }
             out.push_str("]},\"results\":{\"bindings\":[");
-            for (k, row) in rows.iter().enumerate() {
-                if k > 0 { out.push(',') }
-                out.push('{');
-                let mut first = true;
-                for (v, t) in vars.iter().zip(row) {
-                    let Some(t) = t else { continue };
-                    if !first { out.push(',') }
-                    first = false;
-                    esc(v.as_str(), &mut out); out.push(':'); term_json(t, &mut out);
+            use rayon::prelude::*;
+            let names: Vec<String> = vars.iter().map(|v| { let mut s = String::new(); esc(v.as_str(), &mut s); s.push(':'); s }).collect();
+            let chunks: Vec<String> = rows.par_chunks(4096).map(|chunk| {
+                let mut out = String::with_capacity(chunk.len() * 96);
+                for row in chunk {
+                    out.push_str(",{");
+                    let mut first = true;
+                    for (name, t) in names.iter().zip(row) {
+                        let Some(t) = t else { continue };
+                        if !first { out.push(',') }
+                        first = false;
+                        out.push_str(name); term_json(t, &mut out);
+                    }
+                    out.push('}');
                 }
-                out.push('}');
-            }
+                out
+            }).collect();
+            let body: String = chunks.concat();
+            out.push_str(body.strip_prefix(',').unwrap_or(&body));
             out.push_str("]}}");
             ("application/sparql-results+json", out)
         }
