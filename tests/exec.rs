@@ -79,3 +79,10 @@ fn id_results_serialize_like_decoded() {
     let slow = rdfdb::exec::results::serialize(&query(&s, q).unwrap()).1;
     assert_eq!(fast, slow);
 }
+
+#[test]
+fn errors_carry_their_kind() {
+    use rdfdb::exec::QueryErrorKind;
+    assert_eq!(query(&store(), "SELECT WHERE {").unwrap_err().kind, QueryErrorKind::Syntax);
+    assert_eq!(query(&store(), "DESCRIBE <http://ex/alice>").unwrap_err().kind, QueryErrorKind::Unsupported);
+}

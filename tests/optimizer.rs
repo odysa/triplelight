@@ -768,6 +768,7 @@ fn optimizer_count_failure_reaches_query_error() {
         },
     )
     .unwrap_err();
+    assert_eq!(e.kind, rdfdb::exec::QueryErrorKind::Storage);
     assert!(e.to_string().contains("planted count failure"));
 }
 
