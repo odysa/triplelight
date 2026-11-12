@@ -284,17 +284,14 @@ impl Snapshot for DiskSnapshot {
                     let end = pos.saturating_add(4096).min(range.end);
                     let mut batch = TripleBatch::default();
                     while pos < end {
-                        match index.get(pos) {
-                            Ok(row) => {
-                                for (col, value) in batch.cols.iter_mut().zip(row) {
-                                    col.push(value);
+                        match index.block_slice(pos, end) {
+                            Ok(rows) => {
+                                pos += rows.len() as u64;
+                                for row in rows {
+                                    for (col, value) in batch.cols.iter_mut().zip(row) { col.push(value); }
                                 }
-                                pos += 1;
                             }
-                            Err(e) => {
-                                pos = range.end;
-                                return Some(Err(e));
-                            }
+                            Err(e) => { pos = range.end; return Some(Err(e)); }
                         }
                     }
                     Some(Ok(batch))
@@ -312,26 +309,7 @@ impl Snapshot for DiskSnapshot {
         prefix: &[TermId],
         target: TermId,
     ) -> Result<Option<TermId>, StorageError> {
-        if prefix.len() >= 3 {
-            return Ok(None);
-        }
-        let index = self.index(perm);
-        let range = index.range(prefix)?;
-        let mut lo = range.start;
-        let mut hi = range.end;
-        while lo < hi {
-            let mid = lo + (hi - lo) / 2;
-            if index.get(mid)?[prefix.len()] < target {
-                lo = mid + 1;
-            } else {
-                hi = mid;
-            }
-        }
-        if lo == range.end {
-            Ok(None)
-        } else {
-            Ok(Some(index.get(lo)?[prefix.len()]))
-        }
+        self.index(perm).seek_value(prefix, target)
     }
 }
 
