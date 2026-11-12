@@ -1,0 +1,9 @@
+query                oxigraph
+q1           0.84ms n=4      
+q2       89322.33ms n=264    
+q3           1.35ms n=6      
+q4           4.71ms n=10     
+q5          93.53ms n=532    
+q6       13814.56ms n=795970 
+q7           8.32ms n=59     
+q8        3463.13ms n=5916   
