@@ -8,6 +8,7 @@ use std::fmt;
 
 const HISTOGRAM_SIZE: usize = 64;
 const MAX_CARD: f64 = 1e300;
+const MAX_CS_REFINEMENT_ROWS: u64 = 4096;
 
 #[derive(Clone, Debug)]
 struct Distinct {
@@ -114,6 +115,7 @@ pub struct Stats {
     objects: Distinct,
     equality: [u64; 8],
     exact_counts: HashMap<TriplePattern, u64>,
+    exact_object_cs_counts: HashMap<TriplePattern, Vec<u64>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -175,8 +177,37 @@ impl Stats {
                     _ => unreachable!(),
                 })
                 .collect();
-            self.exact_counts
-                .insert(*pattern, snapshot.count(perm, &prefix));
+            let count = snapshot.count(perm, &prefix);
+            self.exact_counts.insert(*pattern, count);
+            // A small POS range can repair a bounded histogram's rare-object error without
+            // executing a join. Large ranges retain the synopsis to cap planning overhead.
+            if let (Slot::Var(_), Slot::Const(pred), Slot::Const(object)) =
+                (pattern.s, pattern.p, pattern.o)
+                && count <= MAX_CS_REFINEMENT_ROWS
+                && self
+                    .predicates
+                    .get(&pred)
+                    .is_some_and(|p| p.frequencies.rounds > 0)
+            {
+                let mut counts = vec![0; self.characteristic_sets.len()];
+                for batch in snapshot.scan(Perm::Pos, &[pred, object]) {
+                    for subject in &batch.cols[2] {
+                        let predicates: BTreeSet<_> = snapshot
+                            .scan(Perm::Spo, &[*subject])
+                            .flat_map(|b| b.cols[1].clone())
+                            .collect();
+                        let key: Vec<_> = predicates.into_iter().collect();
+                        if let Some(index) = self
+                            .characteristic_sets
+                            .iter()
+                            .position(|cs| cs.predicates == key)
+                        {
+                            counts[index] += 1;
+                        }
+                    }
+                }
+                self.exact_object_cs_counts.insert(*pattern, counts);
+            }
         }
     }
     pub fn estimate_pattern(&self, pattern: &TriplePattern) -> Estimate {
@@ -301,8 +332,17 @@ impl Stats {
                 return None;
             }
         }
+        if matches!(group[0].s, Slot::Const(_))
+            && group.iter().all(|p| self.exact_counts.contains_key(p))
+        {
+            return Some(
+                group
+                    .iter()
+                    .fold(1.0, |n, p| cardinal(n * self.exact_counts[p] as f64)),
+            );
+        }
         let mut total = 0.0;
-        for cs in &self.characteristic_sets {
+        for (cs_index, cs) in self.characteristic_sets.iter().enumerate() {
             let mut rows = cs.subjects as f64;
             for p in group {
                 let Slot::Const(pred) = p.p else {
@@ -310,7 +350,10 @@ impl Stats {
                 };
                 if let Some(prop) = cs.properties.get(&pred) {
                     let matching = match p.o {
-                        Slot::Const(o) => prop.frequencies.estimate(o),
+                        Slot::Const(o) => self.exact_object_cs_counts.get(p).map_or_else(
+                            || prop.frequencies.estimate(o),
+                            |counts| counts[cs_index] as f64,
+                        ),
                         Slot::Var(_) => prop.triples as f64,
                     };
                     rows = cardinal(rows * matching / cs.subjects as f64);
@@ -496,7 +539,9 @@ mod sketch_tests {
     fn hll_is_bounded_and_reasonable_for_tagged_sequential_terms() {
         let mut d = Distinct::default();
         assert_eq!(d.count(), 0.0);
-        for i in 0..10_000 { d.add(TermId((3u64 << 60) | i)); }
+        for i in 0..10_000 {
+            d.add(TermId((3u64 << 60) | i));
+        }
         assert!((7_000.0..13_000.0).contains(&d.count()), "{}", d.count());
     }
 }

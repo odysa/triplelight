@@ -492,3 +492,36 @@ fn zero_aware_q_error_reports_false_zeros() {
     assert!(q_error(2., 0).is_infinite());
     assert!(q_error(f64::NAN, 2).is_infinite());
 }
+
+#[test]
+fn bounded_pos_refinement_repairs_rare_object_stars() {
+    let mut triples = Vec::new();
+    for i in 1..=1000 {
+        triples.push([i, 10, 10000 + i]);
+        triples.push([i, 11, 20000 + i]);
+    }
+    let g = Graph::new(triples);
+    let mut stats = g.stats();
+    let q = [p(v(0), c(10), c(10001)), p(v(0), c(11), v(1))];
+    assert!(stats.estimate_bgp(&q) > 1.0);
+    stats.cache_pattern_counts(&q, &g);
+    assert_eq!(stats.estimate_bgp(&q), 1.0);
+    assert_eq!(truth(&g, &q).len(), 1);
+}
+#[test]
+fn fixed_subject_star_uses_exact_leaf_products() {
+    let g = Graph::new(vec![
+        [1, 10, 20],
+        [1, 10, 21],
+        [1, 11, 30],
+        [1, 11, 31],
+        [1, 11, 32],
+        [2, 10, 22],
+        [2, 11, 33],
+    ]);
+    let mut stats = g.stats();
+    let q = [p(c(1), c(10), v(0)), p(c(1), c(11), v(1))];
+    stats.cache_pattern_counts(&q, &g);
+    assert_eq!(stats.estimate_bgp(&q), 6.0);
+    assert_eq!(truth(&g, &q).len(), 6);
+}
