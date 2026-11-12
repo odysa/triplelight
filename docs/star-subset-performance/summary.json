@@ -1,0 +1,106 @@
+{
+  "before": {
+    "F4": {
+      "false": {
+        "clone_ns": 0,
+        "prefix_ns": 0,
+        "search_ns": 0,
+        "gate_ns": 0,
+        "total_ns": 0,
+        "query_ns": 306375,
+        "outside_plan_ns": 306375
+      },
+      "true": {
+        "clone_ns": 625,
+        "prefix_ns": 6913166,
+        "search_ns": 435027541,
+        "gate_ns": 0,
+        "total_ns": 442001875,
+        "query_ns": 442745458,
+        "outside_plan_ns": 743583
+      }
+    },
+    "S1": {
+      "false": {
+        "clone_ns": 0,
+        "prefix_ns": 0,
+        "search_ns": 0,
+        "gate_ns": 0,
+        "total_ns": 0,
+        "query_ns": 115458,
+        "outside_plan_ns": 115458
+      },
+      "true": {
+        "clone_ns": 750,
+        "prefix_ns": 12958,
+        "search_ns": 322773458,
+        "gate_ns": 0,
+        "total_ns": 322817375,
+        "query_ns": 323097333,
+        "outside_plan_ns": 234584
+      }
+    }
+  },
+  "after": {
+    "C3": {
+      "false": {
+        "clone_ns": 0,
+        "prefix_ns": 0,
+        "search_ns": 0,
+        "gate_ns": 0,
+        "total_ns": 0,
+        "query_ns": 703320000,
+        "outside_plan_ns": 703320000
+      },
+      "true": {
+        "clone_ns": 667,
+        "prefix_ns": 4875,
+        "search_ns": 3906500,
+        "gate_ns": 10375,
+        "total_ns": 3932125,
+        "query_ns": 107597417,
+        "outside_plan_ns": 103220917
+      }
+    },
+    "F4": {
+      "false": {
+        "clone_ns": 0,
+        "prefix_ns": 0,
+        "search_ns": 0,
+        "gate_ns": 0,
+        "total_ns": 0,
+        "query_ns": 322917,
+        "outside_plan_ns": 322917
+      },
+      "true": {
+        "clone_ns": 0,
+        "prefix_ns": 0,
+        "search_ns": 0,
+        "gate_ns": 12375,
+        "total_ns": 19875,
+        "query_ns": 320250,
+        "outside_plan_ns": 300167
+      }
+    },
+    "S1": {
+      "false": {
+        "clone_ns": 0,
+        "prefix_ns": 0,
+        "search_ns": 0,
+        "gate_ns": 0,
+        "total_ns": 0,
+        "query_ns": 82500,
+        "outside_plan_ns": 82500
+      },
+      "true": {
+        "clone_ns": 0,
+        "prefix_ns": 0,
+        "search_ns": 0,
+        "gate_ns": 13542,
+        "total_ns": 24041,
+        "query_ns": 140750,
+        "outside_plan_ns": 120166
+      }
+    }
+  }
+}

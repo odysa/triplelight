@@ -828,3 +828,26 @@ fn variable_order_search_matches_exhaustive_cost_and_rejects_invalid_orders() {
     assert!(variable_order_work(&chain, &stats, &large).is_some());
     assert_eq!(large, choose_variable_order(&chain, &stats));
 }
+
+#[test]
+fn work_gate_keeps_small_queries_greedy_and_admits_expanding_stars() {
+    use rdfdb::opt::planner::{MIN_OPTIMIZER_WORK, estimated_greedy_work};
+    let small = Graph::new(vec![[1, 10, 2], [2, 11, 3]]);
+    let q = [p(v(0), c(10), v(1)), p(v(1), c(11), v(2))];
+    assert!(estimated_greedy_work(&q, &small.stats()) < MIN_OPTIMIZER_WORK);
+    let mut triples = Vec::new();
+    for s in 1..=100 {
+        for o in 1000..1050 {
+            for pred in 10..13 {
+                triples.push([s, pred, o]);
+            }
+        }
+    }
+    let large = Graph::new(triples);
+    let star = [
+        p(v(0), c(10), v(1)),
+        p(v(0), c(11), v(2)),
+        p(v(0), c(12), v(3)),
+    ];
+    assert!(estimated_greedy_work(&star, &large.stats()) >= MIN_OPTIMIZER_WORK);
+}

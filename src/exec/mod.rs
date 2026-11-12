@@ -420,6 +420,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let (stats, _) = self.stats?;
         let conv = |s: &Slot| match *s { Slot::Const(c) => opt::plan::Slot::Const(c.unwrap()), Slot::Var(v) => opt::plan::Slot::Var(v as u32) };
         let tps: Vec<opt::plan::TriplePattern> = pats.iter().map(|p| opt::plan::TriplePattern { s: conv(&p[0]), p: conv(&p[1]), o: conv(&p[2]) }).collect();
+        if opt::planner::estimated_greedy_work(&tps, stats) < opt::planner::MIN_OPTIMIZER_WORK { return None; }
         Some(opt::planner::choose_variable_order(&tps, stats).into_iter().map(|v| v as usize).collect())
     }
 
@@ -428,11 +429,30 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn planned_order(&self, pats: &[[Slot; 3]], rows: &[Row]) -> Option<Vec<usize>> {
         let (stats, dynsnap) = self.stats?;
         if pats.len() < 2 || rows.len() != 1 || rows[0].iter().any(|&x| x != UNBOUND) { return None }
+        // Explicit diagnostic only; normal requests do not acquire clocks or emit output.
+        let trace = std::env::var_os("RDFDB_PROFILE_PLAN").is_some();
+        let clock = || trace.then(std::time::Instant::now);
+        let elapsed = |start: Option<std::time::Instant>| start.map_or(0, |s| s.elapsed().as_nanos());
+        let total_clock = clock();
         let conv = |s: &Slot| match *s { Slot::Const(c) => opt::plan::Slot::Const(c.unwrap()), Slot::Var(v) => opt::plan::Slot::Var(v as u32) };
         let tps: Vec<opt::plan::TriplePattern> = pats.iter().map(|p| opt::plan::TriplePattern { s: conv(&p[0]), p: conv(&p[1]), o: conv(&p[2]) }).collect();
+        let gate_clock = clock();
+        let work = opt::planner::estimated_greedy_work(&tps, stats);
+        let gate_ns = elapsed(gate_clock);
+        if trace { eprintln!("planner_gate work={work:.3} enabled={}", work >= opt::planner::MIN_OPTIMIZER_WORK); }
+        if work < opt::planner::MIN_OPTIMIZER_WORK {
+            if trace { eprintln!("planning_profile clone_ns=0 prefix_ns=0 search_ns=0 gate_ns={gate_ns} total_ns={}", elapsed(total_clock)); }
+            return None;
+        }
+        let phase = clock();
         let mut st = stats.clone();
+        let clone_ns = elapsed(phase);
+        let phase = clock();
         st.cache_pattern_counts(&tps, dynsnap).unwrap_or_else(|e| storage_failure(std::io::Error::other(e)));
+        let prefix_ns = elapsed(phase);
+        let phase = clock();
         let tree = opt::planner::plan_bgp(&tps, &st);
+        let search_ns = elapsed(phase);
         fn leaves(t: &opt::plan::JoinTree, out: &mut Vec<opt::plan::TriplePattern>) {
             use opt::plan::JoinTree::*;
             match t {
@@ -450,6 +470,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let order: Vec<usize> = ls.iter().filter_map(|l| {
             let i = (0..tps.len()).find(|&i| !used[i] && tps[i] == *l)?; used[i] = true; Some(i)
         }).collect();
+        if trace { eprintln!("planning_profile clone_ns={clone_ns} prefix_ns={prefix_ns} search_ns={search_ns} gate_ns={gate_ns} total_ns={}", elapsed(total_clock)); }
         (order.len() == tps.len()).then_some(order)
     }
 

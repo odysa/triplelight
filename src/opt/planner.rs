@@ -49,6 +49,52 @@ struct Candidate {
     vars: BTreeSet<u32>,
 }
 
+/// Work gate in approximate index seeks plus matched rows, not nanoseconds.
+pub const MIN_OPTIMIZER_WORK: f64 = 100_000.0;
+
+/// Cheap greedy work proxy: independent per-pattern domains, no CS enumeration,
+/// data reads or subset search. A wrong estimate affects strategy, never answers.
+pub fn estimated_greedy_work(patterns: &[TriplePattern], stats: &Stats) -> f64 {
+    let domains: Vec<_> = patterns
+        .iter()
+        .map(|p| stats.variable_domains(&[*p]))
+        .collect();
+    let sizes: Vec<_> = patterns
+        .iter()
+        .map(|p| stats.estimate_pattern(p).rows)
+        .collect();
+    let mut used = vec![false; patterns.len()];
+    let mut bound = BTreeSet::new();
+    let mut rows = 1.0;
+    let mut work = 0.0;
+    for _ in patterns {
+        let connected =
+            (0..patterns.len()).any(|i| !used[i] && domains[i].keys().any(|v| bound.contains(v)));
+        let mut best: Option<(usize, f64)> = None;
+        for i in 0..patterns.len() {
+            if used[i] || (connected && !domains[i].keys().any(|v| bound.contains(v))) {
+                continue;
+            }
+            let mut fanout = sizes[i];
+            for (v, ndv) in &domains[i] {
+                if bound.contains(v) {
+                    fanout /= ndv.min(sizes[i].max(1.0)).max(1.0);
+                }
+            }
+            if best.is_none_or(|(_, old)| fanout < old) {
+                best = Some((i, fanout));
+            }
+        }
+        let (i, fanout) = best.unwrap();
+        used[i] = true;
+        let next = cardinal(rows * fanout);
+        work = cardinal(work + rows + next);
+        rows = next;
+        bound.extend(domains[i].keys().copied());
+    }
+    work
+}
+
 pub fn plan_bgp(patterns: &[TriplePattern], stats: &Stats) -> JoinTree {
     plan_bgp_with_options(patterns, stats, PlannerOptions::default()).tree
 }
@@ -67,6 +113,9 @@ pub fn plan_bgp_with_options(
     }) {
         return decision(JoinTree::Empty, "empty", "exact empty scan", 0.0, None);
     }
+    let compiled =
+        (patterns.len() <= options.dp_limit.min(12)).then(|| stats.for_planning(patterns));
+    let stats = compiled.as_ref().unwrap_or(stats);
     let (binary, search) = if patterns.len() <= options.dp_limit.min(12) {
         (
             if options.binary_mode == BinaryJoinMode::IndexNestedLoop {

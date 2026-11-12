@@ -159,3 +159,33 @@ and WCOJ with statistics and the cost-based variable order. Acyclic queries stil
 exercise their normal fallback. These checks measure correctness, not latency.
 The standard CLI `query` entry point does not pass statistics, so it does not
 implicitly enable the cost-based variable order merely by containing the API.
+
+## Compiled star subsets
+
+Bounded DP now compiles each eligible subject-star's subset estimates once per
+query. Characteristic-set predicate lookups and ordered products are reused,
+instead of rescanning the synopsis for every candidate subset. The largest
+compiled star has 10 patterns (at most 1,024 subset slots). Unsupported stars and
+larger searches retain the original estimator. This is query-local estimate
+reuse, not cached answers or a cache requiring repeated queries. Exact-prefix
+refresh invalidates any compiled estimates.
+
+The recurrence appends the highest selected pattern to its lower-index prefix,
+preserving the original floating-point multiply/divide/clamp order. A unit test
+checks bitwise equality across 756 generated star subsets. Estimator limitations,
+including the Q9 error, remain unchanged.
+
+For opt-in diagnosis, `RDFDB_PROFILE_PLAN=1` prints clone, exact-count/refinement,
+search, and complete `planned_order` nanoseconds. `optimizer_hotpath` reports whole
+query time without serialization. Subtracting preparation gives parsing,
+execution and materialization together, not a pure operator/kernel time. Normal
+requests do not acquire these diagnostic clocks or write profile output.
+
+The optional statistics path first estimates greedy work from per-pattern sizes
+and uniform domains, without CS enumeration or snapshot reads. Below 100,000
+approximate index seeks plus matches it keeps the existing greedy (or legacy
+trie) order; above it, cost planning remains eligible. This is a policy threshold,
+not a latency guarantee. Misestimation can skip a useful plan or admit a costly
+one, but cannot change answers. Query-local compilation reuses per-pattern NDVs;
+rare-object refinement uses a shared CS-signature hash index instead of scanning
+all CS records for every subject.
