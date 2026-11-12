@@ -325,13 +325,15 @@ impl Store {
         // Not named by CURRENT, so at most an abandoned earlier attempt in this process.
         if new_dir.exists() { std::fs::remove_dir_all(&new_dir)?; }
         self.format.write(&new_dir, &*cur)?;
+        // Open (and so validate) the new base before committing to it: if this fails, CURRENT, the WAL and the
+        // in-memory state all still describe the old base.
+        let base = self.format.open(&new_dir)?;
         set_current(&self.dir, next)?;
         // The new base is durable and current; only now drop the log.
         w.file.set_len(0)?;
         w.file.sync_all()?;
         use std::io::Seek;
         w.file.seek(std::io::SeekFrom::Start(0))?;
-        let base = self.format.open(&new_dir)?;
         let fresh = Arc::new(Overlay { base, delta: Arc::new(Delta::default()) });
         p.latest = fresh.clone();
         *self.current.write().unwrap() = fresh;
