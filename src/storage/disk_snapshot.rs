@@ -153,6 +153,27 @@ impl DiskSnapshot {
             indexes,
         })
     }
+    /// Exhaustively check that all permutations describe the same triple set.
+    /// This can be expensive; open() does not perform it.
+    pub fn verify_permutations(&self) -> io::Result<()> {
+        let base = self.index(Perm::Spo);
+        for perm in Perm::ALL {
+            let index = self.index(perm);
+            let order = perm.order();
+            for i in 0..index.len() {
+                let row = index.get(i)?;
+                let mut spo = [TermId(0); 3];
+                for k in 0..3 {
+                    spo[order[k]] = row[k];
+                }
+                let matching = base.range(&spo)?;
+                if matching.end - matching.start != 1 {
+                    return Err(bad("permutation contents disagree"));
+                }
+            }
+        }
+        Ok(())
+    }
     fn index(&self, perm: Perm) -> &DiskIndex {
         &self.indexes[Perm::ALL.iter().position(|x| *x == perm).unwrap()]
     }
@@ -242,6 +263,29 @@ mod tests {
     use super::*;
     use oxrdf::{Literal, NamedNode, Triple};
     #[test]
+    fn deep_verification_finds_consistent_checksum_with_wrong_permutation() {
+        let p = NamedNode::new("urn:p").unwrap();
+        let t = Triple::new(
+            NamedNode::new("urn:s").unwrap(),
+            p,
+            Literal::new_simple_literal("x"),
+        );
+        let source = MemorySnapshot::from_triples([t]);
+        let dir = std::env::temp_dir().join(format!("rdf-disk-perms-{}", std::process::id()));
+        DiskSnapshot::create(&dir, &source).unwrap();
+        let mut out = File::create(dir.join("sop")).unwrap();
+        write_index(&mut out, source.indexes[0].iter().copied()).unwrap();
+        drop(out);
+        let mut manifest = fs::read(dir.join("MANIFEST")).unwrap();
+        let offset = 8 + 2 * 32;
+        manifest[offset..offset + 32].copy_from_slice(&digest(&dir.join("sop")).unwrap());
+        fs::write(dir.join("MANIFEST"), manifest).unwrap();
+        let disk = DiskSnapshot::open(&dir).unwrap();
+        assert!(disk.verify_permutations().is_err());
+        drop(disk);
+        fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
     fn cache_miss_after_truncation_is_an_error() {
         let p = NamedNode::new("urn:p").unwrap();
         let rows = (0..34_000).map(|i| {
@@ -277,6 +321,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("rdf-disk-snapshot-{}", std::process::id()));
         DiskSnapshot::create(&dir, &source).unwrap();
         let disk = DiskSnapshot::open(&dir).unwrap();
+        disk.verify_permutations().unwrap();
         for perm in Perm::ALL {
             let src: Vec<_> = source
                 .scan(perm, &[])
