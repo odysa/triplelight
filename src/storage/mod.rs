@@ -21,3 +21,6 @@ pub trait Snapshot: Dictionary + Send + Sync {
 
 mod memory;
 pub use memory::MemorySnapshot;
+
+#[cfg(unix)]
+pub mod disk_index;
