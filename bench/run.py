@@ -22,7 +22,7 @@ def canon(res):
         v = b["value"] if b["type"] != "bnode" else "_"   # blank labels differ across systems
         return f'{b["type"]}|{v}|{b.get("datatype","")}|{b.get("xml:lang","")}'
     rows = sorted("\t".join(val(row.get(v)) for v in vs) for row in res["results"]["bindings"])
-    return len(rows), hashlib.sha1("\n".join(rows).encode()).hexdigest()[:10]
+    return len(rows), hashlib.sha1("\n".join(rows).encode()).hexdigest()
 
 def main():
     qdir = pathlib.Path(sys.argv[1])
@@ -36,10 +36,11 @@ def main():
         for name, url in eps:
             try:
                 ask(url, q)  # warm-up
-                times, res = [], None
+                times, answers = [], set()
                 for _ in range(RUNS):
-                    t, res = ask(url, q); times.append(t)
-                n, h = canon(res)
+                    t, res = ask(url, q); times.append(t); answers.add(canon(res))
+                if len(answers) != 1: raise RuntimeError(f"answers differ across runs: {sorted(answers)}")
+                n, h = answers.pop()
                 med = statistics.median(times) * 1e3
                 ok = "" if ref is None or ref == (n, h) else " MISMATCH"
                 ref = ref or (n, h)
