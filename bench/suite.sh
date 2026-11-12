@@ -12,6 +12,7 @@ NT=$T/$D.nt
 for sys in "$@"; do
   case $sys in
     rdfdb)        cmd=(../target/release/rdfdb serve $NT 7979); url=http://127.0.0.1:7979/sparql ;;
+    rdfdb-parallel) cmd=(../target/release/rdfdb serve $NT 7979 --parallel-load=4); url=http://127.0.0.1:7979/sparql ;;
     rdfdb-stats)  cmd=(../target/release/rdfdb serve $NT 7979 --stats); url=http://127.0.0.1:7979/sparql ;;
     jena-tdb2)    [ -d $T/tdb2-$D ] || { /usr/bin/time -p $T/apache-jena-6.2.0/bin/tdb2.tdbloader --loc $T/tdb2-$D $NT 2>&1 | grep real > $OUT/$sys.load.log; }
                   cmd=(env JVM_ARGS=-Xmx24g $T/apache-jena-fuseki-6.2.0/fuseki-server --loc=$T/tdb2-$D --port=3030 /ds); url=http://127.0.0.1:3030/ds/sparql ;;

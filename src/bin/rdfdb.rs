@@ -5,10 +5,17 @@ use rdfdb::opt::stats::Stats;
 use rdfdb::storage::MemorySnapshot;
 use std::time::Instant;
 
-fn load(path: &str) -> MemorySnapshot {
+fn load(path: &str, args: &[String]) -> MemorySnapshot {
     let t = Instant::now();
-    let f = std::io::BufReader::new(std::fs::File::open(path).expect("open data file"));
-    let s = if path.ends_with(".ttl") { MemorySnapshot::from_turtle(f) } else { MemorySnapshot::from_ntriples(f) }.expect("parse");
+    let workers = args.iter().find_map(|arg| arg.strip_prefix("--parallel-load="));
+    let s = if let Some(value) = workers {
+        if path.ends_with(".ttl") { eprintln!("parallel loader supports N-Triples only"); std::process::exit(2); }
+        let n: usize = value.parse().expect("parallel-load requires a nonzero integer");
+        MemorySnapshot::from_ntriples_parallel_file(path, n).expect("parallel parse")
+    } else {
+        let f = std::io::BufReader::new(std::fs::File::open(path).expect("open data file"));
+        if path.ends_with(".ttl") { MemorySnapshot::from_turtle(f) } else { MemorySnapshot::from_ntriples(f) }.expect("parse")
+    };
     eprintln!("loaded {path} in {:.2}s", t.elapsed().as_secs_f64());
     s
 }
@@ -38,7 +45,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
         Some("query") => {
-            let snap = load(&args[2]);
+            let snap = load(&args[2], &args);
             let t = Instant::now();
             match query(&snap, &args[3]) {
                 Ok(r) => { println!("{}", serialize(&r).1); eprintln!("query {:.3} ms", t.elapsed().as_secs_f64() * 1e3) }
@@ -46,7 +53,7 @@ fn main() {
             }
         }
         Some("serve") => {
-            let snap = load(&args[2]);
+            let snap = load(&args[2], &args);
             let port = args.get(3).map(String::as_str).unwrap_or("7878");
             // --stats: build optimizer statistics at load; join and leapfrog orders then come from the cost model.
             let stats = args.iter().any(|a| a == "--stats").then(|| {
