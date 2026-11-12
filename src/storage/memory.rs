@@ -214,10 +214,15 @@ mod tests {
             NamedNode::new("http://www.w3.org/2001/XMLSchema#integer").unwrap(),
         )
         .into();
-        assert_ne!(s.intern(x), s.intern(y));
+        let x_id = s.intern(x);
+        let y_id = s.intern(y);
+        assert_ne!(x_id, TermId(0));
+        assert_ne!(y_id, TermId(0));
+        assert_ne!(x_id, y_id);
         for v in ["", "é", "1234567", "12345678"] {
             let t: Term = Literal::new_simple_literal(v).into();
             let id = s.intern(t.clone());
+            assert_ne!(id, TermId(0));
             assert_eq!(s.resolve(id), t);
         }
     }
