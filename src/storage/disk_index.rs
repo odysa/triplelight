@@ -2,19 +2,55 @@
 //! Checksums detect accidental corruption; the manifest is not authenticated.
 use crate::model::TermId;
 use sha2::{Digest, Sha256};
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::fs::File;
 use std::io::{self, ErrorKind, Write};
 use std::os::unix::fs::FileExt;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 
 const MAGIC: &[u8; 8] = b"RDFIDX02";
 const HEADER: u64 = 24;
 const ROW: u64 = 24;
 const BLOCK_ROWS: u64 = 256;
 const META: u64 = 56;
-const CACHE_BLOCKS: usize = 128;
+static CACHE_MB_OVERRIDE: AtomicUsize = AtomicUsize::new(0);
+static DEFAULT_CACHE_MB: OnceLock<usize> = OnceLock::new();
+/// Sets the per-snapshot aggregate block cache target before opening a snapshot.
+pub fn set_cache_budget_mb(value: usize) -> io::Result<()> {
+    if value == 0 {
+        return Err(io::Error::new(
+            ErrorKind::InvalidInput,
+            "cache budget must be nonzero",
+        ));
+    }
+    CACHE_MB_OVERRIDE.store(value, Ordering::Relaxed);
+    Ok(())
+}
+fn cache_budget_mb() -> usize {
+    let value = CACHE_MB_OVERRIDE.load(Ordering::Relaxed);
+    if value != 0 {
+        return value;
+    }
+    *DEFAULT_CACHE_MB.get_or_init(|| {
+        #[cfg(target_os = "macos")]
+        if let Ok(out) = std::process::Command::new("/usr/sbin/sysctl")
+            .args(["-n", "hw.memsize"])
+            .output()
+        {
+            if out.status.success() {
+                if let Ok(bytes) = String::from_utf8_lossy(&out.stdout).trim().parse::<u64>() {
+                    return usize::try_from(bytes / 4 / (1024 * 1024))
+                        .unwrap_or(256)
+                        .max(1);
+                }
+            }
+        }
+        256
+    })
+}
+
 fn invalid(reason: &'static str) -> io::Error {
     io::Error::new(ErrorKind::InvalidData, reason)
 }
@@ -75,12 +111,17 @@ struct BlockMeta {
     last: [TermId; 3],
     checksum: [u8; 32],
 }
+struct CacheShard {
+    entries: HashMap<u64, (Arc<Vec<[TermId; 3]>>, bool)>,
+    clock: VecDeque<u64>,
+}
 pub struct DiskIndex {
     file: File,
     rows: u64,
     identity: [u8; 32],
     blocks: Vec<BlockMeta>,
-    cache: Mutex<VecDeque<(u64, Arc<Vec<[TermId; 3]>>)>>,
+    cache: Vec<Mutex<CacheShard>>,
+    shard_capacity: usize,
 }
 impl DiskIndex {
     pub fn open(path: impl AsRef<Path>) -> io::Result<Self> {
@@ -138,17 +179,32 @@ impl DiskIndex {
             rows,
             identity: footer,
             blocks: entries,
-            cache: Mutex::new(VecDeque::new()),
+            cache: (0..16)
+                .map(|_| {
+                    Mutex::new(CacheShard {
+                        entries: HashMap::new(),
+                        clock: VecDeque::new(),
+                    })
+                })
+                .collect(),
+            shard_capacity: cache_budget_mb()
+                .saturating_mul(1024 * 1024)
+                .checked_div(6 * 16 * BLOCK_ROWS as usize * ROW as usize)
+                .unwrap_or(1)
+                .max(1),
         })
     }
     pub fn identity(&self) -> [u8; 32] {
         self.identity
     }
     pub fn clear_cache(&self) -> io::Result<()> {
-        self.cache
-            .lock()
-            .map_err(|_| io::Error::other("index cache lock poisoned"))?
-            .clear();
+        for shard in &self.cache {
+            let mut cache = shard
+                .lock()
+                .map_err(|_| io::Error::other("index cache lock poisoned"))?;
+            cache.entries.clear();
+            cache.clock.clear();
+        }
         Ok(())
     }
     pub fn len(&self) -> u64 {
@@ -158,15 +214,12 @@ impl DiskIndex {
         self.rows == 0
     }
     fn block(&self, id: u64) -> io::Result<Arc<Vec<[TermId; 3]>>> {
-        let mut cache = self
-            .cache
+        let mut cache = self.cache[(id as usize) % self.cache.len()]
             .lock()
             .map_err(|_| io::Error::other("index cache lock poisoned"))?;
-        if let Some(pos) = cache.iter().position(|(key, _)| *key == id) {
-            let e = cache.remove(pos).unwrap();
-            let r = Arc::clone(&e.1);
-            cache.push_back(e);
-            return Ok(r);
+        if let Some((value, referenced)) = cache.entries.get_mut(&id) {
+            *referenced = true;
+            return Ok(Arc::clone(value));
         }
         let start = id
             .checked_mul(BLOCK_ROWS)
@@ -193,10 +246,18 @@ impl DiskIndex {
             return Err(invalid("invalid index block ordering"));
         }
         let r = Arc::new(rows);
-        if cache.len() == CACHE_BLOCKS {
-            cache.pop_front();
+        while cache.entries.len() >= self.shard_capacity {
+            let old = cache.clock.pop_front().expect("cache clock consistent");
+            let entry = cache.entries.get_mut(&old).expect("cache entry consistent");
+            if entry.1 {
+                entry.1 = false;
+                cache.clock.push_back(old);
+            } else {
+                cache.entries.remove(&old);
+            }
         }
-        cache.push_back((id, Arc::clone(&r)));
+        cache.entries.insert(id, (Arc::clone(&r), true));
+        cache.clock.push_back(id);
         Ok(r)
     }
     fn row(&self, i: u64) -> io::Result<[TermId; 3]> {
@@ -230,6 +291,38 @@ impl DiskIndex {
         low[..prefix.len()].copy_from_slice(prefix);
         high[..prefix.len()].copy_from_slice(prefix);
         Ok(self.bound(low, false)?..self.bound(high, true)?)
+    }
+    /// Copies at most one decoded block from the given position.
+    pub fn block_slice(&self, start: u64, end: u64) -> io::Result<Vec<[TermId; 3]>> {
+        if start >= end || end > self.rows {
+            return Err(invalid("invalid block slice"));
+        }
+        let rows = self.block(start / BLOCK_ROWS)?;
+        let from = (start % BLOCK_ROWS) as usize;
+        let count = (end - start).min(BLOCK_ROWS - start % BLOCK_ROWS) as usize;
+        Ok(rows[from..from + count].to_vec())
+    }
+    pub fn seek_value(&self, prefix: &[TermId], target: TermId) -> io::Result<Option<TermId>> {
+        if prefix.len() >= 3 {
+            return Ok(None);
+        }
+        let mut key = [TermId(0); 3];
+        key[..prefix.len()].copy_from_slice(prefix);
+        key[prefix.len()] = target;
+        let id = self.blocks.partition_point(|m| m.last < key);
+        if id == self.blocks.len() {
+            return Ok(None);
+        }
+        let rows = self.block(id as u64)?;
+        let offset = rows.partition_point(|r| *r < key);
+        let Some(row) = rows.get(offset) else {
+            return Ok(None);
+        };
+        if &row[..prefix.len()] == prefix {
+            Ok(Some(row[prefix.len()]))
+        } else {
+            Ok(None)
+        }
     }
     pub fn get(&self, i: u64) -> io::Result<[TermId; 3]> {
         self.row(i)

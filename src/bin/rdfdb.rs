@@ -164,6 +164,15 @@ fn serve_store(args: &[String]) {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    for (i, arg) in args.iter().enumerate() {
+        let value = arg.strip_prefix("--cache-mb=").or_else(|| (arg == "--cache-mb").then(|| args.get(i + 1).map(String::as_str)).flatten());
+        if arg == "--cache-mb" && value.is_none() { eprintln!("--cache-mb requires a positive integer"); std::process::exit(2); }
+        if let Some(value) = value {
+            let parsed = value.parse::<usize>().ok().filter(|n| *n > 0).unwrap_or_else(|| { eprintln!("--cache-mb requires a positive integer"); std::process::exit(2) });
+            rdfdb::storage::disk_index::set_cache_budget_mb(parsed).expect("cache budget");
+        }
+    }
+
     match args.get(1).map(String::as_str) {
         Some("verify") => {
             if args.len() != 3 { eprintln!("usage: rdfdb verify <directory>"); std::process::exit(2); }
