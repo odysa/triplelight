@@ -21,7 +21,11 @@ cd bin/Release
 ./watdiv -d ../../model/wsdbm-data-model.txt 1 > watdiv-sf1.nt
 ```
 
-Keep `saved.txt`. For each of the 20 `.txt` files directly in `testsuite/`, run:
+Keep a scale-specific copy of `saved.txt`: it is overwritten by every data
+generation, including generation at a different scale. The working generator
+directory was subsequently used for SF100; its current `saved.txt` is **not SF1**.
+The committed SF1 queries and dataset hash remain valid. Regenerate SF1 in a
+separate directory before creating additional SF1 queries. For each of the 20 `.txt` files directly in `testsuite/`, run:
 
 ```sh
 ./watdiv -q ../../model/wsdbm-data-model.txt ../../testsuite/C1.txt 1 1 > C1.rq

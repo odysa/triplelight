@@ -627,6 +627,20 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
             .unwrap(),
         );
         assert_eq!(greedy, planned, "{text}");
+        for mode in [None, Some(&stats)] {
+            let trie = normalized(
+                query_with(
+                    &snapshot,
+                    text,
+                    &Options {
+                        stats: mode,
+                        wcoj: true,
+                    },
+                )
+                .unwrap(),
+            );
+            assert_eq!(greedy, trie, "trie order result mismatch: {text}");
+        }
     }
 }
 

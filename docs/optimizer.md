@@ -151,3 +151,11 @@ check the large-search permutation, and retain the relational oracle's trie-orde
 and result-multiset checks. The executor must use this returned order when it
 constructs every relation's trie permutation. Supplying statistics is optional;
 the engine's legacy order remains the fallback without them.
+
+For engine-level trie-order verification, run the q-error example with
+`--verify-wcoj`. It compares three complete result multisets and their independent
+reference counts: index loops without statistics, legacy WCOJ without statistics,
+and WCOJ with statistics and the cost-based variable order. Acyclic queries still
+exercise their normal fallback. These checks measure correctness, not latency.
+The standard CLI `query` entry point does not pass statistics, so it does not
+implicitly enable the cost-based variable order merely by containing the API.
