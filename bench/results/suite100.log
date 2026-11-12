@@ -1,0 +1,8 @@
+rdfdb ready after 2s
+rdf4j-mem ready after 0s
+rdf4j-native ready after 1s
+bench/suite.sh: line 26: kill: (54826) - No such process
+jena-tdb2 ready after 0s
+bench/suite.sh: line 26: kill: (57908) - No such process
+oxigraph ready after 0s
+bench/suite.sh: line 26: kill: (63554) - No such process

@@ -109,7 +109,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// intersecting by index seeks the sorted value lists of every pattern containing it. Each pattern reads the
     /// permutation keyed (its constants, then its variables in the global order). The first variable's values are
     /// split across rayon workers.
-    pub fn leapfrog(&self, pats: &[[Slot; 3]], row: &[TermId]) -> Vec<TermId> {
+    pub fn leapfrog(&self, pats: &[[Slot; 3]], row: &[TermId], given: Option<Vec<usize>>) -> Vec<TermId> {
         let counts: Vec<u64> = pats.iter().map(|p| {
             let fixed: [Option<TermId>; 3] = std::array::from_fn(|i| if let Slot::Const(c) = p[i] { c } else { None });
             let (perm, prefix, n) = choose_perm(&fixed);
@@ -118,7 +118,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         if counts.contains(&0) { return Vec::new() }
         let vars_of = |p: &[Slot; 3]| -> Vec<usize> { p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect() };
         let all: HashSet<usize> = pats.iter().flat_map(vars_of).collect();
-        let mut order: Vec<usize> = Vec::new();
+        let mut order: Vec<usize> = given.filter(|o| o.len() == all.len() && o.iter().all(|v| all.contains(v))).unwrap_or_default();
         while order.len() < all.len() {
             let cand = all.iter().filter(|v| !order.contains(v)).min_by_key(|&&v| {
                 let connected = order.is_empty() || pats.iter().any(|p| { let vs = vars_of(p); vs.contains(&v) && vs.iter().any(|x| order.contains(x)) });

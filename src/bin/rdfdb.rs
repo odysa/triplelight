@@ -50,6 +50,10 @@ fn main() {
             let port = args.get(3).map(String::as_str).unwrap_or("7878");
             let server = tiny_http::Server::http(format!("127.0.0.1:{port}")).expect("bind");
             eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql");
+            // One worker per core: queries run concurrently against the same immutable snapshot.
+            let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
+            let (server, snap) = (&server, &snap);
+            std::thread::scope(|scope| for _ in 0..workers { scope.spawn(move || {
             for mut req in server.incoming_requests() {
                 let url = req.url().to_string();
                 let mut body = String::new();
@@ -58,7 +62,7 @@ fn main() {
                 let q = if is_query_body { Some(body) } else {
                     url.split_once('?').and_then(|(_, qs)| form_param(qs, "query")).or_else(|| form_param(&body, "query"))
                 };
-                let resp = match q.map(|q| (std::panic::catch_unwind(|| query(&snap, &q)), q)) {
+                let resp = match q.map(|q| (std::panic::catch_unwind(|| query(snap, &q)), q)) {
                     Some((Ok(Ok(r)), _)) => {
                         let (ct, b) = serialize(&r);
                         tiny_http::Response::from_string(b).with_header(tiny_http::Header::from_bytes("Content-Type", ct).unwrap())
@@ -74,6 +78,7 @@ fn main() {
                 };
                 let _ = req.respond(resp);
             }
+            }); });
         }
         _ => eprintln!("usage: rdfdb serve <data.nt|.ttl> [port] | rdfdb query <data> <sparql>"),
     }
