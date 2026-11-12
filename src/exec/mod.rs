@@ -3,7 +3,9 @@
 //! Solutions are full-width rows of `TermId` over every variable of the query; `UNBOUND` (0) marks an unbound
 //! slot. Storage guarantees real IDs are never 0. Terms computed by expressions (BIND, aggregates) that are not
 //! in the store get per-query scratch IDs, so ID equality stays term equality throughout.
+mod bgp;
 mod expr;
+use bgp::Slot;
 pub mod results;
 
 use crate::model::{Perm, TermId};
@@ -148,11 +150,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     // Storage reads are fallible; an error aborts the whole query (caught in `query_with`), never yields "no rows".
     fn count(&self, perm: Perm, prefix: &[TermId]) -> u64 { self.snap.count(perm, prefix).unwrap_or_else(|e| storage_failure(e)) }
-    fn seek(&self, perm: Perm, prefix: &[TermId], t: TermId) -> Option<TermId> { self.snap.seek(perm, prefix, t).unwrap_or_else(|e| storage_failure(e)) }
-    fn scan(&self, perm: Perm, prefix: &[TermId]) -> impl Iterator<Item = crate::model::TripleBatch> + '_ {
-        self.snap.scan(perm, prefix).map(|b| b.unwrap_or_else(|e| storage_failure(e)))
-    }
-
     pub(crate) fn resolve(&self, id: TermId) -> Term {
         if id.0 >> 60 == 0xe { return self.scratch.borrow().1[(id.0 & !(0xf << 60)) as usize].clone(); }
         self.snap.resolve(id)
@@ -360,7 +357,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }
     }
 
-    fn eval_bgp(&self, patterns: &[TriplePattern], mut rows: Vec<Row>) -> Vec<Row> {
+    fn eval_bgp(&self, patterns: &[TriplePattern], rows: Vec<Row>) -> Vec<Row> {
         let pats: Vec<[Slot; 3]> = patterns.iter().map(|t| {
             let p = match &t.predicate {
                 NamedNodePattern::Variable(v) => Slot::Var(self.var(v)),
@@ -369,30 +366,27 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             [self.slot_of(&t.subject), p, self.slot_of(&t.object)]
         }).collect();
         // A constant absent from the dictionary can never match.
-        if pats.iter().any(|p| p.iter().any(|s| matches!(s, Slot::Const(None)))) { return Vec::new(); }
-        if self.wcoj && rows.len() == 1 && pats.len() >= 3 && rows[0].iter().all(|&x| x == UNBOUND)
-            && pats.iter().all(|p| no_repeated_var(p)) && cyclic(&pats) {
-            return self.leapfrog(&pats, rows.pop().unwrap());
+        if rows.is_empty() || pats.iter().any(|p| p.iter().any(|s| matches!(s, Slot::Const(None)))) { return Vec::new(); }
+        let w = self.vars.len();
+        if w == 0 {
+            // No variables anywhere: every pattern is a membership test.
+            let all = pats.iter().all(|p| {
+                let ids: Vec<TermId> = p.iter().map(|s| if let Slot::Const(Some(c)) = s { *c } else { UNBOUND }).collect();
+                self.count(Perm::Spo, &ids) > 0
+            });
+            return if all { rows } else { Vec::new() };
         }
-        if let Some(order) = self.planned_order(&pats, &rows) {
-            for pi in order { rows = self.extend(&pats[pi], rows); }
-            return rows;
-        }
-        let mut remaining: Vec<usize> = (0..pats.len()).collect();
-        // Variables bound in every input row (input rows of one call share their bound set except after OPTIONAL).
-        let mut bound: HashSet<usize> = match rows.first() {
-            Some(r) => (0..r.len()).filter(|&i| rows.iter().all(|x| x[i] != UNBOUND)).collect(),
-            None => return rows,
+        let bgp = bgp::Bgp { snap: self.snap, w };
+        let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
+        let flat: Vec<TermId> = rows.concat();
+        let out = if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(bgp::no_repeated_var) && bgp::cyclic(&pats) {
+            bgp.leapfrog(&pats, &flat)
+        } else if let Some(order) = self.planned_order(&pats, &rows) {
+            bgp.eval_order(&pats, &order, flat)
+        } else {
+            bgp.eval_greedy(&pats, flat)
         };
-        while !remaining.is_empty() && !rows.is_empty() {
-            // Greedy: next pattern = smallest estimated fan-out given what is bound; prefer connected patterns.
-            let (k, _) = remaining.iter().enumerate().map(|(k, &pi)| (k, self.estimate(&pats[pi], &bound, rows.first().unwrap())))
-                .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap()).unwrap();
-            let pi = remaining.remove(k);
-            rows = self.extend(&pats[pi], rows);
-            for s in &pats[pi] { if let Slot::Var(v) = s { bound.insert(*v); } }
-        }
-        rows
+        out.chunks_exact(w).map(<[TermId]>::to_vec).collect()
     }
 
     /// Pattern order from the cost-based planner: leaves of its join tree, left to right. Used for top-level BGPs
@@ -425,119 +419,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         (order.len() == tps.len()).then_some(order)
     }
 
-    /// Leapfrog triejoin (Veldhuizen, ICDT'14): bind one variable at a time; for each variable, intersect the sorted
-    /// value lists of every pattern containing it, using index seeks. Each pattern reads the permutation whose key
-    /// order is (its constants, then its variables in the global variable order).
-    fn leapfrog(&self, pats: &[[Slot; 3]], row: Row) -> Vec<Row> {
-        // Global variable order: start from the most selective pattern, then grow along shared variables,
-        // preferring variables whose cheapest pattern (constants only) is smallest.
-        let consts_count = |p: &[Slot; 3]| {
-            let fixed: Vec<Option<TermId>> = p.iter().map(|s| if let Slot::Const(c) = s { *c } else { None }).collect();
-            let (perm, prefix) = choose_perm(&fixed);
-            self.count(perm, &prefix)
-        };
-        let counts: Vec<u64> = pats.iter().map(consts_count).collect();
-        // Variable-free patterns never join on anything; they only gate the result.
-        if pats.iter().zip(&counts).any(|(p, &c)| c == 0 || (p.iter().all(|s| matches!(s, Slot::Const(_))) && c == 0)) { return Vec::new() }
-        let vars_of = |p: &[Slot; 3]| -> Vec<usize> { p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect() };
-        let mut order: Vec<usize> = Vec::new();
-        let all: HashSet<usize> = pats.iter().flat_map(vars_of).collect();
-        while order.len() < all.len() {
-            let cand = all.iter().filter(|v| !order.contains(v))
-                .min_by_key(|&&v| {
-                    let connected = order.is_empty() || pats.iter().any(|p| { let vs = vars_of(p); vs.contains(&v) && vs.iter().any(|w| order.contains(w)) });
-                    let best = pats.iter().zip(&counts).filter(|(p, _)| vars_of(p).contains(&v)).map(|(_, c)| *c).min().unwrap_or(u64::MAX);
-                    (!connected, best, v)
-                }).copied().unwrap();
-            order.push(cand);
-        }
-        let rank = |v: usize| order.iter().position(|&w| w == v).unwrap();
-        // Per pattern: its permutation and, per position in that key order, what fills it.
-        struct P { perm: Perm, key: [Slot; 3] }
-        let plans: Vec<P> = pats.iter().map(|p| {
-            let mut pos = [0usize, 1, 2];
-            pos.sort_by_key(|&i| match p[i] { Slot::Const(_) => (0, 0), Slot::Var(v) => (1, rank(v)) });
-            let perm = *Perm::ALL.iter().find(|q| q.order() == pos).unwrap();
-            P { perm, key: [p[pos[0]], p[pos[1]], p[pos[2]]] }
-        }).collect();
-        let mut out = Vec::new();
-        let mut row = row;
-        self.lf_depth(&plans.iter().map(|p| (p.perm, p.key)).collect::<Vec<_>>(), &order, 0, &mut row, &mut out);
-        out
-    }
-
-    fn lf_depth(&self, plans: &[(Perm, [Slot; 3])], order: &[usize], d: usize, row: &mut Row, out: &mut Vec<Row>) {
-        if d == order.len() { out.push(row.clone()); return }
-        let v = order[d];
-        // For each pattern containing v: key prefix (constants + already-bound variables) before v.
-        let mut its: Vec<(Perm, Vec<TermId>)> = Vec::new();
-        for (perm, key) in plans {
-            let Some(k) = key.iter().position(|s| matches!(s, Slot::Var(w) if *w == v)) else { continue };
-            let prefix: Vec<TermId> = key[..k].iter().map(|s| match s { Slot::Const(c) => c.unwrap(), Slot::Var(w) => row[*w] }).collect();
-            its.push((*perm, prefix));
-        }
-        let mut x = TermId(1);
-        'outer: loop {
-            let mut agreed = 0;
-            let mut i = 0;
-            while agreed < its.len() {
-                let (perm, prefix) = &its[i];
-                let Some(y) = self.seek(*perm, prefix, x) else { break 'outer };
-                if y == x { agreed += 1 } else { x = y; agreed = 1 }
-                i = (i + 1) % its.len();
-            }
-            row[v] = x;
-            self.lf_depth(plans, order, d + 1, row, out);
-            row[v] = UNBOUND;
-            if x.0 == u64::MAX { break }
-            x = TermId(x.0 + 1);
-        }
-    }
-
-    fn estimate(&self, pat: &[Slot; 3], bound: &HashSet<usize>, sample: &Row) -> f64 {
-        let fixed: Vec<Option<TermId>> = pat.iter().map(|s| match s {
-            Slot::Const(c) => *c,
-            Slot::Var(v) if bound.contains(v) => Some(sample[*v]),
-            _ => None,
-        }).collect();
-        let (perm, prefix) = choose_perm(&fixed);
-        let n = self.count(perm, &prefix) as f64;
-        let connected = pat.iter().any(|s| matches!(s, Slot::Var(v) if bound.contains(v)));
-        if bound.is_empty() || connected { n } else { n * 1e6 } // avoid cross products
-    }
-
-    /// Index nested-loop join of `rows` with one triple pattern, reading only the matching index range per row.
-    fn extend(&self, pat: &[Slot; 3], rows: Vec<Row>) -> Vec<Row> {
-        let mut out = Vec::new();
-        for row in rows {
-            let fixed: Vec<Option<TermId>> = pat.iter().map(|s| match s {
-                Slot::Const(c) => *c,
-                Slot::Var(v) => (row[*v] != UNBOUND).then_some(row[*v]),
-            }).collect();
-            let (perm, prefix) = choose_perm(&fixed);
-            // Fully bound pattern: a membership probe, no scan or batch allocation.
-            if prefix.len() == 3 {
-                if self.count(perm, &prefix) > 0 { out.push(row) }
-                continue;
-            }
-            let order = perm.order();
-            for batch in self.scan(perm, &prefix) {
-                'rows: for i in 0..batch.len() {
-                    let mut spo = [UNBOUND; 3];
-                    for (k, &pos) in order.iter().enumerate() { spo[pos] = batch.cols[k][i]; }
-                    let mut r = row.clone();
-                    for pos in 0..3 {
-                        if let Slot::Var(v) = pat[pos] {
-                            if r[v] == UNBOUND { r[v] = spo[pos] } else if r[v] != spo[pos] { continue 'rows }
-                        }
-                    }
-                    out.push(r);
-                }
-            }
-        }
-        out
-    }
-
     pub(crate) fn ebv(&self, e: &Expression, r: &Row) -> bool {
         self.value(e, r).and_then(|t| expr::ebv(&t)).unwrap_or(false)
     }
@@ -552,58 +433,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 /// Marker payload for storage failures raised inside evaluation.
 struct StorageFailure(String);
 fn storage_failure(e: crate::storage::StorageError) -> ! { std::panic::panic_any(StorageFailure(e.to_string())) }
-
-#[derive(Copy, Clone)]
-enum Slot { Const(Option<TermId>), Var(usize) }
-
-/// GYO reduction: a BGP is acyclic iff repeatedly removing variables that occur in one pattern only, and patterns
-/// whose variables are contained in another pattern's, empties the hypergraph.
-fn cyclic(pats: &[[Slot; 3]]) -> bool {
-    let mut edges: Vec<HashSet<usize>> = pats.iter()
-        .map(|p| p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect()).collect();
-    loop {
-        let mut changed = false;
-        let mut occ: HashMap<usize, usize> = HashMap::new();
-        for e in &edges { for v in e { *occ.entry(*v).or_default() += 1 } }
-        for e in edges.iter_mut() {
-            let before = e.len();
-            e.retain(|v| occ[v] > 1);
-            changed |= e.len() != before;
-        }
-        let n = edges.len();
-        let mut keep = vec![true; n];
-        for i in 0..n {
-            if edges[i].is_empty() { keep[i] = false; continue }
-            if (0..n).any(|j| j != i && keep[j] && edges[i].is_subset(&edges[j]) && (edges[i] != edges[j] || j < i)) { keep[i] = false }
-        }
-        let mut k = keep.iter();
-        edges.retain(|_| *k.next().unwrap());
-        changed |= edges.len() != n;
-        if edges.is_empty() { return false }
-        if !changed { return true }
-    }
-}
-
-fn no_repeated_var(p: &[Slot; 3]) -> bool {
-    let vs: Vec<usize> = p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect();
-    vs.iter().collect::<HashSet<_>>().len() == vs.len()
-}
-
-/// Picks the permutation whose leading key components are exactly the fixed positions.
-fn choose_perm(fixed: &[Option<TermId>]) -> (Perm, Vec<TermId>) {
-    let b = [fixed[0].is_some(), fixed[1].is_some(), fixed[2].is_some()];
-    let perm = match b {
-        [true, true, _] => Perm::Spo,
-        [true, false, true] => Perm::Sop,
-        [true, false, false] => Perm::Spo,
-        [false, true, true] => Perm::Pos,
-        [false, true, false] => Perm::Pso,
-        [false, false, true] => Perm::Osp,
-        [false, false, false] => Perm::Spo,
-    };
-    let prefix = perm.order().iter().map_while(|&p| fixed[p]).collect();
-    (perm, prefix)
-}
 
 /// Compatible-mapping join (used to merge subquery results back into the outer rows).
 fn join_rows(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
