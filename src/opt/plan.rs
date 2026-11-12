@@ -11,6 +11,8 @@ pub struct TriplePattern { pub s: Slot, pub p: Slot, pub o: Slot }
 /// Physical join tree for one basic graph pattern. `est` = estimated output rows.
 #[derive(Clone, Debug)]
 pub enum JoinTree {
+    /// Identity relation: one empty binding (empty basic graph pattern).
+    Unit,
     /// Range scan of `perm` with the pattern's constants as the key prefix; output sorted by the next key slot.
     Scan { pattern: TriplePattern, perm: Perm, est: f64 },
     /// Both inputs sorted on `var`.
@@ -29,6 +31,7 @@ impl JoinTree {
             JoinTree::Scan { est, .. } | JoinTree::MergeJoin { est, .. }
             | JoinTree::HashJoin { est, .. } | JoinTree::Leapfrog { est, .. } => *est,
             JoinTree::Empty => 0.0,
+            JoinTree::Unit => 1.0,
         }
     }
 }
