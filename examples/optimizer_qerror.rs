@@ -68,11 +68,12 @@ fn encode(
 }
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<_> = std::env::args().collect();
-    let verify = args.len() == 5 && args[4] == "--verify-executor";
+    let verify_wcoj = args.len() == 5 && args[4] == "--verify-wcoj";
+    let verify = args.len() == 5 && args[4] == "--verify-executor" || verify_wcoj;
     let bench = args.len() == 5 && args[4] == "--bench-planner";
     if args.len() != 4 && !verify && !bench {
         return Err(io::Error::other(
-            "usage: optimizer_qerror DATA.nt QUERY_DIR REFERENCE_COUNTS.tsv",
+            "usage: optimizer_qerror DATA.nt QUERY_DIR REFERENCE_COUNTS.tsv [--verify-executor|--verify-wcoj|--bench-planner]",
         )
         .into());
     }
@@ -183,15 +184,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         if verify {
             use rdfdb::exec::{Options, QueryResult, query_with};
             let mut solutions = Vec::new();
-            for mode in [None, Some(&stats)] {
-                let QueryResult::Solutions { rows, .. } = query_with(
-                    &snapshot,
-                    &query,
-                    &Options {
-                        stats: mode,
-                        wcoj: false,
-                    },
-                )?
+            let modes = if verify_wcoj {
+                vec![(None, false), (None, true), (Some(&stats), true)]
+            } else {
+                vec![(None, false), (Some(&stats), false)]
+            };
+            for (mode, wcoj) in modes {
+                let QueryResult::Solutions { rows, .. } =
+                    query_with(&snapshot, &query, &Options { stats: mode, wcoj })?
                 else {
                     unreachable!()
                 };
@@ -208,7 +208,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
                 solutions.push(normalized);
             }
-            if solutions[0] != solutions[1] {
+            if solutions.windows(2).any(|pair| pair[0] != pair[1]) {
                 return Err(io::Error::other(format!("executor multiset mismatch: {name}")).into());
             }
             eprintln!("executor_verified={name} rows={actual}");
