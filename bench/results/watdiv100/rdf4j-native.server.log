@@ -1,7 +1,7 @@
 SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
 SLF4J: Defaulting to no-operation (NOP) logger implementation
 SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
-loaded in 362.40s
+loaded in 254.63s
 serving on 3040
-rdf4j-native ready after 365s
-rss_mb 12013
+rdf4j-native ready after 256s
+rss_mb 12016

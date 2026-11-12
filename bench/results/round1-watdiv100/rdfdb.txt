@@ -1,0 +1,21 @@
+query                   rdfdb
+C1          11.73ms n=8      
+C2          17.87ms n=0      
+C3         543.94ms n=429276 
+F1           0.94ms n=0      
+F2           2.63ms n=13     
+F3           4.03ms n=85     
+F4           1.85ms n=0      
+F5           0.85ms n=25     
+L1           0.53ms n=2      
+L2           1.29ms n=229    
+L3           0.48ms n=19     
+L4           1.37ms n=68     
+L5           4.05ms n=254    
+S1           0.69ms n=0      
+S2           1.12ms n=16     
+S3           0.84ms n=0      
+S4           1.11ms n=1      
+S5           0.85ms n=0      
+S6           0.68ms n=15     
+S7           0.46ms n=0      
