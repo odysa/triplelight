@@ -64,8 +64,9 @@ that a hash join preserves sorting.
 ## Search and physical choice
 
 Small queries (default at most 10 patterns, hard cap 12) use subset dynamic
-programming over left-deep plans, retaining the cheapest state per available
-output ordering. Larger queries greedily extend connected patterns before cross
+programming over left-deep plans, using compact cost/cardinality/predecessor arrays for index loops, with the winning
+join tree built once. The optional materialized model retains the cheapest state
+per available output ordering. Larger queries greedily extend connected patterns before cross
 products. Hash builds use the estimated smaller input. The search space does not
 include arbitrary bushy trees, sorts, parallelism or adaptive replanning.
 
@@ -81,7 +82,7 @@ fallback until an executor explicitly opts in.
 
 ## Validation status and q-error contract
 
-`cargo test --test optimizer` checks 19 integration cases, including exact prefix
+`cargo test --test optimizer` checks 20 integration cases, including exact prefix
 counts, correlated stars, multiplicities, frequency overflow, repeated variables,
 all constant masks, empty-BGP identity, physical sort/key invariants, both WCOJ
 branches and 60 generated small graphs. A separate relational oracle compares
@@ -118,3 +119,18 @@ its choice between physical algorithms. Runtime integration must separately test
 variable-order consistency, set/bag behavior and result equality.
 
 Storage errors in statistics construction and exact-count refinement return `StatsError::Storage` with the original error as its source. Refinement commits its caches only after all requested reads succeed, so failed reads cannot leave partially refreshed exact counts.
+
+## Preparation performance
+
+Immutable characteristic-set and predicate synopses are shared through `Arc` when
+`Stats` is cloned; each query retains its own exact-count caches. The public
+`characteristic_sets` field is now `Arc<Vec<CharacteristicSet>>`; read-only indexing,
+`len` and `iter` continue to work. The statistics builder uses copy-on-write mutation
+before publishing the snapshot. A query's cache refinement cannot alter another
+clone's estimates.
+
+`--bench-planner` on the q-error example measures seven preparation samples per
+saved query and prints median nanoseconds for clone, exact-prefix refinement,
+plan search and total. Parsing, data loading, initial synopsis construction and
+query execution are outside that interval. See `planner-performance/` for the
+fixed-binary comparison and its limits.

@@ -1,0 +1,18 @@
+{
+  "baseline_commit": "29ce262",
+  "baseline_binary_sha256": "ad8553b220bc4024f5d6809e9ac8aed8cf3bd0aed88c10889c3d201d9a5a9e7c",
+  "new_binary_sha256": "7b8f1325cc8f959dfc64b4aad849f784a46eef06d6027094f18834c2bdcc2750",
+  "measurement_example_sha256": "cd02436d47736fad6cd5874762af387a8023e3d2a380de2139c7870fc10f9792",
+  "new_planner_sha256": "2f7a25e769e0cd65abbeb01045181a61c71040c2f47239d4afc6dc78c727d4f3",
+  "new_stats_sha256": "27997a02bf98e63d6ba026cb41d0bf980347adab10c9cee2dc136971e778997c",
+  "samples_per_query": 7,
+  "metric": "median nanoseconds, per phase; total median is measured independently",
+  "order": "baseline then new, LUBM then WatDiv",
+  "baseline_source_note": "Detached worktree at baseline commit; only same measurement example copied in. Build forced and binary copied before new build, avoiding shared-target artifact reuse.",
+  "new_source_note": "baseline plus compact DP and shared immutable synopses; storage identical in both binaries",
+  "result_check": "qerror TSV byte-identical for both cohorts; new binary verified greedy/planned result multisets and Jena counts on all 34 queries",
+  "data_provenance": [
+    "../optimizer-lubm10/provenance.json",
+    "../optimizer-watdiv-sf1/provenance.json"
+  ]
+}

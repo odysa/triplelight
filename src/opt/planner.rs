@@ -68,7 +68,14 @@ pub fn plan_bgp_with_options(
         return decision(JoinTree::Empty, "empty", "exact empty scan", 0.0, None);
     }
     let (binary, search) = if patterns.len() <= options.dp_limit.min(12) {
-        (dp(patterns, stats, options.binary_mode), "subset-dp")
+        (
+            if options.binary_mode == BinaryJoinMode::IndexNestedLoop {
+                dp_index(patterns, stats)
+            } else {
+                dp(patterns, stats, options.binary_mode)
+            },
+            "subset-dp",
+        )
     } else {
         (
             greedy(patterns, stats, options.binary_mode),
@@ -239,6 +246,81 @@ fn keep(table: &mut BTreeMap<Option<u32>, Candidate>, candidate: Candidate) {
         table.insert(candidate.sorted, candidate);
     }
 }
+// Index nested loops discard ordering after a join. Their cost depends only on
+// the outer subset's cardinality, not on a retained physical order. Keep compact
+// predecessor/cost arrays and build the winning tree once instead of cloning a
+// boxed tree for every losing transition.
+fn dp_index(patterns: &[TriplePattern], stats: &Stats) -> Candidate {
+    let full = 1usize << patterns.len();
+    let mut costs = vec![f64::INFINITY; full];
+    let mut cardinalities = vec![0.0; full];
+    let mut last = vec![0usize; full];
+    let seek = index_seek_cost(stats);
+    let leaves: Vec<_> = patterns
+        .iter()
+        .map(|p| {
+            scans(p, stats, BinaryJoinMode::IndexNestedLoop)
+                .into_iter()
+                .min_by(|a, b| a.cost.total_cmp(&b.cost))
+                .unwrap()
+        })
+        .collect();
+    for (i, leaf) in leaves.iter().enumerate() {
+        costs[1 << i] = leaf.cost;
+        cardinalities[1 << i] = leaf.tree.est();
+        last[1 << i] = i;
+    }
+    let mut subset = Vec::with_capacity(patterns.len());
+    for mask in 1usize..full {
+        if mask.is_power_of_two() {
+            continue;
+        }
+        subset.clear();
+        subset.extend(
+            patterns
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| mask & (1 << i) != 0)
+                .map(|(_, p)| *p),
+        );
+        cardinalities[mask] = stats.estimate_bgp(&subset);
+        let mut remaining = mask;
+        while remaining != 0 {
+            let i = remaining.trailing_zeros() as usize;
+            remaining &= remaining - 1;
+            let outer = mask ^ (1 << i);
+            let cost = cardinal(costs[outer] + cardinalities[outer] * seek + cardinalities[mask]);
+            if cost < costs[mask] {
+                costs[mask] = cost;
+                last[mask] = i;
+            }
+        }
+    }
+    let mut order = Vec::with_capacity(patterns.len());
+    let mut mask = full - 1;
+    while mask != 0 {
+        let i = last[mask];
+        order.push(i);
+        mask ^= 1 << i;
+    }
+    order.reverse();
+    let mut winner = leaves[order[0]].clone();
+    mask = 1 << order[0];
+    for &i in &order[1..] {
+        mask |= 1 << i;
+        winner.tree = JoinTree::IndexNestedLoop {
+            perm: bind_permutation(&patterns[i], &winner.vars),
+            outer: Box::new(winner.tree),
+            pattern: patterns[i],
+            est: cardinalities[mask],
+        };
+        winner.vars.extend(variables(&patterns[i]));
+        winner.sorted = None;
+    }
+    winner.cost = costs[full - 1];
+    winner
+}
+
 fn dp(patterns: &[TriplePattern], stats: &Stats, mode: BinaryJoinMode) -> Candidate {
     let n = patterns.len();
     let full = 1usize << n;
@@ -433,4 +515,48 @@ fn bind_permutation(pattern: &TriplePattern, bound: &BTreeSet<u32>) -> Perm {
                 .count()
         })
         .unwrap()
+}
+
+#[cfg(test)]
+mod compact_dp_tests {
+    use super::*;
+    use crate::model::TermId;
+    #[test]
+    fn compact_index_dp_matches_ordered_reference_cost_and_tree() {
+        for seed in 0..24u64 {
+            let mut triples: Vec<_> = (0..40u64)
+                .map(|i| {
+                    [
+                        TermId(i % 9),
+                        TermId(10 + (i + seed) % 4),
+                        TermId((i * 7 + seed) % 13),
+                    ]
+                })
+                .collect();
+            triples.sort();
+            triples.dedup();
+            let stats = Stats::from_spo(triples).unwrap();
+            let patterns: Vec<_> = (0..6u32)
+                .map(|i| TriplePattern {
+                    s: Slot::Var(i % 3),
+                    p: Slot::Const(TermId(10 + (u64::from(i) + seed) % 4)),
+                    o: if i == 5 {
+                        Slot::Const(TermId(seed % 13))
+                    } else {
+                        Slot::Var((i + 1) % 4)
+                    },
+                })
+                .collect();
+            for n in 1..=patterns.len() {
+                let fast = dp_index(&patterns[..n], &stats);
+                let reference = dp(&patterns[..n], &stats, BinaryJoinMode::IndexNestedLoop);
+                assert_eq!(fast.cost, reference.cost, "seed={seed}, n={n}");
+                assert_eq!(
+                    format!("{:?}", fast.tree),
+                    format!("{:?}", reference.tree),
+                    "seed={seed}, n={n}"
+                );
+            }
+        }
+    }
 }
