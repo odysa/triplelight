@@ -56,3 +56,15 @@ fn union_distinct_group_ask() {
     let b = rows("SELECT ?x ?d WHERE { ?x <http://ex/age> ?a BIND(?a * 2 AS ?d) FILTER(?d < 55) }");
     assert_eq!(b.len(), 1);
 }
+
+#[test]
+fn leapfrog_matches_bind_join() {
+    let q = "SELECT ?a ?b ?c WHERE { ?a <http://ex/knows> ?b . ?b <http://ex/knows> ?c . ?c <http://ex/knows> ?a }";
+    let run = |wcoj| match rdfdb::exec::query_with(&store(), q, &rdfdb::exec::Options { stats: None, wcoj }).unwrap() {
+        QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.iter().map(|r| format!("{r:?}")).collect(); v.sort(); v }
+        _ => unreachable!(),
+    };
+    let (off, on) = (run(false), run(true));
+    assert_eq!(off, on);
+    assert_eq!(on.len(), 3);
+}

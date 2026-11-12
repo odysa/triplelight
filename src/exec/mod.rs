@@ -36,14 +36,24 @@ impl std::fmt::Display for QueryError {
 impl std::error::Error for QueryError {}
 
 pub fn query<S: Snapshot>(snap: &S, text: &str) -> Result<QueryResult, QueryError> {
-    query_with_stats(snap, text, None)
+    query_with(snap, text, &Options::default())
 }
 
-/// With `stats` (built from this same snapshot), BGP join order comes from the cost-based planner (task #3);
-/// without, from a greedy exact-count heuristic.
-pub fn query_with_stats<S: Snapshot>(snap: &S, text: &str, stats: Option<&Stats>) -> Result<QueryResult, QueryError> {
+#[derive(Clone, Copy)]
+pub struct Options<'a> {
+    /// Statistics built from this same snapshot: BGP join order then comes from the cost-based planner (task #3);
+    /// without, from a greedy exact-count heuristic.
+    pub stats: Option<&'a Stats>,
+    /// Use the worst-case-optimal leapfrog join for cyclic top-level BGPs.
+    pub wcoj: bool,
+}
+impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true } } }
+
+pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     let q = spargebra::SparqlParser::new().parse_query(text).map_err(|e| QueryError(e.to_string()))?;
     let mut ctx = Ctx::new(snap);
+    ctx.wcoj = opts.wcoj;
+    let stats = opts.stats;
     ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
     match &q {
         Query::Select { pattern, .. } => {
@@ -112,11 +122,12 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// Row currently being instantiated into a CONSTRUCT template, used by `term_slot`.
     current: RefCell<Option<Row>>,
     stats: Option<(&'a Stats, &'a dyn Snapshot)>,
+    wcoj: bool,
 }
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None }
+        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -342,6 +353,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }).collect();
         // A constant absent from the dictionary can never match.
         if pats.iter().any(|p| p.iter().any(|s| matches!(s, Slot::Const(None)))) { return Vec::new(); }
+        if self.wcoj && rows.len() == 1 && pats.len() >= 3 && rows[0].iter().all(|&x| x == UNBOUND)
+            && pats.iter().all(|p| no_repeated_var(p)) && cyclic(&pats) {
+            return self.leapfrog(&pats, rows.pop().unwrap());
+        }
         if let Some(order) = self.planned_order(&pats, &rows) {
             for pi in order { rows = self.extend(&pats[pi], rows); }
             return rows;
@@ -390,6 +405,75 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             let i = (0..tps.len()).find(|&i| !used[i] && tps[i] == *l)?; used[i] = true; Some(i)
         }).collect();
         (order.len() == tps.len()).then_some(order)
+    }
+
+    /// Leapfrog triejoin (Veldhuizen, ICDT'14): bind one variable at a time; for each variable, intersect the sorted
+    /// value lists of every pattern containing it, using index seeks. Each pattern reads the permutation whose key
+    /// order is (its constants, then its variables in the global variable order).
+    fn leapfrog(&self, pats: &[[Slot; 3]], row: Row) -> Vec<Row> {
+        // Global variable order: start from the most selective pattern, then grow along shared variables,
+        // preferring variables whose cheapest pattern (constants only) is smallest.
+        let consts_count = |p: &[Slot; 3]| {
+            let fixed: Vec<Option<TermId>> = p.iter().map(|s| if let Slot::Const(c) = s { *c } else { None }).collect();
+            let (perm, prefix) = choose_perm(&fixed);
+            self.snap.count(perm, &prefix)
+        };
+        let counts: Vec<u64> = pats.iter().map(consts_count).collect();
+        // Variable-free patterns never join on anything; they only gate the result.
+        if pats.iter().zip(&counts).any(|(p, &c)| c == 0 || (p.iter().all(|s| matches!(s, Slot::Const(_))) && c == 0)) { return Vec::new() }
+        let vars_of = |p: &[Slot; 3]| -> Vec<usize> { p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect() };
+        let mut order: Vec<usize> = Vec::new();
+        let all: HashSet<usize> = pats.iter().flat_map(vars_of).collect();
+        while order.len() < all.len() {
+            let cand = all.iter().filter(|v| !order.contains(v))
+                .min_by_key(|&&v| {
+                    let connected = order.is_empty() || pats.iter().any(|p| { let vs = vars_of(p); vs.contains(&v) && vs.iter().any(|w| order.contains(w)) });
+                    let best = pats.iter().zip(&counts).filter(|(p, _)| vars_of(p).contains(&v)).map(|(_, c)| *c).min().unwrap_or(u64::MAX);
+                    (!connected, best, v)
+                }).copied().unwrap();
+            order.push(cand);
+        }
+        let rank = |v: usize| order.iter().position(|&w| w == v).unwrap();
+        // Per pattern: its permutation and, per position in that key order, what fills it.
+        struct P { perm: Perm, key: [Slot; 3] }
+        let plans: Vec<P> = pats.iter().map(|p| {
+            let mut pos = [0usize, 1, 2];
+            pos.sort_by_key(|&i| match p[i] { Slot::Const(_) => (0, 0), Slot::Var(v) => (1, rank(v)) });
+            let perm = *Perm::ALL.iter().find(|q| q.order() == pos).unwrap();
+            P { perm, key: [p[pos[0]], p[pos[1]], p[pos[2]]] }
+        }).collect();
+        let mut out = Vec::new();
+        let mut row = row;
+        self.lf_depth(&plans.iter().map(|p| (p.perm, p.key)).collect::<Vec<_>>(), &order, 0, &mut row, &mut out);
+        out
+    }
+
+    fn lf_depth(&self, plans: &[(Perm, [Slot; 3])], order: &[usize], d: usize, row: &mut Row, out: &mut Vec<Row>) {
+        if d == order.len() { out.push(row.clone()); return }
+        let v = order[d];
+        // For each pattern containing v: key prefix (constants + already-bound variables) before v.
+        let mut its: Vec<(Perm, Vec<TermId>)> = Vec::new();
+        for (perm, key) in plans {
+            let Some(k) = key.iter().position(|s| matches!(s, Slot::Var(w) if *w == v)) else { continue };
+            let prefix: Vec<TermId> = key[..k].iter().map(|s| match s { Slot::Const(c) => c.unwrap(), Slot::Var(w) => row[*w] }).collect();
+            its.push((*perm, prefix));
+        }
+        let mut x = TermId(1);
+        'outer: loop {
+            let mut agreed = 0;
+            let mut i = 0;
+            while agreed < its.len() {
+                let (perm, prefix) = &its[i];
+                let Some(y) = self.snap.seek(*perm, prefix, x) else { break 'outer };
+                if y == x { agreed += 1 } else { x = y; agreed = 1 }
+                i = (i + 1) % its.len();
+            }
+            row[v] = x;
+            self.lf_depth(plans, order, d + 1, row, out);
+            row[v] = UNBOUND;
+            if x.0 == u64::MAX { break }
+            x = TermId(x.0 + 1);
+        }
     }
 
     fn estimate(&self, pat: &[Slot; 3], bound: &HashSet<usize>, sample: &Row) -> f64 {
@@ -449,6 +533,39 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
 #[derive(Copy, Clone)]
 enum Slot { Const(Option<TermId>), Var(usize) }
+
+/// GYO reduction: a BGP is acyclic iff repeatedly removing variables that occur in one pattern only, and patterns
+/// whose variables are contained in another pattern's, empties the hypergraph.
+fn cyclic(pats: &[[Slot; 3]]) -> bool {
+    let mut edges: Vec<HashSet<usize>> = pats.iter()
+        .map(|p| p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect()).collect();
+    loop {
+        let mut changed = false;
+        let mut occ: HashMap<usize, usize> = HashMap::new();
+        for e in &edges { for v in e { *occ.entry(*v).or_default() += 1 } }
+        for e in edges.iter_mut() {
+            let before = e.len();
+            e.retain(|v| occ[v] > 1);
+            changed |= e.len() != before;
+        }
+        let n = edges.len();
+        let mut keep = vec![true; n];
+        for i in 0..n {
+            if edges[i].is_empty() { keep[i] = false; continue }
+            if (0..n).any(|j| j != i && keep[j] && edges[i].is_subset(&edges[j]) && (edges[i] != edges[j] || j < i)) { keep[i] = false }
+        }
+        let mut k = keep.iter();
+        edges.retain(|_| *k.next().unwrap());
+        changed |= edges.len() != n;
+        if edges.is_empty() { return false }
+        if !changed { return true }
+    }
+}
+
+fn no_repeated_var(p: &[Slot; 3]) -> bool {
+    let vs: Vec<usize> = p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect();
+    vs.iter().collect::<HashSet<_>>().len() == vs.len()
+}
 
 /// Picks the permutation whose leading key components are exactly the fixed positions.
 fn choose_perm(fixed: &[Option<TermId>]) -> (Perm, Vec<TermId>) {
