@@ -247,12 +247,15 @@ impl DiskIndex {
     }
     pub fn seek_value(&self, prefix: &[TermId], target: TermId) -> io::Result<Option<TermId>> {
         if prefix.len() >= 3 { return Ok(None); }
-        let range = self.range(prefix)?;
         let mut key = [TermId(0); 3];
         key[..prefix.len()].copy_from_slice(prefix);
         key[prefix.len()] = target;
-        let pos = self.bound(key, false)?;
-        if pos >= range.end { Ok(None) } else { Ok(Some(self.get(pos)?[prefix.len()])) }
+        let id = self.blocks.partition_point(|m| m.last < key);
+        if id == self.blocks.len() { return Ok(None); }
+        let rows = self.block(id as u64)?;
+        let offset = rows.partition_point(|r| *r < key);
+        let Some(row) = rows.get(offset) else { return Ok(None); };
+        if &row[..prefix.len()] == prefix { Ok(Some(row[prefix.len()])) } else { Ok(None) }
     }
     pub fn get(&self, i: u64) -> io::Result<[TermId; 3]> {
         self.row(i)
