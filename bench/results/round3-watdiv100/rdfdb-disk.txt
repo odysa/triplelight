@@ -1,0 +1,21 @@
+query              rdfdb-disk
+C1           3.30ms n=8      
+C2           8.70ms n=0      
+C3         118.86ms n=429276 
+F1           0.80ms n=0      
+F2           1.22ms n=13     
+F3           1.74ms n=85     
+F4           0.94ms n=0      
+F5           0.55ms n=25     
+L1           0.31ms n=2      
+L2           1.94ms n=229    
+L3           0.33ms n=19     
+L4           0.74ms n=68     
+L5           2.15ms n=254    
+S1           0.41ms n=0      
+S2           0.58ms n=16     
+S3           0.91ms n=0      
+S4           1.08ms n=1      
+S5           0.96ms n=0      
+S6           0.65ms n=15     
+S7           0.40ms n=0      
