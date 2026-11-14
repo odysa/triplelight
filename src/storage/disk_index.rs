@@ -10,7 +10,8 @@ use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
-const MAGIC: &[u8; 8] = b"RDFIDX02";
+const MAGIC_V2: &[u8; 8] = b"RDFIDX02";
+const MAGIC_V3: &[u8; 8] = b"RDFIDX03";
 const HEADER: u64 = 24;
 const ROW: u64 = 24;
 const BLOCK_ROWS: u64 = 256;
@@ -63,13 +64,14 @@ fn decode_row(row: &[u8]) -> [TermId; 3] {
 }
 /// Writes strictly increasing keys, block hashes and a checksummed footer.
 /// The caller owns atomic file publication and durability.
-pub fn write_index(
+#[cfg(test)]
+fn write_index_v2(
     mut out: impl Write,
     rows: impl ExactSizeIterator<Item = [TermId; 3]>,
 ) -> io::Result<()> {
     let count = rows.len() as u64;
     let mut header = [0u8; 24];
-    header[..8].copy_from_slice(MAGIC);
+    header[..8].copy_from_slice(MAGIC_V2);
     header[8..16].copy_from_slice(&count.to_le_bytes());
     header[16..].copy_from_slice(&BLOCK_ROWS.to_le_bytes());
     out.write_all(&header)?;
@@ -106,10 +108,64 @@ pub fn write_index(
     out.write_all(&footer.finalize())?;
     Ok(())
 }
+/// Writes compressed, independently checksummed blocks and a checksummed directory.
+pub fn write_index(
+    mut out: impl Write,
+    rows: impl ExactSizeIterator<Item = [TermId; 3]>,
+) -> io::Result<()> {
+    let count = rows.len() as u64;
+    let mut header = [0u8; 24];
+    header[..8].copy_from_slice(MAGIC_V3);
+    header[8..16].copy_from_slice(&count.to_le_bytes());
+    header[16..].copy_from_slice(&BLOCK_ROWS.to_le_bytes());
+    out.write_all(&header)?;
+    let mut meta = Vec::new();
+    let mut block = Vec::with_capacity(BLOCK_ROWS as usize);
+    let mut previous = None;
+    let mut written = 0u64;
+    let flush =
+        |block: &mut Vec<[TermId; 3]>, out: &mut dyn Write, meta: &mut Vec<u8>| -> io::Result<()> {
+            if block.is_empty() {
+                return Ok(());
+            }
+            let bytes = super::block_codec::encode(block)?;
+            for id in block.last().unwrap() {
+                meta.extend_from_slice(&id.0.to_le_bytes());
+            }
+            meta.extend_from_slice(&Sha256::digest(&bytes));
+            meta.extend_from_slice(&(bytes.len() as u64).to_le_bytes());
+            out.write_all(&bytes)?;
+            block.clear();
+            Ok(())
+        };
+    for row in rows {
+        if row.iter().any(|id| id.0 == 0) || previous.is_some_and(|p| p >= row) {
+            return Err(invalid("keys must be nonzero, sorted and unique"));
+        }
+        previous = Some(row);
+        block.push(row);
+        written += 1;
+        if block.len() == BLOCK_ROWS as usize {
+            flush(&mut block, &mut out, &mut meta)?;
+        }
+    }
+    if written != count {
+        return Err(invalid("iterator length changed"));
+    }
+    flush(&mut block, &mut out, &mut meta)?;
+    out.write_all(&meta)?;
+    let mut digest = Sha256::new();
+    digest.update(header);
+    digest.update(&meta);
+    out.write_all(&digest.finalize())?;
+    Ok(())
+}
 #[derive(Clone, Copy)]
 struct BlockMeta {
     last: [TermId; 3],
     checksum: [u8; 32],
+    offset: u64,
+    length: usize,
 }
 struct CacheShard {
     entries: HashMap<u64, (Arc<Vec<[TermId; 3]>>, bool)>,
@@ -120,6 +176,7 @@ pub struct DiskIndex {
     rows: u64,
     identity: [u8; 32],
     blocks: Vec<BlockMeta>,
+    compressed: bool,
     cache: Vec<Mutex<CacheShard>>,
     shard_capacity: usize,
 }
@@ -128,35 +185,42 @@ impl DiskIndex {
         let file = File::open(path)?;
         let mut header = [0; 24];
         read_exact_at(&file, &mut header, 0)?;
-        if &header[..8] != MAGIC {
-            return Err(invalid("bad index magic or version"));
-        }
+        let compressed = match &header[..8] {
+            m if m == MAGIC_V2 => false,
+            m if m == MAGIC_V3 => true,
+            _ => return Err(invalid("bad index magic or version")),
+        };
         let rows = u64::from_le_bytes(header[8..16].try_into().unwrap());
         if u64::from_le_bytes(header[16..24].try_into().unwrap()) != BLOCK_ROWS {
             return Err(invalid("bad block size"));
         }
         let blocks = rows.div_ceil(BLOCK_ROWS);
-        let data = rows
-            .checked_mul(ROW)
+        let entry_size = if compressed { 64 } else { META };
+        let meta_len = blocks
+            .checked_mul(entry_size)
             .ok_or_else(|| invalid("index length overflow"))?;
-        let meta = blocks
-            .checked_mul(META)
-            .ok_or_else(|| invalid("index length overflow"))?;
-        let offset = HEADER
-            .checked_add(data)
-            .ok_or_else(|| invalid("index length overflow"))?;
-        let expected = offset
-            .checked_add(meta)
-            .and_then(|v| v.checked_add(32))
-            .ok_or_else(|| invalid("index length overflow"))?;
-        if file.metadata()?.len() != expected {
+        let file_len = file.metadata()?.len();
+        let offset = file_len
+            .checked_sub(32)
+            .and_then(|n| n.checked_sub(meta_len))
+            .filter(|n| *n >= HEADER)
+            .ok_or_else(|| invalid("index length mismatch"))?;
+        if !compressed
+            && offset
+                != HEADER
+                    .checked_add(
+                        rows.checked_mul(ROW)
+                            .ok_or_else(|| invalid("index length overflow"))?,
+                    )
+                    .ok_or_else(|| invalid("index length overflow"))?
+        {
             return Err(invalid("index length mismatch"));
         }
-        let size = usize::try_from(meta).map_err(|_| invalid("block directory too large"))?;
+        let size = usize::try_from(meta_len).map_err(|_| invalid("block directory too large"))?;
         let mut raw = vec![0u8; size];
         read_exact_at(&file, &mut raw, offset)?;
-        let mut footer = [0; 32];
-        read_exact_at(&file, &mut footer, offset + meta)?;
+        let mut footer = [0u8; 32];
+        read_exact_at(&file, &mut footer, offset + meta_len)?;
         let mut check = Sha256::new();
         check.update(header);
         check.update(&raw);
@@ -164,21 +228,44 @@ impl DiskIndex {
             return Err(invalid("index header/directory checksum mismatch"));
         }
         let mut entries = Vec::new();
-        for item in raw.chunks_exact(META as usize) {
+        let mut data_pos = HEADER;
+        for (i, item) in raw.chunks_exact(entry_size as usize).enumerate() {
             let last = decode_row(&item[..24]);
-            let checksum = item[24..].try_into().unwrap();
+            let checksum = item[24..56].try_into().unwrap();
             if last.iter().any(|x| x.0 == 0)
                 || entries.last().is_some_and(|b: &BlockMeta| b.last >= last)
             {
                 return Err(invalid("invalid block directory"));
             }
-            entries.push(BlockMeta { last, checksum });
+            let len = if compressed {
+                u64::from_le_bytes(item[56..64].try_into().unwrap())
+            } else {
+                (rows - (i as u64) * BLOCK_ROWS).min(BLOCK_ROWS) * ROW
+            };
+            if compressed && (len < 27 || len > 27 + BLOCK_ROWS * ROW) {
+                return Err(invalid("invalid compressed block length"));
+            }
+            let next = data_pos
+                .checked_add(len)
+                .filter(|n| *n <= offset)
+                .ok_or_else(|| invalid("block offset out of range"))?;
+            entries.push(BlockMeta {
+                last,
+                checksum,
+                offset: data_pos,
+                length: usize::try_from(len).map_err(|_| invalid("block too large"))?,
+            });
+            data_pos = next;
+        }
+        if data_pos != offset {
+            return Err(invalid("index data length mismatch"));
         }
         Ok(Self {
             file,
             rows,
             identity: footer,
             blocks: entries,
+            compressed,
             cache: (0..16)
                 .map(|_| {
                     Mutex::new(CacheShard {
@@ -228,16 +315,20 @@ impl DiskIndex {
             return Err(invalid("block out of range"));
         }
         let n = (self.rows - start).min(BLOCK_ROWS) as usize;
-        let mut bytes = vec![0; n * ROW as usize];
-        read_exact_at(&self.file, &mut bytes, HEADER + start * ROW)?;
         let meta = self
             .blocks
             .get(id as usize)
             .ok_or_else(|| invalid("missing block directory entry"))?;
+        let mut bytes = vec![0; meta.length];
+        read_exact_at(&self.file, &mut bytes, meta.offset)?;
         if Sha256::digest(&bytes).as_slice() != meta.checksum {
             return Err(invalid("index block checksum mismatch"));
         }
-        let rows: Vec<_> = bytes.chunks_exact(24).map(decode_row).collect();
+        let rows: Vec<_> = if self.compressed {
+            super::block_codec::decode(&bytes, n)?
+        } else {
+            bytes.chunks_exact(24).map(decode_row).collect()
+        };
         if rows.iter().any(|r| r.iter().any(|id| id.0 == 0))
             || rows.windows(2).any(|w| w[0] >= w[1])
             || rows.last() != Some(&meta.last)
@@ -373,7 +464,8 @@ mod tests {
         drop(index);
         std::fs::write(&path, &bytes).unwrap();
         let index = DiskIndex::open(&path).unwrap();
-        std::fs::write(&path, &bytes[..24 + 699 * 24]).unwrap();
+        let cut = index.blocks[2].offset as usize + index.blocks[2].length / 2;
+        std::fs::write(&path, &bytes[..cut]).unwrap();
         assert!(index.get(699).is_err());
         std::fs::remove_file(path).unwrap();
     }
@@ -390,7 +482,7 @@ mod tests {
             std::thread::current().name().unwrap_or("test")
         ));
         let mut data = Vec::new();
-        write_index(&mut data, rows.clone().into_iter()).unwrap();
+        write_index_v2(&mut data, rows.clone().into_iter()).unwrap();
         std::fs::write(&path, &data).unwrap();
         let index = DiskIndex::open(&path).unwrap();
         index.validate().unwrap();
