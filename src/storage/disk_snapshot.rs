@@ -411,6 +411,56 @@ mod tests {
         fs::remove_dir_all(parent).unwrap();
     }
     #[test]
+    fn lazy_dictionary_block_corruption_is_reported_as_query_error() {
+        let triple = Triple::new(
+            NamedNode::new("urn:s").unwrap(),
+            NamedNode::new("urn:p").unwrap(),
+            Literal::new_simple_literal("data"),
+        );
+        let source = MemorySnapshot::from_triples([triple]);
+        let dir =
+            std::env::temp_dir().join(format!("rdf-lazy-query-corrupt-{}", std::process::id()));
+        DiskSnapshot::create(&dir, &source).unwrap();
+        let path = dir.join("dictionary.term");
+        let mut bytes = fs::read(&path).unwrap();
+        bytes[8] ^= 1;
+        fs::write(path, bytes).unwrap();
+        let disk = DiskSnapshot::open(&dir).unwrap();
+        let err = crate::exec::query(&disk, "SELECT ?o WHERE { <urn:s> <urn:p> ?o }").unwrap_err();
+        assert_eq!(err.kind, crate::exec::QueryErrorKind::Storage);
+        drop(disk);
+        fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn lazy_dictionary_corruption_aborts_id_serialization() {
+        let triple = Triple::new(
+            NamedNode::new("urn:s").unwrap(),
+            NamedNode::new("urn:p").unwrap(),
+            Literal::new_simple_literal("data"),
+        );
+        let source = MemorySnapshot::from_triples([triple]);
+        let dir =
+            std::env::temp_dir().join(format!("rdf-lazy-output-corrupt-{}", std::process::id()));
+        DiskSnapshot::create(&dir, &source).unwrap();
+        let path = dir.join("dictionary.id");
+        let mut bytes = fs::read(&path).unwrap();
+        bytes[8] ^= 1;
+        fs::write(path, bytes).unwrap();
+        let disk = DiskSnapshot::open(&dir).unwrap();
+        let opts = crate::exec::Options {
+            raw_ids: true,
+            ..Default::default()
+        };
+        let crate::exec::QueryResult::Ids(result) =
+            crate::exec::query_with(&disk, "SELECT ?s ?p ?o WHERE { ?s ?p ?o }", &opts).unwrap()
+        else {
+            panic!("expected IDs")
+        };
+        assert!(crate::exec::results::serialize_ids(&result, &disk).is_err());
+        drop(disk);
+        fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
     fn deep_verification_finds_consistent_checksum_with_wrong_permutation() {
         let p = NamedNode::new("urn:p").unwrap();
         let t = Triple::new(
