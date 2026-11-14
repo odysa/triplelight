@@ -14,6 +14,55 @@ use std::{
 };
 const MEMORY: usize = 128 * 1024 * 1024;
 const MAX_TERM: usize = 16 * 1024 * 1024;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+static BUILD_BUDGET_MB: AtomicUsize = AtomicUsize::new(0);
+static FORCE_EXTERNAL: AtomicBool = AtomicBool::new(false);
+/// Sets an advisory strategy budget, not a hard process RSS limit.
+pub fn set_build_budget_mb(mb: usize) -> io::Result<()> {
+    if mb == 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "build budget must be nonzero",
+        ));
+    }
+    BUILD_BUDGET_MB.store(mb, Ordering::Relaxed);
+    Ok(())
+}
+pub fn force_external_build() {
+    FORCE_EXTERNAL.store(true, Ordering::Relaxed);
+}
+fn budget_mb() -> usize {
+    let n = BUILD_BUDGET_MB.load(Ordering::Relaxed);
+    if n != 0 {
+        return n;
+    }
+    #[cfg(target_os = "macos")]
+    if let Ok(out) = std::process::Command::new("/usr/sbin/sysctl")
+        .args(["-n", "hw.memsize"])
+        .output()
+    {
+        if out.status.success() {
+            if let Ok(n) = String::from_utf8_lossy(&out.stdout).trim().parse::<u64>() {
+                return usize::try_from(n / 2 / 1_048_576).unwrap_or(256).max(1);
+            }
+        }
+    }
+    256
+}
+pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io::Result<()> {
+    if let Some(path) = source {
+        let bytes = fs::metadata(path)?.len();
+        let budget = (budget_mb() as u128) * 1_048_576;
+        if !FORCE_EXTERNAL.load(Ordering::Relaxed) && (bytes as u128) * 3 <= budget {
+            eprintln!("disk build strategy: in-memory (estimated 3x input; not an RSS limit)");
+            let snapshot =
+                super::MemorySnapshot::from_ntriples_parallel_file(path, workers.max(1))?;
+            return super::DiskSnapshot::create(dir, &snapshot);
+        }
+    }
+    eprintln!("disk build strategy: external sort (budget is advisory, not an RSS limit)");
+    from_nt(dir, source)
+}
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, s)
 }

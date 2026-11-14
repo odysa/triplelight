@@ -36,7 +36,7 @@ mod block_codec;
 mod external_sort;
 
 #[cfg(unix)]
-mod external_build;
+pub mod external_build;
 
 #[cfg(unix)]
 mod disk_snapshot;

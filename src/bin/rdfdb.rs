@@ -165,6 +165,12 @@ fn serve_store(args: &[String]) {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     for (i, arg) in args.iter().enumerate() {
+        if arg == "--build-external" { rdfdb::storage::external_build::force_external_build(); }
+        let value=arg.strip_prefix("--build-memory-mb=").or_else(|| (arg == "--build-memory-mb").then(|| args.get(i+1).map(String::as_str)).flatten());
+        if arg == "--build-memory-mb" && value.is_none() { eprintln!("--build-memory-mb requires a positive integer"); std::process::exit(2); }
+        if let Some(value)=value { let n=value.parse::<usize>().ok().filter(|n|*n>0).unwrap_or_else(|| { eprintln!("--build-memory-mb requires a positive integer"); std::process::exit(2) }); rdfdb::storage::external_build::set_build_budget_mb(n).expect("build budget"); }
+    }
+    for (i, arg) in args.iter().enumerate() {
         let value = arg.strip_prefix("--cache-mb=").or_else(|| (arg == "--cache-mb").then(|| args.get(i + 1).map(String::as_str)).flatten());
         if arg == "--cache-mb" && value.is_none() { eprintln!("--cache-mb requires a positive integer"); std::process::exit(2); }
         if let Some(value) = value {
