@@ -1,28 +1,21 @@
-# Persistent snapshot prototype
-
-This is an explicit read-only snapshot, not a transactional or updateable database. It is separate from the default in-memory server.
+# Persistent disk snapshots
 
 ```sh
-# Writes a new directory; fails if the destination already exists.
-rdfdb build-disk data.nt ./snapshot --parallel-load=4
-# Exhaustively check checksums, references, and permutation equality.
-rdfdb verify ./snapshot
-# A later process can reopen it.
+# Creates a new snapshot directory; fails if it already exists.
+rdfdb build-disk data.nt ./snapshot --build-external
+# Reopen for queries or check all checksums and cross-index consistency.
 rdfdb serve ./snapshot 7878 --disk
-# A one-shot query also reopens it.
-rdfdb query ./snapshot 'SELECT ?s WHERE { ?s ?p ?o } LIMIT 5' --disk
+rdfdb verify ./snapshot
+# Serve durable updates backed by a disk snapshot and write-ahead log.
+rdfdb serve-store ./store 7878 --disk --init data.nt
 ```
 
-N-Triples disk construction uses scratch-backed external sorting to write a dictionary and six compressed index files. The dictionary is retained in memory while serving; index reads use bounded decoded-block caches. Durable updates and compaction are provided by `serve-store --disk`. A failed build may leave an incomplete new directory. The manifest is written last. Open verifies the full dictionary checksum plus each index header and block directory, and checks index lengths and counts; index blocks are checksummed and checked for order on cache misses. `rdfdb verify` explicitly re-reads all blocks, checks dictionary references, and validates exact equality among permutations. That exhaustive verification can be expensive and is not performed by `open()`. Snapshot files must stay immutable after open. Warm caches can still supply blocks after an external modification, while a failing disk read is returned as an error. Treat the directory as trusted local input: the checksums are not authenticated.
+New snapshots have compressed RDFIDX03 triple blocks and two front-coded dictionary indexes, one sorted by term and one by ID. The dictionary and triple index directories are read at open; their blocks are read on demand through bounded decoded-block caches. Older RDFSNAP2 snapshots and RDFIDX02 indexes remain readable; the older dictionary format is loaded fully at open. A failed build can leave an incomplete new directory. The manifest is written last.
 
-Open reads the full dictionary and block directories, so its time and memory grow with dictionary size. Neither a restarted process nor an empty application block cache guarantees a cold operating-system page cache. No large-scale or performance results have yet been established for this backend.
+Open checks file versions, directory bounds and checksums. On a cache miss, a block's bytes are read using position-based I/O and validated before use; read failures propagate as storage errors. `rdfdb verify` re-reads the blocks, checks dictionary agreement and triple references, and validates that all six permutations describe the same triples. This exhaustive check can be expensive and is not performed at open. Keep snapshot files immutable while open: a cached block can still be served after an external modification. Checksums detect accidental corruption; they do not authenticate files.
 
-`write_disk_snapshot` streams a snapshot through scratch-backed sorted runs for term assignment and all six indexes. N-Triples `build-disk` uses the same external builder; Turtle currently uses the older in-memory loader. The run buffer target is 128 MiB, while merge heads, input records, run-path metadata and index block-directory metadata consume additional memory. Store startup still loads the dictionary into memory. The build requires scratch disk space and may leave an unpublished incomplete output directory after an error.
+N-Triples initialization compares three times the input file length with `--build-memory-mb` (default: half physical RAM on macOS; 256 MiB fallback). It chooses an in-memory loader if the estimate fits and external sorting otherwise. The threshold is a strategy heuristic, not a hard peak-RSS limit. `--build-external` forces external sorting. Compaction uses external sorting. Turtle currently uses the in-memory loader. Scratch disk space is required; run metadata and block directories grow with input size. Compaction may retain old and new snapshots simultaneously while readers exist.
 
-For durable updates on a disk base, use `rdfdb serve-store <directory> [port] --disk [--init data.nt]`. Updates are replayed from the WAL on restart; compaction writes another disk generation. N-Triples initialization and compaction use the external builder; opening the resulting store still loads the dictionary into memory.
+The decoded block-cache target defaults to one quarter of physical RAM on macOS (256 MiB fallback) and can be overridden with `--cache-mb N` or `--cache-mb=N`. It is divided among six triple indexes and two dictionary indexes per snapshot; dictionary index shares are capped at 384 MiB each. Cache allocations are on demand. This is a per-snapshot target, not a process-wide cap across retained generations. A minimum of one triple block per shard and allocator/metadata overhead are outside the nominal target.
 
-The decoded block-cache target defaults to one quarter of physical RAM on macOS (256 MiB fallback elsewhere) and can be overridden with `--cache-mb N` or `--cache-mb=N`. This is a per-snapshot target divided among six indexes and 16 shards each, not a shared process-wide cap; simultaneously retained generations can each have their own cache. A minimum of one block per shard and allocator/metadata overhead are outside the nominal budget.
-
-New snapshots use RDFIDX03 compressed blocks: bit-packed columns with first-column deltas and per-block minima for the other columns. RDFIDX02 snapshots remain readable. SHA-256 covers each stored block and its directory; checksums are not authentication. Compression ratio and throughput remain workload-dependent.
-
-N-Triples initialization chooses the in-memory loader when three times the input file length is no greater than `--build-memory-mb` (default: half physical RAM on macOS, 256 MiB fallback); otherwise it uses external sort. This estimate is a strategy heuristic, not a peak-RSS limit. `--build-external` forces external sorting. Compaction uses external sorting regardless of the heuristic.
+A fresh process or an empty application cache does not imply a cold operating-system page cache.
