@@ -88,6 +88,14 @@ impl Dictionary for Overlay {
     fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> {
         if id.0 >> 60 == DELTA_TAG { f(self.delta_term(id)?.as_ref()); Ok(()) } else { self.base.with_term(id, f) }
     }
+    fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, TermRef<'_>)) -> Result<(), StorageError> {
+        // Delta terms are in memory; pass base IDs to the base in one batch, keeping input positions.
+        let (mut base_ids, mut base_pos) = (Vec::new(), Vec::new());
+        for (i, &id) in ids.iter().enumerate() {
+            if id.0 >> 60 == DELTA_TAG { f(i, self.delta_term(id)?.as_ref()) } else { base_ids.push(id); base_pos.push(i) }
+        }
+        self.base.with_terms(&base_ids, &mut |j, t| f(base_pos[j], t))
+    }
 }
 
 impl Snapshot for Overlay {

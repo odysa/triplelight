@@ -1,5 +1,6 @@
 //! SPARQL 1.1 Query Results JSON and N-Triples output.
 use super::{IdSolutions, QueryResult, UNBOUND};
+use crate::model::TermId;
 use crate::storage::Dictionary;
 use oxrdf::TermRef;
 use oxrdf::Term;
@@ -89,6 +90,14 @@ pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D)
     if w > 0 {
         let names: Vec<String> = sol.vars.iter().map(|v| { let mut s = String::new(); esc(v.as_str(), &mut s); s.push(':'); s }).collect();
         let chunks: Vec<String> = sol.ids.par_chunks(w * 4096).map(|chunk| -> Result<String, crate::storage::StorageError> {
+            // Decode every distinct stored ID of this chunk with one batched dictionary call (one cache access per
+            // dictionary block on disk), then assemble rows in their original order. Callbacks may arrive in any
+            // order; an error discards the whole chunk.
+            let mut distinct: Vec<TermId> = chunk.iter().copied().filter(|id| *id != UNBOUND && !sol.scratch.contains_key(id)).collect();
+            distinct.sort_unstable();
+            distinct.dedup();
+            let mut json: Vec<String> = vec![String::new(); distinct.len()];
+            dict.with_terms(&distinct, &mut |i, t| { let mut s = String::new(); term_ref_json(t, &mut s); json[i] = s; })?;
             let mut out = String::with_capacity(chunk.len() / w * 96);
             for row in chunk.chunks_exact(w) {
                 out.push_str(",{");
@@ -100,7 +109,7 @@ pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D)
                     out.push_str(name);
                     match sol.scratch.get(&id) {
                         Some(t) => term_json(t, &mut out),
-                        None => dict.with_term(id, &mut |t| term_ref_json(t, &mut out))?,
+                        None => out.push_str(&json[distinct.binary_search(&id).expect("decoded above")]),
                     }
                 }
                 out.push('}');
