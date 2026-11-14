@@ -91,7 +91,11 @@ pub fn write_disk_snapshot(dir: impl AsRef<Path>, source: &dyn Snapshot) -> io::
 }
 /// Build a new immutable disk snapshot from N-Triples using scratch-backed sorting.
 pub fn build_disk_snapshot(dir: impl AsRef<Path>, source: Option<&Path>) -> io::Result<()> {
-    super::external_build::adaptive(dir.as_ref(), source, std::thread::available_parallelism().map_or(1, |n| n.get()))
+    super::external_build::adaptive(
+        dir.as_ref(),
+        source,
+        std::thread::available_parallelism().map_or(1, |n| n.get()),
+    )
 }
 /// Persistent Store base format backed by immutable checksummed disk indexes.
 pub struct DiskBase {
@@ -230,16 +234,29 @@ impl DiskSnapshot {
     }
 }
 impl Dictionary for DiskSnapshot {
-    fn resolve_ref(&self, id: TermId) -> oxrdf::TermRef<'_> {
-        self.reverse.get(&id).expect("unknown term ID").as_ref()
+    fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> {
+        Ok(self.forward.get(term).copied())
     }
-    fn lookup(&self, term: &Term) -> Option<TermId> {
-        self.forward.get(term).copied()
+    fn resolve(&self, id: TermId) -> Result<Term, StorageError> {
+        self.reverse
+            .get(&id)
+            .cloned()
+            .ok_or_else(|| StorageError::new(io::ErrorKind::InvalidData, "unknown term ID"))
     }
-    fn resolve(&self, id: TermId) -> Term {
-        self.reverse.get(&id).expect("unknown term ID").clone()
+    fn with_term(
+        &self,
+        id: TermId,
+        f: &mut dyn FnMut(oxrdf::TermRef<'_>),
+    ) -> Result<(), StorageError> {
+        f(self
+            .reverse
+            .get(&id)
+            .ok_or_else(|| StorageError::new(io::ErrorKind::InvalidData, "unknown term ID"))?
+            .as_ref());
+        Ok(())
     }
 }
+
 impl Snapshot for DiskSnapshot {
     fn scan<'a>(
         &'a self,
