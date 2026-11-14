@@ -112,9 +112,18 @@ impl crate::store::BaseFormat for DiskBase {
         Ok(std::sync::Arc::new(DiskSnapshot::open(dir)?))
     }
 }
+enum DictionaryBackend {
+    Legacy {
+        forward: HashMap<Term, TermId>,
+        reverse: HashMap<TermId, Term>,
+    },
+    Lazy {
+        by_term: super::lazy_dictionary::LazyIndex,
+        by_id: super::lazy_dictionary::LazyIndex,
+    },
+}
 pub struct DiskSnapshot {
-    forward: HashMap<Term, TermId>,
-    reverse: HashMap<TermId, Term>,
+    dictionary: DictionaryBackend,
     indexes: Vec<DiskIndex>,
 }
 impl DiskSnapshot {
@@ -123,8 +132,8 @@ impl DiskSnapshot {
         let dir = dir.as_ref();
         fs::create_dir(dir)?;
         write_dictionary(source, &dir.join(FILES[0]))?;
-        let mut identities = Vec::new();
-        identities.push(digest(&dir.join(FILES[0]))?);
+        let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir)?;
+        let mut identities = vec![term_identity, id_identity];
         for (i, name) in FILES[1..].iter().enumerate() {
             let file = File::create(dir.join(name))?;
             let mut out = BufWriter::new(file);
@@ -136,7 +145,7 @@ impl DiskSnapshot {
             identities.push(index.identity());
         }
         let mut manifest = BufWriter::new(File::create(dir.join("MANIFEST"))?);
-        manifest.write_all(b"RDFSNAP2")?;
+        manifest.write_all(b"RDFSNAP3")?;
         for identity in identities {
             manifest.write_all(&identity)?;
         }
@@ -158,10 +167,12 @@ impl DiskSnapshot {
         let mut manifest = BufReader::new(File::open(dir.join("MANIFEST"))?);
         let mut magic = [0; 8];
         manifest.read_exact(&mut magic)?;
-        if &magic != b"RDFSNAP2" {
-            return Err(bad("bad snapshot manifest or version"));
-        }
-        let mut expected = [[0u8; 32]; 7];
+        let lazy = match &magic {
+            b"RDFSNAP2" => false,
+            b"RDFSNAP3" => true,
+            _ => return Err(bad("bad snapshot manifest or version")),
+        };
+        let mut expected = vec![[0u8; 32]; if lazy { 8 } else { 7 }];
         for item in &mut expected {
             manifest.read_exact(item)?;
         }
@@ -169,14 +180,25 @@ impl DiskSnapshot {
         if manifest.read(&mut extra)? != 0 {
             return Err(bad("manifest trailing bytes"));
         }
-        if digest(&dir.join(FILES[0]))? != expected[0] {
-            return Err(bad("dictionary checksum mismatch"));
-        }
-        let (forward, reverse) = read_dictionary(&dir.join(FILES[0]))?;
+        let (dictionary, index_offset) = if lazy {
+            use super::lazy_dictionary::{LazyIndex, Order};
+            let by_term = LazyIndex::open(&dir.join("dictionary.term"), Order::Term)?;
+            let by_id = LazyIndex::open(&dir.join("dictionary.id"), Order::Id)?;
+            if by_term.identity() != expected[0] || by_id.identity() != expected[1] {
+                return Err(bad("dictionary directory checksum mismatch"));
+            }
+            (DictionaryBackend::Lazy { by_term, by_id }, 2)
+        } else {
+            if digest(&dir.join(FILES[0]))? != expected[0] {
+                return Err(bad("dictionary checksum mismatch"));
+            }
+            let (forward, reverse) = read_dictionary(&dir.join(FILES[0]))?;
+            (DictionaryBackend::Legacy { forward, reverse }, 1)
+        };
         let mut indexes = Vec::new();
         for (i, name) in FILES[1..].iter().enumerate() {
             let index = DiskIndex::open(dir.join(name))?;
-            if index.identity() != expected[i + 1] {
+            if index.identity() != expected[i + index_offset] {
                 return Err(bad("index directory checksum mismatch"));
             }
             indexes.push(index);
@@ -186,23 +208,43 @@ impl DiskSnapshot {
             return Err(bad("index counts differ"));
         }
         Ok(Self {
-            forward,
-            reverse,
+            dictionary,
             indexes,
         })
     }
     /// Re-read every block, check dictionary references, then verify the exact permutation sets.
     pub fn verify(&self) -> io::Result<()> {
+        if let DictionaryBackend::Lazy { by_term, by_id } = &self.dictionary {
+            by_term.clear_cache()?;
+            by_id.clear_cache()?;
+            let mut term_count = 0u64;
+            let mut id_count = 0u64;
+            by_term.for_each(&mut |id, term| {
+                let mut found = None;
+                by_id.with_id(id, &mut |v| found = Some(v.into_owned()))?;
+                if found.as_ref() != Some(term) {
+                    return Err(bad("dictionary index disagreement"));
+                }
+                term_count += 1;
+                Ok(())
+            })?;
+            by_id.for_each(&mut |id, term| {
+                if by_term.find(term.to_string().as_bytes())?.map(|v| v.0) != Some(id) {
+                    return Err(bad("dictionary index disagreement"));
+                }
+                id_count += 1;
+                Ok(())
+            })?;
+            if term_count != id_count {
+                return Err(bad("dictionary index count mismatch"));
+            }
+        }
         for index in &self.indexes {
             index.clear_cache()?;
             index.validate()?;
             for i in 0..index.len() {
-                if index
-                    .get(i)?
-                    .iter()
-                    .any(|id| !self.reverse.contains_key(id))
-                {
-                    return Err(bad("index references unknown term"));
+                for id in index.get(i)? {
+                    self.with_term(id, &mut |_| ())?;
                 }
             }
         }
@@ -235,25 +277,54 @@ impl DiskSnapshot {
 }
 impl Dictionary for DiskSnapshot {
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> {
-        Ok(self.forward.get(term).copied())
+        match &self.dictionary {
+            DictionaryBackend::Legacy { forward, .. } => Ok(forward.get(term).copied()),
+            DictionaryBackend::Lazy { by_term, .. } => {
+                Ok(by_term.find(term.to_string().as_bytes())?.map(|v| v.0))
+            }
+        }
     }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> {
-        self.reverse
-            .get(&id)
-            .cloned()
-            .ok_or_else(|| StorageError::new(io::ErrorKind::InvalidData, "unknown term ID"))
+        let mut value = None;
+        self.with_term(id, &mut |v| value = Some(v.into_owned()))?;
+        value.ok_or_else(|| bad("dictionary callback not invoked"))
     }
     fn with_term(
         &self,
         id: TermId,
         f: &mut dyn FnMut(oxrdf::TermRef<'_>),
     ) -> Result<(), StorageError> {
-        f(self
-            .reverse
-            .get(&id)
-            .ok_or_else(|| StorageError::new(io::ErrorKind::InvalidData, "unknown term ID"))?
-            .as_ref());
-        Ok(())
+        match &self.dictionary {
+            DictionaryBackend::Legacy { reverse, .. } => {
+                f(reverse
+                    .get(&id)
+                    .ok_or_else(|| bad("unknown term ID"))?
+                    .as_ref());
+                Ok(())
+            }
+            DictionaryBackend::Lazy { by_id, .. } => by_id.with_id(id, f),
+        }
+    }
+    fn with_terms(
+        &self,
+        ids: &[TermId],
+        f: &mut dyn FnMut(usize, oxrdf::TermRef<'_>),
+    ) -> Result<(), StorageError> {
+        match &self.dictionary {
+            DictionaryBackend::Legacy { reverse, .. } => {
+                for (i, id) in ids.iter().enumerate() {
+                    f(
+                        i,
+                        reverse
+                            .get(id)
+                            .ok_or_else(|| bad("unknown term ID"))?
+                            .as_ref(),
+                    );
+                }
+                Ok(())
+            }
+            DictionaryBackend::Lazy { by_id, .. } => by_id.with_ids(ids, f),
+        }
     }
 }
 
@@ -354,7 +425,7 @@ mod tests {
         write_index(&mut out, source.indexes[0].iter().copied()).unwrap();
         drop(out);
         let mut manifest = fs::read(dir.join("MANIFEST")).unwrap();
-        let offset = 8 + 2 * 32;
+        let offset = 8 + 3 * 32;
         manifest[offset..offset + 32]
             .copy_from_slice(&DiskIndex::open(dir.join("sop")).unwrap().identity());
         fs::write(dir.join("MANIFEST"), manifest).unwrap();
