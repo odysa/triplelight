@@ -195,3 +195,69 @@ fn disk_base_replays_and_compacts_updates() {
     assert_eq!(answers(&*store.snapshot(), QUERIES[0]).len(), 1);
     drop(store); std::fs::remove_dir_all(dir).unwrap();
 }
+
+/// Scans larger than one batch (4096 rows) merge base and delta lazily across batch boundaries.
+#[test]
+fn overlay_scan_streams_across_batches() {
+    let dir = tmp("stream");
+    std::fs::create_dir_all(&dir).unwrap();
+    let base: Vec<Triple> = (0..10_000).map(|i| t(i, 0, i + 1)).collect();
+    let init = dir.join("init.nt");
+    std::fs::write(&init, base.iter().map(|x| format!("{x} .\n")).collect::<String>()).unwrap();
+    let store = Store::open(dir.join("db"), Some(&init), 2).unwrap();
+    let mut expect: BTreeSet<String> = base.iter().map(|x| x.to_string()).collect();
+    let mut batch = Vec::new();
+    for i in (0..10_000).step_by(7) { batch.push((Change::Delete, t(i, 0, i + 1))); expect.remove(&t(i, 0, i + 1).to_string()); }
+    for i in (0..10_000).step_by(5) { batch.push((Change::Insert, t(i, 0, i + 2))); expect.insert(t(i, 0, i + 2).to_string()); }
+    store.commit(&batch).unwrap();
+    let snap = store.snapshot();
+    // Every batch is sorted and the concatenation is the expected set, in key order.
+    let mut seen = Vec::new();
+    for b in rdfdb::storage::Snapshot::scan(&*snap, rdfdb::model::Perm::Pso, &[]) {
+        let b = b.unwrap();
+        assert!(b.len() <= 4096);
+        for i in 0..b.len() { seen.push([b.cols[0][i], b.cols[1][i], b.cols[2][i]]); }
+    }
+    assert!(seen.windows(2).all(|w| w[0] < w[1]));
+    assert_eq!(seen.len(), expect.len());
+    let rebuilt = MemorySnapshot::from_ntriples(expect.iter().map(|x| format!("{x} .\n")).collect::<String>().as_bytes()).unwrap();
+    assert_eq!(answers(&*snap, QUERIES[0]), answers(&rebuilt, QUERIES[0]));
+}
+
+/// A base read error in the middle of a merged scan surfaces as an error (not a short result).
+#[test]
+fn overlay_scan_propagates_base_errors() {
+    use rdfdb::model::{Perm, TermId, TripleBatch};
+    use rdfdb::storage::{Dictionary, Snapshot, StorageError};
+    use std::sync::Arc;
+    struct Faulty(MemorySnapshot);
+    impl Dictionary for Faulty {
+        fn lookup(&self, t: &oxrdf::Term) -> Option<TermId> { self.0.lookup(t) }
+        fn resolve(&self, id: TermId) -> oxrdf::Term { self.0.resolve(id) }
+        fn resolve_ref(&self, id: TermId) -> oxrdf::TermRef<'_> { self.0.resolve_ref(id) }
+    }
+    impl Snapshot for Faulty {
+        fn scan<'a>(&'a self, p: Perm, pre: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+            // First batch fine, then a failure.
+            Box::new(self.0.scan(p, pre).take(1).chain(std::iter::once(Err(StorageError::other("planted read failure")))))
+        }
+        fn count(&self, p: Perm, pre: &[TermId]) -> Result<u64, StorageError> { self.0.count(p, pre) }
+        fn seek(&self, p: Perm, pre: &[TermId], t: TermId) -> Result<Option<TermId>, StorageError> { self.0.seek(p, pre, t) }
+    }
+    struct FaultyFormat;
+    impl rdfdb::store::BaseFormat for FaultyFormat {
+        fn write(&self, _: &std::path::Path, _: &dyn Snapshot) -> std::io::Result<()> { unimplemented!() }
+        fn import(&self, dir: &std::path::Path, _: Option<&std::path::Path>) -> std::io::Result<()> { std::fs::create_dir(dir) }
+        fn open(&self, _: &std::path::Path) -> std::io::Result<Arc<dyn Snapshot>> {
+            let data: String = (0..9000).map(|i| format!("{} .\n", t(i, 0, i + 1))).collect();
+            Ok(Arc::new(Faulty(MemorySnapshot::from_ntriples(data.as_bytes()).unwrap())))
+        }
+    }
+    let dir = tmp("faulty");
+    let store = Store::open_with(&dir, None, Box::new(FaultyFormat)).unwrap();
+    store.commit(&[(Change::Insert, t(1, 1, 1))]).unwrap(); // non-empty delta forces the merge path
+    let results: Vec<_> = Snapshot::scan(&*store.snapshot(), Perm::Spo, &[]).collect();
+    assert!(results.last().unwrap().is_err(), "error must surface");
+    let e = rdfdb::exec::query(&*store.snapshot(), "SELECT * WHERE { ?s ?p ?o }").unwrap_err();
+    assert_eq!(e.kind, rdfdb::exec::QueryErrorKind::Storage);
+}

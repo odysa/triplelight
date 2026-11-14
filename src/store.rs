@@ -86,25 +86,7 @@ impl Snapshot for Overlay {
     fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
         if self.delta.is_empty() { return self.base.scan(perm, prefix) }
         let (adds, dels) = (range(&self.delta.adds[slot(perm)], prefix), range(&self.delta.dels[slot(perm)], prefix));
-        // Merge the base range (minus deletions) with the added keys, in key order.
-        let mut base_rows: Vec<[TermId; 3]> = Vec::new();
-        for b in self.base.scan(perm, prefix) {
-            let b = match b { Ok(b) => b, Err(e) => return Box::new(std::iter::once(Err(e))) };
-            for i in 0..b.len() {
-                let k = [b.cols[0][i], b.cols[1][i], b.cols[2][i]];
-                if dels.binary_search(&k).is_err() { base_rows.push(k) }
-            }
-        }
-        let mut merged = Vec::with_capacity(base_rows.len() + adds.len());
-        let (mut i, mut j) = (0, 0);
-        while i < base_rows.len() || j < adds.len() {
-            if j == adds.len() || (i < base_rows.len() && base_rows[i] < adds[j]) { merged.push(base_rows[i]); i += 1 } else { merged.push(adds[j]); j += 1 }
-        }
-        Box::new(merged.chunks(4096).map(|c| {
-            let mut b = TripleBatch::default();
-            for r in c { for k in 0..3 { b.cols[k].push(r[k]) } }
-            Ok(b)
-        }).collect::<Vec<_>>().into_iter())
+        Box::new(MergeScan { base: self.base.scan(perm, prefix), cur: None, at: 0, adds, ai: 0, dels, done: false })
     }
 
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
@@ -129,6 +111,58 @@ impl Snapshot for Overlay {
         let adds = range(&self.delta.adds[slot(perm)], prefix);
         let from_adds = adds[adds.partition_point(|r| r[k] < target)..].first().map(|r| r[k]);
         Ok(match (from_base, from_adds) { (Some(a), Some(b)) => Some(a.min(b)), (a, b) => a.or(b) })
+    }
+}
+
+/// Lazy merge of a base scan (minus deleted keys) with the delta's added keys, batch by batch: memory stays at about
+/// one base batch plus one output batch, whatever the size of the range. A base read error is passed through and
+/// ends the scan.
+struct MergeScan<'a> {
+    base: Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a>,
+    cur: Option<TripleBatch>,
+    at: usize,
+    adds: &'a [[TermId; 3]],
+    ai: usize,
+    dels: &'a [[TermId; 3]],
+    done: bool,
+}
+
+impl MergeScan<'_> {
+    /// Next visible base key, pulling base batches as needed; `Ok(None)` at the end.
+    fn peek_base(&mut self) -> Result<Option<[TermId; 3]>, StorageError> {
+        loop {
+            if let Some(b) = &self.cur {
+                while self.at < b.len() {
+                    let k = [b.cols[0][self.at], b.cols[1][self.at], b.cols[2][self.at]];
+                    if self.dels.binary_search(&k).is_err() { return Ok(Some(k)) }
+                    self.at += 1;
+                }
+            }
+            match self.base.next() {
+                None => { self.cur = None; return Ok(None) }
+                Some(b) => { self.cur = Some(b?); self.at = 0; }
+            }
+        }
+    }
+}
+
+impl Iterator for MergeScan<'_> {
+    type Item = Result<TripleBatch, StorageError>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done { return None }
+        let mut out = TripleBatch::default();
+        while out.len() < 4096 {
+            let base = match self.peek_base() { Ok(k) => k, Err(e) => { self.done = true; return Some(Err(e)) } };
+            let add = self.adds.get(self.ai).copied();
+            let k = match (base, add) {
+                (None, None) => { self.done = true; break }
+                (Some(b), Some(a)) if a < b => { self.ai += 1; a }
+                (Some(b), _) => { self.at += 1; b }
+                (None, Some(a)) => { self.ai += 1; a }
+            };
+            for c in 0..3 { out.cols[c].push(k[c]) }
+        }
+        if out.is_empty() { None } else { Some(Ok(out)) }
     }
 }
 
