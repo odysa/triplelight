@@ -31,16 +31,17 @@ fn term(
     s: &TermPattern,
     snapshot: &dyn Snapshot,
     vars: &mut BTreeMap<String, u32>,
-) -> Option<Slot> {
-    match s {
+) -> io::Result<Option<Slot>> {
+    Ok(match s {
         TermPattern::Variable(v) => Some(var(vars, format!("v:{}", v.as_str()))),
         TermPattern::BlankNode(b) => Some(var(vars, format!("b:{}", b.as_str()))),
         TermPattern::NamedNode(n) => snapshot
-            .lookup(&Term::NamedNode(n.clone()))
+            .lookup(&Term::NamedNode(n.clone()))?
             .map(Slot::Const),
-        TermPattern::Literal(l) => snapshot.lookup(&Term::Literal(l.clone())).map(Slot::Const),
-    }
+        TermPattern::Literal(l) => snapshot.lookup(&Term::Literal(l.clone()))?.map(Slot::Const),
+    })
 }
+
 fn encode(
     text: &str,
     snapshot: &dyn Snapshot,
@@ -53,10 +54,12 @@ fn encode(
     let mut vars = BTreeMap::new();
     let mut encoded = Vec::new();
     for triple in triples {
-        let s = term(&triple.subject, snapshot, &mut vars);
-        let o = term(&triple.object, snapshot, &mut vars);
+        let s = term(&triple.subject, snapshot, &mut vars)?;
+        let o = term(&triple.object, snapshot, &mut vars)?;
         let p = match triple.predicate {
-            NamedNodePattern::NamedNode(n) => snapshot.lookup(&Term::NamedNode(n)).map(Slot::Const),
+            NamedNodePattern::NamedNode(n) => {
+                snapshot.lookup(&Term::NamedNode(n))?.map(Slot::Const)
+            }
             NamedNodePattern::Variable(v) => Some(var(&mut vars, format!("v:{}", v.as_str()))),
         };
         let (Some(s), Some(p), Some(o)) = (s, p, o) else {
@@ -190,8 +193,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                 vec![(None, false), (Some(&stats), false)]
             };
             for (mode, wcoj) in modes {
-                let QueryResult::Solutions { rows, .. } =
-                    query_with(&snapshot, &query, &Options { stats: mode, wcoj, raw_ids: false })?
+                let QueryResult::Solutions { rows, .. } = query_with(
+                    &snapshot,
+                    &query,
+                    &Options {
+                        stats: mode,
+                        wcoj,
+                        raw_ids: false,
+                    },
+                )?
                 else {
                     unreachable!()
                 };
@@ -225,6 +235,100 @@ fn main() -> Result<(), Box<dyn Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rdfdb::storage::Dictionary;
+    #[derive(Debug)]
+    struct PlantedReadFailure;
+    impl std::fmt::Display for PlantedReadFailure {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("planted dictionary read failure")
+        }
+    }
+    impl std::error::Error for PlantedReadFailure {}
+    struct FailingLookup<'a> {
+        inner: &'a MemorySnapshot,
+        fail: Term,
+    }
+    impl rdfdb::storage::Dictionary for FailingLookup<'_> {
+        fn lookup(&self, t: &Term) -> io::Result<Option<rdfdb::model::TermId>> {
+            if *t == self.fail {
+                Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    PlantedReadFailure,
+                ))
+            } else {
+                self.inner.lookup(t)
+            }
+        }
+        fn resolve(&self, id: rdfdb::model::TermId) -> io::Result<Term> {
+            self.inner.resolve(id)
+        }
+        fn with_term(
+            &self,
+            id: rdfdb::model::TermId,
+            f: &mut dyn FnMut(oxrdf::TermRef<'_>),
+        ) -> io::Result<()> {
+            self.inner.with_term(id, f)
+        }
+    }
+    impl Snapshot for FailingLookup<'_> {
+        fn scan<'a>(
+            &'a self,
+            p: rdfdb::model::Perm,
+            prefix: &[rdfdb::model::TermId],
+        ) -> Box<dyn Iterator<Item = io::Result<rdfdb::model::TripleBatch>> + 'a> {
+            self.inner.scan(p, prefix)
+        }
+        fn count(&self, p: rdfdb::model::Perm, prefix: &[rdfdb::model::TermId]) -> io::Result<u64> {
+            self.inner.count(p, prefix)
+        }
+        fn seek(
+            &self,
+            p: rdfdb::model::Perm,
+            prefix: &[rdfdb::model::TermId],
+            target: rdfdb::model::TermId,
+        ) -> io::Result<Option<rdfdb::model::TermId>> {
+            self.inner.seek(p, prefix, target)
+        }
+    }
+    #[test]
+    fn lookup_failures_preserve_original_io_error_in_every_constant_position() {
+        let snapshot =
+            MemorySnapshot::from_ntriples("<urn:s> <urn:p> <urn:o> .".as_bytes()).unwrap();
+        let named = |s| Term::NamedNode(oxrdf::NamedNode::new(s).unwrap());
+        let cases = [
+            (named("urn:s"), "SELECT * WHERE { <urn:s> ?p ?o }"),
+            (named("urn:p"), "SELECT * WHERE { ?s <urn:p> ?o }"),
+            (named("urn:o"), "SELECT * WHERE { ?s ?p <urn:o> }"),
+            (
+                Term::Literal(oxrdf::Literal::new_language_tagged_literal("broken", "en").unwrap()),
+                "SELECT * WHERE { ?s ?p \"broken\"@en }",
+            ),
+        ];
+        for (fail, query) in cases {
+            let snapshot = FailingLookup {
+                inner: &snapshot,
+                fail,
+            };
+            let error = encode(query, &snapshot).unwrap_err();
+            let io = error
+                .downcast_ref::<io::Error>()
+                .expect("original I/O error type");
+            assert_eq!(io.kind(), io::ErrorKind::InvalidData);
+            assert!(
+                io.get_ref()
+                    .unwrap()
+                    .downcast_ref::<PlantedReadFailure>()
+                    .is_some(),
+                "original source lost"
+            );
+        }
+        assert!(snapshot.lookup(&named("urn:missing")).unwrap().is_none());
+        assert!(
+            encode("SELECT * WHERE { ?s <urn:p> <urn:o> }", &snapshot)
+                .unwrap()
+                .is_some()
+        );
+    }
     #[test]
     fn modifiers_are_not_silently_compared_to_bgp_counts() {
         let snapshot =

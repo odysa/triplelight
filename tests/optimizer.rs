@@ -34,14 +34,20 @@ impl Graph {
     }
 }
 impl Dictionary for Graph {
-    fn lookup(&self, _: &Term) -> Option<TermId> {
-        None
+    fn lookup(&self, _: &Term) -> std::io::Result<Option<TermId>> {
+        Ok(None)
     }
-    fn resolve(&self, _: TermId) -> Term {
-        panic!("not used")
+    fn resolve(&self, _: TermId) -> std::io::Result<Term> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "encoded-only graph fixture",
+        ))
     }
-    fn resolve_ref(&self, _: TermId) -> oxrdf::TermRef<'_> {
-        panic!("not used")
+    fn with_term(&self, _: TermId, _: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> std::io::Result<()> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "encoded-only graph fixture",
+        ))
     }
 }
 impl Snapshot for Graph {
@@ -652,6 +658,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
 
 #[derive(Clone, Copy)]
 enum ReadFault {
+    Lookup,
     FullScan,
     Count,
     ObjectScan,
@@ -662,14 +669,20 @@ struct Faulty<'a> {
     fault: ReadFault,
 }
 impl Dictionary for Faulty<'_> {
-    fn lookup(&self, t: &Term) -> Option<TermId> {
+    fn lookup(&self, t: &Term) -> std::io::Result<Option<TermId>> {
+        if matches!(self.fault, ReadFault::Lookup) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "planted dictionary read failure",
+            ));
+        }
         self.inner.lookup(t)
     }
-    fn resolve(&self, id: TermId) -> Term {
+    fn resolve(&self, id: TermId) -> std::io::Result<Term> {
         self.inner.resolve(id)
     }
-    fn resolve_ref(&self, id: TermId) -> oxrdf::TermRef<'_> {
-        self.inner.resolve_ref(id)
+    fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> std::io::Result<()> {
+        self.inner.with_term(id, f)
     }
 }
 impl Snapshot for Faulty<'_> {
@@ -682,7 +695,7 @@ impl Snapshot for Faulty<'_> {
             ReadFault::FullScan => prefix.is_empty(),
             ReadFault::ObjectScan => perm == Perm::Pos,
             ReadFault::SubjectScan => perm == Perm::Spo && !prefix.is_empty(),
-            ReadFault::Count => false,
+            ReadFault::Count | ReadFault::Lookup => false,
         };
         if fail {
             // A successful batch followed by an error must still abort the read.
@@ -872,6 +885,7 @@ fn wide_high_work_bgp_preserves_original_runtime_results() {
     let stats = Stats::from_snapshot(&graph).unwrap();
     let pred = graph
         .lookup(&oxrdf::NamedNode::new("urn:p").unwrap().into())
+        .unwrap()
         .unwrap();
     let patterns = vec![p(v(0), Slot::Const(pred), v(1)); 8];
     assert!(estimated_greedy_work(&patterns, &stats) >= 100_000.0);
@@ -917,4 +931,31 @@ fn wide_high_work_bgp_preserves_original_runtime_results() {
     );
     assert_eq!(actual.len(), 25000);
     assert_eq!(actual, expected);
+}
+
+#[test]
+fn optimizer_dictionary_lookup_failure_is_not_an_empty_result() {
+    use rdfdb::exec::{Options, QueryErrorKind, query_with};
+    use rdfdb::storage::MemorySnapshot;
+    let g = MemorySnapshot::from_ntriples("<urn:a> <urn:p> <urn:b> .".as_bytes()).unwrap();
+    let stats = Stats::from_snapshot(&g).unwrap();
+    let faulty = Faulty {
+        inner: &g,
+        fault: ReadFault::Lookup,
+    };
+    let error = query_with(
+        &faulty,
+        "SELECT * WHERE { ?s <urn:p> ?o }",
+        &Options {
+            stats: Some(&stats),
+            ..Default::default()
+        },
+    )
+    .unwrap_err();
+    assert_eq!(error.kind, QueryErrorKind::Storage);
+    assert!(
+        error
+            .to_string()
+            .contains("planted dictionary read failure")
+    );
 }
