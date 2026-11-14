@@ -96,8 +96,14 @@ pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D)
             let mut distinct: Vec<TermId> = chunk.iter().copied().filter(|id| *id != UNBOUND && !sol.scratch.contains_key(id)).collect();
             distinct.sort_unstable();
             distinct.dedup();
-            let mut json: Vec<String> = vec![String::new(); distinct.len()];
-            dict.with_terms(&distinct, &mut |i, t| { let mut s = String::new(); term_ref_json(t, &mut s); json[i] = s; })?;
+            // Fragments go into one arena string (no allocation per term); `span[i]` locates term i.
+            let mut arena = String::with_capacity(distinct.len() * 64);
+            let mut span: Vec<(u32, u32)> = vec![(0, 0); distinct.len()];
+            dict.with_terms(&distinct, &mut |i, t| {
+                let start = arena.len();
+                term_ref_json(t, &mut arena);
+                span[i] = (start as u32, arena.len() as u32);
+            })?;
             let mut out = String::with_capacity(chunk.len() / w * 96);
             for row in chunk.chunks_exact(w) {
                 out.push_str(",{");
@@ -109,7 +115,7 @@ pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D)
                     out.push_str(name);
                     match sol.scratch.get(&id) {
                         Some(t) => term_json(t, &mut out),
-                        None => out.push_str(&json[distinct.binary_search(&id).expect("decoded above")]),
+                        None => { let (a, b) = span[distinct.binary_search(&id).expect("decoded above")]; out.push_str(&arena[a as usize..b as usize]) }
                     }
                 }
                 out.push('}');
