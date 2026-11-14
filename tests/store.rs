@@ -260,4 +260,8 @@ fn overlay_scan_propagates_base_errors() {
     assert!(results.last().unwrap().is_err(), "error must surface");
     let e = rdfdb::exec::query(&*store.snapshot(), "SELECT * WHERE { ?s ?p ?o }").unwrap_err();
     assert_eq!(e.kind, rdfdb::exec::QueryErrorKind::Storage);
+    let dest = dir.join("failed-generation");
+    let err = rdfdb::storage::write_disk_snapshot(&dest, &*store.snapshot()).unwrap_err();
+    assert!(err.to_string().contains("planted read failure"));
+    assert!(!dest.join("MANIFEST").exists());
 }
