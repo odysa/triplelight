@@ -33,6 +33,9 @@ pub mod disk_index;
 mod block_codec;
 
 #[cfg(unix)]
+mod external_sort;
+
+#[cfg(unix)]
 mod disk_snapshot;
 #[cfg(unix)]
 pub use disk_snapshot::{DiskSnapshot, DiskBase, write_disk_snapshot};
