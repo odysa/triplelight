@@ -51,7 +51,7 @@ impl IdSolutions {
         let w = self.width();
         let rows = if w == 0 { Vec::new() } else {
             self.ids.par_chunks(w).with_min_len(4096).map(|r| r.iter().map(|&id| {
-                if id == UNBOUND { None } else if let Some(t) = self.scratch.get(&id) { Some(t.clone()) } else { Some(dict.resolve(id)) }
+                if id == UNBOUND { None } else if let Some(t) = self.scratch.get(&id) { Some(t.clone()) } else { Some(dict.resolve(id).unwrap_or_else(|e| storage_failure(e))) }
             }).collect()).collect()
         };
         QueryResult::Solutions { vars: self.vars, rows }
@@ -190,11 +190,13 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn count(&self, perm: Perm, prefix: &[TermId]) -> u64 { self.snap.count(perm, prefix).unwrap_or_else(|e| storage_failure(e)) }
     pub(crate) fn resolve(&self, id: TermId) -> Term {
         if id.0 >> 60 == 0xe { return self.scratch.borrow().1[(id.0 & !(0xf << 60)) as usize].clone(); }
-        self.snap.resolve(id)
+        self.snap.resolve(id).unwrap_or_else(|e| storage_failure(e))
     }
+    /// Dictionary lookup; a storage failure aborts the query.
+    fn lookup(&self, t: &Term) -> Option<TermId> { self.snap.lookup(t).unwrap_or_else(|e| storage_failure(e)) }
     /// ID for any term: the store's ID if present, else a stable scratch ID.
     pub(crate) fn intern(&self, t: &Term) -> TermId {
-        if let Some(id) = self.snap.lookup(t) { return id; }
+        if let Some(id) = self.lookup(t) { return id; }
         let mut s = self.scratch.borrow_mut();
         if let Some(&id) = s.0.get(t) { return id; }
         let id = TermId(SCRATCH | s.1.len() as u64);
@@ -388,8 +390,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         match tp {
             TermPattern::Variable(v) => Slot::Var(self.var(v)),
             TermPattern::BlankNode(b) => Slot::Var(self.vars[&format!("_b{}", b.as_str())]),
-            TermPattern::NamedNode(n) => Slot::Const(self.snap.lookup(&n.clone().into())),
-            TermPattern::Literal(l) => Slot::Const(self.snap.lookup(&l.clone().into())),
+            TermPattern::NamedNode(n) => Slot::Const(self.lookup(&n.clone().into())),
+            TermPattern::Literal(l) => Slot::Const(self.lookup(&l.clone().into())),
             #[allow(unreachable_patterns)]
             _ => Slot::Const(None),
         }
@@ -399,7 +401,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let pats: Vec<[Slot; 3]> = patterns.iter().map(|t| {
             let p = match &t.predicate {
                 NamedNodePattern::Variable(v) => Slot::Var(self.var(v)),
-                NamedNodePattern::NamedNode(n) => Slot::Const(self.snap.lookup(&n.clone().into())),
+                NamedNodePattern::NamedNode(n) => Slot::Const(self.lookup(&n.clone().into())),
             };
             [self.slot_of(&t.subject), p, self.slot_of(&t.object)]
         }).collect();

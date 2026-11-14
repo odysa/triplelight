@@ -79,7 +79,7 @@ pub fn serialize(r: &QueryResult) -> (&'static str, String) {
 
 /// SPARQL JSON straight from term IDs: each term is written from the dictionary's borrowed bytes, so a large result
 /// never materializes owned `Term`s. Rows are serialized in parallel chunks.
-pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D) -> String {
+pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D) -> Result<String, crate::storage::StorageError> {
     use rayon::prelude::*;
     let mut out = String::new();
     out.push_str("{\"head\":{\"vars\":[");
@@ -88,7 +88,7 @@ pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D)
     let w = sol.width();
     if w > 0 {
         let names: Vec<String> = sol.vars.iter().map(|v| { let mut s = String::new(); esc(v.as_str(), &mut s); s.push(':'); s }).collect();
-        let chunks: Vec<String> = sol.ids.par_chunks(w * 4096).map(|chunk| {
+        let chunks: Vec<String> = sol.ids.par_chunks(w * 4096).map(|chunk| -> Result<String, crate::storage::StorageError> {
             let mut out = String::with_capacity(chunk.len() / w * 96);
             for row in chunk.chunks_exact(w) {
                 out.push_str(",{");
@@ -100,16 +100,16 @@ pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D)
                     out.push_str(name);
                     match sol.scratch.get(&id) {
                         Some(t) => term_json(t, &mut out),
-                        None => term_ref_json(dict.resolve_ref(id), &mut out),
+                        None => dict.with_term(id, &mut |t| term_ref_json(t, &mut out))?,
                     }
                 }
                 out.push('}');
             }
-            out
-        }).collect();
+            Ok(out)
+        }).collect::<Result<_, _>>()?;
         let body = chunks.concat();
         out.push_str(body.strip_prefix(',').unwrap_or(&body));
     }
     out.push_str("]}}");
-    out
+    Ok(out)
 }

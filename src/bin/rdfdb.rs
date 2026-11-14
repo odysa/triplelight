@@ -80,7 +80,10 @@ fn answer<S: rdfdb::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>) ->
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| query_with(snap, q, opts))) {
         Ok(Ok(r)) => {
             let (ct, b) = match &r {
-                QueryResult::Ids(sol) => ("application/sparql-results+json", serialize_ids(sol, snap)),
+                QueryResult::Ids(sol) => match serialize_ids(sol, snap) {
+                    Ok(b) => ("application/sparql-results+json", b),
+                    Err(e) => return tiny_http::Response::from_string(format!("storage error: {e}")).with_status_code(500),
+                },
                 r => serialize(r),
             };
             tiny_http::Response::from_string(b).with_header(tiny_http::Header::from_bytes("Content-Type", ct).unwrap())
