@@ -72,13 +72,21 @@ impl Overlay {
     }
 }
 
-impl Dictionary for Overlay {
-    fn lookup(&self, term: &Term) -> Option<TermId> { self.base.lookup(term).or_else(|| self.delta.terms.get(term).copied()) }
-    fn resolve(&self, id: TermId) -> Term {
-        if id.0 >> 60 == DELTA_TAG { self.delta.rev[(id.0 & !(0xf << 60)) as usize].clone() } else { self.base.resolve(id) }
+impl Overlay {
+    fn delta_term(&self, id: TermId) -> Result<&Term, StorageError> {
+        self.delta.rev.get((id.0 & !(0xf << 60)) as usize).ok_or_else(|| StorageError::other("unknown delta term ID"))
     }
-    fn resolve_ref(&self, id: TermId) -> TermRef<'_> {
-        if id.0 >> 60 == DELTA_TAG { self.delta.rev[(id.0 & !(0xf << 60)) as usize].as_ref() } else { self.base.resolve_ref(id) }
+}
+
+impl Dictionary for Overlay {
+    fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> {
+        Ok(self.base.lookup(term)?.or_else(|| self.delta.terms.get(term).copied()))
+    }
+    fn resolve(&self, id: TermId) -> Result<Term, StorageError> {
+        if id.0 >> 60 == DELTA_TAG { Ok(self.delta_term(id)?.clone()) } else { self.base.resolve(id) }
+    }
+    fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> {
+        if id.0 >> 60 == DELTA_TAG { f(self.delta_term(id)?.as_ref()); Ok(()) } else { self.base.with_term(id, f) }
     }
 }
 
@@ -191,7 +199,7 @@ impl BaseFormat for NTriplesBase {
             let b = b?;
             for i in 0..b.len() {
                 let t = |id| src.resolve(id);
-                writeln!(out, "{} {} {} .", t(b.cols[0][i]), t(b.cols[1][i]), t(b.cols[2][i]))?;
+                writeln!(out, "{} {} {} .", t(b.cols[0][i])?, t(b.cols[1][i])?, t(b.cols[2][i])?)?;
             }
         }
         out.into_inner().map_err(|e| e.into_error())?.sync_all()?;
@@ -309,7 +317,7 @@ impl Store {
         for (c, t) in changes {
             let present = match state.get(t) {
                 Some(&v) => v,
-                None => match ids_if_known(&cur, t) { Some(spo) => cur.contains(spo)?, None => false },
+                None => match ids_if_known(&cur, t)? { Some(spo) => cur.contains(spo)?, None => false },
             };
             if (*c == Change::Insert) != present { rec.push((*c, t.clone())) }
             state.insert(t.clone(), *c == Change::Insert);
@@ -388,22 +396,24 @@ fn set_current(dir: &Path, n: u64) -> std::io::Result<()> {
 
 fn sync_dir(dir: &Path) -> std::io::Result<()> { File::open(dir)?.sync_all() }
 
-fn ids_if_known(o: &Overlay, t: &Triple) -> Option<[TermId; 3]> {
-    Some([o.lookup(&t.subject.clone().into())?, o.lookup(&t.predicate.clone().into())?, o.lookup(&t.object)?])
+fn ids_if_known(o: &Overlay, t: &Triple) -> Result<Option<[TermId; 3]>, StorageError> {
+    let (Some(s), Some(p), Some(x)) = (o.lookup(&t.subject.clone().into())?, o.lookup(&t.predicate.clone().into())?, o.lookup(&t.object)?)
+        else { return Ok(None) };
+    Ok(Some([s, p, x]))
 }
 
 /// New overlay = `cur` + one committed record (copy-on-write delta).
 fn apply(cur: &Overlay, rec: &[(Change, Triple)]) -> std::io::Result<Overlay> {
     let mut d: Delta = (*cur.delta).clone();
-    let intern = |d: &mut Delta, term: Term| -> TermId {
-        if let Some(id) = cur.base.lookup(&term).or_else(|| d.terms.get(&term).copied()) { return id }
+    let intern = |d: &mut Delta, term: Term| -> std::io::Result<TermId> {
+        if let Some(id) = cur.base.lookup(&term)?.or_else(|| d.terms.get(&term).copied()) { return Ok(id) }
         let id = TermId((DELTA_TAG << 60) | d.rev.len() as u64);
         d.terms.insert(term.clone(), id);
         d.rev.push(term);
-        id
+        Ok(id)
     };
     for (c, t) in rec {
-        let spo = [intern(&mut d, t.subject.clone().into()), intern(&mut d, t.predicate.clone().into()), intern(&mut d, t.object.clone())];
+        let spo = [intern(&mut d, t.subject.clone().into())?, intern(&mut d, t.predicate.clone().into())?, intern(&mut d, t.object.clone())?];
         let in_base = cur.base.count(Perm::Spo, &spo)? > 0;
         for p in Perm::ALL {
             let k = key(p, spo);
