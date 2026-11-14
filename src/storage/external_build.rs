@@ -308,9 +308,11 @@ pub(super) fn from_snapshot(dir: &Path, source: &dyn Snapshot) -> io::Result<()>
             return Err(bad("inconsistent source batch"));
         }
         for i in 0..batch.len() {
-            builder.add(std::array::from_fn(|c| {
-                source.resolve_ref(batch.cols[c][i]).to_string()
-            }))?;
+            let mut terms = [String::new(), String::new(), String::new()];
+            for (c, term) in terms.iter_mut().enumerate() {
+                source.with_term(batch.cols[c][i], &mut |v| *term = v.to_string())?;
+            }
+            builder.add(terms)?;
         }
     }
     builder.finish(dir)

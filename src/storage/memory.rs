@@ -461,17 +461,26 @@ mod tests {
         )
     }
     #[test]
+    fn unknown_id_is_error_and_does_not_invoke_callback() {
+        let store = MemorySnapshot::from_triples([]);
+        assert!(store.lookup(&triple("urn:s", "urn:p", "v").object).unwrap().is_none());
+        assert!(store.resolve(TermId(42)).is_err());
+        let mut called = false;
+        assert!(store.with_term(TermId(42), &mut |_| called = true).is_err());
+        assert!(!called);
+    }
+    #[test]
     fn six_permutations_deduplicate_count_and_seek() {
         let a = triple("urn:s1", "urn:p1", "a");
         let b = triple("urn:s1", "urn:p2", "long value");
         let c = triple("urn:s2", "urn:p1", "a");
         let store = MemorySnapshot::from_triples([a.clone(), b, c, a.clone()]);
         let values = [
-            store.lookup(&a.subject.clone().into()).unwrap(),
-            store.lookup(&a.predicate.clone().into()).unwrap(),
-            store.lookup(&a.object).unwrap(),
+            store.lookup(&a.subject.clone().into()).unwrap().unwrap(),
+            store.lookup(&a.predicate.clone().into()).unwrap().unwrap(),
+            store.lookup(&a.object).unwrap().unwrap(),
         ];
-        assert_eq!(store.resolve(values[2]), a.object);
+        assert_eq!(store.resolve(values[2]).unwrap(), a.object);
         for perm in Perm::ALL {
             let order = perm.order();
             let ordered = [values[order[0]], values[order[1]], values[order[2]]];
@@ -630,13 +639,17 @@ mod tests {
         ];
         let ids: Vec<_> = terms.iter().map(|t| store.intern(t.clone())).collect();
         for (id, term) in ids.iter().zip(&terms) {
-            assert_eq!(store.resolve_ref(*id).into_owned(), *term);
+            store
+                .with_term(*id, &mut |v| assert_eq!(v.into_owned(), *term))
+                .unwrap();
         }
         let mut bytes = Vec::new();
         store.write_snapshot(&mut bytes).unwrap();
         let reopened = MemorySnapshot::read_snapshot(bytes.as_slice()).unwrap();
         for (id, term) in ids.iter().zip(&terms) {
-            assert_eq!(reopened.resolve_ref(*id).into_owned(), *term);
+            reopened
+                .with_term(*id, &mut |v| assert_eq!(v.into_owned(), *term))
+                .unwrap();
         }
     }
     #[test]
@@ -661,8 +674,9 @@ mod tests {
             let t: Term = Literal::new_simple_literal(v).into();
             let id = s.intern(t.clone());
             assert_ne!(id, TermId(0));
-            assert_eq!(s.resolve(id), t);
-            assert_eq!(s.resolve_ref(id).into_owned(), t);
+            assert_eq!(s.resolve(id).unwrap(), t);
+            s.with_term(id, &mut |v| assert_eq!(v.into_owned(), t))
+                .unwrap();
         }
     }
 }

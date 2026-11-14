@@ -470,8 +470,8 @@ mod tests {
             );
         }
         let t: Term = triples[7].object.clone();
-        assert_eq!(disk.lookup(&t), source.lookup(&t));
-        assert_eq!(disk.resolve(disk.lookup(&t).unwrap()), t);
+        assert_eq!(disk.lookup(&t).unwrap(), source.lookup(&t).unwrap());
+        assert_eq!(disk.resolve(disk.lookup(&t).unwrap().unwrap()).unwrap(), t);
         drop(disk);
         let path = dir.join("spo");
         let mut bytes = fs::read(&path).unwrap();
