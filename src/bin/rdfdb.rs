@@ -224,23 +224,26 @@ fn main() {
         Some("serve") => {
             let snap = load(&args[2], &args);
             let port = args.get(3).map(String::as_str).unwrap_or("7878");
-            // Optimizer statistics are built at load by default (--no-stats disables): join and leapfrog orders then come
-            // from the cost model, which a work gate skips for small queries. Decided on round-2 benchmarks (bench/results).
-            let stats = (!args.iter().any(|a| a == "--no-stats")).then(|| {
-                let t = Instant::now();
-                let st = Stats::from_snapshot(&snap).expect("statistics");
-                eprintln!("statistics built in {:.2}s", t.elapsed().as_secs_f64());
-                st
-            });
-            eprintln!("optimizer statistics: {}", if stats.is_some() { "on" } else { "off" });
-            let opts = Options { stats: stats.as_ref(), wcoj: true, raw_ids: true };
-            let opts = &opts;
+            // Optimizer statistics (on by default, --no-stats disables) are built on a background thread so the
+            // server answers immediately: until they are ready, joins use the greedy order. Join and leapfrog orders
+            // then come from the cost model, which a work gate skips for small queries (round-2 benchmarks).
+            let stats: std::sync::RwLock<Option<std::sync::Arc<Stats>>> = std::sync::RwLock::new(None);
+            let want_stats = !args.iter().any(|a| a == "--no-stats");
+            eprintln!("optimizer statistics: {}", if want_stats { "building in background" } else { "off" });
             let server = tiny_http::Server::http(format!("127.0.0.1:{port}")).expect("bind");
             eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql");
             // One worker per core: queries run concurrently against the same immutable snapshot.
             let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
-            let (server, snap) = (&server, &snap);
-            std::thread::scope(|scope| for _ in 0..workers { scope.spawn(move || {
+            let (server, snap, stats) = (&server, &snap, &stats);
+            std::thread::scope(|scope| {
+            if want_stats { scope.spawn(move || {
+                let t = Instant::now();
+                match Stats::from_snapshot(snap) {
+                    Ok(st) => { *stats.write().unwrap() = Some(std::sync::Arc::new(st)); eprintln!("statistics ready after {:.2}s", t.elapsed().as_secs_f64()) }
+                    Err(e) => eprintln!("statistics failed ({e}); continuing with greedy join order"),
+                }
+            }); }
+            for _ in 0..workers { scope.spawn(move || {
             for mut req in server.incoming_requests() {
                 let url = req.url().to_string();
                 let mut body = String::new();
@@ -249,10 +252,12 @@ fn main() {
                 let q = if is_query_body { Some(body) } else {
                     url.split_once('?').and_then(|(_, qs)| form_param(qs, "query")).or_else(|| form_param(&body, "query"))
                 };
-                let resp = match q { Some(q) => answer(snap, &q, opts), None => tiny_http::Response::from_string("missing query").with_status_code(400) };
+                let st = stats.read().unwrap().clone();
+                let opts = Options { stats: st.as_deref(), wcoj: true, raw_ids: true };
+                let resp = match q { Some(q) => answer(snap, &q, &opts), None => tiny_http::Response::from_string("missing query").with_status_code(400) };
                 let _ = req.respond(resp);
             }
-            }); });
+            }); } });
         }
         _ => eprintln!("usage: rdfdb serve <data.nt|.ttl> [port] | rdfdb serve-store <dir> [port] [--init data.nt] | rdfdb query <data> <sparql>"),
     }
