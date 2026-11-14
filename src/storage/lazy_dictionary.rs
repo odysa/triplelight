@@ -219,6 +219,28 @@ impl LazyIndex {
         }
         Ok(rows)
     }
+    pub(super) fn clear_cache(&self) -> io::Result<()> {
+        let mut cache = self
+            .cache
+            .lock()
+            .map_err(|_| io::Error::other("dictionary cache lock poisoned"))?;
+        cache.entries.clear();
+        cache.order.clear();
+        cache.used = 0;
+        Ok(())
+    }
+    pub(super) fn for_each(
+        &self,
+        f: &mut dyn FnMut(TermId, &Term) -> io::Result<()>,
+    ) -> io::Result<()> {
+        for index in 0..self.entries.len() {
+            let rows = self.block(index)?;
+            for (id, term) in rows.iter() {
+                f(*id, term)?;
+            }
+        }
+        Ok(())
+    }
     pub(super) fn find(&self, key: &[u8]) -> io::Result<Option<(TermId, Term)>> {
         let i = self.entries.partition_point(|e| e.last.as_slice() < key);
         if i == self.entries.len() {
@@ -433,4 +455,148 @@ mod tests {
         drop(terms);
         std::fs::remove_dir_all(dir).unwrap();
     }
+}
+
+/// Convert a freshly written legacy dictionary into two immutable indexes.
+/// Caller owns manifest publication and scratch directory durability.
+pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
+    use super::external_sort::{ExternalSort, read_record};
+    use std::io::{BufReader, Read};
+    let mut input = BufReader::new(File::open(dir.join("dictionary"))?);
+    let mut header = [0u8; 8];
+    input.read_exact(&mut header)?;
+    if &header != b"RDFDIC01" {
+        return Err(bad("invalid legacy dictionary"));
+    }
+    input.read_exact(&mut header)?;
+    let count = u64::from_le_bytes(header);
+    if count > 100_000_000 {
+        return Err(bad("dictionary count too large"));
+    }
+    let mut by_term = ExternalSort::new(dir, 128 * 1024 * 1024, 16 * 1024 * 1024 + 9)?;
+    let mut by_id = ExternalSort::new(dir, 128 * 1024 * 1024, 16 * 1024 * 1024 + 8)?;
+    for _ in 0..count {
+        input.read_exact(&mut header)?;
+        let id = u64::from_le_bytes(header);
+        if id == 0 {
+            return Err(bad("zero dictionary ID"));
+        }
+        input.read_exact(&mut header)?;
+        let len = usize::try_from(u64::from_le_bytes(header))
+            .map_err(|_| bad("dictionary term length"))?;
+        if len > 16 * 1024 * 1024 {
+            return Err(bad("dictionary term too long"));
+        }
+        let mut text = vec![0; len];
+        input.read_exact(&mut text)?;
+        if text.contains(&0) {
+            return Err(bad("invalid dictionary text"));
+        }
+        let term: Term = std::str::from_utf8(&text)
+            .map_err(|_| bad("invalid dictionary UTF-8"))?
+            .parse()
+            .map_err(|_| bad("invalid dictionary term"))?;
+        if term.to_string().as_bytes() != text {
+            return Err(bad("noncanonical dictionary term"));
+        }
+        let mut term_key = Vec::with_capacity(len + 9);
+        term_key.extend_from_slice(&text);
+        term_key.push(0);
+        term_key.extend_from_slice(&id.to_be_bytes());
+        by_term.push(term_key)?;
+        let mut id_key = Vec::with_capacity(len + 8);
+        id_key.extend_from_slice(&id.to_be_bytes());
+        id_key.extend_from_slice(&text);
+        by_id.push(id_key)?;
+    }
+    let mut extra = [0u8; 1];
+    if input.read(&mut extra)? != 0 {
+        return Err(bad("dictionary trailing bytes"));
+    }
+    drop(input);
+    struct Rows {
+        input: std::io::BufReader<File>,
+        order: Order,
+        done: bool,
+    }
+    impl Iterator for Rows {
+        type Item = io::Result<(TermId, Term)>;
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.done {
+                return None;
+            }
+            let value = match read_record(&mut self.input, 16 * 1024 * 1024 + 9) {
+                Ok(Some(v)) => v,
+                Ok(None) => {
+                    self.done = true;
+                    return None;
+                }
+                Err(e) => {
+                    self.done = true;
+                    return Some(Err(e));
+                }
+            };
+            let parsed = (|| {
+                let (id, text) = match self.order {
+                    Order::Id => {
+                        if value.len() < 8 {
+                            return Err(bad("short ID sort record"));
+                        }
+                        (
+                            u64::from_be_bytes(value[..8].try_into().unwrap()),
+                            &value[8..],
+                        )
+                    }
+                    Order::Term => {
+                        if value.len() < 9 || value[value.len() - 9] != 0 {
+                            return Err(bad("short term sort record"));
+                        }
+                        (
+                            u64::from_be_bytes(value[value.len() - 8..].try_into().unwrap()),
+                            &value[..value.len() - 9],
+                        )
+                    }
+                };
+                let term = std::str::from_utf8(text)
+                    .map_err(|_| bad("invalid term UTF-8"))?
+                    .parse()
+                    .map_err(|_| bad("invalid RDF term"))?;
+                Ok((TermId(id), term))
+            })();
+            if parsed.is_err() {
+                self.done = true;
+            }
+            Some(parsed)
+        }
+    }
+    let term_run = by_term.finish()?;
+    let id_run = by_id.finish()?;
+    let term_path = dir.join("dictionary.term");
+    let id_path = dir.join("dictionary.id");
+    write_index(
+        &term_path,
+        Order::Term,
+        Rows {
+            input: std::io::BufReader::new(File::open(term_run)?),
+            order: Order::Term,
+            done: false,
+        },
+    )?;
+    write_index(
+        &id_path,
+        Order::Id,
+        Rows {
+            input: std::io::BufReader::new(File::open(id_run)?),
+            order: Order::Id,
+            done: false,
+        },
+    )?;
+    let identities = (
+        LazyIndex::open(&term_path, Order::Term)?.identity(),
+        LazyIndex::open(&id_path, Order::Id)?.identity(),
+    );
+    drop(by_term);
+    drop(by_id);
+    std::fs::remove_file(dir.join("dictionary"))?;
+    Ok(identities)
 }

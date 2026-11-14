@@ -2,7 +2,7 @@
 use super::{
     Snapshot,
     disk_index::{DiskIndex, write_index_stream},
-    disk_snapshot::{FILES, digest},
+    disk_snapshot::FILES,
     external_sort::{ExternalSort, read_record},
 };
 use crate::model::{Perm, TermId};
@@ -169,7 +169,8 @@ impl Builder {
         }
         triples.flush()?;
         drop(triples);
-        let mut identities = vec![digest(&dir.join(FILES[0]))?];
+        let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir)?;
+        let mut identities = vec![term_identity, id_identity];
         for (name, perm) in FILES[1..].iter().zip(Perm::ALL) {
             let mut sorter = ExternalSort::new(dir, MEMORY, 24)?;
             let mut input = BufReader::new(File::open(&raw)?);
@@ -214,7 +215,7 @@ impl Builder {
                 .create_new(true)
                 .open(dir.join("MANIFEST"))?,
         );
-        manifest.write_all(b"RDFSNAP2")?;
+        manifest.write_all(b"RDFSNAP3")?;
         for identity in identities {
             manifest.write_all(&identity)?;
         }
