@@ -29,7 +29,7 @@ pub fn set_cache_budget_mb(value: usize) -> io::Result<()> {
     CACHE_MB_OVERRIDE.store(value, Ordering::Relaxed);
     Ok(())
 }
-fn cache_budget_mb() -> usize {
+pub(super) fn cache_budget_mb() -> usize {
     let value = CACHE_MB_OVERRIDE.load(Ordering::Relaxed);
     if value != 0 {
         return value;
@@ -286,7 +286,7 @@ impl DiskIndex {
                 .collect(),
             shard_capacity: cache_budget_mb()
                 .saturating_mul(1024 * 1024)
-                .checked_div(6 * 16 * BLOCK_ROWS as usize * ROW as usize)
+                .checked_div(8 * 16 * BLOCK_ROWS as usize * ROW as usize)
                 .unwrap_or(1)
                 .max(1),
         })
