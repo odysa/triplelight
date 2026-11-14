@@ -1,0 +1,306 @@
+//! External construction of compressed snapshots; bounded run buffers, with scratch on disk.
+use super::{
+    Snapshot,
+    disk_index::{DiskIndex, write_index_stream},
+    disk_snapshot::{FILES, digest},
+    external_sort::{ExternalSort, read_record},
+};
+use crate::model::{Perm, TermId};
+use oxrdf::{Term, Triple};
+use std::{
+    fs::{self, File, OpenOptions},
+    io::{self, BufReader, BufWriter, Read, Seek, SeekFrom, Write},
+    path::Path,
+};
+const MEMORY: usize = 128 * 1024 * 1024;
+const MAX_TERM: usize = 16 * 1024 * 1024;
+fn bad(s: &'static str) -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidData, s)
+}
+
+pub(super) struct Builder {
+    terms: ExternalSort,
+    triples: u64,
+}
+impl Builder {
+    fn new(dir: &Path) -> io::Result<Self> {
+        Ok(Self {
+            terms: ExternalSort::new(dir, MEMORY, MAX_TERM + 10)?,
+            triples: 0,
+        })
+    }
+    fn add(&mut self, terms: [String; 3]) -> io::Result<()> {
+        for (pos, term) in terms.into_iter().enumerate() {
+            if term.len() > MAX_TERM || term.as_bytes().contains(&0) {
+                return Err(bad("invalid or oversized encoded RDF term"));
+            }
+            let mut r = term.into_bytes();
+            r.push(0);
+            r.extend_from_slice(&self.triples.to_be_bytes());
+            r.push(pos as u8);
+            self.terms.push(r)?;
+        }
+        self.triples = self
+            .triples
+            .checked_add(1)
+            .ok_or_else(|| bad("too many triples"))?;
+        Ok(())
+    }
+    fn finish(mut self, dir: &Path) -> io::Result<()> {
+        let sorted = self.terms.finish()?;
+        let mut input = BufReader::new(File::open(sorted)?);
+        let mut mapping = ExternalSort::new(dir, MEMORY, 17)?;
+        let mut dict = BufWriter::new(
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create_new(true)
+                .open(dir.join(FILES[0]))?,
+        );
+        dict.write_all(b"RDFDIC01")?;
+        dict.write_all(&0u64.to_le_bytes())?;
+        let mut previous = Vec::new();
+        let mut current = TermId(0);
+        let mut unique = 0u64;
+        while let Some(r) = read_record(&mut input, MAX_TERM + 10)? {
+            if r.len() < 10 || r[r.len() - 10] != 0 {
+                return Err(bad("malformed term run"));
+            }
+            let text = &r[..r.len() - 10];
+            if current.0 == 0 || previous != text {
+                let term: Term = std::str::from_utf8(text)
+                    .map_err(|_| bad("invalid UTF-8 term"))?
+                    .parse()
+                    .map_err(|_| bad("invalid RDF term"))?;
+                if unique >= (1u64 << 60) {
+                    return Err(bad("too many RDF terms"));
+                }
+                let kind = match term {
+                    Term::NamedNode(_) => 1u64,
+                    Term::BlankNode(_) => 2,
+                    Term::Literal(_) => 3,
+                };
+                current = TermId((kind << 60) | unique);
+                unique += 1;
+                dict.write_all(&current.0.to_le_bytes())?;
+                dict.write_all(&(text.len() as u64).to_le_bytes())?;
+                dict.write_all(text)?;
+                previous.clear();
+                previous.extend_from_slice(text);
+            }
+            let tail = &r[r.len() - 9..];
+            let mut entry = Vec::with_capacity(17);
+            entry.extend_from_slice(tail);
+            entry.extend_from_slice(&current.0.to_be_bytes());
+            mapping.push(entry)?;
+        }
+        dict.flush()?;
+        dict.seek(SeekFrom::Start(8))?;
+        dict.write_all(&unique.to_le_bytes())?;
+        dict.flush()?;
+        dict.get_ref().sync_all()?;
+        drop(dict);
+        let assignments = mapping.finish()?;
+        let mut input = BufReader::new(File::open(assignments)?);
+        let raw = dir.join(".triples.raw");
+        let mut triples =
+            BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&raw)?);
+        for id in 0..self.triples {
+            for pos in 0..3u8 {
+                let r =
+                    read_record(&mut input, 17)?.ok_or_else(|| bad("missing term assignment"))?;
+                if r.len() != 17 || r[..8] != id.to_be_bytes() || r[8] != pos {
+                    return Err(bad("invalid term assignment"));
+                }
+                triples.write_all(&r[9..17])?;
+            }
+        }
+        if read_record(&mut input, 17)?.is_some() {
+            return Err(bad("extra term assignment"));
+        }
+        triples.flush()?;
+        drop(triples);
+        let mut identities = vec![digest(&dir.join(FILES[0]))?];
+        for (name, perm) in FILES[1..].iter().zip(Perm::ALL) {
+            let mut sorter = ExternalSort::new(dir, MEMORY, 24)?;
+            let mut input = BufReader::new(File::open(&raw)?);
+            for _ in 0..self.triples {
+                let mut triple = [0u8; 24];
+                input.read_exact(&mut triple)?;
+                let order = perm.order();
+                let mut key = Vec::with_capacity(24);
+                for i in order {
+                    key.extend_from_slice(&triple[i * 8..i * 8 + 8]);
+                }
+                sorter.push(key)?;
+            }
+            let sorted = sorter.finish()?;
+            let mut reader = UniqueRows::open(&sorted)?;
+            let mut count = 0u64;
+            while reader.next().transpose()?.is_some() {
+                count += 1;
+            }
+            let rows = UniqueRows::open(&sorted)?;
+            let path = dir.join(name);
+            let mut output = BufWriter::new(
+                OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(&path)?,
+            );
+            write_index_stream(&mut output, count, rows)?;
+            output.flush()?;
+            output.get_ref().sync_all()?;
+            drop(output);
+            identities.push(DiskIndex::open(path)?.identity());
+        }
+        fs::remove_file(raw)?;
+        // Finish and remove all scratch before publishing the manifest.
+        drop(mapping);
+        drop(input);
+        drop(self.terms);
+        let mut manifest = BufWriter::new(
+            OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(dir.join("MANIFEST"))?,
+        );
+        manifest.write_all(b"RDFSNAP2")?;
+        for identity in identities {
+            manifest.write_all(&identity)?;
+        }
+        manifest.flush()?;
+        manifest.get_ref().sync_all()?;
+        drop(manifest);
+        File::open(dir)?.sync_all()?;
+        File::open(
+            dir.parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .unwrap_or(Path::new(".")),
+        )?
+        .sync_all()?;
+        Ok(())
+    }
+}
+struct UniqueRows {
+    input: BufReader<File>,
+    previous: Option<[u8; 24]>,
+    done: bool,
+}
+impl UniqueRows {
+    fn open(path: &Path) -> io::Result<Self> {
+        Ok(Self {
+            input: BufReader::new(File::open(path)?),
+            previous: None,
+            done: false,
+        })
+    }
+}
+impl Iterator for UniqueRows {
+    type Item = io::Result<[TermId; 3]>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+        loop {
+            match read_record(&mut self.input, 24) {
+                Ok(Some(r)) => {
+                    let bytes: [u8; 24] = match r.try_into() {
+                        Ok(v) => v,
+                        Err(_) => {
+                            self.done = true;
+                            return Some(Err(bad("bad triple run")));
+                        }
+                    };
+                    if self.previous == Some(bytes) {
+                        continue;
+                    }
+                    self.previous = Some(bytes);
+                    return Some(Ok(std::array::from_fn(|i| {
+                        TermId(u64::from_be_bytes(
+                            bytes[i * 8..i * 8 + 8].try_into().unwrap(),
+                        ))
+                    })));
+                }
+                Ok(None) => {
+                    self.done = true;
+                    return None;
+                }
+                Err(e) => {
+                    self.done = true;
+                    return Some(Err(e));
+                }
+            }
+        }
+    }
+}
+pub(super) fn from_nt(dir: &Path, path: Option<&Path>) -> io::Result<()> {
+    fs::create_dir(dir)?;
+    let mut builder = Builder::new(dir)?;
+    if let Some(path) = path {
+        let input = BufReader::new(File::open(path)?);
+        for t in oxttl::NTriplesParser::new().for_reader(input) {
+            let t: Triple = t.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+            builder.add([
+                t.subject.to_string(),
+                t.predicate.to_string(),
+                t.object.to_string(),
+            ])?;
+        }
+    }
+    builder.finish(dir)
+}
+pub(super) fn from_snapshot(dir: &Path, source: &dyn Snapshot) -> io::Result<()> {
+    fs::create_dir(dir)?;
+    let mut builder = Builder::new(dir)?;
+    for batch in source.scan(Perm::Spo, &[]) {
+        let batch = batch?;
+        if batch.cols.iter().any(|c| c.len() != batch.len()) {
+            return Err(bad("inconsistent source batch"));
+        }
+        for i in 0..batch.len() {
+            builder.add(std::array::from_fn(|c| {
+                source.resolve_ref(batch.cols[c][i]).to_string()
+            }))?;
+        }
+    }
+    builder.finish(dir)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        exec::{QueryResult, query},
+        storage::DiskSnapshot,
+    };
+    #[test]
+    fn ntriples_deduplicate_and_preserve_rdf_terms() {
+        let dir = std::env::temp_dir().join(format!("rdf-ext-test-{}", std::process::id()));
+        fs::create_dir(&dir).unwrap();
+        let input = dir.join("input.nt");
+        let output = dir.join("base");
+        fs::write(&input,"<urn:s> <urn:p> \"hello\"@en .\n<urn:s> <urn:p> \"hello\"@en .\n_:x <urn:p> \"1\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n").unwrap();
+        from_nt(&output, Some(&input)).unwrap();
+        let snapshot = DiskSnapshot::open(&output).unwrap();
+        snapshot.verify().unwrap();
+        let result = query(&snapshot, "SELECT ?s ?o WHERE { ?s <urn:p> ?o }").unwrap();
+        match result {
+            QueryResult::Solutions { rows, .. } => assert_eq!(rows.len(), 2),
+            _ => panic!("unexpected result"),
+        }
+        drop(snapshot);
+        fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn invalid_input_does_not_publish_a_manifest() {
+        let parent = std::env::temp_dir().join(format!("rdf-ext-fail-{}", std::process::id()));
+        fs::create_dir(&parent).unwrap();
+        let input = parent.join("bad.nt");
+        fs::write(&input, "<invalid\n").unwrap();
+        let out = parent.join("base");
+        assert!(from_nt(&out, Some(&input)).is_err());
+        assert!(!out.join("MANIFEST").exists());
+        fs::remove_dir_all(parent).unwrap();
+    }
+}

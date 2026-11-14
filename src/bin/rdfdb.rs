@@ -185,8 +185,12 @@ fn main() {
                 eprintln!("usage: rdfdb build-disk <source.nt|source.ttl> <new-directory> [--parallel-load=N]");
                 std::process::exit(2);
             }
-            let Backend::Memory(source) = load(&args[2], &args) else { unreachable!() };
-            DiskSnapshot::create(&args[3], &source).expect("create disk snapshot");
+            if args[2].ends_with(".ttl") {
+                let Backend::Memory(source) = load(&args[2], &args) else { unreachable!() };
+                DiskSnapshot::create(&args[3], &source).expect("create disk snapshot");
+            } else {
+                rdfdb::storage::build_disk_snapshot(&args[3], Some(std::path::Path::new(&args[2]))).expect("create disk snapshot");
+            }
         }
         Some("query") => {
             let snap = load(&args[2], &args);
