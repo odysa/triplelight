@@ -61,3 +61,20 @@ fn disk_server_restarts_and_answers_without_original_input() {
     }
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn build_strategy_can_be_forced_and_matches_fast_path() {
+    let root=std::env::temp_dir().join(format!("rdfdb-build-strategy-{}",std::process::id()));
+    std::fs::create_dir(&root).unwrap();let nt=root.join("data.nt");
+    std::fs::write(&nt,"<urn:s> <urn:p> \"x\"@en .\n<urn:s> <urn:p> \"x\"@en .\n_:b <urn:p> \"7\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n").unwrap();
+    let exe=env!("CARGO_BIN_EXE_rdfdb");let mut answers=Vec::new();
+    for (name,flags,expected) in [("fast",vec!["--build-memory-mb=1024"],"in-memory"),("ext",vec!["--build-external","--build-memory-mb=1024"],"external sort")] {
+        let dir=root.join(name);let result=Command::new(exe).arg("build-disk").arg(&nt).arg(&dir).args(flags).output().unwrap();
+        assert!(result.status.success(),"{}",String::from_utf8_lossy(&result.stderr));assert!(String::from_utf8_lossy(&result.stderr).contains(expected));
+        let result=Command::new(exe).arg("query").arg(&dir).arg("SELECT ?o WHERE { ?s <urn:p> ?o } ORDER BY ?o").arg("--disk").output().unwrap();
+        assert!(result.status.success());answers.push(result.stdout);
+    }
+    assert_eq!(answers[0],answers[1]);
+    let bad=Command::new(exe).arg("build-disk").arg(&nt).arg(root.join("bad")).arg("--build-memory-mb=0").output().unwrap();assert!(!bad.status.success());
+    std::fs::remove_dir_all(root).unwrap();
+}

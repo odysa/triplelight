@@ -91,7 +91,7 @@ pub fn write_disk_snapshot(dir: impl AsRef<Path>, source: &dyn Snapshot) -> io::
 }
 /// Build a new immutable disk snapshot from N-Triples using scratch-backed sorting.
 pub fn build_disk_snapshot(dir: impl AsRef<Path>, source: Option<&Path>) -> io::Result<()> {
-    super::external_build::from_nt(dir.as_ref(), source)
+    super::external_build::adaptive(dir.as_ref(), source, std::thread::available_parallelism().map_or(1, |n| n.get()))
 }
 /// Persistent Store base format backed by immutable checksummed disk indexes.
 pub struct DiskBase {
@@ -102,7 +102,7 @@ impl crate::store::BaseFormat for DiskBase {
         write_disk_snapshot(dir, src)
     }
     fn import(&self, dir: &Path, ntriples: Option<&Path>) -> io::Result<()> {
-        build_disk_snapshot(dir, ntriples)
+        super::external_build::adaptive(dir, ntriples, self.workers)
     }
     fn open(&self, dir: &Path) -> io::Result<std::sync::Arc<dyn Snapshot>> {
         Ok(std::sync::Arc::new(DiskSnapshot::open(dir)?))
