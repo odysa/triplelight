@@ -8,9 +8,9 @@ use oxrdf::{Term, TermRef};
 
 enum Backend { Memory(MemorySnapshot), Disk(DiskSnapshot) }
 impl Dictionary for Backend {
-    fn lookup(&self, term: &Term) -> Option<TermId> { match self { Self::Memory(s) => s.lookup(term), Self::Disk(s) => s.lookup(term) } }
-    fn resolve(&self, id: TermId) -> Term { match self { Self::Memory(s) => s.resolve(id), Self::Disk(s) => s.resolve(id) } }
-    fn resolve_ref(&self, id: TermId) -> TermRef<'_> { match self { Self::Memory(s) => s.resolve_ref(id), Self::Disk(s) => s.resolve_ref(id) } }
+    fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { match self { Self::Memory(s) => s.lookup(term), Self::Disk(s) => s.lookup(term) } }
+    fn resolve(&self, id: TermId) -> Result<Term, StorageError> { match self { Self::Memory(s) => s.resolve(id), Self::Disk(s) => s.resolve(id) } }
+    fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> { match self { Self::Memory(s) => s.with_term(id, f), Self::Disk(s) => s.with_term(id, f) } }
 }
 impl Snapshot for Backend {
     fn scan<'a>(&'a self, p: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + 'a> {
