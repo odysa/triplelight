@@ -42,6 +42,9 @@ pub mod disk_index;
 mod block_codec;
 
 #[cfg(unix)]
+mod term_block_codec;
+
+#[cfg(unix)]
 mod external_sort;
 
 #[cfg(unix)]
