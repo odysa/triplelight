@@ -75,7 +75,7 @@ fn id_results_serialize_like_decoded() {
     let q = "SELECT ?x ?n ?d WHERE { ?x <http://ex/age> ?a OPTIONAL { ?x <http://ex/name> ?n } BIND(?a * 2 AS ?d) }";
     let opts = rdfdb::exec::Options { raw_ids: true, ..Default::default() };
     let QueryResult::Ids(sol) = rdfdb::exec::query_with(&s, q, &opts).unwrap() else { panic!() };
-    let fast = rdfdb::exec::results::serialize_ids(&sol, &s);
+    let fast = rdfdb::exec::results::serialize_ids(&sol, &s).unwrap();
     let slow = rdfdb::exec::results::serialize(&query(&s, q).unwrap()).1;
     assert_eq!(fast, slow);
 }
@@ -85,4 +85,24 @@ fn errors_carry_their_kind() {
     use rdfdb::exec::QueryErrorKind;
     assert_eq!(query(&store(), "SELECT WHERE {").unwrap_err().kind, QueryErrorKind::Syntax);
     assert_eq!(query(&store(), "DESCRIBE <http://ex/alice>").unwrap_err().kind, QueryErrorKind::Unsupported);
+}
+
+/// A dictionary failure during query evaluation is a Storage error, not a missing result.
+#[test]
+fn dictionary_errors_are_storage_errors() {
+    use rdfdb::model::{Perm, TermId, TripleBatch};
+    use rdfdb::storage::{Dictionary, Snapshot, StorageError};
+    struct BadDict(MemorySnapshot);
+    impl Dictionary for BadDict {
+        fn lookup(&self, _: &oxrdf::Term) -> Result<Option<TermId>, StorageError> { Err(StorageError::other("planted dictionary failure")) }
+        fn resolve(&self, id: TermId) -> Result<oxrdf::Term, StorageError> { self.0.resolve(id) }
+        fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
+    }
+    impl Snapshot for BadDict {
+        fn scan<'a>(&'a self, p: Perm, pre: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> { self.0.scan(p, pre) }
+        fn count(&self, p: Perm, pre: &[TermId]) -> Result<u64, StorageError> { self.0.count(p, pre) }
+        fn seek(&self, p: Perm, pre: &[TermId], t: TermId) -> Result<Option<TermId>, StorageError> { self.0.seek(p, pre, t) }
+    }
+    let e = query(&BadDict(store()), "SELECT ?x WHERE { ?x <http://ex/knows> <http://ex/bob> }").unwrap_err();
+    assert_eq!(e.kind, rdfdb::exec::QueryErrorKind::Storage);
 }
