@@ -10,6 +10,18 @@ pub trait Dictionary {
     fn resolve(&self, id: TermId) -> Result<Term, StorageError>;
     /// Borrow a term only for the duration of the callback, allowing cached disk blocks.
     fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError>;
+    /// Callbacks carry input positions and may be delivered in any order. On error,
+    /// callers must discard partial output already produced by the callback.
+    fn with_terms(
+        &self,
+        ids: &[TermId],
+        f: &mut dyn FnMut(usize, TermRef<'_>),
+    ) -> Result<(), StorageError> {
+        for (position, &id) in ids.iter().enumerate() {
+            self.with_term(id, &mut |term| f(position, term))?;
+        }
+        Ok(())
+    }
 }
 
 /// A consistent read view (snapshot) of the store.
@@ -43,6 +55,9 @@ mod block_codec;
 
 #[cfg(unix)]
 mod term_block_codec;
+
+#[cfg(unix)]
+mod lazy_dictionary;
 
 #[cfg(unix)]
 mod external_sort;
