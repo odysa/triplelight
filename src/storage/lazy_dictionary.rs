@@ -14,7 +14,7 @@ use std::{
 const TERM_MAGIC: &[u8; 8] = b"RDFDTM01";
 const ID_MAGIC: &[u8; 8] = b"RDFDID01";
 const LIMIT: usize = 16 * 1024 * 1024 + 8192;
-const CACHE: usize = 32 * 1024 * 1024;
+const MAX_CACHE: usize = 512 * 1024 * 1024;
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(ErrorKind::InvalidData, s)
 }
@@ -53,7 +53,8 @@ pub(super) struct LazyIndex {
     order: Order,
     entries: Vec<Meta>,
     identity: [u8; 32],
-    cache: Mutex<Cache>,
+    cache: Vec<Mutex<Cache>>,
+    shard_budget: usize,
 }
 fn exact(file: &File, mut bytes: &mut [u8], mut offset: u64) -> io::Result<()> {
     while !bytes.is_empty() {
@@ -163,19 +164,28 @@ impl LazyIndex {
             order,
             entries,
             identity,
-            cache: Mutex::new(Cache {
-                entries: HashMap::new(),
-                order: VecDeque::new(),
-                used: 0,
-            }),
+            shard_budget: super::disk_index::cache_budget_mb()
+                .saturating_mul(1024 * 1024)
+                .checked_div(8)
+                .unwrap_or(0)
+                .min(MAX_CACHE)
+                / 16,
+            cache: (0..16)
+                .map(|_| {
+                    Mutex::new(Cache {
+                        entries: HashMap::new(),
+                        order: VecDeque::new(),
+                        used: 0,
+                    })
+                })
+                .collect(),
         })
     }
     pub(super) fn identity(&self) -> [u8; 32] {
         self.identity
     }
     fn block(&self, index: usize) -> io::Result<Arc<Vec<(TermId, Term)>>> {
-        let mut cache = self
-            .cache
+        let mut cache = self.cache[index % self.cache.len()]
             .lock()
             .map_err(|_| io::Error::other("dictionary cache lock poisoned"))?;
         if let Some((value, _)) = cache.entries.get(&index) {
@@ -203,8 +213,8 @@ impl LazyIndex {
             .saturating_add(keys.iter().map(Vec::len).sum::<usize>())
             .saturating_add(rows.len() * 128);
         let rows = Arc::new(rows);
-        if size <= CACHE {
-            while cache.used.saturating_add(size) > CACHE {
+        if size <= self.shard_budget {
+            while cache.used.saturating_add(size) > self.shard_budget {
                 let old = cache
                     .order
                     .pop_front()
@@ -220,13 +230,14 @@ impl LazyIndex {
         Ok(rows)
     }
     pub(super) fn clear_cache(&self) -> io::Result<()> {
-        let mut cache = self
-            .cache
-            .lock()
-            .map_err(|_| io::Error::other("dictionary cache lock poisoned"))?;
-        cache.entries.clear();
-        cache.order.clear();
-        cache.used = 0;
+        for shard in &self.cache {
+            let mut cache = shard
+                .lock()
+                .map_err(|_| io::Error::other("dictionary cache lock poisoned"))?;
+            cache.entries.clear();
+            cache.order.clear();
+            cache.used = 0;
+        }
         Ok(())
     }
     pub(super) fn for_each(
