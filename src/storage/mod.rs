@@ -5,22 +5,31 @@ use oxrdf::{Term, TermRef};
 pub type StorageError = std::io::Error;
 
 pub trait Dictionary {
-    /// Existing ID for a term, or None if the term never occurs (lets the planner return empty early).
-    fn lookup(&self, term: &Term) -> Option<TermId>;
-    fn resolve(&self, id: TermId) -> Term;
-    /// Borrow a term from the snapshot; the returned reference cannot outlive it.
-    fn resolve_ref(&self, id: TermId) -> TermRef<'_>;
+    /// Return the existing ID, or None if absent; storage failures are errors.
+    fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError>;
+    fn resolve(&self, id: TermId) -> Result<Term, StorageError>;
+    /// Borrow a term only for the duration of the callback, allowing cached disk blocks.
+    fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError>;
 }
 
 /// A consistent read view (snapshot) of the store.
 pub trait Snapshot: Dictionary + Send + Sync {
     /// Sorted scan of `perm` where the first `prefix.len()` key components (0..=3) equal `prefix`.
     /// Yields batches of at most ~4096 rows, sorted by the full key.
-    fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a>;
+    fn scan<'a>(
+        &'a self,
+        perm: Perm,
+        prefix: &[TermId],
+    ) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a>;
     /// Exact number of triples matching the prefix (from block index / aggregated counts, no full scan).
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError>;
     /// Seek support for leapfrog joins: smallest value >= `target` in key position `prefix.len()` under `prefix`.
-    fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError>;
+    fn seek(
+        &self,
+        perm: Perm,
+        prefix: &[TermId],
+        target: TermId,
+    ) -> Result<Option<TermId>, StorageError>;
 }
 
 mod memory;
@@ -41,4 +50,4 @@ pub mod external_build;
 #[cfg(unix)]
 mod disk_snapshot;
 #[cfg(unix)]
-pub use disk_snapshot::{DiskSnapshot, DiskBase, build_disk_snapshot, write_disk_snapshot};
+pub use disk_snapshot::{DiskBase, DiskSnapshot, build_disk_snapshot, write_disk_snapshot};
