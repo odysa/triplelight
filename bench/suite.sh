@@ -12,6 +12,8 @@ NT=$T/$D.nt
 for sys in "$@"; do
   case $sys in
     rdfdb)        cmd=(../target/release/rdfdb serve $NT 7979); url=http://127.0.0.1:7979/sparql ;; # statistics on (default)
+    rdfdb-disk)   [ -d $T/rdfdb-disk-$D ] || { /usr/bin/time -p ../target/release/rdfdb build-disk $NT $T/rdfdb-disk-$D 2>&1 | grep real > $OUT/$sys.load.log; }
+                  cmd=(../target/release/rdfdb serve $T/rdfdb-disk-$D 7979 --disk); url=http://127.0.0.1:7979/sparql ;;
     rdfdb-nostats) cmd=(../target/release/rdfdb serve $NT 7979 --no-stats); url=http://127.0.0.1:7979/sparql ;;
     rdfdb-parallel) cmd=(../target/release/rdfdb serve $NT 7979 --parallel-load=4); url=http://127.0.0.1:7979/sparql ;;
     rdfdb-disk)   cmd=(../target/release/rdfdb serve $T/$D.rdfdb-snapshot 7979 --disk); url=http://127.0.0.1:7979/sparql ;;
