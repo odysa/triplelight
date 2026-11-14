@@ -36,6 +36,9 @@ mod block_codec;
 mod external_sort;
 
 #[cfg(unix)]
+mod external_build;
+
+#[cfg(unix)]
 mod disk_snapshot;
 #[cfg(unix)]
-pub use disk_snapshot::{DiskSnapshot, DiskBase, write_disk_snapshot};
+pub use disk_snapshot::{DiskSnapshot, DiskBase, build_disk_snapshot, write_disk_snapshot};

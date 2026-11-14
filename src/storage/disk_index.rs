@@ -110,10 +110,19 @@ fn write_index_v2(
 }
 /// Writes compressed, independently checksummed blocks and a checksummed directory.
 pub fn write_index(
-    mut out: impl Write,
+    out: impl Write,
     rows: impl ExactSizeIterator<Item = [TermId; 3]>,
 ) -> io::Result<()> {
     let count = rows.len() as u64;
+    write_index_stream(out, count, rows.map(Ok))
+}
+
+/// Write a sorted stream whose exact row count is known; propagate source read errors.
+pub fn write_index_stream(
+    mut out: impl Write,
+    count: u64,
+    rows: impl Iterator<Item = io::Result<[TermId; 3]>>,
+) -> io::Result<()> {
     let mut header = [0u8; 24];
     header[..8].copy_from_slice(MAGIC_V3);
     header[8..16].copy_from_slice(&count.to_le_bytes());
@@ -139,6 +148,7 @@ pub fn write_index(
             Ok(())
         };
     for row in rows {
+        let row = row?;
         if row.iter().any(|id| id.0 == 0) || previous.is_some_and(|p| p >= row) {
             return Err(invalid("keys must be nonzero, sorted and unique"));
         }
@@ -443,6 +453,14 @@ fn read_exact_at(file: &File, mut buf: &mut [u8], mut offset: u64) -> io::Result
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn fallible_stream_propagates_errors_and_rejects_wrong_count() {
+        let row = [TermId(1), TermId(2), TermId(3)];
+        let input = vec![Ok(row), Err(io::Error::other("source failed"))];
+        let err = write_index_stream(Vec::new(), 2, input.into_iter()).unwrap_err();
+        assert!(err.to_string().contains("source failed"));
+        assert!(write_index_stream(Vec::new(), 2, [Ok(row)].into_iter()).is_err());
+    }
     #[test]
     fn block_boundaries_cache_and_late_short_read() {
         let path = std::env::temp_dir().join(format!("rdf-cache-{}", std::process::id()));

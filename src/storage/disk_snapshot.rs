@@ -10,11 +10,11 @@ use std::fs::{self, File};
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::Path;
 
-const FILES: [&str; 7] = ["dictionary", "spo", "sop", "pso", "pos", "osp", "ops"];
+pub(super) const FILES: [&str; 7] = ["dictionary", "spo", "sop", "pso", "pos", "osp", "ops"];
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, s)
 }
-fn digest(path: &Path) -> io::Result<[u8; 32]> {
+pub(super) fn digest(path: &Path) -> io::Result<[u8; 32]> {
     let mut f = BufReader::new(File::open(path)?);
     let mut hash = Sha256::new();
     let mut buf = [0u8; 65536];
@@ -85,35 +85,13 @@ fn read_dictionary(path: &Path) -> io::Result<(HashMap<Term, TermId>, HashMap<Te
     }
     Ok((forward, reverse))
 }
-/// Build a disk snapshot from any consistent snapshot. This first implementation
-/// materializes the input and all six sorted indexes in memory; it is not a
-/// bounded-memory external-sort builder.
+/// Build a new immutable disk snapshot from a consistent read snapshot using scratch-backed sorting.
 pub fn write_disk_snapshot(dir: impl AsRef<Path>, source: &dyn Snapshot) -> io::Result<()> {
-    use oxrdf::{NamedOrBlankNode, Triple};
-    let mut triples = Vec::new();
-    for batch in source.scan(Perm::Spo, &[]) {
-        let batch = batch?;
-        if batch.cols.iter().any(|column| column.len() != batch.len()) {
-            return Err(bad("inconsistent source batch"));
-        }
-        for i in 0..batch.len() {
-            let subject = match source.resolve(batch.cols[0][i]) {
-                Term::NamedNode(n) => NamedOrBlankNode::NamedNode(n),
-                Term::BlankNode(n) => NamedOrBlankNode::BlankNode(n),
-                _ => return Err(bad("invalid triple subject")),
-            };
-            let predicate = match source.resolve(batch.cols[1][i]) {
-                Term::NamedNode(n) => n,
-                _ => return Err(bad("invalid triple predicate")),
-            };
-            triples.push(Triple::new(
-                subject,
-                predicate,
-                source.resolve(batch.cols[2][i]),
-            ));
-        }
-    }
-    DiskSnapshot::create(dir, &MemorySnapshot::from_triples(triples))
+    super::external_build::from_snapshot(dir.as_ref(), source)
+}
+/// Build a new immutable disk snapshot from N-Triples using scratch-backed sorting.
+pub fn build_disk_snapshot(dir: impl AsRef<Path>, source: Option<&Path>) -> io::Result<()> {
+    super::external_build::from_nt(dir.as_ref(), source)
 }
 /// Persistent Store base format backed by immutable checksummed disk indexes.
 pub struct DiskBase {
@@ -124,11 +102,7 @@ impl crate::store::BaseFormat for DiskBase {
         write_disk_snapshot(dir, src)
     }
     fn import(&self, dir: &Path, ntriples: Option<&Path>) -> io::Result<()> {
-        let source = match ntriples {
-            Some(path) => MemorySnapshot::from_ntriples_parallel_file(path, self.workers.max(1))?,
-            None => MemorySnapshot::from_triples([]),
-        };
-        DiskSnapshot::create(dir, &source)
+        build_disk_snapshot(dir, ntriples)
     }
     fn open(&self, dir: &Path) -> io::Result<std::sync::Arc<dyn Snapshot>> {
         Ok(std::sync::Arc::new(DiskSnapshot::open(dir)?))
