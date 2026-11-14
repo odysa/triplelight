@@ -14,7 +14,7 @@ use std::{
 const TERM_MAGIC: &[u8; 8] = b"RDFDTM01";
 const ID_MAGIC: &[u8; 8] = b"RDFDID01";
 const LIMIT: usize = 16 * 1024 * 1024 + 8192;
-const MAX_CACHE: usize = 512 * 1024 * 1024;
+const MAX_CACHE: usize = 384 * 1024 * 1024;
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(ErrorKind::InvalidData, s)
 }
