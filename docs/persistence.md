@@ -22,3 +22,5 @@ Open reads the full dictionary and block directories, so its time and memory gro
 For durable updates on a disk base, use `rdfdb serve-store <directory> [port] --disk [--init data.nt]`. Updates are replayed from the WAL on restart; compaction writes another disk generation. Initial loading and compaction currently construct an in-memory snapshot.
 
 The decoded block-cache target defaults to one quarter of physical RAM on macOS (256 MiB fallback elsewhere) and can be overridden with `--cache-mb N` or `--cache-mb=N`. This is a per-snapshot target divided among six indexes and 16 shards each, not a shared process-wide cap; simultaneously retained generations can each have their own cache. A minimum of one block per shard and allocator/metadata overhead are outside the nominal budget.
+
+New snapshots use RDFIDX03 compressed blocks: bit-packed columns with first-column deltas and per-block minima for the other columns. RDFIDX02 snapshots remain readable. SHA-256 covers each stored block and its directory; checksums are not authentication. Compression ratio and throughput remain workload-dependent.

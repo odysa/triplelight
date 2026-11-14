@@ -30,6 +30,9 @@ pub use memory::MemorySnapshot;
 pub mod disk_index;
 
 #[cfg(unix)]
+mod block_codec;
+
+#[cfg(unix)]
 mod disk_snapshot;
 #[cfg(unix)]
 pub use disk_snapshot::{DiskSnapshot, DiskBase, write_disk_snapshot};
