@@ -1,0 +1,35 @@
+{
+  "command": [
+    "<agent-workspace>/rdfdb/bench/tools/apache-jena-fuseki-6.2.0/fuseki-server",
+    "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-watdiv100",
+    "--port=3094",
+    "/ds"
+  ],
+  "checks": [
+    {
+      "query": "group_age",
+      "rows": 9,
+      "equal": true
+    },
+    {
+      "query": "group_gender",
+      "rows": 2,
+      "equal": true
+    },
+    {
+      "query": "distinct_C3",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "query": "distinct_L2",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "query": "all_C3",
+      "rows": 1,
+      "equal": true
+    }
+  ]
+}

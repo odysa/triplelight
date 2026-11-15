@@ -1,0 +1,48 @@
+{
+  "base_commit": "35c5591",
+  "candidate_v1": "e228d4a",
+  "candidate_v2": "ef9384f",
+  "candidate_v3": "b4ef97c",
+  "rayon_threads": 4,
+  "warmups": 1,
+  "samples": 5,
+  "conditions": "macOS host, shared benchmark lock held; no OS-cache clearing; API query/decoded result time excludes normalization; baseline and candidates serial. Jena correctness only overlapped compilation, never timed requests.",
+  "files": {
+    "/tmp/rdf-count-bins/baseline": {
+      "sha256": "7aca357f2427e0bc01b429581bef9795fe76b41cd04e3e26056e1faedd7fa03e",
+      "bytes": 3809776
+    },
+    "/tmp/rdf-count-bins/candidate": {
+      "sha256": "8e261e6248309480dfa73afc8734bae25192ded84735bc7c9dd54a8522eb019b",
+      "bytes": 3829424
+    },
+    "/tmp/rdf-count-bins/candidate-v2": {
+      "sha256": "6eb7537e86ea0afe269d9e14f3f315c59132af00a690ff56755c12ae94d0927b",
+      "bytes": 3858576
+    },
+    "/tmp/rdf-count-bins/candidate-v3": {
+      "sha256": "66a418502619307cedc94f00a2dc2b8c6bcc0762d272a0a7b7e382a9a652a3eb",
+      "bytes": 3858544
+    },
+    "examples/count_probe.rs": {
+      "sha256": "ab684f6f3f1fd25b511bfbd8f8e4800223485ea44ad2611ae786238725e3d879",
+      "bytes": 3315
+    },
+    "../rdfdb-count-baseline/examples/count_probe.rs": {
+      "sha256": "ab684f6f3f1fd25b511bfbd8f8e4800223485ea44ad2611ae786238725e3d879",
+      "bytes": 3315
+    },
+    "<agent-workspace>/rdfdb/bench/tools/rdfdb-disk-lubm100/MANIFEST": {
+      "sha256": "7731de215c9ac57680f600e9417664cf836b310fcc500bdee41ec64ed6904755",
+      "bytes": 264
+    },
+    "<agent-workspace>/rdfdb/bench/tools/rdfdb-disk-watdiv100/MANIFEST": {
+      "sha256": "dc53f607f83d8c3c0f84f2588c9574addaa6e9b103fcacafac805ada260be665",
+      "bytes": 264
+    }
+  },
+  "query_hashes_file": {
+    "path": "docs/count-pushdown/query_hashes.json",
+    "sha256": "7ec656f793d06ae338364664c79274c778f2a0f5f23afff664652d15769639a6"
+  }
+}
