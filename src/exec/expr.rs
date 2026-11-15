@@ -14,7 +14,7 @@ const NUMERIC: [&str; 16] = [
 fn xsd_local(l: &Literal) -> Option<&str> { l.datatype().as_str().strip_prefix("http://www.w3.org/2001/XMLSchema#") }
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
-enum Num { Int(i64), Dec(f64), Dbl(f64) }
+pub(super) enum Num { Int(i64), Dec(f64), Dbl(f64) }
 impl Num {
     fn f(self) -> f64 { match self { Num::Int(i) => i as f64, Num::Dec(d) | Num::Dbl(d) => d } }
     fn rank(self) -> u8 { match self { Num::Int(_) => 0, Num::Dec(_) => 1, Num::Dbl(_) => 2 } }
@@ -258,3 +258,82 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
         _ => None, // hashes, NOW/RAND/UUID, BNODE and RDF-1.2 functions: not supported in P1
     }
 }
+
+/// Compiled numeric filter (comparisons over `+ - *` of variables and numeric constants, combined with `&& || !`).
+/// Each distinct term ID is decoded to a number once and memoized, so a filter over many rows does no term
+/// materialization. A variable whose value is unbound or not numeric makes the row fall back to the general evaluator,
+/// so results are identical to `eval` by construction (comparison is by `f64`, integer arithmetic is checked).
+pub(super) enum NumFilter { Cmp(Ordering, bool, NumExpr, NumExpr), And(Box<NumFilter>, Box<NumFilter>), Or(Box<NumFilter>, Box<NumFilter>), Not(Box<NumFilter>) }
+pub(super) enum NumExpr { Var(usize), Const(Num), Op(char, Box<NumExpr>, Box<NumExpr>) }
+/// `Err(())`: this row needs the general evaluator.
+type Fast<T> = Result<T, ()>;
+
+impl NumExpr {
+    fn compile(e: &Expression, vars: &std::collections::HashMap<String, usize>) -> Option<NumExpr> {
+        Some(match e {
+            Expression::Variable(v) => NumExpr::Var(*vars.get(v.as_str())?),
+            Expression::Literal(l) => NumExpr::Const(num(&l.clone().into())?),
+            Expression::Add(a, b) => NumExpr::Op('+', Box::new(Self::compile(a, vars)?), Box::new(Self::compile(b, vars)?)),
+            Expression::Subtract(a, b) => NumExpr::Op('-', Box::new(Self::compile(a, vars)?), Box::new(Self::compile(b, vars)?)),
+            Expression::Multiply(a, b) => NumExpr::Op('*', Box::new(Self::compile(a, vars)?), Box::new(Self::compile(b, vars)?)),
+            _ => return None,
+        })
+    }
+    /// `Ok(None)`: SPARQL error (integer overflow), as in `arith`.
+    fn eval(&self, r: &[crate::model::TermId], val: &mut dyn FnMut(crate::model::TermId) -> Option<Num>) -> Fast<Option<Num>> {
+        match self {
+            NumExpr::Var(i) => { let id = *r.get(*i).ok_or(())?; if id == super::UNBOUND { return Err(()) } val(id).map(Some).ok_or(()) }
+            NumExpr::Const(c) => Ok(Some(*c)),
+            NumExpr::Op(op, a, b) => {
+                let (Some(x), Some(y)) = (a.eval(r, val)?, b.eval(r, val)?) else { return Ok(None) };
+                let rank = x.rank().max(y.rank());
+                if let (Num::Int(i), Num::Int(j)) = (x, y) {
+                    let v = match op { '+' => i.checked_add(j), '-' => i.checked_sub(j), _ => i.checked_mul(j) };
+                    return Ok(v.map(Num::Int));
+                }
+                let (i, j) = (x.f(), y.f());
+                let v = match op { '+' => i + j, '-' => i - j, _ => i * j };
+                Ok(Some(if rank == 1 { Num::Dec(v) } else { Num::Dbl(v) }))
+            }
+        }
+    }
+}
+
+impl NumFilter {
+    pub(super) fn compile(e: &Expression, vars: &std::collections::HashMap<String, usize>) -> Option<NumFilter> {
+        let cmp = |a: &Expression, b: &Expression, o: Ordering, eq: bool| Some(NumFilter::Cmp(o, eq, NumExpr::compile(a, vars)?, NumExpr::compile(b, vars)?));
+        match e {
+            Expression::Less(a, b) => cmp(a, b, Ordering::Less, false),
+            Expression::LessOrEqual(a, b) => cmp(a, b, Ordering::Less, true),
+            Expression::Greater(a, b) => cmp(a, b, Ordering::Greater, false),
+            Expression::GreaterOrEqual(a, b) => cmp(a, b, Ordering::Greater, true),
+            Expression::And(a, b) => Some(NumFilter::And(Box::new(Self::compile(a, vars)?), Box::new(Self::compile(b, vars)?))),
+            Expression::Or(a, b) => Some(NumFilter::Or(Box::new(Self::compile(a, vars)?), Box::new(Self::compile(b, vars)?))),
+            Expression::Not(a) => Some(NumFilter::Not(Box::new(Self::compile(a, vars)?))),
+            _ => None,
+        }
+    }
+    /// Three-valued result (`None` = error), mirroring `eval`; `Err` = fall back for this row.
+    pub(super) fn eval(&self, r: &[crate::model::TermId], val: &mut dyn FnMut(crate::model::TermId) -> Option<Num>) -> Fast<Option<bool>> {
+        Ok(match self {
+            NumFilter::Cmp(o, eq, a, b) => {
+                let (Some(x), Some(y)) = (a.eval(r, val)?, b.eval(r, val)?) else { return Ok(None) };
+                x.f().partial_cmp(&y.f()).map(|c| c == *o || (*eq && c == Ordering::Equal))
+            }
+            NumFilter::And(a, b) => match (a.eval(r, val)?, b.eval(r, val)?) {
+                (Some(false), _) | (_, Some(false)) => Some(false),
+                (Some(true), Some(true)) => Some(true),
+                _ => None,
+            },
+            NumFilter::Or(a, b) => match (a.eval(r, val)?, b.eval(r, val)?) {
+                (Some(true), _) | (_, Some(true)) => Some(true),
+                (Some(false), Some(false)) => Some(false),
+                _ => None,
+            },
+            NumFilter::Not(a) => a.eval(r, val)?.map(|b| !b),
+        })
+    }
+}
+
+/// Numeric value of a term (for the memoized filter path).
+pub(super) fn term_num(t: &Term) -> Option<Num> { num(t) }
