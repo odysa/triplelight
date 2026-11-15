@@ -24,6 +24,21 @@ pub trait Dictionary {
     }
 }
 
+/// A seekable value stream scoped to a snapshot and fixed prefix.
+pub trait ValueCursor {
+    fn seek(&mut self, target: TermId) -> Result<Option<TermId>, StorageError>;
+}
+struct FallbackCursor<'a, S: Snapshot + ?Sized> {
+    snapshot: &'a S,
+    perm: Perm,
+    prefix: Vec<TermId>,
+}
+impl<S: Snapshot + ?Sized> ValueCursor for FallbackCursor<'_, S> {
+    fn seek(&mut self, target: TermId) -> Result<Option<TermId>, StorageError> {
+        self.snapshot.seek(self.perm, &self.prefix, target)
+    }
+}
+
 /// A consistent read view (snapshot) of the store.
 pub trait Snapshot: Dictionary + Send + Sync {
     /// Sorted scan of `perm` where the first `prefix.len()` key components (0..=3) equal `prefix`.
@@ -33,6 +48,14 @@ pub trait Snapshot: Dictionary + Send + Sync {
         perm: Perm,
         prefix: &[TermId],
     ) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a>;
+    /// Backend-specific cursor, with a correctness-preserving seek fallback.
+    fn value_cursor<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn ValueCursor + 'a> {
+        Box::new(FallbackCursor {
+            snapshot: self,
+            perm,
+            prefix: prefix.to_vec(),
+        })
+    }
     /// Exact number of triples matching the prefix (from block index / aggregated counts, no full scan).
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError>;
     /// Seek support for leapfrog joins: smallest value >= `target` in key position `prefix.len()` under `prefix`.

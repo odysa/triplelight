@@ -20,9 +20,6 @@ pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
 
 impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     fn count(&self, perm: Perm, prefix: &[TermId]) -> u64 { self.snap.count(perm, prefix).unwrap_or_else(|e| storage_failure(e)) }
-    fn seek(&self, perm: Perm, prefix: &[TermId], t: TermId) -> Option<TermId> {
-        self.snap.seek(perm, prefix, t).unwrap_or_else(|e| storage_failure(e))
-    }
 
     /// Greedy order with exact index counts, evaluated by index nested-loop joins.
     pub fn eval_greedy(&self, pats: &[[Slot; 3]], mut rows: Vec<TermId>) -> Vec<TermId> {
@@ -159,21 +156,20 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     }
 
     fn leap(&self, plans: &[(Perm, [Slot; 3])], v: usize, row: &[TermId], mut emit: impl FnMut(TermId)) {
-        let mut its: Vec<(Perm, [TermId; 3], usize)> = Vec::with_capacity(plans.len());
+        let mut its: Vec<Box<dyn crate::storage::ValueCursor + '_>> = Vec::with_capacity(plans.len());
         for (perm, key) in plans {
             let Some(k) = key.iter().position(|s| matches!(s, Slot::Var(x) if *x == v)) else { continue };
             let mut prefix = [UNBOUND; 3];
             for (j, s) in key[..k].iter().enumerate() {
                 prefix[j] = match s { Slot::Const(c) => c.unwrap(), Slot::Var(x) => row[*x] };
             }
-            its.push((*perm, prefix, k));
+            its.push(self.snap.value_cursor(*perm, &prefix[..k]));
         }
         let mut x = TermId(1);
         'outer: loop {
             let (mut agreed, mut i) = (0, 0);
             while agreed < its.len() {
-                let (perm, prefix, k) = &its[i];
-                let Some(y) = self.seek(*perm, &prefix[..*k], x) else { break 'outer };
+                let Some(y) = its[i].seek(x).unwrap_or_else(|e| storage_failure(e)) else { break 'outer };
                 if y == x { agreed += 1 } else { x = y; agreed = 1 }
                 i = (i + 1) % its.len();
             }

@@ -13,6 +13,9 @@ impl Dictionary for Backend {
     fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> { match self { Self::Memory(s) => s.with_term(id, f), Self::Disk(s) => s.with_term(id, f) } }
 }
 impl Snapshot for Backend {
+    fn value_cursor<'a>(&'a self, p: Perm, prefix: &[TermId]) -> Box<dyn rdfdb::storage::ValueCursor + 'a> {
+        match self { Self::Memory(s) => s.value_cursor(p, prefix), Self::Disk(s) => s.value_cursor(p, prefix) }
+    }
     fn scan<'a>(&'a self, p: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + 'a> {
         match self { Self::Memory(s) => s.scan(p,prefix), Self::Disk(s) => s.scan(p,prefix) }
     }

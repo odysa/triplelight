@@ -7,7 +7,7 @@ use std::fs::File;
 use std::io::{self, ErrorKind, Write};
 use std::os::unix::fs::FileExt;
 use std::path::Path;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
 const MAGIC_V2: &[u8; 8] = b"RDFIDX02";
@@ -189,6 +189,7 @@ pub struct DiskIndex {
     compressed: bool,
     cache: Vec<Mutex<CacheShard>>,
     shard_capacity: usize,
+    cache_epoch: AtomicU64,
 }
 impl DiskIndex {
     pub fn open(path: impl AsRef<Path>) -> io::Result<Self> {
@@ -273,6 +274,7 @@ impl DiskIndex {
         Ok(Self {
             file,
             rows,
+            cache_epoch: AtomicU64::new(0),
             identity: footer,
             blocks: entries,
             compressed,
@@ -295,6 +297,9 @@ impl DiskIndex {
         self.identity
     }
     pub fn clear_cache(&self) -> io::Result<()> {
+        self.cache_epoch
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| n.checked_add(1))
+            .map_err(|_| io::Error::other("disk cache epoch exhausted"))?;
         for shard in &self.cache {
             let mut cache = shard
                 .lock()
@@ -403,6 +408,20 @@ impl DiskIndex {
         let count = (end - start).min(BLOCK_ROWS - start % BLOCK_ROWS) as usize;
         Ok(rows[from..from + count].to_vec())
     }
+    pub fn cursor(&self, prefix: &[TermId]) -> DiskValueCursor<'_> {
+        let mut fixed = [TermId(0); 3];
+        let valid = prefix.len() < 3;
+        if valid {
+            fixed[..prefix.len()].copy_from_slice(prefix);
+        }
+        DiskValueCursor {
+            index: self,
+            prefix: fixed,
+            prefix_len: prefix.len(),
+            valid,
+            current: None,
+        }
+    }
     pub fn seek_value(&self, prefix: &[TermId], target: TermId) -> io::Result<Option<TermId>> {
         if prefix.len() >= 3 {
             return Ok(None);
@@ -436,6 +455,47 @@ impl DiskIndex {
         Ok(())
     }
 }
+/// Cursor holds at most one decoded block; cache clear revokes the held view.
+pub struct DiskValueCursor<'a> {
+    index: &'a DiskIndex,
+    prefix: [TermId; 3],
+    prefix_len: usize,
+    valid: bool,
+    current: Option<(usize, u64, Arc<Vec<[TermId; 3]>>)>,
+}
+impl crate::storage::ValueCursor for DiskValueCursor<'_> {
+    fn seek(&mut self, target: TermId) -> io::Result<Option<TermId>> {
+        if !self.valid {
+            return Ok(None);
+        }
+        let mut key = self.prefix;
+        key[self.prefix_len] = target;
+        let epoch = self.index.cache_epoch.load(Ordering::Acquire);
+        let retained = self.current.as_ref().is_some_and(|(id, e, _)| {
+            *e == epoch
+                && self.index.blocks[*id].last >= key
+                && (*id == 0 || self.index.blocks[*id - 1].last < key)
+        });
+        if !retained {
+            let id = self.index.blocks.partition_point(|m| m.last < key);
+            if id == self.index.blocks.len() {
+                self.current = None;
+                return Ok(None);
+            }
+            self.current = Some((id, epoch, self.index.block(id as u64)?));
+        }
+        let rows = &self.current.as_ref().expect("cursor block").2;
+        let pos = rows.partition_point(|r| *r < key);
+        let Some(row) = rows.get(pos) else {
+            return Ok(None);
+        };
+        if row[..self.prefix_len] == self.prefix[..self.prefix_len] {
+            Ok(Some(row[self.prefix_len]))
+        } else {
+            Ok(None)
+        }
+    }
+}
 fn read_exact_at(file: &File, mut buf: &mut [u8], mut offset: u64) -> io::Result<()> {
     while !buf.is_empty() {
         match file.read_at(buf, offset) {
@@ -460,6 +520,42 @@ mod tests {
         let err = write_index_stream(Vec::new(), 2, input.into_iter()).unwrap_err();
         assert!(err.to_string().contains("source failed"));
         assert!(write_index_stream(Vec::new(), 2, [Ok(row)].into_iter()).is_err());
+    }
+    #[test]
+    fn cursor_matches_stateless_seek_and_rechecks_after_cache_clear() {
+        use crate::storage::ValueCursor;
+        let path = std::env::temp_dir().join(format!("rdf-cursor-{}", std::process::id()));
+        let rows: Vec<_> = (0..800u64)
+            .map(|i| [TermId(i / 4 + 1), TermId(i % 4 + 1), TermId(7)])
+            .collect();
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::open(&path).unwrap();
+        for prefix in [
+            vec![],
+            vec![TermId(1)],
+            vec![TermId(64)],
+            vec![TermId(200)],
+            vec![TermId(201)],
+        ] {
+            let mut cursor = index.cursor(&prefix);
+            for target in [0, 1, 2, 63, 64, 65, 199, 200, 201, u64::MAX, 1, 64] {
+                assert_eq!(
+                    cursor.seek(TermId(target)).unwrap(),
+                    index.seek_value(&prefix, TermId(target)).unwrap()
+                );
+            }
+        }
+        let mut cursor = index.cursor(&[]);
+        assert!(cursor.seek(TermId(1)).unwrap().is_some());
+        bytes[24] ^= 1;
+        std::fs::write(&path, &bytes).unwrap();
+        index.clear_cache().unwrap();
+        assert!(cursor.seek(TermId(1)).is_err());
+        drop(cursor);
+        drop(index);
+        std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn block_boundaries_cache_and_late_short_read() {

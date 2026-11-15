@@ -329,6 +329,13 @@ impl Dictionary for DiskSnapshot {
 }
 
 impl Snapshot for DiskSnapshot {
+    fn value_cursor<'a>(
+        &'a self,
+        perm: Perm,
+        prefix: &[TermId],
+    ) -> Box<dyn super::ValueCursor + 'a> {
+        Box::new(self.index(perm).cursor(prefix))
+    }
     fn scan<'a>(
         &'a self,
         perm: Perm,
