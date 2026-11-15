@@ -1,0 +1,21 @@
+query                virtuoso
+C1           7.55ms n=8      
+C2          14.05ms n=0      
+C3        1664.97ms n=429276 
+F1           3.51ms n=0      
+F2           4.79ms n=13     
+F3           8.66ms n=85     
+F4           3.87ms n=0      
+F5           4.83ms n=25     
+L1           5.85ms n=2      
+L2           6.39ms n=229    
+L3           3.84ms n=19     
+L4           4.74ms n=68     
+L5           9.04ms n=254    
+S1           3.52ms n=0      
+S2           4.08ms n=16     
+S3           2.98ms n=0      
+S4           3.65ms n=1      
+S5           4.26ms n=0      
+S6           3.68ms n=15     
+S7           3.36ms n=0      

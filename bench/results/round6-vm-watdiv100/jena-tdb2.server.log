@@ -1,0 +1,375 @@
+00:49:04 INFO  Fuseki          :: Apache Jena Fuseki 6.2.0
+00:49:04 INFO  Config          :: Fuseki Base = /Users/odysa/.slock/agents/b438313f-6338-4d86-ab3e-5995a1bde6c3/rdfdb/bench/run
+00:49:04 INFO  Config          :: Database: /ds
+00:49:04 INFO  Config          :: UI Base: fuseki-server.jar
+00:49:04 INFO  Shiro           :: Shiro configuration: file:/Users/odysa/.slock/agents/b438313f-6338-4d86-ab3e-5995a1bde6c3/rdfdb/bench/run/shiro.ini
+00:49:04 INFO  Server          :: Path = /ds
+00:49:04 INFO  Server          :: System
+00:49:04 INFO  Server          ::   Memory: 24.0 GiB
+00:49:04 INFO  Server          ::   PID:    65872
+00:49:04 INFO  Server          ::   Port:   http=3030
+00:49:04 INFO  Server          :: Start Fuseki
+00:49:06 INFO  Fuseki          :: [1] POST http://127.0.0.1:3030/ds/sparql
+00:49:06 INFO  Fuseki          :: [1] Query = ASK{?s ?p ?o}
+00:49:06 INFO  Fuseki          :: [1] 200 OK (58 ms)
+00:49:06 INFO  Fuseki          :: [2] POST http://127.0.0.1:3030/ds/sparql
+00:49:06 INFO  Fuseki          :: [2] Query = SELECT ?v0 ?v4 ?v6 ?v7 WHERE { 	?v0 <http://schema.org/caption> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	?v0 <http://schema.org/contentRating> ?v3 . 	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 . 	?v4 <http://purl.org/stuff/rev#title> ?v5 . 	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 . 	?v7 <http://schema.org/actor> ?v6 . 	?v7 <http://schema.org/language> ?v8 . }  
+00:49:06 INFO  Fuseki          :: [2] 200 OK (183 ms)
+00:49:06 INFO  Fuseki          :: [3] POST http://127.0.0.1:3030/ds/sparql
+00:49:06 INFO  Fuseki          :: [3] Query = SELECT ?v0 ?v4 ?v6 ?v7 WHERE { 	?v0 <http://schema.org/caption> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	?v0 <http://schema.org/contentRating> ?v3 . 	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 . 	?v4 <http://purl.org/stuff/rev#title> ?v5 . 	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 . 	?v7 <http://schema.org/actor> ?v6 . 	?v7 <http://schema.org/language> ?v8 . }  
+00:49:06 INFO  Fuseki          :: [3] 200 OK (24 ms)
+00:49:06 INFO  Fuseki          :: [4] POST http://127.0.0.1:3030/ds/sparql
+00:49:06 INFO  Fuseki          :: [4] Query = SELECT ?v0 ?v4 ?v6 ?v7 WHERE { 	?v0 <http://schema.org/caption> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	?v0 <http://schema.org/contentRating> ?v3 . 	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 . 	?v4 <http://purl.org/stuff/rev#title> ?v5 . 	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 . 	?v7 <http://schema.org/actor> ?v6 . 	?v7 <http://schema.org/language> ?v8 . }  
+00:49:06 INFO  Fuseki          :: [4] 200 OK (20 ms)
+00:49:06 INFO  Fuseki          :: [5] POST http://127.0.0.1:3030/ds/sparql
+00:49:06 INFO  Fuseki          :: [5] Query = SELECT ?v0 ?v4 ?v6 ?v7 WHERE { 	?v0 <http://schema.org/caption> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	?v0 <http://schema.org/contentRating> ?v3 . 	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 . 	?v4 <http://purl.org/stuff/rev#title> ?v5 . 	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 . 	?v7 <http://schema.org/actor> ?v6 . 	?v7 <http://schema.org/language> ?v8 . }  
+00:49:06 INFO  Fuseki          :: [5] 200 OK (23 ms)
+00:49:06 INFO  Fuseki          :: [6] POST http://127.0.0.1:3030/ds/sparql
+00:49:06 INFO  Fuseki          :: [6] Query = SELECT ?v0 ?v4 ?v6 ?v7 WHERE { 	?v0 <http://schema.org/caption> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	?v0 <http://schema.org/contentRating> ?v3 . 	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 . 	?v4 <http://purl.org/stuff/rev#title> ?v5 . 	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 . 	?v7 <http://schema.org/actor> ?v6 . 	?v7 <http://schema.org/language> ?v8 . }  
+00:49:06 INFO  Fuseki          :: [6] 200 OK (21 ms)
+00:49:06 INFO  Fuseki          :: [7] POST http://127.0.0.1:3030/ds/sparql
+00:49:06 INFO  Fuseki          :: [7] Query = SELECT ?v0 ?v4 ?v6 ?v7 WHERE { 	?v0 <http://schema.org/caption> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	?v0 <http://schema.org/contentRating> ?v3 . 	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 . 	?v4 <http://purl.org/stuff/rev#title> ?v5 . 	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 . 	?v7 <http://schema.org/actor> ?v6 . 	?v7 <http://schema.org/language> ?v8 . }  
+00:49:06 INFO  Fuseki          :: [7] 200 OK (19 ms)
+00:49:06 INFO  Fuseki          :: [8] POST http://127.0.0.1:3030/ds/sparql
+00:49:06 INFO  Fuseki          :: [8] Query = SELECT ?v0 ?v3 ?v4 ?v8 WHERE { 	?v0 <http://schema.org/legalName> ?v1 . 	?v0 <http://purl.org/goodrelations/offers> ?v2 . 	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> . 	?v2 <http://purl.org/goodrelations/includes> ?v3 . 	?v4 <http://schema.org/jobTitle> ?v5 . 	?v4 <http://xmlns.com/foaf/homepage> ?v6 . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 . 	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 . 	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 . }  
+00:49:06 INFO  Fuseki          :: [8] 200 OK (374 ms)
+00:49:06 INFO  Fuseki          :: [9] POST http://127.0.0.1:3030/ds/sparql
+00:49:06 INFO  Fuseki          :: [9] Query = SELECT ?v0 ?v3 ?v4 ?v8 WHERE { 	?v0 <http://schema.org/legalName> ?v1 . 	?v0 <http://purl.org/goodrelations/offers> ?v2 . 	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> . 	?v2 <http://purl.org/goodrelations/includes> ?v3 . 	?v4 <http://schema.org/jobTitle> ?v5 . 	?v4 <http://xmlns.com/foaf/homepage> ?v6 . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 . 	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 . 	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 . }  
+00:49:07 INFO  Fuseki          :: [9] 200 OK (179 ms)
+00:49:07 INFO  Fuseki          :: [10] POST http://127.0.0.1:3030/ds/sparql
+00:49:07 INFO  Fuseki          :: [10] Query = SELECT ?v0 ?v3 ?v4 ?v8 WHERE { 	?v0 <http://schema.org/legalName> ?v1 . 	?v0 <http://purl.org/goodrelations/offers> ?v2 . 	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> . 	?v2 <http://purl.org/goodrelations/includes> ?v3 . 	?v4 <http://schema.org/jobTitle> ?v5 . 	?v4 <http://xmlns.com/foaf/homepage> ?v6 . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 . 	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 . 	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 . }  
+00:49:07 INFO  Fuseki          :: [10] 200 OK (166 ms)
+00:49:07 INFO  Fuseki          :: [11] POST http://127.0.0.1:3030/ds/sparql
+00:49:07 INFO  Fuseki          :: [11] Query = SELECT ?v0 ?v3 ?v4 ?v8 WHERE { 	?v0 <http://schema.org/legalName> ?v1 . 	?v0 <http://purl.org/goodrelations/offers> ?v2 . 	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> . 	?v2 <http://purl.org/goodrelations/includes> ?v3 . 	?v4 <http://schema.org/jobTitle> ?v5 . 	?v4 <http://xmlns.com/foaf/homepage> ?v6 . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 . 	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 . 	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 . }  
+00:49:07 INFO  Fuseki          :: [11] 200 OK (166 ms)
+00:49:07 INFO  Fuseki          :: [12] POST http://127.0.0.1:3030/ds/sparql
+00:49:07 INFO  Fuseki          :: [12] Query = SELECT ?v0 ?v3 ?v4 ?v8 WHERE { 	?v0 <http://schema.org/legalName> ?v1 . 	?v0 <http://purl.org/goodrelations/offers> ?v2 . 	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> . 	?v2 <http://purl.org/goodrelations/includes> ?v3 . 	?v4 <http://schema.org/jobTitle> ?v5 . 	?v4 <http://xmlns.com/foaf/homepage> ?v6 . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 . 	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 . 	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 . }  
+00:49:07 INFO  Fuseki          :: [12] 200 OK (167 ms)
+00:49:07 INFO  Fuseki          :: [13] POST http://127.0.0.1:3030/ds/sparql
+00:49:07 INFO  Fuseki          :: [13] Query = SELECT ?v0 ?v3 ?v4 ?v8 WHERE { 	?v0 <http://schema.org/legalName> ?v1 . 	?v0 <http://purl.org/goodrelations/offers> ?v2 . 	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> . 	?v2 <http://purl.org/goodrelations/includes> ?v3 . 	?v4 <http://schema.org/jobTitle> ?v5 . 	?v4 <http://xmlns.com/foaf/homepage> ?v6 . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 . 	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 . 	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 . }  
+00:49:07 INFO  Fuseki          :: [13] 200 OK (165 ms)
+00:49:07 INFO  Fuseki          :: [14] POST http://127.0.0.1:3030/ds/sparql
+00:49:07 INFO  Fuseki          :: [14] Query = SELECT ?v0 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 . 	?v0 <http://purl.org/dc/terms/Location> ?v3 . 	?v0 <http://xmlns.com/foaf/age> ?v4 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 . 	?v0 <http://xmlns.com/foaf/givenName> ?v6 . }  
+00:49:18 INFO  Fuseki          :: [14] 200 OK (11.054 s)
+00:49:18 INFO  Fuseki          :: [15] POST http://127.0.0.1:3030/ds/sparql
+00:49:18 INFO  Fuseki          :: [15] Query = SELECT ?v0 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 . 	?v0 <http://purl.org/dc/terms/Location> ?v3 . 	?v0 <http://xmlns.com/foaf/age> ?v4 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 . 	?v0 <http://xmlns.com/foaf/givenName> ?v6 . }  
+00:49:28 INFO  Fuseki          :: [15] 200 OK (9.962 s)
+00:49:29 INFO  Fuseki          :: [16] POST http://127.0.0.1:3030/ds/sparql
+00:49:29 INFO  Fuseki          :: [16] Query = SELECT ?v0 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 . 	?v0 <http://purl.org/dc/terms/Location> ?v3 . 	?v0 <http://xmlns.com/foaf/age> ?v4 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 . 	?v0 <http://xmlns.com/foaf/givenName> ?v6 . }  
+00:49:39 INFO  Fuseki          :: [16] 200 OK (9.944 s)
+00:49:39 INFO  Fuseki          :: [17] POST http://127.0.0.1:3030/ds/sparql
+00:49:39 INFO  Fuseki          :: [17] Query = SELECT ?v0 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 . 	?v0 <http://purl.org/dc/terms/Location> ?v3 . 	?v0 <http://xmlns.com/foaf/age> ?v4 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 . 	?v0 <http://xmlns.com/foaf/givenName> ?v6 . }  
+00:49:49 INFO  Fuseki          :: [17] 200 OK (9.934 s)
+00:49:50 INFO  Fuseki          :: [18] POST http://127.0.0.1:3030/ds/sparql
+00:49:50 INFO  Fuseki          :: [18] Query = SELECT ?v0 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 . 	?v0 <http://purl.org/dc/terms/Location> ?v3 . 	?v0 <http://xmlns.com/foaf/age> ?v4 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 . 	?v0 <http://xmlns.com/foaf/givenName> ?v6 . }  
+00:49:59 INFO  Fuseki          :: [18] 200 OK (9.952 s)
+00:50:00 INFO  Fuseki          :: [19] POST http://127.0.0.1:3030/ds/sparql
+00:50:00 INFO  Fuseki          :: [19] Query = SELECT ?v0 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 . 	?v0 <http://purl.org/dc/terms/Location> ?v3 . 	?v0 <http://xmlns.com/foaf/age> ?v4 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 . 	?v0 <http://xmlns.com/foaf/givenName> ?v6 . }  
+00:50:10 INFO  Fuseki          :: [19] 200 OK (9.939 s)
+00:50:10 INFO  Fuseki          :: [20] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [20] Query = SELECT ?v0 ?v2 ?v3 ?v4 ?v5 WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v3 <http://schema.org/trailer> ?v4 . 	?v3 <http://schema.org/keywords> ?v5 . 	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 . 	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> . }  
+00:50:10 INFO  Fuseki          :: [20] 200 OK (7 ms)
+00:50:10 INFO  Fuseki          :: [21] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [21] Query = SELECT ?v0 ?v2 ?v3 ?v4 ?v5 WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v3 <http://schema.org/trailer> ?v4 . 	?v3 <http://schema.org/keywords> ?v5 . 	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 . 	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> . }  
+00:50:10 INFO  Fuseki          :: [21] 200 OK (3 ms)
+00:50:10 INFO  Fuseki          :: [22] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [22] Query = SELECT ?v0 ?v2 ?v3 ?v4 ?v5 WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v3 <http://schema.org/trailer> ?v4 . 	?v3 <http://schema.org/keywords> ?v5 . 	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 . 	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> . }  
+00:50:10 INFO  Fuseki          :: [22] 200 OK (3 ms)
+00:50:10 INFO  Fuseki          :: [23] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [23] Query = SELECT ?v0 ?v2 ?v3 ?v4 ?v5 WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v3 <http://schema.org/trailer> ?v4 . 	?v3 <http://schema.org/keywords> ?v5 . 	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 . 	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> . }  
+00:50:10 INFO  Fuseki          :: [23] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [24] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [24] Query = SELECT ?v0 ?v2 ?v3 ?v4 ?v5 WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v3 <http://schema.org/trailer> ?v4 . 	?v3 <http://schema.org/keywords> ?v5 . 	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 . 	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> . }  
+00:50:10 INFO  Fuseki          :: [24] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [25] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [25] Query = SELECT ?v0 ?v2 ?v3 ?v4 ?v5 WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v3 <http://schema.org/trailer> ?v4 . 	?v3 <http://schema.org/keywords> ?v5 . 	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 . 	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> . }  
+00:50:10 INFO  Fuseki          :: [25] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [26] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [26] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v0 <http://ogp.me/ns#title> ?v2 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 . 	?v0 <http://schema.org/caption> ?v4 . 	?v0 <http://schema.org/description> ?v5 . 	?v1 <http://schema.org/url> ?v6 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+00:50:10 INFO  Fuseki          :: [26] 200 OK (14 ms)
+00:50:10 INFO  Fuseki          :: [27] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [27] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v0 <http://ogp.me/ns#title> ?v2 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 . 	?v0 <http://schema.org/caption> ?v4 . 	?v0 <http://schema.org/description> ?v5 . 	?v1 <http://schema.org/url> ?v6 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+00:50:10 INFO  Fuseki          :: [27] 200 OK (4 ms)
+00:50:10 INFO  Fuseki          :: [28] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [28] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v0 <http://ogp.me/ns#title> ?v2 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 . 	?v0 <http://schema.org/caption> ?v4 . 	?v0 <http://schema.org/description> ?v5 . 	?v1 <http://schema.org/url> ?v6 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+00:50:10 INFO  Fuseki          :: [28] 200 OK (4 ms)
+00:50:10 INFO  Fuseki          :: [29] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [29] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v0 <http://ogp.me/ns#title> ?v2 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 . 	?v0 <http://schema.org/caption> ?v4 . 	?v0 <http://schema.org/description> ?v5 . 	?v1 <http://schema.org/url> ?v6 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+00:50:10 INFO  Fuseki          :: [29] 200 OK (4 ms)
+00:50:10 INFO  Fuseki          :: [30] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [30] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v0 <http://ogp.me/ns#title> ?v2 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 . 	?v0 <http://schema.org/caption> ?v4 . 	?v0 <http://schema.org/description> ?v5 . 	?v1 <http://schema.org/url> ?v6 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+00:50:10 INFO  Fuseki          :: [30] 200 OK (4 ms)
+00:50:10 INFO  Fuseki          :: [31] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [31] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v0 <http://ogp.me/ns#title> ?v2 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 . 	?v0 <http://schema.org/caption> ?v4 . 	?v0 <http://schema.org/description> ?v5 . 	?v1 <http://schema.org/url> ?v6 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+00:50:10 INFO  Fuseki          :: [31] 200 OK (4 ms)
+00:50:10 INFO  Fuseki          :: [32] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [32] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 WHERE { 	?v0 <http://schema.org/contentRating> ?v1 . 	?v0 <http://schema.org/contentSize> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 . }  
+00:50:10 INFO  Fuseki          :: [32] 200 OK (50 ms)
+00:50:10 INFO  Fuseki          :: [33] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [33] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 WHERE { 	?v0 <http://schema.org/contentRating> ?v1 . 	?v0 <http://schema.org/contentSize> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 . }  
+00:50:10 INFO  Fuseki          :: [33] 200 OK (5 ms)
+00:50:10 INFO  Fuseki          :: [34] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [34] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 WHERE { 	?v0 <http://schema.org/contentRating> ?v1 . 	?v0 <http://schema.org/contentSize> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 . }  
+00:50:10 INFO  Fuseki          :: [34] 200 OK (5 ms)
+00:50:10 INFO  Fuseki          :: [35] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [35] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 WHERE { 	?v0 <http://schema.org/contentRating> ?v1 . 	?v0 <http://schema.org/contentSize> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 . }  
+00:50:10 INFO  Fuseki          :: [35] 200 OK (4 ms)
+00:50:10 INFO  Fuseki          :: [36] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [36] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 WHERE { 	?v0 <http://schema.org/contentRating> ?v1 . 	?v0 <http://schema.org/contentSize> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 . }  
+00:50:10 INFO  Fuseki          :: [36] 200 OK (5 ms)
+00:50:10 INFO  Fuseki          :: [37] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [37] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 WHERE { 	?v0 <http://schema.org/contentRating> ?v1 . 	?v0 <http://schema.org/contentSize> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 . }  
+00:50:10 INFO  Fuseki          :: [37] 200 OK (5 ms)
+00:50:10 INFO  Fuseki          :: [38] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [38] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 ?v8 WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v2 <http://purl.org/goodrelations/includes> ?v0 . 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/description> ?v4 . 	?v0 <http://schema.org/contentSize> ?v8 . 	?v1 <http://schema.org/url> ?v5 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 . 	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+00:50:10 INFO  Fuseki          :: [38] 200 OK (3 ms)
+00:50:10 INFO  Fuseki          :: [39] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [39] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 ?v8 WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v2 <http://purl.org/goodrelations/includes> ?v0 . 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/description> ?v4 . 	?v0 <http://schema.org/contentSize> ?v8 . 	?v1 <http://schema.org/url> ?v5 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 . 	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+00:50:10 INFO  Fuseki          :: [39] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [40] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [40] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 ?v8 WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v2 <http://purl.org/goodrelations/includes> ?v0 . 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/description> ?v4 . 	?v0 <http://schema.org/contentSize> ?v8 . 	?v1 <http://schema.org/url> ?v5 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 . 	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+00:50:10 INFO  Fuseki          :: [40] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [41] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [41] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 ?v8 WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v2 <http://purl.org/goodrelations/includes> ?v0 . 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/description> ?v4 . 	?v0 <http://schema.org/contentSize> ?v8 . 	?v1 <http://schema.org/url> ?v5 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 . 	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+00:50:10 INFO  Fuseki          :: [41] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [42] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [42] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 ?v8 WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v2 <http://purl.org/goodrelations/includes> ?v0 . 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/description> ?v4 . 	?v0 <http://schema.org/contentSize> ?v8 . 	?v1 <http://schema.org/url> ?v5 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 . 	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+00:50:10 INFO  Fuseki          :: [42] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [43] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [43] Query = SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 ?v8 WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v2 <http://purl.org/goodrelations/includes> ?v0 . 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/description> ?v4 . 	?v0 <http://schema.org/contentSize> ?v8 . 	?v1 <http://schema.org/url> ?v5 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 . 	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+00:50:10 INFO  Fuseki          :: [43] 200 OK (3 ms)
+00:50:10 INFO  Fuseki          :: [44] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [44] Query = SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v4 . 	?v1 <http://ogp.me/ns#title> ?v5 . 	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 . }  
+00:50:10 INFO  Fuseki          :: [44] 200 OK (10 ms)
+00:50:10 INFO  Fuseki          :: [45] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [45] Query = SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v4 . 	?v1 <http://ogp.me/ns#title> ?v5 . 	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 . }  
+00:50:10 INFO  Fuseki          :: [45] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [46] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [46] Query = SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v4 . 	?v1 <http://ogp.me/ns#title> ?v5 . 	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 . }  
+00:50:10 INFO  Fuseki          :: [46] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [47] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [47] Query = SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v4 . 	?v1 <http://ogp.me/ns#title> ?v5 . 	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 . }  
+00:50:10 INFO  Fuseki          :: [47] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [48] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [48] Query = SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v4 . 	?v1 <http://ogp.me/ns#title> ?v5 . 	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 . }  
+00:50:10 INFO  Fuseki          :: [48] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [49] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [49] Query = SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v4 . 	?v1 <http://ogp.me/ns#title> ?v5 . 	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 . }  
+00:50:10 INFO  Fuseki          :: [49] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [50] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [50] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . 	?v2 <http://schema.org/caption> ?v3 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 . }  
+00:50:10 INFO  Fuseki          :: [50] 200 OK (2 ms)
+00:50:10 INFO  Fuseki          :: [51] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [51] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . 	?v2 <http://schema.org/caption> ?v3 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 . }  
+00:50:10 INFO  Fuseki          :: [51] 200 OK (1 ms)
+00:50:10 INFO  Fuseki          :: [52] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [52] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . 	?v2 <http://schema.org/caption> ?v3 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 . }  
+00:50:10 INFO  Fuseki          :: [52] 200 OK (1 ms)
+00:50:10 INFO  Fuseki          :: [53] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [53] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . 	?v2 <http://schema.org/caption> ?v3 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 . }  
+00:50:10 INFO  Fuseki          :: [53] 200 OK (1 ms)
+00:50:10 INFO  Fuseki          :: [54] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [54] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . 	?v2 <http://schema.org/caption> ?v3 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 . }  
+00:50:10 INFO  Fuseki          :: [54] 200 OK (1 ms)
+00:50:10 INFO  Fuseki          :: [55] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [55] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . 	?v2 <http://schema.org/caption> ?v3 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 . }  
+00:50:10 INFO  Fuseki          :: [55] 200 OK (1 ms)
+00:50:10 INFO  Fuseki          :: [56] POST http://127.0.0.1:3030/ds/sparql
+00:50:10 INFO  Fuseki          :: [56] Query = SELECT ?v1 ?v2 WHERE { 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 . 	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> . 	?v2 <http://schema.org/nationality> ?v1 . }  
+00:50:11 INFO  Fuseki          :: [56] 200 OK (25 ms)
+00:50:11 INFO  Fuseki          :: [57] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [57] Query = SELECT ?v1 ?v2 WHERE { 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 . 	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> . 	?v2 <http://schema.org/nationality> ?v1 . }  
+00:50:11 INFO  Fuseki          :: [57] 200 OK (7 ms)
+00:50:11 INFO  Fuseki          :: [58] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [58] Query = SELECT ?v1 ?v2 WHERE { 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 . 	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> . 	?v2 <http://schema.org/nationality> ?v1 . }  
+00:50:11 INFO  Fuseki          :: [58] 200 OK (7 ms)
+00:50:11 INFO  Fuseki          :: [59] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [59] Query = SELECT ?v1 ?v2 WHERE { 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 . 	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> . 	?v2 <http://schema.org/nationality> ?v1 . }  
+00:50:11 INFO  Fuseki          :: [59] 200 OK (7 ms)
+00:50:11 INFO  Fuseki          :: [60] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [60] Query = SELECT ?v1 ?v2 WHERE { 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 . 	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> . 	?v2 <http://schema.org/nationality> ?v1 . }  
+00:50:11 INFO  Fuseki          :: [60] 200 OK (7 ms)
+00:50:11 INFO  Fuseki          :: [61] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [61] Query = SELECT ?v1 ?v2 WHERE { 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 . 	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> . 	?v2 <http://schema.org/nationality> ?v1 . }  
+00:50:11 INFO  Fuseki          :: [61] 200 OK (7 ms)
+00:50:11 INFO  Fuseki          :: [62] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [62] Query = SELECT ?v0 ?v1 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . }  
+00:50:11 INFO  Fuseki          :: [62] 200 OK (3 ms)
+00:50:11 INFO  Fuseki          :: [63] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [63] Query = SELECT ?v0 ?v1 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . }  
+00:50:11 INFO  Fuseki          :: [63] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [64] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [64] Query = SELECT ?v0 ?v1 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . }  
+00:50:11 INFO  Fuseki          :: [64] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [65] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [65] Query = SELECT ?v0 ?v1 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . }  
+00:50:11 INFO  Fuseki          :: [65] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [66] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [66] Query = SELECT ?v0 ?v1 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . }  
+00:50:11 INFO  Fuseki          :: [66] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [67] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [67] Query = SELECT ?v0 ?v1 WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . }  
+00:50:11 INFO  Fuseki          :: [67] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [68] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [68] Query = SELECT ?v0 ?v2 WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/caption> ?v2 . }  
+00:50:11 INFO  Fuseki          :: [68] 200 OK (12 ms)
+00:50:11 INFO  Fuseki          :: [69] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [69] Query = SELECT ?v0 ?v2 WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/caption> ?v2 . }  
+00:50:11 INFO  Fuseki          :: [69] 200 OK (3 ms)
+00:50:11 INFO  Fuseki          :: [70] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [70] Query = SELECT ?v0 ?v2 WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/caption> ?v2 . }  
+00:50:11 INFO  Fuseki          :: [70] 200 OK (3 ms)
+00:50:11 INFO  Fuseki          :: [71] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [71] Query = SELECT ?v0 ?v2 WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/caption> ?v2 . }  
+00:50:11 INFO  Fuseki          :: [71] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [72] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [72] Query = SELECT ?v0 ?v2 WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/caption> ?v2 . }  
+00:50:11 INFO  Fuseki          :: [72] 200 OK (3 ms)
+00:50:11 INFO  Fuseki          :: [73] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [73] Query = SELECT ?v0 ?v2 WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/caption> ?v2 . }  
+00:50:11 INFO  Fuseki          :: [73] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [74] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [74] Query = SELECT ?v0 ?v1 ?v3 WHERE { 	?v0 <http://schema.org/jobTitle> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 . 	?v0 <http://schema.org/nationality> ?v3 . }  
+00:50:11 INFO  Fuseki          :: [74] 200 OK (47 ms)
+00:50:11 INFO  Fuseki          :: [75] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [75] Query = SELECT ?v0 ?v1 ?v3 WHERE { 	?v0 <http://schema.org/jobTitle> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 . 	?v0 <http://schema.org/nationality> ?v3 . }  
+00:50:11 INFO  Fuseki          :: [75] 200 OK (12 ms)
+00:50:11 INFO  Fuseki          :: [76] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [76] Query = SELECT ?v0 ?v1 ?v3 WHERE { 	?v0 <http://schema.org/jobTitle> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 . 	?v0 <http://schema.org/nationality> ?v3 . }  
+00:50:11 INFO  Fuseki          :: [76] 200 OK (12 ms)
+00:50:11 INFO  Fuseki          :: [77] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [77] Query = SELECT ?v0 ?v1 ?v3 WHERE { 	?v0 <http://schema.org/jobTitle> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 . 	?v0 <http://schema.org/nationality> ?v3 . }  
+00:50:11 INFO  Fuseki          :: [77] 200 OK (13 ms)
+00:50:11 INFO  Fuseki          :: [78] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [78] Query = SELECT ?v0 ?v1 ?v3 WHERE { 	?v0 <http://schema.org/jobTitle> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 . 	?v0 <http://schema.org/nationality> ?v3 . }  
+00:50:11 INFO  Fuseki          :: [78] 200 OK (12 ms)
+00:50:11 INFO  Fuseki          :: [79] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [79] Query = SELECT ?v0 ?v1 ?v3 WHERE { 	?v0 <http://schema.org/jobTitle> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 . 	?v0 <http://schema.org/nationality> ?v3 . }  
+00:50:11 INFO  Fuseki          :: [79] 200 OK (13 ms)
+00:50:11 INFO  Fuseki          :: [80] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [80] Query = SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 . 	?v0 <http://purl.org/goodrelations/validFrom> ?v5 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v6 . 	?v0 <http://schema.org/eligibleQuantity> ?v7 . 	?v0 <http://schema.org/eligibleRegion> ?v8 . 	?v0 <http://schema.org/priceValidUntil> ?v9 . }  
+00:50:11 INFO  Fuseki          :: [80] 200 OK (3 ms)
+00:50:11 INFO  Fuseki          :: [81] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [81] Query = SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 . 	?v0 <http://purl.org/goodrelations/validFrom> ?v5 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v6 . 	?v0 <http://schema.org/eligibleQuantity> ?v7 . 	?v0 <http://schema.org/eligibleRegion> ?v8 . 	?v0 <http://schema.org/priceValidUntil> ?v9 . }  
+00:50:11 INFO  Fuseki          :: [81] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [82] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [82] Query = SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 . 	?v0 <http://purl.org/goodrelations/validFrom> ?v5 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v6 . 	?v0 <http://schema.org/eligibleQuantity> ?v7 . 	?v0 <http://schema.org/eligibleRegion> ?v8 . 	?v0 <http://schema.org/priceValidUntil> ?v9 . }  
+00:50:11 INFO  Fuseki          :: [82] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [83] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [83] Query = SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 . 	?v0 <http://purl.org/goodrelations/validFrom> ?v5 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v6 . 	?v0 <http://schema.org/eligibleQuantity> ?v7 . 	?v0 <http://schema.org/eligibleRegion> ?v8 . 	?v0 <http://schema.org/priceValidUntil> ?v9 . }  
+00:50:11 INFO  Fuseki          :: [83] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [84] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [84] Query = SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 . 	?v0 <http://purl.org/goodrelations/validFrom> ?v5 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v6 . 	?v0 <http://schema.org/eligibleQuantity> ?v7 . 	?v0 <http://schema.org/eligibleRegion> ?v8 . 	?v0 <http://schema.org/priceValidUntil> ?v9 . }  
+00:50:11 INFO  Fuseki          :: [84] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [85] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [85] Query = SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 . 	?v0 <http://purl.org/goodrelations/validFrom> ?v5 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v6 . 	?v0 <http://schema.org/eligibleQuantity> ?v7 . 	?v0 <http://schema.org/eligibleRegion> ?v8 . 	?v0 <http://schema.org/priceValidUntil> ?v9 . }  
+00:50:11 INFO  Fuseki          :: [85] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [86] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [86] Query = SELECT ?v0 ?v1 ?v3 WHERE { 	?v0 <http://purl.org/dc/terms/Location> ?v1 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> . }  
+00:50:11 INFO  Fuseki          :: [86] 200 OK (5 ms)
+00:50:11 INFO  Fuseki          :: [87] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [87] Query = SELECT ?v0 ?v1 ?v3 WHERE { 	?v0 <http://purl.org/dc/terms/Location> ?v1 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> . }  
+00:50:11 INFO  Fuseki          :: [87] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [88] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [88] Query = SELECT ?v0 ?v1 ?v3 WHERE { 	?v0 <http://purl.org/dc/terms/Location> ?v1 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> . }  
+00:50:11 INFO  Fuseki          :: [88] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [89] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [89] Query = SELECT ?v0 ?v1 ?v3 WHERE { 	?v0 <http://purl.org/dc/terms/Location> ?v1 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> . }  
+00:50:11 INFO  Fuseki          :: [89] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [90] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [90] Query = SELECT ?v0 ?v1 ?v3 WHERE { 	?v0 <http://purl.org/dc/terms/Location> ?v1 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> . }  
+00:50:11 INFO  Fuseki          :: [90] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [91] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [91] Query = SELECT ?v0 ?v1 ?v3 WHERE { 	?v0 <http://purl.org/dc/terms/Location> ?v1 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> . }  
+00:50:11 INFO  Fuseki          :: [91] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [92] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [92] Query = SELECT ?v0 ?v2 ?v3 ?v4 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/caption> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 . 	?v0 <http://schema.org/publisher> ?v4 . }  
+00:50:11 INFO  Fuseki          :: [92] 200 OK (6 ms)
+00:50:11 INFO  Fuseki          :: [93] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [93] Query = SELECT ?v0 ?v2 ?v3 ?v4 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/caption> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 . 	?v0 <http://schema.org/publisher> ?v4 . }  
+00:50:11 INFO  Fuseki          :: [93] 200 OK (4 ms)
+00:50:11 INFO  Fuseki          :: [94] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [94] Query = SELECT ?v0 ?v2 ?v3 ?v4 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/caption> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 . 	?v0 <http://schema.org/publisher> ?v4 . }  
+00:50:11 INFO  Fuseki          :: [94] 200 OK (4 ms)
+00:50:11 INFO  Fuseki          :: [95] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [95] Query = SELECT ?v0 ?v2 ?v3 ?v4 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/caption> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 . 	?v0 <http://schema.org/publisher> ?v4 . }  
+00:50:11 INFO  Fuseki          :: [95] 200 OK (4 ms)
+00:50:11 INFO  Fuseki          :: [96] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [96] Query = SELECT ?v0 ?v2 ?v3 ?v4 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/caption> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 . 	?v0 <http://schema.org/publisher> ?v4 . }  
+00:50:11 INFO  Fuseki          :: [96] 200 OK (4 ms)
+00:50:11 INFO  Fuseki          :: [97] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [97] Query = SELECT ?v0 ?v2 ?v3 ?v4 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/caption> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 . 	?v0 <http://schema.org/publisher> ?v4 . }  
+00:50:11 INFO  Fuseki          :: [97] 200 OK (4 ms)
+00:50:11 INFO  Fuseki          :: [98] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [98] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> . 	?v0 <http://xmlns.com/foaf/familyName> ?v2 . 	?v3 <http://purl.org/ontology/mo/artist> ?v0 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> . }  
+00:50:11 INFO  Fuseki          :: [98] 200 OK (47 ms)
+00:50:11 INFO  Fuseki          :: [99] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [99] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> . 	?v0 <http://xmlns.com/foaf/familyName> ?v2 . 	?v3 <http://purl.org/ontology/mo/artist> ?v0 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> . }  
+00:50:11 INFO  Fuseki          :: [99] 200 OK (16 ms)
+00:50:11 INFO  Fuseki          :: [100] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [100] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> . 	?v0 <http://xmlns.com/foaf/familyName> ?v2 . 	?v3 <http://purl.org/ontology/mo/artist> ?v0 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> . }  
+00:50:11 INFO  Fuseki          :: [100] 200 OK (17 ms)
+00:50:11 INFO  Fuseki          :: [101] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [101] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> . 	?v0 <http://xmlns.com/foaf/familyName> ?v2 . 	?v3 <http://purl.org/ontology/mo/artist> ?v0 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> . }  
+00:50:11 INFO  Fuseki          :: [101] 200 OK (15 ms)
+00:50:11 INFO  Fuseki          :: [102] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [102] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> . 	?v0 <http://xmlns.com/foaf/familyName> ?v2 . 	?v3 <http://purl.org/ontology/mo/artist> ?v0 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> . }  
+00:50:11 INFO  Fuseki          :: [102] 200 OK (15 ms)
+00:50:11 INFO  Fuseki          :: [103] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [103] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> . 	?v0 <http://xmlns.com/foaf/familyName> ?v2 . 	?v3 <http://purl.org/ontology/mo/artist> ?v0 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> . }  
+00:50:11 INFO  Fuseki          :: [103] 200 OK (15 ms)
+00:50:11 INFO  Fuseki          :: [104] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [104] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/description> ?v2 . 	?v0 <http://schema.org/keywords> ?v3 . 	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . }  
+00:50:11 INFO  Fuseki          :: [104] 200 OK (4 ms)
+00:50:11 INFO  Fuseki          :: [105] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [105] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/description> ?v2 . 	?v0 <http://schema.org/keywords> ?v3 . 	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . }  
+00:50:11 INFO  Fuseki          :: [105] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [106] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [106] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/description> ?v2 . 	?v0 <http://schema.org/keywords> ?v3 . 	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . }  
+00:50:11 INFO  Fuseki          :: [106] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [107] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [107] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/description> ?v2 . 	?v0 <http://schema.org/keywords> ?v3 . 	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . }  
+00:50:11 INFO  Fuseki          :: [107] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [108] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [108] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/description> ?v2 . 	?v0 <http://schema.org/keywords> ?v3 . 	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . }  
+00:50:11 INFO  Fuseki          :: [108] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [109] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [109] Query = SELECT ?v0 ?v2 ?v3 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/description> ?v2 . 	?v0 <http://schema.org/keywords> ?v3 . 	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . }  
+00:50:11 INFO  Fuseki          :: [109] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [110] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [110] Query = SELECT ?v0 ?v1 ?v2 WHERE { 	?v0 <http://purl.org/ontology/mo/conductor> ?v1 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+00:50:11 INFO  Fuseki          :: [110] 200 OK (6 ms)
+00:50:11 INFO  Fuseki          :: [111] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [111] Query = SELECT ?v0 ?v1 ?v2 WHERE { 	?v0 <http://purl.org/ontology/mo/conductor> ?v1 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+00:50:11 INFO  Fuseki          :: [111] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [112] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [112] Query = SELECT ?v0 ?v1 ?v2 WHERE { 	?v0 <http://purl.org/ontology/mo/conductor> ?v1 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+00:50:11 INFO  Fuseki          :: [112] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [113] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [113] Query = SELECT ?v0 ?v1 ?v2 WHERE { 	?v0 <http://purl.org/ontology/mo/conductor> ?v1 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+00:50:11 INFO  Fuseki          :: [113] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [114] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [114] Query = SELECT ?v0 ?v1 ?v2 WHERE { 	?v0 <http://purl.org/ontology/mo/conductor> ?v1 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+00:50:11 INFO  Fuseki          :: [114] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [115] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [115] Query = SELECT ?v0 ?v1 ?v2 WHERE { 	?v0 <http://purl.org/ontology/mo/conductor> ?v1 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+00:50:11 INFO  Fuseki          :: [115] 200 OK (2 ms)
+00:50:11 INFO  Fuseki          :: [116] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [116] Query = SELECT ?v0 ?v1 ?v2 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+00:50:11 INFO  Fuseki          :: [116] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [117] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [117] Query = SELECT ?v0 ?v1 ?v2 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+00:50:11 INFO  Fuseki          :: [117] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [118] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [118] Query = SELECT ?v0 ?v1 ?v2 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+00:50:11 INFO  Fuseki          :: [118] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [119] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [119] Query = SELECT ?v0 ?v1 ?v2 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+00:50:11 INFO  Fuseki          :: [119] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [120] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [120] Query = SELECT ?v0 ?v1 ?v2 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+00:50:11 INFO  Fuseki          :: [120] 200 OK (1 ms)
+00:50:11 INFO  Fuseki          :: [121] POST http://127.0.0.1:3030/ds/sparql
+00:50:11 INFO  Fuseki          :: [121] Query = SELECT ?v0 ?v1 ?v2 WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+00:50:11 INFO  Fuseki          :: [121] 200 OK (1 ms)
+rss_mb 1316

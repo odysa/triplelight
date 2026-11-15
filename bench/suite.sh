@@ -38,7 +38,7 @@ for sys in "$@"; do
     rdfdb-vm)     cmd=(docker run --rm --name bench-$sys -p 7979:7979 -e RDFDB_HOST=0.0.0.0 -v $PWD/$T:/data -v $PWD/../target-linux:/bin-rdfdb --platform linux/arm64 debian:trixie-slim /bin-rdfdb/release/rdfdb serve /data/$D.nt 7979); url=http://127.0.0.1:7979/sparql ;;
     rdfdb-disk-vm) [ -d $T/rdfdb-diskvm-$D ] || { /usr/bin/time -p docker run --rm -v $PWD/$T:/data -v $PWD/../target-linux:/bin-rdfdb --platform linux/arm64 debian:trixie-slim /bin-rdfdb/release/rdfdb build-disk /data/$D.nt /data/rdfdb-diskvm-$D 2>&1 | grep real > $OUT/$sys.load.log; }
                   cmd=(docker run --rm --name bench-$sys -p 7979:7979 -e RDFDB_HOST=0.0.0.0 -v $PWD/$T:/data -v $PWD/../target-linux:/bin-rdfdb --platform linux/arm64 debian:trixie-slim /bin-rdfdb/release/rdfdb serve /data/rdfdb-diskvm-$D 7979 --disk); url=http://127.0.0.1:7979/sparql ;;
-    virtuoso)     [ -d $T/virtuoso-$D ] || ./virtuoso.sh $D load > $OUT/$sys.load.log 2>&1
+    virtuoso)     [ -f $T/virtuoso-$D/virtuoso.db ] || ./virtuoso.sh $D load > $OUT/$sys.load.log 2>&1
                   cmd=(./virtuoso.sh $D serve); url=http://127.0.0.1:8890/sparql ;;
     *) echo "unknown system $sys" >&2; exit 1 ;;
   esac
