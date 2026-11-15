@@ -6,6 +6,10 @@ use rdfdb::storage::{MemorySnapshot, DiskSnapshot, Dictionary, Snapshot, Storage
 use rdfdb::model::{Perm, TermId, TripleBatch};
 use oxrdf::{Term, TermRef};
 
+#[cfg(target_os = "linux")]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 enum Backend { Memory(MemorySnapshot), Disk(DiskSnapshot) }
 impl Dictionary for Backend {
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { match self { Self::Memory(s) => s.lookup(term), Self::Disk(s) => s.lookup(term) } }
