@@ -1,0 +1,1966 @@
+2026-11-15 06:17:36.070 - WARN: The Linux kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty may have a bug that causes random stalls, crashes, and corrupt data on arm64, unless it contains the fix https://github.com/torvalds/linux/commit/478a1c3abebfc717db0d1281a9cdd7befafee542. As a workaround, QLever doesn't return freed memory to the operating system. On a kernel with the fix, you can disable the workaround by setting the environment variable QLEVER_DISABLE_KERNEL_BUG_WORKAROUND
+2026-11-15 06:17:36.071 - INFO: [1mQLever server 18c097c, compiled on Sat Nov 14 19:07:21 UTC 2026 using git hash 18c097c[22m
+2026-11-15 06:17:36.071 - INFO: Cleanup of previous index directories after each rebuild enabled (--rebuild-keep-previous-index-dirs original-and-most-recent)
+2026-11-15 06:17:36.073 - INFO: The git hash used to build this index was "18c097c"
+2026-11-15 06:17:36.074 - INFO: Reading vocabulary from file watdiv100.vocabulary.words ...
+2026-11-15 06:17:36.076 - WARN: io_uring is compiled in but unavailable at runtime (io_uring_queue_init failed in IoUringManager. In file "/qlever/src/util/IoUringManager.cpp" at line 69); falling back to synchronous pread for vocabulary lookups
+2026-11-15 06:17:36.076 - INFO: Done, number of words: 1,052,949
+2026-11-15 06:17:36.077 - INFO: Number of words in internal vocabulary (these are also part of the external vocabulary): 1,057
+2026-11-15 06:17:36.087 - INFO: Registered PSO permutation: #relations = 1, #blocks = 17, #triples = 521,585
+2026-11-15 06:17:36.088 - INFO: Registered PSO permutation: #relations = 86, #blocks = 366, #triples = 10,914,314
+2026-11-15 06:17:36.090 - INFO: Registered POS permutation: #relations = 1, #blocks = 17, #triples = 521,585
+2026-11-15 06:17:36.091 - INFO: Registered POS permutation: #relations = 86, #blocks = 366, #triples = 10,914,314
+2026-11-15 06:17:36.094 - INFO: Registered OPS permutation: #relations = 1,000,845, #blocks = 249, #triples = 10,914,314
+2026-11-15 06:17:36.095 - INFO: Registered OSP permutation: #relations = 1,000,845, #blocks = 249, #triples = 10,914,314
+2026-11-15 06:17:36.097 - INFO: Registered SPO permutation: #relations = 521,585, #blocks = 234, #triples = 10,914,314
+2026-11-15 06:17:36.097 - INFO: Registered SOP permutation: #relations = 521,585, #blocks = 234, #triples = 10,914,314
+2026-11-15 06:17:36.097 - INFO: Reading patterns from file watdiv100.index.patterns ...
+2026-11-15 06:17:36.101 - INFO: Initializing server ...
+2026-11-15 06:17:36.101 - INFO: Access token for restricted API calls is ""
+2026-11-15 06:17:36.101 - INFO: The server is ready, listening for requests on port 7001 ...
+2026-11-15 06:17:37.975 - INFO: 
+2026-11-15 06:17:37.975 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:37.976 - INFO: Processing the following SPARQL query:
+ASK{?s ?p ?o}
+2026-11-15 06:17:37.976 - INFO: Requested media types of the result are: 
+2026-11-15 06:17:37.977 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:37.985 - INFO: Done processing query and sending result, total time was 9 ms
+2026-11-15 06:17:38.054 - INFO: 
+2026-11-15 06:17:38.055 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.055 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v4 ?v6 ?v7 WHERE {
+	?v0 <http://schema.org/caption> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	?v0 <http://schema.org/contentRating> ?v3 .
+	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 .
+	?v4 <http://purl.org/stuff/rev#title> ?v5 .
+	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 .
+	?v7 <http://schema.org/actor> ?v6 .
+	?v7 <http://schema.org/language> ?v8 .
+}
+
+
+2026-11-15 06:17:38.055 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.102 - INFO: Query planning done in 47 ms
+2026-11-15 06:17:38.132 - INFO: Result has size 8 x 9
+2026-11-15 06:17:38.139 - INFO: Done processing query and sending result, total time was 84 ms
+2026-11-15 06:17:38.148 - INFO: 
+2026-11-15 06:17:38.149 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.149 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v4 ?v6 ?v7 WHERE {
+	?v0 <http://schema.org/caption> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	?v0 <http://schema.org/contentRating> ?v3 .
+	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 .
+	?v4 <http://purl.org/stuff/rev#title> ?v5 .
+	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 .
+	?v7 <http://schema.org/actor> ?v6 .
+	?v7 <http://schema.org/language> ?v8 .
+}
+
+
+2026-11-15 06:17:38.149 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.180 - INFO: Query planning done in 31 ms
+2026-11-15 06:17:38.180 - INFO: Result has size 8 x 9
+2026-11-15 06:17:38.181 - INFO: Done processing query and sending result, total time was 32 ms
+2026-11-15 06:17:38.189 - INFO: 
+2026-11-15 06:17:38.189 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.189 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v4 ?v6 ?v7 WHERE {
+	?v0 <http://schema.org/caption> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	?v0 <http://schema.org/contentRating> ?v3 .
+	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 .
+	?v4 <http://purl.org/stuff/rev#title> ?v5 .
+	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 .
+	?v7 <http://schema.org/actor> ?v6 .
+	?v7 <http://schema.org/language> ?v8 .
+}
+
+
+2026-11-15 06:17:38.189 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.223 - INFO: Query planning done in 34 ms
+2026-11-15 06:17:38.224 - INFO: Result has size 8 x 9
+2026-11-15 06:17:38.224 - INFO: Done processing query and sending result, total time was 35 ms
+2026-11-15 06:17:38.242 - INFO: 
+2026-11-15 06:17:38.242 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.243 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v4 ?v6 ?v7 WHERE {
+	?v0 <http://schema.org/caption> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	?v0 <http://schema.org/contentRating> ?v3 .
+	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 .
+	?v4 <http://purl.org/stuff/rev#title> ?v5 .
+	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 .
+	?v7 <http://schema.org/actor> ?v6 .
+	?v7 <http://schema.org/language> ?v8 .
+}
+
+
+2026-11-15 06:17:38.243 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.279 - INFO: Query planning done in 36 ms
+2026-11-15 06:17:38.279 - INFO: Result has size 8 x 9
+2026-11-15 06:17:38.280 - INFO: Done processing query and sending result, total time was 37 ms
+2026-11-15 06:17:38.288 - INFO: 
+2026-11-15 06:17:38.288 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.288 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v4 ?v6 ?v7 WHERE {
+	?v0 <http://schema.org/caption> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	?v0 <http://schema.org/contentRating> ?v3 .
+	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 .
+	?v4 <http://purl.org/stuff/rev#title> ?v5 .
+	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 .
+	?v7 <http://schema.org/actor> ?v6 .
+	?v7 <http://schema.org/language> ?v8 .
+}
+
+
+2026-11-15 06:17:38.288 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.316 - INFO: Query planning done in 28 ms
+2026-11-15 06:17:38.317 - INFO: Result has size 8 x 9
+2026-11-15 06:17:38.318 - INFO: Done processing query and sending result, total time was 29 ms
+2026-11-15 06:17:38.326 - INFO: 
+2026-11-15 06:17:38.326 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.327 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v4 ?v6 ?v7 WHERE {
+	?v0 <http://schema.org/caption> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	?v0 <http://schema.org/contentRating> ?v3 .
+	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 .
+	?v4 <http://purl.org/stuff/rev#title> ?v5 .
+	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 .
+	?v7 <http://schema.org/actor> ?v6 .
+	?v7 <http://schema.org/language> ?v8 .
+}
+
+
+2026-11-15 06:17:38.327 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.361 - INFO: Query planning done in 34 ms
+2026-11-15 06:17:38.361 - INFO: Result has size 8 x 9
+2026-11-15 06:17:38.362 - INFO: Done processing query and sending result, total time was 35 ms
+2026-11-15 06:17:38.370 - INFO: 
+2026-11-15 06:17:38.370 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.371 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v3 ?v4 ?v8 WHERE {
+	?v0 <http://schema.org/legalName> ?v1 .
+	?v0 <http://purl.org/goodrelations/offers> ?v2 .
+	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> .
+	?v2 <http://purl.org/goodrelations/includes> ?v3 .
+	?v4 <http://schema.org/jobTitle> ?v5 .
+	?v4 <http://xmlns.com/foaf/homepage> ?v6 .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 .
+	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 .
+	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 .
+}
+
+
+2026-11-15 06:17:38.371 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.450 - INFO: Query planning done in 79 ms
+2026-11-15 06:17:38.495 - INFO: Result has size 0 x 10
+2026-11-15 06:17:38.495 - INFO: Done processing query and sending result, total time was 125 ms
+2026-11-15 06:17:38.504 - INFO: 
+2026-11-15 06:17:38.504 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.504 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v3 ?v4 ?v8 WHERE {
+	?v0 <http://schema.org/legalName> ?v1 .
+	?v0 <http://purl.org/goodrelations/offers> ?v2 .
+	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> .
+	?v2 <http://purl.org/goodrelations/includes> ?v3 .
+	?v4 <http://schema.org/jobTitle> ?v5 .
+	?v4 <http://xmlns.com/foaf/homepage> ?v6 .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 .
+	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 .
+	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 .
+}
+
+
+2026-11-15 06:17:38.504 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.563 - INFO: Query planning done in 58 ms
+2026-11-15 06:17:38.564 - INFO: Result has size 0 x 10
+2026-11-15 06:17:38.564 - INFO: Done processing query and sending result, total time was 60 ms
+2026-11-15 06:17:38.572 - INFO: 
+2026-11-15 06:17:38.572 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.572 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v3 ?v4 ?v8 WHERE {
+	?v0 <http://schema.org/legalName> ?v1 .
+	?v0 <http://purl.org/goodrelations/offers> ?v2 .
+	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> .
+	?v2 <http://purl.org/goodrelations/includes> ?v3 .
+	?v4 <http://schema.org/jobTitle> ?v5 .
+	?v4 <http://xmlns.com/foaf/homepage> ?v6 .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 .
+	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 .
+	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 .
+}
+
+
+2026-11-15 06:17:38.572 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.620 - INFO: Query planning done in 48 ms
+2026-11-15 06:17:38.621 - INFO: Result has size 0 x 10
+2026-11-15 06:17:38.621 - INFO: Done processing query and sending result, total time was 49 ms
+2026-11-15 06:17:38.629 - INFO: 
+2026-11-15 06:17:38.630 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.630 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v3 ?v4 ?v8 WHERE {
+	?v0 <http://schema.org/legalName> ?v1 .
+	?v0 <http://purl.org/goodrelations/offers> ?v2 .
+	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> .
+	?v2 <http://purl.org/goodrelations/includes> ?v3 .
+	?v4 <http://schema.org/jobTitle> ?v5 .
+	?v4 <http://xmlns.com/foaf/homepage> ?v6 .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 .
+	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 .
+	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 .
+}
+
+
+2026-11-15 06:17:38.630 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.677 - INFO: Query planning done in 47 ms
+2026-11-15 06:17:38.677 - INFO: Result has size 0 x 10
+2026-11-15 06:17:38.678 - INFO: Done processing query and sending result, total time was 48 ms
+2026-11-15 06:17:38.687 - INFO: 
+2026-11-15 06:17:38.687 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.687 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v3 ?v4 ?v8 WHERE {
+	?v0 <http://schema.org/legalName> ?v1 .
+	?v0 <http://purl.org/goodrelations/offers> ?v2 .
+	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> .
+	?v2 <http://purl.org/goodrelations/includes> ?v3 .
+	?v4 <http://schema.org/jobTitle> ?v5 .
+	?v4 <http://xmlns.com/foaf/homepage> ?v6 .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 .
+	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 .
+	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 .
+}
+
+
+2026-11-15 06:17:38.687 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.736 - INFO: Query planning done in 49 ms
+2026-11-15 06:17:38.736 - INFO: Result has size 0 x 10
+2026-11-15 06:17:38.737 - INFO: Done processing query and sending result, total time was 50 ms
+2026-11-15 06:17:38.743 - INFO: 
+2026-11-15 06:17:38.743 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.744 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v3 ?v4 ?v8 WHERE {
+	?v0 <http://schema.org/legalName> ?v1 .
+	?v0 <http://purl.org/goodrelations/offers> ?v2 .
+	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> .
+	?v2 <http://purl.org/goodrelations/includes> ?v3 .
+	?v4 <http://schema.org/jobTitle> ?v5 .
+	?v4 <http://xmlns.com/foaf/homepage> ?v6 .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 .
+	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 .
+	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 .
+}
+
+
+2026-11-15 06:17:38.744 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.784 - INFO: Query planning done in 40 ms
+2026-11-15 06:17:38.785 - INFO: Result has size 0 x 10
+2026-11-15 06:17:38.785 - INFO: Done processing query and sending result, total time was 41 ms
+2026-11-15 06:17:38.791 - INFO: 
+2026-11-15 06:17:38.791 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:38.792 - INFO: Processing the following SPARQL query:
+SELECT ?v0 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 .
+	?v0 <http://purl.org/dc/terms/Location> ?v3 .
+	?v0 <http://xmlns.com/foaf/age> ?v4 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 .
+	?v0 <http://xmlns.com/foaf/givenName> ?v6 .
+}
+
+
+2026-11-15 06:17:38.792 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:38.795 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:38.810 - INFO: Result has unknown size (not computed yet)
+2026-11-15 06:17:39.483 - INFO: Done processing query and sending result, total time was 691 ms
+2026-11-15 06:17:39.701 - INFO: 
+2026-11-15 06:17:39.701 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:39.701 - INFO: Processing the following SPARQL query:
+SELECT ?v0 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 .
+	?v0 <http://purl.org/dc/terms/Location> ?v3 .
+	?v0 <http://xmlns.com/foaf/age> ?v4 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 .
+	?v0 <http://xmlns.com/foaf/givenName> ?v6 .
+}
+
+
+2026-11-15 06:17:39.702 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:39.705 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:39.705 - INFO: Result has unknown size (not computed yet)
+2026-11-15 06:17:40.364 - INFO: Done processing query and sending result, total time was 662 ms
+2026-11-15 06:17:40.750 - INFO: 
+2026-11-15 06:17:40.750 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:40.750 - INFO: Processing the following SPARQL query:
+SELECT ?v0 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 .
+	?v0 <http://purl.org/dc/terms/Location> ?v3 .
+	?v0 <http://xmlns.com/foaf/age> ?v4 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 .
+	?v0 <http://xmlns.com/foaf/givenName> ?v6 .
+}
+
+
+2026-11-15 06:17:40.750 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:40.754 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:40.754 - INFO: Result has unknown size (not computed yet)
+2026-11-15 06:17:41.414 - INFO: Done processing query and sending result, total time was 664 ms
+2026-11-15 06:17:41.847 - INFO: 
+2026-11-15 06:17:41.847 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:41.847 - INFO: Processing the following SPARQL query:
+SELECT ?v0 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 .
+	?v0 <http://purl.org/dc/terms/Location> ?v3 .
+	?v0 <http://xmlns.com/foaf/age> ?v4 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 .
+	?v0 <http://xmlns.com/foaf/givenName> ?v6 .
+}
+
+
+2026-11-15 06:17:41.847 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:41.851 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:41.851 - INFO: Result has unknown size (not computed yet)
+2026-11-15 06:17:42.519 - INFO: Done processing query and sending result, total time was 671 ms
+2026-11-15 06:17:42.898 - INFO: 
+2026-11-15 06:17:42.898 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:42.898 - INFO: Processing the following SPARQL query:
+SELECT ?v0 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 .
+	?v0 <http://purl.org/dc/terms/Location> ?v3 .
+	?v0 <http://xmlns.com/foaf/age> ?v4 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 .
+	?v0 <http://xmlns.com/foaf/givenName> ?v6 .
+}
+
+
+2026-11-15 06:17:42.898 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:42.902 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:42.902 - INFO: Result has unknown size (not computed yet)
+2026-11-15 06:17:43.560 - INFO: Done processing query and sending result, total time was 661 ms
+2026-11-15 06:17:43.955 - INFO: 
+2026-11-15 06:17:43.955 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:43.955 - INFO: Processing the following SPARQL query:
+SELECT ?v0 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 .
+	?v0 <http://purl.org/dc/terms/Location> ?v3 .
+	?v0 <http://xmlns.com/foaf/age> ?v4 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 .
+	?v0 <http://xmlns.com/foaf/givenName> ?v6 .
+}
+
+
+2026-11-15 06:17:43.955 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:43.959 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:43.959 - INFO: Result has unknown size (not computed yet)
+2026-11-15 06:17:44.620 - INFO: Done processing query and sending result, total time was 664 ms
+2026-11-15 06:17:45.052 - INFO: 
+2026-11-15 06:17:45.052 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.053 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 ?v4 ?v5 WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v3 <http://schema.org/trailer> ?v4 .
+	?v3 <http://schema.org/keywords> ?v5 .
+	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 .
+	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> .
+}
+
+
+2026-11-15 06:17:45.053 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.059 - INFO: Query planning done in 6 ms
+2026-11-15 06:17:45.069 - INFO: Result has size 0 x 5
+2026-11-15 06:17:45.069 - INFO: Done processing query and sending result, total time was 16 ms
+2026-11-15 06:17:45.073 - INFO: 
+2026-11-15 06:17:45.073 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.073 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 ?v4 ?v5 WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v3 <http://schema.org/trailer> ?v4 .
+	?v3 <http://schema.org/keywords> ?v5 .
+	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 .
+	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> .
+}
+
+
+2026-11-15 06:17:45.073 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.078 - INFO: Query planning done in 5 ms
+2026-11-15 06:17:45.078 - INFO: Result has size 0 x 5
+2026-11-15 06:17:45.078 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-15 06:17:45.111 - INFO: 
+2026-11-15 06:17:45.111 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.111 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 ?v4 ?v5 WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v3 <http://schema.org/trailer> ?v4 .
+	?v3 <http://schema.org/keywords> ?v5 .
+	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 .
+	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> .
+}
+
+
+2026-11-15 06:17:45.111 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.117 - INFO: Query planning done in 5 ms
+2026-11-15 06:17:45.117 - INFO: Result has size 0 x 5
+2026-11-15 06:17:45.117 - INFO: Done processing query and sending result, total time was 6 ms
+2026-11-15 06:17:45.122 - INFO: 
+2026-11-15 06:17:45.122 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.122 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 ?v4 ?v5 WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v3 <http://schema.org/trailer> ?v4 .
+	?v3 <http://schema.org/keywords> ?v5 .
+	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 .
+	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> .
+}
+
+
+2026-11-15 06:17:45.122 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.127 - INFO: Query planning done in 5 ms
+2026-11-15 06:17:45.128 - INFO: Result has size 0 x 5
+2026-11-15 06:17:45.128 - INFO: Done processing query and sending result, total time was 6 ms
+2026-11-15 06:17:45.131 - INFO: 
+2026-11-15 06:17:45.131 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.132 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 ?v4 ?v5 WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v3 <http://schema.org/trailer> ?v4 .
+	?v3 <http://schema.org/keywords> ?v5 .
+	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 .
+	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> .
+}
+
+
+2026-11-15 06:17:45.132 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.137 - INFO: Query planning done in 5 ms
+2026-11-15 06:17:45.137 - INFO: Result has size 0 x 5
+2026-11-15 06:17:45.137 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-15 06:17:45.141 - INFO: 
+2026-11-15 06:17:45.141 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.141 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 ?v4 ?v5 WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v3 <http://schema.org/trailer> ?v4 .
+	?v3 <http://schema.org/keywords> ?v5 .
+	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 .
+	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> .
+}
+
+
+2026-11-15 06:17:45.141 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.147 - INFO: Query planning done in 5 ms
+2026-11-15 06:17:45.147 - INFO: Result has size 0 x 5
+2026-11-15 06:17:45.147 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-15 06:17:45.152 - INFO: 
+2026-11-15 06:17:45.152 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.152 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v0 <http://ogp.me/ns#title> ?v2 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 .
+	?v0 <http://schema.org/caption> ?v4 .
+	?v0 <http://schema.org/description> ?v5 .
+	?v1 <http://schema.org/url> ?v6 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-15 06:17:45.152 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.187 - INFO: Query planning done in 34 ms
+2026-11-15 06:17:45.197 - INFO: Result has size 13 x 8
+2026-11-15 06:17:45.212 - INFO: Done processing query and sending result, total time was 60 ms
+2026-11-15 06:17:45.218 - INFO: 
+2026-11-15 06:17:45.218 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.218 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v0 <http://ogp.me/ns#title> ?v2 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 .
+	?v0 <http://schema.org/caption> ?v4 .
+	?v0 <http://schema.org/description> ?v5 .
+	?v1 <http://schema.org/url> ?v6 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-15 06:17:45.218 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.249 - INFO: Query planning done in 31 ms
+2026-11-15 06:17:45.249 - INFO: Result has size 13 x 8
+2026-11-15 06:17:45.250 - INFO: Done processing query and sending result, total time was 32 ms
+2026-11-15 06:17:45.256 - INFO: 
+2026-11-15 06:17:45.256 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.256 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v0 <http://ogp.me/ns#title> ?v2 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 .
+	?v0 <http://schema.org/caption> ?v4 .
+	?v0 <http://schema.org/description> ?v5 .
+	?v1 <http://schema.org/url> ?v6 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-15 06:17:45.256 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.288 - INFO: Query planning done in 32 ms
+2026-11-15 06:17:45.288 - INFO: Result has size 13 x 8
+2026-11-15 06:17:45.289 - INFO: Done processing query and sending result, total time was 33 ms
+2026-11-15 06:17:45.295 - INFO: 
+2026-11-15 06:17:45.295 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.295 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v0 <http://ogp.me/ns#title> ?v2 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 .
+	?v0 <http://schema.org/caption> ?v4 .
+	?v0 <http://schema.org/description> ?v5 .
+	?v1 <http://schema.org/url> ?v6 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-15 06:17:45.295 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.326 - INFO: Query planning done in 31 ms
+2026-11-15 06:17:45.327 - INFO: Result has size 13 x 8
+2026-11-15 06:17:45.327 - INFO: Done processing query and sending result, total time was 32 ms
+2026-11-15 06:17:45.332 - INFO: 
+2026-11-15 06:17:45.332 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.332 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v0 <http://ogp.me/ns#title> ?v2 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 .
+	?v0 <http://schema.org/caption> ?v4 .
+	?v0 <http://schema.org/description> ?v5 .
+	?v1 <http://schema.org/url> ?v6 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-15 06:17:45.332 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.364 - INFO: Query planning done in 31 ms
+2026-11-15 06:17:45.364 - INFO: Result has size 13 x 8
+2026-11-15 06:17:45.365 - INFO: Done processing query and sending result, total time was 32 ms
+2026-11-15 06:17:45.370 - INFO: 
+2026-11-15 06:17:45.370 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.370 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v0 <http://ogp.me/ns#title> ?v2 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 .
+	?v0 <http://schema.org/caption> ?v4 .
+	?v0 <http://schema.org/description> ?v5 .
+	?v1 <http://schema.org/url> ?v6 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-15 06:17:45.371 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.402 - INFO: Query planning done in 31 ms
+2026-11-15 06:17:45.403 - INFO: Result has size 13 x 8
+2026-11-15 06:17:45.403 - INFO: Done processing query and sending result, total time was 33 ms
+2026-11-15 06:17:45.409 - INFO: 
+2026-11-15 06:17:45.409 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.410 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 WHERE {
+	?v0 <http://schema.org/contentRating> ?v1 .
+	?v0 <http://schema.org/contentSize> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 .
+}
+
+
+2026-11-15 06:17:45.410 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.415 - INFO: Query planning done in 6 ms
+2026-11-15 06:17:45.426 - INFO: Result has size 85 x 6
+2026-11-15 06:17:45.436 - INFO: Done processing query and sending result, total time was 26 ms
+2026-11-15 06:17:45.442 - INFO: 
+2026-11-15 06:17:45.442 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.442 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 WHERE {
+	?v0 <http://schema.org/contentRating> ?v1 .
+	?v0 <http://schema.org/contentSize> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 .
+}
+
+
+2026-11-15 06:17:45.442 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.448 - INFO: Query planning done in 5 ms
+2026-11-15 06:17:45.448 - INFO: Result has size 85 x 6
+2026-11-15 06:17:45.449 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-15 06:17:45.454 - INFO: 
+2026-11-15 06:17:45.454 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.454 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 WHERE {
+	?v0 <http://schema.org/contentRating> ?v1 .
+	?v0 <http://schema.org/contentSize> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 .
+}
+
+
+2026-11-15 06:17:45.454 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.460 - INFO: Query planning done in 5 ms
+2026-11-15 06:17:45.460 - INFO: Result has size 85 x 6
+2026-11-15 06:17:45.461 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-15 06:17:45.471 - INFO: 
+2026-11-15 06:17:45.471 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.471 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 WHERE {
+	?v0 <http://schema.org/contentRating> ?v1 .
+	?v0 <http://schema.org/contentSize> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 .
+}
+
+
+2026-11-15 06:17:45.471 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.476 - INFO: Query planning done in 5 ms
+2026-11-15 06:17:45.477 - INFO: Result has size 85 x 6
+2026-11-15 06:17:45.478 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-15 06:17:45.486 - INFO: 
+2026-11-15 06:17:45.486 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.486 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 WHERE {
+	?v0 <http://schema.org/contentRating> ?v1 .
+	?v0 <http://schema.org/contentSize> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 .
+}
+
+
+2026-11-15 06:17:45.486 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.492 - INFO: Query planning done in 5 ms
+2026-11-15 06:17:45.492 - INFO: Result has size 85 x 6
+2026-11-15 06:17:45.493 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-15 06:17:45.500 - INFO: 
+2026-11-15 06:17:45.500 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.500 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 WHERE {
+	?v0 <http://schema.org/contentRating> ?v1 .
+	?v0 <http://schema.org/contentSize> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 .
+}
+
+
+2026-11-15 06:17:45.500 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.506 - INFO: Query planning done in 5 ms
+2026-11-15 06:17:45.506 - INFO: Result has size 85 x 6
+2026-11-15 06:17:45.507 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-15 06:17:45.515 - INFO: 
+2026-11-15 06:17:45.515 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.515 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 ?v8 WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v2 <http://purl.org/goodrelations/includes> ?v0 .
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/description> ?v4 .
+	?v0 <http://schema.org/contentSize> ?v8 .
+	?v1 <http://schema.org/url> ?v5 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 .
+	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-15 06:17:45.515 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.587 - INFO: Query planning done in 72 ms
+2026-11-15 06:17:45.600 - INFO: Result has size 0 x 8
+2026-11-15 06:17:45.600 - INFO: Done processing query and sending result, total time was 85 ms
+2026-11-15 06:17:45.607 - INFO: 
+2026-11-15 06:17:45.607 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.608 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 ?v8 WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v2 <http://purl.org/goodrelations/includes> ?v0 .
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/description> ?v4 .
+	?v0 <http://schema.org/contentSize> ?v8 .
+	?v1 <http://schema.org/url> ?v5 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 .
+	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-15 06:17:45.608 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.682 - INFO: Query planning done in 74 ms
+2026-11-15 06:17:45.683 - INFO: Result has size 0 x 8
+2026-11-15 06:17:45.683 - INFO: Done processing query and sending result, total time was 75 ms
+2026-11-15 06:17:45.688 - INFO: 
+2026-11-15 06:17:45.688 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.688 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 ?v8 WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v2 <http://purl.org/goodrelations/includes> ?v0 .
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/description> ?v4 .
+	?v0 <http://schema.org/contentSize> ?v8 .
+	?v1 <http://schema.org/url> ?v5 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 .
+	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-15 06:17:45.688 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.763 - INFO: Query planning done in 75 ms
+2026-11-15 06:17:45.764 - INFO: Result has size 0 x 8
+2026-11-15 06:17:45.764 - INFO: Done processing query and sending result, total time was 76 ms
+2026-11-15 06:17:45.770 - INFO: 
+2026-11-15 06:17:45.770 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.770 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 ?v8 WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v2 <http://purl.org/goodrelations/includes> ?v0 .
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/description> ?v4 .
+	?v0 <http://schema.org/contentSize> ?v8 .
+	?v1 <http://schema.org/url> ?v5 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 .
+	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-15 06:17:45.770 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.843 - INFO: Query planning done in 73 ms
+2026-11-15 06:17:45.844 - INFO: Result has size 0 x 8
+2026-11-15 06:17:45.844 - INFO: Done processing query and sending result, total time was 74 ms
+2026-11-15 06:17:45.850 - INFO: 
+2026-11-15 06:17:45.850 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.851 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 ?v8 WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v2 <http://purl.org/goodrelations/includes> ?v0 .
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/description> ?v4 .
+	?v0 <http://schema.org/contentSize> ?v8 .
+	?v1 <http://schema.org/url> ?v5 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 .
+	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-15 06:17:45.851 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:45.924 - INFO: Query planning done in 73 ms
+2026-11-15 06:17:45.925 - INFO: Result has size 0 x 8
+2026-11-15 06:17:45.925 - INFO: Done processing query and sending result, total time was 74 ms
+2026-11-15 06:17:45.930 - INFO: 
+2026-11-15 06:17:45.930 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:45.931 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 ?v4 ?v5 ?v6 ?v7 ?v8 WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v2 <http://purl.org/goodrelations/includes> ?v0 .
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/description> ?v4 .
+	?v0 <http://schema.org/contentSize> ?v8 .
+	?v1 <http://schema.org/url> ?v5 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 .
+	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-15 06:17:45.931 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.005 - INFO: Query planning done in 74 ms
+2026-11-15 06:17:46.005 - INFO: Result has size 0 x 8
+2026-11-15 06:17:46.006 - INFO: Done processing query and sending result, total time was 75 ms
+2026-11-15 06:17:46.012 - INFO: 
+2026-11-15 06:17:46.012 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.012 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v4 .
+	?v1 <http://ogp.me/ns#title> ?v5 .
+	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 .
+}
+
+
+2026-11-15 06:17:46.012 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.017 - INFO: Query planning done in 4 ms
+2026-11-15 06:17:46.030 - INFO: Result has size 25 x 6
+2026-11-15 06:17:46.043 - INFO: Done processing query and sending result, total time was 31 ms
+2026-11-15 06:17:46.050 - INFO: 
+2026-11-15 06:17:46.050 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.050 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v4 .
+	?v1 <http://ogp.me/ns#title> ?v5 .
+	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 .
+}
+
+
+2026-11-15 06:17:46.050 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.054 - INFO: Query planning done in 4 ms
+2026-11-15 06:17:46.055 - INFO: Result has size 25 x 6
+2026-11-15 06:17:46.055 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-15 06:17:46.062 - INFO: 
+2026-11-15 06:17:46.062 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.062 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v4 .
+	?v1 <http://ogp.me/ns#title> ?v5 .
+	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 .
+}
+
+
+2026-11-15 06:17:46.062 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.066 - INFO: Query planning done in 4 ms
+2026-11-15 06:17:46.067 - INFO: Result has size 25 x 6
+2026-11-15 06:17:46.067 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-15 06:17:46.073 - INFO: 
+2026-11-15 06:17:46.073 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.073 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v4 .
+	?v1 <http://ogp.me/ns#title> ?v5 .
+	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 .
+}
+
+
+2026-11-15 06:17:46.073 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.077 - INFO: Query planning done in 4 ms
+2026-11-15 06:17:46.077 - INFO: Result has size 25 x 6
+2026-11-15 06:17:46.078 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-15 06:17:46.083 - INFO: 
+2026-11-15 06:17:46.083 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.083 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v4 .
+	?v1 <http://ogp.me/ns#title> ?v5 .
+	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 .
+}
+
+
+2026-11-15 06:17:46.083 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.087 - INFO: Query planning done in 4 ms
+2026-11-15 06:17:46.088 - INFO: Result has size 25 x 6
+2026-11-15 06:17:46.089 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-15 06:17:46.095 - INFO: 
+2026-11-15 06:17:46.095 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.095 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v4 .
+	?v1 <http://ogp.me/ns#title> ?v5 .
+	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 .
+}
+
+
+2026-11-15 06:17:46.095 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.099 - INFO: Query planning done in 4 ms
+2026-11-15 06:17:46.100 - INFO: Result has size 25 x 6
+2026-11-15 06:17:46.100 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-15 06:17:46.106 - INFO: 
+2026-11-15 06:17:46.106 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.106 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+	?v2 <http://schema.org/caption> ?v3 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 .
+}
+
+
+2026-11-15 06:17:46.106 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.108 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:46.112 - INFO: Result has size 2 x 3
+2026-11-15 06:17:46.113 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-15 06:17:46.120 - INFO: 
+2026-11-15 06:17:46.120 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.120 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+	?v2 <http://schema.org/caption> ?v3 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 .
+}
+
+
+2026-11-15 06:17:46.120 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.122 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:46.122 - INFO: Result has size 2 x 3
+2026-11-15 06:17:46.122 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:46.126 - INFO: 
+2026-11-15 06:17:46.126 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.126 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+	?v2 <http://schema.org/caption> ?v3 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 .
+}
+
+
+2026-11-15 06:17:46.126 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.128 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:46.128 - INFO: Result has size 2 x 3
+2026-11-15 06:17:46.129 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:46.132 - INFO: 
+2026-11-15 06:17:46.132 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.133 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+	?v2 <http://schema.org/caption> ?v3 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 .
+}
+
+
+2026-11-15 06:17:46.133 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.134 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:46.135 - INFO: Result has size 2 x 3
+2026-11-15 06:17:46.135 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:46.139 - INFO: 
+2026-11-15 06:17:46.139 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.139 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+	?v2 <http://schema.org/caption> ?v3 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 .
+}
+
+
+2026-11-15 06:17:46.139 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.141 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:46.141 - INFO: Result has size 2 x 3
+2026-11-15 06:17:46.142 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:46.145 - INFO: 
+2026-11-15 06:17:46.145 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.145 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+	?v2 <http://schema.org/caption> ?v3 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 .
+}
+
+
+2026-11-15 06:17:46.145 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.147 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:46.147 - INFO: Result has size 2 x 3
+2026-11-15 06:17:46.147 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:46.154 - INFO: 
+2026-11-15 06:17:46.154 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.154 - INFO: Processing the following SPARQL query:
+SELECT ?v1 ?v2 WHERE {
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 .
+	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> .
+	?v2 <http://schema.org/nationality> ?v1 .
+}
+
+
+2026-11-15 06:17:46.154 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.157 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:46.160 - INFO: Result has size 229 x 2
+2026-11-15 06:17:46.161 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-15 06:17:46.180 - INFO: 
+2026-11-15 06:17:46.180 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.180 - INFO: Processing the following SPARQL query:
+SELECT ?v1 ?v2 WHERE {
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 .
+	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> .
+	?v2 <http://schema.org/nationality> ?v1 .
+}
+
+
+2026-11-15 06:17:46.180 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.182 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:46.183 - INFO: Result has size 229 x 2
+2026-11-15 06:17:46.184 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-15 06:17:46.188 - INFO: 
+2026-11-15 06:17:46.188 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.188 - INFO: Processing the following SPARQL query:
+SELECT ?v1 ?v2 WHERE {
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 .
+	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> .
+	?v2 <http://schema.org/nationality> ?v1 .
+}
+
+
+2026-11-15 06:17:46.188 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.190 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:46.191 - INFO: Result has size 229 x 2
+2026-11-15 06:17:46.192 - INFO: Done processing query and sending result, total time was 3 ms
+2026-11-15 06:17:46.194 - INFO: 
+2026-11-15 06:17:46.194 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.194 - INFO: Processing the following SPARQL query:
+SELECT ?v1 ?v2 WHERE {
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 .
+	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> .
+	?v2 <http://schema.org/nationality> ?v1 .
+}
+
+
+2026-11-15 06:17:46.195 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.197 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:46.197 - INFO: Result has size 229 x 2
+2026-11-15 06:17:46.198 - INFO: Done processing query and sending result, total time was 3 ms
+2026-11-15 06:17:46.202 - INFO: 
+2026-11-15 06:17:46.202 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.202 - INFO: Processing the following SPARQL query:
+SELECT ?v1 ?v2 WHERE {
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 .
+	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> .
+	?v2 <http://schema.org/nationality> ?v1 .
+}
+
+
+2026-11-15 06:17:46.202 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.204 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:46.204 - INFO: Result has size 229 x 2
+2026-11-15 06:17:46.206 - INFO: Done processing query and sending result, total time was 3 ms
+2026-11-15 06:17:46.209 - INFO: 
+2026-11-15 06:17:46.210 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.210 - INFO: Processing the following SPARQL query:
+SELECT ?v1 ?v2 WHERE {
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 .
+	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> .
+	?v2 <http://schema.org/nationality> ?v1 .
+}
+
+
+2026-11-15 06:17:46.210 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.212 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:46.212 - INFO: Result has size 229 x 2
+2026-11-15 06:17:46.213 - INFO: Done processing query and sending result, total time was 3 ms
+2026-11-15 06:17:46.217 - INFO: 
+2026-11-15 06:17:46.218 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.218 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+}
+
+
+2026-11-15 06:17:46.218 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.218 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:46.218 - INFO: Result has size 19 x 2
+2026-11-15 06:17:46.218 - INFO: Done processing query and sending result, total time was 0 ms
+2026-11-15 06:17:46.222 - INFO: 
+2026-11-15 06:17:46.222 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.222 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+}
+
+
+2026-11-15 06:17:46.222 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.223 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:46.223 - INFO: Result has size 19 x 2
+2026-11-15 06:17:46.223 - INFO: Done processing query and sending result, total time was 0 ms
+2026-11-15 06:17:46.226 - INFO: 
+2026-11-15 06:17:46.226 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.226 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+}
+
+
+2026-11-15 06:17:46.226 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.226 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:46.227 - INFO: Result has size 19 x 2
+2026-11-15 06:17:46.227 - INFO: Done processing query and sending result, total time was 0 ms
+2026-11-15 06:17:46.230 - INFO: 
+2026-11-15 06:17:46.230 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.230 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+}
+
+
+2026-11-15 06:17:46.230 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.231 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:46.231 - INFO: Result has size 19 x 2
+2026-11-15 06:17:46.231 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:46.235 - INFO: 
+2026-11-15 06:17:46.235 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.235 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+}
+
+
+2026-11-15 06:17:46.235 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.235 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:46.235 - INFO: Result has size 19 x 2
+2026-11-15 06:17:46.235 - INFO: Done processing query and sending result, total time was 0 ms
+2026-11-15 06:17:46.239 - INFO: 
+2026-11-15 06:17:46.239 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.239 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+}
+
+
+2026-11-15 06:17:46.239 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.239 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:46.240 - INFO: Result has size 19 x 2
+2026-11-15 06:17:46.240 - INFO: Done processing query and sending result, total time was 0 ms
+2026-11-15 06:17:46.244 - INFO: 
+2026-11-15 06:17:46.244 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.244 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/caption> ?v2 .
+}
+
+
+2026-11-15 06:17:46.244 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.246 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:46.247 - INFO: Result has size 68 x 2
+2026-11-15 06:17:46.260 - INFO: Done processing query and sending result, total time was 15 ms
+2026-11-15 06:17:46.266 - INFO: 
+2026-11-15 06:17:46.266 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.266 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/caption> ?v2 .
+}
+
+
+2026-11-15 06:17:46.266 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.268 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:46.268 - INFO: Result has size 68 x 2
+2026-11-15 06:17:46.269 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:46.272 - INFO: 
+2026-11-15 06:17:46.273 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.273 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/caption> ?v2 .
+}
+
+
+2026-11-15 06:17:46.273 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.274 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:46.275 - INFO: Result has size 68 x 2
+2026-11-15 06:17:46.275 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:46.279 - INFO: 
+2026-11-15 06:17:46.279 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.279 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/caption> ?v2 .
+}
+
+
+2026-11-15 06:17:46.279 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.280 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:46.281 - INFO: Result has size 68 x 2
+2026-11-15 06:17:46.281 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:46.285 - INFO: 
+2026-11-15 06:17:46.285 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.285 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/caption> ?v2 .
+}
+
+
+2026-11-15 06:17:46.285 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.287 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:46.287 - INFO: Result has size 68 x 2
+2026-11-15 06:17:46.288 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:46.294 - INFO: 
+2026-11-15 06:17:46.294 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.294 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/caption> ?v2 .
+}
+
+
+2026-11-15 06:17:46.294 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.295 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:46.295 - INFO: Result has size 68 x 2
+2026-11-15 06:17:46.296 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:46.303 - INFO: 
+2026-11-15 06:17:46.303 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.303 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 WHERE {
+	?v0 <http://schema.org/jobTitle> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 .
+	?v0 <http://schema.org/nationality> ?v3 .
+}
+
+
+2026-11-15 06:17:46.303 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.307 - INFO: Query planning done in 4 ms
+2026-11-15 06:17:46.310 - INFO: Result has size 254 x 3
+2026-11-15 06:17:46.345 - INFO: Done processing query and sending result, total time was 42 ms
+2026-11-15 06:17:46.350 - INFO: 
+2026-11-15 06:17:46.350 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.351 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 WHERE {
+	?v0 <http://schema.org/jobTitle> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 .
+	?v0 <http://schema.org/nationality> ?v3 .
+}
+
+
+2026-11-15 06:17:46.351 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.355 - INFO: Query planning done in 4 ms
+2026-11-15 06:17:46.355 - INFO: Result has size 254 x 3
+2026-11-15 06:17:46.357 - INFO: Done processing query and sending result, total time was 6 ms
+2026-11-15 06:17:46.364 - INFO: 
+2026-11-15 06:17:46.364 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.364 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 WHERE {
+	?v0 <http://schema.org/jobTitle> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 .
+	?v0 <http://schema.org/nationality> ?v3 .
+}
+
+
+2026-11-15 06:17:46.364 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.368 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:46.368 - INFO: Result has size 254 x 3
+2026-11-15 06:17:46.370 - INFO: Done processing query and sending result, total time was 6 ms
+2026-11-15 06:17:46.377 - INFO: 
+2026-11-15 06:17:46.377 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.377 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 WHERE {
+	?v0 <http://schema.org/jobTitle> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 .
+	?v0 <http://schema.org/nationality> ?v3 .
+}
+
+
+2026-11-15 06:17:46.377 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.381 - INFO: Query planning done in 4 ms
+2026-11-15 06:17:46.382 - INFO: Result has size 254 x 3
+2026-11-15 06:17:46.383 - INFO: Done processing query and sending result, total time was 6 ms
+2026-11-15 06:17:46.391 - INFO: 
+2026-11-15 06:17:46.391 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.391 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 WHERE {
+	?v0 <http://schema.org/jobTitle> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 .
+	?v0 <http://schema.org/nationality> ?v3 .
+}
+
+
+2026-11-15 06:17:46.391 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.396 - INFO: Query planning done in 4 ms
+2026-11-15 06:17:46.396 - INFO: Result has size 254 x 3
+2026-11-15 06:17:46.397 - INFO: Done processing query and sending result, total time was 6 ms
+2026-11-15 06:17:46.401 - INFO: 
+2026-11-15 06:17:46.401 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.401 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 WHERE {
+	?v0 <http://schema.org/jobTitle> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 .
+	?v0 <http://schema.org/nationality> ?v3 .
+}
+
+
+2026-11-15 06:17:46.401 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.405 - INFO: Query planning done in 4 ms
+2026-11-15 06:17:46.406 - INFO: Result has size 254 x 3
+2026-11-15 06:17:46.407 - INFO: Done processing query and sending result, total time was 6 ms
+2026-11-15 06:17:46.416 - INFO: 
+2026-11-15 06:17:46.417 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.417 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 .
+	?v0 <http://purl.org/goodrelations/validFrom> ?v5 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v6 .
+	?v0 <http://schema.org/eligibleQuantity> ?v7 .
+	?v0 <http://schema.org/eligibleRegion> ?v8 .
+	?v0 <http://schema.org/priceValidUntil> ?v9 .
+}
+
+
+2026-11-15 06:17:46.417 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.567 - INFO: Query planning done in 150 ms
+2026-11-15 06:17:46.584 - INFO: Result has size 0 x 9
+2026-11-15 06:17:46.585 - INFO: Done processing query and sending result, total time was 168 ms
+2026-11-15 06:17:46.586 - INFO: 
+2026-11-15 06:17:46.586 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.586 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 .
+	?v0 <http://purl.org/goodrelations/validFrom> ?v5 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v6 .
+	?v0 <http://schema.org/eligibleQuantity> ?v7 .
+	?v0 <http://schema.org/eligibleRegion> ?v8 .
+	?v0 <http://schema.org/priceValidUntil> ?v9 .
+}
+
+
+2026-11-15 06:17:46.586 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.736 - INFO: Query planning done in 150 ms
+2026-11-15 06:17:46.737 - INFO: Result has size 0 x 9
+2026-11-15 06:17:46.737 - INFO: Done processing query and sending result, total time was 150 ms
+2026-11-15 06:17:46.746 - INFO: 
+2026-11-15 06:17:46.746 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.746 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 .
+	?v0 <http://purl.org/goodrelations/validFrom> ?v5 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v6 .
+	?v0 <http://schema.org/eligibleQuantity> ?v7 .
+	?v0 <http://schema.org/eligibleRegion> ?v8 .
+	?v0 <http://schema.org/priceValidUntil> ?v9 .
+}
+
+
+2026-11-15 06:17:46.747 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:46.895 - INFO: Query planning done in 148 ms
+2026-11-15 06:17:46.895 - INFO: Result has size 0 x 9
+2026-11-15 06:17:46.896 - INFO: Done processing query and sending result, total time was 149 ms
+2026-11-15 06:17:46.901 - INFO: 
+2026-11-15 06:17:46.901 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:46.901 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 .
+	?v0 <http://purl.org/goodrelations/validFrom> ?v5 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v6 .
+	?v0 <http://schema.org/eligibleQuantity> ?v7 .
+	?v0 <http://schema.org/eligibleRegion> ?v8 .
+	?v0 <http://schema.org/priceValidUntil> ?v9 .
+}
+
+
+2026-11-15 06:17:46.901 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.050 - INFO: Query planning done in 149 ms
+2026-11-15 06:17:47.051 - INFO: Result has size 0 x 9
+2026-11-15 06:17:47.051 - INFO: Done processing query and sending result, total time was 149 ms
+2026-11-15 06:17:47.056 - INFO: 
+2026-11-15 06:17:47.056 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.056 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 .
+	?v0 <http://purl.org/goodrelations/validFrom> ?v5 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v6 .
+	?v0 <http://schema.org/eligibleQuantity> ?v7 .
+	?v0 <http://schema.org/eligibleRegion> ?v8 .
+	?v0 <http://schema.org/priceValidUntil> ?v9 .
+}
+
+
+2026-11-15 06:17:47.057 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.206 - INFO: Query planning done in 149 ms
+2026-11-15 06:17:47.207 - INFO: Result has size 0 x 9
+2026-11-15 06:17:47.207 - INFO: Done processing query and sending result, total time was 150 ms
+2026-11-15 06:17:47.213 - INFO: 
+2026-11-15 06:17:47.213 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.213 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 ?v4 ?v5 ?v6 ?v7 ?v8 ?v9 WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 .
+	?v0 <http://purl.org/goodrelations/validFrom> ?v5 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v6 .
+	?v0 <http://schema.org/eligibleQuantity> ?v7 .
+	?v0 <http://schema.org/eligibleRegion> ?v8 .
+	?v0 <http://schema.org/priceValidUntil> ?v9 .
+}
+
+
+2026-11-15 06:17:47.213 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.365 - INFO: Query planning done in 151 ms
+2026-11-15 06:17:47.365 - INFO: Result has size 0 x 9
+2026-11-15 06:17:47.366 - INFO: Done processing query and sending result, total time was 152 ms
+2026-11-15 06:17:47.377 - INFO: 
+2026-11-15 06:17:47.377 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.377 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 WHERE {
+	?v0 <http://purl.org/dc/terms/Location> ?v1 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> .
+}
+
+
+2026-11-15 06:17:47.377 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.378 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.382 - INFO: Result has size 16 x 3
+2026-11-15 06:17:47.383 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-15 06:17:47.387 - INFO: 
+2026-11-15 06:17:47.387 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.387 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 WHERE {
+	?v0 <http://purl.org/dc/terms/Location> ?v1 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> .
+}
+
+
+2026-11-15 06:17:47.387 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.388 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.388 - INFO: Result has size 16 x 3
+2026-11-15 06:17:47.389 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.394 - INFO: 
+2026-11-15 06:17:47.394 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.394 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 WHERE {
+	?v0 <http://purl.org/dc/terms/Location> ?v1 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> .
+}
+
+
+2026-11-15 06:17:47.395 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.395 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.395 - INFO: Result has size 16 x 3
+2026-11-15 06:17:47.395 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.400 - INFO: 
+2026-11-15 06:17:47.400 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.400 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 WHERE {
+	?v0 <http://purl.org/dc/terms/Location> ?v1 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> .
+}
+
+
+2026-11-15 06:17:47.400 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.401 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.401 - INFO: Result has size 16 x 3
+2026-11-15 06:17:47.401 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.404 - INFO: 
+2026-11-15 06:17:47.404 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.404 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 WHERE {
+	?v0 <http://purl.org/dc/terms/Location> ?v1 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> .
+}
+
+
+2026-11-15 06:17:47.404 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.405 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.405 - INFO: Result has size 16 x 3
+2026-11-15 06:17:47.405 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.410 - INFO: 
+2026-11-15 06:17:47.410 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.410 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v3 WHERE {
+	?v0 <http://purl.org/dc/terms/Location> ?v1 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> .
+}
+
+
+2026-11-15 06:17:47.410 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.411 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.411 - INFO: Result has size 16 x 3
+2026-11-15 06:17:47.411 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.419 - INFO: 
+2026-11-15 06:17:47.419 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.419 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 ?v4 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/caption> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 .
+	?v0 <http://schema.org/publisher> ?v4 .
+}
+
+
+2026-11-15 06:17:47.419 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.423 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:47.427 - INFO: Result has size 0 x 4
+2026-11-15 06:17:47.427 - INFO: Done processing query and sending result, total time was 8 ms
+2026-11-15 06:17:47.445 - INFO: 
+2026-11-15 06:17:47.445 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.446 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 ?v4 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/caption> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 .
+	?v0 <http://schema.org/publisher> ?v4 .
+}
+
+
+2026-11-15 06:17:47.446 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.449 - INFO: Query planning done in 4 ms
+2026-11-15 06:17:47.450 - INFO: Result has size 0 x 4
+2026-11-15 06:17:47.450 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-15 06:17:47.454 - INFO: 
+2026-11-15 06:17:47.454 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.455 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 ?v4 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/caption> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 .
+	?v0 <http://schema.org/publisher> ?v4 .
+}
+
+
+2026-11-15 06:17:47.455 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.458 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:47.458 - INFO: Result has size 0 x 4
+2026-11-15 06:17:47.458 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-15 06:17:47.462 - INFO: 
+2026-11-15 06:17:47.462 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.462 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 ?v4 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/caption> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 .
+	?v0 <http://schema.org/publisher> ?v4 .
+}
+
+
+2026-11-15 06:17:47.462 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.466 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:47.466 - INFO: Result has size 0 x 4
+2026-11-15 06:17:47.466 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-15 06:17:47.469 - INFO: 
+2026-11-15 06:17:47.469 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.469 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 ?v4 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/caption> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 .
+	?v0 <http://schema.org/publisher> ?v4 .
+}
+
+
+2026-11-15 06:17:47.470 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.473 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:47.474 - INFO: Result has size 0 x 4
+2026-11-15 06:17:47.474 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-15 06:17:47.477 - INFO: 
+2026-11-15 06:17:47.477 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.478 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 ?v4 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/caption> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 .
+	?v0 <http://schema.org/publisher> ?v4 .
+}
+
+
+2026-11-15 06:17:47.478 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.481 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:47.482 - INFO: Result has size 0 x 4
+2026-11-15 06:17:47.482 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-15 06:17:47.486 - INFO: 
+2026-11-15 06:17:47.486 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.487 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> .
+	?v0 <http://xmlns.com/foaf/familyName> ?v2 .
+	?v3 <http://purl.org/ontology/mo/artist> ?v0 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> .
+}
+
+
+2026-11-15 06:17:47.487 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.488 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:47.493 - INFO: Result has size 1 x 3
+2026-11-15 06:17:47.493 - INFO: Done processing query and sending result, total time was 6 ms
+2026-11-15 06:17:47.499 - INFO: 
+2026-11-15 06:17:47.499 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.499 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> .
+	?v0 <http://xmlns.com/foaf/familyName> ?v2 .
+	?v3 <http://purl.org/ontology/mo/artist> ?v0 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> .
+}
+
+
+2026-11-15 06:17:47.499 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.500 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:47.500 - INFO: Result has size 1 x 3
+2026-11-15 06:17:47.500 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.504 - INFO: 
+2026-11-15 06:17:47.504 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.504 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> .
+	?v0 <http://xmlns.com/foaf/familyName> ?v2 .
+	?v3 <http://purl.org/ontology/mo/artist> ?v0 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> .
+}
+
+
+2026-11-15 06:17:47.504 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.505 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:47.505 - INFO: Result has size 1 x 3
+2026-11-15 06:17:47.505 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.509 - INFO: 
+2026-11-15 06:17:47.509 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.509 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> .
+	?v0 <http://xmlns.com/foaf/familyName> ?v2 .
+	?v3 <http://purl.org/ontology/mo/artist> ?v0 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> .
+}
+
+
+2026-11-15 06:17:47.509 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.510 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:47.510 - INFO: Result has size 1 x 3
+2026-11-15 06:17:47.511 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.521 - INFO: 
+2026-11-15 06:17:47.521 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.521 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> .
+	?v0 <http://xmlns.com/foaf/familyName> ?v2 .
+	?v3 <http://purl.org/ontology/mo/artist> ?v0 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> .
+}
+
+
+2026-11-15 06:17:47.521 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.522 - INFO: Query planning done in 1 ms
+2026-11-15 06:17:47.522 - INFO: Result has size 1 x 3
+2026-11-15 06:17:47.522 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.527 - INFO: 
+2026-11-15 06:17:47.527 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.527 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> .
+	?v0 <http://xmlns.com/foaf/familyName> ?v2 .
+	?v3 <http://purl.org/ontology/mo/artist> ?v0 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> .
+}
+
+
+2026-11-15 06:17:47.527 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.528 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.528 - INFO: Result has size 1 x 3
+2026-11-15 06:17:47.528 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.532 - INFO: 
+2026-11-15 06:17:47.532 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.532 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/description> ?v2 .
+	?v0 <http://schema.org/keywords> ?v3 .
+	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+}
+
+
+2026-11-15 06:17:47.532 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.535 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:47.539 - INFO: Result has size 0 x 3
+2026-11-15 06:17:47.540 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-15 06:17:47.545 - INFO: 
+2026-11-15 06:17:47.545 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.545 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/description> ?v2 .
+	?v0 <http://schema.org/keywords> ?v3 .
+	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+}
+
+
+2026-11-15 06:17:47.545 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.548 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:47.549 - INFO: Result has size 0 x 3
+2026-11-15 06:17:47.549 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-15 06:17:47.553 - INFO: 
+2026-11-15 06:17:47.553 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.553 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/description> ?v2 .
+	?v0 <http://schema.org/keywords> ?v3 .
+	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+}
+
+
+2026-11-15 06:17:47.553 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.557 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:47.557 - INFO: Result has size 0 x 3
+2026-11-15 06:17:47.557 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-15 06:17:47.562 - INFO: 
+2026-11-15 06:17:47.562 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.562 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/description> ?v2 .
+	?v0 <http://schema.org/keywords> ?v3 .
+	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+}
+
+
+2026-11-15 06:17:47.562 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.565 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:47.566 - INFO: Result has size 0 x 3
+2026-11-15 06:17:47.566 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-15 06:17:47.570 - INFO: 
+2026-11-15 06:17:47.570 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.570 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/description> ?v2 .
+	?v0 <http://schema.org/keywords> ?v3 .
+	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+}
+
+
+2026-11-15 06:17:47.570 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.574 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:47.574 - INFO: Result has size 0 x 3
+2026-11-15 06:17:47.575 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-15 06:17:47.579 - INFO: 
+2026-11-15 06:17:47.579 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.579 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v2 ?v3 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/description> ?v2 .
+	?v0 <http://schema.org/keywords> ?v3 .
+	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+}
+
+
+2026-11-15 06:17:47.579 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.583 - INFO: Query planning done in 3 ms
+2026-11-15 06:17:47.583 - INFO: Result has size 0 x 3
+2026-11-15 06:17:47.583 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-15 06:17:47.588 - INFO: 
+2026-11-15 06:17:47.588 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.588 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 WHERE {
+	?v0 <http://purl.org/ontology/mo/conductor> ?v1 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-15 06:17:47.589 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.589 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.592 - INFO: Result has size 15 x 3
+2026-11-15 06:17:47.593 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-15 06:17:47.598 - INFO: 
+2026-11-15 06:17:47.598 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.598 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 WHERE {
+	?v0 <http://purl.org/ontology/mo/conductor> ?v1 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-15 06:17:47.599 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.599 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.599 - INFO: Result has size 15 x 3
+2026-11-15 06:17:47.600 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.604 - INFO: 
+2026-11-15 06:17:47.604 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.604 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 WHERE {
+	?v0 <http://purl.org/ontology/mo/conductor> ?v1 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-15 06:17:47.604 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.604 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.605 - INFO: Result has size 15 x 3
+2026-11-15 06:17:47.605 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.608 - INFO: 
+2026-11-15 06:17:47.608 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.608 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 WHERE {
+	?v0 <http://purl.org/ontology/mo/conductor> ?v1 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-15 06:17:47.608 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.609 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.609 - INFO: Result has size 15 x 3
+2026-11-15 06:17:47.609 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.614 - INFO: 
+2026-11-15 06:17:47.614 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.614 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 WHERE {
+	?v0 <http://purl.org/ontology/mo/conductor> ?v1 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-15 06:17:47.614 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.615 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.615 - INFO: Result has size 15 x 3
+2026-11-15 06:17:47.615 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.616 - INFO: 
+2026-11-15 06:17:47.616 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.617 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 WHERE {
+	?v0 <http://purl.org/ontology/mo/conductor> ?v1 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-15 06:17:47.617 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.617 - INFO: Query planning done in 0 ms
+2026-11-15 06:17:47.618 - INFO: Result has size 15 x 3
+2026-11-15 06:17:47.618 - INFO: Done processing query and sending result, total time was 1 ms
+2026-11-15 06:17:47.622 - INFO: 
+2026-11-15 06:17:47.622 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.623 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-15 06:17:47.623 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.625 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:47.628 - INFO: Result has size 0 x 3
+2026-11-15 06:17:47.628 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-15 06:17:47.632 - INFO: 
+2026-11-15 06:17:47.632 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.633 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-15 06:17:47.633 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.635 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:47.635 - INFO: Result has size 0 x 3
+2026-11-15 06:17:47.635 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:47.639 - INFO: 
+2026-11-15 06:17:47.639 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.639 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-15 06:17:47.639 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.641 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:47.641 - INFO: Result has size 0 x 3
+2026-11-15 06:17:47.641 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:47.645 - INFO: 
+2026-11-15 06:17:47.645 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.645 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-15 06:17:47.645 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.648 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:47.648 - INFO: Result has size 0 x 3
+2026-11-15 06:17:47.648 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:47.652 - INFO: 
+2026-11-15 06:17:47.652 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.652 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-15 06:17:47.652 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.654 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:47.654 - INFO: Result has size 0 x 3
+2026-11-15 06:17:47.654 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-15 06:17:47.660 - INFO: 
+2026-11-15 06:17:47.660 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-15 06:17:47.660 - INFO: Processing the following SPARQL query:
+SELECT ?v0 ?v1 ?v2 WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-15 06:17:47.660 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-15 06:17:47.662 - INFO: Query planning done in 2 ms
+2026-11-15 06:17:47.662 - INFO: Result has size 0 x 3
+2026-11-15 06:17:47.662 - INFO: Done processing query and sending result, total time was 2 ms
+container_mem 130.5MiB
