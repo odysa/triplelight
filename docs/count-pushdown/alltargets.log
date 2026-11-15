@@ -1,0 +1,169 @@
+   Compiling rdfdb v0.1.0 (/Users/odysa/.slock/agents/76bebfc0-1788-44d5-aca6-b9123fed40bb/rdfdb)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 12.71s
+     Running unittests src/lib.rs (target/debug/deps/rdfdb-0237d7aa1af3e222)
+
+running 30 tests
+test storage::block_codec::tests::extremes_and_zero_width_round_trip ... ok
+test storage::disk_index::tests::fallible_stream_propagates_errors_and_rejects_wrong_count ... ok
+test opt::stats::sketch_tests::hll_is_bounded_and_reasonable_for_tagged_sequential_terms ... ok
+test storage::block_codec::tests::diverse_lengths_and_cross_byte_fields_round_trip ... ok
+test storage::disk_index::tests::range_and_corruption ... ok
+test storage::disk_index::tests::block_boundaries_cache_and_late_short_read ... ok
+test opt::stats::sketch_tests::compiled_star_subsets_preserve_estimate_bits ... ok
+test storage::external_build::tests::invalid_input_does_not_publish_a_manifest ... ok
+test opt::planner::compact_dp_tests::compact_index_dp_matches_ordered_reference_cost_and_tree ... ok
+test storage::external_sort::tests::truncated_and_oversized_records_fail ... ok
+test storage::lazy_dictionary::tests::dual_indexes_roundtrip_cross_blocks_and_report_corruption ... ok
+test storage::memory::tests::borrowed_arena_roundtrips_all_rdf_term_kinds ... ok
+test storage::disk_snapshot::tests::data_corruption_is_lazy_but_verify_and_query_fail ... ok
+test storage::disk_snapshot::tests::deep_verification_finds_consistent_checksum_with_wrong_permutation ... ok
+test storage::memory::tests::ntriples_loader_rejects_bad_input_and_deduplicates ... ok
+test storage::memory::tests::rdf_terms_do_not_collapse_lexical_forms ... ok
+test storage::memory::tests::six_permutations_deduplicate_count_and_seek ... ok
+test storage::memory::tests::snapshot_roundtrip_and_corruption ... ok
+test storage::memory::tests::turtle_loader_handles_prefixes_and_errors ... ok
+test storage::memory::tests::unknown_id_is_error_and_does_not_invoke_callback ... ok
+test storage::term_block_codec::tests::terms_roundtrip_and_malformed_blocks_fail ... ok
+test storage::disk_snapshot::tests::lazy_dictionary_block_corruption_is_reported_as_query_error ... ok
+test storage::disk_snapshot::tests::lazy_dictionary_corruption_aborts_id_serialization ... ok
+test storage::memory::tests::parallel_file_load_matches_serial_and_rejects_invalid ... ok
+test storage::disk_snapshot::tests::roundtrip_prefix_seek_and_checksum ... ok
+test storage::memory::tests::first_key_ranges_match_independent_full_scan ... ok
+test storage::external_build::tests::ntriples_deduplicate_and_preserve_rdf_terms ... ok
+test storage::disk_snapshot::tests::generic_snapshot_writer_reopens_and_refuses_overwrite ... ok
+test storage::external_sort::tests::multiple_passes_keep_duplicates_and_clean_scratch ... ok
+test storage::disk_snapshot::tests::cache_miss_after_truncation_is_an_error ... ok
+
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.91s
+
+     Running unittests src/bin/rdfdb.rs (target/debug/deps/rdfdb-b13ed01a74c4c9fd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/count_pushdown.rs (target/debug/deps/count_pushdown-c493284954c7bd2a)
+
+running 5 tests
+test index_failures_do_not_become_zero_aggregates ... ok
+test prefix_groups_preserve_counts_duplicates_and_unbound_keys ... ok
+test unsupported_algebra_and_repeated_variables_keep_semantics ... ok
+test single_pattern_counts_distinct_and_unbound_use_index_only ... ok
+test factorized_counts_equal_materialized_bag_sizes_for_many_graphs ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/disk_cli.rs (target/debug/deps/disk_cli-81678f0772b9e745)
+
+running 3 tests
+test disk_server_restarts_and_answers_without_original_input ... ok
+test disk_snapshot_cli_survives_process_restart ... ok
+test build_strategy_can_be_forced_and_matches_fast_path ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.55s
+
+     Running tests/exec.rs (target/debug/deps/exec-a86cb065ec904c2b)
+
+running 8 tests
+test id_results_serialize_like_decoded ... ok
+test filter_optional_order_limit ... ok
+test errors_carry_their_kind ... ok
+test bgp_star_and_chain ... ok
+test leapfrog_matches_bind_join ... ok
+test dictionary_errors_are_storage_errors ... ok
+test union_distinct_group_ask ... ok
+test filter_pushdown_matches_post_filtering ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/optimizer.rs (target/debug/deps/optimizer-4515b252270565aa)
+
+running 24 tests
+test bound_objects_exact_before_frequency_overflow ... ok
+test cs_multiplicity_is_an_estimate_not_exact_degree_correlation ... ok
+test empty_bgp_has_one_binding_even_on_empty_graph ... ok
+test all_constant_masks_get_maximal_index_prefix ... ok
+test fixed_subject_star_uses_exact_leaf_products ... ok
+test optimizer_dictionary_lookup_failure_is_not_an_empty_result ... ok
+test correlated_star_uses_characteristic_sets ... ok
+test joins_preserve_all_shared_keys_and_physical_sort_property ... ok
+test cyclic_choice_is_capability_gated_and_stars_are_not_cycles ... ok
+test histogram_overflow_never_proves_absence ... ok
+test optimizer_count_failure_reaches_query_error ... ok
+test repeated_variable_scans_use_equality_counts ... ok
+test shared_synopses_keep_query_caches_isolated ... ok
+test snapshot_stats_and_exact_counts ... ok
+test spo_stream_deduplicates_and_rejects_unsorted ... ok
+test index_nested_loop_model_matches_runtime_executor_bindings ... ok
+test storage_failures_abort_stats_and_atomic_refinement ... ok
+test zero_aware_q_error_reports_false_zeros ... ok
+test variable_order_search_matches_exhaustive_cost_and_rejects_invalid_orders ... ok
+test randomized_plan_semantics_match_independent_bgp_oracle ... ok
+test bounded_pos_refinement_repairs_rare_object_stars ... ok
+test dp_compares_favorably_to_greedy_and_large_queries_fall_back ... ok
+test work_gate_keeps_small_queries_greedy_and_admits_expanding_stars ... ok
+test wide_high_work_bgp_preserves_original_runtime_results ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.41s
+
+     Running tests/parallel_cli.rs (target/debug/deps/parallel_cli-11b991f00967a163)
+
+running 1 test
+test cli_default_explicit_serial_and_parallel_match_and_reject_invalid_options ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/store.rs (target/debug/deps/store-df7baa7b3ca66710)
+
+running 9 tests
+test sparql_update_operations ... ok
+test torn_wal_tail_is_ignored ... ok
+test overlay_scan_propagates_base_errors ... ok
+test crashed_compaction_leftovers_are_ignored ... ok
+test overlay_scan_streams_across_batches ... ok
+test overlay_matches_rebuilt_snapshot ... ok
+test disk_base_replays_and_compacts_updates ... ok
+test concurrent_commits_are_all_durable ... ok
+test acknowledged_commits_survive_sigkill ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.24s
+
+     Running unittests examples/count_probe.rs (target/debug/examples/count_probe-ec0354bc0864f967)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/optimizer_hotpath.rs (target/debug/examples/optimizer_hotpath-8950b9f964aede19)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/optimizer_qerror.rs (target/debug/examples/optimizer_qerror-cee8ecf7482737d7)
+
+running 3 tests
+test tests::absent_constant_is_reported ... ok
+test tests::lookup_failures_preserve_original_io_error_in_every_constant_position ... ok
+test tests::modifiers_are_not_silently_compared_to_bgp_counts ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/parallel_load.rs (target/debug/examples/parallel_load-252a5d2b0e1f2e38)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/prof.rs (target/debug/examples/prof-6f4492d513113493)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/storage_probe.rs (target/debug/examples/storage_probe-9fa68f87806c3891)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
