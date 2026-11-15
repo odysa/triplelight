@@ -42,7 +42,7 @@ All 34 queries have identical full sorted ID multisets between the two engine mo
 
 ## Reproduction and provenance
 
-Source used for the measurements: `17d8be2`; binary and query SHA-256 plus snapshot manifest hashes are in `provenance.json`. The final commit only clarifies comments/headers and adds this readout; it does not change the measured algorithm. Snapshots were opened read-only from the lead's `bench/tools/rdfdb-disk-{lubm100,watdiv100}` directories. Raw TSV and logs are preserved unchanged.
+Source used for the tests and measurements: `17d8be2`, preserved remotely as tag `task12-sampling-measured`; binary and query SHA-256 plus snapshot manifest hashes are in `provenance.json`. The task's own follow-up only clarifies comments/headers and adds this readout; it does not change the measured estimator. The review branch was subsequently rebased on main `35c5591`, which includes concurrent executor/storage work; that combined state was not retimed or retested during the next owner's benchmark lock. These results apply to the pinned tag, not to those later changes. Rerun checks before any later production merge. Snapshots were opened read-only from the lead's `bench/tools/rdfdb-disk-{lubm100,watdiv100}` directories. Raw TSV and logs are preserved unchanged.
 
 With the shared-machine benchmark lock acquired:
 
