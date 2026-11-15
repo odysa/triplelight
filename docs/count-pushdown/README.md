@@ -55,7 +55,7 @@ Correctness evidence is stronger than comparing output lengths:
 
 ## Reproduction and provenance
 
-Measured baseline is `35c5591`; measured final candidate is **`b4ef97c`**, preserved as tag `task13-count-measured`. Build both with the identical `examples/count_probe.rs` (copy the example into a detached baseline worktree). Both builds used one Cargo job. `provenance.json` records executable/helper/query/snapshot-manifest identities and runtime controls. It is the pinned source, rather than a moving rebased branch, to which these timings and tests apply. Main subsequently added a projection-header fix for LIMIT/DISTINCT wrappers (`41e7471`); the review branch must be checked after rebasing on that change before merging. Its updated integration check is pending the next available machine window, not covered by the 83-test claim above.
+Measured baseline is `35c5591`; measured final candidate is **`b4ef97c`**, preserved as tag `task13-count-measured`. Build both with the identical `examples/count_probe.rs` (copy the example into a detached baseline worktree). Both builds used one Cargo job. `provenance.json` records executable/helper/query/snapshot-manifest identities and runtime controls. It is the pinned source, rather than a moving rebased branch, to which these timings and tests apply. Final integration against main `54bbc43` passes **86 tests**, including the upstream projection-header fix plus new COUNT-under-LIMIT/DISTINCT and literal-identity cases (`integration-rebased.log`). The 83-test result above remains specific to the measured tag; the extra integration checks do not change its timing provenance.
 
 With the benchmark lock acquired:
 
