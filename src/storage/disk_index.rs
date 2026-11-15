@@ -2,13 +2,14 @@
 //! Checksums detect accidental corruption; the manifest is not authenticated.
 use crate::model::TermId;
 use sha2::{Digest, Sha256};
+use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::fs::File;
 use std::io::{self, ErrorKind, Write};
 use std::os::unix::fs::FileExt;
 use std::path::Path;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, OnceLock, Weak};
 
 const MAGIC_V2: &[u8; 8] = b"RDFIDX02";
 const MAGIC_V3: &[u8; 8] = b"RDFIDX03";
@@ -16,6 +17,15 @@ const HEADER: u64 = 24;
 const ROW: u64 = 24;
 const BLOCK_ROWS: u64 = 256;
 const META: u64 = 56;
+type BlockRows = Vec<[TermId; 3]>;
+struct Recent {
+    index: u64,
+    epoch: u64,
+    block: u64,
+    rows: Weak<BlockRows>,
+}
+thread_local! { static RECENT_BLOCKS: RefCell<VecDeque<Recent>> = const { RefCell::new(VecDeque::new()) }; }
+static NEXT_INDEX: AtomicU64 = AtomicU64::new(1);
 static CACHE_MB_OVERRIDE: AtomicUsize = AtomicUsize::new(0);
 static DEFAULT_CACHE_MB: OnceLock<usize> = OnceLock::new();
 /// Sets the per-snapshot aggregate block cache target before opening a snapshot.
@@ -189,6 +199,8 @@ pub struct DiskIndex {
     compressed: bool,
     cache: Vec<Mutex<CacheShard>>,
     shard_capacity: usize,
+    instance: u64,
+    epoch: AtomicU64,
 }
 impl DiskIndex {
     pub fn open(path: impl AsRef<Path>) -> io::Result<Self> {
@@ -270,9 +282,14 @@ impl DiskIndex {
         if data_pos != offset {
             return Err(invalid("index data length mismatch"));
         }
+        let instance = NEXT_INDEX
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_add(1))
+            .map_err(|_| io::Error::other("disk index identity exhausted"))?;
         Ok(Self {
             file,
             rows,
+            instance,
+            epoch: AtomicU64::new(0),
             identity: footer,
             blocks: entries,
             compressed,
@@ -295,6 +312,9 @@ impl DiskIndex {
         self.identity
     }
     pub fn clear_cache(&self) -> io::Result<()> {
+        self.epoch
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| n.checked_add(1))
+            .map_err(|_| io::Error::other("disk cache epoch exhausted"))?;
         for shard in &self.cache {
             let mut cache = shard
                 .lock()
@@ -311,12 +331,43 @@ impl DiskIndex {
         self.rows == 0
     }
     fn block(&self, id: u64) -> io::Result<Arc<Vec<[TermId; 3]>>> {
+        let epoch = self.epoch.load(Ordering::Acquire);
+        if let Some(rows) = RECENT_BLOCKS.with(|recent| {
+            let mut recent = recent.borrow_mut();
+            let pos = recent
+                .iter()
+                .position(|r| r.index == self.instance && r.epoch == epoch && r.block == id)?;
+            let entry = recent.remove(pos)?;
+            let rows = entry.rows.upgrade();
+            if rows.is_some() {
+                recent.push_back(entry);
+            }
+            rows
+        }) {
+            return Ok(rows);
+        }
+        let remember = |rows: &Arc<BlockRows>| {
+            RECENT_BLOCKS.with(|recent| {
+                let mut recent = recent.borrow_mut();
+                if recent.len() == 8 {
+                    recent.pop_front();
+                }
+                recent.push_back(Recent {
+                    index: self.instance,
+                    epoch,
+                    block: id,
+                    rows: Arc::downgrade(rows),
+                });
+            })
+        };
         let mut cache = self.cache[(id as usize) % self.cache.len()]
             .lock()
             .map_err(|_| io::Error::other("index cache lock poisoned"))?;
         if let Some((value, referenced)) = cache.entries.get_mut(&id) {
             *referenced = true;
-            return Ok(Arc::clone(value));
+            let value = Arc::clone(value);
+            remember(&value);
+            return Ok(value);
         }
         let start = id
             .checked_mul(BLOCK_ROWS)
@@ -359,6 +410,7 @@ impl DiskIndex {
         }
         cache.entries.insert(id, (Arc::clone(&r), true));
         cache.clock.push_back(id);
+        remember(&r);
         Ok(r)
     }
     fn row(&self, i: u64) -> io::Result<[TermId; 3]> {
@@ -460,6 +512,27 @@ mod tests {
         let err = write_index_stream(Vec::new(), 2, input.into_iter()).unwrap_err();
         assert!(err.to_string().contains("source failed"));
         assert!(write_index_stream(Vec::new(), 2, [Ok(row)].into_iter()).is_err());
+    }
+    #[test]
+    fn recent_weak_blocks_respect_clear_and_snapshot_identity() {
+        let path = std::env::temp_dir().join(format!("rdf-recent-{}", std::process::id()));
+        let rows = [[TermId(1), TermId(2), TermId(3)]];
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let first = DiskIndex::open(&path).unwrap();
+        let pinned = first.block(0).unwrap();
+        assert_eq!(first.get(0).unwrap(), rows[0]);
+        bytes[24] ^= 1;
+        std::fs::write(&path, &bytes).unwrap();
+        let second = DiskIndex::open(&path).unwrap();
+        assert!(second.get(0).is_err());
+        first.clear_cache().unwrap();
+        assert!(first.get(0).is_err());
+        drop(pinned);
+        drop(first);
+        drop(second);
+        std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn block_boundaries_cache_and_late_short_read() {
