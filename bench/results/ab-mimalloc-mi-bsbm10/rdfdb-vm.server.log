@@ -1,0 +1,5 @@
+loaded /data/bsbm10.nt in 8.03s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:7979/sparql
+statistics ready after 1.29s
+container_mem 6.286GiB
