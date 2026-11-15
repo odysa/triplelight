@@ -25,7 +25,9 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     }
 
     /// Greedy order with exact index counts, evaluated by index nested-loop joins.
-    pub fn eval_greedy(&self, pats: &[[Slot; 3]], mut rows: Vec<TermId>) -> Vec<TermId> {
+    /// `post` runs after every join step with the set of variables bound so far (used to apply filters as early as
+    /// their variables are bound).
+    pub fn eval_greedy(&self, pats: &[[Slot; 3]], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>)) -> Vec<TermId> {
         let w = self.w;
         if rows.is_empty() { return rows }
         let mut remaining: Vec<usize> = (0..pats.len()).collect();
@@ -38,12 +40,20 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             let pi = remaining.remove(k);
             rows = self.extend(&pats[pi], &rows);
             for s in &pats[pi] { if let Slot::Var(v) = s { bound.insert(*v); } }
+            post(&mut rows, &bound);
         }
         rows
     }
 
-    pub fn eval_order(&self, pats: &[[Slot; 3]], order: &[usize], mut rows: Vec<TermId>) -> Vec<TermId> {
-        for &pi in order { if rows.is_empty() { break } rows = self.extend(&pats[pi], &rows); }
+    pub fn eval_order(&self, pats: &[[Slot; 3]], order: &[usize], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>)) -> Vec<TermId> {
+        let w = self.w;
+        let mut bound: HashSet<usize> = if rows.is_empty() { HashSet::new() } else { (0..w).filter(|&i| rows.chunks(w).all(|r| r[i] != UNBOUND)).collect() };
+        for &pi in order {
+            if rows.is_empty() { break }
+            rows = self.extend(&pats[pi], &rows);
+            for s in &pats[pi] { if let Slot::Var(v) = s { bound.insert(*v); } }
+            post(&mut rows, &bound);
+        }
         rows
     }
 

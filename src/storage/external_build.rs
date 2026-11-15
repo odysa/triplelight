@@ -36,18 +36,7 @@ fn budget_mb() -> usize {
     if n != 0 {
         return n;
     }
-    #[cfg(target_os = "macos")]
-    if let Ok(out) = std::process::Command::new("/usr/sbin/sysctl")
-        .args(["-n", "hw.memsize"])
-        .output()
-    {
-        if out.status.success() {
-            if let Ok(n) = String::from_utf8_lossy(&out.stdout).trim().parse::<u64>() {
-                return usize::try_from(n / 2 / 1_048_576).unwrap_or(256).max(1);
-            }
-        }
-    }
-    256
+    super::disk_index::physical_memory_bytes().map_or(256, |n| usize::try_from(n / 2 / 1_048_576).unwrap_or(256).max(1))
 }
 pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io::Result<()> {
     if let Some(path) = source {

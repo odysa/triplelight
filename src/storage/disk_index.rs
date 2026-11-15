@@ -35,20 +35,7 @@ pub(super) fn cache_budget_mb() -> usize {
         return value;
     }
     *DEFAULT_CACHE_MB.get_or_init(|| {
-        #[cfg(target_os = "macos")]
-        if let Ok(out) = std::process::Command::new("/usr/sbin/sysctl")
-            .args(["-n", "hw.memsize"])
-            .output()
-        {
-            if out.status.success() {
-                if let Ok(bytes) = String::from_utf8_lossy(&out.stdout).trim().parse::<u64>() {
-                    return usize::try_from(bytes / 4 / (1024 * 1024))
-                        .unwrap_or(256)
-                        .max(1);
-                }
-            }
-        }
-        256
+        physical_memory_bytes().map_or(256, |bytes| usize::try_from(bytes / 4 / (1024 * 1024)).unwrap_or(256).max(1))
     })
 }
 
@@ -520,4 +507,22 @@ mod tests {
         std::fs::remove_file(path).unwrap();
         assert!(write_index(Vec::new(), [rows[0], rows[0]].into_iter()).is_err());
     }
+}
+
+/// Physical memory in bytes (macOS: sysctl hw.memsize; Linux: /proc/meminfo MemTotal), if it can be determined.
+pub fn physical_memory_bytes() -> Option<u64> {
+    #[cfg(target_os = "macos")]
+    {
+        let out = std::process::Command::new("/usr/sbin/sysctl").args(["-n", "hw.memsize"]).output().ok()?;
+        if !out.status.success() { return None }
+        return String::from_utf8_lossy(&out.stdout).trim().parse::<u64>().ok();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let info = std::fs::read_to_string("/proc/meminfo").ok()?;
+        let kb: u64 = info.lines().find(|l| l.starts_with("MemTotal:"))?.split_whitespace().nth(1)?.parse().ok()?;
+        return Some(kb * 1024);
+    }
+    #[allow(unreachable_code)]
+    None
 }
