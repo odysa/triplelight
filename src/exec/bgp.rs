@@ -256,9 +256,10 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     fn lf_count_depth(&self, plans: &[(Perm, [Slot; 3])], order: &[usize], depth: usize, row: &mut Vec<TermId>) -> u64 {
         let v = order[depth];
         if depth + 1 == order.len() {
-            let sources: Vec<_> = plans.iter().filter(|(_, key)| key.iter().any(|s| matches!(s, Slot::Var(x) if *x == v))).collect();
-            if sources.len() == 1 {
-                let (perm, key) = sources[0];
+            let mut sources = plans.iter().filter(|(_, key)| key.iter().any(|s| matches!(s, Slot::Var(x) if *x == v)));
+            let first = sources.next().expect("count variable has an index source");
+            if sources.next().is_none() {
+                let (perm, key) = first;
                 let k = key.iter().position(|s| matches!(s, Slot::Var(x) if *x == v)).unwrap();
                 let prefix: Vec<_> = key[..k].iter().map(|s| match s { Slot::Const(c) => c.unwrap(), Slot::Var(x) => row[*x] }).collect();
                 return self.count(*perm, &prefix);
