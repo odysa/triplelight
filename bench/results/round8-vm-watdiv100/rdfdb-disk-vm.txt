@@ -1,0 +1,21 @@
+query           rdfdb-disk-vm
+C1           5.55ms n=8      
+C2          12.04ms n=0      
+C3          90.62ms n=429276 
+F1           2.85ms n=0      
+F2           3.95ms n=13     
+F3           3.94ms n=85     
+F4           3.26ms n=0      
+F5           3.08ms n=25     
+L1           3.19ms n=2      
+L2           5.88ms n=229    
+L3           3.78ms n=19     
+L4           4.26ms n=68     
+L5           8.76ms n=254    
+S1           3.34ms n=0      
+S2           4.08ms n=16     
+S3           4.48ms n=0      
+S4           4.39ms n=1      
+S5           4.03ms n=0      
+S6           4.43ms n=15     
+S7           2.95ms n=0      
