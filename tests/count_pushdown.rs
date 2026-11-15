@@ -122,7 +122,13 @@ fn single_pattern_counts_distinct_and_unbound_use_index_only() {
         12
     );
     assert_eq!(s.scans.load(Ordering::Relaxed), 0);
-    assert_eq!(scalar(&s,"SELECT (COUNT(*) AS ?n) WHERE {?a <urn:p> ?b . ?a <urn:q> ?c}"),4);
+    assert_eq!(
+        scalar(
+            &s,
+            "SELECT (COUNT(*) AS ?n) WHERE {?a <urn:p> ?b . ?a <urn:q> ?c}"
+        ),
+        4
+    );
     assert_eq!(s.scans.load(Ordering::Relaxed), 1);
 }
 #[test]
@@ -248,4 +254,50 @@ fn index_failures_do_not_become_zero_aggregates() {
     .unwrap_err();
     assert_eq!(err.kind, QueryErrorKind::Storage);
     assert!(err.message.contains("seek probe failed"));
+}
+
+#[test]
+fn counted_results_keep_projection_under_limit_and_distinct() {
+    let s = graph();
+    let QueryResult::Solutions { vars, rows } = query(
+        &s,
+        "SELECT DISTINCT (COUNT(*) AS ?n) WHERE {?s <urn:p> ?o} LIMIT 1",
+    )
+    .unwrap() else {
+        unreachable!()
+    };
+    assert_eq!(vars.len(), 1);
+    assert_eq!(vars[0].as_str(), "n");
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0][0], Some(oxrdf::Literal::from(4).into()));
+    let QueryResult::Solutions { vars, rows } =
+        query(&s, "SELECT (COUNT(*) AS ?n) WHERE {?s <urn:p> ?o} LIMIT 0").unwrap()
+    else {
+        unreachable!()
+    };
+    assert_eq!(vars.len(), 1);
+    assert!(rows.is_empty());
+}
+#[test]
+fn distinct_counts_preserve_literal_lexical_and_datatype_identity() {
+    let one = oxrdf::Literal::new_typed_literal("1", oxrdf::vocab::xsd::INT);
+    let zero_one = oxrdf::Literal::new_typed_literal("01", oxrdf::vocab::xsd::INT);
+    let integer = oxrdf::Literal::new_typed_literal("1", oxrdf::vocab::xsd::INTEGER);
+    let s = MemorySnapshot::from_triples([
+        Triple::new(n("a"), n("p"), one.clone()),
+        Triple::new(n("a"), n("p"), zero_one),
+        Triple::new(n("a"), n("p"), integer),
+        Triple::new(n("b"), n("p"), one),
+    ]);
+    assert_eq!(
+        scalar(
+            &s,
+            "SELECT (COUNT(DISTINCT ?o) AS ?n) WHERE {?s <urn:p> ?o}"
+        ),
+        3
+    );
+    assert_eq!(
+        scalar(&s, "SELECT (COUNT(*) AS ?n) WHERE {?s <urn:p> ?o}"),
+        4
+    );
 }
