@@ -1,6 +1,6 @@
-loaded tools/lubm100.nt in 7.13s
+loaded tools/lubm100.nt in 9.08s
 optimizer statistics: building in background
 serving SPARQL at http://127.0.0.1:7979/sparql
 statistics ready after 1.61s
-rdfdb ready after 10s
-rss_mb 6637
+rdfdb ready after 12s
+rss_mb 6624

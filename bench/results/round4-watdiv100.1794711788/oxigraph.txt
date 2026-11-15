@@ -1,0 +1,21 @@
+query                oxigraph
+C1         237.02ms n=8      
+C2        3753.70ms n=0      
+C3      156281.45ms n=429276 
+F1          52.07ms n=0      
+F2          57.69ms n=13     
+F3          71.38ms n=85     
+F4          40.18ms n=0      
+F5           6.64ms n=25     
+L1           1.46ms n=2      
+L2         210.09ms n=229    
+L3           1.18ms n=19     
+L4          20.17ms n=68     
+L5         216.96ms n=254    
+S1           6.35ms n=0      
+S2          11.32ms n=16     
+S3          96.92ms n=0      
+S4         411.17ms n=1      
+S5          71.68ms n=0      
+S6          44.79ms n=15     
+S7           0.45ms n=0      

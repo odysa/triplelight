@@ -117,3 +117,12 @@ fn filter_pushdown_matches_post_filtering() {
     // A conjunct over a variable outside the BGP stays a post-filter and keeps its semantics (unbound -> false).
     assert!(rows("SELECT ?x WHERE { ?x <http://ex/age> ?a FILTER(?a > 20 && BOUND(?nope)) }").is_empty());
 }
+
+/// SELECT ?x ... ORDER BY ... LIMIT: the result header lists only the projected variables.
+#[test]
+fn projection_under_slice_and_distinct() {
+    match query(&store(), "SELECT DISTINCT ?x WHERE { ?x <http://ex/age> ?a FILTER(?a > 26) } ORDER BY ?a LIMIT 5").unwrap() {
+        QueryResult::Solutions { vars, rows } => { assert_eq!(vars.len(), 1); assert_eq!(vars[0].as_str(), "x"); assert_eq!(rows.len(), 2) }
+        _ => unreachable!(),
+    }
+}

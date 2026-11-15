@@ -1,0 +1,21 @@
+query               jena-tdb2
+C1          24.03ms n=8      
+C2         166.84ms n=0      
+C3        9887.02ms n=429276 
+F1           4.43ms n=0      
+F2           5.92ms n=13     
+F3           6.56ms n=85     
+F4           4.08ms n=0      
+F5           3.44ms n=25     
+L1           2.68ms n=2      
+L2           8.81ms n=229    
+L3           2.63ms n=19     
+L4           3.93ms n=68     
+L5          14.09ms n=254    
+S1           2.89ms n=0      
+S2           3.19ms n=16     
+S3           5.44ms n=0      
+S4          16.42ms n=1      
+S5           3.41ms n=0      
+S6           3.78ms n=15     
+S7           2.32ms n=0      
