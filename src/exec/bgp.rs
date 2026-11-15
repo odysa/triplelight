@@ -161,6 +161,83 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         }
     }
 
+    /// Count complete BGP bindings without allocating result rows. The final
+    /// variable contributes an intersection size, or an exact prefix count when
+    /// only one relation contains it. Callers reject repeated-variable patterns.
+    pub fn count_leapfrog(&self, pats: &[[Slot; 3]], given: Option<Vec<usize>>) -> u64 {
+        let counts: Vec<u64> = pats.iter().map(|p| {
+            let fixed = std::array::from_fn(|i| if let Slot::Const(c) = p[i] { c } else { None });
+            let (perm, prefix, n) = choose_perm(&fixed);
+            self.count(perm, &prefix[..n])
+        }).collect();
+        if counts.contains(&0) { return 0; }
+        if pats.len() == 1 { return counts[0]; }
+        // Disconnected BGP components are independent factors. Counting their
+        // product avoids walking an otherwise enormous Cartesian product.
+        let mut components: Vec<Vec<usize>> = Vec::new();
+        let mut remaining: Vec<usize> = (0..pats.len()).collect();
+        while let Some(first) = remaining.pop() {
+            let mut group = vec![first];
+            let mut variables: HashSet<usize> = pats[first].iter().filter_map(|s| if let Slot::Var(v)=s {Some(*v)} else {None}).collect();
+            loop {
+                let Some(k) = remaining.iter().position(|&i| pats[i].iter().any(|s| matches!(s, Slot::Var(v) if variables.contains(v)))) else { break; };
+                let i = remaining.remove(k); group.push(i);
+                variables.extend(pats[i].iter().filter_map(|s| if let Slot::Var(v)=s {Some(*v)} else {None}));
+            }
+            components.push(group);
+        }
+        if components.len() > 1 {
+            return components.into_iter().map(|indices| {
+                let part: Vec<_> = indices.into_iter().map(|i|pats[i]).collect();
+                self.count_leapfrog(&part,None)
+            }).fold(1u64, |a,b| a.checked_mul(b).unwrap_or_else(|| storage_failure(std::io::Error::new(std::io::ErrorKind::InvalidData,"aggregate count overflow"))));
+        }
+        let vars_of = |p: &[Slot; 3]| -> Vec<usize> { p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect() };
+        let all: HashSet<usize> = pats.iter().flat_map(vars_of).collect();
+        if all.is_empty() { return 1; }
+        let mut order: Vec<usize> = given.filter(|o| o.len() == all.len() && o.iter().copied().collect::<HashSet<_>>().len() == all.len() && o.iter().all(|v| all.contains(v))).unwrap_or_default();
+        while order.len() < all.len() {
+            let cand = all.iter().filter(|v| !order.contains(v)).min_by_key(|&&v| {
+                let connected = order.is_empty() || pats.iter().any(|p| { let vs = vars_of(p); vs.contains(&v) && vs.iter().any(|x| order.contains(x)) });
+                let best = pats.iter().zip(&counts).filter(|(p, _)| vars_of(p).contains(&v)).map(|(_, c)| *c).min().unwrap_or(u64::MAX);
+                (!connected, best, v)
+            }).copied().unwrap();
+            order.push(cand);
+        }
+        let rank: HashMap<usize, usize> = order.iter().enumerate().map(|(i, &v)| (v, i)).collect();
+        let plans: Vec<(Perm, [Slot; 3])> = pats.iter().map(|p| {
+            let mut pos = [0usize, 1, 2];
+            pos.sort_by_key(|&i| match p[i] { Slot::Const(_) => (0, 0), Slot::Var(v) => (1, rank[&v]) });
+            let perm = *Perm::ALL.iter().find(|q| q.order() == pos).unwrap();
+            (perm, [p[pos[0]], p[pos[1]], p[pos[2]]])
+        }).collect();
+        self.lf_count_depth(&plans, &order, 0, &mut vec![UNBOUND; self.w])
+    }
+
+    fn lf_count_depth(&self, plans: &[(Perm, [Slot; 3])], order: &[usize], depth: usize, row: &mut Vec<TermId>) -> u64 {
+        let v = order[depth];
+        if depth + 1 == order.len() {
+            let sources: Vec<_> = plans.iter().filter(|(_, key)| key.iter().any(|s| matches!(s, Slot::Var(x) if *x == v))).collect();
+            if sources.len() == 1 {
+                let (perm, key) = sources[0];
+                let k = key.iter().position(|s| matches!(s, Slot::Var(x) if *x == v)).unwrap();
+                let prefix: Vec<_> = key[..k].iter().map(|s| match s { Slot::Const(c) => c.unwrap(), Slot::Var(x) => row[*x] }).collect();
+                return self.count(*perm, &prefix);
+            }
+            let mut n = 0u64;
+            self.leap(plans, v, row, |_| { n = checked_count(n, 1); });
+            return n;
+        }
+        let mut total = 0;
+        let prefix = row.clone();
+        self.leap(plans, v, &prefix, |value| {
+            row[v] = value;
+            total = checked_count(total, self.lf_count_depth(plans, order, depth + 1, row));
+        });
+        row[v] = UNBOUND;
+        total
+    }
+
     /// All values of `v` on which every pattern containing it agrees, given the bound prefix in `row`.
     fn intersect(&self, plans: &[(Perm, [Slot; 3])], v: usize, row: &[TermId]) -> Vec<TermId> {
         let mut out = Vec::new();
@@ -255,4 +332,8 @@ pub(super) fn cyclic(pats: &[[Slot; 3]]) -> bool {
 pub(super) fn no_repeated_var(p: &[Slot; 3]) -> bool {
     let vs: Vec<usize> = p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect();
     vs.iter().collect::<HashSet<_>>().len() == vs.len()
+}
+
+fn checked_count(a:u64,b:u64)->u64 {
+    a.checked_add(b).unwrap_or_else(|| storage_failure(std::io::Error::new(std::io::ErrorKind::InvalidData,"aggregate count overflow")))
 }
