@@ -76,7 +76,10 @@ fn invalid(message: &str) -> StorageError {
 
 /// Every successful path contributes the product of exact conditional degrees.
 /// Failed paths contribute zero. A fixed order and sample size make this an unbiased
-/// bag-cardinality estimator. Deadlines are cooperative between index operations;
+/// bag-cardinality estimator in the uncancelled fixed-work experiment. Conditioning
+/// on finishing before a deadline can still select faster walks; do not claim an
+/// unbiased cohort or calibrated confidence interval from deadline-filtered runs.
+/// Deadlines are cooperative between index operations;
 /// one storage read can overrun them. Storage errors propagate unchanged.
 pub fn estimate_walks(
     snapshot: &dyn Snapshot,

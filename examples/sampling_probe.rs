@@ -92,7 +92,7 @@ fn run<S: Snapshot>(s: &S, a: &[String]) -> Result<(), Box<dyn Error>> {
     files.retain(|p| p.extension().is_some_and(|x| x == "rq"));
     files.sort();
     let mut output = String::from(
-        "query\tseed\tactual\tstatic_rows\tstatic_qerror\tsample_rows\tsample_qerror\tse\tsuccesses\tsample_us\tprobes\tgate_complete\tgate_us\tbinary_us\tleapfrog_us\n",
+        "query\tseed\tactual\tstatic_rows\tstatic_qerror\tsample_rows\tsample_qerror\tse\tsuccesses\tsample_us\tprobes\tgate_complete\tgate_us\twcoj_off_us\twcoj_on_us\n",
     );
     for f in files {
         let text = fs::read_to_string(&f)?;
