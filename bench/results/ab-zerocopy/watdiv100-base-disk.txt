@@ -1,0 +1,21 @@
+query               base-disk
+C1           2.96ms n=8      
+C2           9.43ms n=0      
+C3         113.01ms n=429276 
+F1           0.72ms n=0      
+F2           1.13ms n=13     
+F3           1.90ms n=85     
+F4           0.87ms n=0      
+F5           0.60ms n=25     
+L1           0.33ms n=2      
+L2           2.08ms n=229    
+L3           0.39ms n=19     
+L4           0.84ms n=68     
+L5           2.39ms n=254    
+S1           0.43ms n=0      
+S2           0.82ms n=16     
+S3           1.03ms n=0      
+S4           1.14ms n=1      
+S5           0.84ms n=0      
+S6           0.48ms n=15     
+S7           0.31ms n=0      

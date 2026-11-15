@@ -42,6 +42,9 @@ pub trait Snapshot: Dictionary + Send + Sync {
         prefix: &[TermId],
         target: TermId,
     ) -> Result<Option<TermId>, StorageError>;
+    /// Zero-copy view of the rows `scan` would yield (key order of `perm`), for stores that keep the permutation as one
+    /// in-memory sorted array. Lets an index nested-loop join probe without allocating a batch per input row.
+    fn matching_rows(&self, _perm: Perm, _prefix: &[TermId]) -> Option<&[[TermId; 3]]> { None }
 }
 
 mod memory;

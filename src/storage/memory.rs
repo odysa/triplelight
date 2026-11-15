@@ -424,6 +424,7 @@ impl Snapshot for MemorySnapshot {
             Ok(b)
         }))
     }
+    fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> { Some(self.matching(perm, prefix)) }
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
         if let [a, b, c] = prefix {
             return Ok(u64::from(
