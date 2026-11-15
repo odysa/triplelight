@@ -1,0 +1,21 @@
+query                base-mem
+C1           1.76ms n=8      
+C2           3.44ms n=0      
+C3         100.20ms n=429276 
+F1           0.63ms n=0      
+F2           0.68ms n=13     
+F3           0.85ms n=85     
+F4           0.57ms n=0      
+F5           0.41ms n=25     
+L1           0.29ms n=2      
+L2           0.89ms n=229    
+L3           0.26ms n=19     
+L4           0.55ms n=68     
+L5           1.19ms n=254    
+S1           0.29ms n=0      
+S2           0.37ms n=16     
+S3           0.41ms n=0      
+S4           0.50ms n=1      
+S5           0.37ms n=0      
+S6           0.36ms n=15     
+S7           0.26ms n=0      

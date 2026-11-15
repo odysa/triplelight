@@ -1,0 +1,21 @@
+query                new-disk
+C1           3.37ms n=8      
+C2           9.55ms n=0      
+C3         113.01ms n=429276 
+F1           0.72ms n=0      
+F2           1.25ms n=13     
+F3           1.70ms n=85     
+F4           0.92ms n=0      
+F5           0.58ms n=25     
+L1           0.39ms n=2      
+L2           2.09ms n=229    
+L3           0.38ms n=19     
+L4           0.76ms n=68     
+L5           2.44ms n=254    
+S1           0.47ms n=0      
+S2           0.70ms n=16     
+S3           1.20ms n=0      
+S4           1.30ms n=1      
+S5           0.94ms n=0      
+S6           0.70ms n=15     
+S7           0.35ms n=0      

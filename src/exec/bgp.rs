@@ -96,6 +96,20 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
                 continue;
             }
             let order = perm.order();
+            if let Some(rows) = self.snap.matching_rows(perm, &prefix[..n]) {
+                'mrows: for t in rows {
+                    let start = out.len();
+                    out.extend_from_slice(row);
+                    for (k, &pos) in order.iter().enumerate().skip(n) {
+                        if let Slot::Var(v) = pat[pos] {
+                            let val = t[k];
+                            let cell = &mut out[start + v];
+                            if *cell == UNBOUND { *cell = val } else if *cell != val { out.truncate(start); continue 'mrows }
+                        }
+                    }
+                }
+                continue;
+            }
             // Which key columns bind new variables, and which must equal an already-bound value (repeated variable).
             for batch in self.snap.scan(perm, &prefix[..n]) {
                 let batch = batch.unwrap_or_else(|e| storage_failure(e));

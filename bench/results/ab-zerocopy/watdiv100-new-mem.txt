@@ -1,0 +1,21 @@
+query                 new-mem
+C1           1.39ms n=8      
+C2           2.73ms n=0      
+C3          98.92ms n=429276 
+F1           0.46ms n=0      
+F2           0.58ms n=13     
+F3           1.02ms n=85     
+F4           0.50ms n=0      
+F5           0.34ms n=25     
+L1           0.35ms n=2      
+L2           1.02ms n=229    
+L3           0.31ms n=19     
+L4           0.45ms n=68     
+L5           1.23ms n=254    
+S1           0.37ms n=0      
+S2           0.44ms n=16     
+S3           0.61ms n=0      
+S4           0.50ms n=1      
+S5           0.39ms n=0      
+S6           0.40ms n=15     
+S7           0.35ms n=0      

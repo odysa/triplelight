@@ -11,6 +11,7 @@ impl Dictionary for Backend {
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { match self { Self::Memory(s) => s.lookup(term), Self::Disk(s) => s.lookup(term) } }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> { match self { Self::Memory(s) => s.resolve(id), Self::Disk(s) => s.resolve(id) } }
     fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> { match self { Self::Memory(s) => s.with_term(id, f), Self::Disk(s) => s.with_term(id, f) } }
+    fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, TermRef<'_>)) -> Result<(), StorageError> { match self { Self::Memory(s) => s.with_terms(ids, f), Self::Disk(s) => s.with_terms(ids, f) } }
 }
 impl Snapshot for Backend {
     fn scan<'a>(&'a self, p: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + 'a> {
@@ -21,6 +22,9 @@ impl Snapshot for Backend {
     }
     fn seek(&self, p: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
         match self { Self::Memory(s) => s.seek(p,prefix,target), Self::Disk(s) => s.seek(p,prefix,target) }
+    }
+    fn matching_rows(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> {
+        match self { Self::Memory(s) => s.matching_rows(p, prefix), Self::Disk(s) => s.matching_rows(p, prefix) }
     }
 }
 use std::time::Instant;
