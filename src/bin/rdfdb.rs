@@ -77,7 +77,8 @@ fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax
 /// One SPARQL query against a snapshot, as an HTTP response. Errors: 400 (bad query), 501 (unsupported), 500 (storage);
 /// never an empty result in place of a failure.
 fn answer<S: rdfdb::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>) -> Resp {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| query_with(snap, q, opts))) {
+    let before = rdfdb::storage::disk_index::cache_trace_enabled().then(rdfdb::storage::disk_index::cache_trace_snapshot);
+    let response = (|| { match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| query_with(snap, q, opts))) {
         Ok(Ok(r)) => {
             let (ct, b) = match &r {
                 QueryResult::Ids(sol) => match serialize_ids(sol, snap) {
@@ -94,7 +95,15 @@ fn answer<S: rdfdb::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>) ->
             let code = if msg.contains("not supported") { 501 } else { 500 };
             tiny_http::Response::from_string(msg).with_status_code(code)
         }
+    } })();
+    if let Some(before) = before {
+        let after = rdfdb::storage::disk_index::cache_trace_snapshot();
+        for (i,name) in ["spo","sop","pso","pos","osp","ops","dictionary.term","dictionary.id"].iter().enumerate() {
+            let d: Vec<u64> = (0..5).map(|j|after[i][j].saturating_sub(before[i][j])).collect();
+            eprintln!("block_cache {name} hits={} misses={} pread_calls={} pread_bytes={} evictions={}",d[0],d[1],d[2],d[3],d[4]);
+        }
     }
+    response
 }
 
 /// `rdfdb serve-store <dir> [port] [--init data.nt]`: persistent store. Queries at /sparql, updates at /update
