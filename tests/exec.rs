@@ -126,3 +126,34 @@ fn projection_under_slice_and_distinct() {
         _ => unreachable!(),
     }
 }
+
+/// The compiled numeric FILTER path (pushed into the BGP) must agree with the general evaluator (post-filter over an
+/// OPTIONAL) on mixed numeric types, non-numeric values (fallback), integer overflow (error) and three-valued && / || / !.
+#[test]
+fn numeric_filter_fast_path_matches_general_evaluator() {
+    let data = r#"
+<http://ex/a> <http://ex/v> "5"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://ex/b> <http://ex/v> "5.5"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+<http://ex/c> <http://ex/v> "6.0E0"^^<http://www.w3.org/2001/XMLSchema#double> .
+<http://ex/d> <http://ex/v> "abc" .
+<http://ex/e> <http://ex/v> "9223372036854775807"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://ex/f> <http://ex/v> "-3"^^<http://www.w3.org/2001/XMLSchema#int> .
+<http://ex/g> <http://ex/v> "abd" .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let run = |q: &str| -> Vec<String> {
+        match query(&s, q).unwrap() {
+            QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.into_iter().map(|r| format!("{r:?}")).collect(); v.sort(); v }
+            r => panic!("{r:?}"),
+        }
+    };
+    for f in ["?v > 5", "?v >= 5", "?v < ?w + 1", "?v * 2 > ?w - 1", "?v + 1 > 0", "!(?v < 5.5)", "?v < 5 || ?w > 5", "?v > 0 && ?w < 6",
+              "?v > \"abb\"", "?v - ?w <= 0", "!(?v + 1 > ?w)"] {
+        let pushed = run(&format!("SELECT ?x ?y WHERE {{ ?x <http://ex/v> ?v . ?y <http://ex/v> ?w FILTER({f}) }}"));
+        let post = run(&format!("SELECT ?x ?y WHERE {{ {{ ?x <http://ex/v> ?v . ?y <http://ex/v> ?w }} OPTIONAL {{ ?x <http://ex/none> ?z }} FILTER({f}) }}"));
+        assert_eq!(pushed, post, "filter {f}");
+    }
+    // Overflow is an error (row dropped) on both paths; "abc" > "abb" is a string comparison via the fallback.
+    assert_eq!(run("SELECT ?x WHERE { ?x <http://ex/v> ?v FILTER(?v + 1 > 0) }").len(), 3); // a, b, c (e overflows, f = -3)
+    assert_eq!(run("SELECT ?x ?y WHERE { ?x <http://ex/v> ?v . ?y <http://ex/v> ?w FILTER(?v > \"abb\") }").len(), 14); // ?x in {abc, abd} x 7
+}
