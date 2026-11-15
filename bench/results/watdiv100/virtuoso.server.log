@@ -1,0 +1,39 @@
+
+		Sat Nov 14 2026
+22:03:37 { Loading plugin 1: Type `plain', file `wikiv' in `/opt/homebrew/Cellar/virtuoso/7.2.17/lib/virtuoso/hosting'
+22:03:37   WikiV version 0.6 from OpenLink Software
+22:03:37   Support functions for WikiV collaboration tool
+22:03:37   SUCCESS plugin 1: loaded from /opt/homebrew/Cellar/virtuoso/7.2.17/lib/virtuoso/hosting/wikiv.so }
+22:03:37 { Loading plugin 2: Type `plain', file `mediawiki' in `/opt/homebrew/Cellar/virtuoso/7.2.17/lib/virtuoso/hosting'
+22:03:37   MediaWiki version 0.1 from OpenLink Software
+22:03:37   Support functions for MediaWiki collaboration tool
+22:03:37   SUCCESS plugin 2: loaded from /opt/homebrew/Cellar/virtuoso/7.2.17/lib/virtuoso/hosting/mediawiki.so }
+22:03:37 { Loading plugin 3: Type `plain', file `creolewiki' in `/opt/homebrew/Cellar/virtuoso/7.2.17/lib/virtuoso/hosting'
+22:03:37   CreoleWiki version 0.1 from OpenLink Software
+22:03:37   Support functions for CreoleWiki collaboration tool
+22:03:37   SUCCESS plugin 3: loaded from /opt/homebrew/Cellar/virtuoso/7.2.17/lib/virtuoso/hosting/creolewiki.so }
+22:03:37 { Loading plugin 8: Type `plain', file `shapefileio' in `/opt/homebrew/Cellar/virtuoso/7.2.17/lib/virtuoso/hosting'
+22:03:37   ShapefileIO version 0.1virt71 from OpenLink Software
+22:03:37   Shapefile support based on Frank Warmerdam's Shapelib
+22:03:37   SUCCESS plugin 8: loaded from /opt/homebrew/Cellar/virtuoso/7.2.17/lib/virtuoso/hosting/shapefileio.so }
+22:03:37 { Loading plugin 9: Type `plain', file `graphql' in `/opt/homebrew/Cellar/virtuoso/7.2.17/lib/virtuoso/hosting'
+22:03:37   GraphQL/SPARQL Bridge version 0.9.3 (440dbf41b3) from OpenLink Software
+22:03:37   Support functions for GraphQL/SPARQL Bridge
+22:03:37   SUCCESS plugin 9: loaded from /opt/homebrew/Cellar/virtuoso/7.2.17/lib/virtuoso/hosting/graphql.so }
+22:03:37 SPARQL/MaxConstructTriples parameter cannot be more than 2097150, will use maximum possible limit.
+22:03:37 OpenLink Virtuoso Universal Server
+22:03:37 Version 07.20.3243-pthreads for Mac OS X (Apple Silicon) as of May  7 2026 (440dbf41b3)
+22:03:37 uses OpenSSL 4.0.3 29 Sep 2026
+22:03:37 uses parts of PCRE, Html Tidy
+22:03:37 Database version 3126
+22:03:37 SQL Optimizer enabled (max 1000 layouts)
+22:03:38 Compiler unit is timed at 0.000081 msec
+22:03:39 Roll forward started
+22:03:39 Roll forward complete
+22:03:39 Checkpoint started
+22:03:39 Checkpoint finished, log reused
+22:03:41 HTTP/WebDAV server online at 8890
+22:03:41 Server online at 1111 (pid 79309)
+22:03:43 Server received signal 15
+22:03:43 Initiating quick shutdown
+22:03:43 Server shutdown complete

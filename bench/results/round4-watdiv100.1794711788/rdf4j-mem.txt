@@ -1,0 +1,21 @@
+query               rdf4j-mem
+C1           8.92ms n=8      
+C2          17.49ms n=0      
+C3         245.94ms n=429276 
+F1           1.59ms n=0      
+F2           2.09ms n=13     
+F3           2.18ms n=85     
+F4           1.88ms n=0      
+F5           1.53ms n=25     
+L1           1.20ms n=2      
+L2           5.89ms n=229    
+L3           1.15ms n=19     
+L4           1.39ms n=68     
+L5           5.73ms n=254    
+S1           1.31ms n=0      
+S2           1.48ms n=16     
+S3           1.60ms n=0      
+S4           1.55ms n=1      
+S5           1.46ms n=0      
+S6           1.02ms n=15     
+S7           0.92ms n=0      

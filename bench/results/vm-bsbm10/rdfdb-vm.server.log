@@ -1,0 +1,6 @@
+loaded /data/bsbm10.nt in 9.12s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:7979/sparql
+statistics ready after 1.46s
+rdfdb-vm ready after 12s
+container_mem 5.628GiB

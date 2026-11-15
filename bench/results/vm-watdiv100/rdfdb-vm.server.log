@@ -1,6 +1,5 @@
-loaded /data/watdiv100.nt in 10.70s
+loaded /data/watdiv100.nt in 11.48s
 optimizer statistics: building in background
 serving SPARQL at http://127.0.0.1:7979/sparql
-statistics ready after 1.79s
-rdfdb-vm ready after 14s
-container_mem 3.476GiB
+statistics ready after 1.96s
+container_mem 3.721GiB

@@ -1,6 +1,6 @@
-opened disk snapshot /data/rdfdb-diskvm-lubm100 in 0.09s
+opened disk snapshot /data/rdfdb-diskvm-lubm100 in 0.12s
 optimizer statistics: building in background
 serving SPARQL at http://127.0.0.1:7979/sparql
-statistics ready after 2.57s
+statistics ready after 2.64s
 rdfdb-disk-vm ready after 5s
-container_mem 757.1MiB
+container_mem 802.7MiB

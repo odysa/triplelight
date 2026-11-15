@@ -4,7 +4,7 @@
 set -eu
 D=$1; MODE=$2
 cd "$(dirname "$0")"
-DIR=$PWD/tools/virtuoso-$D; INI=$DIR/virtuoso.ini; SRC=/opt/homebrew/Cellar/virtuoso/7.2.17/var/lib/virtuoso/db/virtuoso.ini
+TOOLS=$PWD/tools; DIR=$TOOLS/virtuoso-$D; INI=$DIR/virtuoso.ini; SRC=/opt/homebrew/Cellar/virtuoso/7.2.17/var/lib/virtuoso/db/virtuoso.ini
 mkdir -p $DIR
 if [ ! -f $INI ]; then
   # 64 GB machine: buffers per Virtuoso's sizing table (~10 GB of 8 KB pages); result limits off so answers are complete.
@@ -21,7 +21,7 @@ case $MODE in
     cd $DIR && virtuoso-t -c $INI && sleep 5
     until isql 1111 dba dba exec="status();" >/dev/null 2>&1; do sleep 1; done
     start=$(date +%s)
-    isql 1111 dba dba exec="ld_dir('$PWD/../tools', '$D.nt', 'http://bench/$D');" >/dev/null
+    isql 1111 dba dba exec="ld_dir('$TOOLS', '$D.nt', 'http://bench/$D');" >/dev/null
     for i in 1 2 3 4 5 6 7 8; do isql 1111 dba dba exec="rdf_loader_run();" >/dev/null & done; wait
     isql 1111 dba dba exec="checkpoint;" >/dev/null
     echo "real $(( $(date +%s) - start ))"

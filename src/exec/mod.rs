@@ -111,10 +111,15 @@ fn run_query<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>) -> Result<Que
     ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
     match q {
         Query::Select { pattern, .. } => {
-            let (vars, pattern) = match pattern {
-                GraphPattern::Project { variables, .. } => (variables.clone(), pattern),
-                p => (ctx.collect_visible(p), p),
-            };
+            // The projection sits under any LIMIT/OFFSET and DISTINCT/REDUCED wrappers.
+            fn projected(p: &GraphPattern) -> Option<&Vec<Variable>> {
+                match p {
+                    GraphPattern::Project { variables, .. } => Some(variables),
+                    GraphPattern::Slice { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } => projected(inner),
+                    _ => None,
+                }
+            }
+            let vars = projected(pattern).cloned().unwrap_or_else(|| ctx.collect_visible(pattern));
             ctx.register_all(pattern);
             let rows = ctx.eval(pattern, vec![ctx.empty_row()]);
             let idx: Vec<usize> = vars.iter().map(|v| ctx.var(v)).collect();
