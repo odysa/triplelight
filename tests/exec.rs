@@ -157,3 +157,19 @@ fn numeric_filter_fast_path_matches_general_evaluator() {
     assert_eq!(run("SELECT ?x WHERE { ?x <http://ex/v> ?v FILTER(?v + 1 > 0) }").len(), 3); // a, b, c (e overflows, f = -3)
     assert_eq!(run("SELECT ?x ?y WHERE { ?x <http://ex/v> ?v . ?y <http://ex/v> ?w FILTER(?v > \"abb\") }").len(), 14); // ?x in {abc, abd} x 7
 }
+
+/// Integer comparison is exact beyond 2^53 on both the compiled and the general path.
+#[test]
+fn integer_comparison_exact_above_2_pow_53() {
+    let data = r#"
+<http://ex/a> <http://ex/v> "9007199254740993"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://ex/b> <http://ex/v> "9007199254740992"^^<http://www.w3.org/2001/XMLSchema#integer> .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
+    let fast = "SELECT ?x ?y WHERE { ?x <http://ex/v> ?v . ?y <http://ex/v> ?w FILTER(?v > ?w) }";
+    let slow = "SELECT ?x ?y WHERE { { ?x <http://ex/v> ?v . ?y <http://ex/v> ?w } OPTIONAL { ?x <http://ex/none> ?z } FILTER(?v > ?w) }";
+    assert_eq!(n(fast), 1);
+    assert_eq!(n(slow), 1);
+    assert_eq!(n("SELECT ?x WHERE { ?x <http://ex/v> ?v FILTER(?v = 9007199254740992) }"), 1);
+}
