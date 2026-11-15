@@ -1,0 +1,304 @@
+{
+  "family": "watdiv",
+  "all_answers_equal": true,
+  "queries": 42,
+  "external_count_star_checks": 20,
+  "baseline_total_us": 306039,
+  "candidate_total_us": 1098416,
+  "details": [
+    {
+      "query": "all_C1",
+      "rows": 1,
+      "baseline_us": 2569,
+      "candidate_us": 2291,
+      "speedup": 1.1213443910955914
+    },
+    {
+      "query": "all_C2",
+      "rows": 1,
+      "baseline_us": 8602,
+      "candidate_us": 11399,
+      "speedup": 0.7546275989121852
+    },
+    {
+      "query": "all_C3",
+      "rows": 1,
+      "baseline_us": 55855,
+      "candidate_us": 874110,
+      "speedup": 0.06389928041093226
+    },
+    {
+      "query": "all_F1",
+      "rows": 1,
+      "baseline_us": 220,
+      "candidate_us": 237,
+      "speedup": 0.9282700421940928
+    },
+    {
+      "query": "all_F2",
+      "rows": 1,
+      "baseline_us": 566,
+      "candidate_us": 773,
+      "speedup": 0.7322121604139715
+    },
+    {
+      "query": "all_F3",
+      "rows": 1,
+      "baseline_us": 780,
+      "candidate_us": 824,
+      "speedup": 0.9466019417475728
+    },
+    {
+      "query": "all_F4",
+      "rows": 1,
+      "baseline_us": 353,
+      "candidate_us": 574,
+      "speedup": 0.6149825783972126
+    },
+    {
+      "query": "all_F5",
+      "rows": 1,
+      "baseline_us": 137,
+      "candidate_us": 147,
+      "speedup": 0.9319727891156463
+    },
+    {
+      "query": "all_L1",
+      "rows": 1,
+      "baseline_us": 36,
+      "candidate_us": 40,
+      "speedup": 0.9
+    },
+    {
+      "query": "all_L2",
+      "rows": 1,
+      "baseline_us": 1746,
+      "candidate_us": 724,
+      "speedup": 2.411602209944751
+    },
+    {
+      "query": "all_L3",
+      "rows": 1,
+      "baseline_us": 27,
+      "candidate_us": 24,
+      "speedup": 1.125
+    },
+    {
+      "query": "all_L4",
+      "rows": 1,
+      "baseline_us": 248,
+      "candidate_us": 193,
+      "speedup": 1.2849740932642486
+    },
+    {
+      "query": "all_L5",
+      "rows": 1,
+      "baseline_us": 1727,
+      "candidate_us": 997,
+      "speedup": 1.732196589769308
+    },
+    {
+      "query": "all_S1",
+      "rows": 1,
+      "baseline_us": 84,
+      "candidate_us": 142,
+      "speedup": 0.5915492957746479
+    },
+    {
+      "query": "all_S2",
+      "rows": 1,
+      "baseline_us": 279,
+      "candidate_us": 299,
+      "speedup": 0.9331103678929766
+    },
+    {
+      "query": "all_S3",
+      "rows": 1,
+      "baseline_us": 506,
+      "candidate_us": 460,
+      "speedup": 1.1
+    },
+    {
+      "query": "all_S4",
+      "rows": 1,
+      "baseline_us": 552,
+      "candidate_us": 322,
+      "speedup": 1.7142857142857142
+    },
+    {
+      "query": "all_S5",
+      "rows": 1,
+      "baseline_us": 492,
+      "candidate_us": 225,
+      "speedup": 2.1866666666666665
+    },
+    {
+      "query": "all_S6",
+      "rows": 1,
+      "baseline_us": 200,
+      "candidate_us": 186,
+      "speedup": 1.075268817204301
+    },
+    {
+      "query": "all_S7",
+      "rows": 1,
+      "baseline_us": 17,
+      "candidate_us": 17,
+      "speedup": 1.0
+    },
+    {
+      "query": "distinct_C1",
+      "rows": 1,
+      "baseline_us": 2565,
+      "candidate_us": 2809,
+      "speedup": 0.9131363474546101
+    },
+    {
+      "query": "distinct_C2",
+      "rows": 1,
+      "baseline_us": 8577,
+      "candidate_us": 9200,
+      "speedup": 0.9322826086956522
+    },
+    {
+      "query": "distinct_C3",
+      "rows": 1,
+      "baseline_us": 180989,
+      "candidate_us": 183324,
+      "speedup": 0.9872629879339312
+    },
+    {
+      "query": "distinct_F1",
+      "rows": 1,
+      "baseline_us": 228,
+      "candidate_us": 248,
+      "speedup": 0.9193548387096774
+    },
+    {
+      "query": "distinct_F2",
+      "rows": 1,
+      "baseline_us": 558,
+      "candidate_us": 570,
+      "speedup": 0.9789473684210527
+    },
+    {
+      "query": "distinct_F3",
+      "rows": 1,
+      "baseline_us": 782,
+      "candidate_us": 1076,
+      "speedup": 0.7267657992565055
+    },
+    {
+      "query": "distinct_F4",
+      "rows": 1,
+      "baseline_us": 346,
+      "candidate_us": 383,
+      "speedup": 0.9033942558746736
+    },
+    {
+      "query": "distinct_F5",
+      "rows": 1,
+      "baseline_us": 152,
+      "candidate_us": 166,
+      "speedup": 0.9156626506024096
+    },
+    {
+      "query": "distinct_L1",
+      "rows": 1,
+      "baseline_us": 37,
+      "candidate_us": 48,
+      "speedup": 0.7708333333333334
+    },
+    {
+      "query": "distinct_L2",
+      "rows": 1,
+      "baseline_us": 1563,
+      "candidate_us": 1931,
+      "speedup": 0.8094251683065768
+    },
+    {
+      "query": "distinct_L3",
+      "rows": 1,
+      "baseline_us": 31,
+      "candidate_us": 37,
+      "speedup": 0.8378378378378378
+    },
+    {
+      "query": "distinct_L4",
+      "rows": 1,
+      "baseline_us": 333,
+      "candidate_us": 310,
+      "speedup": 1.0741935483870968
+    },
+    {
+      "query": "distinct_L5",
+      "rows": 1,
+      "baseline_us": 2029,
+      "candidate_us": 1937,
+      "speedup": 1.0474961280330408
+    },
+    {
+      "query": "distinct_S1",
+      "rows": 1,
+      "baseline_us": 81,
+      "candidate_us": 106,
+      "speedup": 0.7641509433962265
+    },
+    {
+      "query": "distinct_S2",
+      "rows": 1,
+      "baseline_us": 262,
+      "candidate_us": 275,
+      "speedup": 0.9527272727272728
+    },
+    {
+      "query": "distinct_S3",
+      "rows": 1,
+      "baseline_us": 504,
+      "candidate_us": 539,
+      "speedup": 0.935064935064935
+    },
+    {
+      "query": "distinct_S4",
+      "rows": 1,
+      "baseline_us": 886,
+      "candidate_us": 633,
+      "speedup": 1.3996840442338072
+    },
+    {
+      "query": "distinct_S5",
+      "rows": 1,
+      "baseline_us": 490,
+      "candidate_us": 517,
+      "speedup": 0.9477756286266924
+    },
+    {
+      "query": "distinct_S6",
+      "rows": 1,
+      "baseline_us": 211,
+      "candidate_us": 222,
+      "speedup": 0.9504504504504504
+    },
+    {
+      "query": "distinct_S7",
+      "rows": 1,
+      "baseline_us": 18,
+      "candidate_us": 23,
+      "speedup": 0.782608695652174
+    },
+    {
+      "query": "group_age",
+      "rows": 9,
+      "baseline_us": 25641,
+      "candidate_us": 64,
+      "speedup": 400.640625
+    },
+    {
+      "query": "group_gender",
+      "rows": 2,
+      "baseline_us": 4760,
+      "candidate_us": 14,
+      "speedup": 340.0
+    }
+  ]
+}

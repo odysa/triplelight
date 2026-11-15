@@ -1,0 +1,77 @@
+{
+  "equal": true,
+  "baseline_total_us": 276651,
+  "candidate_total_us": 276925,
+  "details": [
+    {
+      "query": "q1",
+      "base_us": 19,
+      "candidate_us": 18
+    },
+    {
+      "query": "q10",
+      "base_us": 16,
+      "candidate_us": 17
+    },
+    {
+      "query": "q11",
+      "base_us": 19,
+      "candidate_us": 19
+    },
+    {
+      "query": "q12",
+      "base_us": 277,
+      "candidate_us": 295
+    },
+    {
+      "query": "q13",
+      "base_us": 240,
+      "candidate_us": 250
+    },
+    {
+      "query": "q14",
+      "base_us": 102074,
+      "candidate_us": 102347
+    },
+    {
+      "query": "q2",
+      "base_us": 3411,
+      "candidate_us": 3184
+    },
+    {
+      "query": "q3",
+      "base_us": 17,
+      "candidate_us": 16
+    },
+    {
+      "query": "q4",
+      "base_us": 63,
+      "candidate_us": 70
+    },
+    {
+      "query": "q5",
+      "base_us": 353,
+      "candidate_us": 379
+    },
+    {
+      "query": "q6",
+      "base_us": 101911,
+      "candidate_us": 100381
+    },
+    {
+      "query": "q7",
+      "base_us": 78,
+      "candidate_us": 82
+    },
+    {
+      "query": "q8",
+      "base_us": 6486,
+      "candidate_us": 6959
+    },
+    {
+      "query": "q9",
+      "base_us": 61687,
+      "candidate_us": 62908
+    }
+  ]
+}

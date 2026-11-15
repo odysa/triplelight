@@ -1,0 +1,29 @@
+00:29:19 INFO  Fuseki          :: Apache Jena Fuseki 6.2.0
+00:29:19 INFO  Config          :: Fuseki Base = /Users/odysa/.slock/agents/76bebfc0-1788-44d5-aca6-b9123fed40bb/rdfdb/run
+00:29:19 INFO  Config          :: Database: /ds
+00:29:19 INFO  Config          :: UI Base: fuseki-server.jar
+00:29:19 INFO  Shiro           :: Shiro configuration: file:/Users/odysa/.slock/agents/76bebfc0-1788-44d5-aca6-b9123fed40bb/rdfdb/run/shiro.ini
+00:29:19 INFO  Server          :: Path = /ds
+00:29:19 INFO  Server          :: System
+00:29:19 INFO  Server          ::   Memory: 4.0 GiB
+00:29:19 INFO  Server          ::   PID:    49330
+00:29:19 INFO  Server          ::   Port:   http=3094
+00:29:19 INFO  Server          :: Start Fuseki
+00:29:19 INFO  Fuseki          :: [1] POST http://127.0.0.1:3094/ds/sparql
+00:29:19 INFO  Fuseki          :: [1] Query = ASK {?s ?p ?o}
+00:29:19 INFO  Fuseki          :: [1] 200 OK (58 ms)
+00:29:19 INFO  Fuseki          :: [2] POST http://127.0.0.1:3094/ds/sparql
+00:29:19 INFO  Fuseki          :: [2] Query = SELECT ?o (COUNT(*) AS ?n) (COUNT(DISTINCT ?s) AS ?d) WHERE {?s <http://xmlns.com/foaf/age> ?o} GROUP BY ?o 
+00:29:20 INFO  Fuseki          :: [2] 200 OK (745 ms)
+00:29:20 INFO  Fuseki          :: [3] POST http://127.0.0.1:3094/ds/sparql
+00:29:20 INFO  Fuseki          :: [3] Query = SELECT ?o (COUNT(*) AS ?n) WHERE {?s <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?o} GROUP BY ?o 
+00:29:20 INFO  Fuseki          :: [3] 200 OK (80 ms)
+00:29:20 INFO  Fuseki          :: [4] POST http://127.0.0.1:3094/ds/sparql
+00:29:20 INFO  Fuseki          :: [4] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 . 	?v0 <http://purl.org/dc/terms/Location> ?v3 . 	?v0 <http://xmlns.com/foaf/age> ?v4 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 . 	?v0 <http://xmlns.com/foaf/givenName> ?v6 . }  
+00:29:31 INFO  Fuseki          :: [4] 200 OK (10.541 s)
+00:29:31 INFO  Fuseki          :: [5] POST http://127.0.0.1:3094/ds/sparql
+00:29:31 INFO  Fuseki          :: [5] Query = SELECT (COUNT(DISTINCT ?v1) AS ?count_result) WHERE { 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 . 	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> . 	?v2 <http://schema.org/nationality> ?v1 . }  
+00:29:31 INFO  Fuseki          :: [5] 200 OK (14 ms)
+00:29:31 INFO  Fuseki          :: [6] POST http://127.0.0.1:3094/ds/sparql
+00:29:31 INFO  Fuseki          :: [6] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 . 	?v0 <http://purl.org/dc/terms/Location> ?v3 . 	?v0 <http://xmlns.com/foaf/age> ?v4 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 . 	?v0 <http://xmlns.com/foaf/givenName> ?v6 . }  
+00:29:40 INFO  Fuseki          :: [6] 200 OK (9.529 s)

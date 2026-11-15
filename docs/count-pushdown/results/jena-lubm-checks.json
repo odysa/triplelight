@@ -1,0 +1,40 @@
+{
+  "command": [
+    "/Users/odysa/.slock/agents/b438313f-6338-4d86-ab3e-5995a1bde6c3/rdfdb/bench/tools/apache-jena-fuseki-6.2.0/fuseki-server",
+    "--loc=/Users/odysa/.slock/agents/b438313f-6338-4d86-ab3e-5995a1bde6c3/rdfdb/bench/tools/tdb2-lubm100",
+    "--port=3094",
+    "/ds"
+  ],
+  "checks": [
+    {
+      "query": "group_advisors",
+      "rows": 60160,
+      "equal": true
+    },
+    {
+      "query": "group_type",
+      "rows": 15,
+      "equal": true
+    },
+    {
+      "query": "distinct_q6",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "query": "distinct_q9",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "query": "all_q2",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "query": "all_q9",
+      "rows": 1,
+      "equal": true
+    }
+  ]
+}

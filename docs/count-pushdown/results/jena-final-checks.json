@@ -1,0 +1,57 @@
+[
+  {
+    "family": "lubm",
+    "query": "group_advisors",
+    "equal": true
+  },
+  {
+    "family": "lubm",
+    "query": "all_q9",
+    "equal": true
+  },
+  {
+    "family": "lubm",
+    "query": "all_q2",
+    "equal": true
+  },
+  {
+    "family": "lubm",
+    "query": "distinct_q6",
+    "equal": true
+  },
+  {
+    "family": "lubm",
+    "query": "distinct_q9",
+    "equal": true
+  },
+  {
+    "family": "lubm",
+    "query": "group_type",
+    "equal": true
+  },
+  {
+    "family": "watdiv",
+    "query": "all_C3",
+    "equal": true
+  },
+  {
+    "family": "watdiv",
+    "query": "distinct_C3",
+    "equal": true
+  },
+  {
+    "family": "watdiv",
+    "query": "group_gender",
+    "equal": true
+  },
+  {
+    "family": "watdiv",
+    "query": "group_age",
+    "equal": true
+  },
+  {
+    "family": "watdiv",
+    "query": "distinct_L2",
+    "equal": true
+  }
+]
