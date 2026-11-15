@@ -31,6 +31,12 @@ fn fmt_dec(d: f64) -> String {
     if s.contains('.') || s.contains('e') || s.contains("inf") || s.contains("NaN") { s } else { format!("{s}.0") }
 }
 
+/// Integers compare exactly (as i64; f64 would conflate neighbours above 2^53); otherwise by promoted f64.
+fn num_cmp(x: Num, y: Num) -> Option<Ordering> {
+    if let (Num::Int(i), Num::Int(j)) = (x, y) { return Some(i.cmp(&j)) }
+    x.f().partial_cmp(&y.f())
+}
+
 fn num(t: &Term) -> Option<Num> {
     let Term::Literal(l) = t else { return None };
     let local = xsd_local(l)?;
@@ -82,7 +88,7 @@ pub(super) fn arith(op: char, a: &Term, b: &Term) -> Option<Term> {
 
 /// Value comparison for `=`, `<` etc. `None` = type error.
 fn compare(a: &Term, b: &Term) -> Option<Ordering> {
-    if let (Some(x), Some(y)) = (num(a), num(b)) { return x.f().partial_cmp(&y.f()) }
+    if let (Some(x), Some(y)) = (num(a), num(b)) { return num_cmp(x, y) }
     match (a, b) {
         (Term::Literal(x), Term::Literal(y)) => {
             let comparable = (x.datatype() == y.datatype() && x.language() == y.language())
@@ -318,7 +324,7 @@ impl NumFilter {
         Ok(match self {
             NumFilter::Cmp(o, eq, a, b) => {
                 let (Some(x), Some(y)) = (a.eval(r, val)?, b.eval(r, val)?) else { return Ok(None) };
-                x.f().partial_cmp(&y.f()).map(|c| c == *o || (*eq && c == Ordering::Equal))
+                num_cmp(x, y).map(|c| c == *o || (*eq && c == Ordering::Equal))
             }
             NumFilter::And(a, b) => match (a.eval(r, val)?, b.eval(r, val)?) {
                 (Some(false), _) | (_, Some(false)) => Some(false),
