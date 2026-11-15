@@ -35,6 +35,23 @@ pub trait Snapshot: Dictionary + Send + Sync {
     ) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a>;
     /// Exact number of triples matching the prefix (from block index / aggregated counts, no full scan).
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError>;
+    /// Row at zero-based rank in this prefix range, in permutation key order.
+    /// The fallback preserves overlay visibility but may scan the whole range.
+    fn row_at(&self, perm: Perm, prefix: &[TermId], mut rank: u64)
+        -> Result<Option<[TermId; 3]>, StorageError> {
+        for batch in self.scan(perm, prefix) {
+            let batch = batch?;
+            if rank < batch.len() as u64 {
+                let i = rank as usize;
+                return Ok(Some([batch.cols[0][i], batch.cols[1][i], batch.cols[2][i]]));
+            }
+            rank -= batch.len() as u64;
+        }
+        Ok(None)
+    }
+    /// True only for implementations with bounded indexed rank access. Sampling
+    /// refuses the scanning fallback, including mutable overlays, by default.
+    fn has_fast_rank(&self) -> bool { false }
     /// Seek support for leapfrog joins: smallest value >= `target` in key position `prefix.len()` under `prefix`.
     fn seek(
         &self,

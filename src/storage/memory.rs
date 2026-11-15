@@ -434,6 +434,11 @@ impl Snapshot for MemorySnapshot {
         }
         Ok(self.matching(perm, prefix).len() as u64)
     }
+    fn row_at(&self, perm: Perm, prefix: &[TermId], rank: u64)
+        -> Result<Option<[TermId; 3]>, StorageError> {
+        Ok(usize::try_from(rank).ok().and_then(|i| self.matching(perm, prefix).get(i).copied()))
+    }
+    fn has_fast_rank(&self) -> bool { true }
     fn seek(
         &self,
         perm: Perm,

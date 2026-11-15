@@ -370,6 +370,14 @@ impl Snapshot for DiskSnapshot {
         let r = self.index(perm).range(prefix)?;
         Ok(r.end - r.start)
     }
+    fn row_at(&self, perm: Perm, prefix: &[TermId], rank: u64)
+        -> Result<Option<[TermId; 3]>, StorageError> {
+        let index = self.index(perm);
+        let range = index.range(prefix)?;
+        if rank >= range.end - range.start { return Ok(None); }
+        index.get(range.start + rank).map(Some)
+    }
+    fn has_fast_rank(&self) -> bool { true }
     fn seek(
         &self,
         perm: Perm,
