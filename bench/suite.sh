@@ -6,7 +6,10 @@
 set -u
 D=$1; shift
 cd "$(dirname "$0")"
-T=tools; R=rdf4j-server; OUT=results/$D; QDIR=${D//[0-9]/}; mkdir -p $OUT
+# Machine lock shared by the team: one timed run at a time.
+if mkdir /tmp/rdf-bench.lock 2>/dev/null; then echo "suite.sh $D $* ($(whoami), pid $$)" > /tmp/rdf-bench.lock/owner; trap 'rm -rf /tmp/rdf-bench.lock' EXIT
+elif ! grep -q "pid $PPID\|suite.sh" /tmp/rdf-bench.lock/owner 2>/dev/null; then echo "machine locked by: $(cat /tmp/rdf-bench.lock/owner)" >&2; exit 1; fi
+T=tools; R=rdf4j-server; OUT=${OUT_PREFIX:-results/}$D; QDIR=${D//[0-9]/}; mkdir -p $OUT
 CP="$R/target/rdf4j-server-1.jar:$R/target/lib/*"
 NT=$T/$D.nt
 for sys in "$@"; do
