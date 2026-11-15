@@ -161,6 +161,37 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         }
     }
 
+    /// Keep the ordinary binary join order, but sum the final range counts
+    /// rather than allocating its output rows. Preserve morsel parallelism.
+    pub fn count_binary(&self,pats:&[[Slot;3]],order:Option<&[usize]>)->u64 {
+        if pats.is_empty(){return 1;}
+        let mut seen=HashSet::new();
+        if pats.iter().all(|p|p.iter().filter_map(|s|if let Slot::Var(v)=s{Some(*v)}else{None}).all(|v|seen.insert(v))) {
+            return pats.iter().map(|p| {
+                let fixed=std::array::from_fn(|i|if let Slot::Const(c)=p[i]{c}else{None});
+                let (perm,prefix,n)=choose_perm(&fixed);self.count(perm,&prefix[..n])
+            }).fold(1u64,|a,b|a.checked_mul(b).unwrap_or_else(||storage_failure(std::io::Error::new(std::io::ErrorKind::InvalidData,"aggregate count overflow"))));
+        }
+        let mut rows=vec![UNBOUND;self.w];let mut bound=HashSet::new();
+        let mut remaining:Vec<_>=order.map_or_else(||(0..pats.len()).collect(),|o|o.to_vec());
+        while remaining.len()>1 && !rows.is_empty(){
+            let k=if order.is_some(){0}else{
+                remaining.iter().enumerate().map(|(k,&pi)|(k,self.estimate(&pats[pi],&bound,&rows[..self.w]))).min_by(|a,b|a.1.partial_cmp(&b.1).unwrap()).unwrap().0
+            };
+            let pi=remaining.remove(k);rows=self.extend(&pats[pi],&rows);
+            for s in &pats[pi]{if let Slot::Var(v)=s{bound.insert(*v);}}
+        }
+        if rows.is_empty(){return 0;}
+        let pat=&pats[remaining[0]];
+        let part=|ids:&[TermId]| {
+            ids.chunks_exact(self.w).map(|row| {
+                let fixed=std::array::from_fn(|i|match pat[i]{Slot::Const(c)=>c,Slot::Var(v)=>(row[v]!=UNBOUND).then_some(row[v])});
+                let (perm,prefix,n)=choose_perm(&fixed);self.count(perm,&prefix[..n])
+            }).fold(0,checked_count)
+        };
+        if rows.len()/self.w>=2*MORSEL { rows.par_chunks(self.w*MORSEL).map(part).reduce(||0,checked_count) }else{part(&rows)}
+    }
+
     /// Count complete BGP bindings without allocating result rows. The final
     /// variable contributes an intersection size, or an exact prefix count when
     /// only one relation contains it. Callers reject repeated-variable patterns.
@@ -211,7 +242,15 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             let perm = *Perm::ALL.iter().find(|q| q.order() == pos).unwrap();
             (perm, [p[pos[0]], p[pos[1]], p[pos[2]]])
         }).collect();
-        self.lf_count_depth(&plans, &order, 0, &mut vec![UNBOUND; self.w])
+        if order.len()==1 { return self.lf_count_depth(&plans,&order,0,&mut vec![UNBOUND;self.w]); }
+        let row=vec![UNBOUND;self.w];
+        let first=self.intersect(&plans,order[0],&row);
+        let part=|values:&[TermId]| {
+            let mut row=row.clone();let mut sum=0;
+            for &value in values { row[order[0]]=value;sum=checked_count(sum,self.lf_count_depth(&plans,&order,1,&mut row)); }
+            sum
+        };
+        if first.len()>=64 { first.par_chunks(16).map(part).reduce(||0,checked_count) } else { part(&first) }
     }
 
     fn lf_count_depth(&self, plans: &[(Perm, [Slot; 3])], order: &[usize], depth: usize, row: &mut Vec<TermId>) -> u64 {

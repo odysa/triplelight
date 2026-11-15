@@ -121,14 +121,9 @@ fn single_pattern_counts_distinct_and_unbound_use_index_only() {
         ),
         12
     );
-    assert_eq!(
-        scalar(
-            &s,
-            "SELECT (COUNT(*) AS ?n) WHERE {?a <urn:p> ?b . ?a <urn:q> ?c}"
-        ),
-        4
-    );
     assert_eq!(s.scans.load(Ordering::Relaxed), 0);
+    assert_eq!(scalar(&s,"SELECT (COUNT(*) AS ?n) WHERE {?a <urn:p> ?b . ?a <urn:q> ?c}"),4);
+    assert_eq!(s.scans.load(Ordering::Relaxed), 1);
 }
 #[test]
 fn prefix_groups_preserve_counts_duplicates_and_unbound_keys() {
