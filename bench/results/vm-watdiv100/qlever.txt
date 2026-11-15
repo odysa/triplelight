@@ -1,0 +1,21 @@
+query                  qlever
+C1          23.80ms n=8      
+C2          45.90ms n=0      
+C3         664.04ms n=429276 
+F1           9.79ms n=0      
+F2          36.58ms n=13     
+F3          11.31ms n=85     
+F4          79.28ms n=0      
+F5           8.91ms n=25     
+L1           5.84ms n=2      
+L2           7.48ms n=229    
+L3           3.87ms n=19     
+L4           5.95ms n=68     
+L5          10.55ms n=254    
+S1         154.14ms n=0      
+S2           4.86ms n=16     
+S3           8.36ms n=0      
+S4           4.55ms n=1      
+S5           7.53ms n=0      
+S6           4.09ms n=15     
+S7           6.22ms n=0      

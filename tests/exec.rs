@@ -106,3 +106,14 @@ fn dictionary_errors_are_storage_errors() {
     let e = query(&BadDict(store()), "SELECT ?x WHERE { ?x <http://ex/knows> <http://ex/bob> }").unwrap_err();
     assert_eq!(e.kind, rdfdb::exec::QueryErrorKind::Storage);
 }
+
+/// Filters pushed into a BGP give the same answers as filtering afterwards (OPTIONAL blocks pushdown).
+#[test]
+fn filter_pushdown_matches_post_filtering() {
+    let pushed = rows("SELECT ?x ?y WHERE { ?x <http://ex/knows> ?y . ?x <http://ex/age> ?a . ?y <http://ex/age> ?b FILTER(?a > ?b && ?b > 20) }");
+    let post = rows("SELECT ?x ?y WHERE { { ?x <http://ex/knows> ?y . ?x <http://ex/age> ?a . ?y <http://ex/age> ?b } OPTIONAL { ?x <http://ex/nothing> ?z } FILTER(?a > ?b && ?b > 20) }");
+    assert_eq!(pushed, post);
+    assert_eq!(pushed.len(), 2); // alice(30)->bob(25), carol(41)->alice(30)
+    // A conjunct over a variable outside the BGP stays a post-filter and keeps its semantics (unbound -> false).
+    assert!(rows("SELECT ?x WHERE { ?x <http://ex/age> ?a FILTER(?a > 20 && BOUND(?nope)) }").is_empty());
+}

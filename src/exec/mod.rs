@@ -250,6 +250,20 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 out
             }
             GraphPattern::Filter { expr, inner } => {
+                // Filter pushdown: conjuncts over variables the BGP binds are applied inside it, right after the
+                // join step that binds their last variable, so failing rows are never extended further.
+                if let GraphPattern::Bgp { patterns } = &**inner {
+                    let bgp_vars: HashSet<usize> = { let mut v = Vec::new(); walk_vars(inner, &mut v); v.iter().filter_map(|n| self.vars.get(n).copied()).collect() };
+                    let (early, late): (Vec<&Expression>, Vec<&Expression>) = conjuncts(expr).into_iter().partition(|c| {
+                        let vs = expr_vars(c);
+                        !vs.is_empty() && !has_exists(c) && vs.iter().all(|n| self.vars.get(n).is_some_and(|i| bgp_vars.contains(i)))
+                    });
+                    if !early.is_empty() {
+                        let early: Vec<(&Expression, Vec<usize>)> = early.into_iter().map(|c| (c, expr_vars(c).iter().map(|n| self.vars[n]).collect())).collect();
+                        let rows = self.eval_bgp_filtered(patterns, input, &early);
+                        return rows.into_iter().filter(|r| late.iter().all(|c| self.ebv(c, r))).collect();
+                    }
+                }
                 self.eval(inner, input).into_iter().filter(|r| self.ebv(expr, r)).collect()
             }
             GraphPattern::Union { left, right } => {
@@ -397,7 +411,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }
     }
 
-    fn eval_bgp(&self, patterns: &[TriplePattern], rows: Vec<Row>) -> Vec<Row> {
+    fn eval_bgp(&self, patterns: &[TriplePattern], rows: Vec<Row>) -> Vec<Row> { self.eval_bgp_filtered(patterns, rows, &[]) }
+
+    /// BGP evaluation that applies each filter in `filters` as soon as all its variables are bound.
+    fn eval_bgp_filtered(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<Row> {
         let pats: Vec<[Slot; 3]> = patterns.iter().map(|t| {
             let p = match &t.predicate {
                 NamedNodePattern::Variable(v) => Slot::Var(self.var(v)),
@@ -420,13 +437,31 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
         let flat: Vec<TermId> = rows.concat();
         let out = if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(bgp::no_repeated_var) && bgp::cyclic(&pats) {
-            bgp.leapfrog(&pats, &flat, self.variable_order(&pats))
-        } else if let Some(order) = self.planned_order(&pats, &rows) {
-            bgp.eval_order(&pats, &order, flat)
+            let mut out = bgp.leapfrog(&pats, &flat, self.variable_order(&pats));
+            if !filters.is_empty() { let all: HashSet<usize> = (0..w).collect(); self.apply_filters(&mut out, w, filters, &all, &mut vec![false; filters.len()]) }
+            out
         } else {
-            bgp.eval_greedy(&pats, flat)
+            let mut applied = vec![false; filters.len()];
+            let mut post = |rows: &mut Vec<TermId>, bound: &HashSet<usize>| self.apply_filters(rows, w, filters, bound, &mut applied);
+            if let Some(order) = self.planned_order(&pats, &rows) { bgp.eval_order(&pats, &order, flat, &mut post) }
+            else { bgp.eval_greedy(&pats, flat, &mut post) }
         };
         out.chunks_exact(w).map(<[TermId]>::to_vec).collect()
+    }
+
+    /// Applies each not-yet-applied filter whose variables are all bound, keeping rows whose filter is true.
+    fn apply_filters(&self, rows: &mut Vec<TermId>, w: usize, filters: &[(&Expression, Vec<usize>)], bound: &HashSet<usize>, applied: &mut [bool]) {
+        for (k, (e, vs)) in filters.iter().enumerate() {
+            if applied[k] || !vs.iter().all(|v| bound.contains(v)) { continue }
+            applied[k] = true;
+            let mut kept = Vec::with_capacity(rows.len());
+            let mut row: Row = vec![UNBOUND; w];
+            for r in rows.chunks_exact(w) {
+                row.copy_from_slice(r);
+                if self.ebv(e, &row) { kept.extend_from_slice(r) }
+            }
+            *rows = kept;
+        }
     }
 
     /// Leapfrog variable order from the optimizer's cost model (task #5), when statistics are available.
@@ -651,4 +686,22 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
         }
     }
     Ok(out)
+}
+
+fn conjuncts(e: &Expression) -> Vec<&Expression> {
+    match e { Expression::And(a, b) => { let mut v = conjuncts(a); v.extend(conjuncts(b)); v } e => vec![e] }
+}
+fn expr_vars(e: &Expression) -> Vec<String> { let mut v = Vec::new(); walk_expr(e, &mut v); v }
+fn has_exists(e: &Expression) -> bool {
+    match e {
+        Expression::Exists(_) => true,
+        Expression::Or(a, b) | Expression::And(a, b) | Expression::Equal(a, b) | Expression::SameTerm(a, b)
+        | Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b)
+        | Expression::Add(a, b) | Expression::Subtract(a, b) | Expression::Multiply(a, b) | Expression::Divide(a, b) => has_exists(a) || has_exists(b),
+        Expression::UnaryPlus(a) | Expression::UnaryMinus(a) | Expression::Not(a) => has_exists(a),
+        Expression::In(a, l) => has_exists(a) || l.iter().any(has_exists),
+        Expression::If(a, b, c) => has_exists(a) || has_exists(b) || has_exists(c),
+        Expression::Coalesce(l) | Expression::FunctionCall(_, l) => l.iter().any(has_exists),
+        _ => false,
+    }
 }
