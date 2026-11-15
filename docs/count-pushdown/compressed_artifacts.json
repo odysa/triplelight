@@ -1,0 +1,27 @@
+{
+  "results/jena-lubm-group_advisors.json": {
+    "raw_sha256": "262ad978b8e2971035dfe97c967d4f646008f3efca001d7c39a70fcad7bcafd9",
+    "raw_bytes": 17290291,
+    "gzip_sha256": "c5d54c5824f2535bc405136a9e654253a8e0f9af6992bcf19b9c431e9f99ce31"
+  },
+  "results/lubm-candidate-v3.tsv.answers/group_advisors.json": {
+    "raw_sha256": "5cd638eeff26b72f41b40a21b06a4c9fcbcda47451b8a94624e3cce34a46e60f",
+    "raw_bytes": 16147244,
+    "gzip_sha256": "a69dcdc1e0dca058cd90d48b05fd7ef018551f7702f5fd4820abc29d3415fdd5"
+  },
+  "results/lubm-candidate.tsv.answers/group_advisors.json": {
+    "raw_sha256": "5cd638eeff26b72f41b40a21b06a4c9fcbcda47451b8a94624e3cce34a46e60f",
+    "raw_bytes": 16147244,
+    "gzip_sha256": "a69dcdc1e0dca058cd90d48b05fd7ef018551f7702f5fd4820abc29d3415fdd5"
+  },
+  "results/lubm-candidate-v2.tsv.answers/group_advisors.json": {
+    "raw_sha256": "5cd638eeff26b72f41b40a21b06a4c9fcbcda47451b8a94624e3cce34a46e60f",
+    "raw_bytes": 16147244,
+    "gzip_sha256": "a69dcdc1e0dca058cd90d48b05fd7ef018551f7702f5fd4820abc29d3415fdd5"
+  },
+  "results/lubm-baseline.tsv.answers/group_advisors.json": {
+    "raw_sha256": "1c2e383df544d51aafe1898d24dbd09eeafa962f78d6ac67cf1a19e142658f9d",
+    "raw_bytes": 16147244,
+    "gzip_sha256": "23c2da2bf53e68399ad2dcf42d5ce4743c880b68f01bffed57ed896e960904aa"
+  }
+}

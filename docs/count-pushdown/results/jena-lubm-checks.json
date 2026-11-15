@@ -1,0 +1,40 @@
+{
+  "command": [
+    "<agent-workspace>/rdfdb/bench/tools/apache-jena-fuseki-6.2.0/fuseki-server",
+    "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-lubm100",
+    "--port=3094",
+    "/ds"
+  ],
+  "checks": [
+    {
+      "query": "group_advisors",
+      "rows": 60160,
+      "equal": true
+    },
+    {
+      "query": "group_type",
+      "rows": 15,
+      "equal": true
+    },
+    {
+      "query": "distinct_q6",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "query": "distinct_q9",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "query": "all_q2",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "query": "all_q9",
+      "rows": 1,
+      "equal": true
+    }
+  ]
+}

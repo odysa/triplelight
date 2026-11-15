@@ -1,0 +1,220 @@
+{
+  "family": "lubm",
+  "all_answers_equal": true,
+  "queries": 30,
+  "external_count_star_checks": 14,
+  "baseline_total_us": 2345795,
+  "candidate_total_us": 971588,
+  "details": [
+    {
+      "query": "all_q1",
+      "rows": 1,
+      "baseline_us": 32,
+      "candidate_us": 31,
+      "speedup": 1.032258064516129
+    },
+    {
+      "query": "all_q10",
+      "rows": 1,
+      "baseline_us": 25,
+      "candidate_us": 27,
+      "speedup": 0.9259259259259259
+    },
+    {
+      "query": "all_q11",
+      "rows": 1,
+      "baseline_us": 27,
+      "candidate_us": 25,
+      "speedup": 1.08
+    },
+    {
+      "query": "all_q12",
+      "rows": 1,
+      "baseline_us": 230,
+      "candidate_us": 86,
+      "speedup": 2.6744186046511627
+    },
+    {
+      "query": "all_q13",
+      "rows": 1,
+      "baseline_us": 174,
+      "candidate_us": 167,
+      "speedup": 1.0419161676646707
+    },
+    {
+      "query": "all_q14",
+      "rows": 1,
+      "baseline_us": 48450,
+      "candidate_us": 15,
+      "speedup": 3230.0
+    },
+    {
+      "query": "all_q2",
+      "rows": 1,
+      "baseline_us": 2626,
+      "candidate_us": 4121,
+      "speedup": 0.637223974763407
+    },
+    {
+      "query": "all_q3",
+      "rows": 1,
+      "baseline_us": 24,
+      "candidate_us": 24,
+      "speedup": 1.0
+    },
+    {
+      "query": "all_q4",
+      "rows": 1,
+      "baseline_us": 61,
+      "candidate_us": 57,
+      "speedup": 1.0701754385964912
+    },
+    {
+      "query": "all_q5",
+      "rows": 1,
+      "baseline_us": 252,
+      "candidate_us": 178,
+      "speedup": 1.4157303370786516
+    },
+    {
+      "query": "all_q6",
+      "rows": 1,
+      "baseline_us": 48305,
+      "candidate_us": 16,
+      "speedup": 3019.0625
+    },
+    {
+      "query": "all_q7",
+      "rows": 1,
+      "baseline_us": 61,
+      "candidate_us": 60,
+      "speedup": 1.0166666666666666
+    },
+    {
+      "query": "all_q8",
+      "rows": 1,
+      "baseline_us": 2338,
+      "candidate_us": 4865,
+      "speedup": 0.4805755395683453
+    },
+    {
+      "query": "all_q9",
+      "rows": 1,
+      "baseline_us": 54088,
+      "candidate_us": 88152,
+      "speedup": 0.6135765495961522
+    },
+    {
+      "query": "distinct_q1",
+      "rows": 1,
+      "baseline_us": 25,
+      "candidate_us": 34,
+      "speedup": 0.7352941176470589
+    },
+    {
+      "query": "distinct_q10",
+      "rows": 1,
+      "baseline_us": 24,
+      "candidate_us": 38,
+      "speedup": 0.631578947368421
+    },
+    {
+      "query": "distinct_q11",
+      "rows": 1,
+      "baseline_us": 29,
+      "candidate_us": 40,
+      "speedup": 0.725
+    },
+    {
+      "query": "distinct_q12",
+      "rows": 1,
+      "baseline_us": 282,
+      "candidate_us": 308,
+      "speedup": 0.9155844155844156
+    },
+    {
+      "query": "distinct_q13",
+      "rows": 1,
+      "baseline_us": 312,
+      "candidate_us": 327,
+      "speedup": 0.9541284403669725
+    },
+    {
+      "query": "distinct_q14",
+      "rows": 1,
+      "baseline_us": 459805,
+      "candidate_us": 18,
+      "speedup": 25544.722222222223
+    },
+    {
+      "query": "distinct_q2",
+      "rows": 1,
+      "baseline_us": 3020,
+      "candidate_us": 3202,
+      "speedup": 0.94316052467208
+    },
+    {
+      "query": "distinct_q3",
+      "rows": 1,
+      "baseline_us": 26,
+      "candidate_us": 33,
+      "speedup": 0.7878787878787878
+    },
+    {
+      "query": "distinct_q4",
+      "rows": 1,
+      "baseline_us": 66,
+      "candidate_us": 84,
+      "speedup": 0.7857142857142857
+    },
+    {
+      "query": "distinct_q5",
+      "rows": 1,
+      "baseline_us": 441,
+      "candidate_us": 487,
+      "speedup": 0.9055441478439425
+    },
+    {
+      "query": "distinct_q6",
+      "rows": 1,
+      "baseline_us": 461651,
+      "candidate_us": 15,
+      "speedup": 30776.733333333334
+    },
+    {
+      "query": "distinct_q7",
+      "rows": 1,
+      "baseline_us": 82,
+      "candidate_us": 93,
+      "speedup": 0.8817204301075269
+    },
+    {
+      "query": "distinct_q8",
+      "rows": 1,
+      "baseline_us": 4557,
+      "candidate_us": 4690,
+      "speedup": 0.9716417910447761
+    },
+    {
+      "query": "distinct_q9",
+      "rows": 1,
+      "baseline_us": 58120,
+      "candidate_us": 59834,
+      "speedup": 0.9713540796202828
+    },
+    {
+      "query": "group_advisors",
+      "rows": 60160,
+      "baseline_us": 1001131,
+      "candidate_us": 804439,
+      "speedup": 1.2445082846555178
+    },
+    {
+      "query": "group_type",
+      "rows": 15,
+      "baseline_us": 199531,
+      "candidate_us": 122,
+      "speedup": 1635.5
+    }
+  ]
+}

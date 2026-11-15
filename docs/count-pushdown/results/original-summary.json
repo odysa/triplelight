@@ -1,0 +1,186 @@
+{
+  "lubm": {
+    "equal": true,
+    "baseline_total_us": 276651,
+    "candidate_total_us": 276925,
+    "details": [
+      {
+        "query": "q1",
+        "base_us": 19,
+        "candidate_us": 18
+      },
+      {
+        "query": "q10",
+        "base_us": 16,
+        "candidate_us": 17
+      },
+      {
+        "query": "q11",
+        "base_us": 19,
+        "candidate_us": 19
+      },
+      {
+        "query": "q12",
+        "base_us": 277,
+        "candidate_us": 295
+      },
+      {
+        "query": "q13",
+        "base_us": 240,
+        "candidate_us": 250
+      },
+      {
+        "query": "q14",
+        "base_us": 102074,
+        "candidate_us": 102347
+      },
+      {
+        "query": "q2",
+        "base_us": 3411,
+        "candidate_us": 3184
+      },
+      {
+        "query": "q3",
+        "base_us": 17,
+        "candidate_us": 16
+      },
+      {
+        "query": "q4",
+        "base_us": 63,
+        "candidate_us": 70
+      },
+      {
+        "query": "q5",
+        "base_us": 353,
+        "candidate_us": 379
+      },
+      {
+        "query": "q6",
+        "base_us": 101911,
+        "candidate_us": 100381
+      },
+      {
+        "query": "q7",
+        "base_us": 78,
+        "candidate_us": 82
+      },
+      {
+        "query": "q8",
+        "base_us": 6486,
+        "candidate_us": 6959
+      },
+      {
+        "query": "q9",
+        "base_us": 61687,
+        "candidate_us": 62908
+      }
+    ]
+  },
+  "watdiv": {
+    "equal": true,
+    "baseline_total_us": 130510,
+    "candidate_total_us": 133235,
+    "details": [
+      {
+        "query": "C1",
+        "base_us": 2420,
+        "candidate_us": 2872
+      },
+      {
+        "query": "C2",
+        "base_us": 8703,
+        "candidate_us": 8636
+      },
+      {
+        "query": "C3",
+        "base_us": 110410,
+        "candidate_us": 112517
+      },
+      {
+        "query": "F1",
+        "base_us": 207,
+        "candidate_us": 243
+      },
+      {
+        "query": "F2",
+        "base_us": 566,
+        "candidate_us": 604
+      },
+      {
+        "query": "F3",
+        "base_us": 988,
+        "candidate_us": 1011
+      },
+      {
+        "query": "F4",
+        "base_us": 355,
+        "candidate_us": 387
+      },
+      {
+        "query": "F5",
+        "base_us": 195,
+        "candidate_us": 184
+      },
+      {
+        "query": "L1",
+        "base_us": 36,
+        "candidate_us": 34
+      },
+      {
+        "query": "L2",
+        "base_us": 1969,
+        "candidate_us": 1834
+      },
+      {
+        "query": "L3",
+        "base_us": 31,
+        "candidate_us": 31
+      },
+      {
+        "query": "L4",
+        "base_us": 299,
+        "candidate_us": 313
+      },
+      {
+        "query": "L5",
+        "base_us": 2159,
+        "candidate_us": 2231
+      },
+      {
+        "query": "S1",
+        "base_us": 95,
+        "candidate_us": 93
+      },
+      {
+        "query": "S2",
+        "base_us": 278,
+        "candidate_us": 275
+      },
+      {
+        "query": "S3",
+        "base_us": 498,
+        "candidate_us": 499
+      },
+      {
+        "query": "S4",
+        "base_us": 595,
+        "candidate_us": 573
+      },
+      {
+        "query": "S5",
+        "base_us": 477,
+        "candidate_us": 570
+      },
+      {
+        "query": "S6",
+        "base_us": 215,
+        "candidate_us": 314
+      },
+      {
+        "query": "S7",
+        "base_us": 14,
+        "candidate_us": 14
+      }
+    ]
+  }
+}

@@ -1,3 +1,5 @@
+> Historical draft. Implementation, verification and limitations are now recorded in [README.md](README.md).
+
 # Count pushdown — unvalidated draft
 
 Task #13. The implementation and fixtures are edited, **not compiled or measured** while round 5 owns the shared-machine lock. No performance or correctness claim yet.
