@@ -1,5 +1,1 @@
-
-*** Error 39000: [Virtuoso Driver][Virtuoso Server]FA020: Unable to list files in '<agent-workspace>/rdfdb/bench/tools/virtuoso-bsbm10/../tools': No such file or directory
-at line 0 of Top-Level:
-ld_dir('<agent-workspace>/rdfdb/bench/tools/virtuoso-bsbm10/../tools', 'bsbm10.nt', 'http://bench/bsbm10')
-real 0
+real 40

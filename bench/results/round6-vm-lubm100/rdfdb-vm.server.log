@@ -1,0 +1,6 @@
+loaded /data/lubm100.nt in 10.81s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:7979/sparql
+statistics ready after 1.64s
+rdfdb-vm ready after 13s
+container_mem 6.036GiB

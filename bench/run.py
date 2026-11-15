@@ -20,7 +20,10 @@ def canon(res):
     def val(b):
         if b is None: return "-"
         v = b["value"] if b["type"] != "bnode" else "_"   # blank labels differ across systems
-        return f'{b["type"]}|{v}|{b.get("datatype","")}|{b.get("xml:lang","")}'
+        t = "literal" if b["type"] == "typed-literal" else b["type"]   # Virtuoso uses the SPARQL-JSON 2008 "typed-literal"
+        dt = b.get("datatype", "")
+        if dt == "http://www.w3.org/2001/XMLSchema#string": dt = ""     # RDF 1.1: plain literal == xsd:string
+        return f'{t}|{v}|{dt}|{b.get("xml:lang","").lower()}'
     rows = sorted("\t".join(val(row.get(v)) for v in vs) for row in res["results"]["bindings"])
     return len(rows), hashlib.sha1("\n".join(rows).encode()).hexdigest()
 

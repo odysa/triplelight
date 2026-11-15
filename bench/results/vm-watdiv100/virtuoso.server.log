@@ -1,0 +1,39 @@
+Fixing ownership of database volume
+Starting the Virtuoso Server
+
+		Sun Nov 15 2026
+05:44:12 { Loading plugin 1: Type `plain', file `geos' in `../hosting'
+05:44:12   plain version 1.2.3243 from OpenLink Software
+05:44:12   GEOS plugin based on Geometry Engine Open Source library from Open Source Geospatial Foundation
+05:44:12   SUCCESS plugin 1: loaded from ../hosting/geos.so }
+05:44:12 { Loading plugin 2: Type `plain', file `graphql' in `../hosting'
+05:44:12   GraphQL/SPARQL Bridge version 0.9.3 (8439c5e52f) from OpenLink Software
+05:44:12   Support functions for GraphQL/SPARQL Bridge
+05:44:12   SUCCESS plugin 2: loaded from ../hosting/graphql.so }
+05:44:12 { Loading plugin 3: Type `plain', file `proj4' in `../hosting'
+05:44:12   plain version 1.1.3243 from OpenLink Software
+05:44:12   Cartographic Projections support based on Frank Warmerdam's proj4 library
+05:44:12   SUCCESS plugin 3: loaded from ../hosting/proj4.so }
+05:44:12 { Loading plugin 4: Type `plain', file `shapefileio' in `../hosting'
+05:44:12   ShapefileIO version 0.1virt71 from OpenLink Software
+05:44:12   Shapefile support based on Frank Warmerdam's Shapelib
+05:44:12   SUCCESS plugin 4: loaded from ../hosting/shapefileio.so }
+05:44:12 SPARQL/MaxConstructTriples parameter cannot be more than 2097150, will use maximum possible limit.
+05:44:12 OpenLink Virtuoso Universal Server
+05:44:12 Version 07.20.3243-pthreads for Linux as of Aug  5 2026 (8439c5e52f)
+05:44:12 uses OpenSSL 3.0.13 30 Jan 2024
+05:44:12 uses parts of PCRE, Html Tidy
+05:44:12 Database version 3126
+05:44:12 SQL Optimizer enabled (max 1000 layouts)
+05:44:13 Compiler unit is timed at 0.000075 msec
+05:44:14 Roll forward started
+05:44:14 Roll forward complete
+05:44:15 PL LOG: Can't get list of vad packages in ../vad/
+05:44:15 Checkpoint started
+05:44:15 Checkpoint finished, log reused
+05:44:15 SSL server online at 1112
+05:44:15 HTTP/WebDAV server online at 8890
+05:44:15 HTTPS server online at 8891
+05:44:15 Server online at 1111 (pid 1)
+virtuoso ready after 5s
+container_mem 10.3GiB
