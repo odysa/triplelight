@@ -56,8 +56,19 @@ pub(super) struct LazyIndex {
     cache: Vec<Mutex<Cache>>,
     shard_budget: usize,
 }
-fn exact(file: &File, mut bytes: &mut [u8], mut offset: u64) -> io::Result<()> {
+fn exact(file: &File, bytes: &mut [u8], offset: u64) -> io::Result<()> {
+    exact_traced(file, bytes, offset, None)
+}
+fn exact_traced(
+    file: &File,
+    mut bytes: &mut [u8],
+    mut offset: u64,
+    slot: Option<usize>,
+) -> io::Result<()> {
     while !bytes.is_empty() {
+        if let Some(slot) = slot {
+            super::disk_index::trace_dictionary(slot, 2, 1);
+        }
         match file.read_at(bytes, offset) {
             Ok(0) => {
                 return Err(io::Error::new(
@@ -66,6 +77,9 @@ fn exact(file: &File, mut bytes: &mut [u8], mut offset: u64) -> io::Result<()> {
                 ));
             }
             Ok(n) => {
+                if let Some(slot) = slot {
+                    super::disk_index::trace_dictionary(slot, 3, n as u64);
+                }
                 offset += n as u64;
                 bytes = &mut bytes[n..];
             }
@@ -188,15 +202,21 @@ impl LazyIndex {
         let mut cache = self.cache[index % self.cache.len()]
             .lock()
             .map_err(|_| io::Error::other("dictionary cache lock poisoned"))?;
+        let slot = match self.order {
+            Order::Term => 6,
+            Order::Id => 7,
+        };
         if let Some((value, _)) = cache.entries.get(&index) {
+            super::disk_index::trace_dictionary(slot, 0, 1);
             return Ok(Arc::clone(value));
         }
+        super::disk_index::trace_dictionary(slot, 1, 1);
         let meta = self
             .entries
             .get(index)
             .ok_or_else(|| bad("dictionary block absent"))?;
         let mut bytes = vec![0; meta.length];
-        exact(&self.file, &mut bytes, meta.offset)?;
+        exact_traced(&self.file, &mut bytes, meta.offset, Some(slot))?;
         if Sha256::digest(&bytes).as_slice() != meta.hash {
             return Err(bad("dictionary block checksum mismatch"));
         }
@@ -221,6 +241,7 @@ impl LazyIndex {
                     .ok_or_else(|| bad("dictionary cache invariant"))?;
                 if let Some((_, n)) = cache.entries.remove(&old) {
                     cache.used -= n;
+                    super::disk_index::trace_dictionary(slot, 4, 1);
                 }
             }
             cache.used += size;
