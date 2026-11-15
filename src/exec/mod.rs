@@ -463,9 +463,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             applied[k] = true;
             let mut kept = Vec::with_capacity(rows.len());
             let mut row: Row = vec![UNBOUND; w];
+            let fast = expr::NumFilter::compile(e, &self.vars);
+            let mut memo: HashMap<TermId, Option<expr::Num>> = HashMap::new();
+            let mut val = |id: TermId| *memo.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
             for r in rows.chunks_exact(w) {
-                row.copy_from_slice(r);
-                if self.ebv(e, &row) { kept.extend_from_slice(r) }
+                let keep = match fast.as_ref().map(|f| f.eval(r, &mut val)) {
+                    Some(Ok(b)) => b == Some(true),
+                    _ => { row.copy_from_slice(r); self.ebv(e, &row) }
+                };
+                if keep { kept.extend_from_slice(r) }
             }
             *rows = kept;
         }
