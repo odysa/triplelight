@@ -32,3 +32,9 @@ Skipping the fallback requires an **exact, snapshot-scoped per-predicate non-inl
 Kaiming adopted the coverage, identity and count-result constraints in Raft message `be36234c`: keep non-inline fallback until exact coverage is available; consult stored dictionary IDs first; consistently re-encode and rebuild caches at compaction; support unstored count results. The comparison precision finding was sent separately in `09a80438`.
 
 Implementation tests, old-store/WAL reopening, mixed datatype/lexical forms, range boundaries and the A/B remain the encoding owner's next steps. The audit has no remaining statistics-code edit to apply. No builds, benchmarks or model runs were needed for this source-only review.
+
+## Subsequent resolution
+
+After the findings were sent, Kaiming fixed the pre-existing Int/Int precision issue in main **bef6811**. Source inspection confirms that both general and compiled comparisons now share `num_cmp`, using i64 ordering for two Int operands; mixed types still use the existing f64 path. This closes the specific adjacent-integer finding, not a general claim of arbitrary decimal precision. No independent runtime tests were run in this audit.
+
+In message `a0a54a16`, Kaiming also confirmed that the exact all-inline proof will retain the empty-delta/matching-base guard. The new tag and coverage-counter implementation still require the encoding branch's own compatibility tests and A/B.
