@@ -120,7 +120,7 @@ fn serve_store(args: &[String]) {
     };
     refresh(&stats, &store.snapshot());
     let port = args.get(3).filter(|a| !a.starts_with("--")).map(String::as_str).unwrap_or("7878");
-    let server = tiny_http::Server::http(format!("127.0.0.1:{port}")).expect("bind");
+    let server = tiny_http::Server::http(format!("{}:{port}", bind_host())).expect("bind");
     eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql and /update");
     let (server, store, stats, refresh) = (&server, &store, &stats, &refresh);
     std::thread::scope(|scope| for _ in 0..workers { scope.spawn(move || {
@@ -164,6 +164,9 @@ fn serve_store(args: &[String]) {
         }
     }); });
 }
+
+/// Listen address host: 127.0.0.1 unless RDFDB_HOST is set (e.g. 0.0.0.0 inside a container).
+fn bind_host() -> String { std::env::var("RDFDB_HOST").unwrap_or_else(|_| "127.0.0.1".into()) }
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -230,7 +233,7 @@ fn main() {
             let stats: std::sync::RwLock<Option<std::sync::Arc<Stats>>> = std::sync::RwLock::new(None);
             let want_stats = !args.iter().any(|a| a == "--no-stats");
             eprintln!("optimizer statistics: {}", if want_stats { "building in background" } else { "off" });
-            let server = tiny_http::Server::http(format!("127.0.0.1:{port}")).expect("bind");
+            let server = tiny_http::Server::http(format!("{}:{port}", bind_host())).expect("bind");
             eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql");
             // One worker per core: queries run concurrently against the same immutable snapshot.
             let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
