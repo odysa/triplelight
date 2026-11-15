@@ -59,6 +59,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         {
             return None;
         }
+        if patterns.len()!=1 && (!keys.is_empty() || requests.iter().any(|(_,c)|matches!(c,Count::Variable{distinct:true,..}))) { return None; }
         let pats: Vec<[Slot; 3]> = patterns
             .iter()
             .map(|p| {
@@ -100,11 +101,12 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             let n = if missing {
                 0
             } else {
-                bgp::Bgp {
-                    snap: self.snap,
-                    w: self.vars.len(),
+                let join=bgp::Bgp { snap:self.snap,w:self.vars.len() };
+                if self.wcoj && pats.len()>=3 && bgp::cyclic(&pats) {
+                    join.count_leapfrog(&pats,self.variable_order(&pats))
+                } else {
+                    join.count_binary(&pats,self.planned_order(&pats,input).as_deref())
                 }
-                .count_leapfrog(&pats, self.variable_order(&pats))
             };
             let mut out = self.empty_row();
             for (i, c) in requests {
@@ -254,6 +256,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                         Some(_) if !distinct => n,
                         Some(_) if n == 0 => 0,
                         Some(_) if binding[index] != UNBOUND => 1,
+                        Some(_) if prefix.len() == 2 => n,
                         Some(target) => self.count_distinct(pat, target, perm, prefix),
                     }
                 }
