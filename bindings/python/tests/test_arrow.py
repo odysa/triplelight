@@ -129,3 +129,26 @@ def test_native_parquet_export(tmp_path):
     assert pa.types.is_int64(result.schema.field("x").type)
     assert result.column("x").to_pylist() == [42]
     db.close()
+
+
+def test_native_invalid_boundaries_and_unbound(tmp_path):
+    import math
+    db = rdfdb.Database(tmp_path / "db")
+    xsd = "http://www.w3.org/2001/XMLSchema#"
+    def column(values, datatype):
+        terms = " ".join(f'"{v}"^^<{xsd}{datatype}>' for v in values)
+        return db.query_arrow(f'SELECT ?x WHERE {{ VALUES ?x {{ {terms} }} }}', types="native").read_all().column("x")
+    assert pa.types.is_struct(column(["oops"], "integer").type)
+    assert pa.types.is_struct(column(["1e2"], "decimal").type)
+    assert pa.types.is_struct(column(["1" * 39 + ".1"], "decimal").type)
+    assert pa.types.is_struct(column(["1.2e999999999999999999999999"], "decimal").type)
+    vals = column(["INF", "-INF", "NaN", "-0"], "float").to_pylist()
+    assert math.isinf(vals[0]) and math.isinf(vals[1]) and math.isnan(vals[2])
+    assert math.copysign(1.0, vals[3]) < 0
+    assert pa.types.is_struct(column(["2024-01-01T00:00:00.1234567Z"], "dateTime").type)
+    assert pa.types.is_struct(column(["2024-01-01T00:00:00+14:30"], "dateTime").type)
+    assert pa.types.is_struct(column(["2023-02-29"], "date").type)
+    table = db.query_arrow('SELECT ?x WHERE { VALUES ?x { "2"^^<http://www.w3.org/2001/XMLSchema#integer> UNDEF } }', types="native").read_all()
+    assert pa.types.is_int64(table.column("x").type)
+    assert table.column("x").to_pylist() == [2, None]
+    db.close()
