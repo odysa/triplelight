@@ -109,7 +109,10 @@ impl Database {
             "nt" => oxttl::NTriplesParser::new().for_reader(reader).collect::<Result<Vec<_>, _>>(),
             "ttl" => oxttl::TurtleParser::new().for_reader(reader).collect::<Result<Vec<_>, _>>(),
             _ => return Err(DatabaseError::Unsupported("load requires an .nt or .ttl file".into())),
-        }.map_err(|e| DatabaseError::Syntax(e.to_string()))?;
+        }.map_err(|e| match e {
+            oxttl::TurtleParseError::Io(e) => DatabaseError::Storage(e),
+            oxttl::TurtleParseError::Syntax(e) => DatabaseError::Syntax(e.to_string()),
+        })?;
         let changes: Vec<_> = triples.into_iter().map(|t| (Change::Insert, t)).collect();
         Ok(self.store.commit(&changes)?)
     }
@@ -130,13 +133,21 @@ impl ReadSnapshot {
         if self.snapshot.delta_len() != 0 { return None; }
         self.stats.read().unwrap().as_ref().filter(|(base, _)| base.base_id() == self.snapshot.base_id()).map(|(_, st)| Arc::clone(st))
     }
-    /// Serializes SELECT or ASK as SPARQL Results JSON; graph results are not JSON results.
-    pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> {
+    /// Executes a query with undecoded SELECT IDs, valid only against this snapshot.
+    pub fn query_ids(&self, sparql: &str) -> Result<QueryResult, DatabaseError> {
         let stats = self.applicable_stats();
         let opts = exec::Options { stats: stats.as_deref(), raw_ids: true, ..Default::default() };
-        let result = exec::query_with(&*self.snapshot, sparql, &opts)?;
+        Ok(exec::query_with(&*self.snapshot, sparql, &opts)?)
+    }
+    /// Serializes SELECT IDs returned by this snapshot with batched dictionary access.
+    pub fn serialize_ids(&self, ids: &exec::IdSolutions) -> Result<String, DatabaseError> {
+        Ok(exec::results::serialize_ids(ids, &*self.snapshot)?)
+    }
+    /// Serializes SELECT or ASK as SPARQL Results JSON; graph results are not JSON results.
+    pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> {
+        let result = self.query_ids(sparql)?;
         match &result {
-            QueryResult::Ids(ids) => Ok(exec::results::serialize_ids(ids, &*self.snapshot)?),
+            QueryResult::Ids(ids) => self.serialize_ids(ids),
             QueryResult::Boolean(_) | QueryResult::Solutions { .. } => Ok(exec::results::serialize(&result).1),
             QueryResult::Graph(_) => Err(DatabaseError::Unsupported("query_json supports SELECT and ASK only".into())),
         }
