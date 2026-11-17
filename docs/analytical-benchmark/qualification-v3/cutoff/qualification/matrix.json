@@ -1,0 +1,78 @@
+{
+  "schema": "actual-bi-fixture-v1",
+  "rdfdb_source": "d2618c6c9c6d51541d9298e8db88f131f5ab2eb6 rebuilt isolated binding",
+  "duckdb": "2.0.0",
+  "templates_requested": [
+    7
+  ],
+  "data_sha256": "c7aa821229767d5aaddc1ac3fa0ad8f08d0229508a0042f58da10129abe9f6d9",
+  "queries": {
+    "7": {
+      "query_sha256": "2ddcb4c056d821e1bf6b9f46b73b7159b7adc78943379d6b8296048254aef83d",
+      "jena_rows": 499,
+      "jena_order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "jena_cutoff": {
+        "tie_aware": true,
+        "ambiguous_boundary": true,
+        "cutoff_offer_count": 1,
+        "boundary_slots": 997,
+        "boundary_products": 1002,
+        "allowed_optional_rows": [
+          496,
+          501
+        ],
+        "rows": 499
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": true,
+            "cutoff_offer_count": 1,
+            "boundary_slots": 997,
+            "boundary_products": 1002,
+            "allowed_optional_rows": [
+              496,
+              501
+            ],
+            "rows": 500
+          },
+          "exact_reference_bag": false
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": true,
+            "cutoff_offer_count": 1,
+            "boundary_slots": 997,
+            "boundary_products": 1002,
+            "allowed_optional_rows": [
+              496,
+              501
+            ],
+            "rows": 499
+          },
+          "exact_reference_bag": true
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "status": "pass"
+      }
+    }
+  },
+  "complete": true
+}

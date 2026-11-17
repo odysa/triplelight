@@ -1,0 +1,41 @@
+{
+  "head": {
+    "vars": [
+      "rows",
+      "count",
+      "distinctCount",
+      "sum",
+      "avg",
+      "min",
+      "max",
+      "sample",
+      "concat"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "rows": {
+          "type": "literal",
+          "value": "2",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "count": {
+          "type": "literal",
+          "value": "1",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "distinctCount": {
+          "type": "literal",
+          "value": "1",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "sample": {
+          "type": "literal",
+          "value": "2",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      }
+    ]
+  }
+}
