@@ -14,14 +14,21 @@ const NUMERIC: [&str; 16] = [
 fn xsd_local(l: &Literal) -> Option<&str> { l.datatype().as_str().strip_prefix("http://www.w3.org/2001/XMLSchema#") }
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
-pub(super) enum Num { Int(i64), Dec(f64), Dbl(f64) }
+/// SPARQL numeric value. Promotion order integer < decimal < float < double (XPath op:numeric-*). `Flt` holds an
+/// f32-rounded value so float arithmetic and output stay single precision.
+pub(super) enum Num { Int(i64), Dec(f64), Flt(f64), Dbl(f64) }
 impl Num {
-    fn f(self) -> f64 { match self { Num::Int(i) => i as f64, Num::Dec(d) | Num::Dbl(d) => d } }
-    fn rank(self) -> u8 { match self { Num::Int(_) => 0, Num::Dec(_) => 1, Num::Dbl(_) => 2 } }
-    fn term(self) -> Term {
+    /// The value at a promoted type rank (1 decimal, 2 float, 3 double); float results are rounded to f32.
+    pub(super) fn of_rank(rank: u8, v: f64) -> Num {
+        match rank { 0 | 1 => Num::Dec(v), 2 => Num::Flt(v as f32 as f64), _ => Num::Dbl(v) }
+    }
+    pub(super) fn f(self) -> f64 { match self { Num::Int(i) => i as f64, Num::Dec(d) | Num::Flt(d) | Num::Dbl(d) => d } }
+    pub(super) fn rank(self) -> u8 { match self { Num::Int(_) => 0, Num::Dec(_) => 1, Num::Flt(_) => 2, Num::Dbl(_) => 3 } }
+    pub(super) fn term(self) -> Term {
         match self {
             Num::Int(i) => Literal::from(i).into(),
             Num::Dec(d) => Literal::new_typed_literal(fmt_dec(d), xsd::DECIMAL).into(),
+            Num::Flt(d) => Literal::new_typed_literal(java_float_lexical(d as f32), xsd::FLOAT).into(),
             Num::Dbl(d) => Literal::from(d).into(),
         }
     }
@@ -43,7 +50,8 @@ fn num(t: &Term) -> Option<Num> {
     if !NUMERIC.contains(&local) { return None }
     let v = l.value().trim();
     match local {
-        "double" | "float" => v.parse().ok().map(Num::Dbl),
+        "double" => parse_xsd_float(v).map(Num::Dbl),
+        "float" => parse_xsd_float(v).map(|d| Num::Flt(d as f32 as f64)),
         "decimal" => v.parse().ok().map(Num::Dec),
         _ => v.trim_start_matches('+').parse().ok().map(Num::Int),
     }
@@ -83,7 +91,7 @@ pub(super) fn arith(op: char, a: &Term, b: &Term) -> Option<Term> {
     }
     let (i, j) = (x.f(), y.f());
     let r = match op { '+' => i + j, '-' => i - j, '*' => i * j, _ => { if rank == 1 && j == 0.0 { return None } i / j } };
-    Some(if rank == 1 { Num::Dec(r) } else { Num::Dbl(r) }.term())
+    Some(Num::of_rank(rank, r).term())
 }
 
 /// Value comparison for `=`, `<` etc. `None` = type error.
@@ -235,11 +243,11 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             let out = regex::Regex::new(&pat).ok()?.replace_all(lit(&t)?.value(), s(2)?.as_str()).into_owned();
             Some(like(&t, out))
         }
-        Function::Abs => { let n = num(&a(0)?)?; Some(match n { Num::Int(i) => Num::Int(i.abs()), Num::Dec(d) => Num::Dec(d.abs()), Num::Dbl(d) => Num::Dbl(d.abs()) }.term()) }
+        Function::Abs => { let n = num(&a(0)?)?; Some(match n { Num::Int(i) => Num::Int(i.abs()), Num::Dec(d) => Num::Dec(d.abs()), Num::Flt(d) => Num::Flt(d.abs()), Num::Dbl(d) => Num::Dbl(d.abs()) }.term()) }
         Function::Ceil | Function::Floor | Function::Round => {
             let n = num(&a(0)?)?;
             let g = |d: f64| match f { Function::Ceil => d.ceil(), Function::Floor => d.floor(), _ => (d + 0.5).floor() };
-            Some(match n { Num::Int(i) => Num::Int(i), Num::Dec(d) => Num::Dec(g(d)), Num::Dbl(d) => Num::Dbl(g(d)) }.term())
+            Some(match n { Num::Int(i) => Num::Int(i), Num::Dec(d) => Num::Dec(g(d)), Num::Flt(d) => Num::Flt(g(d)), Num::Dbl(d) => Num::Dbl(g(d)) }.term())
         }
         Function::Year | Function::Month | Function::Day | Function::Hours | Function::Minutes => {
             let x = s(0)?;
@@ -300,7 +308,7 @@ impl NumExpr {
                 }
                 let (i, j) = (x.f(), y.f());
                 let v = match op { '+' => i + j, '-' => i - j, _ => i * j };
-                Ok(Some(if rank == 1 { Num::Dec(v) } else { Num::Dbl(v) }))
+                Ok(Some(Num::of_rank(rank, v)))
             }
         }
     }
@@ -362,8 +370,8 @@ fn xsd_cast(iri: &str, t: &Term) -> Option<Term> {
         "double" | "float" => {
             let d = match source_num { Some(n) => n.f(), None if is_bool => if matches!(lexical.as_str(), "true" | "1") { 1.0 } else { 0.0 },
                 None => match lexical.as_str() { "INF" | "+INF" => f64::INFINITY, "-INF" => f64::NEG_INFINITY, "NaN" => f64::NAN, s => s.parse().ok()? } };
-            let dt = if target == "double" { xsd::DOUBLE } else { xsd::FLOAT };
-            typed(format_double(d), dt)
+            if target == "float" { return Some(Num::Flt(d as f32 as f64).term()) }
+            typed(format_double(d), xsd::DOUBLE)
         }
         "decimal" => {
             let d = match source_num { Some(n) => { let f = n.f(); if !f.is_finite() { return None } f }
@@ -389,4 +397,43 @@ fn xsd_cast(iri: &str, t: &Term) -> Option<Term> {
 
 fn format_double(d: f64) -> String {
     if d.is_nan() { "NaN".into() } else if d.is_infinite() { if d > 0.0 { "INF".into() } else { "-INF".into() } } else { format!("{d:E}") }
+}
+
+/// `a + b` with exactly `arith('+')`'s typing (integer checked add; otherwise promote to decimal/double).
+pub(super) fn num_add(a: Num, b: Num) -> Option<Num> {
+    if let (Num::Int(i), Num::Int(j)) = (a, b) { return i.checked_add(j).map(Num::Int) }
+    let v = a.f() + b.f();
+    Some(Num::of_rank(a.rank().max(b.rank()), v))
+}
+/// `sum / n` with exactly `arith('/')`'s typing (integer / integer is decimal).
+pub(super) fn num_div_count(sum: Num, n: i64) -> Option<Num> {
+    let r = sum.rank();
+    if n == 0 && r <= 1 { return None }
+    let v = sum.f() / n as f64;
+    Some(Num::of_rank(r.max(1), v))
+}
+
+/// xsd:double / xsd:float lexical forms, including INF, -INF and NaN (Rust's parser spells them differently).
+fn parse_xsd_float(v: &str) -> Option<f64> {
+    match v { "INF" | "+INF" => Some(f64::INFINITY), "-INF" => Some(f64::NEG_INFINITY), "NaN" => Some(f64::NAN),
+        _ if v.eq_ignore_ascii_case("inf") || v.eq_ignore_ascii_case("infinity") || v.eq_ignore_ascii_case("nan") => None,
+        _ => v.parse().ok() }
+}
+
+/// xsd:float lexical form as Java's `Float.toString` writes it (what Jena returns): plain decimal with at least one
+/// fractional digit for 1e-3 <= |x| < 1e7 ("6.0", "0.25"), otherwise scientific with an uppercase E ("1.0E10").
+pub(super) fn java_float_lexical(x: f32) -> String {
+    if x.is_nan() { return "NaN".into() }
+    if x.is_infinite() { return if x > 0.0 { "INF".into() } else { "-INF".into() } }
+    if x == 0.0 { return if x.is_sign_negative() { "-0.0".into() } else { "0.0".into() } }
+    let a = x.abs();
+    if (1e-3..1e7).contains(&a) {
+        let s = format!("{x}");
+        if s.contains('.') { s } else { format!("{s}.0") }
+    } else {
+        let s = format!("{x:e}");
+        let (m, e) = s.split_once('e').unwrap();
+        let m = if m.contains('.') { m.to_string() } else { format!("{m}.0") };
+        format!("{m}E{e}")
+    }
 }
