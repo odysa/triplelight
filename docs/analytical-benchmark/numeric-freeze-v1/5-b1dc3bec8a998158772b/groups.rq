@@ -1,0 +1,2 @@
+PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#>
+SELECT ?product (COUNT(*) AS ?n) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType2> . ?offer bsbm:product ?product ; bsbm:price ?price . } GROUP BY ?product
