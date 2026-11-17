@@ -262,7 +262,10 @@ impl Store {
         // Lock before reading CURRENT, recovery, or deleting any abandoned generation.
         // The file remains in place to avoid lock-inode replacement races between processes.
         let directory_lock = OpenOptions::new().read(true).write(true).create(true).truncate(false).open(dir.join("LOCK"))?;
-        directory_lock.try_lock().map_err(|e| std::io::Error::other(format!("database directory is already open or cannot be locked: {e}")))?;
+        directory_lock.try_lock().map_err(|e| match e {
+            std::fs::TryLockError::WouldBlock => std::io::Error::new(std::io::ErrorKind::WouldBlock, "database directory is already open"),
+            std::fs::TryLockError::Error(e) => e,
+        })?;
         let generation = match std::fs::read_to_string(dir.join("CURRENT")) {
             Ok(s) => s.trim().strip_prefix("base-").and_then(|n| n.parse().ok())
                 .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?,
