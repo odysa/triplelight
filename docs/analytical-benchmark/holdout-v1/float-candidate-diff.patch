@@ -1,0 +1,98 @@
+diff --git a/src/exec/expr.rs b/src/exec/expr.rs
+index 0fd6d9d..2e31590 100644
+--- a/src/exec/expr.rs
++++ b/src/exec/expr.rs
+@@ -18,7 +18,8 @@ fn xsd_local(l: &Literal) -> Option<&str> { l.datatype().as_str().strip_prefix("
+ /// f32-rounded value so float arithmetic and output stay single precision.
+ pub(super) enum Num { Int(i64), Dec(f64), Flt(f64), Dbl(f64) }
+ impl Num {
+-    /// The value at a promoted type rank (1 decimal, 2 float, 3 double); float results are rounded to f32.
++    /// The value at a promoted type rank (1 decimal, 2 float, 3 double); a float result is rounded to binary32, as
++    /// every XPath float operation is.
+     pub(super) fn of_rank(rank: u8, v: f64) -> Num {
+         match rank { 0 | 1 => Num::Dec(v), 2 => Num::Flt(v as f32 as f64), _ => Num::Dbl(v) }
+     }
+@@ -399,18 +400,21 @@ fn format_double(d: f64) -> String {
+     if d.is_nan() { "NaN".into() } else if d.is_infinite() { if d > 0.0 { "INF".into() } else { "-INF".into() } } else { format!("{d:E}") }
+ }
+ 
+-/// `a + b` with exactly `arith('+')`'s typing (integer checked add; otherwise promote to decimal/double).
++/// SUM/AVG accumulation step: `arith('+')`'s typing (checked integer add; promote to decimal/float/double), but a
++/// float accumulator keeps f64 precision and is rounded to binary32 once, when the result becomes a term. SUM is over a
++/// multiset with unspecified order; one final rounding is much more accurate than rounding after every addition, whose
++/// error grows with the group size. Ordinary expression arithmetic (`arith`, compiled filters) still rounds per operation.
+ pub(super) fn num_add(a: Num, b: Num) -> Option<Num> {
+     if let (Num::Int(i), Num::Int(j)) = (a, b) { return i.checked_add(j).map(Num::Int) }
+     let v = a.f() + b.f();
+-    Some(Num::of_rank(a.rank().max(b.rank()), v))
++    Some(match a.rank().max(b.rank()) { 0 | 1 => Num::Dec(v), 2 => Num::Flt(v), _ => Num::Dbl(v) })
+ }
+ /// `sum / n` with exactly `arith('/')`'s typing (integer / integer is decimal).
+ pub(super) fn num_div_count(sum: Num, n: i64) -> Option<Num> {
+     let r = sum.rank();
+     if n == 0 && r <= 1 { return None }
+     let v = sum.f() / n as f64;
+-    Some(Num::of_rank(r.max(1), v))
++    Some(match r.max(1) { 1 => Num::Dec(v), 2 => Num::Flt(v), _ => Num::Dbl(v) })
+ }
+ 
+ /// xsd:double / xsd:float lexical forms, including INF, -INF and NaN (Rust's parser spells them differently).
+diff --git a/src/exec/mod.rs b/src/exec/mod.rs
+index e9ab53e..cb89bc6 100644
+--- a/src/exec/mod.rs
++++ b/src/exec/mod.rs
+@@ -397,11 +397,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
+                 if strict && has_error { return None }
+                 match name {
+                     AggregateFunction::Count => Some(Literal::from(vals.len() as i64).into()),
+-                    AggregateFunction::Sum => vals.iter().try_fold(Term::from(Literal::from(0i64)), |a, b| expr::arith('+', &a, b)),
++                    // Same accumulation as the ID-level fast path (`expr::num_add`): float sums round once.
++                    AggregateFunction::Sum => vals.iter().try_fold(expr::Num::Int(0), |a, b| expr::num_add(a, expr::term_num(b)?)).map(|n| n.term()),
+                     AggregateFunction::Avg => {
+                         if vals.is_empty() { return Some(Literal::from(0i64).into()) }
+-                        let s = vals.iter().try_fold(Term::from(Literal::from(0i64)), |a, b| expr::arith('+', &a, b))?;
+-                        expr::arith('/', &s, &Literal::from(vals.len() as i64).into())
++                        let s = vals.iter().try_fold(expr::Num::Int(0), |a, b| expr::num_add(a, expr::term_num(b)?))?;
++                        expr::num_div_count(s, vals.len() as i64).map(|n| n.term())
+                     }
+                     AggregateFunction::Min => vals.into_iter().min_by(|a, b| expr::order_cmp(Some(a), Some(b))),
+                     AggregateFunction::Max => vals.into_iter().max_by(|a, b| expr::order_cmp(Some(a), Some(b))),
+diff --git a/tests/exec.rs b/tests/exec.rs
+index 8cbd448..a2e0e41 100644
+--- a/tests/exec.rs
++++ b/tests/exec.rs
+@@ -328,3 +328,34 @@ fn aggregate_errors_poison_like_jena() {
+         if legacy { unsafe { std::env::remove_var("RDFDB_LEGACY_GROUP") } }
+     }
+ }
++
++/// Float SUM accumulates in f64 and rounds to binary32 once: 2^24 + 1 + 1 (each 1 alone would be lost to per-step
++/// binary32 rounding) sums to the binary32 value nearest the exact 16777218.
++#[test]
++fn float_sum_rounds_once() {
++    let data = r#"
++<urn:a> <urn:f> "16777216"^^<http://www.w3.org/2001/XMLSchema#float> .
++<urn:b> <urn:f> "1"^^<http://www.w3.org/2001/XMLSchema#float> .
++<urn:c> <urn:f> "1.0"^^<http://www.w3.org/2001/XMLSchema#float> .
++"#;
++    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
++    match query(&s, "SELECT (SUM(?f) AS ?v) WHERE { ?x <urn:f> ?f }").unwrap() {
++        QueryResult::Solutions { rows, .. } => assert_eq!(rows[0][0].as_ref().unwrap().to_string(), "\"1.6777218E7\"^^<http://www.w3.org/2001/XMLSchema#float>"),
++        r => panic!("{r:?}"),
++    }
++}
++
++/// Expression arithmetic still rounds each float operation (only SUM/AVG accumulate wider): 2^24 + 1 in binary32 is
++/// 2^24, so this filter rejects the row on both the compiled and the general path.
++#[test]
++fn float_expression_rounds_per_operation() {
++    let data = r#"
++<urn:r> <urn:a> "16777216"^^<http://www.w3.org/2001/XMLSchema#float> .
++<urn:r> <urn:b> "1"^^<http://www.w3.org/2001/XMLSchema#float> .
++"#;
++    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
++    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
++    let f = "FILTER((?a + ?b) > \"16777216\"^^<http://www.w3.org/2001/XMLSchema#float>)";
++    assert_eq!(n(&format!("SELECT * WHERE {{ ?r <urn:a> ?a . ?r <urn:b> ?b {f} }}")), 0);
++    assert_eq!(n(&format!("SELECT * WHERE {{ {{ ?r <urn:a> ?a . ?r <urn:b> ?b }} OPTIONAL {{ ?r <urn:none> ?z }} {f} }}")), 0);
++}
