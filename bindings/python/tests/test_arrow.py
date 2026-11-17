@@ -176,3 +176,12 @@ def test_native_matches_python_reference(tmp_path):
         actual = db.query_arrow(query, types="native").read_all()
         assert actual.equals(expected), (datatype, values, actual, expected)
     db.close()
+
+
+def test_native_timestamp_rejects_leap_seconds_and_24_hour(tmp_path):
+    db = rdfdb.Database(tmp_path / "db")
+    datatype = "http://www.w3.org/2001/XMLSchema#dateTime"
+    for value in ("2024-06-30T23:59:60Z", "2024-01-01T24:00:00Z"):
+        table = db.query_arrow(f'SELECT ?x WHERE {{ VALUES ?x {{ "{value}"^^<{datatype}> }} }}', types="native").read_all()
+        assert pa.types.is_struct(table.schema.field("x").type)
+    db.close()

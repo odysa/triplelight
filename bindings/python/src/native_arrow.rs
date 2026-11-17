@@ -41,6 +41,10 @@ fn decimal_parts(s: &str) -> Option<(i128, u32, u32)> {
 }
 fn timestamp(s: &str) -> Option<(i64, bool)> {
     if !time_re().is_match(s) || s.starts_with("0000-") { return None; }
+    let hour: u32 = s[11..13].parse().ok()?;
+    let minute: u32 = s[14..16].parse().ok()?;
+    let second: u32 = s[17..19].parse().ok()?;
+    if hour >= 24 || minute >= 60 || second >= 60 { return None; }
     let aware = s.ends_with('Z') || s.as_bytes().get(s.len().saturating_sub(6)).is_some_and(|b| *b == b'+' || *b == b'-');
     if aware {
         if !s.ends_with('Z') {
