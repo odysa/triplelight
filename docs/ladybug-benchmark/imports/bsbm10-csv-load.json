@@ -1,0 +1,10 @@
+{
+  "load_seconds": 72.46553954202682,
+  "observed": {
+    "Resource": 1489462,
+    "Literal": 1255398,
+    "relationships": 10102032
+  },
+  "memory_mb": 10240,
+  "threads": 4
+}
