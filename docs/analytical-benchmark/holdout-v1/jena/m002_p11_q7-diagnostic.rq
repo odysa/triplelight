@@ -1,0 +1,3 @@
+PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+SELECT ?product ?offerCount (EXISTS { ?offer bsbm:product ?product . ?offer bsbm:vendor ?vendor . ?vendor bsbm:country <http://downlode.org/rdf/iso-3166/countries#CN> } AS ?blocked)
+WHERE { { SELECT ?product (COUNT(?offer) AS ?offerCount) { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType3> . ?offer bsbm:product ?product } GROUP BY ?product } }

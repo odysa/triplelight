@@ -1,0 +1,17 @@
+{
+  "jena": {
+    "exit_code": 0
+  },
+  "duckdb": {
+    "exit_code": 0
+  },
+  "rdfdb-main": {
+    "exit_code": 0
+  },
+  "rdfdb-main-legacy": {
+    "exit_code": 0
+  },
+  "rdfdb-float64": {
+    "exit_code": 0
+  }
+}
