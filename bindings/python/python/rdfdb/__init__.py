@@ -223,9 +223,9 @@ class Snapshot:
     def query_arrow(self, sparql: str, *, types="rdf"):
         """Return Arrow batches, with optional value-oriented native columns."""
         return _arrow_types(self._raw.query_arrow(sparql), types)
-    def export_parquet(self, sparql, path):
-        """Export SELECT results as identity-preserving Arrow structs in Parquet."""
-        _atomic_export(self.query_arrow(sparql), path, _write_parquet)
+    def export_parquet(self, sparql, path, *, types="rdf"):
+        """Export SELECT results as RDF structs or opt-in native Arrow values."""
+        _atomic_export(self.query_arrow(sparql, types=types), path, _write_parquet)
     def export_csv(self, sparql, path):
         """Export SELECT results using four columns per variable; empty kind means unbound."""
         _atomic_export(self.query_arrow(sparql), path, _write_csv)
@@ -254,9 +254,9 @@ class Database:
         """Return Arrow batches; native columns are optional and lose RDF lexical identity."""
         return _arrow_types(self._db.query_arrow(sparql), types)
 
-    def export_parquet(self, sparql, path):
-        """Export SELECT results as identity-preserving Arrow structs in Parquet."""
-        _atomic_export(self.query_arrow(sparql), path, _write_parquet)
+    def export_parquet(self, sparql, path, *, types="rdf"):
+        """Export SELECT results as RDF structs or opt-in native Arrow values."""
+        _atomic_export(self.query_arrow(sparql, types=types), path, _write_parquet)
 
     def export_csv(self, sparql, path):
         """Export SELECT results using four columns per variable; empty kind means unbound."""

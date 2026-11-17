@@ -118,3 +118,14 @@ def test_native_date_and_datetime_fallback(tmp_path):
     mixed = db.query_arrow('SELECT ?x WHERE { VALUES ?x { "2024-02-29T12:01:02Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> "2024-02-29T12:01:02"^^<http://www.w3.org/2001/XMLSchema#dateTime> } }', types="native").read_all()
     assert pa.types.is_struct(mixed.schema.field("x").type)
     db.close()
+
+
+def test_native_parquet_export(tmp_path):
+    import pyarrow.parquet as pq
+    db = rdfdb.Database(tmp_path / "db")
+    path = tmp_path / "numeric.parquet"
+    db.export_parquet('SELECT ?x WHERE { VALUES ?x { "42"^^<http://www.w3.org/2001/XMLSchema#integer> } }', path, types="native")
+    result = pq.read_table(path)
+    assert pa.types.is_int64(result.schema.field("x").type)
+    assert result.column("x").to_pylist() == [42]
+    db.close()
