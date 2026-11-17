@@ -16,9 +16,9 @@ fn xsd_local(l: &Literal) -> Option<&str> { l.datatype().as_str().strip_prefix("
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 pub(super) enum Num { Int(i64), Dec(f64), Dbl(f64) }
 impl Num {
-    fn f(self) -> f64 { match self { Num::Int(i) => i as f64, Num::Dec(d) | Num::Dbl(d) => d } }
-    fn rank(self) -> u8 { match self { Num::Int(_) => 0, Num::Dec(_) => 1, Num::Dbl(_) => 2 } }
-    fn term(self) -> Term {
+    pub(super) fn f(self) -> f64 { match self { Num::Int(i) => i as f64, Num::Dec(d) | Num::Dbl(d) => d } }
+    pub(super) fn rank(self) -> u8 { match self { Num::Int(_) => 0, Num::Dec(_) => 1, Num::Dbl(_) => 2 } }
+    pub(super) fn term(self) -> Term {
         match self {
             Num::Int(i) => Literal::from(i).into(),
             Num::Dec(d) => Literal::new_typed_literal(fmt_dec(d), xsd::DECIMAL).into(),
@@ -389,4 +389,18 @@ fn xsd_cast(iri: &str, t: &Term) -> Option<Term> {
 
 fn format_double(d: f64) -> String {
     if d.is_nan() { "NaN".into() } else if d.is_infinite() { if d > 0.0 { "INF".into() } else { "-INF".into() } } else { format!("{d:E}") }
+}
+
+/// `a + b` with exactly `arith('+')`'s typing (integer checked add; otherwise promote to decimal/double).
+pub(super) fn num_add(a: Num, b: Num) -> Option<Num> {
+    if let (Num::Int(i), Num::Int(j)) = (a, b) { return i.checked_add(j).map(Num::Int) }
+    let v = a.f() + b.f();
+    Some(if a.rank().max(b.rank()) == 1 { Num::Dec(v) } else { Num::Dbl(v) })
+}
+/// `sum / n` with exactly `arith('/')`'s typing (integer / integer is decimal).
+pub(super) fn num_div_count(sum: Num, n: i64) -> Option<Num> {
+    let r = sum.rank();
+    if n == 0 && r <= 1 { return None }
+    let v = sum.f() / n as f64;
+    Some(if r <= 1 { Num::Dec(v) } else { Num::Dbl(v) })
 }
