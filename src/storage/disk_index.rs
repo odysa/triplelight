@@ -16,6 +16,8 @@ const HEADER: u64 = 24;
 const ROW: u64 = 24;
 const BLOCK_ROWS: u64 = 256;
 const META: u64 = 56;
+/// Blocks per group of the two-level block directory (see `DiskIndex::top`).
+const GROUP: usize = 64;
 // Instrumentation branch only: counters are process-wide and include concurrent
 // work; a single-query run after background statistics has finished isolates it.
 static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
@@ -214,6 +216,11 @@ pub struct DiskIndex {
     rows: u64,
     identity: [u8; 32],
     blocks: Vec<BlockMeta>,
+    /// Last key of every block, densely packed (24 B/entry instead of the 80 B `BlockMeta`), and the last key of
+    /// every group of `GROUP` blocks: a probe binary-searches the small `top` array (cache-resident) and then one
+    /// group of `lasts`, instead of ~19 cache-missing steps over `blocks` at 100M+ triples.
+    lasts: Vec<[TermId; 3]>,
+    top: Vec<[TermId; 3]>,
     compressed: bool,
     cache: Vec<Mutex<CacheShard>>,
     shard_capacity: usize,
@@ -308,11 +315,15 @@ impl DiskIndex {
         if data_pos != offset {
             return Err(invalid("index data length mismatch"));
         }
+        let lasts: Vec<[TermId; 3]> = entries.iter().map(|m| m.last).collect();
+        let top: Vec<[TermId; 3]> = (0..lasts.len().div_ceil(GROUP)).map(|g| lasts[(g * GROUP + GROUP - 1).min(lasts.len() - 1)]).collect();
         Ok(Self {
             file,
             rows,
             trace_slot,
             identity: footer,
+            lasts,
+            top,
             blocks: entries,
             compressed,
             cache: (0..16)
@@ -424,10 +435,20 @@ impl DiskIndex {
         }
         Ok(self.block(i / BLOCK_ROWS)?[(i % BLOCK_ROWS) as usize])
     }
+    /// First block whose last key does not satisfy `last < key` (or `last <= key` when `upper`); equals
+    /// `blocks.partition_point(..)` with the same predicate.
+    fn block_for(&self, key: [TermId; 3], upper: bool) -> usize {
+        let pred = |x: &[TermId; 3]| *x < key || (upper && *x == key);
+        let g = self.top.partition_point(pred);
+        if g == self.top.len() {
+            return self.lasts.len();
+        }
+        let start = g * GROUP;
+        let end = (start + GROUP).min(self.lasts.len());
+        start + self.lasts[start..end].partition_point(pred)
+    }
     fn bound(&self, key: [TermId; 3], upper: bool) -> io::Result<u64> {
-        let block = self
-            .blocks
-            .partition_point(|m| m.last < key || (upper && m.last == key));
+        let block = self.block_for(key, upper);
         if block == self.blocks.len() {
             return Ok(self.rows);
         }
@@ -464,7 +485,7 @@ impl DiskIndex {
         let mut key = [TermId(0); 3];
         key[..prefix.len()].copy_from_slice(prefix);
         key[prefix.len()] = target;
-        let id = self.blocks.partition_point(|m| m.last < key);
+        let id = self.block_for(key, false);
         if id == self.blocks.len() {
             return Ok(None);
         }
@@ -557,6 +578,26 @@ mod tests {
         let cut = index.blocks[2].offset as usize + index.blocks[2].length / 2;
         std::fs::write(&path, &bytes[..cut]).unwrap();
         assert!(index.get(699).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn two_level_block_directory_matches_flat_search() {
+        // 64 * 256 * 3 + 100 rows: several full groups of GROUP blocks plus a partial last group.
+        let n = (GROUP as u64) * BLOCK_ROWS * 3 + 100;
+        let path = std::env::temp_dir().join(format!("rdf-dir-{}", std::process::id()));
+        let rows: Vec<_> = (1..=n).map(|i| [TermId(2 * i), TermId(1), TermId(2)]).collect();
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::open(&path).unwrap();
+        for k in (0..=2 * n + 3).step_by(37).chain([0, 1, 2, 3, 2 * n - 1, 2 * n, 2 * n + 1]) {
+            for key in [[TermId(k), TermId(0), TermId(0)], [TermId(k), TermId(1), TermId(2)], [TermId(k), TermId(u64::MAX), TermId(u64::MAX)]] {
+                for upper in [false, true] {
+                    let flat = index.blocks.partition_point(|m| m.last < key || (upper && m.last == key));
+                    assert_eq!(index.block_for(key, upper), flat, "key {k} upper {upper}");
+                }
+            }
+        }
         std::fs::remove_file(path).unwrap();
     }
     #[test]
