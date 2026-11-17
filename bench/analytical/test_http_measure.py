@@ -80,6 +80,33 @@ class HttpMeasurementTests(unittest.TestCase):
             self.assertFalse(report['ranking_eligible'])
             self.assertIsNone(report['measured_total_ns'])
 
+    def test_datatype_failure_does_not_erase_equivalent_result(self):
+        from test_count_equivalence import result
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);workload=root/'workload';(workload/'queries').mkdir(parents=True)
+            (workload/'queries/q.rq').write_text('query')
+            import hashlib
+            query={'file':'q.rq','template':1,'mix':1,'sha256':hashlib.sha256(b'query').hexdigest()}
+            (workload/'manifest.json').write_text(json.dumps({'source_data_sha256':'data','queries':[query]}))
+            evidence=root/'runtime.json';evidence.write_text(json.dumps({'system':'duckdb','endpoint':'http://localhost',
+                'source_or_image':'test','dataset_sha256':'data','threads':1,'memory_configuration':'test','cache_profile':'none'}))
+            reference=root/'refs';reference.mkdir();(reference/'q.json').write_text(json.dumps(result('12','integer')))
+            policy=root/'policy.json';policy.write_text('{}')
+            args=SimpleNamespace(runtime_evidence=evidence,workload=workload,numeric_inputs=root/'inputs',
+                numeric_freeze_sha256='freeze',out=root/'out',reference=reference,lock_owner='owner',timeout=1,
+                count_policy_freeze=policy,count_policy_sha256='policy-hash')
+            original=Path.read_text
+            def read(path,*args,**kwargs):
+                return 'owner' if str(path)=='/tmp/rdf-bench.lock/owner' else original(path,*args,**kwargs)
+            raw=json.dumps(result('12')).encode()
+            with patch('http_measure.Path.read_text',new=read),patch('http_measure.FrozenInputs',return_value=SimpleNamespace(freeze_sha256='freeze')),patch('count_equivalence.load_freeze',return_value='policy-hash'),patch('http_measure.exchange',return_value=(raw,{'elapsed_ns':100,'http_status':200,'bytes':len(raw),'transport_error':None})):
+                run(args)
+            report=json.loads((args.out/'measurements.json').read_text())
+            self.assertEqual(report['queries']['q.rq']['status'],'fail')
+            self.assertEqual(report['queries']['q.rq']['count_equivalence']['status'],'pass')
+            self.assertFalse(report['ranking_eligible']);self.assertIsNone(report['measured_total_ns'])
+            self.assertTrue(report['integer_value_equivalent_eligible']);self.assertEqual(report['integer_value_equivalent_total_ns'],100)
+
 
 if __name__ == '__main__':
     unittest.main()
