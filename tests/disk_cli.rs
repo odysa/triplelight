@@ -78,3 +78,14 @@ fn build_strategy_can_be_forced_and_matches_fast_path() {
     let bad=Command::new(exe).arg("build-disk").arg(&nt).arg(root.join("bad")).arg("--build-memory-mb=0").output().unwrap();assert!(!bad.status.success());
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn disk_build_help_explains_advisory_memory_and_worker_controls() {
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_rdfdb"))
+        .args(["build-disk", "--help"]).output().unwrap();
+    assert!(output.status.success());
+    let text = String::from_utf8(output.stdout).unwrap();
+    assert!(text.contains("--parallel-load=N"));
+    assert!(text.contains("--build-memory-mb=N"));
+    assert!(text.contains("not a process RSS limit"));
+}
