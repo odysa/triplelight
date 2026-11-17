@@ -98,6 +98,26 @@ impl Property {
     }
 }
 
+/// Exact tag coverage is global per predicate, not duplicated in each
+/// characteristic-set property. Approximate sketches remain unchanged.
+#[derive(Clone, Debug, Default)]
+struct PredicateSummary {
+    property: Property,
+    object_tags: [u64; 16],
+}
+impl std::ops::Deref for PredicateSummary {
+    type Target = Property;
+    fn deref(&self) -> &Property {
+        &self.property
+    }
+}
+impl PredicateSummary {
+    fn add(&mut self, triple: [TermId; 3]) {
+        self.property.add(triple);
+        self.object_tags[(triple[2].0 >> 60) as usize] += 1;
+    }
+}
+
 /// Subjects with exactly this set of outgoing predicates; no subject-ID table is retained.
 #[derive(Clone, Debug)]
 pub struct CharacteristicSet {
@@ -113,7 +133,7 @@ pub struct Stats {
     pub duplicate_triples_ignored: u64,
     pub characteristic_sets: Arc<Vec<CharacteristicSet>>,
     cs_lookup: Arc<HashMap<Vec<TermId>, usize>>,
-    predicates: Arc<BTreeMap<TermId, Property>>,
+    predicates: Arc<BTreeMap<TermId, PredicateSummary>>,
     objects: Distinct,
     equality: [u64; 8],
     exact_counts: HashMap<TriplePattern, u64>,
@@ -177,6 +197,24 @@ impl Stats {
         }
         Ok(builder.finish())
     }
+    /// Exact number of distinct triples whose object is outside integer tag 0xC
+    /// for this predicate in the complete input used to build these statistics.
+    /// Repeated object values in different triples count separately; duplicate
+    /// triples in the input do not.
+    /// This includes other inline kinds (e.g. 0xF strings), not only dictionary IDs.
+    /// Unknown predicates return None, never an absence/coverage certificate.
+    ///
+    /// This method has no live-snapshot parameter: callers MUST establish a valid
+    /// statistics scope first. In serve-store this means an empty delta and a
+    /// matching source-base identity that remains unique across generations.
+    /// A stale/different-snapshot Stats must not be supplied;
+    /// optional scoped Stats should be None there, retaining the fallback scan.
+    /// Clone and query-specific count refinement do not rebind this coverage.
+    pub fn exact_non_inline_objects(&self, predicate: TermId) -> Option<u64> {
+        let summary = self.predicates.get(&predicate)?;
+        summary.triples.checked_sub(summary.object_tags[0xC])
+    }
+
     /// Fill query-specific exact prefix counts without retaining the snapshot or copying triples.
     /// Repeated-variable patterns need equality filtering; their estimates remain synopsis-based.
     pub fn cache_pattern_counts(
@@ -524,7 +562,7 @@ impl Stats {
                     let domain = match i {
                         0 => property.map_or(self.subject_count, |p| p.subjects) as f64,
                         1 => self.predicates.len() as f64,
-                        _ => property.map_or_else(|| self.objects.count(), Property::ndv_objects),
+                        _ => property.map_or_else(|| self.objects.count(), |p| p.ndv_objects()),
                     }
                     .max(1.0);
                     result
@@ -567,7 +605,7 @@ impl Builder {
             .or_default();
         prop.add(t);
         if new_predicate_subject {
-            prop.subjects += 1;
+            prop.property.subjects += 1;
         }
         self.stats.triple_count += 1;
         self.stats.objects.add(t[2]);
@@ -687,6 +725,79 @@ pub fn q_error(estimate: f64, actual: u64) -> f64 {
 #[cfg(test)]
 mod sketch_tests {
     use super::*;
+    #[test]
+    fn exact_tag_coverage_counts_set_rows_and_keeps_predicates_separate() {
+        let p = TermId(101);
+        let q = TermId(102);
+        let mut triples: Vec<_> = (0..16u64)
+            .map(|tag| [TermId(1000 + tag), p, TermId((tag << 60) | 7)])
+            .collect();
+        triples.push(triples[12]); // duplicate C triple must not be counted again
+        triples.push([TermId(2000), p, TermId((4u64 << 60) | 7)]); // same object, different triple
+        triples.extend((0..5).map(|i| [TermId(3000 + i), q, TermId((0xCu64 << 60) | i)]));
+        triples.sort();
+        let stats = Stats::from_spo(triples).unwrap();
+        assert_eq!(stats.triple_count, 22);
+        assert_eq!(stats.duplicate_triples_ignored, 1);
+        assert_eq!(stats.exact_non_inline_objects(p), Some(16));
+        assert_eq!(stats.exact_non_inline_objects(q), Some(0));
+        assert_eq!(stats.exact_non_inline_objects(TermId(999)), None);
+        assert_eq!(Stats::default().exact_non_inline_objects(p), None);
+        for tag in 0..16 {
+            assert_eq!(
+                stats.predicates[&p].object_tags[tag],
+                if tag == 4 { 2 } else { 1 }
+            );
+        }
+        assert_eq!(
+            stats.predicates[&p].object_tags.iter().sum::<u64>(),
+            stats.predicates[&p].triples
+        );
+        let cloned = stats.clone();
+        assert!(Arc::ptr_eq(&stats.predicates, &cloned.predicates));
+        let prepared = cloned.for_planning(&[TriplePattern {
+            s: Slot::Var(0),
+            p: Slot::Const(p),
+            o: Slot::Var(1),
+        }]);
+        assert_eq!(prepared.exact_non_inline_objects(p), Some(16));
+        assert_eq!(prepared.exact_non_inline_objects(q), Some(0));
+    }
+
+    #[test]
+    fn rare_non_inline_object_is_not_lost_with_bounded_frequency_sketch() {
+        let p = TermId(91);
+        let rare = TermId((4u64 << 60) | 3);
+        let mut triples = vec![[TermId(1), p, rare]];
+        triples.extend((2..=1025).map(|i| [TermId(i), p, TermId((0xCu64 << 60) | i)]));
+        let stats = Stats::from_spo(triples).unwrap();
+        assert!(!stats.predicates[&p].frequencies.counts.contains_key(&rare));
+        assert!(stats.predicates[&p].frequencies.rounds > 0);
+        assert_eq!(stats.exact_non_inline_objects(p), Some(1));
+        assert_eq!(stats.predicates[&p].object_tags[0xC], 1024);
+    }
+
+    #[test]
+    fn coverage_does_not_change_existing_property_sketch_bits() {
+        let mut reference = Property::default();
+        let mut summary = PredicateSummary::default();
+        for i in 0..600u64 {
+            let triple = [
+                TermId(i + 1),
+                TermId(17),
+                TermId(((i % 16) << 60) | (1 + i % 257)),
+            ];
+            reference.add(triple);
+            summary.add(triple);
+        }
+        assert_eq!(reference.triples, summary.triples);
+        assert_eq!(reference.objects.registers, summary.objects.registers);
+        assert_eq!(reference.frequencies.counts, summary.frequencies.counts);
+        assert_eq!(reference.frequencies.rounds, summary.frequencies.rounds);
+        assert_eq!(reference.equality, summary.equality);
+        assert_eq!(summary.object_tags.iter().sum::<u64>(), summary.triples);
+    }
+
     #[test]
     fn compiled_star_subsets_preserve_estimate_bits() {
         for seed in 0..12u64 {
