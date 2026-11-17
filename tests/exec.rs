@@ -215,3 +215,116 @@ fn order_by_xsd_cast_and_casts() {
     assert_eq!(one("xsd:string(<http://ex/a>)"), "\"http://ex/a\"");
     assert_eq!(one("xsd:double(\"abc\")"), "-"); // cast error -> unbound
 }
+
+/// The ID-level hash aggregation agrees with the general GROUP BY evaluator on typing, errors, ties and DISTINCT.
+#[test]
+fn fast_group_matches_general_group() {
+    let data = r#"
+<http://ex/a> <http://ex/g> "x" .
+<http://ex/a> <http://ex/v> "1"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://ex/b> <http://ex/g> "x" .
+<http://ex/b> <http://ex/v> "2.5"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+<http://ex/c> <http://ex/g> "y" .
+<http://ex/c> <http://ex/v> "3"^^<http://www.w3.org/2001/XMLSchema#int> .
+<http://ex/d> <http://ex/g> "y" .
+<http://ex/d> <http://ex/v> "03"^^<http://www.w3.org/2001/XMLSchema#int> .
+<http://ex/e> <http://ex/g> "z" .
+<http://ex/e> <http://ex/v> "abc" .
+<http://ex/f> <http://ex/g> "z" .
+<http://ex/f> <http://ex/v> "1.0E0"^^<http://www.w3.org/2001/XMLSchema#double> .
+<http://ex/h> <http://ex/g> "w" .
+<http://ex/h> <http://ex/v> "9223372036854775807"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://ex/i> <http://ex/g> "w" .
+<http://ex/i> <http://ex/v> "1"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://ex/j> <http://ex/g> "x" .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let run = |q: &str| -> Vec<String> {
+        match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| format!("{r:?}")).collect(), r => panic!("{r:?}") }
+    };
+    let queries = [
+        "SELECT ?g (COUNT(*) AS ?n) (COUNT(?v) AS ?c) (SUM(?v) AS ?s) (AVG(?v) AS ?a) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } } GROUP BY ?g",
+        "SELECT ?g (MIN(?v) AS ?lo) (MAX(?v) AS ?hi) (SAMPLE(?v) AS ?sm) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } } GROUP BY ?g",
+        "SELECT (COUNT(DISTINCT ?g) AS ?n) (SUM(DISTINCT ?v) AS ?s) (COUNT(DISTINCT *) AS ?d) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } }",
+        "SELECT (COUNT(*) AS ?n) (SUM(?v) AS ?s) (AVG(?v) AS ?a) WHERE { ?x <http://ex/none> ?v }",
+        "SELECT ?g (AVG(?v) AS ?a) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } } GROUP BY ?g HAVING (COUNT(?v) > 1)",
+    ];
+    let fast: Vec<_> = queries.iter().map(|q| run(q)).collect();
+    // SAFETY: test-local toggle; other tests merely take the (equivalent) general path while it is set.
+    unsafe { std::env::set_var("RDFDB_LEGACY_GROUP", "1") };
+    let legacy: Vec<_> = queries.iter().map(|q| run(q)).collect();
+    unsafe { std::env::remove_var("RDFDB_LEGACY_GROUP") };
+    for ((q, f), l) in queries.iter().zip(&fast).zip(&legacy) { assert_eq!(f, l, "{q}"); }
+}
+
+/// xsd:float is its own type in numeric promotion (integer < decimal < float < double), not folded into double.
+#[test]
+fn float_promotion_and_aggregates() {
+    let data = r#"
+<http://ex/a> <http://ex/f> "1.5"^^<http://www.w3.org/2001/XMLSchema#float> .
+<http://ex/b> <http://ex/f> "2.25"^^<http://www.w3.org/2001/XMLSchema#float> .
+<http://ex/a> <http://ex/d> "1.0E0"^^<http://www.w3.org/2001/XMLSchema#double> .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let dt = |q: &str| -> String {
+        match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => match rows[0][0].as_ref().unwrap() {
+            oxrdf::Term::Literal(l) => l.datatype().as_str().rsplit('#').next().unwrap().to_string(), t => panic!("{t}") }, r => panic!("{r:?}") }
+    };
+    assert_eq!(dt("SELECT ?v WHERE { <http://ex/a> <http://ex/f> ?f BIND(?f + 1 AS ?v) }"), "float");
+    assert_eq!(dt("SELECT ?v WHERE { <http://ex/a> <http://ex/f> ?f BIND(?f + 1.5 AS ?v) }"), "float");
+    assert_eq!(dt("SELECT ?v WHERE { <http://ex/a> <http://ex/f> ?f . <http://ex/a> <http://ex/d> ?d BIND(?f * ?d AS ?v) }"), "double");
+    assert_eq!(dt("SELECT (SUM(?f) AS ?v) WHERE { ?x <http://ex/f> ?f }"), "float");
+    assert_eq!(dt("SELECT (AVG(?f) AS ?v) WHERE { ?x <http://ex/f> ?f }"), "float");
+    assert_eq!(dt("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ?v WHERE { BIND(xsd:float(\"0.1\") AS ?v) }"), "float");
+    // Lexical form as Jena writes computed floats (Java Float.toString).
+    match query(&s, "SELECT (SUM(?f) AS ?v) WHERE { ?x <http://ex/f> ?f }").unwrap() {
+        QueryResult::Solutions { rows, .. } => assert_eq!(rows[0][0].as_ref().unwrap().to_string(), "\"3.75\"^^<http://www.w3.org/2001/XMLSchema#float>"),
+        r => panic!("{r:?}"),
+    }
+    match query(&s, "SELECT ?v WHERE { <http://ex/a> <http://ex/f> ?f BIND(?f * 4 AS ?v) }").unwrap() {
+        QueryResult::Solutions { rows, .. } => assert_eq!(rows[0][0].as_ref().unwrap().to_string(), "\"6.0\"^^<http://www.w3.org/2001/XMLSchema#float>"),
+        r => panic!("{r:?}"),
+    }
+}
+
+/// Aggregate errors follow SPARQL 1.1 §18.5 (and Jena): an error or unbound value in the group makes
+/// SUM/AVG/MIN/MAX/GROUP_CONCAT unbound; COUNT(expr) counts non-error values; SAMPLE returns a non-error value.
+#[test]
+fn aggregate_errors_poison_like_jena() {
+    let data = r#"
+<urn:a> <urn:g> "x" .
+<urn:a> <urn:v> "1"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:b> <urn:g> "x" .
+<urn:c> <urn:g> "x" .
+<urn:c> <urn:v> "bad" .
+<urn:d> <urn:g> "y" .
+<urn:d> <urn:v> "2"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:e> <urn:g> "y" .
+<urn:f> <urn:g> "z" .
+<urn:f> <urn:v> "3"^^<http://www.w3.org/2001/XMLSchema#integer> .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let rows = |q: &str| -> Vec<Vec<String>> {
+        match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => {
+            let mut v: Vec<Vec<String>> = rows.into_iter().map(|r| r.into_iter().map(|t| t.map_or("-".into(), |t| t.to_string())).collect()).collect(); v.sort(); v }
+            r => panic!("{r:?}") }
+    };
+    let int = |n: i64| format!("\"{n}\"^^<http://www.w3.org/2001/XMLSchema#integer>");
+    let q1 = "SELECT ?g (SUM(?v) AS ?s) (COUNT(?v) AS ?c) (MIN(?v) AS ?mn) (MAX(?v) AS ?mx) (AVG(?v) AS ?a) WHERE { ?x <urn:g> ?g OPTIONAL { ?x <urn:v> ?v } } GROUP BY ?g";
+    let q2 = "SELECT ?g (SUM(?v*2) AS ?s) (COUNT(?v*2) AS ?c) (MIN(?v*2) AS ?mn) (GROUP_CONCAT(?v*2) AS ?gc) WHERE { ?x <urn:g> ?g OPTIONAL { ?x <urn:v> ?v } } GROUP BY ?g";
+    for legacy in [false, true] {
+        // SAFETY: test-local toggle; other tests just take the equivalent general path while set.
+        if legacy { unsafe { std::env::set_var("RDFDB_LEGACY_GROUP", "1") } }
+        assert_eq!(rows(q1), vec![
+            vec!["\"x\"".into(), "-".into(), int(2), "-".into(), "-".into(), "-".into()],
+            vec!["\"y\"".into(), "-".into(), int(1), "-".into(), "-".into(), "-".into()],
+            vec!["\"z\"".into(), int(3), int(1), int(3), int(3), "\"3.0\"^^<http://www.w3.org/2001/XMLSchema#decimal>".into()],
+        ], "legacy={legacy}");
+        assert_eq!(rows(q2), vec![
+            vec!["\"x\"".into(), "-".into(), int(1), "-".into(), "-".into()],
+            vec!["\"y\"".into(), "-".into(), int(1), "-".into(), "-".into()],
+            vec!["\"z\"".into(), int(6), int(1), int(6), "\"6\"".into()],
+        ], "legacy={legacy}");
+        if legacy { unsafe { std::env::remove_var("RDFDB_LEGACY_GROUP") } }
+    }
+}
