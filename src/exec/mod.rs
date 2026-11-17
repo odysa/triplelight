@@ -397,11 +397,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 if strict && has_error { return None }
                 match name {
                     AggregateFunction::Count => Some(Literal::from(vals.len() as i64).into()),
-                    AggregateFunction::Sum => vals.iter().try_fold(Term::from(Literal::from(0i64)), |a, b| expr::arith('+', &a, b)),
+                    // Same accumulation as the ID-level fast path (`expr::num_add`): float sums round once.
+                    AggregateFunction::Sum => vals.iter().try_fold(expr::Num::Int(0), |a, b| expr::num_add(a, expr::term_num(b)?)).map(|n| n.term()),
                     AggregateFunction::Avg => {
                         if vals.is_empty() { return Some(Literal::from(0i64).into()) }
-                        let s = vals.iter().try_fold(Term::from(Literal::from(0i64)), |a, b| expr::arith('+', &a, b))?;
-                        expr::arith('/', &s, &Literal::from(vals.len() as i64).into())
+                        let s = vals.iter().try_fold(expr::Num::Int(0), |a, b| expr::num_add(a, expr::term_num(b)?))?;
+                        expr::num_div_count(s, vals.len() as i64).map(|n| n.term())
                     }
                     AggregateFunction::Min => vals.into_iter().min_by(|a, b| expr::order_cmp(Some(a), Some(b))),
                     AggregateFunction::Max => vals.into_iter().max_by(|a, b| expr::order_cmp(Some(a), Some(b))),
