@@ -20,10 +20,6 @@ __all__ = ["Database", "Snapshot", "IRI", "BNode", "Literal", "Result",
            "RdfdbError", "SyntaxError", "UnsupportedError", "StorageError"]
 
 XSD = "http://www.w3.org/2001/XMLSchema#"
-_INT = {XSD + t for t in ("integer", "int", "long", "short", "byte", "nonNegativeInteger", "positiveInteger",
-                          "negativeInteger", "nonPositiveInteger", "unsignedInt", "unsignedLong", "unsignedShort",
-                          "unsignedByte")}
-_FLOAT = {XSD + "double", XSD + "float"}
 
 
 class IRI(str):
@@ -38,7 +34,9 @@ class BNode(str):
 
 @dataclass(frozen=True)
 class Literal:
-    """A literal that has no lossless native Python value (language-tagged, decimal, date, custom types)."""
+    """Any literal without a lossless native Python value: language-tagged, non-canonical or derived integer types
+    (xsd:int, "01"), decimal/double (whose lexical form a float would lose), dates, custom types. `value` is the
+    exact lexical form. Unbound variables are `None`, never an empty string."""
     value: str
     datatype: Optional[str] = None
     lang: Optional[str] = None
@@ -56,15 +54,16 @@ def _term(t):
         return Literal(value, None, lang)
     if datatype in (None, XSD + "string"):
         return value
-    try:
-        if datatype in _INT:
-            return int(value)
-        if datatype in _FLOAT:
-            return float(value)
-        if datatype == XSD + "boolean":
-            return value in ("true", "1")
-    except ValueError:
-        pass
+    # Native values only when lossless: the lexical form must be the canonical one, so "01"^^xsd:int and
+    # "1"^^xsd:int (distinct RDF terms) never both become the Python int 1. Everything else stays a Literal.
+    if datatype == XSD + "integer":
+        try:
+            if str(int(value)) == value:
+                return int(value)
+        except ValueError:
+            pass
+    elif datatype == XSD + "boolean" and value in ("true", "false"):
+        return value == "true"
     return Literal(value, datatype, None)
 
 
