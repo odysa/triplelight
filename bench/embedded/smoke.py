@@ -27,6 +27,9 @@ def run(owner):
 <urn:a> <urn:type> <urn:T1> .
 <urn:a> <urn:type> <urn:T2> .
 <urn:b> <urn:missing> "present only on b" .
+<urn:a> <urn:price> "10"^^<urn:USD> .
+<urn:a> <urn:price> "2"^^<urn:USD> .
+<urn:a> <urn:price> "1"^^<urn:USD> .
 ''')
         native.prepare(nt, root/'csv')
         native.load(root/'csv', root/'native', 64, 1)
@@ -42,21 +45,26 @@ def run(owner):
             ('SELECT ?e ?missing WHERE { <urn:a> <urn:empty> ?e OPTIONAL { <urn:a> <urn:missing> ?missing } }',
              ['e','missing'], [(term('literal',''),None)]),
             ('SELECT ?label WHERE { <urn:a> <urn:label> ?label . <urn:a> <urn:type> ?t }',
-             ['label'], [(term('literal','hi',lang='en'),)]*2)]
+             ['label'], [(term('literal','hi',lang='en'),)]*2),
+            ('PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ?price WHERE { <urn:a> <urn:price> ?price } ORDER BY xsd:double(str(?price))',
+             ['price'], [(term('literal',n,'urn:USD'),) for n in ('1','2','10')])]
         try:
             for query, variables, expected in cases:
                 wanted = signature(variables, expected)
                 result = db.query(query)
-                assert signature(result.vars, [tuple(python_term(t,rdfdb) for t in row) for row in result]) == wanted
+                object_rows = [tuple(python_term(t,rdfdb) for t in row) for row in result]
+                assert signature(result.vars, object_rows) == wanted
                 raw = json.loads(db.query_json(query))
-                assert signature(raw['head']['vars'], [tuple(json_term(row.get(v)) for v in variables)
-                                                       for row in raw['results']['bindings']]) == wanted
+                json_rows = [tuple(json_term(row.get(v)) for v in variables) for row in raw['results']['bindings']]
+                assert signature(raw['head']['vars'], json_rows) == wanted
                 rec = native.compile_bgp(query, manifest, resources)
                 result = conn.execute(rec['cypher']).get_as_arrow()
                 rows = [tuple(json_term(json.loads(v)) if v is not None else None for v in row)
-                        for row in zip(*(col.to_pylist() for col in result.columns))]
+                        for row in zip(*(result.column(v).to_pylist() for v in rec['vars']))]
                 assert signature(rec['vars'], rows) == wanted
-            print('PASS: 3 actual cross-engine fixtures, rdfdb objects + JSON + Ladybug Arrow')
+                if 'ORDER BY' in query:
+                    assert object_rows == expected and json_rows == expected and rows == expected
+            print('PASS: 4 actual cross-engine fixtures, rdfdb objects + JSON + Ladybug Arrow, including USD-cast order')
         finally:
             conn.close(); lb.close(); db.close()
 
