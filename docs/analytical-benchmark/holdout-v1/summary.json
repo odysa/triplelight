@@ -1,0 +1,217 @@
+{
+  "schema": "frozen-bi-correctness-summary-v1",
+  "cohort": {
+    "freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+    "all_manifest_queries": 60,
+    "exploratory_mix_indices": [
+      0
+    ],
+    "unseen_confirmatory_mix_indices": [
+      1,
+      2,
+      3
+    ],
+    "mode": "host correctness, not competitor timing",
+    "variants_source": "/private/tmp/rdf-jianlin-analytical25/holdout-variants.json"
+  },
+  "systems": {
+    "jena": {
+      "runtime_source": "Jena6.2.0 fresh pinned10M graph",
+      "all_queries": 60,
+      "confirmatory_queries": 45,
+      "confirmatory_pass": 45,
+      "exploratory_pass": 15,
+      "failures": [],
+      "numeric_by_template": {
+        "4": {
+          "observations": 30,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 15,
+          "max_absolute_error_exact": "2866884485225419/1640227188924821274624",
+          "max_relative_error_exact": "2866884485225419/1784742407627792711680",
+          "max_absolute_error_display": 1.7478581653707855e-06,
+          "max_relative_error_display": 1.6063295593653572e-06
+        },
+        "5": {
+          "observations": 215,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 3,
+          "max_absolute_error_exact": "891/704512",
+          "max_relative_error_exact": "891/3161799085",
+          "max_absolute_error_display": 0.0012647052143895349,
+          "max_relative_error_display": 2.818015870227251e-07
+        },
+        "6": {
+          "observations": 382,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 0,
+          "max_absolute_error_exact": "1/3145728",
+          "max_relative_error_exact": "1/26214400",
+          "max_absolute_error_display": 3.178914388020833e-07,
+          "max_relative_error_display": 3.814697265625e-08
+        }
+      },
+      "all_scheduled_queries_pass": true
+    },
+    "duckdb": {
+      "runtime_source": "DuckDB2.0.0 plain triples",
+      "all_queries": 60,
+      "confirmatory_queries": 45,
+      "confirmatory_pass": 45,
+      "exploratory_pass": 15,
+      "failures": [],
+      "numeric_by_template": {
+        "4": {
+          "observations": 30,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 1,
+          "max_absolute_error_exact": "260001734697397/2138486792820587757568",
+          "max_relative_error_exact": "37143104956771/328871977192637071360",
+          "max_absolute_error_display": 1.215821091672322e-07,
+          "max_relative_error_display": 1.1294092392376257e-07
+        },
+        "5": {
+          "observations": 215,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 0,
+          "max_absolute_error_exact": "1017/4194304",
+          "max_relative_error_exact": "61/1151031709",
+          "max_absolute_error_display": 0.00024247169494628906,
+          "max_relative_error_display": 5.299593358118338e-08
+        },
+        "6": {
+          "observations": 382,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 0,
+          "max_absolute_error_exact": "1/3145728",
+          "max_relative_error_exact": "1/26214400",
+          "max_absolute_error_display": 3.178914388020833e-07,
+          "max_relative_error_display": 3.814697265625e-08
+        }
+      },
+      "all_scheduled_queries_pass": true
+    },
+    "rdfdb-main": {
+      "runtime_source": "cb827db96c62ee440539eac31e5d73c771b2ceb1; rdfdb-main",
+      "all_queries": 60,
+      "confirmatory_queries": 45,
+      "confirmatory_pass": 45,
+      "exploratory_pass": 15,
+      "failures": [],
+      "numeric_by_template": {
+        "4": {
+          "observations": 30,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 11,
+          "max_absolute_error_exact": "19531347584208381/14507836762208828653568",
+          "max_relative_error_exact": "2170149731578709/1739043693926698450944",
+          "max_absolute_error_display": 1.3462618793096151e-06,
+          "max_relative_error_display": 1.2478983358253573e-06
+        },
+        "5": {
+          "observations": 215,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 3,
+          "max_absolute_error_exact": "29249/18350080",
+          "max_relative_error_exact": "29249/103243873471",
+          "max_absolute_error_display": 0.0015939440046037947,
+          "max_relative_error_display": 2.833001031118394e-07
+        },
+        "6": {
+          "observations": 382,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 0,
+          "max_absolute_error_exact": "1/3145728",
+          "max_relative_error_exact": "1/26214400",
+          "max_absolute_error_display": 3.178914388020833e-07,
+          "max_relative_error_display": 3.814697265625e-08
+        }
+      },
+      "all_scheduled_queries_pass": true
+    },
+    "rdfdb-main-legacy": {
+      "runtime_source": "cb827db96c62ee440539eac31e5d73c771b2ceb1; rdfdb-main-legacy",
+      "all_queries": 60,
+      "confirmatory_queries": 45,
+      "confirmatory_pass": 45,
+      "exploratory_pass": 15,
+      "failures": [],
+      "numeric_by_template": {
+        "4": {
+          "observations": 30,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 11,
+          "max_absolute_error_exact": "19531347584208381/14507836762208828653568",
+          "max_relative_error_exact": "2170149731578709/1739043693926698450944",
+          "max_absolute_error_display": 1.3462618793096151e-06,
+          "max_relative_error_display": 1.2478983358253573e-06
+        },
+        "5": {
+          "observations": 215,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 3,
+          "max_absolute_error_exact": "29249/18350080",
+          "max_relative_error_exact": "29249/103243873471",
+          "max_absolute_error_display": 0.0015939440046037947,
+          "max_relative_error_display": 2.833001031118394e-07
+        },
+        "6": {
+          "observations": 382,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 0,
+          "max_absolute_error_exact": "1/3145728",
+          "max_relative_error_exact": "1/26214400",
+          "max_absolute_error_display": 3.178914388020833e-07,
+          "max_relative_error_display": 3.814697265625e-08
+        }
+      },
+      "all_scheduled_queries_pass": true
+    },
+    "rdfdb-float64": {
+      "runtime_source": "66eaac723d3a5362281260ebbec4f324848bb097; rdfdb-float64",
+      "all_queries": 60,
+      "confirmatory_queries": 45,
+      "confirmatory_pass": 45,
+      "exploratory_pass": 15,
+      "failures": [],
+      "numeric_by_template": {
+        "4": {
+          "observations": 30,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 1,
+          "max_absolute_error_exact": "260001734697397/2138486792820587757568",
+          "max_relative_error_exact": "37143104956771/328871977192637071360",
+          "max_absolute_error_display": 1.215821091672322e-07,
+          "max_relative_error_display": 1.1294092392376257e-07
+        },
+        "5": {
+          "observations": 215,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 0,
+          "max_absolute_error_exact": "1017/4194304",
+          "max_relative_error_exact": "61/1151031709",
+          "max_absolute_error_display": 0.00024247169494628906,
+          "max_relative_error_display": 5.299593358118338e-08
+        },
+        "6": {
+          "observations": 382,
+          "zero_ideal_values": 0,
+          "max_ulps_vs_rounded_exact_ideal": 0,
+          "max_absolute_error_exact": "1/3145728",
+          "max_relative_error_exact": "1/26214400",
+          "max_absolute_error_display": 3.178914388020833e-07,
+          "max_relative_error_display": 3.814697265625e-08
+        }
+      },
+      "all_scheduled_queries_pass": true
+    }
+  },
+  "speed_score": null,
+  "mix0_prior_results_reclassified": false,
+  "main_new_vs_general": {
+    "comparison": "exact RDF-term bags, including numeric lexical forms",
+    "queries": 60,
+    "mismatches": []
+  },
+  "all_scheduled_queries_pass": true
+}
