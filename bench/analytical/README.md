@@ -5,7 +5,9 @@ LUBM/WatDiv aggregate cases are prepared. The corrected engine passes normal,
 actual cutoff, invalid numeric and empty/unbound fixtures against Jena; the
 plain-triples DuckDB translation passes all requested BI fixture cases. See the
 [qualification report](../../docs/analytical-benchmark/README.md).
-Large-data comparisons have not run; there is no BI performance score.
+All 45 confirmatory 10M instances pass under the frozen exact-anchor rule for
+Jena, DuckDB, both main rdfdb grouping paths and a separate wider accumulator.
+Matched-VM competitor timing remains pending; there is no BI performance score.
 
 The goal is an embedded analytical RDF engine. The earlier 20 BSBM exploration
 queries are a different workload. BSBM's author describes BI as GROUP BY/COUNT
