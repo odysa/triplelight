@@ -110,3 +110,31 @@ fn statistics_are_not_used_for_modified_or_other_generations() {
     assert!(matches!(old.query(ASK).unwrap(), QueryResult::Boolean(false)));
     drop(old); drop(db); std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn concurrent_load_and_delete_have_serializable_outcomes() {
+    let dir = temp("mixed-writers");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let db = Database::open(dir.join("db")).unwrap();
+    for i in 0..20 {
+        let source = dir.join(format!("{i}.nt"));
+        let triple = format!("<http://example/s{i}> <http://example/p> <http://example/o>");
+        std::fs::write(&source, format!("{triple} .\n")).unwrap();
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let inserted = db.clone();
+        let deleted = db.clone();
+        let b = barrier.clone();
+        let loader = std::thread::spawn(move || { b.wait(); inserted.load(source).unwrap() });
+        let b = barrier.clone();
+        let pattern = triple.clone();
+        let updater = std::thread::spawn(move || {
+            b.wait(); deleted.update(&format!("DELETE WHERE {{ {pattern} }}")).unwrap()
+        });
+        assert_eq!(loader.join().unwrap(), 1);
+        let deleted_count = updater.join().unwrap();
+        let present = ask(&db, &format!("ASK {{ {triple} }}"));
+        assert!(matches!((deleted_count, present), (0, true) | (1, false)), "delete returned {deleted_count}, present={present}");
+    }
+    drop(db); std::fs::remove_dir_all(dir).unwrap();
+}
