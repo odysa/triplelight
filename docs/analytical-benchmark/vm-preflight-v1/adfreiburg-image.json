@@ -1,0 +1,10 @@
+{
+  "Id": "sha256:e5555bafa0d0ba40260309fd7773948408ec68aea6fff8133cb169b98b0136ec",
+  "RepoDigests": [
+    "adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cba4e894ca1ba8117cef6727"
+  ],
+  "Architecture": "arm64",
+  "Os": "linux",
+  "Created": "2026-11-14T19:51:48.648479408Z",
+  "Size": 520956324
+}
