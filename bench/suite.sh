@@ -17,7 +17,7 @@ NT=$T/$D.nt
 for sys in "$@"; do
   case $sys in
     rdfdb)        cmd=(../target/release/rdfdb serve $NT 7979); url=http://127.0.0.1:7979/sparql ;; # statistics on (default)
-    rdfdb-disk)   [ -d $T/rdfdb-disk-$D ] || { /usr/bin/time -p ../target/release/rdfdb build-disk $NT $T/rdfdb-disk-$D 2>&1 | grep real > $OUT/$sys.load.log; }
+    rdfdb-disk)   [ -d $T/rdfdb-disk-$D ] || { /usr/bin/time -lp ../target/release/rdfdb build-disk $NT $T/rdfdb-disk-$D --build-external 2>&1 | grep -E "^real|maximum resident" > $OUT/$sys.load.log; git -C .. rev-parse --short HEAD >> $OUT/$sys.load.log; }
                   cmd=(../target/release/rdfdb serve $T/rdfdb-disk-$D 7979 --disk); url=http://127.0.0.1:7979/sparql ;;
     rdfdb-nostats) cmd=(../target/release/rdfdb serve $NT 7979 --no-stats); url=http://127.0.0.1:7979/sparql ;;
     rdfdb-parallel) cmd=(../target/release/rdfdb serve $NT 7979 --parallel-load=4); url=http://127.0.0.1:7979/sparql ;;
@@ -36,7 +36,7 @@ for sys in "$@"; do
                   # Result cache off (-c/-e/-E 1MB) so repeated runs measure execution, not cache hits.
                   cmd=(docker run --rm --name bench-$sys -p 7001:7001 -v $PWD/$T:/data -w /data/qlever-$D --entrypoint /qlever/qlever-server adfreiburg/qlever:latest -i $D -p 7001 -m 12G -c 1MB -e 1MB -E 1MB); url=http://127.0.0.1:7001/ ;;
     rdfdb-vm)     cmd=(docker run --rm --name bench-$sys -p 7979:7979 -e RDFDB_HOST=0.0.0.0 -v $PWD/$T:/data -v $PWD/../target-linux:/bin-rdfdb --platform linux/arm64 debian:trixie-slim /bin-rdfdb/release/rdfdb serve /data/$D.nt 7979); url=http://127.0.0.1:7979/sparql ;;
-    rdfdb-disk-vm) [ -d $T/rdfdb-diskvm-$D ] || { /usr/bin/time -p docker run --rm -v $PWD/$T:/data -v $PWD/../target-linux:/bin-rdfdb --platform linux/arm64 debian:trixie-slim /bin-rdfdb/release/rdfdb build-disk /data/$D.nt /data/rdfdb-diskvm-$D 2>&1 | grep real > $OUT/$sys.load.log; }
+    rdfdb-disk-vm) [ -d $T/rdfdb-diskvm-$D ] || { /usr/bin/time -p docker run --rm -v $PWD/$T:/data -v $PWD/../target-linux:/bin-rdfdb --platform linux/arm64 debian:trixie-slim /bin-rdfdb/release/rdfdb build-disk /data/$D.nt /data/rdfdb-diskvm-$D --build-external 2>&1 | grep real > $OUT/$sys.load.log; }
                   cmd=(docker run --rm --name bench-$sys -p 7979:7979 -e RDFDB_HOST=0.0.0.0 -v $PWD/$T:/data -v $PWD/../target-linux:/bin-rdfdb --platform linux/arm64 debian:trixie-slim /bin-rdfdb/release/rdfdb serve /data/rdfdb-diskvm-$D 7979 --disk); url=http://127.0.0.1:7979/sparql ;;
     virtuoso)     [ -f $T/virtuoso-$D/virtuoso.db ] || ./virtuoso.sh $D load > $OUT/$sys.load.log 2>&1
                   cmd=(./virtuoso.sh $D serve); url=http://127.0.0.1:8890/sparql ;;
@@ -49,6 +49,10 @@ for sys in "$@"; do
   start=$(date +%s)
   until curl -s -o /dev/null --data-urlencode 'query=ASK{?s ?p ?o}' $url; do sleep 2; kill -0 $pid 2>/dev/null || break; done
   echo "$sys ready after $(( $(date +%s) - start ))s" | tee -a $OUT/$sys.server.log
+  # rdfdb builds optimizer statistics on a background thread: don't time queries while that build competes for CPU.
+  if grep -q "building in background" $OUT/$sys.server.log; then
+    until grep -qE "statistics (ready|failed)" $OUT/$sys.server.log; do sleep 2; kill -0 $pid 2>/dev/null || break; done
+  fi
   python3 -I run.py $QDIR $sys=$url > $OUT/$sys.txt 2>&1
   f=$(ls -t results_${QDIR}_*.json | head -1); mv "$f" $OUT/$sys.json
   if docker ps -q -f name=bench-$sys | grep -q .; then
