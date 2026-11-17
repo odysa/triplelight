@@ -86,3 +86,35 @@ def test_pandas_and_polars_preserve_struct_values(tmp_path):
     assert pandas_frame.to_dict("records") == table.to_pylist()
     assert polars_frame.to_arrow().to_pylist() == table.to_pylist()
     db.close()
+
+
+def test_native_columns_and_identity_fallback(tmp_path):
+    import decimal
+    db = rdfdb.Database(tmp_path / "db")
+    integer = db.query_arrow('SELECT ?x WHERE { VALUES ?x { "01"^^<http://www.w3.org/2001/XMLSchema#integer> "2"^^<http://www.w3.org/2001/XMLSchema#integer> } }', types="native").read_all()
+    assert pa.types.is_int64(integer.schema.field("x").type)
+    assert sorted(integer.column("x").to_pylist()) == [1, 2]
+    exact = db.query_arrow('SELECT ?x WHERE { VALUES ?x { "01"^^<http://www.w3.org/2001/XMLSchema#integer> } }').read_all()
+    assert exact.column("x").to_pylist()[0]["value"] == "01"
+    decimals = db.query_arrow('SELECT ?x WHERE { VALUES ?x { "999.1"^^<http://www.w3.org/2001/XMLSchema#decimal> "0.001"^^<http://www.w3.org/2001/XMLSchema#decimal> } }', types="native").read_all()
+    assert pa.types.is_decimal128(decimals.schema.field("x").type)
+    assert sorted(decimals.column("x").to_pylist()) == [decimal.Decimal("0.001"), decimal.Decimal("999.100")]
+    floats = db.query_arrow('SELECT ?x WHERE { VALUES ?x { "1.5"^^<http://www.w3.org/2001/XMLSchema#float> "-0"^^<http://www.w3.org/2001/XMLSchema#float> } }', types="native").read_all()
+    assert pa.types.is_float32(floats.schema.field("x").type)
+    mixed = db.query_arrow('SELECT ?x WHERE { VALUES ?x { "1"^^<http://www.w3.org/2001/XMLSchema#integer> <urn:o> } }', types="native").read_all()
+    assert pa.types.is_struct(mixed.schema.field("x").type)
+    out_of_range = db.query_arrow('SELECT ?x WHERE { VALUES ?x { "999999999999999999999999999999999999999"^^<http://www.w3.org/2001/XMLSchema#integer> } }', types="native").read_all()
+    assert pa.types.is_struct(out_of_range.schema.field("x").type)
+    with pytest.raises(ValueError): db.query_arrow('SELECT ?s WHERE { ?s ?p ?o }', types="bad")
+    db.close()
+
+
+def test_native_date_and_datetime_fallback(tmp_path):
+    db = rdfdb.Database(tmp_path / "db")
+    date = db.query_arrow('SELECT ?x WHERE { VALUES ?x { "2024-02-29"^^<http://www.w3.org/2001/XMLSchema#date> } }', types="native").read_all()
+    assert pa.types.is_date32(date.schema.field("x").type)
+    timestamp = db.query_arrow('SELECT ?x WHERE { VALUES ?x { "2024-02-29T12:01:02Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> } }', types="native").read_all()
+    assert pa.types.is_timestamp(timestamp.schema.field("x").type)
+    mixed = db.query_arrow('SELECT ?x WHERE { VALUES ?x { "2024-02-29T12:01:02Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> "2024-02-29T12:01:02"^^<http://www.w3.org/2001/XMLSchema#dateTime> } }', types="native").read_all()
+    assert pa.types.is_struct(mixed.schema.field("x").type)
+    db.close()
