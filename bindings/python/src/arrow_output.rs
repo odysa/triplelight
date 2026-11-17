@@ -80,10 +80,12 @@ pub fn to_batches(snapshot: &ReadSnapshot, result: QueryResult) -> Result<(Arc<S
 }
 
 /// Arrow's C stream interface transfers buffer ownership to PyArrow without copying the Arrow buffers.
-pub fn to_reader(py: Python<'_>, snapshot: Arc<ReadSnapshot>, sparql: &str) -> PyResult<PyObject> {
+pub fn to_reader(py: Python<'_>, snapshot: Arc<ReadSnapshot>, sparql: &str, native: bool) -> PyResult<PyObject> {
     let (schema, batches) = py.allow_threads(|| {
         let result = snapshot.query_ids(sparql).map_err(crate::err)?;
-        to_batches(&snapshot, result).map_err(crate::err)
+        let (schema, batches) = to_batches(&snapshot, result).map_err(crate::err)?;
+        if native { crate::native_arrow::convert(schema, batches).map_err(crate::RdfdbError::new_err) }
+        else { Ok((schema, batches)) }
     })?;
     let reader: Box<dyn RecordBatchReader + Send> = Box::new(RecordBatchIterator::new(batches.into_iter().map(Ok), schema));
     reader.into_pyarrow(py)

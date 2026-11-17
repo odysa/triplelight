@@ -142,13 +142,37 @@ def test_native_invalid_boundaries_and_unbound(tmp_path):
     assert pa.types.is_struct(column(["1e2"], "decimal").type)
     assert pa.types.is_struct(column(["1" * 39 + ".1"], "decimal").type)
     assert pa.types.is_struct(column(["1.2e999999999999999999999999"], "decimal").type)
-    vals = column(["INF", "-INF", "NaN", "-0"], "float").to_pylist()
+    vals = column(["INF", "-INF", "NaN", "-0", "+INF"], "float").to_pylist()
     assert math.isinf(vals[0]) and math.isinf(vals[1]) and math.isnan(vals[2])
-    assert math.copysign(1.0, vals[3]) < 0
+    assert math.copysign(1.0, vals[3]) < 0 and vals[4] == math.inf
     assert pa.types.is_struct(column(["2024-01-01T00:00:00.1234567Z"], "dateTime").type)
     assert pa.types.is_struct(column(["2024-01-01T00:00:00+14:30"], "dateTime").type)
     assert pa.types.is_struct(column(["2023-02-29"], "date").type)
     table = db.query_arrow('SELECT ?x WHERE { VALUES ?x { "2"^^<http://www.w3.org/2001/XMLSchema#integer> UNDEF } }', types="native").read_all()
     assert pa.types.is_int64(table.column("x").type)
     assert table.column("x").to_pylist() == [2, None]
+    db.close()
+
+
+def test_native_matches_python_reference(tmp_path):
+    from native_reference import _native_arrow
+    db = rdfdb.Database(tmp_path / "db")
+    xsd = "http://www.w3.org/2001/XMLSchema#"
+    cases = [
+        ("integer", ["+1", "-0", "9223372036854775807"]),
+        ("integer", ["9223372036854775808"]),
+        ("decimal", ["999.1", "0.001", "-0.000"]),
+        ("decimal", ["9" * 39]),
+        ("float", ["+INF", "-INF", "-0", "1.5"]),
+        ("date", ["2024-02-29"]),
+        ("dateTime", ["2024-02-29T12:01:02Z", "2024-02-29T12:01:02+01:00"]),
+        ("dateTime", ["2024-02-29T12:01:02Z", "2024-02-29T12:01:02"]),
+        ("int", ["1", "01"]),
+    ]
+    for datatype, values in cases:
+        terms = " ".join(f'"{v}"^^<{xsd}{datatype}>' for v in values)
+        query = f'SELECT ?x WHERE {{ VALUES ?x {{ {terms} }} }}'
+        expected = _native_arrow(db.query_arrow(query)).read_all()
+        actual = db.query_arrow(query, types="native").read_all()
+        assert actual.equals(expected), (datatype, values, actual, expected)
     db.close()
