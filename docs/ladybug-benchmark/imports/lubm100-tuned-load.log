@@ -1,0 +1,19 @@
+{"load_seconds": 19.079867917113006, "resource_nodes": 2181789, "rdf_type_triples": 2310694, "literal_triples": 4450766, "resource_triples": 6647935, "unique_triples": 13409395, "memory_mb": 10240, "threads": 4}
+       19.26 real        31.41 user         2.76 sys
+          1180975104  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               97326  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                5494  voluntary context switches
+               25158  involuntary context switches
+        148566505216  instructions retired
+         45109908767  cycles elapsed
+           965346960  peak memory footprint

@@ -1,0 +1,25 @@
+{
+  "lubm100": {
+    "engine_files": {
+      "lubm100.db": 930635776
+    },
+    "engine_file_bytes": 930635776
+  },
+  "bsbm10": {
+    "engine_files": {
+      "bsbm10.db": 1610395648
+    },
+    "engine_file_bytes": 1610395648
+  },
+  "lubm100-tuned": {
+    "engine_files": {
+      "lubm100-tuned.db": 679772160
+    },
+    "engine_file_bytes": 679772160
+  },
+  "auxiliary_files": {
+    "/private/tmp/rdf-jianlin-ladybug18/lubm100-csv/resource-ids.json": 234500263,
+    "/private/tmp/rdf-jianlin-ladybug18/bsbm10-csv/resource-ids.json": 193762043,
+    "/private/tmp/rdf-jianlin-ladybug18/lubm100-tuned-csv/resource-masks.u64": 26429792
+  }
+}
