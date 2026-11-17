@@ -4,6 +4,20 @@ There is no full BI performance score yet. The corrected candidate passes the
 normal, cutoff, invalid-input and empty/unbound fixtures against Jena. Large-data
 qualification, matched competitor execution and resource measurement remain ahead.
 
+## Numeric validator frozen for the next cohort
+
+The exact-anchor policy is now frozen before mix 1–3 candidate outputs, under
+SHA-256 `a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244`. All 19 tests pass, including arithmetic bounds,
+datatype/entity/count rejection, tamper detection and retaining failed reference
+outputs. Independent Jena counts agree on all 31 parameter cases and 22,381 input
+entity groups. Exact rational inputs cover all 32 AVG-derived instances.
+
+See [numeric-freeze-v1/](numeric-freeze-v1/) and the
+[validation rule](NUMERIC_VALIDATION_PROPOSAL.md). This enables a named future
+cohort; it does not reclassify mix 0 or supply BI speed numbers. Current
+workload_check.py activates it only with an explicit matching input bundle and
+freeze hash; its default remains the original four-ULP checker.
+
 ## First real-parameter cohort: partial, numeric gate not satisfied
 
 Fifteen official parameter instances (mix 0) completed serially on Jena,
