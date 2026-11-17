@@ -217,6 +217,11 @@ type MemoEntry = Option<(u64, u64, u64, Arc<Vec<[TermId; 3]>>)>;
 thread_local! {
     static BLOCK_MEMO: std::cell::RefCell<[MemoEntry; MEMO_SLOTS]> = const { std::cell::RefCell::new([const { None }; MEMO_SLOTS]) };
 }
+#[cfg(test)]
+thread_local! {
+    /// Test-only: runs inside `clear_cache` between emptying the shards and bumping the epoch.
+    static CLEAR_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce(&DiskIndex)>>> = const { std::cell::RefCell::new(None) };
+}
 /// Unique per opened index, so a thread's block memo can never confuse two indexes (no address reuse).
 static NEXT_INSTANCE: AtomicU64 = AtomicU64::new(1);
 pub struct DiskIndex {
@@ -356,6 +361,8 @@ impl DiskIndex {
             cache.entries.clear();
             cache.clock.clear();
         }
+        #[cfg(test)]
+        if let Some(hook) = CLEAR_HOOK.with(|h| h.borrow_mut().take()) { hook(self) }
         // Then invalidate every thread's memo entries (they are keyed by epoch). Order matters under concurrent
         // reads: a reader memoizes under the epoch it loaded *before* its lookup. A reader that saw the old epoch
         // can only memoize under the old epoch (invalid after this bump), whatever it fetched. A reader that sees
@@ -614,6 +621,28 @@ mod tests {
         assert!(index.get(300).is_ok(), "memoized/cached read before invalidation");
         index.clear_cache().unwrap();
         assert!(index.get(300).is_err(), "corruption must be detected after clear_cache");
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn read_between_shard_clear_and_epoch_bump_leaves_no_usable_memo() {
+        // The race window: a reader runs after the shards are emptied but before the epoch bump, while the file is
+        // already corrupt. Whatever it gets, nothing it memoizes may survive the bump.
+        let path = std::env::temp_dir().join(format!("rdf-memo-race-{}", std::process::id()));
+        let rows: Vec<_> = (1..=700).map(|i| [TermId(i), TermId(1), TermId(2)]).collect();
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::open(&path).unwrap();
+        assert!(index.get(300).is_ok());
+        let mut bad = bytes.clone();
+        bad[index.blocks[1].offset as usize + 3] ^= 0xff;
+        std::fs::write(&path, &bad).unwrap();
+        CLEAR_HOOK.with(|h| *h.borrow_mut() = Some(Box::new(|ix: &DiskIndex| {
+            let _ = ix.get(300); // old-epoch reader inside the window (may be served from its old memo)
+            let _ = ix.get(301);
+        })));
+        index.clear_cache().unwrap();
+        assert!(index.get(300).is_err(), "a block memoized inside the clear window must not survive the epoch bump");
         std::fs::remove_file(path).unwrap();
     }
     #[test]
