@@ -13,7 +13,7 @@ use std::{
 };
 const TERM_MAGIC: &[u8; 8] = b"RDFDTM01";
 const ID_MAGIC: &[u8; 8] = b"RDFDID01";
-const LIMIT: usize = 16 * 1024 * 1024 + 8192;
+const LIMIT: usize = 16 * 1024 * 1024 + 8193;
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(ErrorKind::InvalidData, s)
 }
@@ -28,6 +28,9 @@ impl Order {
             Self::Term => TERM_MAGIC,
             Self::Id => ID_MAGIC,
         }
+    }
+    fn magic_v2(self) -> &'static [u8; 8] {
+        match self { Self::Term => b"RDFDTM02", Self::Id => b"RDFDID02" }
     }
     fn key(self, id: TermId, term: &Term) -> Vec<u8> {
         match self {
@@ -64,6 +67,7 @@ pub(super) struct LazyIndex {
     order: Order,
     entries: Vec<Meta>,
     identity: [u8; 32],
+    compressed: bool,
     cache: Arc<DictionaryCache>,
 }
 fn exact(file: &File, bytes: &mut [u8], offset: u64) -> io::Result<()> {
@@ -111,9 +115,7 @@ impl LazyIndex {
         }
         let mut header = [0; 8];
         exact(&file, &mut header, 0)?;
-        if &header != order.magic() {
-            return Err(bad("bad dictionary index magic"));
-        }
+        let compressed = if &header == order.magic() { false } else if &header == order.magic_v2() { true } else { return Err(bad("bad dictionary index magic")); };
         let mut footer = [0; 40];
         exact(&file, &mut footer, len - 40)?;
         let dlen = u64::from_le_bytes(footer[..8].try_into().unwrap());
@@ -191,6 +193,7 @@ impl LazyIndex {
             order,
             entries,
             identity,
+            compressed,
             cache,
         })
     }
@@ -219,7 +222,7 @@ impl LazyIndex {
         if Sha256::digest(&bytes).as_slice() != meta.hash {
             return Err(bad("dictionary block checksum mismatch"));
         }
-        let rows = term_block_codec::decode(&bytes)?;
+        let rows = if self.compressed { term_block_codec::decode_v2(&bytes)? } else { term_block_codec::decode(&bytes)? };
         let keys: Vec<_> = rows.iter().map(|(id, t)| self.order.key(*id, t)).collect();
         if keys.windows(2).any(|w| w[0] >= w[1])
             || keys.last() != Some(&meta.last)
@@ -355,9 +358,17 @@ pub(super) fn write_index(
     order: Order,
     rows: impl Iterator<Item = io::Result<(TermId, Term)>>,
 ) -> io::Result<()> {
+    write_index_format(path, order, rows, true)
+}
+fn write_index_format(
+    path: &Path,
+    order: Order,
+    rows: impl Iterator<Item = io::Result<(TermId, Term)>>,
+    compressed: bool,
+) -> io::Result<()> {
     let mut out =
         std::io::BufWriter::new(OpenOptions::new().write(true).create_new(true).open(path)?);
-    let header = order.magic();
+    let header = if compressed { order.magic_v2() } else { order.magic() };
     out.write_all(header)?;
     let mut meta = Vec::new();
     let mut block = Vec::new();
@@ -370,11 +381,12 @@ pub(super) fn write_index(
         order: Order,
         meta: &mut Vec<(Vec<u8>, u64, usize, [u8; 32])>,
         offset: &mut u64,
+        compressed: bool,
     ) -> io::Result<()> {
         if block.is_empty() {
             return Ok(());
         }
-        let bytes = term_block_codec::encode(block)?;
+        let bytes = if compressed { term_block_codec::encode_v2(block)? } else { term_block_codec::encode(block)? };
         let (id, t) = block.last().unwrap();
         let key = order.key(*id, t);
         out.write_all(&bytes)?;
@@ -395,14 +407,14 @@ pub(super) fn write_index(
         if !block.is_empty()
             && (block.len() == 256 || bytes_estimate.saturating_add(estimate) > LIMIT)
         {
-            flush(&mut out, &mut block, order, &mut meta, &mut offset)?;
+            flush(&mut out, &mut block, order, &mut meta, &mut offset, compressed)?;
             bytes_estimate = 0;
         }
         bytes_estimate = bytes_estimate.saturating_add(estimate);
         previous = Some(key);
         block.push((id, t));
     }
-    flush(&mut out, &mut block, order, &mut meta, &mut offset)?;
+    flush(&mut out, &mut block, order, &mut meta, &mut offset, compressed)?;
     let mut dir = Vec::new();
     let count = u32::try_from(meta.len()).map_err(|_| bad("too many dictionary blocks"))?;
     dir.extend_from_slice(&count.to_le_bytes());
@@ -450,6 +462,13 @@ mod tests {
         entries.sort_unstable_by_key(|(_, t)| t.to_string());
         write_index(&term_path, Order::Term, entries.clone().into_iter().map(Ok)).unwrap();
         let shared = DictionaryCache::new();
+        let legacy_path = dir.join("id-legacy");
+        let mut legacy_entries = entries.clone();
+        legacy_entries.sort_unstable_by_key(|(id, _)| id.0);
+        write_index_format(&legacy_path, Order::Id, legacy_entries.into_iter().map(Ok), false).unwrap();
+        let legacy = LazyIndex::open(&legacy_path, Order::Id).unwrap();
+        legacy.with_id(TermId(1), &mut |term| assert_eq!(term.into_owned(), Term::from(NamedNode::new("urn:t0000").unwrap()))).unwrap();
+        drop(legacy);
         let ids = LazyIndex::open_shared(&id_path, Order::Id, Arc::clone(&shared)).unwrap();
         let terms = LazyIndex::open_shared(&term_path, Order::Term, shared).unwrap();
         for (id, term) in &entries {

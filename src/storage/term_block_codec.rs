@@ -42,6 +42,33 @@ pub(super) fn encode(entries: &[(TermId, Term)]) -> io::Result<Vec<u8>> {
     }
     Ok(result)
 }
+/// Version-2 payload: tagged raw or LZ4-compressed version-1 bytes.
+pub(super) fn encode_v2(entries: &[(TermId, Term)]) -> io::Result<Vec<u8>> {
+    let plain = encode(entries)?;
+    let compressed = lz4_flex::block::compress_prepend_size(&plain);
+    let mut result = Vec::new();
+    if compressed.len() < plain.len() {
+        result.push(1);
+        result.extend_from_slice(&compressed);
+    } else {
+        result.push(0);
+        result.extend_from_slice(&plain);
+    }
+    Ok(result)
+}
+pub(super) fn decode_v2(data: &[u8]) -> io::Result<Vec<(TermId, Term)>> {
+    match data.split_first() {
+        Some((0, plain)) => decode(plain),
+        Some((1, compressed)) if compressed.len() >= 4 => {
+            let expected = u32::from_le_bytes(compressed[..4].try_into().unwrap()) as usize;
+            if expected > MAX_BLOCK || expected < 2 { return Err(bad("invalid decompressed term block size")); }
+            let plain = lz4_flex::block::decompress_size_prepended(compressed).map_err(|_| bad("invalid compressed term block"))?;
+            if plain.len() != expected { return Err(bad("decompressed term block size mismatch")); }
+            decode(&plain)
+        }
+        _ => Err(bad("invalid compressed term block tag")),
+    }
+}
 /// Strictly decode a complete bounded block; no unchecked parsing of disk bytes.
 pub(super) fn decode(data: &[u8]) -> io::Result<Vec<(TermId, Term)>> {
     if data.len() > MAX_BLOCK {
@@ -98,6 +125,22 @@ mod tests {
     use super::*;
     use oxrdf::{BlankNode, Literal, NamedNode};
     #[test]
+    fn compressed_and_raw_payloads_reject_corruption() {
+        let repeated: Vec<_> = (1..=200).map(|i| {
+            (TermId(i), NamedNode::new(format!("urn:prefix:{}:{i:04}", "repeated".repeat(20))).unwrap().into())
+        }).collect();
+        let packed = encode_v2(&repeated).unwrap();
+        assert_eq!(packed[0], 1);
+        assert_eq!(decode_v2(&packed).unwrap(), repeated);
+        assert!(decode_v2(&packed[..packed.len()-1]).is_err());
+        assert!(decode_v2(&[1, 255, 255, 255, 255]).is_err());
+        assert!(decode_v2(&[0, 1]).is_err());
+        assert!(decode_v2(&[255]).is_err());
+        let tiny = vec![(TermId(1), NamedNode::new("urn:x").unwrap().into())];
+        let raw = encode_v2(&tiny).unwrap();
+        assert_eq!(decode_v2(&raw).unwrap(), tiny);
+    }
+    #[test]
     fn terms_roundtrip_and_malformed_blocks_fail() {
         let terms = vec![
             (TermId(1), NamedNode::new("urn:é").unwrap().into()),
@@ -113,6 +156,10 @@ mod tests {
                 Literal::new_simple_literal("hello world").into(),
             ),
         ];
+        let packed = encode_v2(&terms).unwrap();
+        assert_eq!(decode_v2(&packed).unwrap(), terms);
+        assert!(decode_v2(&[1, 255, 255, 255, 255]).is_err());
+        assert!(decode_v2(&[2]).is_err());
         let bytes = encode(&terms).unwrap();
         assert_eq!(decode(&bytes).unwrap(), terms);
         for n in 0..bytes.len() {
