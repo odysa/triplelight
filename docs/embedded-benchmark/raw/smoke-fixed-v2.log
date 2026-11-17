@@ -1,0 +1,6 @@
+fixed binding /private/tmp/rdf-jianlin-embedded22/python-fixed/rdfdb/__init__.py
+SO sha256 898940920addbc19743b4b06714787d0766415e55ffa34790b91da1c61de05e1
+{"mapping": "rdf-terms-per-predicate-v1", "input": "/private<tmpdir>/T/rdf-jianlin-embedded-smoke-3yli0hcz/fixture.nt", "input_sha256": "1f714ac761c2f053b5111ccabbf37a1d5be02f448db2a63ee7252fa99d06ef6e", "counts": {"source_lines": 11, "unique_triples": 11, "resource_nodes": 4, "literal_nodes": 9}, "predicates": {"urn:n": "P0", "urn:empty": "P1", "urn:label": "P2", "urn:type": "P3", "urn:missing": "P4", "urn:price": "P5"}, "relationships": [{"table": "P3R", "target": "Resource", "rows": 2}, {"table": "P1L", "target": "Literal", "rows": 1}, {"table": "P0L", "target": "Literal", "rows": 3}, {"table": "P2L", "target": "Literal", "rows": 1}, {"table": "P5L", "target": "Literal", "rows": 3}, {"table": "P4L", "target": "Literal", "rows": 1}], "prepare_seconds": 0.029620290966704488}
+{"load_seconds": 0.604552041972056, "observed": {"Resource": 4, "Literal": 9, "relationships": 11}, "memory_mb": 64, "threads": 1}
+disk build strategy: in-memory (estimated 3x input; not an RSS limit)
+PASS: 4 actual cross-engine fixtures, rdfdb objects + JSON + Ladybug Arrow, including USD-cast order
