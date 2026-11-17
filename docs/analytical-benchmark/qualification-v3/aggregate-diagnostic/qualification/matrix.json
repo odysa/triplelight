@@ -1,0 +1,56 @@
+{
+  "schema": "jena-rdfdb-aggregate-diagnostic-v1",
+  "rdfdb_source": "d2618c6c9c6d51541d9298e8db88f131f5ab2eb6 rebuilt isolated binding",
+  "data_sha256": "d9b4766a48f55de2163fa75c6a8a781cbb3d3fdaba5f3dd20eedbab2b8fa4e02",
+  "cases": {
+    "mixed-bound-unbound": {
+      "query_sha256": "7631b96ce15cef59bdfc3c424940d33e119cebf1bf0906931bdc40b460ddbcd8",
+      "jena_rows": 1,
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 0,
+        "rows": 1
+      },
+      "status": "pass"
+    },
+    "all-unbound": {
+      "query_sha256": "8e6ac89698c7fb4585c0c75d25fea02ddc021e7cb58f840b5b45c5828f5bf053",
+      "jena_rows": 1,
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 0,
+        "rows": 1
+      },
+      "status": "pass"
+    },
+    "empty-global": {
+      "query_sha256": "0714232b76a28f7fb5b49ab093f655f27522c4db35439f6d0bcb9ad548a08bc0",
+      "jena_rows": 1,
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 0,
+        "rows": 1
+      },
+      "status": "pass"
+    },
+    "empty-explicit-group": {
+      "query_sha256": "0dbac5fe96629ca770e5e5b2ac831275157f57a3b5ac0e8fb2eb61a68bcd5554",
+      "jena_rows": 0,
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 0,
+        "rows": 0
+      },
+      "status": "pass"
+    }
+  },
+  "complete": true
+}
