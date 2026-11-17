@@ -1,0 +1,32 @@
+{
+  "git_head": "cdba2e65065231a670887a6068c3026db254dede",
+  "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+  "cpu": "Apple M1 Max",
+  "ladybug_version": "0.22.3",
+  "ladybug_module": "<agent-workspace>/scratch/ladybug18-venv/lib/python3.14/site-packages/ladybug/__init__.py",
+  "native_libraries": {
+    "<agent-workspace>/scratch/ladybug18-venv/lib/python3.14/site-packages/ladybug/_lbug.cpython-314-darwin.so": "245304c1174f007e742c124674f475f8cfec3cf622b52c319dc5aad52db12f5a"
+  },
+  "sources": {
+    "bench/ladybug/native.py": "b2fec18a3ed4bbb13946fc08f20bb93f7c8cc7ce61a807d921375e9baeb6e240",
+    "bench/ladybug/compare.py": "7c90b0b760065a2bf2b883b48abcc541c1e41ac7d21fe14cabe15955fa7a3c1a",
+    "bench/ladybug/test_native.py": "dde81f3bc858201f282fb026ef210e58edb9df8579947fbfd10a1e55092de820"
+  },
+  "queries": {
+    "bench/lubm/q2.rq": "81f77d4efa35958af31bf2497dfc8f6dc6b2100f0ac68c7e002bb9be67235518",
+    "bench/lubm/q6.rq": "be2e63abeec8f772456a34daa26a84b60220c2888322f80f19c16eab032692bf",
+    "bench/lubm/q7.rq": "3e44a6d8f3f377864b9a214e5aa03346d9d326177263563c848f910439fd8593",
+    "bench/lubm/q3.rq": "2d4afd9b1ac576799802ea7443cc3485d51acfbf40e83c95873d9f911ad506f3",
+    "bench/lubm/q8.rq": "7e3df100c7c6c8b54335c87cfda28c37f788a13b05b9a682bf62e08af9d528c2",
+    "bench/lubm/q12.rq": "f8d511dfcc12a159815e0ec8dd3064180f2912357c0e53b3ab0206ba97a63a2d",
+    "bench/lubm/q13.rq": "0cd049c1ed656826681ecfe2fd42b3ec634bf7c7f358ea6d0194a018887095ee",
+    "bench/lubm/q9.rq": "d46095941b1cc187ac15b0add755bc2fff7976a400588fa704927500dc04e935",
+    "bench/lubm/q10.rq": "66925ec35dbef68720b9cd5c75607f2191da732002835f484532e0cf69724609",
+    "bench/lubm/q14.rq": "be2e63abeec8f772456a34daa26a84b60220c2888322f80f19c16eab032692bf",
+    "bench/lubm/q11.rq": "674230abb4afea794c3f68d66465d1c6f7ffc57e79a6914d61ab9f12e03b1f13",
+    "bench/lubm/q4.rq": "d36993eef571b86332ac9c6b0184ba8de61f6364c23e5f15efb7ef609daad4e3",
+    "bench/lubm/q1.rq": "66925ec35dbef68720b9cd5c75607f2191da732002835f484532e0cf69724609",
+    "bench/lubm/q5.rq": "a6282275c37325e36382c5a3858600ba1bc8aa1c5b6818f79bbc82864db6d2fd"
+  },
+  "rdfdb_binary_sha256": "48d3f913a12ac4e9c922eb4aca446fdf957f1715d13a25bbada2f69f4a288fb7"
+}
