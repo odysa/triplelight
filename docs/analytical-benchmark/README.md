@@ -1,5 +1,14 @@
 # Analytical RDF benchmark: qualification in progress
 
+Current result: all 45 confirmatory 10M BI instances pass for Jena, DuckDB,
+both main rdfdb grouping paths and the separate wider-accumulator candidate
+under the preregistered exact-anchor rule. The candidate improves q4/q5
+accuracy; the original exploratory failures remain preserved. See
+[holdout-v1/](holdout-v1/) for complete outputs, immutable identities and
+accuracy details. This is correctness evidence; matched-VM BI performance and
+100M measurements remain pending.
+
+
 There is no full BI performance score yet. The corrected candidate passes the
 normal, cutoff, invalid-input and empty/unbound fixtures against Jena. Large-data
 qualification, matched competitor execution and resource measurement remain ahead.
