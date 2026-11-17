@@ -193,6 +193,8 @@ pub trait BaseFormat: Send + Sync {
     /// Same contract as `write`, creating the first base from an N-Triples file (or empty).
     fn import(&self, dir: &Path, ntriples: Option<&Path>) -> std::io::Result<()>;
     fn open(&self, dir: &Path) -> std::io::Result<Arc<dyn Snapshot>>;
+    /// Optional independent cache view; None uses the existing snapshot.
+    fn open_for_compaction(&self, _dir: &Path, _budget_mb: usize) -> std::io::Result<Option<Arc<dyn Snapshot>>> { Ok(None) }
 }
 
 /// Base = `base.nt` in the directory, loaded into a `MemorySnapshot`.
@@ -243,6 +245,7 @@ pub struct Store {
     writer: Mutex<()>,
     /// Set if a WAL write or fsync failed: in-memory and durable state may differ, so further writes are refused.
     poisoned: std::sync::atomic::AtomicBool,
+    compaction_cache_mb: std::sync::atomic::AtomicUsize,
 }
 
 struct Pending { latest: Arc<Overlay>, buf: String, seq: u64 }
@@ -293,7 +296,15 @@ impl Store {
             wal: Mutex::new(Wal { file: wal, durable: 0 }),
             writer: Mutex::new(()),
             poisoned: std::sync::atomic::AtomicBool::new(false),
+            compaction_cache_mb: std::sync::atomic::AtomicUsize::new(4096),
         })
+    }
+
+    /// Per-compaction source cache target, not a process RSS limit.
+    pub fn set_compaction_cache_mb(&self, budget_mb: usize) -> std::io::Result<()> {
+        if budget_mb == 0 { return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "compaction cache budget must be nonzero")); }
+        self.compaction_cache_mb.store(budget_mb, std::sync::atomic::Ordering::Relaxed);
+        Ok(())
     }
 
     /// The current read snapshot.
@@ -374,7 +385,12 @@ impl Store {
         let new_dir = self.dir.join(format!("base-{next}"));
         // Not named by CURRENT, so at most an abandoned earlier attempt in this process.
         if new_dir.exists() { std::fs::remove_dir_all(&new_dir)?; }
-        self.format.write(&new_dir, &*cur)?;
+        let budget = self.compaction_cache_mb.load(std::sync::atomic::Ordering::Relaxed);
+        let source = match self.format.open_for_compaction(&self.dir.join(format!("base-{}", *generation)), budget)? {
+            Some(base) => Arc::new(Overlay { base, delta: Arc::clone(&cur.delta) }),
+            None => cur.clone(),
+        };
+        self.format.write(&new_dir, &*source)?;
         // Open (and so validate) the new base before committing to it: if this fails, CURRENT, the WAL and the
         // in-memory state all still describe the old base.
         let base = self.format.open(&new_dir)?;

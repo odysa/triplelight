@@ -221,6 +221,9 @@ pub struct DiskIndex {
 }
 impl DiskIndex {
     pub fn open(path: impl AsRef<Path>) -> io::Result<Self> {
+        Self::open_with_budget(path, cache_budget_mb())
+    }
+    pub(super) fn open_with_budget(path: impl AsRef<Path>, budget_mb: usize) -> io::Result<Self> {
         let trace_slot = match path.as_ref().file_name().and_then(|v| v.to_str()) {
             Some("spo") => Some(0),
             Some("sop") => Some(1),
@@ -323,7 +326,7 @@ impl DiskIndex {
                     })
                 })
                 .collect(),
-            shard_capacity: cache_budget_mb()
+            shard_capacity: budget_mb
                 .saturating_mul(1024 * 1024)
                 .checked_div(9 * 16 * BLOCK_ROWS as usize * ROW as usize)
                 .unwrap_or(1)

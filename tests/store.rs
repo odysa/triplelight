@@ -265,3 +265,32 @@ fn overlay_scan_propagates_base_errors() {
     assert!(err.to_string().contains("planted read failure"));
     assert!(!dest.join("MANIFEST").exists());
 }
+
+#[test]
+fn compaction_uses_configured_budget_and_preserves_reader() {
+    use rdfdb::storage::Snapshot;
+    use rdfdb::store::{BaseFormat, NTriplesBase};
+    use std::{path::Path, sync::{Arc, atomic::{AtomicUsize, Ordering}}};
+    struct RecordingFormat { inner: NTriplesBase, seen: Arc<AtomicUsize> }
+    impl BaseFormat for RecordingFormat {
+        fn write(&self, d: &Path, s: &dyn Snapshot) -> std::io::Result<()> { self.inner.write(d,s) }
+        fn import(&self, d: &Path, n: Option<&Path>) -> std::io::Result<()> { self.inner.import(d,n) }
+        fn open(&self, d: &Path) -> std::io::Result<Arc<dyn Snapshot>> { self.inner.open(d) }
+        fn open_for_compaction(&self, _: &Path, b: usize) -> std::io::Result<Option<Arc<dyn Snapshot>>> { self.seen.store(b, Ordering::SeqCst); Ok(None) }
+    }
+    let dir = tmp("compact-budget");
+    let seen = Arc::new(AtomicUsize::new(0));
+    let store = Store::open_with(&dir, None, Box::new(RecordingFormat { inner: NTriplesBase { workers: 1 }, seen: seen.clone() })).unwrap();
+    assert!(store.set_compaction_cache_mb(0).is_err());
+    store.commit(&[(Change::Insert, t(1, 0, 2))]).unwrap();
+    let before = store.snapshot();
+    store.compact().unwrap();
+    assert_eq!(seen.load(Ordering::SeqCst), 4096);
+    assert_eq!(answers(&*before, "ASK { <http://ex/1> <http://ex/100> <http://ex/2> }"), ["true"]);
+    store.set_compaction_cache_mb(32).unwrap();
+    store.commit(&[(Change::Insert, t(3, 0, 4))]).unwrap();
+    store.compact().unwrap();
+    assert_eq!(seen.load(Ordering::SeqCst), 32);
+    assert_eq!(answers(&*before, "ASK { <http://ex/3> <http://ex/100> <http://ex/4> }"), ["false"]);
+    drop(before); drop(store); std::fs::remove_dir_all(dir).unwrap();
+}

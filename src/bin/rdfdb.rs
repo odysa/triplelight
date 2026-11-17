@@ -118,6 +118,15 @@ fn answer<S: rdfdb::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>) ->
 /// (SPARQL 1.1 protocol: `update=` form field or `application/sparql-update` body). An update is acknowledged only
 /// after its WAL record is fsynced.
 fn serve_store(args: &[String]) {
+    let mut compaction_budget = 4096usize;
+    for (i, arg) in args.iter().enumerate() {
+        let value = arg.strip_prefix("--compaction-cache-mb=").or_else(|| (arg == "--compaction-cache-mb").then(|| args.get(i + 1).map(String::as_str)).flatten());
+        if arg == "--compaction-cache-mb" && value.is_none() { eprintln!("--compaction-cache-mb requires a positive integer"); std::process::exit(2); }
+        if let Some(value) = value {
+            let n = value.parse::<usize>().ok().filter(|n| *n > 0).unwrap_or_else(|| { eprintln!("--compaction-cache-mb requires a positive integer"); std::process::exit(2) });
+            compaction_budget = n;
+        }
+    }
     let init = args.iter().position(|a| a == "--init").map(|i| std::path::PathBuf::from(&args[i + 1]));
     let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
     let t = Instant::now();
@@ -126,6 +135,7 @@ fn serve_store(args: &[String]) {
     } else {
         rdfdb::store::Store::open(&args[2], init.as_deref(), workers)
     }.expect("open store");
+    store.set_compaction_cache_mb(compaction_budget).expect("compaction cache budget");
     eprintln!("opened {} in {:.2}s ({} pending changes replayed)", args[2], t.elapsed().as_secs_f64(), store.snapshot().delta_len());
     // Statistics describe the base; they are used only while there are no pending changes (they could otherwise
     // report a predicate as absent that an update added). Compaction rebuilds them.

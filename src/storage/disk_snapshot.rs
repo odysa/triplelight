@@ -111,6 +111,9 @@ impl crate::store::BaseFormat for DiskBase {
     fn open(&self, dir: &Path) -> io::Result<std::sync::Arc<dyn Snapshot>> {
         Ok(std::sync::Arc::new(DiskSnapshot::open(dir)?))
     }
+    fn open_for_compaction(&self, dir: &Path, budget_mb: usize) -> io::Result<Option<std::sync::Arc<dyn Snapshot>>> {
+        Ok(Some(std::sync::Arc::new(DiskSnapshot::open_with_budget(dir, budget_mb)?)))
+    }
 }
 enum DictionaryBackend {
     Legacy {
@@ -163,6 +166,9 @@ impl DiskSnapshot {
     /// Checks the dictionary, index lengths and checksummed block directories. Data blocks are checked on cache miss.
     /// Files must remain immutable after opening; previously cached blocks are not re-read automatically.
     pub fn open(dir: impl AsRef<Path>) -> io::Result<Self> {
+        Self::open_with_budget(dir, super::disk_index::cache_budget_mb())
+    }
+    pub(super) fn open_with_budget(dir: impl AsRef<Path>, budget_mb: usize) -> io::Result<Self> {
         let dir = dir.as_ref();
         let mut manifest = BufReader::new(File::open(dir.join("MANIFEST"))?);
         let mut magic = [0; 8];
@@ -182,7 +188,7 @@ impl DiskSnapshot {
         }
         let (dictionary, index_offset) = if lazy {
             use super::lazy_dictionary::{DictionaryCache, LazyIndex, Order};
-            let cache = DictionaryCache::new();
+            let cache = DictionaryCache::with_budget(budget_mb);
             let by_term = LazyIndex::open_shared(&dir.join("dictionary.term"), Order::Term, std::sync::Arc::clone(&cache))?;
             let by_id = LazyIndex::open_shared(&dir.join("dictionary.id"), Order::Id, cache)?;
             if by_term.identity() != expected[0] || by_id.identity() != expected[1] {
@@ -198,7 +204,7 @@ impl DiskSnapshot {
         };
         let mut indexes = Vec::new();
         for (i, name) in FILES[1..].iter().enumerate() {
-            let index = DiskIndex::open(dir.join(name))?;
+            let index = DiskIndex::open_with_budget(dir.join(name), budget_mb)?;
             if index.identity() != expected[i + index_offset] {
                 return Err(bad("index directory checksum mismatch"));
             }

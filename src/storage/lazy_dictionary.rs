@@ -53,8 +53,11 @@ pub(super) struct DictionaryCache {
 }
 impl DictionaryCache {
     pub(super) fn new() -> Arc<Self> {
+        Self::with_budget(super::disk_index::cache_budget_mb())
+    }
+    pub(super) fn with_budget(budget_mb: usize) -> Arc<Self> {
         Arc::new(Self {
-            shard_budget: super::disk_index::cache_budget_mb().saturating_mul(1024 * 1024) / 3 / 16,
+            shard_budget: budget_mb.saturating_mul(1024 * 1024) / 3 / 16,
             shards: (0..16).map(|_| Mutex::new(Cache { entries: HashMap::new(), order: VecDeque::new(), used: 0 })).collect(),
         })
     }
