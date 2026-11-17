@@ -85,12 +85,62 @@ class Result:
         return f"Result({self.kind}, {len(self)} rows, vars={self.vars})"
 
 
+def _atomic_export(reader, destination, write):
+    """Write to a temporary sibling and publish only after successful completion."""
+    import os
+    import tempfile
+    path = os.fspath(destination)
+    directory = os.path.dirname(os.path.abspath(path))
+    fd, temporary = tempfile.mkstemp(prefix=".rdfdb-export-", dir=directory)
+    os.close(fd)
+    try:
+        write(reader, temporary)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def _write_parquet(reader, path):
+    import pyarrow.parquet as pq
+    with pq.ParquetWriter(path, reader.schema) as writer:
+        for batch in reader:
+            writer.write_batch(batch)
+
+
+def _write_csv(reader, path):
+    import csv
+    names = reader.schema.names
+    with open(path, "w", encoding="utf-8", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow([f"{name}.{field}" for name in names for field in ("kind", "value", "datatype", "language")])
+        for batch in reader:
+            # kind is empty exactly for unbound, so empty lexical literals stay distinct.
+            columns = [batch.column(i).to_pylist() for i in range(batch.num_columns)]
+            for row_number in range(batch.num_rows):
+                fields = []
+                for column in columns:
+                    value = column[row_number]
+                    fields.extend(("", "", "", "") if value is None else
+                                  (value["kind"], value["value"], value["datatype"] or "", value["language"] or ""))
+                writer.writerow(fields)
+
+
 class Snapshot:
     """An immutable view of the database; unaffected by later updates."""
 
     def __init__(self, raw): self._raw = raw
     def query(self, sparql: str) -> Result: return Result(self._raw.query(sparql))
     def query_json(self, sparql: str) -> str: return self._raw.query_json(sparql)
+    def query_arrow(self, sparql: str):
+        """Return a PyArrow RecordBatchReader with lossless RDF-term struct columns."""
+        return self._raw.query_arrow(sparql)
+    def export_parquet(self, sparql, path):
+        """Export SELECT results as identity-preserving Arrow structs in Parquet."""
+        _atomic_export(self.query_arrow(sparql), path, _write_parquet)
+    def export_csv(self, sparql, path):
+        """Export SELECT results using four columns per variable; empty kind means unbound."""
+        _atomic_export(self.query_arrow(sparql), path, _write_csv)
     def __enter__(self): return self
     def __exit__(self, *exc): return False
 
@@ -111,6 +161,18 @@ class Database:
     def query_json(self, sparql: str) -> str:
         """SPARQL 1.1 Query Results JSON as a string; the fastest path for large results."""
         return self._db.query_json(sparql)
+
+    def query_arrow(self, sparql: str):
+        """Return a PyArrow RecordBatchReader. SELECT only; rows are currently materialized first."""
+        return self._db.query_arrow(sparql)
+
+    def export_parquet(self, sparql, path):
+        """Export SELECT results as identity-preserving Arrow structs in Parquet."""
+        _atomic_export(self.query_arrow(sparql), path, _write_parquet)
+
+    def export_csv(self, sparql, path):
+        """Export SELECT results using four columns per variable; empty kind means unbound."""
+        _atomic_export(self.query_arrow(sparql), path, _write_csv)
 
     def load(self, path) -> int:
         """Atomically import an N-Triples (.nt) or Turtle (.ttl) file. Parses the whole file in memory."""

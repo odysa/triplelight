@@ -1,5 +1,6 @@
 //! Python bindings for the embedded rdfdb database (`import rdfdb`).
 //! Terms are converted to Python values in Rust (see `to_py`). Query and update calls release the GIL.
+mod arrow_output;
 use oxrdf::Term;
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
@@ -103,6 +104,12 @@ impl PyDatabase {
         let r = py.allow_threads(|| db.query(sparql)).map_err(err)?;
         convert(py, r)
     }
+    /// Return an Arrow RecordBatchReader for SELECT; PyArrow is required.
+    fn query_arrow(&self, py: Python<'_>, sparql: &str) -> PyResult<PyObject> {
+        let db = Arc::clone(&self.db);
+        let result = py.allow_threads(|| db.query(sparql)).map_err(err)?;
+        arrow_output::to_reader(py, result)
+    }
     fn update(&self, py: Python<'_>, sparql: &str) -> PyResult<usize> {
         let db = Arc::clone(&self.db);
         py.allow_threads(|| db.update(sparql)).map_err(err)
@@ -134,6 +141,11 @@ impl PySnapshot {
         let s = Arc::clone(&self.snap);
         let r = py.allow_threads(|| s.query(sparql)).map_err(err)?;
         convert(py, r)
+    }
+    fn query_arrow(&self, py: Python<'_>, sparql: &str) -> PyResult<PyObject> {
+        let snap = Arc::clone(&self.snap);
+        let result = py.allow_threads(|| snap.query(sparql)).map_err(err)?;
+        arrow_output::to_reader(py, result)
     }
     fn query_json(&self, py: Python<'_>, sparql: &str) -> PyResult<String> {
         let s = Arc::clone(&self.snap);

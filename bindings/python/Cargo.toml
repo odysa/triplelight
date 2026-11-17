@@ -8,6 +8,10 @@ name = "_rdfdb"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }
+pyo3 = { version = "0.24.1", features = ["extension-module", "abi3-py39"] }
 rdfdb = { path = "../.." }
 oxrdf = "0.3.5"
+
+arrow-array = "55.2.0"
+arrow-schema = "55.2.0"
+arrow-pyarrow = "55.2.0"

@@ -8,6 +8,9 @@ version = "0.1.0"
 description = "Embedded persistent RDF database with SPARQL (Rust core)"
 requires-python = ">=3.9"
 
+[project.optional-dependencies]
+arrow = ["pyarrow>=15"]
+
 [tool.maturin]
 python-source = "python"
 module-name = "rdfdb._rdfdb"
