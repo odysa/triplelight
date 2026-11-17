@@ -463,6 +463,21 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             applied[k] = true;
             let mut kept = Vec::with_capacity(rows.len());
             let mut row: Row = vec![UNBOUND; w];
+            if let Some((col, c, eq)) = self.id_equality(e) {
+                // `?x = <iri>` / `?x != <iri>` (also sameTerm) on stored terms is ID (in)equality: the dictionary maps
+                // each IRI/blank node to one ID, and an IRI never equals a literal or another IRI. Scratch IDs
+                // (computed terms) take the general path.
+                let mut kept = Vec::with_capacity(rows.len());
+                for r in rows.chunks_exact(w) {
+                    let x = r[col];
+                    let keep = if x == UNBOUND { false } else if x.0 >> 60 == 0xe {
+                        row.copy_from_slice(r); self.ebv(e, &row)
+                    } else { (Some(x) == c) == eq };
+                    if keep { kept.extend_from_slice(r) }
+                }
+                *rows = kept;
+                continue;
+            }
             let fast = expr::NumFilter::compile(e, &self.vars);
             let mut memo: HashMap<TermId, Option<expr::Num>> = HashMap::new();
             let mut val = |id: TermId| *memo.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
@@ -475,6 +490,22 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             }
             *rows = kept;
         }
+    }
+
+    /// `(column, constant's stored ID, is_equality)` for `?x = <iri>`, `?x != <iri>`, `sameTerm(?x, <iri>)` and their
+    /// mirrored forms, where the constant is an IRI (blank nodes cannot appear as query constants).
+    fn id_equality(&self, e: &Expression) -> Option<(usize, Option<TermId>, bool)> {
+        let (a, b, eq) = match e {
+            Expression::Equal(a, b) | Expression::SameTerm(a, b) => (a, b, true),
+            Expression::Not(inner) => match inner.as_ref() { Expression::Equal(a, b) => (a, b, false), _ => return None },
+            _ => return None,
+        };
+        let (v, n) = match (a.as_ref(), b.as_ref()) {
+            (Expression::Variable(v), Expression::NamedNode(n)) | (Expression::NamedNode(n), Expression::Variable(v)) => (v, n),
+            _ => return None,
+        };
+        let col = *self.vars.get(v.as_str())?;
+        Some((col, self.lookup(&Term::NamedNode(n.clone())), eq))
     }
 
     /// Leapfrog variable order from the optimizer's cost model (task #5), when statistics are available.
