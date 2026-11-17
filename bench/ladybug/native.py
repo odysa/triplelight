@@ -267,7 +267,9 @@ def compile_bgp(query, manifest, resources):
         if dm:expr=dm[1];desc=True
         elif cast:expr=cast[1]
         if not re.fullmatch(r'\?\w+',expr):raise ValueError('Unsupported ORDER BY')
-        order=[('v_'+expr[1:]+('.num' if cast else '.value'),desc)]
+        # STR operates on lexical text even for custom literal datatypes, e.g.
+        # BSBM's USD. Their numeric-only projection is deliberately null.
+        order=[(('CAST(v_'+expr[1:]+'.value AS DOUBLE)' if cast else 'v_'+expr[1:]+'.value'),desc)]
         tail=tail[:ordermatch.start()]+tail[ordermatch.end():]
     limit=re.search(r'LIMIT\s+(\d+)',tail,re.I);offset=re.search(r'OFFSET\s+(\d+)',tail,re.I)
     extra=re.sub(r'(?:LIMIT|OFFSET)\s+\d+','',tail,flags=re.I).strip()
