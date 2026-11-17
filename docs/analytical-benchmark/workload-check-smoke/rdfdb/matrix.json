@@ -1,0 +1,217 @@
+{
+  "schema": "actual-bi-parameter-qualification-v1",
+  "system": "rdfdb",
+  "runtime_source": "d2618c6 isolated rebuilt Python binding",
+  "dataset_sha256": "0af0e53fce9630589ca9c4fbb36577fea5918a3dfec5d7777802cf14403c1e98",
+  "manifest_sha256": "aa38a6bffc914d021699427242f2d7331beb7a940ea9c4e894136aafa6982679",
+  "requested_files": [
+    "q1.rq",
+    "q2.rq",
+    "q3.rq",
+    "q4.rq",
+    "q5.rq",
+    "q6.rq",
+    "q7.rq",
+    "q8.rq"
+  ],
+  "partial_workload": false,
+  "queries": {
+    "q1.rq": {
+      "template": 1,
+      "sha256": "eb08de08cf875997c839175565532fb6682e58aec6723a6485a77cd62a61f24b",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 2
+      },
+      "status": "pass",
+      "rows": 2,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "reviewCount",
+            true
+          ],
+          [
+            "productType",
+            false
+          ]
+        ]
+      }
+    },
+    "q2.rq": {
+      "template": 2,
+      "sha256": "5a7e8d58c783616caa527f568f72003b0358697f1186e3993f299e4885c9ade8",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 1
+      },
+      "status": "pass",
+      "rows": 1,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      }
+    },
+    "q3.rq": {
+      "template": 3,
+      "sha256": "6fe911302cbff84a3f4553e2a7ac23e2f5df2aee1bb753bfb8cf7a754462cd92",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 3
+      },
+      "status": "pass",
+      "rows": 3,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "ratio",
+            true
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      }
+    },
+    "q4.rq": {
+      "template": 4,
+      "sha256": "9d4df8002ba396e3ffe435aafd74d6f0e94fdc892c68f386b9bb49f1d4da17fd",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 2
+      },
+      "status": "pass",
+      "rows": 2,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "priceRatio",
+            true
+          ],
+          [
+            "feature",
+            false
+          ]
+        ]
+      }
+    },
+    "q5.rq": {
+      "template": 5,
+      "sha256": "190f77025da6b743a7edb4369df942785472ded18630b53ec7b925bc8cbea7fb",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 3
+      },
+      "status": "pass",
+      "rows": 3,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "nrOfReviews",
+            true
+          ],
+          [
+            "country",
+            false
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      }
+    },
+    "q6.rq": {
+      "template": 6,
+      "sha256": "915294b37e9d5fe01a0e76c902de71283ab7c821a16cd8a21b541776986404ef",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 3
+      },
+      "status": "pass",
+      "rows": 3,
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      }
+    },
+    "q7.rq": {
+      "template": 7,
+      "sha256": "2ddcb4c056d821e1bf6b9f46b73b7159b7adc78943379d6b8296048254aef83d",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": false,
+          "rows": 1
+        }
+      },
+      "status": "pass",
+      "rows": 1,
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      }
+    },
+    "q8.rq": {
+      "template": 8,
+      "sha256": "1f34138160cc72c4467701d1d07bd6e2fa40dd7f1013bb64cf82b2a1da4e2527",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 2
+      },
+      "status": "pass",
+      "rows": 2,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "cheapExpensiveRatio",
+            true
+          ],
+          [
+            "vendor",
+            false
+          ]
+        ]
+      }
+    }
+  },
+  "complete": true,
+  "runtime_package": "/private/tmp/rdf-jianlin-analytical25/aggregate-fixed-source/bindings/python/python/rdfdb/__init__.py",
+  "all_requested_pass": true
+}
