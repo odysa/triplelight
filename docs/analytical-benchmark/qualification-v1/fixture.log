@@ -1,0 +1,9 @@
+disk build strategy: in-memory (estimated 3x input; not an RSS limit)
+q1 pass pass
+q2 pass pass
+q3 pass fail
+q4 pass fail
+q5 pass fail
+q6 pass fail
+q7 pass pass
+q8 pass fail
