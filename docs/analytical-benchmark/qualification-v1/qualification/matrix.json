@@ -1,0 +1,381 @@
+{
+  "schema": "actual-bi-fixture-v1",
+  "rdfdb_source": "5b3970b frozen SO 898940920addbc19743b4b06714787d0766415e55ffa34790b91da1c61de05e1",
+  "duckdb": "2.0.0",
+  "data_sha256": "0af0e53fce9630589ca9c4fbb36577fea5918a3dfec5d7777802cf14403c1e98",
+  "queries": {
+    "1": {
+      "query_sha256": "eb08de08cf875997c839175565532fb6682e58aec6723a6485a77cd62a61f24b",
+      "jena_rows": 2,
+      "jena_order": {
+        "checked": true,
+        "keys": [
+          [
+            "reviewCount",
+            true
+          ],
+          [
+            "productType",
+            false
+          ]
+        ]
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 2
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "reviewCount",
+              true
+            ],
+            [
+              "productType",
+              false
+            ]
+          ]
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 2
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "reviewCount",
+              true
+            ],
+            [
+              "productType",
+              false
+            ]
+          ]
+        },
+        "status": "pass"
+      }
+    },
+    "2": {
+      "query_sha256": "5a7e8d58c783616caa527f568f72003b0358697f1186e3993f299e4885c9ade8",
+      "jena_rows": 1,
+      "jena_order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 1
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 1
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "status": "pass"
+      }
+    },
+    "3": {
+      "query_sha256": "6fe911302cbff84a3f4553e2a7ac23e2f5df2aee1bb753bfb8cf7a754462cd92",
+      "jena_rows": 3,
+      "jena_order": {
+        "checked": true,
+        "keys": [
+          [
+            "ratio",
+            true
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 3
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "ratio",
+              true
+            ],
+            [
+              "product",
+              false
+            ]
+          ]
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "4": {
+      "query_sha256": "9d4df8002ba396e3ffe435aafd74d6f0e94fdc892c68f386b9bb49f1d4da17fd",
+      "jena_rows": 2,
+      "jena_order": {
+        "checked": true,
+        "keys": [
+          [
+            "priceRatio",
+            true
+          ],
+          [
+            "feature",
+            false
+          ]
+        ]
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 2
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "priceRatio",
+              true
+            ],
+            [
+              "feature",
+              false
+            ]
+          ]
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "5": {
+      "query_sha256": "190f77025da6b743a7edb4369df942785472ded18630b53ec7b925bc8cbea7fb",
+      "jena_rows": 3,
+      "jena_order": {
+        "checked": true,
+        "keys": [
+          [
+            "nrOfReviews",
+            true
+          ],
+          [
+            "country",
+            false
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 3
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "nrOfReviews",
+              true
+            ],
+            [
+              "country",
+              false
+            ],
+            [
+              "product",
+              false
+            ]
+          ]
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "6": {
+      "query_sha256": "915294b37e9d5fe01a0e76c902de71283ab7c821a16cd8a21b541776986404ef",
+      "jena_rows": 3,
+      "jena_order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 3
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "7": {
+      "query_sha256": "2ddcb4c056d821e1bf6b9f46b73b7159b7adc78943379d6b8296048254aef83d",
+      "jena_rows": 1,
+      "jena_order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 1
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 1
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "status": "pass"
+      }
+    },
+    "8": {
+      "query_sha256": "1f34138160cc72c4467701d1d07bd6e2fa40dd7f1013bb64cf82b2a1da4e2527",
+      "jena_rows": 2,
+      "jena_order": {
+        "checked": true,
+        "keys": [
+          [
+            "cheapExpensiveRatio",
+            true
+          ],
+          [
+            "vendor",
+            false
+          ]
+        ]
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 2
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "cheapExpensiveRatio",
+              true
+            ],
+            [
+              "vendor",
+              false
+            ]
+          ]
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    }
+  },
+  "complete": true
+}
