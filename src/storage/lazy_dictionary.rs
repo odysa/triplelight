@@ -14,7 +14,6 @@ use std::{
 const TERM_MAGIC: &[u8; 8] = b"RDFDTM01";
 const ID_MAGIC: &[u8; 8] = b"RDFDID01";
 const LIMIT: usize = 16 * 1024 * 1024 + 8192;
-const MAX_CACHE: usize = 384 * 1024 * 1024;
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(ErrorKind::InvalidData, s)
 }
@@ -44,20 +43,42 @@ struct Meta {
     hash: [u8; 32],
 }
 struct Cache {
-    entries: HashMap<usize, (Arc<Vec<(TermId, Term)>>, usize)>,
-    order: VecDeque<usize>,
+    entries: HashMap<(usize, usize), (Arc<Vec<(TermId, Term)>>, usize)>,
+    order: VecDeque<(usize, usize)>,
     used: usize,
+}
+pub(super) struct DictionaryCache {
+    shards: Vec<Mutex<Cache>>,
+    shard_budget: usize,
+}
+impl DictionaryCache {
+    pub(super) fn new() -> Arc<Self> {
+        Arc::new(Self {
+            shard_budget: super::disk_index::cache_budget_mb().saturating_mul(1024 * 1024) / 3 / 16,
+            shards: (0..16).map(|_| Mutex::new(Cache { entries: HashMap::new(), order: VecDeque::new(), used: 0 })).collect(),
+        })
+    }
 }
 pub(super) struct LazyIndex {
     file: File,
     order: Order,
     entries: Vec<Meta>,
     identity: [u8; 32],
-    cache: Vec<Mutex<Cache>>,
-    shard_budget: usize,
+    cache: Arc<DictionaryCache>,
 }
-fn exact(file: &File, mut bytes: &mut [u8], mut offset: u64) -> io::Result<()> {
+fn exact(file: &File, bytes: &mut [u8], offset: u64) -> io::Result<()> {
+    exact_traced(file, bytes, offset, None)
+}
+fn exact_traced(
+    file: &File,
+    mut bytes: &mut [u8],
+    mut offset: u64,
+    slot: Option<usize>,
+) -> io::Result<()> {
     while !bytes.is_empty() {
+        if let Some(slot) = slot {
+            super::disk_index::trace_dictionary(slot, 2, 1);
+        }
         match file.read_at(bytes, offset) {
             Ok(0) => {
                 return Err(io::Error::new(
@@ -66,6 +87,9 @@ fn exact(file: &File, mut bytes: &mut [u8], mut offset: u64) -> io::Result<()> {
                 ));
             }
             Ok(n) => {
+                if let Some(slot) = slot {
+                    super::disk_index::trace_dictionary(slot, 3, n as u64);
+                }
                 offset += n as u64;
                 bytes = &mut bytes[n..];
             }
@@ -77,6 +101,9 @@ fn exact(file: &File, mut bytes: &mut [u8], mut offset: u64) -> io::Result<()> {
 }
 impl LazyIndex {
     pub(super) fn open(path: &Path, order: Order) -> io::Result<Self> {
+        Self::open_shared(path, order, DictionaryCache::new())
+    }
+    pub(super) fn open_shared(path: &Path, order: Order, cache: Arc<DictionaryCache>) -> io::Result<Self> {
         let file = File::open(path)?;
         let len = file.metadata()?.len();
         if len < 52 {
@@ -164,39 +191,31 @@ impl LazyIndex {
             order,
             entries,
             identity,
-            shard_budget: super::disk_index::cache_budget_mb()
-                .saturating_mul(1024 * 1024)
-                .checked_div(8)
-                .unwrap_or(0)
-                .min(MAX_CACHE)
-                / 16,
-            cache: (0..16)
-                .map(|_| {
-                    Mutex::new(Cache {
-                        entries: HashMap::new(),
-                        order: VecDeque::new(),
-                        used: 0,
-                    })
-                })
-                .collect(),
+            cache,
         })
     }
     pub(super) fn identity(&self) -> [u8; 32] {
         self.identity
     }
     fn block(&self, index: usize) -> io::Result<Arc<Vec<(TermId, Term)>>> {
-        let mut cache = self.cache[index % self.cache.len()]
+        let mut cache = self.cache.shards[index % self.cache.shards.len()]
             .lock()
             .map_err(|_| io::Error::other("dictionary cache lock poisoned"))?;
-        if let Some((value, _)) = cache.entries.get(&index) {
+        let slot = match self.order {
+            Order::Term => 6,
+            Order::Id => 7,
+        };
+        if let Some((value, _)) = cache.entries.get(&(slot, index)) {
+            super::disk_index::trace_dictionary(slot, 0, 1);
             return Ok(Arc::clone(value));
         }
+        super::disk_index::trace_dictionary(slot, 1, 1);
         let meta = self
             .entries
             .get(index)
             .ok_or_else(|| bad("dictionary block absent"))?;
         let mut bytes = vec![0; meta.length];
-        exact(&self.file, &mut bytes, meta.offset)?;
+        exact_traced(&self.file, &mut bytes, meta.offset, Some(slot))?;
         if Sha256::digest(&bytes).as_slice() != meta.hash {
             return Err(bad("dictionary block checksum mismatch"));
         }
@@ -213,24 +232,25 @@ impl LazyIndex {
             .saturating_add(keys.iter().map(Vec::len).sum::<usize>())
             .saturating_add(rows.len() * 128);
         let rows = Arc::new(rows);
-        if size <= self.shard_budget {
-            while cache.used.saturating_add(size) > self.shard_budget {
+        if size <= self.cache.shard_budget {
+            while cache.used.saturating_add(size) > self.cache.shard_budget {
                 let old = cache
                     .order
                     .pop_front()
                     .ok_or_else(|| bad("dictionary cache invariant"))?;
                 if let Some((_, n)) = cache.entries.remove(&old) {
                     cache.used -= n;
+                    super::disk_index::trace_dictionary(slot, 4, 1);
                 }
             }
             cache.used += size;
-            cache.entries.insert(index, (Arc::clone(&rows), size));
-            cache.order.push_back(index);
+            cache.entries.insert((slot, index), (Arc::clone(&rows), size));
+            cache.order.push_back((slot, index));
         }
         Ok(rows)
     }
     pub(super) fn clear_cache(&self) -> io::Result<()> {
-        for shard in &self.cache {
+        for shard in &self.cache.shards {
             let mut cache = shard
                 .lock()
                 .map_err(|_| io::Error::other("dictionary cache lock poisoned"))?;
@@ -429,8 +449,9 @@ mod tests {
         write_index(&id_path, Order::Id, entries.clone().into_iter().map(Ok)).unwrap();
         entries.sort_unstable_by_key(|(_, t)| t.to_string());
         write_index(&term_path, Order::Term, entries.clone().into_iter().map(Ok)).unwrap();
-        let ids = LazyIndex::open(&id_path, Order::Id).unwrap();
-        let terms = LazyIndex::open(&term_path, Order::Term).unwrap();
+        let shared = DictionaryCache::new();
+        let ids = LazyIndex::open_shared(&id_path, Order::Id, Arc::clone(&shared)).unwrap();
+        let terms = LazyIndex::open_shared(&term_path, Order::Term, shared).unwrap();
         for (id, term) in &entries {
             assert_eq!(
                 terms.find(term.to_string().as_bytes()).unwrap(),
