@@ -1,0 +1,22 @@
+{
+  "cohort": "confirmatory mixes1-3",
+  "metric": "absolute distance from unrounded exact rational anchor",
+  "by_template": {
+    "4": {
+      "better": 25,
+      "equal": 5,
+      "worse": 0
+    },
+    "5": {
+      "better": 123,
+      "equal": 92,
+      "worse": 0
+    },
+    "6": {
+      "better": 0,
+      "equal": 382,
+      "worse": 0
+    }
+  },
+  "worse_cases": []
+}
