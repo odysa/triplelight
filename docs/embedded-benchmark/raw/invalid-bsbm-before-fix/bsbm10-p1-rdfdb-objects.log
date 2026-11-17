@@ -1,0 +1,46 @@
+q001 0.134375 3
+q002 0.507917 16
+q003 0.389 13
+q004 0.216333 1
+q005 0.537 20
+q006 0.640416 22
+q007 0.239458 2
+q008 0.499666 16
+q009 0.493958 19
+q010 7.00525 5
+q011 0.197542 3
+q012 0.402166 10
+q013 5.366166 5
+q014 0.252542 3
+q015 0.246584 8
+q016 0.220917 4
+q019 0.348167 6
+q022 0.151917 1
+Traceback (most recent call last):
+  File "/private/tmp/rdf-jianlin-embedded22/source/embedded/run.py", line 231, in <module>
+    run(args)
+    ~~~^^^^^^
+  File "/private/tmp/rdf-jianlin-embedded22/source/embedded/run.py", line 182, in run
+    ordered = check_order(variables, rows, order_specs[name]) if name in order_specs else {"checked": False, "reason": "no ORDER BY"}
+              ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/rdf-jianlin-embedded22/source/embedded/contract.py", line 124, in check_order
+    raise ValueError("ORDER BY sequence is not monotonic")
+ValueError: ORDER BY sequence is not monotonic
+        2.54 real         2.45 user         0.11 sys
+           357597184  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               24351  page reclaims
+                   3  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  10  voluntary context switches
+                1594  involuntary context switches
+         28729525748  instructions retired
+          7809062227  cycles elapsed
+           344163120  peak memory footprint
