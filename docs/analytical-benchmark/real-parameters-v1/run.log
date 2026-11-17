@@ -1,0 +1,6 @@
+Jena ready; first 15 parameter references starting
+Reference process exited; candidates run serially
+duckdb True False [('m000_p04_q4.rq', 'ValueError: Computed numeric values or multiplicities differ')]
+rdfdb True False [('m000_p04_q4.rq', 'ValueError: Computed numeric values or multiplicities differ')]
+rdfdb-legacy True False [('m000_p04_q4.rq', 'ValueError: Computed numeric values or multiplicities differ')]
+REAL PARAMETER CHECK FINISHED
