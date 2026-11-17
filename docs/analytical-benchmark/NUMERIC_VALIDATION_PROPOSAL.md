@@ -1,15 +1,14 @@
 # Proposed numeric validation for the next BI cohort
 
-Status: **mathematical approach approved; implementation not yet qualified or frozen**.
-Kaiming reviewed the proposed assumptions in message d1044631.
-`bench/analytical/float_envelope.py` and its tests are a prototype, not connected
-to `qualify.py`; tests and graph diagnostics still need an exclusive window.
-No new candidate outputs may be inspected under the revised rule before its
-source and input diagnostics are frozen.
+Status: **frozen v1 before holdout outputs**, SHA-256 `a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244`.
+Kaiming approved the mathematics in d1044631. All 19 tests pass; independent
+Jena group counts agree for all 31 parameter cases. See
+[numeric-freeze-v1/](numeric-freeze-v1/) for immutable source/input hashes,
+exact rational anchors, count diagnostics and test logs.
 
-The rule is not applied. The first 15-instance cohort retains its
-original four-binary32-ULP gate and all failures. This document does not turn any
-existing failed result into a pass.
+The first 15-instance cohort retains its original four-binary32-ULP gate and all
+failures. This rule does not turn any existing failed result into a pass.
+Mix 0 stays exploratory; mixes 1–3 candidate outputs were unexamined at freeze.
 
 ## Why the next cohort needs a different numerical check
 
@@ -28,7 +27,7 @@ comparison to one engine does not account for group size or cancellation.
 This is a hypothesis pending independent arithmetic checks, not permission to
 ignore arbitrary numeric discrepancies.
 
-## Proposed rule, to freeze before the next candidate outputs
+## Frozen rule v1, applied only to the next named cohort
 
 The next confirmatory measured mixes are the three previously unexamined mixes
 1–3 in the exported workload. Mix 0 has already been inspected and remains
@@ -82,7 +81,7 @@ from Jena. Preserve observed differences even when they lie inside the envelope.
 Numerical membership or HAVING/ORDER sensitivity that changes entity rows is a
 separate discrepancy; this proposal does not silently admit alternative rows.
 
-## Required verification before adopting the rule
+## Verification and limits
 
 The arithmetic helper needs tests for exact sums, long same-sign sums,
 cancellation, zero, subnormals, non-finite values, invalid inputs, count-cast

@@ -1,0 +1,66 @@
+test_both_engines_checked_against_exact_anchor (test_envelope_qualify.ExactAnchorQualification.test_both_engines_checked_against_exact_anchor) ... ok
+test_empty_rows_and_duplicate_projection (test_envelope_qualify.ExactAnchorQualification.test_empty_rows_and_duplicate_projection) ... ok
+test_failed_reference_output_is_preserved (test_envelope_qualify.ExactAnchorQualification.test_failed_reference_output_is_preserved) ... ERROR
+test_frozen_input_changes_are_rejected (test_envelope_qualify.ExactAnchorQualification.test_frozen_input_changes_are_rejected) ... ok
+test_product_and_reviewer_mean_keys_and_exact_counts (test_envelope_qualify.ExactAnchorQualification.test_product_and_reviewer_mean_keys_and_exact_counts) ... ok
+test_types_and_entities_are_not_relaxed (test_envelope_qualify.ExactAnchorQualification.test_types_and_entities_are_not_relaxed) ... ok
+test_unbound_and_multiplicity_errors_rejected (test_envelope_qualify.ExactAnchorQualification.test_unbound_and_multiplicity_errors_rejected) ... ok
+test_cancellation_is_bounded_in_absolute_units (test_float_envelope.ProposedEnvelopes.test_cancellation_is_bounded_in_absolute_units) ... ok
+test_exact_cast_rounds_ties_to_even (test_float_envelope.ProposedEnvelopes.test_exact_cast_rounds_ties_to_even) ... ok
+test_indeterminate_cases_never_qualify (test_float_envelope.ProposedEnvelopes.test_indeterminate_cases_never_qualify) ... ok
+test_invalid_and_nonfinite_inputs_are_not_numbers (test_float_envelope.ProposedEnvelopes.test_invalid_and_nonfinite_inputs_are_not_numbers) ... ok
+test_long_sum_and_mean_contain_explicit_rounded_arithmetic (test_float_envelope.ProposedEnvelopes.test_long_sum_and_mean_contain_explicit_rounded_arithmetic) ... ok
+test_subnormal_mean_and_ratio (test_float_envelope.ProposedEnvelopes.test_subnormal_mean_and_ratio) ... ok
+test_unrounded_input_and_invalid_statistics_rejected (test_float_envelope.ProposedEnvelopes.test_unrounded_input_and_invalid_statistics_rejected) ... ok
+test_computed_values_types_and_exact_representation (test_qualify.Qualification.test_computed_values_types_and_exact_representation) ... ok
+test_cutoff_ties_before_filter (test_qualify.Qualification.test_cutoff_ties_before_filter) ... ok
+test_declared_float_ulp_bound (test_qualify.Qualification.test_declared_float_ulp_bound) ... ok
+test_numeric_outer_order_and_null_last_descending (test_qualify.Qualification.test_numeric_outer_order_and_null_last_descending) ... ok
+test_repeated_parameter_fill_identity (test_qualify.Qualification.test_repeated_parameter_fill_identity) ... ok
+
+======================================================================
+ERROR: test_failed_reference_output_is_preserved (test_envelope_qualify.ExactAnchorQualification.test_failed_reference_output_is_preserved)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<agent-workspace>/rdfdb/bench/analytical/workload_check.py", line 134, in run
+    (args.out/'matrix.json').write_text(json.dumps(matrix,indent=2));print(name,entry['status'],flush=True)
+                                        ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "<home>/.local/share/uv/python/cpython-3.14.3-macos-aarch64-none/lib/python3.14/json/__init__.py", line 242, in dumps
+    **kw).encode(obj)
+          ~~~~~~^^^^^
+  File "<home>/.local/share/uv/python/cpython-3.14.3-macos-aarch64-none/lib/python3.14/json/encoder.py", line 202, in encode
+    chunks = self.iterencode(o, _one_shot=True)
+  File "<home>/.local/share/uv/python/cpython-3.14.3-macos-aarch64-none/lib/python3.14/json/encoder.py", line 263, in iterencode
+    return _iterencode(o, 0)
+  File "<home>/.local/share/uv/python/cpython-3.14.3-macos-aarch64-none/lib/python3.14/json/encoder.py", line 182, in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+                    f'is not JSON serializable')
+TypeError: Object of type MagicMock is not JSON serializable
+when serializing dict item 'numeric_freeze_sha256'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<agent-workspace>/rdfdb/bench/analytical/test_envelope_qualify.py", line 107, in test_failed_reference_output_is_preserved
+    workload_check.run(args)
+    ~~~~~~~~~~~~~~~~~~^^^^^^
+  File "<agent-workspace>/rdfdb/bench/analytical/workload_check.py", line 140, in run
+    (args.out/'matrix.json').write_text(json.dumps(matrix,indent=2))
+                                        ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "<home>/.local/share/uv/python/cpython-3.14.3-macos-aarch64-none/lib/python3.14/json/__init__.py", line 242, in dumps
+    **kw).encode(obj)
+          ~~~~~~^^^^^
+  File "<home>/.local/share/uv/python/cpython-3.14.3-macos-aarch64-none/lib/python3.14/json/encoder.py", line 202, in encode
+    chunks = self.iterencode(o, _one_shot=True)
+  File "<home>/.local/share/uv/python/cpython-3.14.3-macos-aarch64-none/lib/python3.14/json/encoder.py", line 263, in iterencode
+    return _iterencode(o, 0)
+  File "<home>/.local/share/uv/python/cpython-3.14.3-macos-aarch64-none/lib/python3.14/json/encoder.py", line 182, in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+                    f'is not JSON serializable')
+TypeError: Object of type MagicMock is not JSON serializable
+when serializing dict item 'numeric_freeze_sha256'
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.161s
+
+FAILED (errors=1)
