@@ -1,0 +1,8 @@
+{
+  "Architecture": "aarch64",
+  "NCPU": 10,
+  "MemTotal": 16808177664,
+  "KernelVersion": "7.0.5-orbstack-00330-ge3df4e19b0a0-dirty",
+  "OperatingSystem": "OrbStack",
+  "ServerVersion": "29.4.0"
+}

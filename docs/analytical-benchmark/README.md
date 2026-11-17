@@ -10,10 +10,21 @@ accuracy details. This is correctness evidence; matched-VM BI performance and
 
 
 There is no full BI performance score yet. The corrected candidate passes the
-normal, cutoff, invalid-input and empty/unbound fixtures against Jena. Large-data
-qualification, matched competitor execution and resource measurement remain ahead.
+normal, cutoff, invalid-input and empty/unbound fixtures against Jena. Matched competitor execution and resource measurement remain ahead.
 
-## Numeric validator frozen for the next cohort
+## Matched-VM preparation
+
+[vm-preflight-v1/](vm-preflight-v1/) pins the ARM64 competitor images and records
+live QLever cache/settings checks. The 1 MB caps allow a cached small aggregate
+answer; explicit clearing and full bypass are verified separately on a tiny
+fixture. These checks do not establish cache hits in historical benchmark runs.
+
+[count-equivalence-v1/](count-equivalence-v1/) preregisters an optional, separately
+reported COUNT int/integer value-equivalence rule before QLever confirmatory BI
+outputs. Strict datatype failures remain visible. Neither policy changes the
+already frozen host cohort or supplies a competitor latency score.
+
+## Numeric validator frozen before the confirmatory cohort
 
 The exact-anchor policy is now frozen before mix 1–3 candidate outputs, under
 SHA-256 `a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244`. All 19 tests pass, including arithmetic bounds,
