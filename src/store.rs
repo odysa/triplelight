@@ -312,7 +312,12 @@ impl Store {
     /// Durably commits a change set; returns once it is fsynced and visible to new readers. Concurrent commits
     /// share one fsync (group commit). No-op changes (inserting a present triple, deleting an absent one) are dropped.
     pub fn commit(&self, changes: &[(Change, Triple)]) -> std::io::Result<usize> {
-        let (seq, n) = self.enqueue(changes)?;
+        // Serialize acceptance with SPARQL update's read/compute/enqueue transaction.
+        // Release before fsync so concurrent writers can still share a group commit.
+        let (seq, n) = {
+            let _writer = self.writer.lock().unwrap();
+            self.enqueue(changes)?
+        };
         self.flush_until(seq)?;
         Ok(n)
     }
@@ -484,5 +489,32 @@ impl Store {
         };
         self.flush_until(seq).map_err(storage)?;
         Ok(n)
+    }
+}
+
+#[cfg(test)]
+mod writer_serialization_tests {
+    use super::*;
+    #[test]
+    fn direct_commit_waits_for_update_writer() {
+        let dir = std::env::temp_dir().join(format!("rdf-writer-lock-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store = Arc::new(Store::open(&dir, None, 1).unwrap());
+        let guard = store.writer.lock().unwrap();
+        let (started_tx, started_rx) = std::sync::mpsc::channel();
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        let thread_store = Arc::clone(&store);
+        let worker = std::thread::spawn(move || {
+            started_tx.send(()).unwrap();
+            let result = thread_store.commit(&[]);
+            done_tx.send(result.is_ok()).unwrap();
+        });
+        started_rx.recv().unwrap();
+        assert!(done_rx.recv_timeout(std::time::Duration::from_millis(100)).is_err());
+        drop(guard);
+        assert!(done_rx.recv_timeout(std::time::Duration::from_secs(10)).unwrap());
+        worker.join().unwrap();
+        drop(store);
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }
