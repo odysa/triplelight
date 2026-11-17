@@ -28,7 +28,7 @@ impl Num {
         match self {
             Num::Int(i) => Literal::from(i).into(),
             Num::Dec(d) => Literal::new_typed_literal(fmt_dec(d), xsd::DECIMAL).into(),
-            Num::Flt(d) => Literal::from(d as f32).into(),
+            Num::Flt(d) => Literal::new_typed_literal(java_float_lexical(d as f32), xsd::FLOAT).into(),
             Num::Dbl(d) => Literal::from(d).into(),
         }
     }
@@ -418,4 +418,22 @@ fn parse_xsd_float(v: &str) -> Option<f64> {
     match v { "INF" | "+INF" => Some(f64::INFINITY), "-INF" => Some(f64::NEG_INFINITY), "NaN" => Some(f64::NAN),
         _ if v.eq_ignore_ascii_case("inf") || v.eq_ignore_ascii_case("infinity") || v.eq_ignore_ascii_case("nan") => None,
         _ => v.parse().ok() }
+}
+
+/// xsd:float lexical form as Java's `Float.toString` writes it (what Jena returns): plain decimal with at least one
+/// fractional digit for 1e-3 <= |x| < 1e7 ("6.0", "0.25"), otherwise scientific with an uppercase E ("1.0E10").
+pub(super) fn java_float_lexical(x: f32) -> String {
+    if x.is_nan() { return "NaN".into() }
+    if x.is_infinite() { return if x > 0.0 { "INF".into() } else { "-INF".into() } }
+    if x == 0.0 { return if x.is_sign_negative() { "-0.0".into() } else { "0.0".into() } }
+    let a = x.abs();
+    if (1e-3..1e7).contains(&a) {
+        let s = format!("{x}");
+        if s.contains('.') { s } else { format!("{s}.0") }
+    } else {
+        let s = format!("{x:e}");
+        let (m, e) = s.split_once('e').unwrap();
+        let m = if m.contains('.') { m.to_string() } else { format!("{m}.0") };
+        format!("{m}E{e}")
+    }
 }

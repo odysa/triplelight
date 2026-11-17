@@ -276,4 +276,13 @@ fn float_promotion_and_aggregates() {
     assert_eq!(dt("SELECT (SUM(?f) AS ?v) WHERE { ?x <http://ex/f> ?f }"), "float");
     assert_eq!(dt("SELECT (AVG(?f) AS ?v) WHERE { ?x <http://ex/f> ?f }"), "float");
     assert_eq!(dt("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ?v WHERE { BIND(xsd:float(\"0.1\") AS ?v) }"), "float");
+    // Lexical form as Jena writes computed floats (Java Float.toString).
+    match query(&s, "SELECT (SUM(?f) AS ?v) WHERE { ?x <http://ex/f> ?f }").unwrap() {
+        QueryResult::Solutions { rows, .. } => assert_eq!(rows[0][0].as_ref().unwrap().to_string(), "\"3.75\"^^<http://www.w3.org/2001/XMLSchema#float>"),
+        r => panic!("{r:?}"),
+    }
+    match query(&s, "SELECT ?v WHERE { <http://ex/a> <http://ex/f> ?f BIND(?f * 4 AS ?v) }").unwrap() {
+        QueryResult::Solutions { rows, .. } => assert_eq!(rows[0][0].as_ref().unwrap().to_string(), "\"6.0\"^^<http://www.w3.org/2001/XMLSchema#float>"),
+        r => panic!("{r:?}"),
+    }
 }
