@@ -1,0 +1,22 @@
+[
+  "<agent-workspace>/scratch/analytical25-venv/bin/python",
+  "/private/tmp/rdf-jianlin-analytical25/bsbm10-duckdb/source/analytical/duck_load.py",
+  "--source",
+  "<agent-workspace>/rdfdb/bench/tools/bsbm10.nt",
+  "--database",
+  "/private/tmp/rdf-jianlin-analytical25/bsbm10-duckdb/duck.db",
+  "--spill",
+  "/private/tmp/rdf-jianlin-analytical25/bsbm10-duckdb/spill",
+  "--report",
+  "/private/tmp/rdf-jianlin-analytical25/bsbm10-duckdb/import.json",
+  "--expected-sha256",
+  "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+  "--threads",
+  "4",
+  "--memory-limit",
+  "8GB",
+  "--max-spill",
+  "8GB",
+  "--lock-owner",
+  "Jianlin-Su task25 DuckDB 10M baseline import"
+]
