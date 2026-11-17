@@ -1,0 +1,259 @@
+{
+  "groups": {
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer249/Product12152": {
+      "n": 39,
+      "exact_sum": "216928737/1024",
+      "exact_sum_magnitudes": "216928737/1024"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer284/Product13867": {
+      "n": 32,
+      "exact_sum": "11010473295/65536",
+      "exact_sum_magnitudes": "11010473295/65536"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer313/Product15251": {
+      "n": 33,
+      "exact_sum": "5352454219/32768",
+      "exact_sum_magnitudes": "5352454219/32768"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer89/Product4282": {
+      "n": 11,
+      "exact_sum": "1564935773/32768",
+      "exact_sum_magnitudes": "1564935773/32768"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer173/Product8346": {
+      "n": 31,
+      "exact_sum": "10491981973/65536",
+      "exact_sum_magnitudes": "10491981973/65536"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer163/Product7816": {
+      "n": 33,
+      "exact_sum": "21887055289/131072",
+      "exact_sum_magnitudes": "21887055289/131072"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer402/Product19835": {
+      "n": 31,
+      "exact_sum": "2354862501/16384",
+      "exact_sum_magnitudes": "2354862501/16384"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer245/Product11960": {
+      "n": 29,
+      "exact_sum": "687856229/4096",
+      "exact_sum_magnitudes": "687856229/4096"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer402/Product19853": {
+      "n": 47,
+      "exact_sum": "14288181009/65536",
+      "exact_sum_magnitudes": "14288181009/65536"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer361/Product17611": {
+      "n": 33,
+      "exact_sum": "12185613803/65536",
+      "exact_sum_magnitudes": "12185613803/65536"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer326/Product15851": {
+      "n": 29,
+      "exact_sum": "10747205989/65536",
+      "exact_sum_magnitudes": "10747205989/65536"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer432/Product21316": {
+      "n": 24,
+      "exact_sum": "3459825971/32768",
+      "exact_sum_magnitudes": "3459825971/32768"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer243/Product11853": {
+      "n": 36,
+      "exact_sum": "671782993/4096",
+      "exact_sum_magnitudes": "671782993/4096"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer397/Product19564": {
+      "n": 27,
+      "exact_sum": "32426276519/262144",
+      "exact_sum_magnitudes": "32426276519/262144"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer505/Product24861": {
+      "n": 7,
+      "exact_sum": "337978331/16384",
+      "exact_sum_magnitudes": "337978331/16384"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer152/Product7324": {
+      "n": 23,
+      "exact_sum": "1742536535/16384",
+      "exact_sum_magnitudes": "1742536535/16384"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer569/Product28009": {
+      "n": 6,
+      "exact_sum": "124183921/4096",
+      "exact_sum_magnitudes": "124183921/4096"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer155/Product7468": {
+      "n": 21,
+      "exact_sum": "3557113489/32768",
+      "exact_sum_magnitudes": "3557113489/32768"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer185/Product8999": {
+      "n": 28,
+      "exact_sum": "143423049897/1048576",
+      "exact_sum_magnitudes": "143423049897/1048576"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer139/Product6690": {
+      "n": 18,
+      "exact_sum": "1590652275/16384",
+      "exact_sum_magnitudes": "1590652275/16384"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer338/Product16446": {
+      "n": 35,
+      "exact_sum": "22519876193/131072",
+      "exact_sum_magnitudes": "22519876193/131072"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer405/Product19988": {
+      "n": 22,
+      "exact_sum": "14879418153/131072",
+      "exact_sum_magnitudes": "14879418153/131072"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer495/Product24334": {
+      "n": 11,
+      "exact_sum": "11725735465/262144",
+      "exact_sum_magnitudes": "11725735465/262144"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer37/Product1672": {
+      "n": 7,
+      "exact_sum": "53761311/1024",
+      "exact_sum_magnitudes": "53761311/1024"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer426/Product20962": {
+      "n": 31,
+      "exact_sum": "1327300935/8192",
+      "exact_sum_magnitudes": "1327300935/8192"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer378/Product18486": {
+      "n": 33,
+      "exact_sum": "148958761/1024",
+      "exact_sum_magnitudes": "148958761/1024"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer453/Product22335": {
+      "n": 16,
+      "exact_sum": "42863537245/524288",
+      "exact_sum_magnitudes": "42863537245/524288"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer169/Product8140": {
+      "n": 24,
+      "exact_sum": "4680150225/32768",
+      "exact_sum_magnitudes": "4680150225/32768"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer382/Product18657": {
+      "n": 30,
+      "exact_sum": "509770301/4096",
+      "exact_sum_magnitudes": "509770301/4096"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer219/Product10622": {
+      "n": 40,
+      "exact_sum": "48897450607/262144",
+      "exact_sum_magnitudes": "48897450607/262144"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer177/Product8519": {
+      "n": 25,
+      "exact_sum": "3698581539/32768",
+      "exact_sum_magnitudes": "3698581539/32768"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer318/Product15492": {
+      "n": 40,
+      "exact_sum": "26513951909/131072",
+      "exact_sum_magnitudes": "26513951909/131072"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer549/Product27039": {
+      "n": 10,
+      "exact_sum": "16057083/256",
+      "exact_sum_magnitudes": "16057083/256"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer84/Product3972": {
+      "n": 12,
+      "exact_sum": "251218617/4096",
+      "exact_sum_magnitudes": "251218617/4096"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer303/Product14831": {
+      "n": 41,
+      "exact_sum": "1053220415/4096",
+      "exact_sum_magnitudes": "1053220415/4096"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer145/Product6935": {
+      "n": 20,
+      "exact_sum": "13029394237/131072",
+      "exact_sum_magnitudes": "13029394237/131072"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer291/Product14213": {
+      "n": 39,
+      "exact_sum": "24505433677/131072",
+      "exact_sum_magnitudes": "24505433677/131072"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer275/Product13483": {
+      "n": 32,
+      "exact_sum": "19528244173/131072",
+      "exact_sum_magnitudes": "19528244173/131072"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer54/Product2506": {
+      "n": 8,
+      "exact_sum": "11955231803/262144",
+      "exact_sum_magnitudes": "11955231803/262144"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer458/Product22630": {
+      "n": 16,
+      "exact_sum": "1161003837/16384",
+      "exact_sum_magnitudes": "1161003837/16384"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer403/Product19900": {
+      "n": 18,
+      "exact_sum": "4757399/64",
+      "exact_sum_magnitudes": "4757399/64"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer130/Product6257": {
+      "n": 19,
+      "exact_sum": "3100417711/32768",
+      "exact_sum_magnitudes": "3100417711/32768"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer192/Product9352": {
+      "n": 30,
+      "exact_sum": "21822667489/131072",
+      "exact_sum_magnitudes": "21822667489/131072"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer408/Product20200": {
+      "n": 19,
+      "exact_sum": "3784986757/32768",
+      "exact_sum_magnitudes": "3784986757/32768"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer65/Product3056": {
+      "n": 5,
+      "exact_sum": "59066635/2048",
+      "exact_sum_magnitudes": "59066635/2048"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer393/Product19352": {
+      "n": 32,
+      "exact_sum": "19825634831/131072",
+      "exact_sum_magnitudes": "19825634831/131072"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer58/Product2698": {
+      "n": 5,
+      "exact_sum": "69578917/2048",
+      "exact_sum_magnitudes": "69578917/2048"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer391/Product19177": {
+      "n": 18,
+      "exact_sum": "396326991/4096",
+      "exact_sum_magnitudes": "396326991/4096"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer529/Product26109": {
+      "n": 7,
+      "exact_sum": "154829745/4096",
+      "exact_sum_magnitudes": "154829745/4096"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer543/Product26805": {
+      "n": 5,
+      "exact_sum": "1073720839/131072",
+      "exact_sum_magnitudes": "1073720839/131072"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer567/Product27940": {
+      "n": 7,
+      "exact_sum": "65038253/2048",
+      "exact_sum_magnitudes": "65038253/2048"
+    }
+  }
+}
