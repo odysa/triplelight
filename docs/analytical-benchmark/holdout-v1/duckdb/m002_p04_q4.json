@@ -1,0 +1,122 @@
+{
+  "head": {
+    "vars": [
+      "feature",
+      "priceRatio"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "feature": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature13976"
+        },
+        "priceRatio": {
+          "type": "literal",
+          "value": "1.1820024251937866",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "feature": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature13979"
+        },
+        "priceRatio": {
+          "type": "literal",
+          "value": "1.1400392055511475",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "feature": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature13832"
+        },
+        "priceRatio": {
+          "type": "literal",
+          "value": "1.1345124244689941",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "feature": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature14015"
+        },
+        "priceRatio": {
+          "type": "literal",
+          "value": "1.1158052682876587",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "feature": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature13866"
+        },
+        "priceRatio": {
+          "type": "literal",
+          "value": "1.1132251024246216",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "feature": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature13935"
+        },
+        "priceRatio": {
+          "type": "literal",
+          "value": "1.102709412574768",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "feature": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature13929"
+        },
+        "priceRatio": {
+          "type": "literal",
+          "value": "1.102518916130066",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "feature": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature13943"
+        },
+        "priceRatio": {
+          "type": "literal",
+          "value": "1.0987210273742676",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "feature": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature13953"
+        },
+        "priceRatio": {
+          "type": "literal",
+          "value": "1.0932620763778687",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "feature": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature13870"
+        },
+        "priceRatio": {
+          "type": "literal",
+          "value": "1.0881067514419556",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      }
+    ]
+  }
+}

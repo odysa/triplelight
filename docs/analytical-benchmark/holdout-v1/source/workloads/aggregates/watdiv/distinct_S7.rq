@@ -1,0 +1,6 @@
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
