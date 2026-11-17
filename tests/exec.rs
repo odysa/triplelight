@@ -173,3 +173,16 @@ fn integer_comparison_exact_above_2_pow_53() {
     assert_eq!(n(slow), 1);
     assert_eq!(n("SELECT ?x WHERE { ?x <http://ex/v> ?v FILTER(?v = 9007199254740992) }"), 1);
 }
+
+/// `?x = <iri>` / `!=` / sameTerm pushed into the BGP (ID comparison) agree with the general evaluator, including
+/// literal-valued bindings and an IRI absent from the store.
+#[test]
+fn iri_equality_filter_fast_path_matches_general_evaluator() {
+    for f in ["?y = <http://ex/bob>", "?y != <http://ex/bob>", "<http://ex/bob> != ?y", "sameTerm(?y, <http://ex/carol>)",
+              "?y != <http://ex/nobody>", "?y = <http://ex/nobody>", "?n != <http://ex/bob>", "?n = <http://ex/bob>"] {
+        let pushed = rows(&format!("SELECT ?x ?y ?n WHERE {{ ?x <http://ex/knows> ?y . ?x <http://ex/name> ?n FILTER({f}) }}"));
+        let post = rows(&format!("SELECT ?x ?y ?n WHERE {{ {{ ?x <http://ex/knows> ?y . ?x <http://ex/name> ?n }} OPTIONAL {{ ?x <http://ex/none> ?z }} FILTER({f}) }}"));
+        assert_eq!(pushed, post, "filter {f}");
+    }
+    assert_eq!(rows("SELECT ?x WHERE { ?x <http://ex/knows> ?y FILTER(?y != <http://ex/carol>) }").len(), 2);
+}
