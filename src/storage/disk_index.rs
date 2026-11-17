@@ -222,6 +222,11 @@ thread_local! {
 }
 #[cfg(test)]
 thread_local! {
+    /// Test-only: runs in `block_shared` after a miss's disk read, before it takes the write lock to insert.
+    static MISS_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce(&DiskIndex)>>> = const { std::cell::RefCell::new(None) };
+}
+#[cfg(test)]
+thread_local! {
     /// Test-only: runs inside `clear_cache` between emptying the shards and bumping the epoch.
     static CLEAR_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce(&DiskIndex)>>> = const { std::cell::RefCell::new(None) };
 }
@@ -421,8 +426,11 @@ impl DiskIndex {
                 MISSES[i].fetch_add(1, Ordering::Relaxed);
             }
         }
-        // Miss: read, verify and decode without holding the lock; two threads may race on one block (first insert wins).
+        // Miss: read, verify and decode without holding the lock. Concurrent misses on one block may each read and
+        // decode it (first insert wins), so decoded blocks can transiently exceed the nominal cache budget.
         let r = Arc::new(self.read_block(id)?);
+        #[cfg(test)]
+        if let Some(hook) = MISS_HOOK.with(|h| h.borrow_mut().take()) { hook(self) }
         let mut cache = shard.write().map_err(|_| poisoned())?;
         if let Some((value, referenced)) = cache.entries.get(&id) {
             referenced.store(true, Ordering::Relaxed);
@@ -665,6 +673,25 @@ mod tests {
         })));
         index.clear_cache().unwrap();
         assert!(index.get(300).is_err(), "a block memoized inside the clear window must not survive the epoch bump");
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn clear_during_inflight_miss_does_not_repopulate_shard() {
+        // A miss reads a block, then (before inserting) a clear_cache runs: the cleared shard must stay empty.
+        let path = std::env::temp_dir().join(format!("rdf-miss-race-{}", std::process::id()));
+        let rows: Vec<_> = (1..=700).map(|i| [TermId(i), TermId(1), TermId(2)]).collect();
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::open(&path).unwrap();
+        MISS_HOOK.with(|h| *h.borrow_mut() = Some(Box::new(|ix: &DiskIndex| ix.clear_cache().unwrap())));
+        assert!(index.block_shared(1).is_ok());
+        let shard = index.cache[1 % index.cache.len()].read().unwrap();
+        assert!(!shard.entries.contains_key(&1), "pre-clear read must not repopulate the cleared shard");
+        drop(shard);
+        // Without a concurrent clear, a miss is cached as usual.
+        assert!(index.block_shared(2).is_ok());
+        assert!(index.cache[2 % index.cache.len()].read().unwrap().entries.contains_key(&2));
         std::fs::remove_file(path).unwrap();
     }
     #[test]
