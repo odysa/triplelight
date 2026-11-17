@@ -209,7 +209,15 @@ struct CacheShard {
     entries: HashMap<u64, (Arc<Vec<[TermId; 3]>>, bool)>,
     clock: VecDeque<u64>,
 }
+const MEMO_SLOTS: usize = 8;
+type MemoEntry = Option<(u64, u64, Arc<Vec<[TermId; 3]>>)>;
+thread_local! {
+    static BLOCK_MEMO: std::cell::RefCell<[MemoEntry; MEMO_SLOTS]> = const { std::cell::RefCell::new([const { None }; MEMO_SLOTS]) };
+}
+/// Unique per opened index, so a thread's block memo can never confuse two indexes (no address reuse).
+static NEXT_INSTANCE: AtomicU64 = AtomicU64::new(1);
 pub struct DiskIndex {
+    instance: u64,
     file: File,
     rows: u64,
     identity: [u8; 32],
@@ -309,6 +317,7 @@ impl DiskIndex {
             return Err(invalid("index data length mismatch"));
         }
         Ok(Self {
+            instance: NEXT_INSTANCE.fetch_add(1, Ordering::Relaxed),
             file,
             rows,
             trace_slot,
@@ -350,6 +359,22 @@ impl DiskIndex {
         self.rows == 0
     }
     fn block(&self, id: u64) -> io::Result<Arc<Vec<[TermId; 3]>>> {
+        // Per-thread memo of recently used blocks: leapfrog seeks and index nested-loop probes hit the same few
+        // blocks back to back from every rayon worker, and taking the shard mutex each time serialized them
+        // (mutex waits dominated a disk LUBM-1000 Q2 profile). Blocks are immutable for an index instance, so a
+        // memo entry keyed by (instance, block) never goes stale.
+        if let Some(rows) = BLOCK_MEMO.with(|m| m.borrow().iter().flatten().find(|e| e.0 == self.instance && e.1 == id).map(|e| Arc::clone(&e.2))) {
+            return Ok(rows);
+        }
+        let rows = self.block_shared(id)?;
+        BLOCK_MEMO.with(|m| {
+            let mut m = m.borrow_mut();
+            let slot = m.iter().position(Option::is_none).unwrap_or_else(|| { m.rotate_left(1); MEMO_SLOTS - 1 });
+            m[slot] = Some((self.instance, id, Arc::clone(&rows)));
+        });
+        Ok(rows)
+    }
+    fn block_shared(&self, id: u64) -> io::Result<Arc<Vec<[TermId; 3]>>> {
         let mut cache = self.cache[(id as usize) % self.cache.len()]
             .lock()
             .map_err(|_| io::Error::other("index cache lock poisoned"))?;
