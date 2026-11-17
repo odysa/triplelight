@@ -1,0 +1,294 @@
+{
+  "head": {
+    "vars": [
+      "country",
+      "product",
+      "nrOfReviews",
+      "avgPrice"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#US"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer218/Product10591"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "12",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "5579.753",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#US"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer358/Product17476"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "12",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "4269.743",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#CN"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer358/Product17476"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "4",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "4269.743",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#GB"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer218/Product10591"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "4",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "5579.753",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#AT"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer105/Product4917"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "3",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "4574.56",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#AT"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer440/Product21764"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "3",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "6025.1367",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#DE"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer307/Product14979"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "3",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "5826.563",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#ES"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer302/Product14822"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "3",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "4725.9487",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#FR"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer235/Product11466"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "3",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "4879.305",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#FR"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer358/Product17476"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "3",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "4269.743",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#JP"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer302/Product14822"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "3",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "4725.9487",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#JP"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer358/Product17476"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "3",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "4269.743",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#KR"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer251/Product12275"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "2",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "6171.21",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      },
+      {
+        "country": {
+          "type": "uri",
+          "value": "http://downlode.org/rdf/iso-3166/countries#RU"
+        },
+        "product": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer307/Product14979"
+        },
+        "nrOfReviews": {
+          "type": "literal",
+          "value": "2",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "avgPrice": {
+          "type": "literal",
+          "value": "5826.563",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float"
+        }
+      }
+    ]
+  }
+}
