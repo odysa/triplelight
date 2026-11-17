@@ -1,0 +1,22 @@
+START lubm100-p1-rdfdb-objects
+DONE lubm100-p1-rdfdb-objects
+START lubm100-p1-rdfdb-json
+DONE lubm100-p1-rdfdb-json
+START lubm100-p1-ladybug-generic
+DONE lubm100-p1-ladybug-generic
+START lubm100-p1-ladybug-tuned
+DONE lubm100-p1-ladybug-tuned
+START lubm100-p2-ladybug-tuned
+DONE lubm100-p2-ladybug-tuned
+START lubm100-p2-ladybug-generic
+DONE lubm100-p2-ladybug-generic
+START lubm100-p2-rdfdb-json
+DONE lubm100-p2-rdfdb-json
+START lubm100-p2-rdfdb-objects
+DONE lubm100-p2-rdfdb-objects
+START bsbm10-p1-rdfdb-objects
+Traceback (most recent call last):
+  File "/private/tmp/rdf-jianlin-embedded22/run_cohorts.py", line 29, in <module>
+    if result.returncode:raise RuntimeError('failed '+stem)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: failed bsbm10-p1-rdfdb-objects
