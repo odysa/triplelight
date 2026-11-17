@@ -1,0 +1,18 @@
+{"mapping": "rdf-terms-per-predicate-v1", "input": "/private<tmpdir>/T/rdf-jianlin-embedded-smoke-alqgnrs1/fixture.nt", "input_sha256": "543369e11ed33c674a30b45879b40fba9de480aa9ad59914aebf8859f999a9ea", "counts": {"source_lines": 7, "unique_triples": 7, "resource_nodes": 3, "literal_nodes": 5}, "predicates": {"urn:n": "P0", "urn:empty": "P1", "urn:label": "P2", "urn:type": "P3"}, "relationships": [{"table": "P3R", "target": "Resource", "rows": 2}, {"table": "P1L", "target": "Literal", "rows": 1}, {"table": "P0L", "target": "Literal", "rows": 3}, {"table": "P2L", "target": "Literal", "rows": 1}], "prepare_seconds": 0.030952166998758912}
+{"load_seconds": 0.60164749994874, "observed": {"Resource": 3, "Literal": 5, "relationships": 7}, "memory_mb": 64, "threads": 1}
+disk build strategy: in-memory (estimated 3x input; not an RSS limit)
+Traceback (most recent call last):
+  File "<agent-workspace>/rdfdb/bench/embedded/smoke.py", line 65, in <module>
+    run(p.parse_args().lock_owner)
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<agent-workspace>/rdfdb/bench/embedded/smoke.py", line 53, in run
+    rec = native.compile_bgp(query, manifest, resources)
+  File "<agent-workspace>/rdfdb/bench/ladybug/native.py", line 259, in compile_bgp
+    cypher=render(group)
+  File "<agent-workspace>/rdfdb/bench/ladybug/native.py", line 256, in render
+    for child in opts:text+=' '+render(child,True)
+                                ~~~~~~^^^^^^^^^^^^
+  File "<agent-workspace>/rdfdb/bench/ladybug/native.py", line 248, in render
+    if pred not in manifest['predicates']:raise ValueError('Predicate missing from dataset: '+pred)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: Predicate missing from dataset: urn:missing

@@ -1,0 +1,1215 @@
+{
+  "schema": "embedded-select-v1",
+  "system": "rdfdb",
+  "database": "/private/tmp/rdf-jianlin-embedded22/lubm100",
+  "binding_source": "fe6db89 frozen SO d07afded246f314e5302be0b141ca90189c7c6c5df156281fae06b3c3d198477",
+  "rdfdb_result": "objects",
+  "python": "3.14.3 (main, Mar 25 2026, 03:28:18) [Clang 22.1.1 ]",
+  "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+  "threads": 4,
+  "requested_cache_mb": 16384,
+  "runs": 3,
+  "query_boundary": "public Python execute + full native materialization + semantic RDF decoding",
+  "hash_boundary": "outside all query timings; sorted complete bag with variable names",
+  "compiled_sha256": "a432867d63a3946af38b4153fbd93b09804b27a882b4df621c276fa4fb2da53d",
+  "queries": {
+    "q1": {
+      "source_sha256": "66925ec35dbef68720b9cd5c75607f2191da732002835f484532e0cf69724609",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 3.1845,
+          "materialize_ms": 0.001625,
+          "semantic_decode_ms": 0.019166,
+          "fully_consumed_ms": 3.205291,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 4,
+            "sha256": "99a63f5c1ba6988cc6a1cfc4225b79a0b89bc7fabf2ff2acea7389736e5f3634"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.141916,
+          "materialize_ms": 0.001167,
+          "semantic_decode_ms": 0.009333,
+          "fully_consumed_ms": 0.152416,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 4,
+            "sha256": "99a63f5c1ba6988cc6a1cfc4225b79a0b89bc7fabf2ff2acea7389736e5f3634"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.098542,
+          "materialize_ms": 0.000667,
+          "semantic_decode_ms": 0.00725,
+          "fully_consumed_ms": 0.106459,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 4,
+            "sha256": "99a63f5c1ba6988cc6a1cfc4225b79a0b89bc7fabf2ff2acea7389736e5f3634"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.223292,
+          "materialize_ms": 0.001042,
+          "semantic_decode_ms": 0.014041,
+          "fully_consumed_ms": 0.238375,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 4,
+            "sha256": "99a63f5c1ba6988cc6a1cfc4225b79a0b89bc7fabf2ff2acea7389736e5f3634"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 0.152416
+    },
+    "q10": {
+      "source_sha256": "66925ec35dbef68720b9cd5c75607f2191da732002835f484532e0cf69724609",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 0.111792,
+          "materialize_ms": 0.00075,
+          "semantic_decode_ms": 0.0085,
+          "fully_consumed_ms": 0.121042,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 4,
+            "sha256": "99a63f5c1ba6988cc6a1cfc4225b79a0b89bc7fabf2ff2acea7389736e5f3634"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.107125,
+          "materialize_ms": 0.000583,
+          "semantic_decode_ms": 0.007292,
+          "fully_consumed_ms": 0.115,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 4,
+            "sha256": "99a63f5c1ba6988cc6a1cfc4225b79a0b89bc7fabf2ff2acea7389736e5f3634"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.086792,
+          "materialize_ms": 0.0005,
+          "semantic_decode_ms": 0.006791,
+          "fully_consumed_ms": 0.094083,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 4,
+            "sha256": "99a63f5c1ba6988cc6a1cfc4225b79a0b89bc7fabf2ff2acea7389736e5f3634"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.078375,
+          "materialize_ms": 0.000459,
+          "semantic_decode_ms": 0.005791,
+          "fully_consumed_ms": 0.084625,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 4,
+            "sha256": "99a63f5c1ba6988cc6a1cfc4225b79a0b89bc7fabf2ff2acea7389736e5f3634"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 0.094083
+    },
+    "q11": {
+      "source_sha256": "674230abb4afea794c3f68d66465d1c6f7ffc57e79a6914d61ab9f12e03b1f13",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 1.230916,
+          "materialize_ms": 0.000959,
+          "semantic_decode_ms": 0.017541,
+          "fully_consumed_ms": 1.249416,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 10,
+            "sha256": "9a1a6150dd2da61375b4d1716a68c8095e03e2c4fee3c247c01c2b2e0810c89a"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.134459,
+          "materialize_ms": 0.000583,
+          "semantic_decode_ms": 0.014958,
+          "fully_consumed_ms": 0.15,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 10,
+            "sha256": "9a1a6150dd2da61375b4d1716a68c8095e03e2c4fee3c247c01c2b2e0810c89a"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.095083,
+          "materialize_ms": 0.000375,
+          "semantic_decode_ms": 0.011584,
+          "fully_consumed_ms": 0.107042,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 10,
+            "sha256": "9a1a6150dd2da61375b4d1716a68c8095e03e2c4fee3c247c01c2b2e0810c89a"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.086917,
+          "materialize_ms": 0.000416,
+          "semantic_decode_ms": 0.010667,
+          "fully_consumed_ms": 0.098,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 10,
+            "sha256": "9a1a6150dd2da61375b4d1716a68c8095e03e2c4fee3c247c01c2b2e0810c89a"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 0.107042
+    },
+    "q12": {
+      "source_sha256": "f8d511dfcc12a159815e0ec8dd3064180f2912357c0e53b3ab0206ba97a63a2d",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 12.188667,
+          "materialize_ms": 0.001708,
+          "semantic_decode_ms": 0.183792,
+          "fully_consumed_ms": 12.374167,
+          "signature": {
+            "vars": [
+              "X",
+              "Y"
+            ],
+            "rows": 125,
+            "sha256": "446c8b2ae77a844fea3a7187e70b0fe0cdd2d90d3db937d2dcafd84d3e0d8572"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.931042,
+          "materialize_ms": 0.000791,
+          "semantic_decode_ms": 0.164,
+          "fully_consumed_ms": 1.095833,
+          "signature": {
+            "vars": [
+              "X",
+              "Y"
+            ],
+            "rows": 125,
+            "sha256": "446c8b2ae77a844fea3a7187e70b0fe0cdd2d90d3db937d2dcafd84d3e0d8572"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.749916,
+          "materialize_ms": 0.000584,
+          "semantic_decode_ms": 0.161,
+          "fully_consumed_ms": 0.9115,
+          "signature": {
+            "vars": [
+              "X",
+              "Y"
+            ],
+            "rows": 125,
+            "sha256": "446c8b2ae77a844fea3a7187e70b0fe0cdd2d90d3db937d2dcafd84d3e0d8572"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.743375,
+          "materialize_ms": 0.000541,
+          "semantic_decode_ms": 0.162667,
+          "fully_consumed_ms": 0.906583,
+          "signature": {
+            "vars": [
+              "X",
+              "Y"
+            ],
+            "rows": 125,
+            "sha256": "446c8b2ae77a844fea3a7187e70b0fe0cdd2d90d3db937d2dcafd84d3e0d8572"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 0.9115
+    },
+    "q13": {
+      "source_sha256": "0cd049c1ed656826681ecfe2fd42b3ec634bf7c7f358ea6d0194a018887095ee",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 113.979667,
+          "materialize_ms": 0.002041,
+          "semantic_decode_ms": 0.240709,
+          "fully_consumed_ms": 114.222417,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 265,
+            "sha256": "7855e081a3aa103b4cd9f76c80b214b419418ed01a45a80708ac9e991779282c"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 1.601375,
+          "materialize_ms": 0.000792,
+          "semantic_decode_ms": 0.223791,
+          "fully_consumed_ms": 1.825958,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 265,
+            "sha256": "7855e081a3aa103b4cd9f76c80b214b419418ed01a45a80708ac9e991779282c"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 1.081334,
+          "materialize_ms": 0.000666,
+          "semantic_decode_ms": 0.222209,
+          "fully_consumed_ms": 1.304209,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 265,
+            "sha256": "7855e081a3aa103b4cd9f76c80b214b419418ed01a45a80708ac9e991779282c"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 1.096416,
+          "materialize_ms": 0.000625,
+          "semantic_decode_ms": 0.224667,
+          "fully_consumed_ms": 1.321708,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 265,
+            "sha256": "7855e081a3aa103b4cd9f76c80b214b419418ed01a45a80708ac9e991779282c"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 1.321708
+    },
+    "q14": {
+      "source_sha256": "be2e63abeec8f772456a34daa26a84b60220c2888322f80f19c16eab032692bf",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 1848.428458,
+          "materialize_ms": 0.003875,
+          "semantic_decode_ms": 581.119125,
+          "fully_consumed_ms": 2429.551458,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 795970,
+            "sha256": "428b1c998c8c1d8ba96817e954d65ca0db991bae33be221424ffd608954bb0d3"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 833.409125,
+          "materialize_ms": 0.003334,
+          "semantic_decode_ms": 628.627708,
+          "fully_consumed_ms": 1462.040167,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 795970,
+            "sha256": "428b1c998c8c1d8ba96817e954d65ca0db991bae33be221424ffd608954bb0d3"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 827.452167,
+          "materialize_ms": 0.003708,
+          "semantic_decode_ms": 525.200625,
+          "fully_consumed_ms": 1352.6565,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 795970,
+            "sha256": "428b1c998c8c1d8ba96817e954d65ca0db991bae33be221424ffd608954bb0d3"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 1045.303958,
+          "materialize_ms": 0.003667,
+          "semantic_decode_ms": 811.068417,
+          "fully_consumed_ms": 1856.376042,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 795970,
+            "sha256": "428b1c998c8c1d8ba96817e954d65ca0db991bae33be221424ffd608954bb0d3"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 1462.040167
+    },
+    "q2": {
+      "source_sha256": "81f77d4efa35958af31bf2497dfc8f6dc6b2100f0ac68c7e002bb9be67235518",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 86.989833,
+          "materialize_ms": 0.001667,
+          "semantic_decode_ms": 0.406875,
+          "fully_consumed_ms": 87.398375,
+          "signature": {
+            "vars": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "rows": 264,
+            "sha256": "eb20424acdb3b81e057e4cd4007c4558c5ae46c65d363c09c17dbdac54ef80f6"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 4.813709,
+          "materialize_ms": 0.001416,
+          "semantic_decode_ms": 0.398584,
+          "fully_consumed_ms": 5.213709,
+          "signature": {
+            "vars": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "rows": 264,
+            "sha256": "eb20424acdb3b81e057e4cd4007c4558c5ae46c65d363c09c17dbdac54ef80f6"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 5.094417,
+          "materialize_ms": 0.002083,
+          "semantic_decode_ms": 0.472542,
+          "fully_consumed_ms": 5.569042,
+          "signature": {
+            "vars": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "rows": 264,
+            "sha256": "eb20424acdb3b81e057e4cd4007c4558c5ae46c65d363c09c17dbdac54ef80f6"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 5.524417,
+          "materialize_ms": 0.002166,
+          "semantic_decode_ms": 0.466709,
+          "fully_consumed_ms": 5.993292,
+          "signature": {
+            "vars": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "rows": 264,
+            "sha256": "eb20424acdb3b81e057e4cd4007c4558c5ae46c65d363c09c17dbdac54ef80f6"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 5.569042
+    },
+    "q3": {
+      "source_sha256": "2d4afd9b1ac576799802ea7443cc3485d51acfbf40e83c95873d9f911ad506f3",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 0.872792,
+          "materialize_ms": 0.000708,
+          "semantic_decode_ms": 0.01075,
+          "fully_consumed_ms": 0.88425,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 6,
+            "sha256": "8ea25724a3cbaf6ca905cf5f038c53e065bada34cda358e8cb569654f4110255"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.115666,
+          "materialize_ms": 0.000625,
+          "semantic_decode_ms": 0.009042,
+          "fully_consumed_ms": 0.125333,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 6,
+            "sha256": "8ea25724a3cbaf6ca905cf5f038c53e065bada34cda358e8cb569654f4110255"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.092959,
+          "materialize_ms": 0.000541,
+          "semantic_decode_ms": 0.008209,
+          "fully_consumed_ms": 0.101709,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 6,
+            "sha256": "8ea25724a3cbaf6ca905cf5f038c53e065bada34cda358e8cb569654f4110255"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.126125,
+          "materialize_ms": 0.000667,
+          "semantic_decode_ms": 0.011875,
+          "fully_consumed_ms": 0.138667,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 6,
+            "sha256": "8ea25724a3cbaf6ca905cf5f038c53e065bada34cda358e8cb569654f4110255"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 0.125333
+    },
+    "q4": {
+      "source_sha256": "d36993eef571b86332ac9c6b0184ba8de61f6364c23e5f15efb7ef609daad4e3",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 1.13775,
+          "materialize_ms": 0.000625,
+          "semantic_decode_ms": 0.041833,
+          "fully_consumed_ms": 1.180208,
+          "signature": {
+            "vars": [
+              "X",
+              "Y1",
+              "Y2",
+              "Y3"
+            ],
+            "rows": 10,
+            "sha256": "0be2c8c4d403f973dacf7068d420990fe6b52259fb33f82e84c5fbb47527c0c7"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.227334,
+          "materialize_ms": 0.000458,
+          "semantic_decode_ms": 0.03275,
+          "fully_consumed_ms": 0.260542,
+          "signature": {
+            "vars": [
+              "X",
+              "Y1",
+              "Y2",
+              "Y3"
+            ],
+            "rows": 10,
+            "sha256": "0be2c8c4d403f973dacf7068d420990fe6b52259fb33f82e84c5fbb47527c0c7"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.206791,
+          "materialize_ms": 0.000417,
+          "semantic_decode_ms": 0.030833,
+          "fully_consumed_ms": 0.238041,
+          "signature": {
+            "vars": [
+              "X",
+              "Y1",
+              "Y2",
+              "Y3"
+            ],
+            "rows": 10,
+            "sha256": "0be2c8c4d403f973dacf7068d420990fe6b52259fb33f82e84c5fbb47527c0c7"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.201958,
+          "materialize_ms": 0.000542,
+          "semantic_decode_ms": 0.031792,
+          "fully_consumed_ms": 0.234292,
+          "signature": {
+            "vars": [
+              "X",
+              "Y1",
+              "Y2",
+              "Y3"
+            ],
+            "rows": 10,
+            "sha256": "0be2c8c4d403f973dacf7068d420990fe6b52259fb33f82e84c5fbb47527c0c7"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 0.238041
+    },
+    "q5": {
+      "source_sha256": "a6282275c37325e36382c5a3858600ba1bc8aa1c5b6818f79bbc82864db6d2fd",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 1.231125,
+          "materialize_ms": 0.000542,
+          "semantic_decode_ms": 0.4215,
+          "fully_consumed_ms": 1.653167,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 532,
+            "sha256": "41249711252fa1aac10330090e95073167dbb6bc77aff0d5dfd318bc9be49689"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.946958,
+          "materialize_ms": 0.0005,
+          "semantic_decode_ms": 0.373375,
+          "fully_consumed_ms": 1.320833,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 532,
+            "sha256": "41249711252fa1aac10330090e95073167dbb6bc77aff0d5dfd318bc9be49689"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.920917,
+          "materialize_ms": 0.000458,
+          "semantic_decode_ms": 0.378375,
+          "fully_consumed_ms": 1.29975,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 532,
+            "sha256": "41249711252fa1aac10330090e95073167dbb6bc77aff0d5dfd318bc9be49689"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.920208,
+          "materialize_ms": 0.000417,
+          "semantic_decode_ms": 0.372333,
+          "fully_consumed_ms": 1.292958,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 532,
+            "sha256": "41249711252fa1aac10330090e95073167dbb6bc77aff0d5dfd318bc9be49689"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 1.29975
+    },
+    "q6": {
+      "source_sha256": "be2e63abeec8f772456a34daa26a84b60220c2888322f80f19c16eab032692bf",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 1255.415333,
+          "materialize_ms": 0.004875,
+          "semantic_decode_ms": 697.063959,
+          "fully_consumed_ms": 1952.484167,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 795970,
+            "sha256": "428b1c998c8c1d8ba96817e954d65ca0db991bae33be221424ffd608954bb0d3"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 830.119959,
+          "materialize_ms": 0.004,
+          "semantic_decode_ms": 692.617,
+          "fully_consumed_ms": 1522.740959,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 795970,
+            "sha256": "428b1c998c8c1d8ba96817e954d65ca0db991bae33be221424ffd608954bb0d3"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 938.879417,
+          "materialize_ms": 0.003583,
+          "semantic_decode_ms": 573.968958,
+          "fully_consumed_ms": 1512.851958,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 795970,
+            "sha256": "428b1c998c8c1d8ba96817e954d65ca0db991bae33be221424ffd608954bb0d3"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 1031.459875,
+          "materialize_ms": 0.004292,
+          "semantic_decode_ms": 586.845791,
+          "fully_consumed_ms": 1618.309958,
+          "signature": {
+            "vars": [
+              "X"
+            ],
+            "rows": 795970,
+            "sha256": "428b1c998c8c1d8ba96817e954d65ca0db991bae33be221424ffd608954bb0d3"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 1522.740959
+    },
+    "q7": {
+      "source_sha256": "3e44a6d8f3f377864b9a214e5aa03346d9d326177263563c848f910439fd8593",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 0.890625,
+          "materialize_ms": 0.001292,
+          "semantic_decode_ms": 0.064541,
+          "fully_consumed_ms": 0.956458,
+          "signature": {
+            "vars": [
+              "X",
+              "Y"
+            ],
+            "rows": 59,
+            "sha256": "e3c2e62f67bf199d6c6202ca5bd790e881f77e6527bd64a1faa636120260f6ca"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.256625,
+          "materialize_ms": 0.000625,
+          "semantic_decode_ms": 0.059208,
+          "fully_consumed_ms": 0.316458,
+          "signature": {
+            "vars": [
+              "X",
+              "Y"
+            ],
+            "rows": 59,
+            "sha256": "e3c2e62f67bf199d6c6202ca5bd790e881f77e6527bd64a1faa636120260f6ca"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.229792,
+          "materialize_ms": 0.000375,
+          "semantic_decode_ms": 0.057125,
+          "fully_consumed_ms": 0.287292,
+          "signature": {
+            "vars": [
+              "X",
+              "Y"
+            ],
+            "rows": 59,
+            "sha256": "e3c2e62f67bf199d6c6202ca5bd790e881f77e6527bd64a1faa636120260f6ca"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 0.216708,
+          "materialize_ms": 0.000417,
+          "semantic_decode_ms": 0.057708,
+          "fully_consumed_ms": 0.274833,
+          "signature": {
+            "vars": [
+              "X",
+              "Y"
+            ],
+            "rows": 59,
+            "sha256": "e3c2e62f67bf199d6c6202ca5bd790e881f77e6527bd64a1faa636120260f6ca"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 0.287292
+    },
+    "q8": {
+      "source_sha256": "7e3df100c7c6c8b54335c87cfda28c37f788a13b05b9a682bf62e08af9d528c2",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 26.99775,
+          "materialize_ms": 0.001833,
+          "semantic_decode_ms": 8.216292,
+          "fully_consumed_ms": 35.215875,
+          "signature": {
+            "vars": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "rows": 5916,
+            "sha256": "e38aead14fa2c0332b4778ddff3dfe39382268feaefbc2c7649c5b6fcaa1a3c2"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 15.031917,
+          "materialize_ms": 0.001958,
+          "semantic_decode_ms": 8.268208,
+          "fully_consumed_ms": 23.302083,
+          "signature": {
+            "vars": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "rows": 5916,
+            "sha256": "e38aead14fa2c0332b4778ddff3dfe39382268feaefbc2c7649c5b6fcaa1a3c2"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 15.089333,
+          "materialize_ms": 0.001792,
+          "semantic_decode_ms": 8.327667,
+          "fully_consumed_ms": 23.418792,
+          "signature": {
+            "vars": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "rows": 5916,
+            "sha256": "e38aead14fa2c0332b4778ddff3dfe39382268feaefbc2c7649c5b6fcaa1a3c2"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 15.036833,
+          "materialize_ms": 0.001209,
+          "semantic_decode_ms": 8.371958,
+          "fully_consumed_ms": 23.41,
+          "signature": {
+            "vars": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "rows": 5916,
+            "sha256": "e38aead14fa2c0332b4778ddff3dfe39382268feaefbc2c7649c5b6fcaa1a3c2"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 23.41
+    },
+    "q9": {
+      "source_sha256": "d46095941b1cc187ac15b0add755bc2fff7976a400588fa704927500dc04e935",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 321.395917,
+          "materialize_ms": 0.00225,
+          "semantic_decode_ms": 5.720666,
+          "fully_consumed_ms": 327.118833,
+          "signature": {
+            "vars": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "rows": 4462,
+            "sha256": "275d6a1eefcbb946f76f0b17d6441168ede558372d30281ddac14ff3572d83cd"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 61.041625,
+          "materialize_ms": 0.001792,
+          "semantic_decode_ms": 5.707667,
+          "fully_consumed_ms": 66.751084,
+          "signature": {
+            "vars": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "rows": 4462,
+            "sha256": "275d6a1eefcbb946f76f0b17d6441168ede558372d30281ddac14ff3572d83cd"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 62.727416,
+          "materialize_ms": 0.001625,
+          "semantic_decode_ms": 6.475167,
+          "fully_consumed_ms": 69.204208,
+          "signature": {
+            "vars": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "rows": 4462,
+            "sha256": "275d6a1eefcbb946f76f0b17d6441168ede558372d30281ddac14ff3572d83cd"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 62.015542,
+          "materialize_ms": 0.002041,
+          "semantic_decode_ms": 6.490917,
+          "fully_consumed_ms": 68.5085,
+          "signature": {
+            "vars": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "rows": 4462,
+            "sha256": "275d6a1eefcbb946f76f0b17d6441168ede558372d30281ddac14ff3572d83cd"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 68.5085
+    }
+  },
+  "complete": true,
+  "version": "0.1.0",
+  "open_ms": 133.569375,
+  "ready_ms": 4263.624583,
+  "rdfdb_cache_option": "binding default; cache_mb is NOT applied",
+  "externally_validated": true
+}

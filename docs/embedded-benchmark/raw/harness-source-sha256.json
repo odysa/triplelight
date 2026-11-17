@@ -1,0 +1,20 @@
+{
+  "ladybug/arrow_output.py": "9776272d25b964ca53aa259c333d0b22f9bfb0c629f515493d363f3a1f586ab3",
+  "ladybug/union_queries.py": "a93052b3d22a248055113d2a9598cd521d8c4d33d9cd71657a6b2c0ca8bbdc50",
+  "ladybug/native.py": "ba2b47c4ff0bfe32feb0477a6fa10a7e01bd8446e17103bf350548e59bfe441d",
+  "ladybug/README.md": "ac920d744a2e8e30a45c39b862c6066c261a8004a71e2d8cafd807d7172c7aa1",
+  "ladybug/tuned.py": "d7294efb1d33ab16a90176978722149f015d8f280a47383d39a942d137ffc659",
+  "ladybug/.gitignore": "862263fa1f46c20f0d1e4dac5ffcc75abd55c08211b2c3864c5f8764b9d87793",
+  "ladybug/parameters.py": "0cee5b8ab86f70b17461c7c9dbf915f312add7b1a365494b8c5b73109af622c3",
+  "ladybug/compare.py": "67827b96a19abea460b4e384083377e146790a9bf684c996c4ed2d367f075e30",
+  "ladybug/test_native.py": "deba55a03adae929ee5d7a32fa29f34c60a7c38b92ffae853528679aa6bb39d3",
+  "embedded/run.py": "1d5f0e4f04a256c52a7cea85930e60553de1e6d78229b166ae483577c861584f",
+  "embedded/README.md": "5e23cf62cd7e2c21b57c4484e5e681be1582a04fc6a59a2af79990343bda7f87",
+  "embedded/test_contract.py": "8113a2c324f6fe479a80a49549b832ea819e78ee5d4f733d17cc52b383efe030",
+  "embedded/export_jena.py": "b7c061b8486e047cff02f088939742b1a7e92033e20812beffc90d2681c2d276",
+  "embedded/.gitignore": "32dae3052f331ee34d628ef535709b301259a45df7c7522c4d35dcf49873f00b",
+  "embedded/reference.py": "316d9224056ee9cbb6a55c97433c613f7b77ce1877899915f05291c7c60799cb",
+  "embedded/bsbm-order.json": "dd96cf216ff22ea00545e4317ddc46b5a1b2fb04ce2fed151dfbe17ceb76daa3",
+  "embedded/contract.py": "f2ba3c90e25d48b594ba48bc939888cb3df74d05e3f5a2e10530e4b0e348da0a",
+  "embedded/smoke.py": "72351a920f960911128019a341ac9995fcc2089e27758e08311d46e525bfe367"
+}
