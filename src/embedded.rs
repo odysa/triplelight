@@ -58,6 +58,7 @@ impl Database {
     }
 
     /// Opens a database, optionally initializing a new one from an N-Triples file.
+    /// The initial file is ignored when the directory already holds a database.
     /// Opening an already open directory fails instead of allowing two writers.
     pub fn open_with(dir: impl AsRef<Path>, options: DatabaseOptions) -> Result<Self, DatabaseError> {
         if options.import_workers == 0 {
