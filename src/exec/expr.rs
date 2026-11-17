@@ -261,6 +261,7 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             let x = s(0)?;
             Some(simple(x.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect::<String>()))
         }
+        Function::Custom(f) => xsd_cast(f.as_str(), &a(0)?),
         _ => None, // hashes, NOW/RAND/UUID, BNODE and RDF-1.2 functions: not supported in P1
     }
 }
@@ -343,3 +344,49 @@ impl NumFilter {
 
 /// Numeric value of a term (for the memoized filter path).
 pub(super) fn term_num(t: &Term) -> Option<Num> { num(t) }
+
+/// XPath constructor functions (SPARQL 1.1 §17.5 casts), e.g. `xsd:double(str(?price))`. `None` = type error.
+fn xsd_cast(iri: &str, t: &Term) -> Option<Term> {
+    let target = iri.strip_prefix("http://www.w3.org/2001/XMLSchema#")?;
+    let typed = |v: String, dt: oxrdf::NamedNodeRef<'_>| -> Option<Term> { Some(Literal::new_typed_literal(v, dt).into()) };
+    // Source: a numeric value, a boolean, or a lexical form (plain/xsd:string literal, or any literal's string).
+    let source_num = num(t);
+    let lexical = match t {
+        Term::Literal(l) => Some(l.value().trim().to_string()),
+        Term::NamedNode(n) if target == "string" => Some(n.as_str().to_string()),
+        _ => None,
+    }?;
+    let is_bool = matches!(t, Term::Literal(l) if l.datatype() == xsd::BOOLEAN);
+    match target {
+        "string" => Some(simple(lexical)),
+        "double" | "float" => {
+            let d = match source_num { Some(n) => n.f(), None if is_bool => if matches!(lexical.as_str(), "true" | "1") { 1.0 } else { 0.0 },
+                None => match lexical.as_str() { "INF" | "+INF" => f64::INFINITY, "-INF" => f64::NEG_INFINITY, "NaN" => f64::NAN, s => s.parse().ok()? } };
+            let dt = if target == "double" { xsd::DOUBLE } else { xsd::FLOAT };
+            typed(format_double(d), dt)
+        }
+        "decimal" => {
+            let d = match source_num { Some(n) => { let f = n.f(); if !f.is_finite() { return None } f }
+                None if is_bool => if matches!(lexical.as_str(), "true" | "1") { 1.0 } else { 0.0 },
+                None => { if lexical.contains(['e', 'E']) || lexical.is_empty() { return None } lexical.parse().ok()? } };
+            typed(fmt_dec(d), xsd::DECIMAL)
+        }
+        "integer" | "int" | "long" | "short" | "byte" => {
+            let i: i64 = match source_num { Some(Num::Int(i)) => i, Some(n) => { let f = n.f(); if !f.is_finite() { return None } f.trunc() as i64 }
+                None if is_bool => i64::from(matches!(lexical.as_str(), "true" | "1")),
+                None => lexical.trim_start_matches('+').parse().ok()? };
+            typed(i.to_string(), oxrdf::NamedNodeRef::new_unchecked(iri))
+        }
+        "boolean" => {
+            let b = match source_num { Some(n) => { let f = n.f(); f != 0.0 && !f.is_nan() }
+                None => match lexical.as_str() { "true" | "1" => true, "false" | "0" => false, _ => return None } };
+            Some(bool_term(b))
+        }
+        "dateTime" | "date" | "time" => typed(lexical, oxrdf::NamedNodeRef::new_unchecked(iri)),
+        _ => None,
+    }
+}
+
+fn format_double(d: f64) -> String {
+    if d.is_nan() { "NaN".into() } else if d.is_infinite() { if d > 0.0 { "INF".into() } else { "-INF".into() } } else { format!("{d:E}") }
+}
