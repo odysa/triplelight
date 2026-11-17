@@ -1,0 +1,14 @@
+{
+  "freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+  "all_manifest_queries": 60,
+  "exploratory_mix_indices": [
+    0
+  ],
+  "unseen_confirmatory_mix_indices": [
+    1,
+    2,
+    3
+  ],
+  "mode": "host correctness, not competitor timing",
+  "variants_source": "/private/tmp/rdf-jianlin-analytical25/holdout-variants.json"
+}
