@@ -163,7 +163,7 @@ class Database:
         return self._db.query_json(sparql)
 
     def query_arrow(self, sparql: str):
-        """Return a PyArrow RecordBatchReader. SELECT only; rows are currently materialized first."""
+        """Return a PyArrow RecordBatchReader. SELECT only; IDs are currently materialized first."""
         return self._db.query_arrow(sparql)
 
     def export_parquet(self, sparql, path):

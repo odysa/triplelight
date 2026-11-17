@@ -1,11 +1,12 @@
-//! Lossless Arrow projection of materialized RDF SELECT rows.
+//! Lossless Arrow projection of materialized RDF SELECT IDs.
 use std::sync::Arc;
 use arrow_array::{ArrayRef, RecordBatch, RecordBatchIterator, RecordBatchReader, RecordBatchOptions};
 use arrow_array::builder::{ArrayBuilder, LargeStringBuilder, StringBuilder, StructBuilder};
 use arrow_schema::{DataType, Field, Fields, Schema};
 use oxrdf::Term;
 use pyo3::prelude::*;
-use rdfdb::exec::QueryResult;
+use rdfdb::exec::{QueryResult, UNBOUND};
+use rdfdb::embedded::{DatabaseError, ReadSnapshot};
 use arrow_pyarrow::IntoPyArrow;
 
 const BATCH_ROWS: usize = 8192;
@@ -45,28 +46,45 @@ fn append(b: &mut StructBuilder, term: Option<&Term>) -> Result<(), String> {
     Ok(())
 }
 
-/// SELECT results only. Eager query execution currently materializes all rows before batching.
-pub fn to_batches(result: QueryResult) -> Result<(Arc<Schema>, Vec<RecordBatch>), String> {
-    let QueryResult::Solutions { vars, rows } = result else { return Err("Arrow output supports SELECT only".into()) };
-    let fields: Vec<Field> = vars.iter().map(|v| Field::new(v.as_str(), DataType::Struct(term_fields()), true)).collect();
+/// SELECT results only. ID rows remain materialized; dictionary values are decoded once per distinct ID per batch.
+pub fn to_batches(snapshot: &ReadSnapshot, result: QueryResult) -> Result<(Arc<Schema>, Vec<RecordBatch>), DatabaseError> {
+    let QueryResult::Ids(result) = result else { return Err(DatabaseError::Unsupported("Arrow output supports SELECT only".into())) };
+    let width = result.vars.len();
+    let fields: Vec<Field> = result.vars.iter().map(|v| Field::new(v.as_str(), DataType::Struct(term_fields()), true)).collect();
     let schema = Arc::new(Schema::new(fields));
     let mut batches = Vec::new();
-    for chunk in rows.chunks(BATCH_ROWS) {
-        let mut builders: Vec<_> = vars.iter().map(|_| builder()).collect();
-        for row in chunk {
-            if row.len() != builders.len() { return Err("result row width mismatch".into()); }
-            for (b, term) in builders.iter_mut().zip(row) { append(b, term.as_ref())?; }
+    if width == 0 { return Ok((schema, batches)); }
+    let batch_cells = width.checked_mul(BATCH_ROWS).ok_or_else(|| DatabaseError::Storage(std::io::Error::other("result batch size overflow")))?;
+    for chunk in result.ids.chunks(batch_cells) {
+        if chunk.len() % width != 0 { return Err(DatabaseError::Storage(std::io::Error::other("result row width mismatch"))); }
+        let mut ids: Vec<_> = chunk.iter().copied().filter(|id| *id != UNBOUND && !result.scratch.contains_key(id)).collect();
+        ids.sort_unstable(); ids.dedup();
+        let mut decoded: Vec<Option<Term>> = vec![None; ids.len()];
+        snapshot.with_stored_terms(&ids, &mut |i, term| decoded[i] = Some(term.into_owned()))?;
+        if decoded.iter().any(Option::is_none) { return Err(DatabaseError::Storage(std::io::Error::other("dictionary omitted a requested term"))); }
+        let mut builders: Vec<_> = result.vars.iter().map(|_| builder()).collect();
+        for row in chunk.chunks_exact(width) {
+            for (b, id) in builders.iter_mut().zip(row) {
+                let term = if *id == UNBOUND { None } else if let Some(term) = result.scratch.get(id) { Some(term) } else {
+                    let i = ids.binary_search(id).map_err(|_| DatabaseError::Storage(std::io::Error::other("missing dictionary term")))?;
+                    decoded[i].as_ref()
+                };
+                append(b, term).map_err(DatabaseError::Unsupported)?;
+            }
         }
         let cols: Vec<ArrayRef> = builders.into_iter().map(|mut b| Arc::new(b.finish()) as ArrayRef).collect();
-        let options = RecordBatchOptions::new().with_row_count(Some(chunk.len()));
-        batches.push(RecordBatch::try_new_with_options(Arc::clone(&schema), cols, &options).map_err(|e| e.to_string())?);
+        let options = RecordBatchOptions::new().with_row_count(Some(chunk.len() / width));
+        batches.push(RecordBatch::try_new_with_options(Arc::clone(&schema), cols, &options).map_err(|e| DatabaseError::Storage(std::io::Error::other(e)))?);
     }
     Ok((schema, batches))
 }
 
 /// Arrow's C stream interface transfers buffer ownership to PyArrow without copying the Arrow buffers.
-pub fn to_reader(py: Python<'_>, result: QueryResult) -> PyResult<PyObject> {
-    let (schema, batches) = to_batches(result).map_err(crate::RdfdbError::new_err)?;
+pub fn to_reader(py: Python<'_>, snapshot: Arc<ReadSnapshot>, sparql: &str) -> PyResult<PyObject> {
+    let (schema, batches) = py.allow_threads(|| {
+        let result = snapshot.query_ids(sparql).map_err(crate::err)?;
+        to_batches(&snapshot, result).map_err(crate::err)
+    })?;
     let reader: Box<dyn RecordBatchReader + Send> = Box::new(RecordBatchIterator::new(batches.into_iter().map(Ok), schema));
     reader.into_pyarrow(py)
 }

@@ -106,9 +106,8 @@ impl PyDatabase {
     }
     /// Return an Arrow RecordBatchReader for SELECT; PyArrow is required.
     fn query_arrow(&self, py: Python<'_>, sparql: &str) -> PyResult<PyObject> {
-        let db = Arc::clone(&self.db);
-        let result = py.allow_threads(|| db.query(sparql)).map_err(err)?;
-        arrow_output::to_reader(py, result)
+        let snapshot = Arc::new(self.db.read());
+        arrow_output::to_reader(py, snapshot, sparql)
     }
     fn update(&self, py: Python<'_>, sparql: &str) -> PyResult<usize> {
         let db = Arc::clone(&self.db);
@@ -143,9 +142,7 @@ impl PySnapshot {
         convert(py, r)
     }
     fn query_arrow(&self, py: Python<'_>, sparql: &str) -> PyResult<PyObject> {
-        let snap = Arc::clone(&self.snap);
-        let result = py.allow_threads(|| snap.query(sparql)).map_err(err)?;
-        arrow_output::to_reader(py, result)
+        arrow_output::to_reader(py, Arc::clone(&self.snap), sparql)
     }
     fn query_json(&self, py: Python<'_>, sparql: &str) -> PyResult<String> {
         let s = Arc::clone(&self.snap);

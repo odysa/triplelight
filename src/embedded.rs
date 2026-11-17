@@ -8,7 +8,7 @@ use std::sync::{Arc, RwLock};
 use crate::opt::stats::Stats;
 use crate::exec::{self, QueryError, QueryResult};
 use crate::store::{Change, Overlay, Store};
-use crate::storage::DiskBase;
+use crate::storage::{DiskBase, Dictionary};
 
 /// Errors returned by embedded operations.
 #[derive(Debug)]
@@ -139,6 +139,11 @@ impl ReadSnapshot {
         let stats = self.applicable_stats();
         let opts = exec::Options { stats: stats.as_deref(), raw_ids: true, ..Default::default() };
         Ok(exec::query_with(&*self.snapshot, sparql, &opts)?)
+    }
+    /// Visit stored dictionary IDs in a batch. IDs must belong to this snapshot;
+    /// exclude UNBOUND and query-local scratch IDs. Callbacks may arrive out of order.
+    pub fn with_stored_terms(&self, ids: &[crate::model::TermId], visitor: &mut dyn FnMut(usize, oxrdf::TermRef<'_>)) -> Result<(), DatabaseError> {
+        Ok(self.snapshot.with_terms(ids, visitor)?)
     }
     /// Serializes SELECT IDs returned by this snapshot with batched dictionary access.
     pub fn serialize_ids(&self, ids: &exec::IdSolutions) -> Result<String, DatabaseError> {

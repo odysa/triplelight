@@ -34,7 +34,7 @@ def test_empty_and_non_select(tmp_path):
     db = rdfdb.Database(tmp_path / "db")
     table = db.query_arrow("SELECT ?s WHERE { ?s <urn:absent> ?o }").read_all()
     assert table.num_rows == 0 and table.column_names == ["s"]
-    with pytest.raises(rdfdb.RdfdbError, match="SELECT"):
+    with pytest.raises(rdfdb.UnsupportedError, match="SELECT"):
         db.query_arrow("ASK { <urn:a> <urn:b> <urn:c> }")
     db.close()
 
