@@ -4,7 +4,7 @@
 use oxrdf::Term;
 use rdfdb::opt::plan::{JoinTree, Slot, TriplePattern};
 use rdfdb::opt::{PlannerOptions, Stats, plan_bgp_with_options, q_error};
-use rdfdb::storage::{MemorySnapshot, Snapshot};
+use rdfdb::storage::{DiskSnapshot, MemorySnapshot, Snapshot};
 use spargebra::algebra::GraphPattern;
 use spargebra::term::{NamedNodePattern, TermPattern};
 use spargebra::{Query, SparqlParser};
@@ -74,24 +74,29 @@ fn main() -> Result<(), Box<dyn Error>> {
     let verify_wcoj = args.len() == 5 && args[4] == "--verify-wcoj";
     let verify = args.len() == 5 && args[4] == "--verify-executor" || verify_wcoj;
     let bench = args.len() == 5 && args[4] == "--bench-planner";
-    if args.len() != 4 && !verify && !bench {
+    let trace = args.len() == 5 && args[4] == "--plan-trace";
+    if args.len() != 4 && !verify && !bench && !trace {
         return Err(io::Error::other(
-            "usage: optimizer_qerror DATA.nt QUERY_DIR REFERENCE_COUNTS.tsv [--verify-executor|--verify-wcoj|--bench-planner]",
+            "usage: optimizer_qerror DATA.nt QUERY_DIR REFERENCE_COUNTS.tsv [--verify-executor|--verify-wcoj|--bench-planner|--plan-trace]",
         )
         .into());
     }
     let start = Instant::now();
-    let input = BufReader::new(fs::File::open(&args[1])?);
-    let snapshot = if args[1].ends_with(".snapshot") {
-        MemorySnapshot::read_snapshot(input)?
-    } else if args[1].ends_with(".ttl") {
-        MemorySnapshot::from_turtle(input)?
+    let snapshot: Box<dyn Snapshot> = if Path::new(&args[1]).is_dir() {
+        Box::new(DiskSnapshot::open(&args[1])?)
     } else {
-        MemorySnapshot::from_ntriples(input)?
+        let input = BufReader::new(fs::File::open(&args[1])?);
+        Box::new(if args[1].ends_with(".snapshot") {
+            MemorySnapshot::read_snapshot(input)?
+        } else if args[1].ends_with(".ttl") {
+            MemorySnapshot::from_turtle(input)?
+        } else {
+            MemorySnapshot::from_ntriples(input)?
+        })
     };
     eprintln!("load_s={:.6}", start.elapsed().as_secs_f64());
     let t = Instant::now();
-    let stats = Stats::from_snapshot(&snapshot)?;
+    let stats = Stats::from_snapshot(&*snapshot)?;
     eprintln!(
         "triples={} subjects={} characteristic_sets={} stats_s={:.6}",
         stats.triple_count,
@@ -133,7 +138,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let name = file.file_stem().unwrap().to_string_lossy();
         let actual = reference[name.as_ref()];
         let query = fs::read_to_string(&file)?;
-        let encoded = encode(&query, &snapshot)?;
+        let encoded = encode(&query, &*snapshot)?;
         let (estimate, raw, search, kind) = if let Some(patterns) = encoded {
             if bench {
                 let mut samples = Vec::new();
@@ -141,7 +146,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     let start = Instant::now();
                     let mut cached = std::hint::black_box(&stats).clone();
                     let cloned = start.elapsed().as_nanos();
-                    cached.cache_pattern_counts(&patterns, &snapshot)?;
+                    cached.cache_pattern_counts(&patterns, &*snapshot)?;
                     let prepared = start.elapsed().as_nanos();
                     let plan = plan_bgp_with_options(&patterns, &cached, PlannerOptions::default());
                     let planned = start.elapsed().as_nanos();
@@ -166,8 +171,26 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
             let raw = stats.estimate_bgp(&patterns);
             let mut cached = stats.clone();
-            cached.cache_pattern_counts(&patterns, &snapshot)?;
+            cached.cache_pattern_counts(&patterns, &*snapshot)?;
             let decision = plan_bgp_with_options(&patterns, &cached, PlannerOptions::default());
+            if trace {
+                use rdfdb::opt::planner::{
+                    MAX_RUNTIME_DP_PATTERNS, MIN_OPTIMIZER_WORK, estimated_greedy_work,
+                };
+                let work = estimated_greedy_work(&patterns, &stats);
+                let eligible = (2..=MAX_RUNTIME_DP_PATTERNS).contains(&patterns.len())
+                    && work >= MIN_OPTIMIZER_WORK;
+                eprintln!(
+                    "plan_trace query={name} patterns={} gate_work={work:.9} runtime_binary_eligible={eligible} search={} reason={:?} binary_cost={:.9}",
+                    patterns.len(),
+                    decision.search,
+                    decision.reason,
+                    decision.binary_cost
+                );
+                eprintln!("plan_patterns query={name} {patterns:?}");
+                eprintln!("plan_tree query={name} {:?}", decision.tree);
+                // A candidate is not evidence that an ineligible runtime uses it.
+            }
             let kind = match decision.tree {
                 JoinTree::Scan { .. } => "scan",
                 JoinTree::IndexNestedLoop { .. } => "index_loop",
@@ -194,7 +217,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             };
             for (mode, wcoj) in modes {
                 let QueryResult::Solutions { rows, .. } = query_with(
-                    &snapshot,
+                    &*snapshot,
                     &query,
                     &Options {
                         stats: mode,
