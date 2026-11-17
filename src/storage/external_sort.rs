@@ -105,6 +105,17 @@ impl ExternalSort {
         self.runs.push(path);
         Ok(())
     }
+    /// Import already sorted runs into this sorter's private scratch, respecting fan-in.
+    /// The caller must retain the source sorters until this method returns.
+    pub(super) fn import_sorted(&mut self, paths: &[PathBuf]) -> io::Result<()> {
+        if !self.pending.is_empty() || !self.runs.is_empty() { return Err(bad("import requires an empty sorter")); }
+        for group in paths.chunks(self.fan_in) {
+            let path = self.path();
+            merge(group, &path, self.max_record)?;
+            self.runs.push(path);
+        }
+        Ok(())
+    }
     /// Returns a private scratch file containing sorted length-prefixed records.
     /// It remains valid until this sorter is dropped.
     pub(super) fn finish(&mut self) -> io::Result<PathBuf> {

@@ -218,7 +218,10 @@ fn main() {
                 let Backend::Memory(source) = load(&args[2], &args) else { unreachable!() };
                 DiskSnapshot::create(&args[3], &source).expect("create disk snapshot");
             } else {
-                rdfdb::storage::build_disk_snapshot(&args[3], Some(std::path::Path::new(&args[2]))).expect("create disk snapshot");
+                let workers = args.iter().find_map(|arg| arg.strip_prefix("--parallel-load="))
+                    .map(|v| v.parse::<usize>().expect("parallel-load requires a nonzero integer"))
+                    .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, |n| n.get()));
+                rdfdb::storage::build_disk_snapshot_with_workers(&args[3], Some(std::path::Path::new(&args[2])), workers).expect("create disk snapshot");
             }
         }
         Some("query") => {

@@ -97,6 +97,11 @@ pub fn build_disk_snapshot(dir: impl AsRef<Path>, source: Option<&Path>) -> io::
         std::thread::available_parallelism().map_or(1, |n| n.get()),
     )
 }
+/// Build from N-Triples with an explicit number of ingestion workers.
+pub fn build_disk_snapshot_with_workers(dir: impl AsRef<Path>, source: Option<&Path>, workers: usize) -> io::Result<()> {
+    if workers == 0 { return Err(io::Error::new(io::ErrorKind::InvalidInput, "workers must be positive")); }
+    super::external_build::adaptive(dir.as_ref(), source, workers)
+}
 /// Persistent Store base format backed by immutable checksummed disk indexes.
 pub struct DiskBase {
     pub workers: usize,
