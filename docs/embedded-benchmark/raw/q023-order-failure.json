@@ -1,0 +1,111 @@
+{
+  "query": "PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#> \nPREFIX dc: <http://purl.org/dc/elements/1.1/>\n\nSELECT DISTINCT ?offer ?price\nWHERE {\n\t?offer bsbm:product <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer344/Product16740> .\n\t?offer bsbm:vendor ?vendor .\n    ?offer dc:publisher ?vendor .\n\t?vendor bsbm:country <http://downlode.org/rdf/iso-3166/countries#US> .\n\t?offer bsbm:deliveryDays ?deliveryDays .\n\tFILTER (?deliveryDays <= 3)\n\t?offer bsbm:price ?price .\n    ?offer bsbm:validTo ?date .\n    FILTER (?date > \"2008-06-20T00:00:00\"^^<http://www.w3.org/2001/XMLSchema#dateTime> )\n}\nORDER BY xsd:double(str(?price))\nLIMIT 10\n",
+  "rdfdb_objects_vars": [
+    "offer",
+    "price"
+  ],
+  "rdfdb_objects": [
+    [
+      "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor12/Offer20574",
+      "Literal(value='7851.30', datatype='http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/USD', lang=None)"
+    ],
+    [
+      "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor43/Offer87584",
+      "Literal(value='2216.71', datatype='http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/USD', lang=None)"
+    ],
+    [
+      "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor194/Offer383275",
+      "Literal(value='5947.37', datatype='http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/USD', lang=None)"
+    ]
+  ],
+  "rdfdb_json": {
+    "head": {
+      "vars": [
+        "offer",
+        "price"
+      ]
+    },
+    "results": {
+      "bindings": [
+        {
+          "offer": {
+            "type": "uri",
+            "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor12/Offer20574"
+          },
+          "price": {
+            "type": "literal",
+            "value": "7851.30",
+            "datatype": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/USD"
+          }
+        },
+        {
+          "offer": {
+            "type": "uri",
+            "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor43/Offer87584"
+          },
+          "price": {
+            "type": "literal",
+            "value": "2216.71",
+            "datatype": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/USD"
+          }
+        },
+        {
+          "offer": {
+            "type": "uri",
+            "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor194/Offer383275"
+          },
+          "price": {
+            "type": "literal",
+            "value": "5947.37",
+            "datatype": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/USD"
+          }
+        }
+      ]
+    }
+  },
+  "jena_json": {
+    "head": {
+      "vars": [
+        "offer",
+        "price"
+      ]
+    },
+    "results": {
+      "bindings": [
+        {
+          "offer": {
+            "type": "uri",
+            "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor43/Offer87584"
+          },
+          "price": {
+            "type": "literal",
+            "datatype": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/USD",
+            "value": "2216.71"
+          }
+        },
+        {
+          "offer": {
+            "type": "uri",
+            "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor194/Offer383275"
+          },
+          "price": {
+            "type": "literal",
+            "datatype": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/USD",
+            "value": "5947.37"
+          }
+        },
+        {
+          "offer": {
+            "type": "uri",
+            "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor12/Offer20574"
+          },
+          "price": {
+            "type": "literal",
+            "datatype": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/USD",
+            "value": "7851.30"
+          }
+        }
+      ]
+    }
+  }
+}
