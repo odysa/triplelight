@@ -85,6 +85,23 @@ read from the qualification report. The latter is a Jena/rdfdb diagnostic, not
 a DuckDB SQL translation or a timed BI query. The standard-library tests
 exercise only the oracle/parameter recovery; they are not engine qualification.
 
+## Real-parameter qualification
+
+`workload_check.py` consumes the exported manifest and verifies each query hash.
+Run one engine at a time: Jena references first, then DuckDB and rdfdb in separate
+processes. It checks complete results against the reference with the same numeric,
+ordering and q7-cutoff rules as the small fixture. `--limit` explicitly marks a
+partial workload; it is a diagnostic, not a complete weighted-mix result. The
+DuckDB mode requires the successful pinned import report. Query errors and
+missing references are retained as failures. There is no timing score in this
+runner. Source/runtime versions, process supervision and source-file postchecks
+must accompany the saved matrices.
+
+Current DuckDB query runs can configure a separate empty owned spill directory
+and maximum spill size, in addition to the memory setting. Those are settings,
+not evidence of observed peak use. The initial real-parameter cohort uses its
+snapshotted earlier checker; consult that source for its exact configuration.
+
 ## Execution and resource boundaries
 
 Use an exclusive `/tmp/rdf-bench.lock` window before compilation, imports, engine
