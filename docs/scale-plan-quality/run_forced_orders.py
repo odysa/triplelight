@@ -14,12 +14,16 @@ before=receipt(dataset)
 meta={"started_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
  "binary":receipt(binary),"dataset_before":before,"queries":[receipt(p) for p in queries],
  "kernel_source":receipt(pathlib.Path("src/exec/bgp.rs")),
- "helper_source":receipt(pathlib.Path("examples/leapfrog_orders.rs")),
+ "helper_source":receipt(pathlib.Path("examples")/(binary.name+".rs")),
+ "execution_sources":{str(p):receipt(p) for p in pathlib.Path("src/exec").glob("*.rs")},
  "git_head":subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),
- "uptime_before":subprocess.check_output(["uptime"],text=True).strip(),"timeout_s":900}
+ "uptime_before":subprocess.check_output(["uptime"],text=True).strip(),"timeout_s":900,
+ "environment_overrides":{"RDFDB_PROFILE_PLAN":"unset","RDFDB_TRACE_BLOCK_CACHE":"unset","RAYON_NUM_THREADS":str(os.cpu_count() or 1)}}
 (out/"receipt.json").write_text(json.dumps(meta,indent=2)+"\n")
 env=os.environ.copy()
 env.pop("RDFDB_PROFILE_PLAN",None)
+env.pop("RDFDB_TRACE_BLOCK_CACHE",None)
+env["RAYON_NUM_THREADS"]=str(os.cpu_count() or 1)
 with (out/"stdout.log").open("w") as stdout,(out/"resources.log").open("w") as stderr:
     p=subprocess.Popen(["/usr/bin/time","-l",str(binary.resolve()),str(dataset.resolve()),
        str((out/"raw").resolve()),*[str(q.resolve()) for q in queries]],

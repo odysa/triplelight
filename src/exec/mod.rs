@@ -8,6 +8,8 @@ mod count;
 mod expr;
 use bgp::Slot;
 pub mod results;
+/// Explicit offline plan-sensitivity tools; ordinary requests do not use these.
+pub mod diagnostic;
 
 use crate::model::{Perm, TermId};
 use crate::storage::Snapshot;
@@ -106,7 +108,15 @@ fn run<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryRes
 }
 
 fn run_query<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
+    run_query_controlled(snap, q, opts, None)
+}
+
+fn run_query_controlled<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>, control: Option<&diagnostic::OrderControl>) -> Result<QueryResult, QueryError> {
     let mut ctx = Ctx::new(snap);
+    if let Some(control) = control {
+        ctx.forced_pattern_order = control.forced.clone();
+        ctx.pattern_order_trace = Some(control.trace.clone());
+    }
     ctx.wcoj = opts.wcoj;
     let stats = opts.stats;
     ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
@@ -181,11 +191,13 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     wcoj: bool,
     /// Read once for this query; evaluation never reads the environment in row loops.
     profile_plan: bool,
+    forced_pattern_order: Option<Vec<usize>>,
+    pattern_order_trace: Option<std::sync::Arc<std::sync::Mutex<Vec<usize>>>>,
 }
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, profile_plan: std::env::var_os("RDFDB_PROFILE_PLAN").is_some() }
+        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, profile_plan: std::env::var_os("RDFDB_PROFILE_PLAN").is_some(), forced_pattern_order: None, pattern_order_trace: None }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -442,7 +454,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             });
             return if all { rows } else { Vec::new() };
         }
-        let bgp = bgp::Bgp { snap: self.snap, w, profile_plan: self.profile_plan };
+        let bgp = bgp::Bgp { snap: self.snap, w, profile_plan: self.profile_plan, record_order: self.pattern_order_trace.as_deref() };
         let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
         let flat: Vec<TermId> = rows.concat();
         let out = if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(bgp::no_repeated_var) && bgp::cyclic(&pats) {
@@ -492,6 +504,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     /// Pattern order from the cost-based planner: leaves of its join tree, left to right. Used for top-level BGPs
     /// (a single all-unbound input row); nested BGPs with bound inputs keep the greedy order.
     fn planned_order(&self, pats: &[[Slot; 3]], rows: &[Row]) -> Option<Vec<usize>> {
+        // Offline diagnostics validate a single unbound acyclic BGP and a complete permutation.
+        if let Some(order) = &self.forced_pattern_order {
+            return (rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND)).then(|| order.clone());
+        }
         let (stats, dynsnap) = self.stats?;
         if pats.len() < 2 || rows.len() != 1 || rows[0].iter().any(|&x| x != UNBOUND) { return None }
         // Explicit diagnostic only; normal requests do not acquire clocks or emit output.
