@@ -256,3 +256,24 @@ fn fast_group_matches_general_group() {
     unsafe { std::env::remove_var("RDFDB_LEGACY_GROUP") };
     for ((q, f), l) in queries.iter().zip(&fast).zip(&legacy) { assert_eq!(f, l, "{q}"); }
 }
+
+/// xsd:float is its own type in numeric promotion (integer < decimal < float < double), not folded into double.
+#[test]
+fn float_promotion_and_aggregates() {
+    let data = r#"
+<http://ex/a> <http://ex/f> "1.5"^^<http://www.w3.org/2001/XMLSchema#float> .
+<http://ex/b> <http://ex/f> "2.25"^^<http://www.w3.org/2001/XMLSchema#float> .
+<http://ex/a> <http://ex/d> "1.0E0"^^<http://www.w3.org/2001/XMLSchema#double> .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let dt = |q: &str| -> String {
+        match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => match rows[0][0].as_ref().unwrap() {
+            oxrdf::Term::Literal(l) => l.datatype().as_str().rsplit('#').next().unwrap().to_string(), t => panic!("{t}") }, r => panic!("{r:?}") }
+    };
+    assert_eq!(dt("SELECT ?v WHERE { <http://ex/a> <http://ex/f> ?f BIND(?f + 1 AS ?v) }"), "float");
+    assert_eq!(dt("SELECT ?v WHERE { <http://ex/a> <http://ex/f> ?f BIND(?f + 1.5 AS ?v) }"), "float");
+    assert_eq!(dt("SELECT ?v WHERE { <http://ex/a> <http://ex/f> ?f . <http://ex/a> <http://ex/d> ?d BIND(?f * ?d AS ?v) }"), "double");
+    assert_eq!(dt("SELECT (SUM(?f) AS ?v) WHERE { ?x <http://ex/f> ?f }"), "float");
+    assert_eq!(dt("SELECT (AVG(?f) AS ?v) WHERE { ?x <http://ex/f> ?f }"), "float");
+    assert_eq!(dt("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ?v WHERE { BIND(xsd:float(\"0.1\") AS ?v) }"), "float");
+}
