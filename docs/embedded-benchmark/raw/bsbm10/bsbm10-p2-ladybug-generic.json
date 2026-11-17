@@ -1,0 +1,2435 @@
+{
+  "schema": "embedded-select-v1",
+  "system": "ladybug",
+  "database": "/private/tmp/rdf-jianlin-ladybug18/bsbm10.db",
+  "binding_source": "ladybug-0.22.3",
+  "rdfdb_result": null,
+  "python": "3.14.3 (main, Mar 25 2026, 03:28:18) [Clang 22.1.1 ]",
+  "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+  "threads": 4,
+  "requested_cache_mb": 16384,
+  "runs": 3,
+  "query_boundary": "public Python execute + full native materialization + semantic RDF decoding",
+  "hash_boundary": "outside all query timings; sorted complete bag with variable names",
+  "compiled_sha256": "93f2697c3144058cebf00f427edf428ea28555b644774bb762fbb4689a8d3761",
+  "queries": {
+    "q001": {
+      "source_sha256": "e7bfc861fbd312e1ef79f447e570a043e78ab63f847ac418c57ed84af0873259",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 144.695,
+          "materialize_ms": 47.438292,
+          "semantic_decode_ms": 0.031708,
+          "fully_consumed_ms": 192.165,
+          "signature": {
+            "vars": [
+              "label",
+              "product"
+            ],
+            "rows": 3,
+            "sha256": "937831f1a0db24b7cf85b39ef3b4561cad7153c924f14de885a6d67f01cf2ac6"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "label",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 5.75125,
+          "materialize_ms": 0.966834,
+          "semantic_decode_ms": 0.031,
+          "fully_consumed_ms": 6.749084,
+          "signature": {
+            "vars": [
+              "label",
+              "product"
+            ],
+            "rows": 3,
+            "sha256": "937831f1a0db24b7cf85b39ef3b4561cad7153c924f14de885a6d67f01cf2ac6"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "label",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 5.469042,
+          "materialize_ms": 0.861666,
+          "semantic_decode_ms": 0.030084,
+          "fully_consumed_ms": 6.360792,
+          "signature": {
+            "vars": [
+              "label",
+              "product"
+            ],
+            "rows": 3,
+            "sha256": "937831f1a0db24b7cf85b39ef3b4561cad7153c924f14de885a6d67f01cf2ac6"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "label",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 5.96775,
+          "materialize_ms": 0.908333,
+          "semantic_decode_ms": 0.030375,
+          "fully_consumed_ms": 6.906458,
+          "signature": {
+            "vars": [
+              "label",
+              "product"
+            ],
+            "rows": 3,
+            "sha256": "937831f1a0db24b7cf85b39ef3b4561cad7153c924f14de885a6d67f01cf2ac6"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "label",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 6.749084
+    },
+    "q002": {
+      "source_sha256": "15a6df1c7868788e2dc8b9044d277636cf6fbe32c3ae841e8d39639546f313ea",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 2951.388792,
+          "materialize_ms": 1.378125,
+          "semantic_decode_ms": 0.377166,
+          "fully_consumed_ms": 2953.144083,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 16,
+            "sha256": "ee7c14795c149a73f616e22d1ae3a95e4685d980f76d146c73d8df6abdac8b7f"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 16.977333,
+          "materialize_ms": 1.205,
+          "semantic_decode_ms": 0.380709,
+          "fully_consumed_ms": 18.563042,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 16,
+            "sha256": "ee7c14795c149a73f616e22d1ae3a95e4685d980f76d146c73d8df6abdac8b7f"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 16.390666,
+          "materialize_ms": 1.149917,
+          "semantic_decode_ms": 0.372083,
+          "fully_consumed_ms": 17.912666,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 16,
+            "sha256": "ee7c14795c149a73f616e22d1ae3a95e4685d980f76d146c73d8df6abdac8b7f"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 16.399458,
+          "materialize_ms": 1.125,
+          "semantic_decode_ms": 0.369125,
+          "fully_consumed_ms": 17.893583,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 16,
+            "sha256": "ee7c14795c149a73f616e22d1ae3a95e4685d980f76d146c73d8df6abdac8b7f"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 17.912666
+    },
+    "q003": {
+      "source_sha256": "b553bd17ffbc82aa1b622925a74d354793a12a1d3441af18e3de528bd8a794bb",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 16.438167,
+          "materialize_ms": 1.133042,
+          "semantic_decode_ms": 0.264041,
+          "fully_consumed_ms": 17.83525,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 13,
+            "sha256": "16926386774e2a6ec7e25a88140b1bf42d2208e26f372aa85e621b45f53c940f"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 17.976834,
+          "materialize_ms": 1.277625,
+          "semantic_decode_ms": 0.325666,
+          "fully_consumed_ms": 19.580125,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 13,
+            "sha256": "16926386774e2a6ec7e25a88140b1bf42d2208e26f372aa85e621b45f53c940f"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 17.689875,
+          "materialize_ms": 1.255125,
+          "semantic_decode_ms": 0.294625,
+          "fully_consumed_ms": 19.239625,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 13,
+            "sha256": "16926386774e2a6ec7e25a88140b1bf42d2208e26f372aa85e621b45f53c940f"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 17.990667,
+          "materialize_ms": 1.246917,
+          "semantic_decode_ms": 0.298583,
+          "fully_consumed_ms": 19.536167,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 13,
+            "sha256": "16926386774e2a6ec7e25a88140b1bf42d2208e26f372aa85e621b45f53c940f"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 19.536167
+    },
+    "q004": {
+      "source_sha256": "0ae8810ddbceadb10499574e85b8283c5d1069f895b802c10a420fe69389e47a",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 878.244958,
+          "materialize_ms": 1.572875,
+          "semantic_decode_ms": 0.03425,
+          "fully_consumed_ms": 879.852083,
+          "signature": {
+            "vars": [
+              "label",
+              "product"
+            ],
+            "rows": 1,
+            "sha256": "b143028dbd109b429f0fce6ca0251f05c816e93143f5c53be4a3af1250a67e7f"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "label",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 258.246792,
+          "materialize_ms": 1.707125,
+          "semantic_decode_ms": 0.039041,
+          "fully_consumed_ms": 259.992958,
+          "signature": {
+            "vars": [
+              "label",
+              "product"
+            ],
+            "rows": 1,
+            "sha256": "b143028dbd109b429f0fce6ca0251f05c816e93143f5c53be4a3af1250a67e7f"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "label",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 274.622333,
+          "materialize_ms": 1.675917,
+          "semantic_decode_ms": 0.03375,
+          "fully_consumed_ms": 276.332,
+          "signature": {
+            "vars": [
+              "label",
+              "product"
+            ],
+            "rows": 1,
+            "sha256": "b143028dbd109b429f0fce6ca0251f05c816e93143f5c53be4a3af1250a67e7f"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "label",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 268.071208,
+          "materialize_ms": 1.463375,
+          "semantic_decode_ms": 0.036708,
+          "fully_consumed_ms": 269.571291,
+          "signature": {
+            "vars": [
+              "label",
+              "product"
+            ],
+            "rows": 1,
+            "sha256": "b143028dbd109b429f0fce6ca0251f05c816e93143f5c53be4a3af1250a67e7f"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "label",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 269.571291
+    },
+    "q005": {
+      "source_sha256": "ad7e8fba53c245235b5cda044baa0b1a88b1a73fd114de790070f7487c3e8f46",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 22.948792,
+          "materialize_ms": 1.540792,
+          "semantic_decode_ms": 0.566291,
+          "fully_consumed_ms": 25.055875,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 20,
+            "sha256": "41f6781f4d5568b7e322abf5b4be510e3ecbdf31383594b665fdcfa95a02b465"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 21.962291,
+          "materialize_ms": 1.845334,
+          "semantic_decode_ms": 0.6765,
+          "fully_consumed_ms": 24.484125,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 20,
+            "sha256": "41f6781f4d5568b7e322abf5b4be510e3ecbdf31383594b665fdcfa95a02b465"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 22.9885,
+          "materialize_ms": 1.535625,
+          "semantic_decode_ms": 0.6015,
+          "fully_consumed_ms": 25.125625,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 20,
+            "sha256": "41f6781f4d5568b7e322abf5b4be510e3ecbdf31383594b665fdcfa95a02b465"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 22.696875,
+          "materialize_ms": 1.8155,
+          "semantic_decode_ms": 0.673417,
+          "fully_consumed_ms": 25.185792,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 20,
+            "sha256": "41f6781f4d5568b7e322abf5b4be510e3ecbdf31383594b665fdcfa95a02b465"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 25.125625
+    },
+    "q006": {
+      "source_sha256": "762bb1a38911bf1dd75afcce4e0491d4a3b76243aacd84130665b6a1a408a196",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 23.484334,
+          "materialize_ms": 1.875333,
+          "semantic_decode_ms": 0.918833,
+          "fully_consumed_ms": 26.2785,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 22,
+            "sha256": "2218569127e9f9c83a74f92eb70f9b6f7bb8f05f286af183389d16ff3b161123"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 22.430458,
+          "materialize_ms": 1.52275,
+          "semantic_decode_ms": 0.725542,
+          "fully_consumed_ms": 24.67875,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 22,
+            "sha256": "2218569127e9f9c83a74f92eb70f9b6f7bb8f05f286af183389d16ff3b161123"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 23.687959,
+          "materialize_ms": 1.849458,
+          "semantic_decode_ms": 0.897625,
+          "fully_consumed_ms": 26.435042,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 22,
+            "sha256": "2218569127e9f9c83a74f92eb70f9b6f7bb8f05f286af183389d16ff3b161123"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 24.045375,
+          "materialize_ms": 1.921625,
+          "semantic_decode_ms": 0.902125,
+          "fully_consumed_ms": 26.869125,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 22,
+            "sha256": "2218569127e9f9c83a74f92eb70f9b6f7bb8f05f286af183389d16ff3b161123"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 26.435042
+    },
+    "q007": {
+      "source_sha256": "65b8907f7beb63a0a459d071d39124975a4ca8bcf8e9815436020bbe3d4e26f8",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 1045.108334,
+          "materialize_ms": 1.586625,
+          "semantic_decode_ms": 0.03825,
+          "fully_consumed_ms": 1046.733209,
+          "signature": {
+            "vars": [
+              "label",
+              "product",
+              "propertyTextual"
+            ],
+            "rows": 2,
+            "sha256": "f7cef8537d8501e1bcb78697072746d11fa58cebf9f6806108e51f1be9685051"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "label",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 81.614959,
+          "materialize_ms": 1.553291,
+          "semantic_decode_ms": 0.0405,
+          "fully_consumed_ms": 83.20875,
+          "signature": {
+            "vars": [
+              "label",
+              "product",
+              "propertyTextual"
+            ],
+            "rows": 2,
+            "sha256": "f7cef8537d8501e1bcb78697072746d11fa58cebf9f6806108e51f1be9685051"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "label",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 91.572083,
+          "materialize_ms": 1.921458,
+          "semantic_decode_ms": 0.045084,
+          "fully_consumed_ms": 93.538625,
+          "signature": {
+            "vars": [
+              "label",
+              "product",
+              "propertyTextual"
+            ],
+            "rows": 2,
+            "sha256": "f7cef8537d8501e1bcb78697072746d11fa58cebf9f6806108e51f1be9685051"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "label",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 91.844083,
+          "materialize_ms": 2.196542,
+          "semantic_decode_ms": 0.053292,
+          "fully_consumed_ms": 94.093917,
+          "signature": {
+            "vars": [
+              "label",
+              "product",
+              "propertyTextual"
+            ],
+            "rows": 2,
+            "sha256": "f7cef8537d8501e1bcb78697072746d11fa58cebf9f6806108e51f1be9685051"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "label",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 93.538625
+    },
+    "q008": {
+      "source_sha256": "a68c5de8fa504bc7dcf601e26c8ab0d4a9ba9247e81f4e33c689948930c1889e",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 23.698708,
+          "materialize_ms": 2.080875,
+          "semantic_decode_ms": 0.687583,
+          "fully_consumed_ms": 26.467166,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 16,
+            "sha256": "17cc6ea80aa4f7b0f5c0eb50e44a17322df495d689d80d39a1f60baddb730126"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 23.30025,
+          "materialize_ms": 1.827208,
+          "semantic_decode_ms": 0.717542,
+          "fully_consumed_ms": 25.845,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 16,
+            "sha256": "17cc6ea80aa4f7b0f5c0eb50e44a17322df495d689d80d39a1f60baddb730126"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 26.236416,
+          "materialize_ms": 1.829375,
+          "semantic_decode_ms": 0.631625,
+          "fully_consumed_ms": 28.697416,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 16,
+            "sha256": "17cc6ea80aa4f7b0f5c0eb50e44a17322df495d689d80d39a1f60baddb730126"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 23.878375,
+          "materialize_ms": 1.929584,
+          "semantic_decode_ms": 0.653708,
+          "fully_consumed_ms": 26.461667,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 16,
+            "sha256": "17cc6ea80aa4f7b0f5c0eb50e44a17322df495d689d80d39a1f60baddb730126"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 26.461667
+    },
+    "q009": {
+      "source_sha256": "bbe69a89b20d1dc883817771ae3e9a07e56af9271b1a563a287f05e4c396f24a",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 23.920125,
+          "materialize_ms": 1.859625,
+          "semantic_decode_ms": 0.616542,
+          "fully_consumed_ms": 26.396292,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 19,
+            "sha256": "7dcc9ba14b0c1c08563050e400c7ae5cf846579454268f0f1ce63da2a44d989a"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 23.856334,
+          "materialize_ms": 1.827,
+          "semantic_decode_ms": 0.615416,
+          "fully_consumed_ms": 26.29875,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 19,
+            "sha256": "7dcc9ba14b0c1c08563050e400c7ae5cf846579454268f0f1ce63da2a44d989a"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 22.768375,
+          "materialize_ms": 2.116333,
+          "semantic_decode_ms": 0.63025,
+          "fully_consumed_ms": 25.514958,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 19,
+            "sha256": "7dcc9ba14b0c1c08563050e400c7ae5cf846579454268f0f1ce63da2a44d989a"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 23.558167,
+          "materialize_ms": 1.950042,
+          "semantic_decode_ms": 0.628666,
+          "fully_consumed_ms": 26.136875,
+          "signature": {
+            "vars": [
+              "comment",
+              "label",
+              "producer",
+              "productFeature",
+              "propertyNumeric1",
+              "propertyNumeric2",
+              "propertyNumeric4",
+              "propertyTextual1",
+              "propertyTextual2",
+              "propertyTextual3",
+              "propertyTextual4",
+              "propertyTextual5"
+            ],
+            "rows": 19,
+            "sha256": "7dcc9ba14b0c1c08563050e400c7ae5cf846579454268f0f1ce63da2a44d989a"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 26.136875
+    },
+    "q010": {
+      "source_sha256": "7bc2dc79cf827b166b428c135d5c536bac05475c1f1bb0f77d1822a1442542d8",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 532.160458,
+          "materialize_ms": 1.1735,
+          "semantic_decode_ms": 0.049334,
+          "fully_consumed_ms": 533.383292,
+          "signature": {
+            "vars": [
+              "product",
+              "productLabel"
+            ],
+            "rows": 5,
+            "sha256": "b879d91921a233ce1d5cbdb2f03f3e3d2d0b8c10747eb29a061c22acca5983a1"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "productLabel",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 39.600875,
+          "materialize_ms": 1.251,
+          "semantic_decode_ms": 0.049458,
+          "fully_consumed_ms": 40.901333,
+          "signature": {
+            "vars": [
+              "product",
+              "productLabel"
+            ],
+            "rows": 5,
+            "sha256": "b879d91921a233ce1d5cbdb2f03f3e3d2d0b8c10747eb29a061c22acca5983a1"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "productLabel",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 39.335791,
+          "materialize_ms": 1.164584,
+          "semantic_decode_ms": 0.046291,
+          "fully_consumed_ms": 40.546666,
+          "signature": {
+            "vars": [
+              "product",
+              "productLabel"
+            ],
+            "rows": 5,
+            "sha256": "b879d91921a233ce1d5cbdb2f03f3e3d2d0b8c10747eb29a061c22acca5983a1"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "productLabel",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 39.159083,
+          "materialize_ms": 1.214458,
+          "semantic_decode_ms": 0.049584,
+          "fully_consumed_ms": 40.423125,
+          "signature": {
+            "vars": [
+              "product",
+              "productLabel"
+            ],
+            "rows": 5,
+            "sha256": "b879d91921a233ce1d5cbdb2f03f3e3d2d0b8c10747eb29a061c22acca5983a1"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "productLabel",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 40.546666
+    },
+    "q011": {
+      "source_sha256": "30dfb42fe8fed145a90df5a4e5006386d9b9094ed8249dbf085c9b19d0fa9551",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 978.976584,
+          "materialize_ms": 1.777166,
+          "semantic_decode_ms": 0.149042,
+          "fully_consumed_ms": 980.902792,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 3,
+            "sha256": "42b9e4bc1c40547897dc6b88d29f2c0f5c94e2fcb6c519305eeaacf638f0d628"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 591.7765,
+          "materialize_ms": 1.4305,
+          "semantic_decode_ms": 0.122833,
+          "fully_consumed_ms": 593.329833,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 3,
+            "sha256": "42b9e4bc1c40547897dc6b88d29f2c0f5c94e2fcb6c519305eeaacf638f0d628"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 576.319209,
+          "materialize_ms": 1.3535,
+          "semantic_decode_ms": 0.121,
+          "fully_consumed_ms": 577.793709,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 3,
+            "sha256": "42b9e4bc1c40547897dc6b88d29f2c0f5c94e2fcb6c519305eeaacf638f0d628"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 561.7935,
+          "materialize_ms": 1.345042,
+          "semantic_decode_ms": 0.122625,
+          "fully_consumed_ms": 563.261167,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 3,
+            "sha256": "42b9e4bc1c40547897dc6b88d29f2c0f5c94e2fcb6c519305eeaacf638f0d628"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 577.793709
+    },
+    "q012": {
+      "source_sha256": "61c71e08adfef3c6433c439478fcc5a49f1f034df5401256e94ca7d5512a1b53",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 939.993959,
+          "materialize_ms": 1.402083,
+          "semantic_decode_ms": 0.303208,
+          "fully_consumed_ms": 941.69925,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 10,
+            "sha256": "f08545fe72a6276afa85c239aa2753ce3f1f4bc60429683e6526ef085ded700e"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 576.974625,
+          "materialize_ms": 1.393833,
+          "semantic_decode_ms": 0.316375,
+          "fully_consumed_ms": 578.684833,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 10,
+            "sha256": "f08545fe72a6276afa85c239aa2753ce3f1f4bc60429683e6526ef085ded700e"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 567.095959,
+          "materialize_ms": 1.696083,
+          "semantic_decode_ms": 0.363625,
+          "fully_consumed_ms": 569.155667,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 10,
+            "sha256": "f08545fe72a6276afa85c239aa2753ce3f1f4bc60429683e6526ef085ded700e"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 592.753208,
+          "materialize_ms": 1.888667,
+          "semantic_decode_ms": 0.365333,
+          "fully_consumed_ms": 595.007208,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 10,
+            "sha256": "f08545fe72a6276afa85c239aa2753ce3f1f4bc60429683e6526ef085ded700e"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 578.684833
+    },
+    "q013": {
+      "source_sha256": "2b02fc40caa3dd727c55160022ccdea0f71a536f5589ce7b191ce59fc0cc9a21",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 527.701208,
+          "materialize_ms": 1.07,
+          "semantic_decode_ms": 0.044375,
+          "fully_consumed_ms": 528.815583,
+          "signature": {
+            "vars": [
+              "product",
+              "productLabel"
+            ],
+            "rows": 5,
+            "sha256": "0e93ebddbe99bb84ac0a9373352f8267b0ddc916dd8c137fafd82454dbe815de"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "productLabel",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 35.013209,
+          "materialize_ms": 1.109291,
+          "semantic_decode_ms": 0.043542,
+          "fully_consumed_ms": 36.166042,
+          "signature": {
+            "vars": [
+              "product",
+              "productLabel"
+            ],
+            "rows": 5,
+            "sha256": "0e93ebddbe99bb84ac0a9373352f8267b0ddc916dd8c137fafd82454dbe815de"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "productLabel",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 34.992834,
+          "materialize_ms": 1.037791,
+          "semantic_decode_ms": 0.046042,
+          "fully_consumed_ms": 36.076667,
+          "signature": {
+            "vars": [
+              "product",
+              "productLabel"
+            ],
+            "rows": 5,
+            "sha256": "0e93ebddbe99bb84ac0a9373352f8267b0ddc916dd8c137fafd82454dbe815de"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "productLabel",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 34.235958,
+          "materialize_ms": 1.042917,
+          "semantic_decode_ms": 0.04625,
+          "fully_consumed_ms": 35.325125,
+          "signature": {
+            "vars": [
+              "product",
+              "productLabel"
+            ],
+            "rows": 5,
+            "sha256": "0e93ebddbe99bb84ac0a9373352f8267b0ddc916dd8c137fafd82454dbe815de"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "productLabel",
+                "kind": "lexical",
+                "term_kind": "literal"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 36.076667
+    },
+    "q014": {
+      "source_sha256": "fa9510327eec353afe3f2c0f6e900fbd30cb6132640d9857c983f721c947e537",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 505.680083,
+          "materialize_ms": 1.793292,
+          "semantic_decode_ms": 0.104417,
+          "fully_consumed_ms": 507.577792,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 3,
+            "sha256": "a22e465defd6192f721041ef2411e7a66355042f74290f92def3f3f42e7468f8"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 614.939458,
+          "materialize_ms": 1.796375,
+          "semantic_decode_ms": 0.104042,
+          "fully_consumed_ms": 616.839875,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 3,
+            "sha256": "a22e465defd6192f721041ef2411e7a66355042f74290f92def3f3f42e7468f8"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 598.023666,
+          "materialize_ms": 1.7375,
+          "semantic_decode_ms": 0.104459,
+          "fully_consumed_ms": 599.865625,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 3,
+            "sha256": "a22e465defd6192f721041ef2411e7a66355042f74290f92def3f3f42e7468f8"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 593.729625,
+          "materialize_ms": 1.353083,
+          "semantic_decode_ms": 0.086167,
+          "fully_consumed_ms": 595.168875,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 3,
+            "sha256": "a22e465defd6192f721041ef2411e7a66355042f74290f92def3f3f42e7468f8"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 599.865625
+    },
+    "q015": {
+      "source_sha256": "b43e7a3aa2ce45f493f97bb1498d9423dae11107ee041e5d58addc62128160d6",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 551.057459,
+          "materialize_ms": 1.658041,
+          "semantic_decode_ms": 0.211417,
+          "fully_consumed_ms": 552.926917,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 8,
+            "sha256": "6044920df4552d00bb5e2a464e485039c6331f8616a4ead47e72dc3a5606cf39"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 560.6455,
+          "materialize_ms": 1.367125,
+          "semantic_decode_ms": 0.176208,
+          "fully_consumed_ms": 562.188833,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 8,
+            "sha256": "6044920df4552d00bb5e2a464e485039c6331f8616a4ead47e72dc3a5606cf39"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 570.989167,
+          "materialize_ms": 1.376542,
+          "semantic_decode_ms": 0.176416,
+          "fully_consumed_ms": 572.542125,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 8,
+            "sha256": "6044920df4552d00bb5e2a464e485039c6331f8616a4ead47e72dc3a5606cf39"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 585.5375,
+          "materialize_ms": 1.403833,
+          "semantic_decode_ms": 0.1755,
+          "fully_consumed_ms": 587.116833,
+          "signature": {
+            "vars": [
+              "offer",
+              "price",
+              "productLabel",
+              "rating1",
+              "rating2",
+              "revName",
+              "revTitle",
+              "review",
+              "reviewer",
+              "vendor",
+              "vendorTitle"
+            ],
+            "rows": 8,
+            "sha256": "6044920df4552d00bb5e2a464e485039c6331f8616a4ead47e72dc3a5606cf39"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 572.542125
+    },
+    "q016": {
+      "source_sha256": "ef5b9914425ab593040f174caf878ae36ff0d296bb47735adc8e130dd056e8e0",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 882.84925,
+          "materialize_ms": 1.659375,
+          "semantic_decode_ms": 0.162625,
+          "fully_consumed_ms": 884.67125,
+          "signature": {
+            "vars": [
+              "rating1",
+              "rating2",
+              "rating3",
+              "rating4",
+              "reviewDate",
+              "reviewer",
+              "reviewerName",
+              "text",
+              "title"
+            ],
+            "rows": 4,
+            "sha256": "265968eb67a2321d74d2d626971ac740227121392d1780b3ec55982695026ffd"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "reviewDate",
+                "kind": "iso_datetime",
+                "descending": true
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 637.80175,
+          "materialize_ms": 1.5725,
+          "semantic_decode_ms": 0.159333,
+          "fully_consumed_ms": 639.533583,
+          "signature": {
+            "vars": [
+              "rating1",
+              "rating2",
+              "rating3",
+              "rating4",
+              "reviewDate",
+              "reviewer",
+              "reviewerName",
+              "text",
+              "title"
+            ],
+            "rows": 4,
+            "sha256": "265968eb67a2321d74d2d626971ac740227121392d1780b3ec55982695026ffd"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "reviewDate",
+                "kind": "iso_datetime",
+                "descending": true
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 632.684917,
+          "materialize_ms": 1.55875,
+          "semantic_decode_ms": 0.160041,
+          "fully_consumed_ms": 634.403708,
+          "signature": {
+            "vars": [
+              "rating1",
+              "rating2",
+              "rating3",
+              "rating4",
+              "reviewDate",
+              "reviewer",
+              "reviewerName",
+              "text",
+              "title"
+            ],
+            "rows": 4,
+            "sha256": "265968eb67a2321d74d2d626971ac740227121392d1780b3ec55982695026ffd"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "reviewDate",
+                "kind": "iso_datetime",
+                "descending": true
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 634.729208,
+          "materialize_ms": 1.269917,
+          "semantic_decode_ms": 0.129041,
+          "fully_consumed_ms": 636.128166,
+          "signature": {
+            "vars": [
+              "rating1",
+              "rating2",
+              "rating3",
+              "rating4",
+              "reviewDate",
+              "reviewer",
+              "reviewerName",
+              "text",
+              "title"
+            ],
+            "rows": 4,
+            "sha256": "265968eb67a2321d74d2d626971ac740227121392d1780b3ec55982695026ffd"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "reviewDate",
+                "kind": "iso_datetime",
+                "descending": true
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 636.128166
+    },
+    "q019": {
+      "source_sha256": "ab070b1985b4b0abb1fbae7d4513ceec25a81d3caab726df5c46445bb3f4b1a5",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 566.916125,
+          "materialize_ms": 1.2615,
+          "semantic_decode_ms": 0.174625,
+          "fully_consumed_ms": 568.35225,
+          "signature": {
+            "vars": [
+              "rating1",
+              "rating2",
+              "rating3",
+              "rating4",
+              "reviewDate",
+              "reviewer",
+              "reviewerName",
+              "text",
+              "title"
+            ],
+            "rows": 6,
+            "sha256": "9e5441f15783eae12da2d906f53b23718cc20960c66ff26edbdeeb3dd60795c8"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "reviewDate",
+                "kind": "iso_datetime",
+                "descending": true
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 587.089583,
+          "materialize_ms": 1.269959,
+          "semantic_decode_ms": 0.176833,
+          "fully_consumed_ms": 588.536375,
+          "signature": {
+            "vars": [
+              "rating1",
+              "rating2",
+              "rating3",
+              "rating4",
+              "reviewDate",
+              "reviewer",
+              "reviewerName",
+              "text",
+              "title"
+            ],
+            "rows": 6,
+            "sha256": "9e5441f15783eae12da2d906f53b23718cc20960c66ff26edbdeeb3dd60795c8"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "reviewDate",
+                "kind": "iso_datetime",
+                "descending": true
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 576.51525,
+          "materialize_ms": 1.265084,
+          "semantic_decode_ms": 0.181041,
+          "fully_consumed_ms": 577.961375,
+          "signature": {
+            "vars": [
+              "rating1",
+              "rating2",
+              "rating3",
+              "rating4",
+              "reviewDate",
+              "reviewer",
+              "reviewerName",
+              "text",
+              "title"
+            ],
+            "rows": 6,
+            "sha256": "9e5441f15783eae12da2d906f53b23718cc20960c66ff26edbdeeb3dd60795c8"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "reviewDate",
+                "kind": "iso_datetime",
+                "descending": true
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 577.756167,
+          "materialize_ms": 1.268541,
+          "semantic_decode_ms": 0.178417,
+          "fully_consumed_ms": 579.203125,
+          "signature": {
+            "vars": [
+              "rating1",
+              "rating2",
+              "rating3",
+              "rating4",
+              "reviewDate",
+              "reviewer",
+              "reviewerName",
+              "text",
+              "title"
+            ],
+            "rows": 6,
+            "sha256": "9e5441f15783eae12da2d906f53b23718cc20960c66ff26edbdeeb3dd60795c8"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "reviewDate",
+                "kind": "iso_datetime",
+                "descending": true
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 579.203125
+    },
+    "q022": {
+      "source_sha256": "0e3d7f0f649ad04c1ed4e42aca1b055419bf2b5c94cc654a1e9a64d986e6cb3b",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 428.039834,
+          "materialize_ms": 1.146958,
+          "semantic_decode_ms": 0.02875,
+          "fully_consumed_ms": 429.215542,
+          "signature": {
+            "vars": [
+              "offer",
+              "price"
+            ],
+            "rows": 1,
+            "sha256": "b94f618accbe0024588d58f4bbfa359c9ef72edc823c3144db8c56cd343ed21c"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "price",
+                "kind": "double_cast"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 3.175042,
+          "materialize_ms": 1.035917,
+          "semantic_decode_ms": 0.027166,
+          "fully_consumed_ms": 4.238125,
+          "signature": {
+            "vars": [
+              "offer",
+              "price"
+            ],
+            "rows": 1,
+            "sha256": "b94f618accbe0024588d58f4bbfa359c9ef72edc823c3144db8c56cd343ed21c"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "price",
+                "kind": "double_cast"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 2.674458,
+          "materialize_ms": 1.017542,
+          "semantic_decode_ms": 0.024917,
+          "fully_consumed_ms": 3.716917,
+          "signature": {
+            "vars": [
+              "offer",
+              "price"
+            ],
+            "rows": 1,
+            "sha256": "b94f618accbe0024588d58f4bbfa359c9ef72edc823c3144db8c56cd343ed21c"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "price",
+                "kind": "double_cast"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 2.51575,
+          "materialize_ms": 1.002167,
+          "semantic_decode_ms": 0.021875,
+          "fully_consumed_ms": 3.539792,
+          "signature": {
+            "vars": [
+              "offer",
+              "price"
+            ],
+            "rows": 1,
+            "sha256": "b94f618accbe0024588d58f4bbfa359c9ef72edc823c3144db8c56cd343ed21c"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "price",
+                "kind": "double_cast"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 3.716917
+    },
+    "q023": {
+      "source_sha256": "d49eadeda177073e3849ad0a83ae67112bb947d5a9a0264944cae249bcf74701",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 3.480625,
+          "materialize_ms": 1.037958,
+          "semantic_decode_ms": 0.036375,
+          "fully_consumed_ms": 4.554958,
+          "signature": {
+            "vars": [
+              "offer",
+              "price"
+            ],
+            "rows": 3,
+            "sha256": "3cec97d127f31cad270fc557eff21bcc5cd77d38a988d8b9b5d3d5bf224725a9"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "price",
+                "kind": "double_cast"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 2.869292,
+          "materialize_ms": 1.017792,
+          "semantic_decode_ms": 0.032333,
+          "fully_consumed_ms": 3.919417,
+          "signature": {
+            "vars": [
+              "offer",
+              "price"
+            ],
+            "rows": 3,
+            "sha256": "3cec97d127f31cad270fc557eff21bcc5cd77d38a988d8b9b5d3d5bf224725a9"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "price",
+                "kind": "double_cast"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 2.734416,
+          "materialize_ms": 1.014625,
+          "semantic_decode_ms": 0.034959,
+          "fully_consumed_ms": 3.784,
+          "signature": {
+            "vars": [
+              "offer",
+              "price"
+            ],
+            "rows": 3,
+            "sha256": "3cec97d127f31cad270fc557eff21bcc5cd77d38a988d8b9b5d3d5bf224725a9"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "price",
+                "kind": "double_cast"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 2.757125,
+          "materialize_ms": 0.983625,
+          "semantic_decode_ms": 0.024209,
+          "fully_consumed_ms": 3.764959,
+          "signature": {
+            "vars": [
+              "offer",
+              "price"
+            ],
+            "rows": 3,
+            "sha256": "3cec97d127f31cad270fc557eff21bcc5cd77d38a988d8b9b5d3d5bf224725a9"
+          },
+          "order": {
+            "checked": true,
+            "keys": [
+              {
+                "var": "price",
+                "kind": "double_cast"
+              }
+            ],
+            "ties": "arbitrary row order permitted within equal keys"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 3.784
+    },
+    "q024": {
+      "source_sha256": "816ddc8b55f11f8f3e7364b094d61beb464e97c83664b86f8be2174ea0945b78",
+      "samples": [
+        {
+          "warmup": true,
+          "execute_return_ms": 75.96075,
+          "materialize_ms": 1.023959,
+          "semantic_decode_ms": 0.065708,
+          "fully_consumed_ms": 77.050417,
+          "signature": {
+            "vars": [
+              "hasValue",
+              "isValueOf",
+              "property"
+            ],
+            "rows": 10,
+            "sha256": "950eb72e58a8561087589efc4f6365f04040d169b7902d4536d3277fc36d8592"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 2.233417,
+          "materialize_ms": 1.035375,
+          "semantic_decode_ms": 0.0635,
+          "fully_consumed_ms": 3.332292,
+          "signature": {
+            "vars": [
+              "hasValue",
+              "isValueOf",
+              "property"
+            ],
+            "rows": 10,
+            "sha256": "950eb72e58a8561087589efc4f6365f04040d169b7902d4536d3277fc36d8592"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 2.207833,
+          "materialize_ms": 1.036292,
+          "semantic_decode_ms": 0.06725,
+          "fully_consumed_ms": 3.311375,
+          "signature": {
+            "vars": [
+              "hasValue",
+              "isValueOf",
+              "property"
+            ],
+            "rows": 10,
+            "sha256": "950eb72e58a8561087589efc4f6365f04040d169b7902d4536d3277fc36d8592"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        },
+        {
+          "warmup": false,
+          "execute_return_ms": 2.221833,
+          "materialize_ms": 1.02975,
+          "semantic_decode_ms": 0.057583,
+          "fully_consumed_ms": 3.309166,
+          "signature": {
+            "vars": [
+              "hasValue",
+              "isValueOf",
+              "property"
+            ],
+            "rows": 10,
+            "sha256": "950eb72e58a8561087589efc4f6365f04040d169b7902d4536d3277fc36d8592"
+          },
+          "order": {
+            "checked": false,
+            "reason": "no ORDER BY"
+          },
+          "matches_reference": true
+        }
+      ],
+      "median_fully_consumed_ms": 3.311375
+    }
+  },
+  "complete": true,
+  "version": "0.22.3",
+  "open_ms": 31.519792,
+  "ready_ms": 31.519792,
+  "rdfdb_cache_option": null,
+  "externally_validated": true
+}

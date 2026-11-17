@@ -1,0 +1,43 @@
+{
+  "loadavg": [
+    6.09912109375,
+    8.61181640625,
+    7.80322265625
+  ],
+  "files": {
+    "<agent-workspace>/rdfdb/bench/tools/lubm100.nt": {
+      "sha256": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d",
+      "size": 2377133547
+    },
+    "<agent-workspace>/rdfdb/bench/tools/bsbm10.nt": {
+      "sha256": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+      "size": 2621082809
+    },
+    "/private/tmp/rdf-jianlin-embedded22/python/rdfdb/_rdfdb.abi3.so": {
+      "sha256": "d07afded246f314e5302be0b141ca90189c7c6c5df156281fae06b3c3d198477",
+      "size": 4599168
+    },
+    "/private/tmp/rdf-jianlin-embedded22/python/rdfdb/__init__.py": {
+      "sha256": "de5456e7a64b440c12af4455c17d983b32926dce00982c496f2a611c913ea37c",
+      "size": 5170
+    },
+    "/private/tmp/rdf-jianlin-embedded22/python-fixed/rdfdb/__init__.py": {
+      "sha256": "de5456e7a64b440c12af4455c17d983b32926dce00982c496f2a611c913ea37c",
+      "size": 5170
+    },
+    "/private/tmp/rdf-jianlin-embedded22/python-fixed/rdfdb/_rdfdb.abi3.so": {
+      "sha256": "898940920addbc19743b4b06714787d0766415e55ffa34790b91da1c61de05e1",
+      "size": 4619056
+    },
+    "<agent-workspace>/scratch/ladybug18-venv/lib/python3.14/site-packages/ladybug/_lbug.cpython-314-darwin.so": {
+      "sha256": "245304c1174f007e742c124674f475f8cfec3cf622b52c319dc5aad52db12f5a",
+      "size": 20029544
+    }
+  },
+  "currents": {
+    "lubm100": "base-0\n",
+    "bsbm10": "base-0\n"
+  },
+  "old_source_hashes_unchanged": true,
+  "fixed_binding_hashes_unchanged": true
+}
