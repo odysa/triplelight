@@ -1,0 +1,48 @@
+{
+  "schema": "actual-bi-fixture-v1",
+  "rdfdb_source": "d2618c6c9c6d51541d9298e8db88f131f5ab2eb6 rebuilt isolated binding",
+  "duckdb": "2.0.0",
+  "templates_requested": [
+    6
+  ],
+  "data_sha256": "3bf1e3045a7cc8045074ae7658610dac1a74343fd6e951001f24e8763f7e8a18",
+  "queries": {
+    "6": {
+      "query_sha256": "915294b37e9d5fe01a0e76c902de71283ab7c821a16cd8a21b541776986404ef",
+      "jena_rows": 0,
+      "jena_order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 0
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 0
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "status": "pass"
+      }
+    }
+  },
+  "complete": true
+}
