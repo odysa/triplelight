@@ -1,0 +1,75 @@
+{
+  "same_entities": true,
+  "differences": [
+    {
+      "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10650",
+      "duck": 1.128403902053833,
+      "jena": 1.128403663635254,
+      "ulps": 2,
+      "relative": 2.1128837736442258e-07
+    },
+    {
+      "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10576",
+      "duck": 1.1014764308929443,
+      "jena": 1.1014763116836548,
+      "ulps": 1,
+      "relative": 1.0822683001558575e-07
+    },
+    {
+      "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10634",
+      "duck": 1.097808837890625,
+      "jena": 1.0978096723556519,
+      "ulps": 7,
+      "relative": 7.601181223562141e-07
+    },
+    {
+      "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10655",
+      "duck": 1.09030020236969,
+      "jena": 1.0902996063232422,
+      "ulps": 5,
+      "relative": 5.466813381359654e-07
+    },
+    {
+      "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10667",
+      "duck": 1.0868371725082397,
+      "jena": 1.086836338043213,
+      "ulps": 7,
+      "relative": 7.677927187803415e-07
+    },
+    {
+      "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10668",
+      "duck": 1.0834766626358032,
+      "jena": 1.083476185798645,
+      "ulps": 4,
+      "relative": 4.4009934362483643e-07
+    },
+    {
+      "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10750",
+      "duck": 1.079543948173523,
+      "jena": 1.0795438289642334,
+      "ulps": 1,
+      "relative": 1.1042561344188908e-07
+    },
+    {
+      "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10628",
+      "duck": 1.0778769254684448,
+      "jena": 1.0778768062591553,
+      "ulps": 1,
+      "relative": 1.1059639548651686e-07
+    },
+    {
+      "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10522",
+      "duck": 1.076654076576233,
+      "jena": 1.0766539573669434,
+      "ulps": 1,
+      "relative": 1.1072200936531044e-07
+    },
+    {
+      "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10627",
+      "duck": 1.0737991333007812,
+      "jena": 1.0737992525100708,
+      "ulps": 1,
+      "relative": 1.1101636481132047e-07
+    }
+  ]
+}

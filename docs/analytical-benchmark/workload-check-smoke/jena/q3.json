@@ -1,0 +1,45 @@
+{
+  "head": {
+    "vars": [
+      "product",
+      "ratio"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "product": {
+          "type": "uri",
+          "value": "urn:p2"
+        },
+        "ratio": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "6.0"
+        }
+      },
+      {
+        "product": {
+          "type": "uri",
+          "value": "urn:p1"
+        },
+        "ratio": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "1.0"
+        }
+      },
+      {
+        "product": {
+          "type": "uri",
+          "value": "urn:p3"
+        },
+        "ratio": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "1.0"
+        }
+      }
+    ]
+  }
+}
