@@ -1,0 +1,8 @@
+{
+  "source_commit": "d2618c6c9c6d51541d9298e8db88f131f5ab2eb6",
+  "python": "3.14.3 (main, Mar 25 2026, 03:28:18) [Clang 22.1.1 ]",
+  "package": "/private/tmp/rdf-jianlin-analytical25/aggregate-fixed-source/bindings/python/python/rdfdb/__init__.py",
+  "extension": "/private/tmp/rdf-jianlin-analytical25/aggregate-fixed-source/bindings/python/python/rdfdb/_rdfdb.abi3.so",
+  "extension_sha256": "207faf4b8250f63ee2d01e891cbf57257a940da0dc9db596b2c86019b9154024",
+  "init_sha256": "de5456e7a64b440c12af4455c17d983b32926dce00982c496f2a611c913ea37c"
+}
