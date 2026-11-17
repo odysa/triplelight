@@ -1,0 +1,21 @@
+{"mapping": "rdf-terms-per-predicate-v1", "input": "/private<tmpdir>/T/ladybug-fixture-a6xhrz7y/in.nt", "input_sha256": "f0eb4b58d507f738274be7f2a1327762474e189c7dce1233c0e76dfa7b3e1a60", "counts": {"source_lines": 10, "unique_triples": 9, "resource_nodes": 4, "literal_nodes": 5}, "predicates": {"urn:type": "P0", "urn:name": "P1", "urn:n": "P2", "urn:label": "P3", "urn:self": "P4"}, "relationships": [{"table": "P4R", "target": "Resource", "rows": 1}, {"table": "P1L", "target": "Literal", "rows": 2}, {"table": "P3L", "target": "Literal", "rows": 1}, {"table": "P0R", "target": "Resource", "rows": 3}, {"table": "P2L", "target": "Literal", "rows": 2}], "prepare_seconds": 0.025175500195473433}
+{"load_seconds": 0.5352151659317315, "observed": {"Resource": 4, "Literal": 5, "relationships": 9}, "memory_mb": 64, "threads": 1}
+.{"mapping": "rdf-terms-per-predicate-v1", "input": "/private<tmpdir>/T/ladybug-tuned-fixture-se6ywgli/in.nt", "input_sha256": "3467780617e3a2a79d97604ba1d329330cc720b3ef7b1dbeba6ec9568f618c65", "counts": {"source_lines": 7, "unique_triples": 7, "resource_nodes": 4, "literal_nodes": 3}, "predicates": {"http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "P0", "urn:name": "P1", "urn:knows": "P2"}, "relationships": [{"table": "P1L", "target": "Literal", "rows": 3}, {"table": "P2R", "target": "Resource", "rows": 1}, {"table": "P0R", "target": "Resource", "rows": 3}], "prepare_seconds": 0.019267582800239325}
+{"mapping": "exact-type-signatures-literal-columns-v1", "source_csv": "/private<tmpdir>/T/ladybug-tuned-fixture-se6ywgli/source", "input": "/private<tmpdir>/T/ladybug-tuned-fixture-se6ywgli/in.nt", "input_sha256": "3467780617e3a2a79d97604ba1d329330cc720b3ef7b1dbeba6ec9568f618c65", "predicates": {"http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "P0", "urn:name": "P1", "urn:knows": "P2"}, "mask_byteorder": "little", "types": {"urn:Student": 1, "urn:Person": 2}, "signatures": {"T0": 0, "T1": 1, "T2": 3}, "nodecounts": {"T0": 2, "T1": 1, "T2": 1}, "literal_columns": ["P1"], "relationships": [{"table": "P2_T2_T1", "predicate": "P2", "source": "T2", "target": "T1"}], "relationship_counts": {"P2_T2_T1": 1}, "counts": {"resource_nodes": 4, "rdf_type_triples": 3, "literal_triples": 3, "resource_triples": 1, "unique_triples": 7}, "prepare_seconds": 0.00798941683024168}
+F.
+======================================================================
+FAIL: test_tuned_multiple_types_and_values (__main__.NativeMapping.test_tuned_multiple_types_and_values)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<agent-workspace>/rdfdb/bench/ladybug/test_native.py", line 26, in test_tuned_multiple_types_and_values
+    native.prepare(nt,source);tuned.prepare(source,target);tuned.load(target,dbpath,64,1)
+                                                           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "<agent-workspace>/rdfdb/bench/ladybug/tuned.py", line 124, in load
+    assert observed_type+observed_literals+observed_edges==manifest['counts']['unique_triples'],(observed_nodes,observed_type,observed_literals,observed_edges,manifest['counts'])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (4, 3, Decimal('6'), 1, {'resource_nodes': 4, 'rdf_type_triples': 3, 'literal_triples': 3, 'resource_triples': 1, 'unique_triples': 7})
+
+----------------------------------------------------------------------
+Ran 3 tests in 1.106s
+
+FAILED (failures=1)
