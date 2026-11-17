@@ -1,0 +1,10 @@
+{
+  "load_seconds": 19.079867917113006,
+  "resource_nodes": 2181789,
+  "rdf_type_triples": 2310694,
+  "literal_triples": 4450766,
+  "resource_triples": 6647935,
+  "unique_triples": 13409395,
+  "memory_mb": 10240,
+  "threads": 4
+}

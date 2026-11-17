@@ -1,7 +1,7 @@
 # Native LadybugDB comparison
 
-The first LUBM-100 cohort is recorded in `docs/ladybug-benchmark/README.md`;
-BSBM and tuned-schema results are pending. LadybugDB was confirmed by the
+Completed LUBM-100 and BSBM-10M cohorts, including the paired tuned LUBM
+schema, are recorded in `docs/ladybug-benchmark/README.md`. LadybugDB was confirmed by the
 requester (the original request said Ladybird).
 
 Pin `ladybug==0.22.3`. Its native Cypher executor is used directly, not the
@@ -33,10 +33,12 @@ preserve multi-valued properties/types.
 The translator is deliberately limited. It accepts BGPs, OPTIONAL, the numeric,
 IRI inequality, language and fixed-format date filters used by this cohort,
 DISTINCT, ordering and limits. Unsupported syntax is reported per query, never
-silently dropped. UNION and variable-predicate queries are currently unsupported
-by this harness, not claimed unsupported by Ladybug itself. It retains bag
-multiplicity and full literal identity on output. Current numeric/date support
-must be validated on the actual source data before timing.
+silently dropped. The two UNION shapes in the BSBM cohort, including its incoming/outgoing
+variable-predicate query, have dedicated native translations. Other unsupported
+shapes fail closed; this is not a general SPARQL implementation. It retains bag
+multiplicity and full literal identity on output. Numeric projections reject non-finite values and integer values outside exact
+DOUBLE range; dateTime comparisons require fixed timezone-free ISO timestamps
+and matching datatypes. Native fixtures and full cohort answers are checked.
 
 ## Method
 
@@ -67,3 +69,20 @@ python test_native.py
 Sources: [LadybugDB](https://github.com/LadybugDB/ladybug),
 [releases](https://github.com/LadybugDB/ladybug/releases/tag/v0.22.3),
 [separate RDFLib adapter](https://github.com/LadybugDB/ladybug-rdflib).
+
+## Stronger native execution configuration
+
+The final cohorts use `--output-mode arrow` and `--plan-mode parameterized`
+on the native service. Bulk output constructs JSON from complete pre-encoded
+RDF-term properties; parameterized `Connection.execute` uses the driver’s
+prepared-plan cache. The adapter does not retain answers. Raw getters include
+the prepared plan’s original compilation time, which is not repeated work.
+
+`compare.py --ladybug-output arrow --ladybug-plan-mode parameterized` runs
+this configuration, with `--tuned-database` / `--tuned-compiled` adding the
+paired tuned schema. The tuned mapper uses exact explicit-type signatures
+and Parquet list columns, preserves multiply typed resources and multi-valued
+properties, and currently accepts only the plain LUBM BGP cohort.
+
+The first row-adapter/compile-per-request result remains historical evidence;
+use the final paired/native-parameterized tables for the headline comparison.
