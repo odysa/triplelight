@@ -1,0 +1,18 @@
+{
+  "schema": "plain-triples-arrow-v1",
+  "duckdb": "2.0.0",
+  "pyarrow": "26.0.1",
+  "source": "/private/tmp/rdf-jianlin-analytical25/qualification-v3-run/empty/data.nt",
+  "database": "/private/tmp/rdf-jianlin-analytical25/qualification-v3-run/empty/duck.db",
+  "threads": 1,
+  "memory_limit": "256MB",
+  "spill": "/private/tmp/rdf-jianlin-analytical25/qualification-v3-run/empty/spill",
+  "max_spill": "256MB",
+  "batch_rows": 65536,
+  "parsed_triples": 0,
+  "complete": true,
+  "unique_triples": 0,
+  "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "seconds": 0.01248595817014575,
+  "database_bytes": 274432
+}
