@@ -7,8 +7,8 @@ use std::fs::File;
 use std::io::{self, ErrorKind, Write};
 use std::os::unix::fs::FileExt;
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, OnceLock, RwLock};
 
 const MAGIC_V2: &[u8; 8] = b"RDFIDX02";
 const MAGIC_V3: &[u8; 8] = b"RDFIDX03";
@@ -206,8 +206,11 @@ struct BlockMeta {
     length: usize,
 }
 struct CacheShard {
-    entries: HashMap<u64, (Arc<Vec<[TermId; 3]>>, bool)>,
+    /// Block id -> (rows, CLOCK referenced bit). The bit is atomic so hits need only the shard's read lock.
+    entries: HashMap<u64, (Arc<Vec<[TermId; 3]>>, AtomicBool)>,
     clock: VecDeque<u64>,
+    /// Bumped by `clear_cache`; a block read from disk is inserted only if no clear happened since its lookup began.
+    generation: u64,
 }
 const MEMO_SLOTS: usize = 8;
 /// (index instance, cache epoch, block id, rows). Up to `MEMO_SLOTS` decoded blocks per long-lived thread stay
@@ -233,7 +236,7 @@ pub struct DiskIndex {
     identity: [u8; 32],
     blocks: Vec<BlockMeta>,
     compressed: bool,
-    cache: Vec<Mutex<CacheShard>>,
+    cache: Vec<RwLock<CacheShard>>,
     shard_capacity: usize,
     trace_slot: Option<usize>,
 }
@@ -337,9 +340,10 @@ impl DiskIndex {
             compressed,
             cache: (0..16)
                 .map(|_| {
-                    Mutex::new(CacheShard {
+                    RwLock::new(CacheShard {
                         entries: HashMap::new(),
                         clock: VecDeque::new(),
+                        generation: 0,
                     })
                 })
                 .collect(),
@@ -356,10 +360,11 @@ impl DiskIndex {
     pub fn clear_cache(&self) -> io::Result<()> {
         for shard in &self.cache {
             let mut cache = shard
-                .lock()
+                .write()
                 .map_err(|_| io::Error::other("index cache lock poisoned"))?;
             cache.entries.clear();
             cache.clock.clear();
+            cache.generation += 1;
         }
         #[cfg(test)]
         if let Some(hook) = CLEAR_HOOK.with(|h| h.borrow_mut().take()) { hook(self) }
@@ -395,23 +400,58 @@ impl DiskIndex {
         Ok(rows)
     }
     fn block_shared(&self, id: u64) -> io::Result<Arc<Vec<[TermId; 3]>>> {
-        let mut cache = self.cache[(id as usize) % self.cache.len()]
-            .lock()
-            .map_err(|_| io::Error::other("index cache lock poisoned"))?;
-        if let Some((value, referenced)) = cache.entries.get_mut(&id) {
-            if cache_trace_enabled() {
-                if let Some(i) = self.trace_slot {
-                    HITS[i].fetch_add(1, Ordering::Relaxed);
+        let shard = &self.cache[(id as usize) % self.cache.len()];
+        let poisoned = || io::Error::other("index cache lock poisoned");
+        // Hit: shared read lock only, so concurrent readers of hot blocks don't serialize.
+        let generation = {
+            let cache = shard.read().map_err(|_| poisoned())?;
+            if let Some((value, referenced)) = cache.entries.get(&id) {
+                if cache_trace_enabled() {
+                    if let Some(i) = self.trace_slot {
+                        HITS[i].fetch_add(1, Ordering::Relaxed);
+                    }
                 }
+                referenced.store(true, Ordering::Relaxed);
+                return Ok(Arc::clone(value));
             }
-            *referenced = true;
-            return Ok(Arc::clone(value));
-        }
+            cache.generation
+        };
         if cache_trace_enabled() {
             if let Some(i) = self.trace_slot {
                 MISSES[i].fetch_add(1, Ordering::Relaxed);
             }
         }
+        // Miss: read, verify and decode without holding the lock; two threads may race on one block (first insert wins).
+        let r = Arc::new(self.read_block(id)?);
+        let mut cache = shard.write().map_err(|_| poisoned())?;
+        if let Some((value, referenced)) = cache.entries.get(&id) {
+            referenced.store(true, Ordering::Relaxed);
+            return Ok(Arc::clone(value));
+        }
+        if cache.generation != generation {
+            // A clear_cache ran while we read: don't repopulate the cleared cache with a pre-clear read.
+            return Ok(r);
+        }
+        while cache.entries.len() >= self.shard_capacity {
+            let old = cache.clock.pop_front().expect("cache clock consistent");
+            let entry = cache.entries.get(&old).expect("cache entry consistent");
+            if entry.1.swap(false, Ordering::Relaxed) {
+                cache.clock.push_back(old);
+            } else {
+                cache.entries.remove(&old);
+                if cache_trace_enabled() {
+                    if let Some(i) = self.trace_slot {
+                        EVICTIONS[i].fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+        }
+        cache.entries.insert(id, (Arc::clone(&r), AtomicBool::new(true)));
+        cache.clock.push_back(id);
+        Ok(r)
+    }
+    /// Reads, checksums, decodes and validates one block from the file (no caching).
+    fn read_block(&self, id: u64) -> io::Result<Vec<[TermId; 3]>> {
         let start = id
             .checked_mul(BLOCK_ROWS)
             .ok_or_else(|| invalid("block overflow"))?;
@@ -440,25 +480,7 @@ impl DiskIndex {
         {
             return Err(invalid("invalid index block ordering"));
         }
-        let r = Arc::new(rows);
-        while cache.entries.len() >= self.shard_capacity {
-            let old = cache.clock.pop_front().expect("cache clock consistent");
-            let entry = cache.entries.get_mut(&old).expect("cache entry consistent");
-            if entry.1 {
-                entry.1 = false;
-                cache.clock.push_back(old);
-            } else {
-                cache.entries.remove(&old);
-                if cache_trace_enabled() {
-                    if let Some(i) = self.trace_slot {
-                        EVICTIONS[i].fetch_add(1, Ordering::Relaxed);
-                    }
-                }
-            }
-        }
-        cache.entries.insert(id, (Arc::clone(&r), true));
-        cache.clock.push_back(id);
-        Ok(r)
+        Ok(rows)
     }
     fn row(&self, i: u64) -> io::Result<[TermId; 3]> {
         if i >= self.rows {
