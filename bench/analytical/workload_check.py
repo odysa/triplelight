@@ -64,9 +64,16 @@ def run(args):
             report=json.loads(args.import_report.read_text())
             if not report['complete'] or report['source_sha256']!=args.dataset_sha256:
                 raise ValueError('DuckDB import is incomplete or from another dataset')
+            spill=args.spill or args.out/'spill'
+            spill.mkdir(parents=True,exist_ok=True)
+            if any(spill.iterdir()):raise ValueError('Use an empty owned query spill directory')
             connection=duckdb.connect(str(args.database),read_only=True)
             connection.execute('SET threads=?',[args.threads]);connection.execute('SET memory_limit=?',[args.memory_limit])
+            connection.execute('SET temp_directory=?',[str(spill.resolve())])
+            connection.execute('SET max_temp_directory_size=?',[args.max_spill])
             matrix['runtime_version']=duckdb.__version__
+            matrix['configuration']={'threads':args.threads,'memory_limit':args.memory_limit,
+                                     'max_spill':args.max_spill,'spill':str(spill.resolve())}
         elif args.system=='rdfdb':
             import rdfdb
             matrix['runtime_package']=rdfdb.__file__
@@ -126,7 +133,8 @@ if __name__=='__main__':
     for name in ['lock-owner','dataset-sha256','runtime-source']:p.add_argument('--'+name,required=True)
     p.add_argument('--endpoint');p.add_argument('--timeout',type=int,default=120)
     p.add_argument('--limit',type=int,default=0);p.add_argument('--threads',type=int,default=4)
-    p.add_argument('--memory-limit',default='8GB')
+    p.add_argument('--memory-limit',default='8GB');p.add_argument('--max-spill',default='8GB')
+    p.add_argument('--spill',type=Path)
     args=p.parse_args()
     if args.limit<0 or min(args.timeout,args.threads)<1:p.error('positive timeout/threads and nonnegative limit required')
     if args.system=='jena' and not args.endpoint:p.error('Jena needs --endpoint')
