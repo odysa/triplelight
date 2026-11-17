@@ -209,7 +209,25 @@ struct CacheShard {
     entries: HashMap<u64, (Arc<Vec<[TermId; 3]>>, bool)>,
     clock: VecDeque<u64>,
 }
+const MEMO_SLOTS: usize = 8;
+/// (index instance, cache epoch, block id, rows). Up to `MEMO_SLOTS` decoded blocks per long-lived thread stay
+/// pinned outside the cache budget (about 6 KB each), also after the index is dropped, until the slot is reused.
+/// Memo hits are not counted by the shared-cache trace counters.
+type MemoEntry = Option<(u64, u64, u64, Arc<Vec<[TermId; 3]>>)>;
+thread_local! {
+    static BLOCK_MEMO: std::cell::RefCell<[MemoEntry; MEMO_SLOTS]> = const { std::cell::RefCell::new([const { None }; MEMO_SLOTS]) };
+}
+#[cfg(test)]
+thread_local! {
+    /// Test-only: runs inside `clear_cache` between emptying the shards and bumping the epoch.
+    static CLEAR_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce(&DiskIndex)>>> = const { std::cell::RefCell::new(None) };
+}
+/// Unique per opened index, so a thread's block memo can never confuse two indexes (no address reuse).
+static NEXT_INSTANCE: AtomicU64 = AtomicU64::new(1);
 pub struct DiskIndex {
+    instance: u64,
+    /// Bumped by `clear_cache`; memo entries from an older epoch are ignored, so verification re-reads from disk.
+    epoch: AtomicU64,
     file: File,
     rows: u64,
     identity: [u8; 32],
@@ -309,6 +327,8 @@ impl DiskIndex {
             return Err(invalid("index data length mismatch"));
         }
         Ok(Self {
+            instance: NEXT_INSTANCE.fetch_add(1, Ordering::Relaxed),
+            epoch: AtomicU64::new(0),
             file,
             rows,
             trace_slot,
@@ -341,6 +361,14 @@ impl DiskIndex {
             cache.entries.clear();
             cache.clock.clear();
         }
+        #[cfg(test)]
+        if let Some(hook) = CLEAR_HOOK.with(|h| h.borrow_mut().take()) { hook(self) }
+        // Then invalidate every thread's memo entries (they are keyed by epoch). Order matters under concurrent
+        // reads: a reader memoizes under the epoch it loaded *before* its lookup. A reader that saw the old epoch
+        // can only memoize under the old epoch (invalid after this bump), whatever it fetched. A reader that sees
+        // the new epoch started after every shard was emptied, so its block comes from disk (checksummed): shards
+        // are only ever filled from disk reads, never from memo entries.
+        self.epoch.fetch_add(1, Ordering::AcqRel);
         Ok(())
     }
     pub fn len(&self) -> u64 {
@@ -350,6 +378,23 @@ impl DiskIndex {
         self.rows == 0
     }
     fn block(&self, id: u64) -> io::Result<Arc<Vec<[TermId; 3]>>> {
+        // Per-thread memo of recently used blocks: leapfrog seeks and index nested-loop probes hit the same few
+        // blocks back to back from every rayon worker, and taking the shard mutex each time serialized them
+        // (mutex waits dominated a disk LUBM-1000 Q2 profile). Blocks are immutable for an index instance, so a
+        // memo entry keyed by (instance, block) never goes stale.
+        let epoch = self.epoch.load(Ordering::Acquire);
+        if let Some(rows) = BLOCK_MEMO.with(|m| m.borrow().iter().flatten().find(|e| e.0 == self.instance && e.1 == epoch && e.2 == id).map(|e| Arc::clone(&e.3))) {
+            return Ok(rows);
+        }
+        let rows = self.block_shared(id)?;
+        BLOCK_MEMO.with(|m| {
+            let mut m = m.borrow_mut();
+            let slot = m.iter().position(Option::is_none).unwrap_or_else(|| { m.rotate_left(1); MEMO_SLOTS - 1 });
+            m[slot] = Some((self.instance, epoch, id, Arc::clone(&rows)));
+        });
+        Ok(rows)
+    }
+    fn block_shared(&self, id: u64) -> io::Result<Arc<Vec<[TermId; 3]>>> {
         let mut cache = self.cache[(id as usize) % self.cache.len()]
             .lock()
             .map_err(|_| io::Error::other("index cache lock poisoned"))?;
@@ -557,6 +602,47 @@ mod tests {
         let cut = index.blocks[2].offset as usize + index.blocks[2].length / 2;
         std::fs::write(&path, &bytes[..cut]).unwrap();
         assert!(index.get(699).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn clear_cache_invalidates_thread_memo() {
+        // Warm a block on this thread, corrupt it on disk, clear caches: the next read must hit disk and fail.
+        let path = std::env::temp_dir().join(format!("rdf-memo-{}", std::process::id()));
+        let rows: Vec<_> = (1..=700).map(|i| [TermId(i), TermId(1), TermId(2)]).collect();
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::open(&path).unwrap();
+        assert!(index.get(300).is_ok());
+        let mut bad = bytes.clone();
+        let pos = index.blocks[1].offset as usize + 3;
+        bad[pos] ^= 0xff;
+        std::fs::write(&path, &bad).unwrap();
+        assert!(index.get(300).is_ok(), "memoized/cached read before invalidation");
+        index.clear_cache().unwrap();
+        assert!(index.get(300).is_err(), "corruption must be detected after clear_cache");
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn read_between_shard_clear_and_epoch_bump_leaves_no_usable_memo() {
+        // The race window: a reader runs after the shards are emptied but before the epoch bump, while the file is
+        // already corrupt. Whatever it gets, nothing it memoizes may survive the bump.
+        let path = std::env::temp_dir().join(format!("rdf-memo-race-{}", std::process::id()));
+        let rows: Vec<_> = (1..=700).map(|i| [TermId(i), TermId(1), TermId(2)]).collect();
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::open(&path).unwrap();
+        assert!(index.get(300).is_ok());
+        let mut bad = bytes.clone();
+        bad[index.blocks[1].offset as usize + 3] ^= 0xff;
+        std::fs::write(&path, &bad).unwrap();
+        CLEAR_HOOK.with(|h| *h.borrow_mut() = Some(Box::new(|ix: &DiskIndex| {
+            let _ = ix.get(300); // old-epoch reader inside the window (may be served from its old memo)
+            let _ = ix.get(301);
+        })));
+        index.clear_cache().unwrap();
+        assert!(index.get(300).is_err(), "a block memoized inside the clear window must not survive the epoch bump");
         std::fs::remove_file(path).unwrap();
     }
     #[test]
