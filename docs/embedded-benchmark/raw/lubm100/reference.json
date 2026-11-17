@@ -1,0 +1,111 @@
+{
+  "q1": {
+    "vars": [
+      "X"
+    ],
+    "rows": 4,
+    "sha256": "99a63f5c1ba6988cc6a1cfc4225b79a0b89bc7fabf2ff2acea7389736e5f3634"
+  },
+  "q10": {
+    "vars": [
+      "X"
+    ],
+    "rows": 4,
+    "sha256": "99a63f5c1ba6988cc6a1cfc4225b79a0b89bc7fabf2ff2acea7389736e5f3634"
+  },
+  "q11": {
+    "vars": [
+      "X"
+    ],
+    "rows": 10,
+    "sha256": "9a1a6150dd2da61375b4d1716a68c8095e03e2c4fee3c247c01c2b2e0810c89a"
+  },
+  "q12": {
+    "vars": [
+      "X",
+      "Y"
+    ],
+    "rows": 125,
+    "sha256": "446c8b2ae77a844fea3a7187e70b0fe0cdd2d90d3db937d2dcafd84d3e0d8572"
+  },
+  "q13": {
+    "vars": [
+      "X"
+    ],
+    "rows": 265,
+    "sha256": "7855e081a3aa103b4cd9f76c80b214b419418ed01a45a80708ac9e991779282c"
+  },
+  "q14": {
+    "vars": [
+      "X"
+    ],
+    "rows": 795970,
+    "sha256": "428b1c998c8c1d8ba96817e954d65ca0db991bae33be221424ffd608954bb0d3"
+  },
+  "q2": {
+    "vars": [
+      "X",
+      "Y",
+      "Z"
+    ],
+    "rows": 264,
+    "sha256": "eb20424acdb3b81e057e4cd4007c4558c5ae46c65d363c09c17dbdac54ef80f6"
+  },
+  "q3": {
+    "vars": [
+      "X"
+    ],
+    "rows": 6,
+    "sha256": "8ea25724a3cbaf6ca905cf5f038c53e065bada34cda358e8cb569654f4110255"
+  },
+  "q4": {
+    "vars": [
+      "X",
+      "Y1",
+      "Y2",
+      "Y3"
+    ],
+    "rows": 10,
+    "sha256": "0be2c8c4d403f973dacf7068d420990fe6b52259fb33f82e84c5fbb47527c0c7"
+  },
+  "q5": {
+    "vars": [
+      "X"
+    ],
+    "rows": 532,
+    "sha256": "41249711252fa1aac10330090e95073167dbb6bc77aff0d5dfd318bc9be49689"
+  },
+  "q6": {
+    "vars": [
+      "X"
+    ],
+    "rows": 795970,
+    "sha256": "428b1c998c8c1d8ba96817e954d65ca0db991bae33be221424ffd608954bb0d3"
+  },
+  "q7": {
+    "vars": [
+      "X",
+      "Y"
+    ],
+    "rows": 59,
+    "sha256": "e3c2e62f67bf199d6c6202ca5bd790e881f77e6527bd64a1faa636120260f6ca"
+  },
+  "q8": {
+    "vars": [
+      "X",
+      "Y",
+      "Z"
+    ],
+    "rows": 5916,
+    "sha256": "e38aead14fa2c0332b4778ddff3dfe39382268feaefbc2c7649c5b6fcaa1a3c2"
+  },
+  "q9": {
+    "vars": [
+      "X",
+      "Y",
+      "Z"
+    ],
+    "rows": 4462,
+    "sha256": "275d6a1eefcbb946f76f0b17d6441168ede558372d30281ddac14ff3572d83cd"
+  }
+}

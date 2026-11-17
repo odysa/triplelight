@@ -1,8 +1,9 @@
 # Embedded Python comparison
 
-Status: harness draft, **no embedded performance measurements yet**. The Rust
-facade and Python package are being validated separately. The earlier Ladybug
-report measures HTTP and cannot answer this embedded comparison.
+Validated on 14 LUBM-100 and 20 BSBM-10M SELECT queries. See the
+[embedded comparison report](../../docs/embedded-benchmark/README.md) for results,
+source versions, corrected ordering failures and limits. The earlier Ladybug
+report measures HTTP and is a different timing boundary.
 
 Both systems run in their own fresh Python processes, calling public in-process
 APIs. `run.py` starts no HTTP server. Import the pinned modules before the open
