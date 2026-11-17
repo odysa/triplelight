@@ -1,11 +1,12 @@
 # Analytical RDF benchmark — task25
 
-Status: **in development**. Five offline qualification tests pass; the Java
-exporter has produced 60 BSBM-10M query instances. On the initial actual-engine
-fixture, DuckDB's eight SQL translations match Jena exactly; rdfdb fails the five
-floating-output templates on datatype. See the
-[qualification report](../../docs/analytical-benchmark/README.md). Large-data
-comparisons have not run. There are no BI performance numbers in this directory.
+Status: **in development**. The exporter has produced 60 BSBM-10M query instances.
+After the float fix, all eight normal-fixture results match independent Jena
+exactly. An actual q7 cutoff fixture passes its tie-aware oracle. Invalid price
+and rating fixtures expose aggregate-error failures in rdfdb, which the engine
+owner is fixing. DuckDB passes those checks. See the
+[qualification report](../../docs/analytical-benchmark/README.md).
+Large-data comparisons have not run; there is no BI performance score.
 
 The goal is an embedded analytical RDF engine. The earlier 20 BSBM exploration
 queries are a different workload. BSBM's author describes BI as GROUP BY/COUNT
@@ -74,9 +75,12 @@ survive. The number of survivors is bounded by the available boundary slots and
 blocked products. We do not append a tie-breaker to the official query or report
 permitted alternatives as wrong bags.
 
-The first actual-engine fixture covers q5 unbound compatibility, q6 bag/scope
-behavior and all eight templates. Invalid/empty numeric aggregates and the actual
-q7 cutoff boundary still need extended fixtures. The standard-library tests
+Actual-engine fixtures cover all eight templates, q5 unbound compatibility,
+q6 bag/scope behavior, actual q7 cutoff ties, and invalid numeric inputs.
+An empty-graph BI fixture and `aggregate_check.py` additionally check empty
+groups and mixed bound/unbound aggregate inputs; their execution status must be
+read from the qualification report. The latter is a Jena/rdfdb diagnostic, not
+a DuckDB SQL translation or a timed BI query. The standard-library tests
 exercise only the oracle/parameter recovery; they are not engine qualification.
 
 ## Execution and resource boundaries
