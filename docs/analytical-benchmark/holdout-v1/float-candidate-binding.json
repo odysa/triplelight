@@ -1,0 +1,9 @@
+{
+  "name": "rdfdb-float64",
+  "legacy_group": false,
+  "source_commit": "66eaac723d3a5362281260ebbec4f324848bb097",
+  "pythonpath": "/private/tmp/rdf-jianlin-analytical25/float-candidate-66eaac7/bindings/python/python",
+  "package": "/private/tmp/rdf-jianlin-analytical25/float-candidate-66eaac7/bindings/python/python/rdfdb/__init__.py",
+  "extension": "/private/tmp/rdf-jianlin-analytical25/float-candidate-66eaac7/bindings/python/python/rdfdb/_rdfdb.abi3.so",
+  "extension_sha256": "1faef24b9b9b3ecffefbc337ae65a180f0c772c69ca2d22767531cb611a907c9"
+}
