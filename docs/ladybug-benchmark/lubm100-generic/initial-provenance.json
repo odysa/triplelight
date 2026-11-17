@@ -1,0 +1,12 @@
+{
+  "utc": "2026-11-17T16:29:54.721544+00:00",
+  "git_head": "cdba2e65065231a670887a6068c3026db254dede",
+  "sources": {
+    "bench/ladybug/native.py": "b2fec18a3ed4bbb13946fc08f20bb93f7c8cc7ce61a807d921375e9baeb6e240",
+    "bench/ladybug/compare.py": "7c90b0b760065a2bf2b883b48abcc541c1e41ac7d21fe14cabe15955fa7a3c1a",
+    "bench/ladybug/test_native.py": "dde81f3bc858201f282fb026ef210e58edb9df8579947fbfd10a1e55092de820"
+  },
+  "source_state": "uncommitted harness, production source unchanged",
+  "pinned_package": "ladybug==0.22.3",
+  "python": "Python 3.14.3"
+}
