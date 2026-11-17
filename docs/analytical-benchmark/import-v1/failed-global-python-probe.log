@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "<agent-workspace>/rdfdb/bench/analytical/duck_load.py", line 119, in <module>
+    load(args)
+    ~~~~^^^^^^
+  File "<agent-workspace>/rdfdb/bench/analytical/duck_load.py", line 22, in load
+    import duckdb
+ModuleNotFoundError: No module named 'duckdb'
