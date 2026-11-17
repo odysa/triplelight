@@ -105,13 +105,13 @@ impl ExternalSort {
         self.runs.push(path);
         Ok(())
     }
-    /// Import already sorted runs into this sorter's private scratch, respecting fan-in.
-    /// The caller must retain the source sorters until this method returns.
+    /// Adopt sorted files from other private sorters on the same filesystem.
+    /// Each successful rename transfers cleanup ownership to this sorter.
     pub(super) fn import_sorted(&mut self, paths: &[PathBuf]) -> io::Result<()> {
         if !self.pending.is_empty() || !self.runs.is_empty() { return Err(bad("import requires an empty sorter")); }
-        for group in paths.chunks(self.fan_in) {
+        for source in paths {
             let path = self.path();
-            merge(group, &path, self.max_record)?;
+            fs::rename(source, &path)?;
             self.runs.push(path);
         }
         Ok(())

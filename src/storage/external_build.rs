@@ -61,9 +61,10 @@ pub(super) struct Builder {
     triples: u64,
 }
 impl Builder {
-    fn new(dir: &Path) -> io::Result<Self> {
+    fn new(dir: &Path) -> io::Result<Self> { Self::with_budget(dir, MEMORY) }
+    fn with_budget(dir: &Path, bytes: usize) -> io::Result<Self> {
         Ok(Self {
-            terms: ExternalSort::new(dir, MEMORY, MAX_TERM + 10)?,
+            terms: ExternalSort::new(dir, bytes, MAX_TERM + 10)?,
             triples: 0,
         })
     }
@@ -304,8 +305,13 @@ fn next_line_boundary(path: &Path, offset: u64, size: u64) -> io::Result<u64> {
 /// The split is only used for N-Triples (Turtle grammar is not line splittable).
 fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Result<()> {
     let Some(path) = path else { return from_nt(dir, None); };
-    let shards = workers.clamp(1, 8);
+    // A worker's merge must hold at least two maximum-length records and file buffers.
+    // The global limit is an advisory allocation target, not an RSS guarantee.
+    let budget = budget_mb().saturating_mul(1_048_576);
+    let minimum = 2 * (MAX_TERM + 10 + 8192 + 128);
+    let shards = workers.clamp(1, 8).min((budget / minimum).max(1));
     if shards == 1 { return from_nt(dir, Some(path)); }
+    let worker_budget = (budget / shards).min(MEMORY);
     let size = fs::metadata(path)?.len();
     let mut boundaries = vec![0u64];
     for i in 1..shards {
@@ -318,7 +324,7 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
         for (shard, limits) in boundaries.windows(2).enumerate() {
             let (start, end) = (limits[0], limits[1]);
             handles.push(scope.spawn(move || -> io::Result<(Builder, std::path::PathBuf)> {
-                let mut b = Builder::new(dir)?;
+                let mut b = Builder::with_budget(dir, worker_budget)?;
                 let mut file = File::open(path)?; file.seek(SeekFrom::Start(start))?;
                 let input = BufReader::new(file.take(end - start));
                 for t in oxttl::NTriplesParser::new().for_reader(input) {
@@ -401,6 +407,21 @@ mod tests {
         assert_eq!(fs::read(a.join("MANIFEST")).unwrap(), fs::read(b.join("MANIFEST")).unwrap());
         let snap = DiskSnapshot::open(&b).unwrap(); snap.verify().unwrap(); drop(snap);
         fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn sharded_blank_node_labels_are_document_scoped() {
+        let root = std::env::temp_dir().join(format!("rdf-shards-bnode-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root); fs::create_dir(&root).unwrap();
+        let input = root.join("input.nt");
+        let mut data = String::from("_:x <urn:p> <urn:one> .\n");
+        for i in 0..1000 { data.push_str(&format!("<urn:s{i}> <urn:p> <urn:o> .\n")); }
+        data.push_str("_:x <urn:q> <urn:two> .\n");
+        fs::write(&input, data).unwrap();
+        let out = root.join("base"); from_nt_parallel(&out, Some(&input), 8).unwrap();
+        let snap = DiskSnapshot::open(&out).unwrap();
+        let result = query(&snap, "ASK { ?x <urn:p> <urn:one>; <urn:q> <urn:two> }").unwrap();
+        assert!(matches!(result, QueryResult::Boolean(true)));
+        drop(snap); fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn sharded_nt_rejects_invalid_and_empty_works() {
