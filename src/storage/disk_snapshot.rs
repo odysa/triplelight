@@ -181,9 +181,10 @@ impl DiskSnapshot {
             return Err(bad("manifest trailing bytes"));
         }
         let (dictionary, index_offset) = if lazy {
-            use super::lazy_dictionary::{LazyIndex, Order};
-            let by_term = LazyIndex::open(&dir.join("dictionary.term"), Order::Term)?;
-            let by_id = LazyIndex::open(&dir.join("dictionary.id"), Order::Id)?;
+            use super::lazy_dictionary::{DictionaryCache, LazyIndex, Order};
+            let cache = DictionaryCache::new();
+            let by_term = LazyIndex::open_shared(&dir.join("dictionary.term"), Order::Term, std::sync::Arc::clone(&cache))?;
+            let by_id = LazyIndex::open_shared(&dir.join("dictionary.id"), Order::Id, cache)?;
             if by_term.identity() != expected[0] || by_id.identity() != expected[1] {
                 return Err(bad("dictionary directory checksum mismatch"));
             }
