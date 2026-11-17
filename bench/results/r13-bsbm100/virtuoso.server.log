@@ -1,0 +1,40 @@
+Fixing ownership of database volume
+Starting the Virtuoso Server
+
+		Tue Nov 17 2026
+19:15:37 { Loading plugin 1: Type `plain', file `geos' in `../hosting'
+19:15:37   plain version 1.2.3243 from OpenLink Software
+19:15:37   GEOS plugin based on Geometry Engine Open Source library from Open Source Geospatial Foundation
+19:15:37   SUCCESS plugin 1: loaded from ../hosting/geos.so }
+19:15:37 { Loading plugin 2: Type `plain', file `graphql' in `../hosting'
+19:15:37   GraphQL/SPARQL Bridge version 0.9.3 (8439c5e52f) from OpenLink Software
+19:15:37   Support functions for GraphQL/SPARQL Bridge
+19:15:37   SUCCESS plugin 2: loaded from ../hosting/graphql.so }
+19:15:37 { Loading plugin 3: Type `plain', file `proj4' in `../hosting'
+19:15:37   plain version 1.1.3243 from OpenLink Software
+19:15:37   Cartographic Projections support based on Frank Warmerdam's proj4 library
+19:15:37   SUCCESS plugin 3: loaded from ../hosting/proj4.so }
+19:15:37 { Loading plugin 4: Type `plain', file `shapefileio' in `../hosting'
+19:15:37   ShapefileIO version 0.1virt71 from OpenLink Software
+19:15:37   Shapefile support based on Frank Warmerdam's Shapelib
+19:15:37   SUCCESS plugin 4: loaded from ../hosting/shapefileio.so }
+19:15:37 SPARQL/MaxConstructTriples parameter cannot be more than 2097150, will use maximum possible limit.
+19:15:37 OpenLink Virtuoso Universal Server
+19:15:37 Version 07.20.3243-pthreads for Linux as of Aug  5 2026 (8439c5e52f)
+19:15:37 uses OpenSSL 3.0.13 30 Jan 2024
+19:15:37 uses parts of PCRE, Html Tidy
+19:15:39 Database version 3126
+19:15:39 SQL Optimizer enabled (max 1000 layouts)
+19:15:40 Compiler unit is timed at 0.000148 msec
+19:15:44 Roll forward started
+19:15:44     3 transactions, 185 bytes replayed (100 %)
+19:15:44 Roll forward complete
+19:15:44 PL LOG: Can't get list of vad packages in ../vad/
+19:15:45 Checkpoint started
+19:15:45 Checkpoint finished, log reused
+19:15:45 SSL server online at 1112
+19:15:45 HTTP/WebDAV server online at 8890
+19:15:45 HTTPS server online at 8891
+19:15:45 Server online at 1111 (pid 1)
+virtuoso ready after 10s
+container_mem 10.44GiB
