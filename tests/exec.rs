@@ -344,3 +344,18 @@ fn float_sum_rounds_once() {
         r => panic!("{r:?}"),
     }
 }
+
+/// Expression arithmetic still rounds each float operation (only SUM/AVG accumulate wider): 2^24 + 1 in binary32 is
+/// 2^24, so this filter rejects the row on both the compiled and the general path.
+#[test]
+fn float_expression_rounds_per_operation() {
+    let data = r#"
+<urn:r> <urn:a> "16777216"^^<http://www.w3.org/2001/XMLSchema#float> .
+<urn:r> <urn:b> "1"^^<http://www.w3.org/2001/XMLSchema#float> .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
+    let f = "FILTER((?a + ?b) > \"16777216\"^^<http://www.w3.org/2001/XMLSchema#float>)";
+    assert_eq!(n(&format!("SELECT * WHERE {{ ?r <urn:a> ?a . ?r <urn:b> ?b {f} }}")), 0);
+    assert_eq!(n(&format!("SELECT * WHERE {{ {{ ?r <urn:a> ?a . ?r <urn:b> ?b }} OPTIONAL {{ ?r <urn:none> ?z }} {f} }}")), 0);
+}
