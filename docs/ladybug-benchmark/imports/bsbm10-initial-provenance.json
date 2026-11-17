@@ -1,0 +1,15 @@
+{
+  "utc": "2026-11-17T17:13:12.005581+00:00",
+  "git_head": "7b839fc73a6fdb2cde3609ce9c124d581318f550",
+  "source_sha256": {
+    "bench/ladybug/union_queries.py": "a93052b3d22a248055113d2a9598cd521d8c4d33d9cd71657a6b2c0ca8bbdc50",
+    "bench/ladybug/native.py": "9765d848d20ba1ea26e904be353592105a7c514b3d7e063c5df11b5eae214cdc",
+    "bench/ladybug/tuned.py": "d7294efb1d33ab16a90176978722149f015d8f280a47383d39a942d137ffc659",
+    "bench/ladybug/compare.py": "3592398c13fb040213f0be83eec29ba5779e772a0c2a025700f6d3acd8248136",
+    "bench/ladybug/test_native.py": "7e23f051ee4eba0b7ec68a4070b69108ac580bb47532dcd5b032082839623262"
+  },
+  "production_binary": "rdfdb-cdba2e6",
+  "ladybug": "0.22.3",
+  "pyarrow": "26.0.1",
+  "state": "uncommitted extended harness; native.py snapshot preserved"
+}

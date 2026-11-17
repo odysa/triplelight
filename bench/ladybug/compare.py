@@ -31,9 +31,11 @@ def signature(res):
 def ask(url,q):
     request=urllib.request.Request(url,data=urllib.parse.urlencode({'query':q}).encode(),headers={'Accept':'application/sparql-results+json','Content-Type':'application/x-www-form-urlencoded'})
     start=time.perf_counter()
-    with urllib.request.urlopen(request,timeout=600) as r:body=r.read()
+    with urllib.request.urlopen(request,timeout=600) as r:
+        body=r.read()
     elapsed=(time.perf_counter()-start)*1000
-    return elapsed,json.loads(body)
+    metrics={field:float(r.headers[header]) for field,header in [('native_execution_ms','X-Ladybug-Execution-Ms'),('native_compilation_ms','X-Ladybug-Compilation-Ms')] if header in r.headers}
+    return elapsed,json.loads(body),metrics
 
 
 def stop(p):
@@ -49,7 +51,7 @@ def run(args):
     if not Path('/tmp/rdf-bench.lock/owner').exists():raise RuntimeError('No benchmark lock; caller must own it')
     compiled=json.loads(args.compiled.read_text())
     queries={q.stem:q.read_text() for q in args.queries.glob('*.rq')}
-    results={'schema':'ladybug-host-v1','runs':args.runs,'threads':4,'cache_mb':10240,
+    results={'schema':'ladybug-host-v2','runs':args.runs,'threads':4,'cache_mb':10240,'ladybug_output':args.ladybug_output,'ladybug_plan_mode':args.ladybug_plan_mode,
              'query_boundary':'HTTP roundtrip including complete serialization and transfer; client JSON parsing/hash excluded',
              'unsupported':{q:r['unsupported'] for q,r in compiled.items() if 'unsupported' in r},'systems':{}}
     reference={}
@@ -59,9 +61,12 @@ def run(args):
     tools=args.tools.resolve();native=Path(__file__).with_name('native.py').resolve()
     servers=[
         ('jena',[str(tools/'apache-jena-fuseki-6.2.0/fuseki-server'),'--loc='+str(tools/('tdb2-'+args.dataset)),'--port=7982','/ds'],'http://127.0.0.1:7982/ds/sparql',{'JVM_ARGS':'-Xmx10g'}),
-        ('ladybug',[str(args.python),str(native),'serve',str(args.database),str(args.compiled),'--port','7981','--memory-mb','10240','--threads','4'],'http://127.0.0.1:7981/',{}),
+        ('ladybug-generic' if args.tuned_database else 'ladybug',[str(args.python),str(native),'serve',str(args.database),str(args.compiled),'--port','7981','--memory-mb','10240','--threads','4','--output-mode',args.ladybug_output,'--plan-mode',args.ladybug_plan_mode],'http://127.0.0.1:7981/',{}),
         ('rdfdb-memory',[str(args.rdfdb),'serve',str(tools/(args.dataset+'.nt')),'7983','--parallel-load=4'],'http://127.0.0.1:7983/sparql',{}),
         ('rdfdb-disk',[str(args.rdfdb),'serve',str(tools/('rdfdb-disk-'+args.dataset)),'7983','--disk','--cache-mb=10240'],'http://127.0.0.1:7983/sparql',{})]
+    if args.tuned_database:
+        if not args.tuned_compiled:raise ValueError('--tuned-compiled is required with --tuned-database')
+        servers.insert(2,('ladybug-tuned',[str(args.python),str(native),'serve',str(args.tuned_database),str(args.tuned_compiled),'--port','7981','--memory-mb','10240','--threads','4','--output-mode',args.ladybug_output,'--plan-mode',args.ladybug_plan_mode],'http://127.0.0.1:7981/',{}))
     for name,cmd,url,extraenv in servers:
         port=urllib.parse.urlsplit(url).port
         with socket.socket() as probe_socket:
@@ -78,7 +83,7 @@ def run(args):
                 while True:
                     if p.poll() is not None:raise RuntimeError(f'{name} exited during startup: {p.returncode}')
                     if time.perf_counter()-start>600:raise TimeoutError(name+' startup')
-                    try:ask(url,queries[probe] if name=='ladybug' else 'ASK { ?s ?p ?o }');break
+                    try:ask(url,queries[probe] if name.startswith('ladybug') else 'ASK { ?s ?p ?o }');break
                     except Exception:time.sleep(1)
                 if name.startswith('rdfdb'):
                     while 'building in background' in log.read_text() and 'statistics ready' not in log.read_text():
@@ -91,8 +96,8 @@ def run(args):
                     rec={'samples':[]};results['systems'][name]['queries'][qname]=rec
                     try:
                         for iteration in range(args.runs+1):
-                            ms,res=ask(url,queries[qname]);sig=signature(res)
-                            rec['samples'].append({'warmup':iteration==0,'ms':ms,**sig});checkpoint()
+                            ms,res,metrics=ask(url,queries[qname]);sig=signature(res)
+                            rec['samples'].append({'warmup':iteration==0,'ms':ms,**metrics,**sig});checkpoint()
                         allsig={(s['rows'],s['sha256']) for s in rec['samples']}
                         if len(allsig)!=1:raise ValueError('Answers vary across repetitions')
                         rec['median_ms']=statistics.median(s['ms'] for s in rec['samples'] if not s['warmup'])
@@ -112,4 +117,7 @@ if __name__=='__main__':
     p=argparse.ArgumentParser()
     for key in ('tools','queries','compiled','database','python','rdfdb','out'):p.add_argument('--'+key,type=Path,required=True)
     p.add_argument('--dataset',required=True);p.add_argument('--runs',type=int,default=5)
+    p.add_argument('--ladybug-output',choices=['row','arrow'],default='arrow')
+    p.add_argument('--ladybug-plan-mode',choices=['compile','parameterized'],default='compile')
+    p.add_argument('--tuned-database',type=Path);p.add_argument('--tuned-compiled',type=Path)
     run(p.parse_args())
