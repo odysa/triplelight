@@ -1,0 +1,19 @@
+{"load_seconds": 40.10565854120068, "observed": {"Resource": 2181789, "Literal": 1121935, "relationships": 13409395}, "memory_mb": 10240, "threads": 4}
+       40.29 real        79.27 user         5.30 sys
+           900743168  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               90155  page reclaims
+                   0  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                4382  voluntary context switches
+              104627  involuntary context switches
+        225186192476  instructions retired
+        108932163594  cycles elapsed
+           661914680  peak memory footprint
