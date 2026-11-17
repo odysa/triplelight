@@ -1,0 +1,1505 @@
+{ "head": {
+    "vars": [ "product" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "product": { "type": "uri" , "value": "urn:p3" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0001" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0003" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0005" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0007" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0009" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0011" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0013" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0015" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0017" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0019" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0021" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0023" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0025" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0027" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0029" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0031" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0033" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0035" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0037" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0039" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0041" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0043" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0045" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0047" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0049" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0051" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0053" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0055" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0057" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0059" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0061" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0063" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0065" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0067" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0069" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0071" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0073" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0075" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0077" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0079" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0081" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0083" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0085" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0087" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0089" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0091" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0093" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0095" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0097" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0099" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0101" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0103" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0105" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0107" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0109" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0111" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0113" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0115" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0117" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0119" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0121" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0123" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0125" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0127" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0129" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0131" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0133" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0135" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0137" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0139" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0141" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0143" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0145" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0147" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0149" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0151" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0153" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0155" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0157" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0159" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0161" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0163" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0165" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0167" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0169" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0171" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0173" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0175" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0177" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0179" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0181" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0183" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0185" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0187" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0189" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0191" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0193" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0195" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0197" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0199" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0201" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0203" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0205" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0207" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0209" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0211" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0213" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0215" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0217" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0219" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0221" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0223" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0225" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0227" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0229" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0231" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0233" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0235" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0237" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0239" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0241" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0243" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0245" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0247" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0249" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0251" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0253" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0255" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0257" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0259" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0261" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0263" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0265" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0267" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0269" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0271" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0273" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0275" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0277" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0279" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0281" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0283" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0285" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0287" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0289" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0291" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0293" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0295" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0297" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0299" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0301" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0303" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0305" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0307" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0309" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0311" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0313" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0315" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0317" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0319" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0321" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0323" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0325" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0327" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0329" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0331" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0333" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0335" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0337" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0339" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0341" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0343" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0345" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0347" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0349" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0351" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0353" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0355" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0357" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0359" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0361" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0363" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0365" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0367" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0369" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0371" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0373" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0375" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0377" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0379" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0381" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0383" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0385" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0387" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0389" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0391" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0393" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0395" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0397" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0399" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0401" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0403" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0405" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0407" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0409" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0411" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0413" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0415" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0417" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0419" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0421" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0423" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0425" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0427" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0429" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0431" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0433" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0435" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0437" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0439" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0441" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0443" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0445" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0447" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0449" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0451" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0453" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0455" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0457" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0459" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0461" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0463" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0465" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0467" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0469" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0471" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0473" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0475" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0477" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0479" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0481" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0483" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0485" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0487" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0489" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0491" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0493" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0495" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0497" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0499" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0501" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0503" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0505" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0507" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0509" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0511" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0513" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0515" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0517" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0519" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0521" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0523" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0525" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0527" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0529" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0531" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0533" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0535" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0537" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0539" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0541" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0543" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0545" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0547" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0549" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0551" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0553" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0555" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0557" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0559" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0561" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0563" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0565" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0567" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0569" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0571" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0573" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0575" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0577" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0579" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0581" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0583" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0585" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0587" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0589" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0591" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0593" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0595" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0597" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0599" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0601" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0603" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0605" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0607" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0609" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0611" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0613" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0615" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0617" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0619" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0621" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0623" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0625" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0627" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0629" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0631" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0633" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0635" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0637" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0639" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0641" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0643" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0645" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0647" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0649" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0651" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0653" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0655" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0657" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0659" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0661" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0663" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0665" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0667" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0669" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0671" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0673" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0675" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0677" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0679" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0681" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0683" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0685" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0687" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0689" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0691" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0693" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0695" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0697" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0699" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0701" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0703" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0705" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0707" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0709" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0711" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0713" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0715" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0717" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0719" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0721" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0723" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0725" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0727" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0729" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0731" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0733" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0735" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0737" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0739" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0741" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0743" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0745" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0747" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0749" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0751" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0753" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0755" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0757" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0759" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0761" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0763" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0765" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0767" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0769" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0771" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0773" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0775" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0777" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0779" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0781" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0783" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0785" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0787" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0789" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0791" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0793" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0795" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0797" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0799" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0801" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0803" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0805" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0807" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0809" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0811" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0813" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0815" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0817" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0819" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0821" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0823" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0825" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0827" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0829" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0831" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0833" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0835" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0837" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0839" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0841" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0843" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0845" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0847" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0849" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0851" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0853" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0855" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0857" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0859" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0861" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0863" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0865" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0867" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0869" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0871" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0873" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0875" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0877" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0879" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0881" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0883" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0885" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0887" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0889" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0891" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0893" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0895" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0897" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0899" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0901" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0903" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0905" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0907" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0909" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0911" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0913" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0915" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0917" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0919" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0921" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0923" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0925" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0927" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0929" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0931" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0933" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0935" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0937" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0939" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0941" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0943" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0945" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0947" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0949" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0951" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0953" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0955" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0957" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0959" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0961" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0963" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0965" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0967" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0969" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0971" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0973" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0975" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0977" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0979" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0981" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0983" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0985" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0987" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0989" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0991" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0993" }
+      } ,
+      { 
+        "product": { "type": "uri" , "value": "urn:tie0995" }
+      }
+    ]
+  }
+}

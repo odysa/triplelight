@@ -1,0 +1,4 @@
+SELECT (COUNT(*) AS ?rows) (COUNT(?v) AS ?count)
+(COUNT(DISTINCT ?v) AS ?distinctCount) (SUM(?v) AS ?sum)
+(AVG(?v) AS ?avg) (MIN(?v) AS ?min) (MAX(?v) AS ?max)
+(SAMPLE(?v) AS ?sample) (GROUP_CONCAT(?v; SEPARATOR="|") AS ?concat) WHERE { ?s <urn:type> <urn:Thing> OPTIONAL { ?s <urn:missing> ?v } }
