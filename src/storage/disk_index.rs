@@ -7,7 +7,7 @@ use std::fs::File;
 use std::io::{self, ErrorKind, Write};
 use std::os::unix::fs::FileExt;
 use std::path::Path;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
 const MAGIC_V2: &[u8; 8] = b"RDFIDX02";
@@ -16,6 +16,43 @@ const HEADER: u64 = 24;
 const ROW: u64 = 24;
 const BLOCK_ROWS: u64 = 256;
 const META: u64 = 56;
+// Instrumentation branch only: counters are process-wide and include concurrent
+// work; a single-query run after background statistics has finished isolates it.
+static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
+static HITS: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
+static MISSES: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
+static READS: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
+static BYTES: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
+static EVICTIONS: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
+pub fn cache_trace_enabled() -> bool {
+    *TRACE_ENABLED.get_or_init(|| std::env::var_os("RDFDB_TRACE_BLOCK_CACHE").is_some())
+}
+pub(super) fn trace_dictionary(slot: usize, metric: usize, value: u64) {
+    if !cache_trace_enabled() {
+        return;
+    }
+    let counters = match metric {
+        0 => &HITS,
+        1 => &MISSES,
+        2 => &READS,
+        3 => &BYTES,
+        4 => &EVICTIONS,
+        _ => unreachable!(),
+    };
+    counters[slot].fetch_add(value, Ordering::Relaxed);
+}
+pub fn cache_trace_snapshot() -> [[u64; 5]; 8] {
+    std::array::from_fn(|i| {
+        [
+            HITS[i].load(Ordering::Relaxed),
+            MISSES[i].load(Ordering::Relaxed),
+            READS[i].load(Ordering::Relaxed),
+            BYTES[i].load(Ordering::Relaxed),
+            EVICTIONS[i].load(Ordering::Relaxed),
+        ]
+    })
+}
+
 static CACHE_MB_OVERRIDE: AtomicUsize = AtomicUsize::new(0);
 static DEFAULT_CACHE_MB: OnceLock<usize> = OnceLock::new();
 /// Sets the per-snapshot aggregate block cache target before opening a snapshot.
@@ -35,7 +72,11 @@ pub(super) fn cache_budget_mb() -> usize {
         return value;
     }
     *DEFAULT_CACHE_MB.get_or_init(|| {
-        physical_memory_bytes().map_or(256, |bytes| usize::try_from(bytes / 4 / (1024 * 1024)).unwrap_or(256).max(1))
+        physical_memory_bytes().map_or(256, |bytes| {
+            usize::try_from(bytes / 4 / (1024 * 1024))
+                .unwrap_or(256)
+                .max(1)
+        })
     })
 }
 
@@ -176,9 +217,19 @@ pub struct DiskIndex {
     compressed: bool,
     cache: Vec<Mutex<CacheShard>>,
     shard_capacity: usize,
+    trace_slot: Option<usize>,
 }
 impl DiskIndex {
     pub fn open(path: impl AsRef<Path>) -> io::Result<Self> {
+        let trace_slot = match path.as_ref().file_name().and_then(|v| v.to_str()) {
+            Some("spo") => Some(0),
+            Some("sop") => Some(1),
+            Some("pso") => Some(2),
+            Some("pos") => Some(3),
+            Some("osp") => Some(4),
+            Some("ops") => Some(5),
+            _ => None,
+        };
         let file = File::open(path)?;
         let mut header = [0; 24];
         read_exact_at(&file, &mut header, 0)?;
@@ -260,6 +311,7 @@ impl DiskIndex {
         Ok(Self {
             file,
             rows,
+            trace_slot,
             identity: footer,
             blocks: entries,
             compressed,
@@ -273,7 +325,7 @@ impl DiskIndex {
                 .collect(),
             shard_capacity: cache_budget_mb()
                 .saturating_mul(1024 * 1024)
-                .checked_div(8 * 16 * BLOCK_ROWS as usize * ROW as usize)
+                .checked_div(9 * 16 * BLOCK_ROWS as usize * ROW as usize)
                 .unwrap_or(1)
                 .max(1),
         })
@@ -302,8 +354,18 @@ impl DiskIndex {
             .lock()
             .map_err(|_| io::Error::other("index cache lock poisoned"))?;
         if let Some((value, referenced)) = cache.entries.get_mut(&id) {
+            if cache_trace_enabled() {
+                if let Some(i) = self.trace_slot {
+                    HITS[i].fetch_add(1, Ordering::Relaxed);
+                }
+            }
             *referenced = true;
             return Ok(Arc::clone(value));
+        }
+        if cache_trace_enabled() {
+            if let Some(i) = self.trace_slot {
+                MISSES[i].fetch_add(1, Ordering::Relaxed);
+            }
         }
         let start = id
             .checked_mul(BLOCK_ROWS)
@@ -317,7 +379,7 @@ impl DiskIndex {
             .get(id as usize)
             .ok_or_else(|| invalid("missing block directory entry"))?;
         let mut bytes = vec![0; meta.length];
-        read_exact_at(&self.file, &mut bytes, meta.offset)?;
+        read_exact_at_traced(&self.file, &mut bytes, meta.offset, self.trace_slot)?;
         if Sha256::digest(&bytes).as_slice() != meta.checksum {
             return Err(invalid("index block checksum mismatch"));
         }
@@ -342,6 +404,11 @@ impl DiskIndex {
                 cache.clock.push_back(old);
             } else {
                 cache.entries.remove(&old);
+                if cache_trace_enabled() {
+                    if let Some(i) = self.trace_slot {
+                        EVICTIONS[i].fetch_add(1, Ordering::Relaxed);
+                    }
+                }
             }
         }
         cache.entries.insert(id, (Arc::clone(&r), true));
@@ -423,11 +490,29 @@ impl DiskIndex {
         Ok(())
     }
 }
-fn read_exact_at(file: &File, mut buf: &mut [u8], mut offset: u64) -> io::Result<()> {
+fn read_exact_at(file: &File, buf: &mut [u8], offset: u64) -> io::Result<()> {
+    read_exact_at_traced(file, buf, offset, None)
+}
+fn read_exact_at_traced(
+    file: &File,
+    mut buf: &mut [u8],
+    mut offset: u64,
+    slot: Option<usize>,
+) -> io::Result<()> {
     while !buf.is_empty() {
+        if cache_trace_enabled() {
+            if let Some(i) = slot {
+                READS[i].fetch_add(1, Ordering::Relaxed);
+            }
+        }
         match file.read_at(buf, offset) {
             Ok(0) => return Err(io::Error::new(ErrorKind::UnexpectedEof, "short index read")),
             Ok(n) => {
+                if cache_trace_enabled() {
+                    if let Some(i) = slot {
+                        BYTES[i].fetch_add(n as u64, Ordering::Relaxed);
+                    }
+                }
                 offset += n as u64;
                 buf = &mut buf[n..];
             }
@@ -513,14 +598,28 @@ mod tests {
 pub fn physical_memory_bytes() -> Option<u64> {
     #[cfg(target_os = "macos")]
     {
-        let out = std::process::Command::new("/usr/sbin/sysctl").args(["-n", "hw.memsize"]).output().ok()?;
-        if !out.status.success() { return None }
-        return String::from_utf8_lossy(&out.stdout).trim().parse::<u64>().ok();
+        let out = std::process::Command::new("/usr/sbin/sysctl")
+            .args(["-n", "hw.memsize"])
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        return String::from_utf8_lossy(&out.stdout)
+            .trim()
+            .parse::<u64>()
+            .ok();
     }
     #[cfg(target_os = "linux")]
     {
         let info = std::fs::read_to_string("/proc/meminfo").ok()?;
-        let kb: u64 = info.lines().find(|l| l.starts_with("MemTotal:"))?.split_whitespace().nth(1)?.parse().ok()?;
+        let kb: u64 = info
+            .lines()
+            .find(|l| l.starts_with("MemTotal:"))?
+            .split_whitespace()
+            .nth(1)?
+            .parse()
+            .ok()?;
         return Some(kb * 1024);
     }
     #[allow(unreachable_code)]
