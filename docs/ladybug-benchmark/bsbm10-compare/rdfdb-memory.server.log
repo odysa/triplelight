@@ -1,0 +1,4 @@
+loaded <agent-workspace>/rdfdb/bench/tools/bsbm10.nt in 19.80s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:7983/sparql
+statistics ready after 3.39s

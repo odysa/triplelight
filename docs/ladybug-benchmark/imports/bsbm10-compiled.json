@@ -1,0 +1,268 @@
+{
+  "q014": {
+    "source_sha256": "fa9510327eec353afe3f2c0f6e900fbd30cb6132640d9857c983f721c947e537",
+    "vars": [
+      "productLabel",
+      "offer",
+      "price",
+      "vendor",
+      "vendorTitle",
+      "review",
+      "revTitle",
+      "reviewer",
+      "revName",
+      "rating1",
+      "rating2"
+    ],
+    "cypher": "MATCH (c_0)-[:P1L]->(v_productLabel) WHERE (c_0.id = 59356) OPTIONAL MATCH (v_offer)-[:P22R]->(c_0), (v_offer)-[:P24L]->(v_price), (v_offer)-[:P23R]->(v_vendor), (v_vendor)-[:P1L]->(v_vendorTitle), (v_vendor)-[:P7R]->(c_1), (v_offer)-[:P3R]->(v_vendor), (v_offer)-[:P26L]->(v_date) WHERE (c_1.id = 58714) AND (c_0.id = 59356) AND ((v_date.datatype = \"http://www.w3.org/2001/XMLSchema#dateTime\" AND v_date.value > \"2008-06-20T00:00:00\") ) OPTIONAL MATCH (v_review)-[:P31R]->(c_0), (v_review)-[:P32R]->(v_reviewer), (v_reviewer)-[:P29L]->(v_revName), (v_review)-[:P34L]->(v_revTitle) WHERE (c_0.id = 59356) OPTIONAL MATCH (v_review)-[:P38L]->(v_rating1) OPTIONAL MATCH (v_review)-[:P36L]->(v_rating2) RETURN v_productLabel.term AS productLabel, v_offer.term AS offer, v_price.term AS price, v_vendor.term AS vendor, v_vendorTitle.term AS vendorTitle, v_review.term AS review, v_revTitle.term AS revTitle, v_reviewer.term AS reviewer, v_revName.term AS revName, v_rating1.term AS rating1, v_rating2.term AS rating2"
+  },
+  "q004": {
+    "source_sha256": "0ae8810ddbceadb10499574e85b8283c5d1069f895b802c10a420fe69389e47a",
+    "unsupported": "Unsupported query modifier: ORDER BY ?label"
+  },
+  "q010": {
+    "source_sha256": "7bc2dc79cf827b166b428c135d5c536bac05475c1f1bb0f77d1822a1442542d8",
+    "unsupported": "Unsupported query modifier: ORDER BY ?productLabel"
+  },
+  "q024": {
+    "source_sha256": "816ddc8b55f11f8f3e7364b094d61beb464e97c83664b86f8be2174ea0945b78",
+    "vars": [
+      "property",
+      "hasValue",
+      "isValueOf"
+    ],
+    "cypher": "MATCH (s)-[r]->(o) WHERE s.id = 628127 RETURN label(r) AS property, o.term AS hasValue, CAST(NULL AS STRING) AS isValueOf UNION ALL MATCH (s)-[r]->(o) WHERE o.id = 628127 RETURN label(r) AS property, CAST(NULL AS STRING) AS hasValue, s.term AS isValueOf",
+    "predicate_columns": [
+      "property"
+    ],
+    "predicate_labels": {
+      "P0R": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+      "P1L": "http://www.w3.org/2000/01/rdf-schema#label",
+      "P2L": "http://www.w3.org/2000/01/rdf-schema#comment",
+      "P3R": "http://purl.org/dc/elements/1.1/publisher",
+      "P4L": "http://purl.org/dc/elements/1.1/date",
+      "P5R": "http://www.w3.org/2000/01/rdf-schema#subClassOf",
+      "P6R": "http://xmlns.com/foaf/0.1/homepage",
+      "P7R": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/country",
+      "P8R": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/producer",
+      "P9L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyNumeric1",
+      "P10L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyNumeric2",
+      "P11L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyNumeric3",
+      "P12L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyNumeric5",
+      "P13L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyTextual1",
+      "P14L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyTextual2",
+      "P15L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyTextual3",
+      "P16L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyTextual4",
+      "P17R": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productFeature",
+      "P18L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyTextual5",
+      "P19L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyNumeric6",
+      "P20L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyTextual6",
+      "P21L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyNumeric4",
+      "P22R": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/product",
+      "P23R": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/vendor",
+      "P24L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/price",
+      "P25L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/validFrom",
+      "P26L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/validTo",
+      "P27L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/deliveryDays",
+      "P28R": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/offerWebpage",
+      "P29L": "http://xmlns.com/foaf/0.1/name",
+      "P30L": "http://xmlns.com/foaf/0.1/mbox_sha1sum",
+      "P31R": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/reviewFor",
+      "P32R": "http://purl.org/stuff/rev#reviewer",
+      "P33L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/reviewDate",
+      "P34L": "http://purl.org/dc/elements/1.1/title",
+      "P35L": "http://purl.org/stuff/rev#text",
+      "P36L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/rating2",
+      "P37L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/rating3",
+      "P38L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/rating1",
+      "P39L": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/rating4"
+    }
+  },
+  "q011": {
+    "source_sha256": "30dfb42fe8fed145a90df5a4e5006386d9b9094ed8249dbf085c9b19d0fa9551",
+    "vars": [
+      "productLabel",
+      "offer",
+      "price",
+      "vendor",
+      "vendorTitle",
+      "review",
+      "revTitle",
+      "reviewer",
+      "revName",
+      "rating1",
+      "rating2"
+    ],
+    "cypher": "MATCH (c_0)-[:P1L]->(v_productLabel) WHERE (c_0.id = 62069) OPTIONAL MATCH (v_offer)-[:P22R]->(c_0), (v_offer)-[:P24L]->(v_price), (v_offer)-[:P23R]->(v_vendor), (v_vendor)-[:P1L]->(v_vendorTitle), (v_vendor)-[:P7R]->(c_1), (v_offer)-[:P3R]->(v_vendor), (v_offer)-[:P26L]->(v_date) WHERE (c_1.id = 58714) AND (c_0.id = 62069) AND ((v_date.datatype = \"http://www.w3.org/2001/XMLSchema#dateTime\" AND v_date.value > \"2008-06-20T00:00:00\") ) OPTIONAL MATCH (v_review)-[:P31R]->(c_0), (v_review)-[:P32R]->(v_reviewer), (v_reviewer)-[:P29L]->(v_revName), (v_review)-[:P34L]->(v_revTitle) WHERE (c_0.id = 62069) OPTIONAL MATCH (v_review)-[:P38L]->(v_rating1) OPTIONAL MATCH (v_review)-[:P36L]->(v_rating2) RETURN v_productLabel.term AS productLabel, v_offer.term AS offer, v_price.term AS price, v_vendor.term AS vendor, v_vendorTitle.term AS vendorTitle, v_review.term AS review, v_revTitle.term AS revTitle, v_reviewer.term AS reviewer, v_revName.term AS revName, v_rating1.term AS rating1, v_rating2.term AS rating2"
+  },
+  "q001": {
+    "source_sha256": "e7bfc861fbd312e1ef79f447e570a043e78ab63f847ac418c57ed84af0873259",
+    "unsupported": "Unsupported query modifier: ORDER BY ?label"
+  },
+  "q015": {
+    "source_sha256": "b43e7a3aa2ce45f493f97bb1498d9423dae11107ee041e5d58addc62128160d6",
+    "vars": [
+      "productLabel",
+      "offer",
+      "price",
+      "vendor",
+      "vendorTitle",
+      "review",
+      "revTitle",
+      "reviewer",
+      "revName",
+      "rating1",
+      "rating2"
+    ],
+    "cypher": "MATCH (c_0)-[:P1L]->(v_productLabel) WHERE (c_0.id = 109052) OPTIONAL MATCH (v_offer)-[:P22R]->(c_0), (v_offer)-[:P24L]->(v_price), (v_offer)-[:P23R]->(v_vendor), (v_vendor)-[:P1L]->(v_vendorTitle), (v_vendor)-[:P7R]->(c_1), (v_offer)-[:P3R]->(v_vendor), (v_offer)-[:P26L]->(v_date) WHERE (c_1.id = 58714) AND (c_0.id = 109052) AND ((v_date.datatype = \"http://www.w3.org/2001/XMLSchema#dateTime\" AND v_date.value > \"2008-06-20T00:00:00\") ) OPTIONAL MATCH (v_review)-[:P31R]->(c_0), (v_review)-[:P32R]->(v_reviewer), (v_reviewer)-[:P29L]->(v_revName), (v_review)-[:P34L]->(v_revTitle) WHERE (c_0.id = 109052) OPTIONAL MATCH (v_review)-[:P38L]->(v_rating1) OPTIONAL MATCH (v_review)-[:P36L]->(v_rating2) RETURN v_productLabel.term AS productLabel, v_offer.term AS offer, v_price.term AS price, v_vendor.term AS vendor, v_vendorTitle.term AS vendorTitle, v_review.term AS review, v_revTitle.term AS revTitle, v_reviewer.term AS reviewer, v_revName.term AS revName, v_rating1.term AS rating1, v_rating2.term AS rating2"
+  },
+  "q005": {
+    "source_sha256": "ad7e8fba53c245235b5cda044baa0b1a88b1a73fd114de790070f7487c3e8f46",
+    "vars": [
+      "label",
+      "comment",
+      "producer",
+      "productFeature",
+      "propertyTextual1",
+      "propertyTextual2",
+      "propertyTextual3",
+      "propertyNumeric1",
+      "propertyNumeric2",
+      "propertyTextual4",
+      "propertyTextual5",
+      "propertyNumeric4"
+    ],
+    "cypher": "MATCH (c_0)-[:P1L]->(v_label), (c_0)-[:P2L]->(v_comment), (c_0)-[:P8R]->(v_p), (v_p)-[:P1L]->(v_producer), (c_0)-[:P3R]->(v_p), (c_0)-[:P17R]->(v_f), (v_f)-[:P1L]->(v_productFeature), (c_0)-[:P13L]->(v_propertyTextual1), (c_0)-[:P14L]->(v_propertyTextual2), (c_0)-[:P15L]->(v_propertyTextual3), (c_0)-[:P9L]->(v_propertyNumeric1), (c_0)-[:P10L]->(v_propertyNumeric2) WHERE (c_0.id = 169794) OPTIONAL MATCH (c_0)-[:P16L]->(v_propertyTextual4) WHERE (c_0.id = 169794) OPTIONAL MATCH (c_0)-[:P18L]->(v_propertyTextual5) WHERE (c_0.id = 169794) OPTIONAL MATCH (c_0)-[:P21L]->(v_propertyNumeric4) WHERE (c_0.id = 169794) RETURN v_label.term AS label, v_comment.term AS comment, v_producer.term AS producer, v_productFeature.term AS productFeature, v_propertyTextual1.term AS propertyTextual1, v_propertyTextual2.term AS propertyTextual2, v_propertyTextual3.term AS propertyTextual3, v_propertyNumeric1.term AS propertyNumeric1, v_propertyNumeric2.term AS propertyNumeric2, v_propertyTextual4.term AS propertyTextual4, v_propertyTextual5.term AS propertyTextual5, v_propertyNumeric4.term AS propertyNumeric4"
+  },
+  "q012": {
+    "source_sha256": "61c71e08adfef3c6433c439478fcc5a49f1f034df5401256e94ca7d5512a1b53",
+    "vars": [
+      "productLabel",
+      "offer",
+      "price",
+      "vendor",
+      "vendorTitle",
+      "review",
+      "revTitle",
+      "reviewer",
+      "revName",
+      "rating1",
+      "rating2"
+    ],
+    "cypher": "MATCH (c_0)-[:P1L]->(v_productLabel) WHERE (c_0.id = 167568) OPTIONAL MATCH (v_offer)-[:P22R]->(c_0), (v_offer)-[:P24L]->(v_price), (v_offer)-[:P23R]->(v_vendor), (v_vendor)-[:P1L]->(v_vendorTitle), (v_vendor)-[:P7R]->(c_1), (v_offer)-[:P3R]->(v_vendor), (v_offer)-[:P26L]->(v_date) WHERE (c_1.id = 58714) AND (c_0.id = 167568) AND ((v_date.datatype = \"http://www.w3.org/2001/XMLSchema#dateTime\" AND v_date.value > \"2008-06-20T00:00:00\") ) OPTIONAL MATCH (v_review)-[:P31R]->(c_0), (v_review)-[:P32R]->(v_reviewer), (v_reviewer)-[:P29L]->(v_revName), (v_review)-[:P34L]->(v_revTitle) WHERE (c_0.id = 167568) OPTIONAL MATCH (v_review)-[:P38L]->(v_rating1) OPTIONAL MATCH (v_review)-[:P36L]->(v_rating2) RETURN v_productLabel.term AS productLabel, v_offer.term AS offer, v_price.term AS price, v_vendor.term AS vendor, v_vendorTitle.term AS vendorTitle, v_review.term AS review, v_revTitle.term AS revTitle, v_reviewer.term AS reviewer, v_revName.term AS revName, v_rating1.term AS rating1, v_rating2.term AS rating2"
+  },
+  "q002": {
+    "source_sha256": "15a6df1c7868788e2dc8b9044d277636cf6fbe32c3ae841e8d39639546f313ea",
+    "vars": [
+      "label",
+      "comment",
+      "producer",
+      "productFeature",
+      "propertyTextual1",
+      "propertyTextual2",
+      "propertyTextual3",
+      "propertyNumeric1",
+      "propertyNumeric2",
+      "propertyTextual4",
+      "propertyTextual5",
+      "propertyNumeric4"
+    ],
+    "cypher": "MATCH (c_0)-[:P1L]->(v_label), (c_0)-[:P2L]->(v_comment), (c_0)-[:P8R]->(v_p), (v_p)-[:P1L]->(v_producer), (c_0)-[:P3R]->(v_p), (c_0)-[:P17R]->(v_f), (v_f)-[:P1L]->(v_productFeature), (c_0)-[:P13L]->(v_propertyTextual1), (c_0)-[:P14L]->(v_propertyTextual2), (c_0)-[:P15L]->(v_propertyTextual3), (c_0)-[:P9L]->(v_propertyNumeric1), (c_0)-[:P10L]->(v_propertyNumeric2) WHERE (c_0.id = 130551) OPTIONAL MATCH (c_0)-[:P16L]->(v_propertyTextual4) WHERE (c_0.id = 130551) OPTIONAL MATCH (c_0)-[:P18L]->(v_propertyTextual5) WHERE (c_0.id = 130551) OPTIONAL MATCH (c_0)-[:P21L]->(v_propertyNumeric4) WHERE (c_0.id = 130551) RETURN v_label.term AS label, v_comment.term AS comment, v_producer.term AS producer, v_productFeature.term AS productFeature, v_propertyTextual1.term AS propertyTextual1, v_propertyTextual2.term AS propertyTextual2, v_propertyTextual3.term AS propertyTextual3, v_propertyNumeric1.term AS propertyNumeric1, v_propertyNumeric2.term AS propertyNumeric2, v_propertyTextual4.term AS propertyTextual4, v_propertyTextual5.term AS propertyTextual5, v_propertyNumeric4.term AS propertyNumeric4"
+  },
+  "q022": {
+    "source_sha256": "0e3d7f0f649ad04c1ed4e42aca1b055419bf2b5c94cc654a1e9a64d986e6cb3b",
+    "unsupported": "Unsupported query modifier: ORDER BY xsd:double(str(?price))"
+  },
+  "q016": {
+    "source_sha256": "ef5b9914425ab593040f174caf878ae36ff0d296bb47735adc8e130dd056e8e0",
+    "unsupported": "Unsupported query modifier: ORDER BY DESC(?reviewDate)"
+  },
+  "q006": {
+    "source_sha256": "762bb1a38911bf1dd75afcce4e0491d4a3b76243aacd84130665b6a1a408a196",
+    "vars": [
+      "label",
+      "comment",
+      "producer",
+      "productFeature",
+      "propertyTextual1",
+      "propertyTextual2",
+      "propertyTextual3",
+      "propertyNumeric1",
+      "propertyNumeric2",
+      "propertyTextual4",
+      "propertyTextual5",
+      "propertyNumeric4"
+    ],
+    "cypher": "MATCH (c_0)-[:P1L]->(v_label), (c_0)-[:P2L]->(v_comment), (c_0)-[:P8R]->(v_p), (v_p)-[:P1L]->(v_producer), (c_0)-[:P3R]->(v_p), (c_0)-[:P17R]->(v_f), (v_f)-[:P1L]->(v_productFeature), (c_0)-[:P13L]->(v_propertyTextual1), (c_0)-[:P14L]->(v_propertyTextual2), (c_0)-[:P15L]->(v_propertyTextual3), (c_0)-[:P9L]->(v_propertyNumeric1), (c_0)-[:P10L]->(v_propertyNumeric2) WHERE (c_0.id = 114638) OPTIONAL MATCH (c_0)-[:P16L]->(v_propertyTextual4) WHERE (c_0.id = 114638) OPTIONAL MATCH (c_0)-[:P18L]->(v_propertyTextual5) WHERE (c_0.id = 114638) OPTIONAL MATCH (c_0)-[:P21L]->(v_propertyNumeric4) WHERE (c_0.id = 114638) RETURN v_label.term AS label, v_comment.term AS comment, v_producer.term AS producer, v_productFeature.term AS productFeature, v_propertyTextual1.term AS propertyTextual1, v_propertyTextual2.term AS propertyTextual2, v_propertyTextual3.term AS propertyTextual3, v_propertyNumeric1.term AS propertyNumeric1, v_propertyNumeric2.term AS propertyNumeric2, v_propertyTextual4.term AS propertyTextual4, v_propertyTextual5.term AS propertyTextual5, v_propertyNumeric4.term AS propertyNumeric4"
+  },
+  "q023": {
+    "source_sha256": "d49eadeda177073e3849ad0a83ae67112bb947d5a9a0264944cae249bcf74701",
+    "unsupported": "Unsupported query modifier: ORDER BY xsd:double(str(?price))"
+  },
+  "q007": {
+    "source_sha256": "65b8907f7beb63a0a459d071d39124975a4ca8bcf8e9815436020bbe3d4e26f8",
+    "unsupported": "Unsupported query modifier: ORDER BY ?label"
+  },
+  "q013": {
+    "source_sha256": "2b02fc40caa3dd727c55160022ccdea0f71a536f5589ce7b191ce59fc0cc9a21",
+    "unsupported": "Unsupported query modifier: ORDER BY ?productLabel"
+  },
+  "q003": {
+    "source_sha256": "b553bd17ffbc82aa1b622925a74d354793a12a1d3441af18e3de528bd8a794bb",
+    "vars": [
+      "label",
+      "comment",
+      "producer",
+      "productFeature",
+      "propertyTextual1",
+      "propertyTextual2",
+      "propertyTextual3",
+      "propertyNumeric1",
+      "propertyNumeric2",
+      "propertyTextual4",
+      "propertyTextual5",
+      "propertyNumeric4"
+    ],
+    "cypher": "MATCH (c_0)-[:P1L]->(v_label), (c_0)-[:P2L]->(v_comment), (c_0)-[:P8R]->(v_p), (v_p)-[:P1L]->(v_producer), (c_0)-[:P3R]->(v_p), (c_0)-[:P17R]->(v_f), (v_f)-[:P1L]->(v_productFeature), (c_0)-[:P13L]->(v_propertyTextual1), (c_0)-[:P14L]->(v_propertyTextual2), (c_0)-[:P15L]->(v_propertyTextual3), (c_0)-[:P9L]->(v_propertyNumeric1), (c_0)-[:P10L]->(v_propertyNumeric2) WHERE (c_0.id = 265177) OPTIONAL MATCH (c_0)-[:P16L]->(v_propertyTextual4) WHERE (c_0.id = 265177) OPTIONAL MATCH (c_0)-[:P18L]->(v_propertyTextual5) WHERE (c_0.id = 265177) OPTIONAL MATCH (c_0)-[:P21L]->(v_propertyNumeric4) WHERE (c_0.id = 265177) RETURN v_label.term AS label, v_comment.term AS comment, v_producer.term AS producer, v_productFeature.term AS productFeature, v_propertyTextual1.term AS propertyTextual1, v_propertyTextual2.term AS propertyTextual2, v_propertyTextual3.term AS propertyTextual3, v_propertyNumeric1.term AS propertyNumeric1, v_propertyNumeric2.term AS propertyNumeric2, v_propertyTextual4.term AS propertyTextual4, v_propertyTextual5.term AS propertyTextual5, v_propertyNumeric4.term AS propertyNumeric4"
+  },
+  "q008": {
+    "source_sha256": "a68c5de8fa504bc7dcf601e26c8ab0d4a9ba9247e81f4e33c689948930c1889e",
+    "vars": [
+      "label",
+      "comment",
+      "producer",
+      "productFeature",
+      "propertyTextual1",
+      "propertyTextual2",
+      "propertyTextual3",
+      "propertyNumeric1",
+      "propertyNumeric2",
+      "propertyTextual4",
+      "propertyTextual5",
+      "propertyNumeric4"
+    ],
+    "cypher": "MATCH (c_0)-[:P1L]->(v_label), (c_0)-[:P2L]->(v_comment), (c_0)-[:P8R]->(v_p), (v_p)-[:P1L]->(v_producer), (c_0)-[:P3R]->(v_p), (c_0)-[:P17R]->(v_f), (v_f)-[:P1L]->(v_productFeature), (c_0)-[:P13L]->(v_propertyTextual1), (c_0)-[:P14L]->(v_propertyTextual2), (c_0)-[:P15L]->(v_propertyTextual3), (c_0)-[:P9L]->(v_propertyNumeric1), (c_0)-[:P10L]->(v_propertyNumeric2) WHERE (c_0.id = 185279) OPTIONAL MATCH (c_0)-[:P16L]->(v_propertyTextual4) WHERE (c_0.id = 185279) OPTIONAL MATCH (c_0)-[:P18L]->(v_propertyTextual5) WHERE (c_0.id = 185279) OPTIONAL MATCH (c_0)-[:P21L]->(v_propertyNumeric4) WHERE (c_0.id = 185279) RETURN v_label.term AS label, v_comment.term AS comment, v_producer.term AS producer, v_productFeature.term AS productFeature, v_propertyTextual1.term AS propertyTextual1, v_propertyTextual2.term AS propertyTextual2, v_propertyTextual3.term AS propertyTextual3, v_propertyNumeric1.term AS propertyNumeric1, v_propertyNumeric2.term AS propertyNumeric2, v_propertyTextual4.term AS propertyTextual4, v_propertyTextual5.term AS propertyTextual5, v_propertyNumeric4.term AS propertyNumeric4"
+  },
+  "q019": {
+    "source_sha256": "ab070b1985b4b0abb1fbae7d4513ceec25a81d3caab726df5c46445bb3f4b1a5",
+    "unsupported": "Unsupported query modifier: ORDER BY DESC(?reviewDate)"
+  },
+  "q009": {
+    "source_sha256": "bbe69a89b20d1dc883817771ae3e9a07e56af9271b1a563a287f05e4c396f24a",
+    "vars": [
+      "label",
+      "comment",
+      "producer",
+      "productFeature",
+      "propertyTextual1",
+      "propertyTextual2",
+      "propertyTextual3",
+      "propertyNumeric1",
+      "propertyNumeric2",
+      "propertyTextual4",
+      "propertyTextual5",
+      "propertyNumeric4"
+    ],
+    "cypher": "MATCH (c_0)-[:P1L]->(v_label), (c_0)-[:P2L]->(v_comment), (c_0)-[:P8R]->(v_p), (v_p)-[:P1L]->(v_producer), (c_0)-[:P3R]->(v_p), (c_0)-[:P17R]->(v_f), (v_f)-[:P1L]->(v_productFeature), (c_0)-[:P13L]->(v_propertyTextual1), (c_0)-[:P14L]->(v_propertyTextual2), (c_0)-[:P15L]->(v_propertyTextual3), (c_0)-[:P9L]->(v_propertyNumeric1), (c_0)-[:P10L]->(v_propertyNumeric2) WHERE (c_0.id = 115511) OPTIONAL MATCH (c_0)-[:P16L]->(v_propertyTextual4) WHERE (c_0.id = 115511) OPTIONAL MATCH (c_0)-[:P18L]->(v_propertyTextual5) WHERE (c_0.id = 115511) OPTIONAL MATCH (c_0)-[:P21L]->(v_propertyNumeric4) WHERE (c_0.id = 115511) RETURN v_label.term AS label, v_comment.term AS comment, v_producer.term AS producer, v_productFeature.term AS productFeature, v_propertyTextual1.term AS propertyTextual1, v_propertyTextual2.term AS propertyTextual2, v_propertyTextual3.term AS propertyTextual3, v_propertyNumeric1.term AS propertyNumeric1, v_propertyNumeric2.term AS propertyNumeric2, v_propertyTextual4.term AS propertyTextual4, v_propertyTextual5.term AS propertyTextual5, v_propertyNumeric4.term AS propertyNumeric4"
+  }
+}
