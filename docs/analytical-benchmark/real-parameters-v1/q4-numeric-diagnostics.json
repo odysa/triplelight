@@ -1,0 +1,278 @@
+{
+  "duckdb": {
+    "rows": 10,
+    "same_feature_set": true,
+    "same_feature_sequence": true,
+    "candidate_order_check": {
+      "checked": true,
+      "keys": [
+        [
+          "priceRatio",
+          true
+        ],
+        [
+          "feature",
+          false
+        ]
+      ]
+    },
+    "max_ulps": 7,
+    "max_relative_difference": 7.677927187803415e-07,
+    "values": [
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10650",
+        "candidate": 1.128403902053833,
+        "jena": 1.128403663635254,
+        "ulps": 2,
+        "relative_error_vs_jena": 2.1128837736442258e-07
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10576",
+        "candidate": 1.1014764308929443,
+        "jena": 1.1014763116836548,
+        "ulps": 1,
+        "relative_error_vs_jena": 1.0822683001558575e-07
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10634",
+        "candidate": 1.097808837890625,
+        "jena": 1.0978096723556519,
+        "ulps": 7,
+        "relative_error_vs_jena": 7.601181223562141e-07
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10655",
+        "candidate": 1.09030020236969,
+        "jena": 1.0902996063232422,
+        "ulps": 5,
+        "relative_error_vs_jena": 5.466813381359654e-07
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10667",
+        "candidate": 1.0868371725082397,
+        "jena": 1.086836338043213,
+        "ulps": 7,
+        "relative_error_vs_jena": 7.677927187803415e-07
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10668",
+        "candidate": 1.0834766626358032,
+        "jena": 1.083476185798645,
+        "ulps": 4,
+        "relative_error_vs_jena": 4.4009934362483643e-07
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10750",
+        "candidate": 1.079543948173523,
+        "jena": 1.0795438289642334,
+        "ulps": 1,
+        "relative_error_vs_jena": 1.1042561344188908e-07
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10628",
+        "candidate": 1.0778769254684448,
+        "jena": 1.0778768062591553,
+        "ulps": 1,
+        "relative_error_vs_jena": 1.1059639548651686e-07
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10522",
+        "candidate": 1.076654076576233,
+        "jena": 1.0766539573669434,
+        "ulps": 1,
+        "relative_error_vs_jena": 1.1072200936531044e-07
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10627",
+        "candidate": 1.0737991333007812,
+        "jena": 1.0737992525100708,
+        "ulps": 1,
+        "relative_error_vs_jena": 1.1101636481132047e-07
+      }
+    ]
+  },
+  "rdfdb": {
+    "rows": 10,
+    "same_feature_set": true,
+    "same_feature_sequence": true,
+    "candidate_order_check": {
+      "checked": true,
+      "keys": [
+        [
+          "priceRatio",
+          true
+        ],
+        [
+          "feature",
+          false
+        ]
+      ]
+    },
+    "max_ulps": 27,
+    "max_relative_difference": 2.931884186231112e-06,
+    "values": [
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10650",
+        "candidate": 1.1284011602401733,
+        "jena": 1.128403663635254,
+        "ulps": 21,
+        "relative_error_vs_jena": 2.218527962326437e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10576",
+        "candidate": 1.1014740467071533,
+        "jena": 1.1014763116836548,
+        "ulps": 19,
+        "relative_error_vs_jena": 2.0563097702961293e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10634",
+        "candidate": 1.097806453704834,
+        "jena": 1.0978096723556519,
+        "ulps": 27,
+        "relative_error_vs_jena": 2.931884186231112e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10655",
+        "candidate": 1.0902976989746094,
+        "jena": 1.0902996063232422,
+        "ulps": 16,
+        "relative_error_vs_jena": 1.7493802820350892e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10667",
+        "candidate": 1.0868349075317383,
+        "jena": 1.086836338043213,
+        "ulps": 12,
+        "relative_error_vs_jena": 1.3162160893377284e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10668",
+        "candidate": 1.0834736824035645,
+        "jena": 1.083476185798645,
+        "ulps": 21,
+        "relative_error_vs_jena": 2.3105215540303913e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10750",
+        "candidate": 1.079540729522705,
+        "jena": 1.0795438289642334,
+        "ulps": 26,
+        "relative_error_vs_jena": 2.8710659494891157e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10628",
+        "candidate": 1.077874779701233,
+        "jena": 1.0778768062591553,
+        "ulps": 17,
+        "relative_error_vs_jena": 1.8801387232707867e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10522",
+        "candidate": 1.0766514539718628,
+        "jena": 1.0766539573669434,
+        "ulps": 21,
+        "relative_error_vs_jena": 2.325162196671519e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10627",
+        "candidate": 1.0737969875335693,
+        "jena": 1.0737992525100708,
+        "ulps": 19,
+        "relative_error_vs_jena": 2.109310931415089e-06
+      }
+    ]
+  },
+  "rdfdb-legacy": {
+    "rows": 10,
+    "same_feature_set": true,
+    "same_feature_sequence": true,
+    "candidate_order_check": {
+      "checked": true,
+      "keys": [
+        [
+          "priceRatio",
+          true
+        ],
+        [
+          "feature",
+          false
+        ]
+      ]
+    },
+    "max_ulps": 27,
+    "max_relative_difference": 2.931884186231112e-06,
+    "values": [
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10650",
+        "candidate": 1.1284011602401733,
+        "jena": 1.128403663635254,
+        "ulps": 21,
+        "relative_error_vs_jena": 2.218527962326437e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10576",
+        "candidate": 1.1014740467071533,
+        "jena": 1.1014763116836548,
+        "ulps": 19,
+        "relative_error_vs_jena": 2.0563097702961293e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10634",
+        "candidate": 1.097806453704834,
+        "jena": 1.0978096723556519,
+        "ulps": 27,
+        "relative_error_vs_jena": 2.931884186231112e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10655",
+        "candidate": 1.0902976989746094,
+        "jena": 1.0902996063232422,
+        "ulps": 16,
+        "relative_error_vs_jena": 1.7493802820350892e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10667",
+        "candidate": 1.0868349075317383,
+        "jena": 1.086836338043213,
+        "ulps": 12,
+        "relative_error_vs_jena": 1.3162160893377284e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10668",
+        "candidate": 1.0834736824035645,
+        "jena": 1.083476185798645,
+        "ulps": 21,
+        "relative_error_vs_jena": 2.3105215540303913e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10750",
+        "candidate": 1.079540729522705,
+        "jena": 1.0795438289642334,
+        "ulps": 26,
+        "relative_error_vs_jena": 2.8710659494891157e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10628",
+        "candidate": 1.077874779701233,
+        "jena": 1.0778768062591553,
+        "ulps": 17,
+        "relative_error_vs_jena": 1.8801387232707867e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10522",
+        "candidate": 1.0766514539718628,
+        "jena": 1.0766539573669434,
+        "ulps": 21,
+        "relative_error_vs_jena": 2.325162196671519e-06
+      },
+      {
+        "feature": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature10627",
+        "candidate": 1.0737969875335693,
+        "jena": 1.0737992525100708,
+        "ulps": 19,
+        "relative_error_vs_jena": 2.109310931415089e-06
+      }
+    ]
+  }
+}

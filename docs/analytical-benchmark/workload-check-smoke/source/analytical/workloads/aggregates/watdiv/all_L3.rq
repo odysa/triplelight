@@ -1,0 +1,5 @@
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+}
+
