@@ -1,0 +1,513 @@
+{
+  "mapping": "exact-type-signatures-literal-columns-v1",
+  "source_csv": "/private/tmp/rdf-jianlin-ladybug18/lubm100-csv",
+  "node_format": "parquet",
+  "pyarrow_version": "26.0.1",
+  "input": "<agent-workspace>/rdfdb/bench/tools/lubm100.nt",
+  "input_sha256": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d",
+  "predicates": {
+    "http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "P0",
+    "http://www.w3.org/2002/07/owl#imports": "P1",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#name": "P2",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#subOrganizationOf": "P3",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#teacherOf": "P4",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#undergraduateDegreeFrom": "P5",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#mastersDegreeFrom": "P6",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#doctoralDegreeFrom": "P7",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#worksFor": "P8",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#emailAddress": "P9",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#telephone": "P10",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#researchInterest": "P11",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#headOf": "P12",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#memberOf": "P13",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse": "P14",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#advisor": "P15",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#publicationAuthor": "P16",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#teachingAssistantOf": "P17"
+  },
+  "mask_byteorder": "little",
+  "types": {
+    "http://www.w3.org/2002/07/owl#Ontology": 1,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#University": 2,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#Department": 4,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#FullProfessor": 8,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#AssociateProfessor": 16,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#AssistantProfessor": 32,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#Lecturer": 64,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#UndergraduateStudent": 128,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateStudent": 256,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#ResearchGroup": 512,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#Publication": 1024,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#Course": 2048,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateCourse": 4096,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#TeachingAssistant": 8192,
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#ResearchAssistant": 16384
+  },
+  "signatures": {
+    "T0": 0,
+    "T1": 1,
+    "T2": 2,
+    "T3": 4,
+    "T4": 8,
+    "T5": 16,
+    "T6": 32,
+    "T7": 64,
+    "T8": 128,
+    "T9": 256,
+    "T10": 512,
+    "T11": 1024,
+    "T12": 2048,
+    "T13": 4096,
+    "T14": 8448,
+    "T15": 16640
+  },
+  "nodecounts": {
+    "T0": 16,
+    "T1": 2007,
+    "T2": 1000,
+    "T3": 2007,
+    "T4": 17144,
+    "T5": 24036,
+    "T6": 19088,
+    "T7": 12034,
+    "T8": 795970,
+    "T9": 123641,
+    "T10": 30036,
+    "T11": 808741,
+    "T12": 108634,
+    "T13": 108514,
+    "T14": 55994,
+    "T15": 72927
+  },
+  "literal_columns": [
+    "P10",
+    "P11",
+    "P2",
+    "P9"
+  ],
+  "relationships": [
+    {
+      "table": "P5_T4_T2",
+      "predicate": "P5",
+      "source": "T4",
+      "target": "T2"
+    },
+    {
+      "table": "P5_T5_T2",
+      "predicate": "P5",
+      "source": "T5",
+      "target": "T2"
+    },
+    {
+      "table": "P5_T6_T2",
+      "predicate": "P5",
+      "source": "T6",
+      "target": "T2"
+    },
+    {
+      "table": "P5_T7_T2",
+      "predicate": "P5",
+      "source": "T7",
+      "target": "T2"
+    },
+    {
+      "table": "P5_T9_T2",
+      "predicate": "P5",
+      "source": "T9",
+      "target": "T2"
+    },
+    {
+      "table": "P5_T15_T2",
+      "predicate": "P5",
+      "source": "T15",
+      "target": "T2"
+    },
+    {
+      "table": "P5_T14_T2",
+      "predicate": "P5",
+      "source": "T14",
+      "target": "T2"
+    },
+    {
+      "table": "P13_T8_T3",
+      "predicate": "P13",
+      "source": "T8",
+      "target": "T3"
+    },
+    {
+      "table": "P13_T9_T3",
+      "predicate": "P13",
+      "source": "T9",
+      "target": "T3"
+    },
+    {
+      "table": "P13_T15_T3",
+      "predicate": "P13",
+      "source": "T15",
+      "target": "T3"
+    },
+    {
+      "table": "P13_T14_T3",
+      "predicate": "P13",
+      "source": "T14",
+      "target": "T3"
+    },
+    {
+      "table": "P8_T4_T3",
+      "predicate": "P8",
+      "source": "T4",
+      "target": "T3"
+    },
+    {
+      "table": "P8_T5_T3",
+      "predicate": "P8",
+      "source": "T5",
+      "target": "T3"
+    },
+    {
+      "table": "P8_T6_T3",
+      "predicate": "P8",
+      "source": "T6",
+      "target": "T3"
+    },
+    {
+      "table": "P8_T7_T3",
+      "predicate": "P8",
+      "source": "T7",
+      "target": "T3"
+    },
+    {
+      "table": "P12_T4_T3",
+      "predicate": "P12",
+      "source": "T4",
+      "target": "T3"
+    },
+    {
+      "table": "P4_T4_T12",
+      "predicate": "P4",
+      "source": "T4",
+      "target": "T12"
+    },
+    {
+      "table": "P4_T4_T13",
+      "predicate": "P4",
+      "source": "T4",
+      "target": "T13"
+    },
+    {
+      "table": "P4_T5_T12",
+      "predicate": "P4",
+      "source": "T5",
+      "target": "T12"
+    },
+    {
+      "table": "P4_T5_T13",
+      "predicate": "P4",
+      "source": "T5",
+      "target": "T13"
+    },
+    {
+      "table": "P4_T6_T12",
+      "predicate": "P4",
+      "source": "T6",
+      "target": "T12"
+    },
+    {
+      "table": "P4_T6_T13",
+      "predicate": "P4",
+      "source": "T6",
+      "target": "T13"
+    },
+    {
+      "table": "P4_T7_T12",
+      "predicate": "P4",
+      "source": "T7",
+      "target": "T12"
+    },
+    {
+      "table": "P4_T7_T13",
+      "predicate": "P4",
+      "source": "T7",
+      "target": "T13"
+    },
+    {
+      "table": "P3_T3_T2",
+      "predicate": "P3",
+      "source": "T3",
+      "target": "T2"
+    },
+    {
+      "table": "P3_T10_T3",
+      "predicate": "P3",
+      "source": "T10",
+      "target": "T3"
+    },
+    {
+      "table": "P15_T8_T5",
+      "predicate": "P15",
+      "source": "T8",
+      "target": "T5"
+    },
+    {
+      "table": "P15_T8_T4",
+      "predicate": "P15",
+      "source": "T8",
+      "target": "T4"
+    },
+    {
+      "table": "P15_T8_T6",
+      "predicate": "P15",
+      "source": "T8",
+      "target": "T6"
+    },
+    {
+      "table": "P15_T9_T4",
+      "predicate": "P15",
+      "source": "T9",
+      "target": "T4"
+    },
+    {
+      "table": "P15_T9_T6",
+      "predicate": "P15",
+      "source": "T9",
+      "target": "T6"
+    },
+    {
+      "table": "P15_T15_T4",
+      "predicate": "P15",
+      "source": "T15",
+      "target": "T4"
+    },
+    {
+      "table": "P15_T14_T4",
+      "predicate": "P15",
+      "source": "T14",
+      "target": "T4"
+    },
+    {
+      "table": "P15_T15_T6",
+      "predicate": "P15",
+      "source": "T15",
+      "target": "T6"
+    },
+    {
+      "table": "P15_T14_T6",
+      "predicate": "P15",
+      "source": "T14",
+      "target": "T6"
+    },
+    {
+      "table": "P15_T14_T5",
+      "predicate": "P15",
+      "source": "T14",
+      "target": "T5"
+    },
+    {
+      "table": "P15_T9_T5",
+      "predicate": "P15",
+      "source": "T9",
+      "target": "T5"
+    },
+    {
+      "table": "P15_T15_T5",
+      "predicate": "P15",
+      "source": "T15",
+      "target": "T5"
+    },
+    {
+      "table": "P14_T8_T12",
+      "predicate": "P14",
+      "source": "T8",
+      "target": "T12"
+    },
+    {
+      "table": "P14_T9_T13",
+      "predicate": "P14",
+      "source": "T9",
+      "target": "T13"
+    },
+    {
+      "table": "P14_T15_T13",
+      "predicate": "P14",
+      "source": "T15",
+      "target": "T13"
+    },
+    {
+      "table": "P14_T14_T13",
+      "predicate": "P14",
+      "source": "T14",
+      "target": "T13"
+    },
+    {
+      "table": "P17_T14_T12",
+      "predicate": "P17",
+      "source": "T14",
+      "target": "T12"
+    },
+    {
+      "table": "P1_T1_T0",
+      "predicate": "P1",
+      "source": "T1",
+      "target": "T0"
+    },
+    {
+      "table": "P16_T11_T5",
+      "predicate": "P16",
+      "source": "T11",
+      "target": "T5"
+    },
+    {
+      "table": "P16_T11_T9",
+      "predicate": "P16",
+      "source": "T11",
+      "target": "T9"
+    },
+    {
+      "table": "P16_T11_T6",
+      "predicate": "P16",
+      "source": "T11",
+      "target": "T6"
+    },
+    {
+      "table": "P16_T11_T15",
+      "predicate": "P16",
+      "source": "T11",
+      "target": "T15"
+    },
+    {
+      "table": "P16_T11_T14",
+      "predicate": "P16",
+      "source": "T11",
+      "target": "T14"
+    },
+    {
+      "table": "P16_T11_T7",
+      "predicate": "P16",
+      "source": "T11",
+      "target": "T7"
+    },
+    {
+      "table": "P16_T11_T4",
+      "predicate": "P16",
+      "source": "T11",
+      "target": "T4"
+    },
+    {
+      "table": "P7_T4_T2",
+      "predicate": "P7",
+      "source": "T4",
+      "target": "T2"
+    },
+    {
+      "table": "P7_T5_T2",
+      "predicate": "P7",
+      "source": "T5",
+      "target": "T2"
+    },
+    {
+      "table": "P7_T6_T2",
+      "predicate": "P7",
+      "source": "T6",
+      "target": "T2"
+    },
+    {
+      "table": "P7_T7_T2",
+      "predicate": "P7",
+      "source": "T7",
+      "target": "T2"
+    },
+    {
+      "table": "P6_T4_T2",
+      "predicate": "P6",
+      "source": "T4",
+      "target": "T2"
+    },
+    {
+      "table": "P6_T5_T2",
+      "predicate": "P6",
+      "source": "T5",
+      "target": "T2"
+    },
+    {
+      "table": "P6_T6_T2",
+      "predicate": "P6",
+      "source": "T6",
+      "target": "T2"
+    },
+    {
+      "table": "P6_T7_T2",
+      "predicate": "P6",
+      "source": "T7",
+      "target": "T2"
+    }
+  ],
+  "relationship_counts": {
+    "P5_T4_T2": 17144,
+    "P5_T5_T2": 24036,
+    "P5_T6_T2": 19088,
+    "P5_T7_T2": 12034,
+    "P5_T9_T2": 123641,
+    "P5_T15_T2": 72927,
+    "P5_T14_T2": 55994,
+    "P13_T8_T3": 795970,
+    "P13_T9_T3": 123641,
+    "P13_T15_T3": 72927,
+    "P13_T14_T3": 55994,
+    "P8_T4_T3": 17144,
+    "P8_T5_T3": 24036,
+    "P8_T6_T3": 19088,
+    "P8_T7_T3": 12034,
+    "P12_T4_T3": 2007,
+    "P4_T4_T12": 25727,
+    "P4_T4_T13": 25757,
+    "P4_T5_T12": 36105,
+    "P4_T5_T13": 36048,
+    "P4_T6_T12": 28744,
+    "P4_T6_T13": 28593,
+    "P4_T7_T12": 18058,
+    "P4_T7_T13": 18116,
+    "P3_T3_T2": 2007,
+    "P3_T10_T3": 30036,
+    "P15_T8_T5": 52898,
+    "P15_T8_T4": 53250,
+    "P15_T8_T6": 52791,
+    "P15_T9_T4": 41247,
+    "P15_T9_T6": 41290,
+    "P15_T15_T4": 24304,
+    "P15_T14_T4": 18716,
+    "P15_T15_T6": 24328,
+    "P15_T14_T6": 18558,
+    "P15_T14_T5": 18720,
+    "P15_T9_T5": 41104,
+    "P15_T15_T5": 24295,
+    "P14_T8_T12": 2389201,
+    "P14_T9_T13": 247273,
+    "P14_T15_T13": 146151,
+    "P14_T14_T13": 112124,
+    "P17_T14_T12": 55994,
+    "P1_T1_T0": 2007,
+    "P16_T11_T5": 335703,
+    "P16_T11_T9": 309689,
+    "P16_T11_T6": 143197,
+    "P16_T11_T15": 183039,
+    "P16_T11_T14": 140715,
+    "P16_T11_T7": 30303,
+    "P16_T11_T4": 299538,
+    "P7_T4_T2": 17144,
+    "P7_T5_T2": 24036,
+    "P7_T6_T2": 19088,
+    "P7_T7_T2": 12034,
+    "P6_T4_T2": 17144,
+    "P6_T5_T2": 24036,
+    "P6_T6_T2": 19088,
+    "P6_T7_T2": 12034
+  },
+  "counts": {
+    "resource_nodes": 2181789,
+    "rdf_type_triples": 2310694,
+    "literal_triples": 4450766,
+    "resource_triples": 6647935,
+    "unique_triples": 13409395
+  },
+  "prepare_seconds": 47.00272770808078
+}
