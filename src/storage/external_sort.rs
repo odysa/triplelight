@@ -215,6 +215,26 @@ mod tests {
         assert!(!scratch.exists());
     }
     #[test]
+    fn failed_later_group_cleans_private_scratch_on_drop() {
+        let parent = std::env::temp_dir();
+        let scratch;
+        {
+            let mut sort = ExternalSort::new(&parent, 20_000, 1000).unwrap();
+            sort.run_budget = 40;
+            sort.fan_in = 2;
+            for i in 0..20u32 { sort.push(i.to_be_bytes().to_vec()).unwrap(); }
+            sort.flush().unwrap();
+            assert!(sort.runs.len() >= 4);
+            let old = sort.runs.clone();
+            fs::remove_file(&old[2]).unwrap();
+            scratch = sort.dir.clone();
+            assert!(sort.finish().is_err());
+            assert!(!old[0].exists() && !old[1].exists());
+            assert!(scratch.exists());
+        }
+        assert!(!scratch.exists());
+    }
+    #[test]
     fn truncated_and_oversized_records_fail() {
         assert!(read_record(&mut &[1u8, 0][..], 10).is_err());
         assert!(read_record(&mut &[20u8, 0, 0, 0][..], 10).is_err());
