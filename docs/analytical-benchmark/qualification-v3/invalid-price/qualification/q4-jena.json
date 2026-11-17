@@ -1,0 +1,14 @@
+{ "head": {
+    "vars": [ "feature" , "priceRatio" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "feature": { "type": "uri" , "value": "urn:f1" }
+      } ,
+      { 
+        "feature": { "type": "uri" , "value": "urn:f2" }
+      }
+    ]
+  }
+}
