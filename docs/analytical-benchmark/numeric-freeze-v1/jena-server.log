@@ -1,0 +1,156 @@
+17:36:31 INFO  Fuseki          :: Apache Jena Fuseki 6.2.0
+17:36:31 INFO  Server          :: Dataset: in-memory: load file: <agent-workspace>/rdfdb/bench/tools/bsbm10.nt
+17:38:06 INFO  Config          :: Fuseki Base = <agent-workspace>/run
+17:38:06 INFO  Config          :: Database: /ds
+17:38:06 INFO  Config          :: UI Base: fuseki-server.jar
+17:38:06 INFO  Shiro           :: Shiro configuration: file:<agent-workspace>/run/shiro.ini
+17:38:06 INFO  Server          :: Path = /ds
+17:38:06 INFO  Server          :: System
+17:38:06 INFO  Server          ::   Memory: 12.0 GiB
+17:38:06 INFO  Server          ::   PID:    81124
+17:38:06 INFO  Server          ::   Port:   http=31425
+17:38:06 INFO  Server          :: Start Fuseki
+17:38:07 INFO  Fuseki          :: [1] POST http://127.0.0.1:31425/ds/sparql
+17:38:07 INFO  Fuseki          :: [1] Query = ASK {}
+17:38:07 INFO  Fuseki          :: [1] 200 OK (89 ms)
+17:38:07 INFO  Fuseki          :: [2] POST http://127.0.0.1:31425/ds/sparql
+17:38:07 INFO  Fuseki          :: [2] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?feature ?withN ?withoutN WHERE { { SELECT ?feature (COUNT(*) AS ?withN) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType42> . ?offer bsbm:product ?product ; bsbm:price ?price . ?product bsbm:productFeature ?feature . } GROUP BY ?feature } { SELECT ?feature (COUNT(*) AS ?withoutN) WHERE { { SELECT DISTINCT ?feature WHERE { ?p a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType42> ; bsbm:productFeature ?feature } } ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType42> . ?offer bsbm:product ?product ; bsbm:price ?price . FILTER NOT EXISTS { ?product bsbm:productFeature ?feature } } GROUP BY ?feature } }
+17:38:23 INFO  Fuseki          :: [2] 200 OK (15.968 s)
+17:38:23 INFO  Fuseki          :: [3] POST http://127.0.0.1:31425/ds/sparql
+17:38:23 INFO  Fuseki          :: [3] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?product (COUNT(*) AS ?n) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType487> . ?offer bsbm:product ?product ; bsbm:price ?price . } GROUP BY ?product
+17:38:23 INFO  Fuseki          :: [3] 200 OK (14 ms)
+17:38:23 INFO  Fuseki          :: [4] POST http://127.0.0.1:31425/ds/sparql
+17:38:23 INFO  Fuseki          :: [4] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?product (COUNT(*) AS ?n) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType4> . ?offer bsbm:product ?product ; bsbm:price ?price . } GROUP BY ?product
+17:38:23 INFO  Fuseki          :: [4] 200 OK (454 ms)
+17:38:23 INFO  Fuseki          :: [5] POST http://127.0.0.1:31425/ds/sparql
+17:38:23 INFO  Fuseki          :: [5] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer106/Producer106> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:23 INFO  Fuseki          :: [5] 200 OK (17 ms)
+17:38:23 INFO  Fuseki          :: [6] POST http://127.0.0.1:31425/ds/sparql
+17:38:23 INFO  Fuseki          :: [6] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer106/Producer106> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:23 INFO  Fuseki          :: [6] 200 OK (22 ms)
+17:38:23 INFO  Fuseki          :: [7] POST http://127.0.0.1:31425/ds/sparql
+17:38:23 INFO  Fuseki          :: [7] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?product (COUNT(*) AS ?n) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType45> . ?offer bsbm:product ?product ; bsbm:price ?price . } GROUP BY ?product
+17:38:23 INFO  Fuseki          :: [7] 200 OK (65 ms)
+17:38:23 INFO  Fuseki          :: [8] POST http://127.0.0.1:31425/ds/sparql
+17:38:23 INFO  Fuseki          :: [8] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer390/Producer390> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:23 INFO  Fuseki          :: [8] 200 OK (34 ms)
+17:38:23 INFO  Fuseki          :: [9] POST http://127.0.0.1:31425/ds/sparql
+17:38:23 INFO  Fuseki          :: [9] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer390/Producer390> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:24 INFO  Fuseki          :: [9] 200 OK (77 ms)
+17:38:24 INFO  Fuseki          :: [10] POST http://127.0.0.1:31425/ds/sparql
+17:38:24 INFO  Fuseki          :: [10] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer459/Producer459> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:24 INFO  Fuseki          :: [10] 200 OK (20 ms)
+17:38:24 INFO  Fuseki          :: [11] POST http://127.0.0.1:31425/ds/sparql
+17:38:24 INFO  Fuseki          :: [11] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer459/Producer459> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:24 INFO  Fuseki          :: [11] 200 OK (39 ms)
+17:38:24 INFO  Fuseki          :: [12] POST http://127.0.0.1:31425/ds/sparql
+17:38:24 INFO  Fuseki          :: [12] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer225/Producer225> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:24 INFO  Fuseki          :: [12] 200 OK (26 ms)
+17:38:24 INFO  Fuseki          :: [13] POST http://127.0.0.1:31425/ds/sparql
+17:38:24 INFO  Fuseki          :: [13] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer225/Producer225> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:24 INFO  Fuseki          :: [13] 200 OK (44 ms)
+17:38:24 INFO  Fuseki          :: [14] POST http://127.0.0.1:31425/ds/sparql
+17:38:24 INFO  Fuseki          :: [14] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?feature ?withN ?withoutN WHERE { { SELECT ?feature (COUNT(*) AS ?withN) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType120> . ?offer bsbm:product ?product ; bsbm:price ?price . ?product bsbm:productFeature ?feature . } GROUP BY ?feature } { SELECT ?feature (COUNT(*) AS ?withoutN) WHERE { { SELECT DISTINCT ?feature WHERE { ?p a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType120> ; bsbm:productFeature ?feature } } ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType120> . ?offer bsbm:product ?product ; bsbm:price ?price . FILTER NOT EXISTS { ?product bsbm:productFeature ?feature } } GROUP BY ?feature } }
+17:38:25 INFO  Fuseki          :: [14] 200 OK (854 ms)
+17:38:25 INFO  Fuseki          :: [15] POST http://127.0.0.1:31425/ds/sparql
+17:38:25 INFO  Fuseki          :: [15] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?product (COUNT(*) AS ?n) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType48> . ?offer bsbm:product ?product ; bsbm:price ?price . } GROUP BY ?product
+17:38:25 INFO  Fuseki          :: [15] 200 OK (38 ms)
+17:38:25 INFO  Fuseki          :: [16] POST http://127.0.0.1:31425/ds/sparql
+17:38:25 INFO  Fuseki          :: [16] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?product (COUNT(*) AS ?n) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType68> . ?offer bsbm:product ?product ; bsbm:price ?price . } GROUP BY ?product
+17:38:25 INFO  Fuseki          :: [16] 200 OK (16 ms)
+17:38:25 INFO  Fuseki          :: [17] POST http://127.0.0.1:31425/ds/sparql
+17:38:25 INFO  Fuseki          :: [17] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer99/Producer99> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:25 INFO  Fuseki          :: [17] 200 OK (8 ms)
+17:38:25 INFO  Fuseki          :: [18] POST http://127.0.0.1:31425/ds/sparql
+17:38:25 INFO  Fuseki          :: [18] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer99/Producer99> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:25 INFO  Fuseki          :: [18] 200 OK (13 ms)
+17:38:25 INFO  Fuseki          :: [19] POST http://127.0.0.1:31425/ds/sparql
+17:38:25 INFO  Fuseki          :: [19] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?product (COUNT(*) AS ?n) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType169> . ?offer bsbm:product ?product ; bsbm:price ?price . } GROUP BY ?product
+17:38:25 INFO  Fuseki          :: [19] 200 OK (11 ms)
+17:38:25 INFO  Fuseki          :: [20] POST http://127.0.0.1:31425/ds/sparql
+17:38:25 INFO  Fuseki          :: [20] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer189/Producer189> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:25 INFO  Fuseki          :: [20] 200 OK (15 ms)
+17:38:25 INFO  Fuseki          :: [21] POST http://127.0.0.1:31425/ds/sparql
+17:38:25 INFO  Fuseki          :: [21] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer189/Producer189> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:25 INFO  Fuseki          :: [21] 200 OK (38 ms)
+17:38:25 INFO  Fuseki          :: [22] POST http://127.0.0.1:31425/ds/sparql
+17:38:25 INFO  Fuseki          :: [22] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer391/Producer391> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:25 INFO  Fuseki          :: [22] 200 OK (10 ms)
+17:38:25 INFO  Fuseki          :: [23] POST http://127.0.0.1:31425/ds/sparql
+17:38:25 INFO  Fuseki          :: [23] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer391/Producer391> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:25 INFO  Fuseki          :: [23] 200 OK (29 ms)
+17:38:25 INFO  Fuseki          :: [24] POST http://127.0.0.1:31425/ds/sparql
+17:38:25 INFO  Fuseki          :: [24] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer138/Producer138> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:25 INFO  Fuseki          :: [24] 200 OK (8 ms)
+17:38:25 INFO  Fuseki          :: [25] POST http://127.0.0.1:31425/ds/sparql
+17:38:25 INFO  Fuseki          :: [25] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer138/Producer138> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:25 INFO  Fuseki          :: [25] 200 OK (14 ms)
+17:38:25 INFO  Fuseki          :: [26] POST http://127.0.0.1:31425/ds/sparql
+17:38:25 INFO  Fuseki          :: [26] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?feature ?withN ?withoutN WHERE { { SELECT ?feature (COUNT(*) AS ?withN) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType54> . ?offer bsbm:product ?product ; bsbm:price ?price . ?product bsbm:productFeature ?feature . } GROUP BY ?feature } { SELECT ?feature (COUNT(*) AS ?withoutN) WHERE { { SELECT DISTINCT ?feature WHERE { ?p a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType54> ; bsbm:productFeature ?feature } } ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType54> . ?offer bsbm:product ?product ; bsbm:price ?price . FILTER NOT EXISTS { ?product bsbm:productFeature ?feature } } GROUP BY ?feature } }
+17:38:33 INFO  Fuseki          :: [26] 200 OK (7.963 s)
+17:38:33 INFO  Fuseki          :: [27] POST http://127.0.0.1:31425/ds/sparql
+17:38:33 INFO  Fuseki          :: [27] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?product (COUNT(*) AS ?n) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType32> . ?offer bsbm:product ?product ; bsbm:price ?price . } GROUP BY ?product
+17:38:33 INFO  Fuseki          :: [27] 200 OK (48 ms)
+17:38:33 INFO  Fuseki          :: [28] POST http://127.0.0.1:31425/ds/sparql
+17:38:33 INFO  Fuseki          :: [28] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer284/Producer284> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:33 INFO  Fuseki          :: [28] 200 OK (12 ms)
+17:38:33 INFO  Fuseki          :: [29] POST http://127.0.0.1:31425/ds/sparql
+17:38:33 INFO  Fuseki          :: [29] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer284/Producer284> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:33 INFO  Fuseki          :: [29] 200 OK (26 ms)
+17:38:33 INFO  Fuseki          :: [30] POST http://127.0.0.1:31425/ds/sparql
+17:38:33 INFO  Fuseki          :: [30] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?product (COUNT(*) AS ?n) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType445> . ?offer bsbm:product ?product ; bsbm:price ?price . } GROUP BY ?product
+17:38:33 INFO  Fuseki          :: [30] 200 OK (7 ms)
+17:38:33 INFO  Fuseki          :: [31] POST http://127.0.0.1:31425/ds/sparql
+17:38:33 INFO  Fuseki          :: [31] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer527/Producer527> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:33 INFO  Fuseki          :: [31] 200 OK (6 ms)
+17:38:33 INFO  Fuseki          :: [32] POST http://127.0.0.1:31425/ds/sparql
+17:38:33 INFO  Fuseki          :: [32] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer527/Producer527> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:33 INFO  Fuseki          :: [32] 200 OK (13 ms)
+17:38:33 INFO  Fuseki          :: [33] POST http://127.0.0.1:31425/ds/sparql
+17:38:33 INFO  Fuseki          :: [33] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer59/Producer59> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:33 INFO  Fuseki          :: [33] 200 OK (6 ms)
+17:38:33 INFO  Fuseki          :: [34] POST http://127.0.0.1:31425/ds/sparql
+17:38:33 INFO  Fuseki          :: [34] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer59/Producer59> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:33 INFO  Fuseki          :: [34] 200 OK (11 ms)
+17:38:33 INFO  Fuseki          :: [35] POST http://127.0.0.1:31425/ds/sparql
+17:38:33 INFO  Fuseki          :: [35] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer452/Producer452> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:33 INFO  Fuseki          :: [35] 200 OK (5 ms)
+17:38:33 INFO  Fuseki          :: [36] POST http://127.0.0.1:31425/ds/sparql
+17:38:33 INFO  Fuseki          :: [36] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer452/Producer452> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:33 INFO  Fuseki          :: [36] 200 OK (6 ms)
+17:38:33 INFO  Fuseki          :: [37] POST http://127.0.0.1:31425/ds/sparql
+17:38:33 INFO  Fuseki          :: [37] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?feature ?withN ?withoutN WHERE { { SELECT ?feature (COUNT(*) AS ?withN) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType39> . ?offer bsbm:product ?product ; bsbm:price ?price . ?product bsbm:productFeature ?feature . } GROUP BY ?feature } { SELECT ?feature (COUNT(*) AS ?withoutN) WHERE { { SELECT DISTINCT ?feature WHERE { ?p a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType39> ; bsbm:productFeature ?feature } } ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType39> . ?offer bsbm:product ?product ; bsbm:price ?price . FILTER NOT EXISTS { ?product bsbm:productFeature ?feature } } GROUP BY ?feature } }
+17:38:42 INFO  Fuseki          :: [37] 200 OK (8.980 s)
+17:38:42 INFO  Fuseki          :: [38] POST http://127.0.0.1:31425/ds/sparql
+17:38:42 INFO  Fuseki          :: [38] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?product (COUNT(*) AS ?n) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType8> . ?offer bsbm:product ?product ; bsbm:price ?price . } GROUP BY ?product
+17:38:42 INFO  Fuseki          :: [38] 200 OK (72 ms)
+17:38:42 INFO  Fuseki          :: [39] POST http://127.0.0.1:31425/ds/sparql
+17:38:42 INFO  Fuseki          :: [39] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?product (COUNT(*) AS ?n) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType2> . ?offer bsbm:product ?product ; bsbm:price ?price . } GROUP BY ?product
+17:38:42 INFO  Fuseki          :: [39] 200 OK (283 ms)
+17:38:42 INFO  Fuseki          :: [40] POST http://127.0.0.1:31425/ds/sparql
+17:38:42 INFO  Fuseki          :: [40] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer89/Producer89> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:42 INFO  Fuseki          :: [40] 200 OK (3 ms)
+17:38:42 INFO  Fuseki          :: [41] POST http://127.0.0.1:31425/ds/sparql
+17:38:42 INFO  Fuseki          :: [41] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer89/Producer89> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:42 INFO  Fuseki          :: [41] 200 OK (5 ms)
+17:38:42 INFO  Fuseki          :: [42] POST http://127.0.0.1:31425/ds/sparql
+17:38:42 INFO  Fuseki          :: [42] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?product (COUNT(*) AS ?n) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType395> . ?offer bsbm:product ?product ; bsbm:price ?price . } GROUP BY ?product
+17:38:42 INFO  Fuseki          :: [42] 200 OK (5 ms)
+17:38:42 INFO  Fuseki          :: [43] POST http://127.0.0.1:31425/ds/sparql
+17:38:42 INFO  Fuseki          :: [43] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer561/Producer561> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:42 INFO  Fuseki          :: [43] 200 OK (2 ms)
+17:38:42 INFO  Fuseki          :: [44] POST http://127.0.0.1:31425/ds/sparql
+17:38:42 INFO  Fuseki          :: [44] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer561/Producer561> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:42 INFO  Fuseki          :: [44] 200 OK (2 ms)
+17:38:42 INFO  Fuseki          :: [45] POST http://127.0.0.1:31425/ds/sparql
+17:38:42 INFO  Fuseki          :: [45] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer330/Producer330> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:42 INFO  Fuseki          :: [45] 200 OK (6 ms)
+17:38:42 INFO  Fuseki          :: [46] POST http://127.0.0.1:31425/ds/sparql
+17:38:42 INFO  Fuseki          :: [46] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer330/Producer330> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:42 INFO  Fuseki          :: [46] 200 OK (16 ms)
+17:38:42 INFO  Fuseki          :: [47] POST http://127.0.0.1:31425/ds/sparql
+17:38:42 INFO  Fuseki          :: [47] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer375/Producer375> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } }
+17:38:42 INFO  Fuseki          :: [47] 200 OK (4 ms)
+17:38:42 INFO  Fuseki          :: [48] POST http://127.0.0.1:31425/ds/sparql
+17:38:42 INFO  Fuseki          :: [48] Query = PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#> SELECT ?reviewer (COUNT(*) AS ?n) WHERE { ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer375/Producer375> . ?review bsbm:reviewFor ?product . { ?review bsbm:rating1 ?score } UNION { ?review bsbm:rating2 ?score } UNION { ?review bsbm:rating3 ?score } UNION { ?review bsbm:rating4 ?score } ?review rev:reviewer ?reviewer } GROUP BY ?reviewer
+17:38:42 INFO  Fuseki          :: [48] 200 OK (7 ms)
