@@ -1,0 +1,11 @@
+{
+  "q001": [{"var": "label", "kind": "lexical", "term_kind": "literal"}],
+  "q004": [{"var": "label", "kind": "lexical", "term_kind": "literal"}],
+  "q007": [{"var": "label", "kind": "lexical", "term_kind": "literal"}],
+  "q010": [{"var": "productLabel", "kind": "lexical", "term_kind": "literal"}],
+  "q013": [{"var": "productLabel", "kind": "lexical", "term_kind": "literal"}],
+  "q016": [{"var": "reviewDate", "kind": "iso_datetime", "descending": true}],
+  "q019": [{"var": "reviewDate", "kind": "iso_datetime", "descending": true}],
+  "q022": [{"var": "price", "kind": "double_cast"}],
+  "q023": [{"var": "price", "kind": "double_cast"}]
+}

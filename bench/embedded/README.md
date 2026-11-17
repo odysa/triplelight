@@ -28,6 +28,11 @@ Each sample measures these consecutive phases with one monotonic clock:
    mapping overhead, rather than claiming engine-only execution. All outputs are
    read; no COUNT surrogate, unconsumed cursor or factorized result substitutes.
 
+`--rdfdb-result json` is a separately labeled public API configuration:
+`query_json()` runs inside API return, Python JSON parsing is materialization,
+and every parsed RDF value is traversed into the same common tuples. Comparing
+only its returned JSON string to fully decoded objects would omit required work.
+
 Sorting and complete bag hashing happen afterward. Destruction is also outside
 the query clock. Report process memory separately: owning common rows alongside
 backend results can have a large peak. This is not a streaming-memory benchmark.
@@ -69,7 +74,9 @@ empty or partial result. A reference mismatch also aborts.
 
 ORDER BY requires an explicit `--order-spec` keyed by query name. Supported keys
 are projected, homogeneous lexical or finite numeric terms, ascending or
-descending. The checker verifies monotonic order while permitting different row
+descending. `bsbm-order.json` also declares the exact `xsd:double(str(?price))`
+cast and timezone-free, second-resolution xsd:dateTime keys; unexpected types,
+non-finite values or datetime shapes fail. The checker verifies monotonic order while permitting different row
 orders within equal keys. Review the spec against the actual SPARQL: hidden
 expressions, mixed types, NaN, date timezone comparison and unstable LIMIT tie
 selection need a separate comparator/cohort. Do not remove ORDER BY just to run.
@@ -91,6 +98,12 @@ release someone else's lock. It refuses to overwrite an existing output file.
 
 The pure standard-library term/order regressions do not open a database, build
 code or collect performance samples: `python -m unittest discover -s bench/embedded`.
+`smoke.py --lock-owner 'your exact owner string'` opens real databases and checks
+objects/JSON/Arrow parity on lexical identity, language tags, duplicates and
+unbound values. Run it in the benchmark window before large datasets.
+`export_jena.py` captures independent TDB2 results through Jena's CLI, retaining
+compressed JSON, complete signatures and per-query commands; it is untimed and
+must finish before any timed process starts.
 
 ```sh
 python bench/embedded/run.py --system ladybug --database /path/native.db \
