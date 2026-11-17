@@ -1,7 +1,7 @@
 //! Optional value-oriented Arrow columns. RDF structs remain the lossless default.
 use std::sync::{Arc, OnceLock};
 use arrow_array::{Array, ArrayRef, Date32Array, Decimal128Array, Float32Array, Float64Array, Int64Array, LargeStringArray, RecordBatch, StringArray, StructArray, TimestampMicrosecondArray};
-use arrow_schema::{DataType, Field, Schema};
+use arrow_schema::{Field, Schema};
 use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use regex::Regex;
 
