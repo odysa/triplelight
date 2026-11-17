@@ -64,6 +64,14 @@ class Contract(unittest.TestCase):
         with self.assertRaises(ValueError):
             check_order(["x", "y"], [rows[0], rows[2], rows[1]], spec)
 
+    def test_bsbm_cast_and_datetime_bounds(self):
+        spec = [{"var": "price", "kind": "double_cast"}]
+        self.assertTrue(check_order(["price"], [(term("literal", "2"),), (term("literal", "10"),)], spec)["checked"])
+        date_spec = [{"var": "date", "kind": "iso_datetime"}]
+        self.assertTrue(check_order(["date"], [(term("literal", "2008-06-20T00:00:00", XSD+"dateTime"),)], date_spec)["checked"])
+        with self.assertRaises(ValueError):
+            check_order(["date"], [(term("literal", "2008-06-20T00:00:00Z", XSD+"dateTime"),)], date_spec)
+
 
 if __name__ == "__main__":
     unittest.main()
