@@ -1,0 +1,22 @@
+disk build strategy: in-memory (estimated 3x input; not an RSS limit)
+lubm100 import done
+disk build strategy: in-memory (estimated 3x input; not an RSS limit)
+bsbm10 import done
+      141.58 real       189.84 user        34.62 sys
+         11412570112  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1198763  page reclaims
+                   4  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+              303707  voluntary context switches
+              431665  involuntary context switches
+       1222838999157  instructions retired
+        315206361077  cycles elapsed
+          8966415456  peak memory footprint
