@@ -1,6 +1,6 @@
 #![cfg(unix)]
-use rdfdb::embedded::{Database, DatabaseOptions};
-use rdfdb::exec::{QueryErrorKind, QueryResult};
+use rdfdb::embedded::{Database, DatabaseError, DatabaseOptions};
+use rdfdb::exec::QueryResult;
 use std::path::PathBuf;
 
 fn temp(name: &str) -> PathBuf {
@@ -29,7 +29,9 @@ fn embedded_update_snapshot_and_reopen() {
     drop(old); drop(db);
     let reopened = Database::open(&dir).unwrap();
     assert!(ask(&reopened, ASK));
-    assert_eq!(reopened.query("not a query").unwrap_err().kind, QueryErrorKind::Syntax);
+    assert!(matches!(reopened.query("not a query"), Err(DatabaseError::Syntax(_))));
+    assert!(reopened.query_json(ASK).unwrap().contains("true"));
+    assert!(matches!(Database::open(&dir), Err(DatabaseError::Locked)));
     drop(reopened);
     std::fs::remove_dir_all(dir).unwrap();
 }
@@ -65,4 +67,46 @@ fn zero_workers_rejected_before_store_creation() {
     let _ = std::fs::remove_dir_all(&dir);
     assert!(Database::open_with(&dir, DatabaseOptions { initial: None, import_workers: 0 }).is_err());
     assert!(!dir.exists());
+}
+
+#[test]
+fn import_is_atomic_and_clone_shares_lock() {
+    let dir = temp("load");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let source = dir.join("data.nt");
+    std::fs::write(&source, "<http://example/s> <http://example/p> <http://example/o> .\ninvalid\n").unwrap();
+    let db = Database::open(dir.join("db")).unwrap();
+    assert!(db.load(&source).is_err());
+    assert!(!ask(&db, ASK));
+    std::fs::write(&source, "<http://example/s> <http://example/p> <http://example/o> .\n").unwrap();
+    assert_eq!(db.load(&source).unwrap(), 1);
+    let clone = db.clone();
+    drop(db);
+    assert!(ask(&clone, ASK));
+    assert!(matches!(Database::open(dir.join("db")), Err(DatabaseError::Locked)));
+    drop(clone);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn statistics_are_not_used_for_modified_or_other_generations() {
+    let dir = temp("stats");
+    let _ = std::fs::remove_dir_all(&dir);
+    let db = Database::open(&dir).unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !db.stats_ready() && std::time::Instant::now() < deadline { std::thread::yield_now(); }
+    assert!(db.stats_ready());
+    let old = db.read();
+    db.update(INSERT).unwrap();
+    assert!(!db.stats_ready());
+    assert!(ask(&db, ASK));
+    assert!(matches!(old.query(ASK).unwrap(), QueryResult::Boolean(false)));
+    db.compact().unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !db.stats_ready() && std::time::Instant::now() < deadline { std::thread::yield_now(); }
+    assert!(db.stats_ready());
+    assert!(ask(&db, ASK));
+    assert!(matches!(old.query(ASK).unwrap(), QueryResult::Boolean(false)));
+    drop(old); drop(db); std::fs::remove_dir_all(dir).unwrap();
 }
