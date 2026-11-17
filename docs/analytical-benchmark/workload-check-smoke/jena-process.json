@@ -1,0 +1,1 @@
+{"pid": 83460, "command": ["<agent-workspace>/rdfdb/bench/tools/apache-jena-fuseki-6.2.0/fuseki-server", "--file=/private/tmp/rdf-jianlin-analytical25/fixture-float/data.nt", "--port=31425", "/ds"], "jvm_args": "-Xmx1g"}

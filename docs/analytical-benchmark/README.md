@@ -4,6 +4,44 @@ There is no full BI performance score yet. The corrected candidate passes the
 normal, cutoff, invalid-input and empty/unbound fixtures against Jena. Large-data
 qualification, matched competitor execution and resource measurement remain ahead.
 
+## First real-parameter cohort: partial, numeric gate not satisfied
+
+Fifteen official parameter instances (mix 0) completed serially on Jena,
+DuckDB and both rdfdb aggregation paths. The candidate engine is merged main
+cb827db96c62ee440539eac31e5d73c771b2ceb1, with one pinned Python extension for
+both paths. `RDFDB_LEGACY_GROUP=1` selects the general path; the other process
+unsets it. Source-data and extension hashes are unchanged after execution.
+
+| Candidate vs Jena, original four-ULP gate | Pass | Fail | q4 maximum ULP / relative difference |
+|---|---:|---:|---|
+| DuckDB plain triples | 14 | 1 | 7 / 7.68e-7 |
+| rdfdb ID aggregation | 14 | 1 | 27 / 2.93e-6 |
+| rdfdb general aggregation | 14 | 1 | 27 / 2.93e-6 |
+
+The q4 failure is numeric: all three return the same ordered ten feature IRIs
+and each candidate's own numeric ordering is monotonic. Both rdfdb paths return
+identical complete RDF term bags on all fifteen instances. This isolates a
+validation question; it does not prove that either Jena or a candidate is wrong.
+Different accumulation orders/precision are a hypothesis requiring independent
+input and arithmetic checks. The original failed gate is retained unchanged.
+See the [future numeric-validation proposal](NUMERIC_VALIDATION_PROPOSAL.md).
+
+This is only the first 15 of 60 exported queries, with no measured BI timing or
+competitor ranking. The reference process exited before candidate work;
+candidate processes also ran serially. All workers and the Jena service exited,
+and the shared lock was released. The 8-template small-graph smoke of this
+serial runner passed against actual Jena HTTP, DuckDB and rdfdb.
+
+Large JSON outputs are stored losslessly as `.json.gz`;
+`real-parameters-v1/compressed_artifacts.json` records raw and compressed hashes.
+Restore the original bytes with `gzip -dc file.json.gz > file.json` in a copy.
+
+[real-parameters-v1/](real-parameters-v1/) contains complete outputs, SQL,
+matrices, numeric diagnostics, source/runtime identities and process logs.
+[workload-check-smoke/](workload-check-smoke/) retains the earlier actual-engine
+runner validation. The 10M cohort uses its own earlier source snapshot; newer
+spill configuration in the current runner is not retroactively attributed to it.
+
 ## 10M DuckDB baseline setup
 
 The pinned BSBM-10M input imported successfully: **10,102,032 raw and unique
