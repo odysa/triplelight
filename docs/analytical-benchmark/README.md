@@ -4,6 +4,24 @@ There is no full BI performance score yet. The corrected candidate passes the
 normal, cutoff, invalid-input and empty/unbound fixtures against Jena. Large-data
 qualification, matched competitor execution and resource measurement remain ahead.
 
+## 10M DuckDB baseline setup
+
+The pinned BSBM-10M input imported successfully: **10,102,032 raw and unique
+triples**, SHA-256 3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e.
+The plain-triples database is 619,196,416 bytes. This one host setup run used
+DuckDB 2.0.0/PyArrow 26.0.1, four threads, an 8 GB DuckDB memory setting and an
+8 GB spill setting. Observed whole-process peak RSS was 4,487,774,208 bytes;
+spill file lengths sampled every 200 ms peaked at zero, with no sampling errors.
+Those settings are not an RSS hard limit, and sampling can miss brief spill.
+
+Setup took 201.85 seconds, including the Python N-Triples parser, Arrow conversion,
+graph deduplication and checkpoint. This is neither a native DuckDB loader
+comparison nor a same-session competitor result. [import-v1/](import-v1/) retains
+source, invocation, input identities and resource evidence. A small metrics probe
+first confirmed 84 raw statements became 83 unique triples. Its first launcher
+attempt incorrectly resolved the virtual-environment executable to the global
+Python and failed before import; that failed log is retained separately.
+
 ## Current candidate: fast-group d2618c6
 
 The aggregate-error correction passes the extended fixture suite. An isolated
@@ -118,6 +136,6 @@ workload inputs only, not 60 successful large-data query measurements.
 See bench/analytical/workloads/bsbm10/ and the measurement contract in
 bench/analytical/README.md.
 
-Next: build the 10M DuckDB baseline and qualify real parameter instances; then run matched
+Next: qualify real parameter instances against the imported 10M graph; then run matched
 Linux/VM competitor measurements. The 100M track follows disk/memory sizing.
 No unsupported query, timeout or failed result is removed from a full BI score.
