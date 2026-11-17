@@ -180,11 +180,14 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     current: RefCell<Option<Row>>,
     stats: Option<(&'a Stats, &'a dyn Snapshot)>,
     wcoj: bool,
+    /// LIMIT (+OFFSET) of a Slice directly above the next ORDER BY (through at most a Project): lets ORDER BY keep
+    /// only the first `k` rows (stable top-k) instead of sorting everything. Taken by that ORDER BY.
+    order_limit: std::cell::Cell<Option<usize>>,
 }
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true }
+        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -315,19 +318,41 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 out
             }
             GraphPattern::OrderBy { inner, expression } => {
+                let limit = self.order_limit.take();
                 let rows = self.eval(inner, input);
-                let mut keyed: Vec<(Vec<Option<Term>>, Row)> = rows.into_iter().map(|r| {
-                    (expression.iter().map(|e| match e { OrderExpression::Asc(e) | OrderExpression::Desc(e) => self.value(e, &r) }).collect(), r)
-                }).collect();
-                keyed.sort_by(|(a, _), (b, _)| {
+                // Sort keys: a plain variable is decoded once per distinct ID; other expressions per row.
+                let mut memo: HashMap<TermId, Option<Term>> = HashMap::new();
+                let keys: Vec<Vec<Option<Term>>> = rows.iter().map(|r| expression.iter().map(|e| {
+                    let e = match e { OrderExpression::Asc(e) | OrderExpression::Desc(e) => e };
+                    match e {
+                        Expression::Variable(v) => match self.vars.get(v.as_str()).map(|&i| r[i]) {
+                            Some(id) if id != UNBOUND => memo.entry(id).or_insert_with(|| Some(self.resolve(id))).clone(),
+                            _ => None,
+                        },
+                        e => self.value(e, r),
+                    }
+                }).collect()).collect();
+                let cmp = |a: &usize, b: &usize| -> std::cmp::Ordering {
                     for (k, e) in expression.iter().enumerate() {
-                        let c = expr::order_cmp(a[k].as_ref(), b[k].as_ref());
+                        let c = expr::order_cmp(keys[*a][k].as_ref(), keys[*b][k].as_ref());
                         let c = if matches!(e, OrderExpression::Desc(_)) { c.reverse() } else { c };
                         if c.is_ne() { return c }
                     }
-                    std::cmp::Ordering::Equal
-                });
-                keyed.into_iter().map(|(_, r)| r).collect()
+                    a.cmp(b) // ties keep input order (as the stable sort did)
+                };
+                let mut idx: Vec<usize> = (0..rows.len()).collect();
+                match limit {
+                    Some(k) if k < idx.len() => {
+                        // Stable top-k: the comparator is a total order (index tie-break), so the k smallest equal the
+                        // first k of a full stable sort.
+                        if k > 0 { idx.select_nth_unstable_by(k - 1, cmp); }
+                        idx.truncate(k);
+                        idx.sort_unstable_by(cmp);
+                    }
+                    _ => idx.sort_unstable_by(cmp),
+                }
+                let mut rows: Vec<Option<Row>> = rows.into_iter().map(Some).collect();
+                idx.into_iter().map(|i| rows[i].take().unwrap()).collect()
             }
             GraphPattern::Project { inner, variables } => {
                 let keep: HashSet<usize> = variables.iter().map(|v| self.var(v)).collect();
@@ -344,7 +369,16 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 self.eval(inner, input).into_iter().filter(|r| seen.insert(r.clone())).collect()
             }
             GraphPattern::Slice { inner, start, length } => {
+                if let Some(l) = length {
+                    let direct = match inner.as_ref() {
+                        GraphPattern::OrderBy { .. } => true,
+                        GraphPattern::Project { inner, .. } => matches!(inner.as_ref(), GraphPattern::OrderBy { .. }),
+                        _ => false,
+                    };
+                    if direct { self.order_limit.set(Some(start.saturating_add(*l))) }
+                }
                 let rows = self.eval(inner, input);
+                self.order_limit.set(None);
                 rows.into_iter().skip(*start).take(length.unwrap_or(usize::MAX)).collect()
             }
             GraphPattern::Group { inner, variables, aggregates } => self.eval_group(inner, variables, aggregates, input),

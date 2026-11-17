@@ -359,3 +359,21 @@ fn float_expression_rounds_per_operation() {
     assert_eq!(n(&format!("SELECT * WHERE {{ ?r <urn:a> ?a . ?r <urn:b> ?b {f} }}")), 0);
     assert_eq!(n(&format!("SELECT * WHERE {{ {{ ?r <urn:a> ?a . ?r <urn:b> ?b }} OPTIONAL {{ ?r <urn:none> ?z }} {f} }}")), 0);
 }
+
+/// ORDER BY ... LIMIT uses a stable top-k: same rows and order as sorting everything, including ties and OFFSET.
+#[test]
+fn order_by_limit_top_k_matches_full_sort() {
+    let mut data = String::new();
+    for i in 0..200 { data.push_str(&format!("<urn:s{i}> <urn:p> \"{}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n", (i * 37) % 23)); }
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let seq = |q: &str| -> Vec<String> {
+        match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| format!("{r:?}")).collect(), r => panic!("{r:?}") }
+    };
+    for (order, lim) in [("?o", "LIMIT 7"), ("DESC(?o)", "LIMIT 10 OFFSET 5"), ("?o ?s", "LIMIT 1"), ("DESC(?o) ?s", "LIMIT 300"), ("?o", "LIMIT 0")] {
+        let full = seq(&format!("SELECT ?s ?o WHERE {{ ?s <urn:p> ?o }} ORDER BY {order}"));
+        let topk = seq(&format!("SELECT ?s ?o WHERE {{ ?s <urn:p> ?o }} ORDER BY {order} {lim}"));
+        let (off, n) = match lim.split_whitespace().collect::<Vec<_>>()[..] {
+            ["LIMIT", n] => (0, n.parse::<usize>().unwrap()), ["LIMIT", n, "OFFSET", o] => (o.parse().unwrap(), n.parse().unwrap()), _ => unreachable!() };
+        assert_eq!(topk, full.into_iter().skip(off).take(n).collect::<Vec<_>>(), "{order} {lim}");
+    }
+}
