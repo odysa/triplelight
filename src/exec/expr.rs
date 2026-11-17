@@ -18,9 +18,12 @@ fn xsd_local(l: &Literal) -> Option<&str> { l.datatype().as_str().strip_prefix("
 /// f32-rounded value so float arithmetic and output stay single precision.
 pub(super) enum Num { Int(i64), Dec(f64), Flt(f64), Dbl(f64) }
 impl Num {
-    /// The value at a promoted type rank (1 decimal, 2 float, 3 double); float results are rounded to f32.
+    /// The value at a promoted type rank (1 decimal, 2 float, 3 double). A computed float keeps f64 precision while it
+    /// is an intermediate (e.g. a SUM accumulator) and is rounded to binary32 once, when it becomes a term (`term`):
+    /// SUM is over a multiset with unspecified order, and one final rounding is far more accurate than rounding after
+    /// every addition (whose error grows with the group size).
     pub(super) fn of_rank(rank: u8, v: f64) -> Num {
-        match rank { 0 | 1 => Num::Dec(v), 2 => Num::Flt(v as f32 as f64), _ => Num::Dbl(v) }
+        match rank { 0 | 1 => Num::Dec(v), 2 => Num::Flt(v), _ => Num::Dbl(v) }
     }
     pub(super) fn f(self) -> f64 { match self { Num::Int(i) => i as f64, Num::Dec(d) | Num::Flt(d) | Num::Dbl(d) => d } }
     pub(super) fn rank(self) -> u8 { match self { Num::Int(_) => 0, Num::Dec(_) => 1, Num::Flt(_) => 2, Num::Dbl(_) => 3 } }
