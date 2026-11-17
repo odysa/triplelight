@@ -33,3 +33,6 @@ optimizer_hotpath accepts a disk snapshot as well. It runs complete original SEL
 3. Build task-15 baseline/candidate statistics probes from the same source except coverage metadata, then compare build overhead and estimate/tree signatures on the existing smaller snapshots. Do not conflate this with task-17 planner changes.
 4. Pin round-9 data, disk format, reference source, code and query cohorts. Export BGP probes for each scale, collect independent exact counts, then run q-error and phase profiling serially. Use a small query subset first to avoid an unbounded execution.
 5. Preserve all traces, hashes and per-query tables before proposing a planner change. Runtime plan tracing is a small exec/bgp.rs patch; rebase it against the numeric-filter branch before integration.
+
+
+The final ordinary-order screen on q010/q013/C3 completed: all three selected orders are best among their 24 tested candidates, with 525 complete output checks. See PATTERN_ORDERS_RESULT.md; measured source is pinned by task17-pattern-orders-measured. No production ordering change is proposed.

@@ -1,0 +1,1 @@
+SELECT ?s WHERE { ?s <urn:p> ?x . ?s <urn:q> ?name . ?s <urn:r> ?tag }

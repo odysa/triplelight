@@ -1,0 +1,6 @@
+data=/tmp/rdf-pattern-orders-smoke/graph.nt workers=10 load_s=0.003122375
+triples=16 stats_s=0.000297666
+query=modifiers source_sha256=da01088928535905e14ee5e0e2de246374da83c7288a725656976e30ab2cfb6f shapes=[{"s", "x"}, {"name", "s"}, {"s", "tag"}] chosen=[0, 1, 2] chosen_connected=true connected_orders=6 tested=6 ordinary_query_ns=266584 rows=2 id_hash=d90904a9b3d8b135869575b5b6a25b7393a4c3b18ad4ff25e96a26d862e4b3a2
+query=modifiers candidates=[[0, 1, 2], [0, 2, 1], [1, 0, 2], [2, 1, 0], [1, 2, 0], [2, 0, 1]]
+query=duplicates source_sha256=14c9e489d070575d5b70b5f5712e12bcc31fd6a283a208f22b4892f69509e42e shapes=[{"s", "x"}, {"name", "s"}, {"s", "tag"}] chosen=[0, 1, 2] chosen_connected=true connected_orders=6 tested=6 ordinary_query_ns=14250 rows=8 id_hash=26db86a8986c9631dd8bef6a59788bad3c9dd6d1d36732ceed8046da442be0c8
+query=duplicates candidates=[[0, 1, 2], [0, 2, 1], [1, 0, 2], [2, 1, 0], [1, 2, 0], [2, 0, 1]]

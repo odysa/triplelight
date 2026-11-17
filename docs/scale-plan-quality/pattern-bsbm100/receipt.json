@@ -1,0 +1,99 @@
+{
+  "started_utc": "2026-11-17T09:08:35.680038+00:00",
+  "binary": {
+    "path": "<agent-workspace>/rdfdb/target/release/examples/pattern_orders",
+    "bytes": 4017088,
+    "mtime_ns": 1794906390111361153,
+    "sha256": "4dc6d2668898f6a1f460cd71c23ad934db6bfe5d5ef364348989958cbdc25d9d"
+  },
+  "dataset_before": {
+    "path": "<agent-workspace>/rdfdb/bench/tools/bsbm100.nt",
+    "bytes": 25965260343,
+    "mtime_ns": 1794884566689423931,
+    "sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d"
+  },
+  "queries": [
+    {
+      "path": "<agent-workspace>/rdfdb/bench/bsbm100q/q010.rq",
+      "bytes": 1164,
+      "mtime_ns": 1794885803272765413,
+      "sha256": "bcab845e595ba8fe3e86ffdd9723252212aba1a6529628e7ae8e220701dd18a8"
+    },
+    {
+      "path": "<agent-workspace>/rdfdb/bench/bsbm100q/q013.rq",
+      "bytes": 1172,
+      "mtime_ns": 1794885803273219957,
+      "sha256": "521ed2446df8ed2a9b6af46360f7729e056cc46445253161f5f7c76001cbad61"
+    }
+  ],
+  "kernel_source": {
+    "path": "<agent-workspace>/rdfdb/src/exec/bgp.rs",
+    "bytes": 21882,
+    "mtime_ns": 1794904942207875406,
+    "sha256": "68136c5eb87d82eba6ac89c1a196a217f436a4271dc7548b69f57fa6563c5f61"
+  },
+  "helper_source": {
+    "path": "<agent-workspace>/rdfdb/examples/pattern_orders.rs",
+    "bytes": 11540,
+    "mtime_ns": 1794905880338492482,
+    "sha256": "06eb50f29a10cce97b3a0c1402df5eec3166c2cd27f4f204ec9934de65daf8d3"
+  },
+  "execution_sources": {
+    "src/exec/bgp.rs": {
+      "path": "<agent-workspace>/rdfdb/src/exec/bgp.rs",
+      "bytes": 21882,
+      "mtime_ns": 1794904942207875406,
+      "sha256": "68136c5eb87d82eba6ac89c1a196a217f436a4271dc7548b69f57fa6563c5f61"
+    },
+    "src/exec/results.rs": {
+      "path": "<agent-workspace>/rdfdb/src/exec/results.rs",
+      "bytes": 6191,
+      "mtime_ns": 1794707305339199147,
+      "sha256": "07e7d89b9e8329773b28a615d76fb57e83b0cdd8ccaab09ea9df0cbd430074c8"
+    },
+    "src/exec/mod.rs": {
+      "path": "<agent-workspace>/rdfdb/src/exec/mod.rs",
+      "bytes": 41408,
+      "mtime_ns": 1794904942207523154,
+      "sha256": "400eeb1739882427a13102ea47a41573d0f8f1df5eae58891ff6fbb35e057fd5"
+    },
+    "src/exec/expr.rs": {
+      "path": "<agent-workspace>/rdfdb/src/exec/expr.rs",
+      "bytes": 18624,
+      "mtime_ns": 1794724156612704568,
+      "sha256": "99ea6e2ae0b0d5d3dcd80835cfa0aadd851ce3788a598f7113a53f8f56fad6d8"
+    },
+    "src/exec/count.rs": {
+      "path": "<agent-workspace>/rdfdb/src/exec/count.rs",
+      "bytes": 10469,
+      "mtime_ns": 1794904942208085574,
+      "sha256": "d94d777c0e57d361ecbf6243f7a48f990ac8cc79c0280cec332664deab60a196"
+    },
+    "src/exec/diagnostic.rs": {
+      "path": "<agent-workspace>/rdfdb/src/exec/diagnostic.rs",
+      "bytes": 9844,
+      "mtime_ns": 1794906307011108604,
+      "sha256": "3c7abb57091bcde99a4f4a39030b081901650d3bccdc98ef3c6915c38a69c1cb"
+    }
+  },
+  "git_head": "00878755409fcc7683c9b4538b2158e38f43b142",
+  "uptime_before": "4:08  up 20 days,  6:54, 2 users, load averages: 4.76 4.31 4.39",
+  "timeout_s": 900,
+  "environment_overrides": {
+    "RDFDB_PROFILE_PLAN": "unset",
+    "RDFDB_TRACE_BLOCK_CACHE": "unset",
+    "RAYON_NUM_THREADS": "10"
+  },
+  "status": "complete",
+  "exit_code": 0,
+  "dataset_after": {
+    "path": "<agent-workspace>/rdfdb/bench/tools/bsbm100.nt",
+    "bytes": 25965260343,
+    "mtime_ns": 1794884566689423931,
+    "sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d"
+  },
+  "input_unchanged": true,
+  "binary_unchanged": true,
+  "uptime_after": "4:18  up 20 days,  7:05, 1 user, load averages: 6.82 8.68 7.14",
+  "ended_utc": "2026-11-17T09:18:50.488582+00:00"
+}

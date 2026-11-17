@@ -1,6 +1,6 @@
 # Bounded ordinary-join order payoff check
 
-Status: 100 all-target tests passed on the draft, including modifier/error boundary tests and connected-candidate selection checks. Large-data execution remains pending. Kaiming's scope is only **BSBM-100M q010 and q013, and WatDiv C3**, with about 24 connected pattern orders per query. This replaces the inapplicable three-variable leapfrog enumeration for these acyclic queries.
+Status: 100 all-target tests passed on the draft, including modifier/error boundary tests and connected-candidate selection checks. All three large-data comparisons completed with exact projected-multiset parity; see PATTERN_ORDERS_RESULT.md. Kaiming's scope is only **BSBM-100M q010 and q013, and WatDiv C3**, with about 24 connected pattern orders per query. This replaces the inapplicable three-variable leapfrog enumeration for these acyclic queries.
 
 ## Semantic path
 
