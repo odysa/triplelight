@@ -220,14 +220,22 @@ fn order_by_xsd_cast_and_casts() {
 #[test]
 fn fast_group_matches_general_group() {
     let data = r#"
-<http://ex/a> <http://ex/g> "x" . <http://ex/a> <http://ex/v> "1"^^<http://www.w3.org/2001/XMLSchema#integer> .
-<http://ex/b> <http://ex/g> "x" . <http://ex/b> <http://ex/v> "2.5"^^<http://www.w3.org/2001/XMLSchema#decimal> .
-<http://ex/c> <http://ex/g> "y" . <http://ex/c> <http://ex/v> "3"^^<http://www.w3.org/2001/XMLSchema#int> .
-<http://ex/d> <http://ex/g> "y" . <http://ex/d> <http://ex/v> "03"^^<http://www.w3.org/2001/XMLSchema#int> .
-<http://ex/e> <http://ex/g> "z" . <http://ex/e> <http://ex/v> "abc" .
-<http://ex/f> <http://ex/g> "z" . <http://ex/f> <http://ex/v> "1.0E0"^^<http://www.w3.org/2001/XMLSchema#double> .
-<http://ex/h> <http://ex/g> "w" . <http://ex/h> <http://ex/v> "9223372036854775807"^^<http://www.w3.org/2001/XMLSchema#integer> .
-<http://ex/i> <http://ex/g> "w" . <http://ex/i> <http://ex/v> "1"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://ex/a> <http://ex/g> "x" .
+<http://ex/a> <http://ex/v> "1"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://ex/b> <http://ex/g> "x" .
+<http://ex/b> <http://ex/v> "2.5"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+<http://ex/c> <http://ex/g> "y" .
+<http://ex/c> <http://ex/v> "3"^^<http://www.w3.org/2001/XMLSchema#int> .
+<http://ex/d> <http://ex/g> "y" .
+<http://ex/d> <http://ex/v> "03"^^<http://www.w3.org/2001/XMLSchema#int> .
+<http://ex/e> <http://ex/g> "z" .
+<http://ex/e> <http://ex/v> "abc" .
+<http://ex/f> <http://ex/g> "z" .
+<http://ex/f> <http://ex/v> "1.0E0"^^<http://www.w3.org/2001/XMLSchema#double> .
+<http://ex/h> <http://ex/g> "w" .
+<http://ex/h> <http://ex/v> "9223372036854775807"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<http://ex/i> <http://ex/g> "w" .
+<http://ex/i> <http://ex/v> "1"^^<http://www.w3.org/2001/XMLSchema#integer> .
 <http://ex/j> <http://ex/g> "x" .
 "#;
     let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
