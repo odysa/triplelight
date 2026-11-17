@@ -286,3 +286,45 @@ fn float_promotion_and_aggregates() {
         r => panic!("{r:?}"),
     }
 }
+
+/// Aggregate errors follow SPARQL 1.1 §18.5 (and Jena): an error or unbound value in the group makes
+/// SUM/AVG/MIN/MAX/GROUP_CONCAT unbound; COUNT(expr) counts non-error values; SAMPLE returns a non-error value.
+#[test]
+fn aggregate_errors_poison_like_jena() {
+    let data = r#"
+<urn:a> <urn:g> "x" .
+<urn:a> <urn:v> "1"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:b> <urn:g> "x" .
+<urn:c> <urn:g> "x" .
+<urn:c> <urn:v> "bad" .
+<urn:d> <urn:g> "y" .
+<urn:d> <urn:v> "2"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:e> <urn:g> "y" .
+<urn:f> <urn:g> "z" .
+<urn:f> <urn:v> "3"^^<http://www.w3.org/2001/XMLSchema#integer> .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let rows = |q: &str| -> Vec<Vec<String>> {
+        match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => {
+            let mut v: Vec<Vec<String>> = rows.into_iter().map(|r| r.into_iter().map(|t| t.map_or("-".into(), |t| t.to_string())).collect()).collect(); v.sort(); v }
+            r => panic!("{r:?}") }
+    };
+    let int = |n: i64| format!("\"{n}\"^^<http://www.w3.org/2001/XMLSchema#integer>");
+    let q1 = "SELECT ?g (SUM(?v) AS ?s) (COUNT(?v) AS ?c) (MIN(?v) AS ?mn) (MAX(?v) AS ?mx) (AVG(?v) AS ?a) WHERE { ?x <urn:g> ?g OPTIONAL { ?x <urn:v> ?v } } GROUP BY ?g";
+    let q2 = "SELECT ?g (SUM(?v*2) AS ?s) (COUNT(?v*2) AS ?c) (MIN(?v*2) AS ?mn) (GROUP_CONCAT(?v*2) AS ?gc) WHERE { ?x <urn:g> ?g OPTIONAL { ?x <urn:v> ?v } } GROUP BY ?g";
+    for legacy in [false, true] {
+        // SAFETY: test-local toggle; other tests just take the equivalent general path while set.
+        if legacy { unsafe { std::env::set_var("RDFDB_LEGACY_GROUP", "1") } }
+        assert_eq!(rows(q1), vec![
+            vec!["\"x\"".into(), "-".into(), int(2), "-".into(), "-".into(), "-".into()],
+            vec!["\"y\"".into(), "-".into(), int(1), "-".into(), "-".into(), "-".into()],
+            vec!["\"z\"".into(), int(3), int(1), int(3), int(3), "\"3\"^^<http://www.w3.org/2001/XMLSchema#decimal>".into()],
+        ], "legacy={legacy}");
+        assert_eq!(rows(q2), vec![
+            vec!["\"x\"".into(), "-".into(), int(1), "-".into(), "-".into()],
+            vec!["\"y\"".into(), "-".into(), int(1), "-".into(), "-".into()],
+            vec!["\"z\"".into(), int(6), int(1), int(6), "\"6\"".into()],
+        ], "legacy={legacy}");
+        if legacy { unsafe { std::env::remove_var("RDFDB_LEGACY_GROUP") } }
+    }
+}

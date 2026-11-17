@@ -74,6 +74,8 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let mut groups: Vec<(Vec<TermId>, Vec<State>, Vec<Option<HashSet<TermId>>>)> = Vec::new();
         let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
         let mut key: Vec<TermId> = Vec::with_capacity(kidx.len());
+        // MIN/MAX per (group, aggregate) that met an error.
+        let mut poisoned: Vec<bool> = Vec::new();
         for r in rows {
             key.clear();
             key.extend(kidx.iter().map(|&i| r[i]));
@@ -83,6 +85,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                     pos.insert(key.clone(), groups.len());
                     let seen = specs.iter().map(|s| (s.distinct && !matches!(s.kind, Kind::CountAll { .. })).then(HashSet::new)).collect();
                     groups.push((key.clone(), fresh(), seen));
+                    poisoned.extend(std::iter::repeat_n(false, specs.len()));
                     groups.len() - 1
                 }
             };
@@ -93,7 +96,15 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                     continue;
                 }
                 let id = r[s.col];
-                if id == UNBOUND { continue }
+                if id == UNBOUND {
+                    // An unbound value is an evaluation error: it poisons SUM/AVG/MIN/MAX (COUNT and SAMPLE skip it).
+                    match (&mut states[i], s.kind) {
+                        (State::Sum(acc, _), _) => *acc = None,
+                        (State::Best(_), Kind::Min | Kind::Max) => poisoned[g * specs.len() + i] = true,
+                        _ => {}
+                    }
+                    continue;
+                }
                 if let Some(set) = &mut seen[i] { if !set.insert(id) { continue } }
                 match (&mut states[i], s.kind) {
                     (State::Count(n), _) => *n += 1,
@@ -110,20 +121,24 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         }
         if groups.is_empty() && kidx.is_empty() {
             groups.push((vec![], fresh(), specs.iter().map(|_| None).collect()));
+            poisoned.extend(std::iter::repeat_n(false, specs.len()));
         }
-        Some(groups.into_iter().map(|(k, states, _)| {
+        let nspec = specs.len();
+        Some(groups.into_iter().enumerate().map(|(gi, (k, states, _))| {
             let mut out = self.empty_row();
             for (i, &ki) in kidx.iter().enumerate() { out[ki] = k[i]; }
-            for (s, st) in specs.iter().zip(states) {
+            for (si, (s, st)) in specs.iter().zip(states).enumerate() {
                 let v: Option<TermId> = match (st, s.kind) {
                     (State::CountAll(n, set), _) => Some(self.intern(&Literal::from(set.map_or(n, |s| s.len() as u64) as i64).into())),
                     (State::Count(n), _) => Some(self.intern(&Literal::from(n as i64).into())),
                     (State::Sum(acc, _), Kind::Sum) => acc.map(|a| self.intern(&a.term())),
                     (State::Sum(acc, n), _) => {
                         // AVG: 0 for an empty group, else sum / n with `arith('/')` typing.
-                        if n == 0 { Some(self.intern(&Literal::from(0i64).into())) }
+                        if acc.is_none() { None }
+                        else if n == 0 { Some(self.intern(&Literal::from(0i64).into())) }
                         else { acc.and_then(|a| expr::num_div_count(a, n as i64)).map(|q| self.intern(&q.term())) }
                     }
+                    (State::Best(_), Kind::Min | Kind::Max) if poisoned[gi * nspec + si] => None,
                     (State::Best(b), _) => b,
                 };
                 if let Some(v) = v { out[s.out] = v }
