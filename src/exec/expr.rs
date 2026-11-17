@@ -18,7 +18,8 @@ fn xsd_local(l: &Literal) -> Option<&str> { l.datatype().as_str().strip_prefix("
 /// f32-rounded value so float arithmetic and output stay single precision.
 pub(super) enum Num { Int(i64), Dec(f64), Flt(f64), Dbl(f64) }
 impl Num {
-    /// The value at a promoted type rank (1 decimal, 2 float, 3 double); float results are rounded to f32.
+    /// The value at a promoted type rank (1 decimal, 2 float, 3 double); a float result is rounded to binary32, as
+    /// every XPath float operation is.
     pub(super) fn of_rank(rank: u8, v: f64) -> Num {
         match rank { 0 | 1 => Num::Dec(v), 2 => Num::Flt(v as f32 as f64), _ => Num::Dbl(v) }
     }
@@ -399,18 +400,21 @@ fn format_double(d: f64) -> String {
     if d.is_nan() { "NaN".into() } else if d.is_infinite() { if d > 0.0 { "INF".into() } else { "-INF".into() } } else { format!("{d:E}") }
 }
 
-/// `a + b` with exactly `arith('+')`'s typing (integer checked add; otherwise promote to decimal/double).
+/// SUM/AVG accumulation step: `arith('+')`'s typing (checked integer add; promote to decimal/float/double), but a
+/// float accumulator keeps f64 precision and is rounded to binary32 once, when the result becomes a term. SUM is over a
+/// multiset with unspecified order; one final rounding is much more accurate than rounding after every addition, whose
+/// error grows with the group size. Ordinary expression arithmetic (`arith`, compiled filters) still rounds per operation.
 pub(super) fn num_add(a: Num, b: Num) -> Option<Num> {
     if let (Num::Int(i), Num::Int(j)) = (a, b) { return i.checked_add(j).map(Num::Int) }
     let v = a.f() + b.f();
-    Some(Num::of_rank(a.rank().max(b.rank()), v))
+    Some(match a.rank().max(b.rank()) { 0 | 1 => Num::Dec(v), 2 => Num::Flt(v), _ => Num::Dbl(v) })
 }
 /// `sum / n` with exactly `arith('/')`'s typing (integer / integer is decimal).
 pub(super) fn num_div_count(sum: Num, n: i64) -> Option<Num> {
     let r = sum.rank();
     if n == 0 && r <= 1 { return None }
     let v = sum.f() / n as f64;
-    Some(Num::of_rank(r.max(1), v))
+    Some(match r.max(1) { 1 => Num::Dec(v), 2 => Num::Flt(v), _ => Num::Dbl(v) })
 }
 
 /// xsd:double / xsd:float lexical forms, including INF, -INF and NaN (Rust's parser spells them differently).
