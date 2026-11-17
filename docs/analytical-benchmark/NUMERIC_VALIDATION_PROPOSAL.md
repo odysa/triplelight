@@ -1,6 +1,13 @@
 # Proposed numeric validation for the next BI cohort
 
-Status: **proposal, not applied**. The first 15-instance cohort retains its
+Status: **mathematical approach approved; implementation not yet qualified or frozen**.
+Kaiming reviewed the proposed assumptions in message d1044631.
+`bench/analytical/float_envelope.py` and its tests are a prototype, not connected
+to `qualify.py`; tests and graph diagnostics still need an exclusive window.
+No new candidate outputs may be inspected under the revised rule before its
+source and input diagnostics are frozen.
+
+The rule is not applied. The first 15-instance cohort retains its
 original four-binary32-ULP gate and all failures. This document does not turn any
 existing failed result into a pass.
 

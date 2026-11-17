@@ -1,0 +1,7 @@
+{
+  "checker_source_commit": "bbc2d7a",
+  "checker_sha256": "54045b6bd0752bf02286f34ef293eef1032c705e8e707e411fe5f20aa6789f12",
+  "reference": "../workload-check-smoke/jena",
+  "input": "../qualification-v3/normal/data.nt",
+  "note": "Eight actual DuckDB queries pass using configured query spill directory and 256MB maximum. No observed-spill or large-data memory claim."
+}
