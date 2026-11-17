@@ -1,0 +1,7 @@
+{"mapping": "rdf-terms-per-predicate-v1", "input": "/private<tmpdir>/T/ladybug-fixture-1uu8so4r/in.nt", "input_sha256": "f0eb4b58d507f738274be7f2a1327762474e189c7dce1233c0e76dfa7b3e1a60", "counts": {"source_lines": 10, "unique_triples": 9, "resource_nodes": 4, "literal_nodes": 5}, "predicates": {"urn:type": "P0", "urn:name": "P1", "urn:n": "P2", "urn:label": "P3", "urn:self": "P4"}, "relationships": [{"table": "P4R", "target": "Resource", "rows": 1}, {"table": "P1L", "target": "Literal", "rows": 2}, {"table": "P3L", "target": "Literal", "rows": 1}, {"table": "P0R", "target": "Resource", "rows": 3}, {"table": "P2L", "target": "Literal", "rows": 2}], "prepare_seconds": 0.025939458049833775}
+{"load_seconds": 0.5551164159551263, "observed": {"Resource": 4, "Literal": 5, "relationships": 9}, "memory_mb": 64, "threads": 1}
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.780s
+
+OK
