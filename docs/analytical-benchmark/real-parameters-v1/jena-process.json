@@ -1,0 +1,1 @@
+{"pid": 98220, "command": ["<agent-workspace>/rdfdb/bench/tools/apache-jena-fuseki-6.2.0/fuseki-server", "--file=<agent-workspace>/rdfdb/bench/tools/bsbm10.nt", "--port=31425", "/ds"], "jvm_args": "-Xmx12g"}
