@@ -1,0 +1,9 @@
+{
+  "scope": "post-run identities; helper code unchanged during successful collection after the integer-profile lexical check was added",
+  "files": {
+    "numeric_inputs.py": "68496d84f0aa27f12a8fe146deeeb18b098717e9004427f7435d08edda07c051",
+    "float_envelope.py": "7316ee55304d9eeaf7ae8730559e82a1e4a15bb6b46d9922b58ef33a093aca32",
+    "bi_sql.py": "e34b2565e6e2db1b014ea5e499379830498772d658e6476a1c0a859939ac6fa0",
+    "workload_check.py": "54045b6bd0752bf02286f34ef293eef1032c705e8e707e411fe5f20aa6789f12"
+  }
+}
