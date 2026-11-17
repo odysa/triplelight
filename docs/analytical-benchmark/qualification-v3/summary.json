@@ -1,0 +1,102 @@
+{
+  "normal": {
+    "1": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "2": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "3": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "4": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "5": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "6": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "7": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "8": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    }
+  },
+  "cutoff": {
+    "7": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    }
+  },
+  "invalid-price": {
+    "4": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "5": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "8": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    }
+  },
+  "invalid-rating": {
+    "6": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    }
+  },
+  "empty": {
+    "1": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "2": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "3": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "4": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "5": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "6": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "7": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "8": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    }
+  },
+  "aggregate-diagnostic": {
+    "mixed-bound-unbound": "pass",
+    "all-unbound": "pass",
+    "empty-global": "pass",
+    "empty-explicit-group": "pass"
+  }
+}
