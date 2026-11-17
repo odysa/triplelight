@@ -1,0 +1,111 @@
+{
+  "q2": {
+    "source_sha256": "81f77d4efa35958af31bf2497dfc8f6dc6b2100f0ac68c7e002bb9be67235518",
+    "vars": [
+      "X",
+      "Y",
+      "Z"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0), (v_Y)-[:P0R]->(c_1), (v_Z)-[:P0R]->(c_2), (v_X)-[:P13R]->(v_Z), (v_Z)-[:P3R]->(v_Y), (v_X)-[:P5R]->(v_Y) WHERE (c_2.id = 7) AND (c_0.id = 1996) AND (c_1.id = 4) RETURN v_X.term AS X, v_Y.term AS Y, v_Z.term AS Z"
+  },
+  "q6": {
+    "source_sha256": "be2e63abeec8f772456a34daa26a84b60220c2888322f80f19c16eab032692bf",
+    "vars": [
+      "X"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0) WHERE (c_0.id = 399) RETURN v_X.term AS X"
+  },
+  "q7": {
+    "source_sha256": "3e44a6d8f3f377864b9a214e5aa03346d9d326177263563c848f910439fd8593",
+    "vars": [
+      "X",
+      "Y"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0), (v_Y)-[:P0R]->(c_1), (v_X)-[:P14R]->(v_Y), (c_2)-[:P4R]->(v_Y) WHERE (c_1.id = 3049) AND (c_0.id = 399) AND (c_2.id = 111) RETURN v_X.term AS X, v_Y.term AS Y"
+  },
+  "q3": {
+    "source_sha256": "2d4afd9b1ac576799802ea7443cc3485d51acfbf40e83c95873d9f911ad506f3",
+    "vars": [
+      "X"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0), (v_X)-[:P16R]->(c_1) WHERE (c_0.id = 2569) AND (c_1.id = 248) RETURN v_X.term AS X"
+  },
+  "q8": {
+    "source_sha256": "7e3df100c7c6c8b54335c87cfda28c37f788a13b05b9a682bf62e08af9d528c2",
+    "vars": [
+      "X",
+      "Y",
+      "Z"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0), (v_Y)-[:P0R]->(c_1), (v_X)-[:P13R]->(v_Y), (v_Y)-[:P3R]->(c_2), (v_X)-[:P9L]->(v_Z) WHERE (c_1.id = 7) AND (c_0.id = 399) AND (c_2.id = 3) RETURN v_X.term AS X, v_Y.term AS Y, v_Z.term AS Z"
+  },
+  "q12": {
+    "source_sha256": "f8d511dfcc12a159815e0ec8dd3064180f2912357c0e53b3ab0206ba97a63a2d",
+    "vars": [
+      "X",
+      "Y"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0), (v_Y)-[:P0R]->(c_1), (v_X)-[:P8R]->(v_Y), (v_Y)-[:P3R]->(c_2) WHERE (c_1.id = 7) AND (c_0.id = 10) AND (c_2.id = 3) RETURN v_X.term AS X, v_Y.term AS Y"
+  },
+  "q13": {
+    "source_sha256": "0cd049c1ed656826681ecfe2fd42b3ec634bf7c7f358ea6d0194a018887095ee",
+    "vars": [
+      "X"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0), (v_X)-[:P5R]->(c_1) WHERE (c_0.id = 1996) AND (c_1.id = 3) RETURN v_X.term AS X"
+  },
+  "q9": {
+    "source_sha256": "d46095941b1cc187ac15b0add755bc2fff7976a400588fa704927500dc04e935",
+    "vars": [
+      "X",
+      "Y",
+      "Z"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0), (v_Y)-[:P0R]->(c_1), (v_Z)-[:P0R]->(c_2), (v_X)-[:P15R]->(v_Y), (v_Y)-[:P4R]->(v_Z), (v_X)-[:P14R]->(v_Z) WHERE (c_2.id = 3049) AND (c_1.id = 10) AND (c_0.id = 399) RETURN v_X.term AS X, v_Y.term AS Y, v_Z.term AS Z"
+  },
+  "q10": {
+    "source_sha256": "66925ec35dbef68720b9cd5c75607f2191da732002835f484532e0cf69724609",
+    "vars": [
+      "X"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0), (v_X)-[:P14R]->(c_1) WHERE (c_0.id = 1996) AND (c_1.id = 13) RETURN v_X.term AS X"
+  },
+  "q14": {
+    "source_sha256": "be2e63abeec8f772456a34daa26a84b60220c2888322f80f19c16eab032692bf",
+    "vars": [
+      "X"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0) WHERE (c_0.id = 399) RETURN v_X.term AS X"
+  },
+  "q11": {
+    "source_sha256": "674230abb4afea794c3f68d66465d1c6f7ffc57e79a6914d61ab9f12e03b1f13",
+    "vars": [
+      "X"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0), (v_X)-[:P3R]->(c_1) WHERE (c_0.id = 2558) AND (c_1.id = 6) RETURN v_X.term AS X"
+  },
+  "q4": {
+    "source_sha256": "d36993eef571b86332ac9c6b0184ba8de61f6364c23e5f15efb7ef609daad4e3",
+    "vars": [
+      "X",
+      "Y1",
+      "Y2",
+      "Y3"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0), (v_X)-[:P8R]->(c_1), (v_X)-[:P2L]->(v_Y1), (v_X)-[:P9L]->(v_Y2), (v_X)-[:P10L]->(v_Y3) WHERE (c_0.id = 10) AND (c_1.id = 6) RETURN v_X.term AS X, v_Y1.term AS Y1, v_Y2.term AS Y2, v_Y3.term AS Y3"
+  },
+  "q1": {
+    "source_sha256": "66925ec35dbef68720b9cd5c75607f2191da732002835f484532e0cf69724609",
+    "vars": [
+      "X"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0), (v_X)-[:P14R]->(c_1) WHERE (c_0.id = 1996) AND (c_1.id = 13) RETURN v_X.term AS X"
+  },
+  "q5": {
+    "source_sha256": "a6282275c37325e36382c5a3858600ba1bc8aa1c5b6818f79bbc82864db6d2fd",
+    "vars": [
+      "X"
+    ],
+    "cypher": "MATCH (v_X)-[:P0R]->(c_0), (v_X)-[:P13R]->(c_1) WHERE (c_0.id = 399) AND (c_1.id = 6) RETURN v_X.term AS X"
+  }
+}
