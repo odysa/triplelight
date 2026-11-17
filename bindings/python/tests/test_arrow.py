@@ -185,3 +185,16 @@ def test_native_timestamp_rejects_leap_seconds_and_24_hour(tmp_path):
         table = db.query_arrow(f'SELECT ?x WHERE {{ VALUES ?x {{ "{value}"^^<{datatype}> }} }}', types="native").read_all()
         assert pa.types.is_struct(table.schema.field("x").type)
     db.close()
+
+
+def test_native_inference_checks_values_after_first_batch(tmp_path):
+    """A late incompatible RDF term must determine the schema for every batch."""
+    db = rdfdb.Database(tmp_path / "db")
+    integer = '"1"^^<http://www.w3.org/2001/XMLSchema#integer>'
+    values = " ".join([integer] * 8192 + ["<urn:late>"])
+    reader = db.query_arrow(f"SELECT ?x WHERE {{ VALUES ?x {{ {values} }} }}", types="native")
+    assert pa.types.is_struct(reader.schema.field("x").type)
+    batches = list(reader)
+    assert [batch.num_rows for batch in batches] == [8192, 1]
+    assert batches[-1].column(0)[0].as_py()["value"] == "urn:late"
+    db.close()
