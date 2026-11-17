@@ -1,0 +1,10 @@
+   Compiling rdfdb v0.1.0 (<agent-workspace>/rdfdb)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.47s
+     Running unittests examples/leapfrog_orders.rs (target/debug/examples/leapfrog_orders-03c6eef272090590)
+
+running 2 tests
+test tests::all_forced_orders_match_ordinary_multiset_on_a_small_cycle ... ok
+test tests::modifiers_are_rejected_for_forced_kernel_comparison ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
