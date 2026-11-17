@@ -1,0 +1,17 @@
+{
+  "source": "1652fe5",
+  "all_target_tests": 93,
+  "queries": [
+    "cyclic BGP",
+    "OPTIONAL with FILTER, DISTINCT and LIMIT"
+  ],
+  "samples_per_query_per_flag": 10,
+  "profile_flag_on_off_multiset_hashes_equal": true,
+  "profile_events_only_when_enabled": true,
+  "collector_exact_fixture_counts": [
+    3,
+    1,
+    3
+  ],
+  "reference_scope": "tiny hand-counted fixture served by own rdfdb, not independent large-data reference"
+}

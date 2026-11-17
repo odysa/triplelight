@@ -1,0 +1,1 @@
+SELECT (COUNT(*) AS ?__rdfdb_diagnostic_count) WHERE { ?a <urn:p> ?b . }

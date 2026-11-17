@@ -1,0 +1,1 @@
+SELECT DISTINCT ?a WHERE { ?a <urn:p> ?b OPTIONAL { ?a <urn:q> ?n FILTER(?n > 2) } } ORDER BY ?a LIMIT 2

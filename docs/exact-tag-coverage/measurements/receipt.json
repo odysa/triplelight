@@ -1,0 +1,400 @@
+{
+  "order": [
+    "base",
+    "new",
+    "new",
+    "base"
+  ],
+  "binaries": {
+    "base": {
+      "path": "/tmp/rdf-tag15-bins/base",
+      "sha256": "cc62052e826c784e6ee537dedd78fbb52d34993a4578b317bf030bbc932faabc"
+    },
+    "new": {
+      "path": "/tmp/rdf-tag15-bins/new",
+      "sha256": "84d9caecba6d3514011aeff67b36bff88b3cc33723af971dbe1a84077021b784"
+    }
+  },
+  "datasets": {
+    "lubm100": {
+      "snapshot": "<agent-workspace>/rdfdb/bench/tools/rdfdb-disk-lubm100",
+      "before": {
+        "MANIFEST": {
+          "bytes": 264,
+          "mtime_ns": 1794664243519461633,
+          "sha256": "7731de215c9ac57680f600e9417664cf836b310fcc500bdee41ec64ed6904755"
+        },
+        "dictionary.id": {
+          "bytes": 98382666,
+          "mtime_ns": 1794664238396242122,
+          "sha256": "d77e03502c347a377eb172a313d5d43446d021c6d63f6d69662a468e5076a5fc"
+        },
+        "dictionary.term": {
+          "bytes": 67506271,
+          "mtime_ns": 1794664235816907461,
+          "sha256": "f8620df028ac22fa8533ed368381ce89a9b2eb7e7122e018ab4dc791f23d9af1"
+        },
+        "ops": {
+          "bytes": 37270026,
+          "mtime_ns": 1794664243217739919,
+          "sha256": "c74fd7d10372add140f4fb16f656aa4eeea22b9e36fa3b60d0e09000e8e83300"
+        },
+        "osp": {
+          "bytes": 37209354,
+          "mtime_ns": 1794664242638322786,
+          "sha256": "c2d0c0e906af92bc1c7f974ec10078a54ef7af56cd2aac9078af196adee4cd23"
+        },
+        "pos": {
+          "bytes": 32694301,
+          "mtime_ns": 1794664242077191415,
+          "sha256": "43f05bf131f8227c687eddf817ac0ad5c753d04fd4a1022a02ba300435c6b7c8"
+        },
+        "pso": {
+          "bytes": 38909245,
+          "mtime_ns": 1794664241501598677,
+          "sha256": "51193c898ea9bdc5e6ec00c334b7f2d6b00369e2933a9fa81d9b4801d1f7d02e"
+        },
+        "sop": {
+          "bytes": 128871135,
+          "mtime_ns": 1794664240537813729,
+          "sha256": "c6d128b7e76347d047af340cbc123405abdea4ce3b1dcd4e2af9c702d2acb130"
+        },
+        "spo": {
+          "bytes": 128869247,
+          "mtime_ns": 1794664239139075366,
+          "sha256": "d8132f198e8c5452015055bf9c7f91ac6fdab6aaf69f886a620417b66bb4551a"
+        }
+      },
+      "queries": {
+        "README.md": {
+          "bytes": 573,
+          "mtime_ns": 1794495075199149688,
+          "sha256": "5c65b101470764fa70bb7b116f91f4c9b401e4758e1da7a02598ab5dddadceec"
+        },
+        "q1.rq": {
+          "bytes": 247,
+          "mtime_ns": 1794495075199505691,
+          "sha256": "66925ec35dbef68720b9cd5c75607f2191da732002835f484532e0cf69724609"
+        },
+        "q10.rq": {
+          "bytes": 247,
+          "mtime_ns": 1794495075199759610,
+          "sha256": "66925ec35dbef68720b9cd5c75607f2191da732002835f484532e0cf69724609"
+        },
+        "q11.rq": {
+          "bytes": 235,
+          "mtime_ns": 1794495075200036112,
+          "sha256": "674230abb4afea794c3f68d66465d1c6f7ffc57e79a6914d61ab9f12e03b1f13"
+        },
+        "q12.rq": {
+          "bytes": 274,
+          "mtime_ns": 1794495075200306489,
+          "sha256": "f8d511dfcc12a159815e0ec8dd3064180f2912357c0e53b3ab0206ba97a63a2d"
+        },
+        "q13.rq": {
+          "bytes": 231,
+          "mtime_ns": 1794495075200567991,
+          "sha256": "0cd049c1ed656826681ecfe2fd42b3ec634bf7c7f358ea6d0194a018887095ee"
+        },
+        "q14.rq": {
+          "bytes": 175,
+          "mtime_ns": 1794495075200818243,
+          "sha256": "be2e63abeec8f772456a34daa26a84b60220c2888322f80f19c16eab032692bf"
+        },
+        "q2.rq": {
+          "bytes": 316,
+          "mtime_ns": 1794495075201070162,
+          "sha256": "81f77d4efa35958af31bf2497dfc8f6dc6b2100f0ac68c7e002bb9be67235518"
+        },
+        "q3.rq": {
+          "bytes": 253,
+          "mtime_ns": 1794495075201344289,
+          "sha256": "2d4afd9b1ac576799802ea7443cc3485d51acfbf40e83c95873d9f911ad506f3"
+        },
+        "q4.rq": {
+          "bytes": 302,
+          "mtime_ns": 1794495075201623792,
+          "sha256": "d36993eef571b86332ac9c6b0184ba8de61f6364c23e5f15efb7ef609daad4e3"
+        },
+        "q5.rq": {
+          "bytes": 233,
+          "mtime_ns": 1794495075201876544,
+          "sha256": "a6282275c37325e36382c5a3858600ba1bc8aa1c5b6818f79bbc82864db6d2fd"
+        },
+        "q6.rq": {
+          "bytes": 175,
+          "mtime_ns": 1794495075202111129,
+          "sha256": "be2e63abeec8f772456a34daa26a84b60220c2888322f80f19c16eab032692bf"
+        },
+        "q7.rq": {
+          "bytes": 304,
+          "mtime_ns": 1794495075202373548,
+          "sha256": "3e44a6d8f3f377864b9a214e5aa03346d9d326177263563c848f910439fd8593"
+        },
+        "q8.rq": {
+          "bytes": 308,
+          "mtime_ns": 1794495075202652550,
+          "sha256": "7e3df100c7c6c8b54335c87cfda28c37f788a13b05b9a682bf62e08af9d528c2"
+        },
+        "q9.rq": {
+          "bytes": 299,
+          "mtime_ns": 1794495075202909594,
+          "sha256": "d46095941b1cc187ac15b0add755bc2fff7976a400588fa704927500dc04e935"
+        }
+      },
+      "after": {
+        "MANIFEST": {
+          "bytes": 264,
+          "mtime_ns": 1794664243519461633,
+          "sha256": "7731de215c9ac57680f600e9417664cf836b310fcc500bdee41ec64ed6904755"
+        },
+        "dictionary.id": {
+          "bytes": 98382666,
+          "mtime_ns": 1794664238396242122,
+          "sha256": "d77e03502c347a377eb172a313d5d43446d021c6d63f6d69662a468e5076a5fc"
+        },
+        "dictionary.term": {
+          "bytes": 67506271,
+          "mtime_ns": 1794664235816907461,
+          "sha256": "f8620df028ac22fa8533ed368381ce89a9b2eb7e7122e018ab4dc791f23d9af1"
+        },
+        "ops": {
+          "bytes": 37270026,
+          "mtime_ns": 1794664243217739919,
+          "sha256": "c74fd7d10372add140f4fb16f656aa4eeea22b9e36fa3b60d0e09000e8e83300"
+        },
+        "osp": {
+          "bytes": 37209354,
+          "mtime_ns": 1794664242638322786,
+          "sha256": "c2d0c0e906af92bc1c7f974ec10078a54ef7af56cd2aac9078af196adee4cd23"
+        },
+        "pos": {
+          "bytes": 32694301,
+          "mtime_ns": 1794664242077191415,
+          "sha256": "43f05bf131f8227c687eddf817ac0ad5c753d04fd4a1022a02ba300435c6b7c8"
+        },
+        "pso": {
+          "bytes": 38909245,
+          "mtime_ns": 1794664241501598677,
+          "sha256": "51193c898ea9bdc5e6ec00c334b7f2d6b00369e2933a9fa81d9b4801d1f7d02e"
+        },
+        "sop": {
+          "bytes": 128871135,
+          "mtime_ns": 1794664240537813729,
+          "sha256": "c6d128b7e76347d047af340cbc123405abdea4ce3b1dcd4e2af9c702d2acb130"
+        },
+        "spo": {
+          "bytes": 128869247,
+          "mtime_ns": 1794664239139075366,
+          "sha256": "d8132f198e8c5452015055bf9c7f91ac6fdab6aaf69f886a620417b66bb4551a"
+        }
+      },
+      "plans_sha256": "4d6d81e3186d68b0697a74d3a3fa99faf6f6e975e17bb7078b3b89c2a57a2ea7"
+    },
+    "watdiv100": {
+      "snapshot": "<agent-workspace>/rdfdb/bench/tools/rdfdb-disk-watdiv100",
+      "before": {
+        "MANIFEST": {
+          "bytes": 264,
+          "mtime_ns": 1794664899351545585,
+          "sha256": "dc53f607f83d8c3c0f84f2588c9574addaa6e9b103fcacafac805ada260be665"
+        },
+        "dictionary.id": {
+          "bytes": 63355818,
+          "mtime_ns": 1794664894295231760,
+          "sha256": "8d330b7230c168609c4d8b5fbabd062138c20ad982655150359e8e6c64362906"
+        },
+        "dictionary.term": {
+          "bytes": 60018110,
+          "mtime_ns": 1794664893165049477,
+          "sha256": "1f2373a58805a999c23119379a6c5862bb4e3f8ac6d1f914722cadf49859a7ea"
+        },
+        "ops": {
+          "bytes": 49347752,
+          "mtime_ns": 1794664899020267591,
+          "sha256": "d343204c9745b0c63f01375fbb332517615d6f53c2cf110c8de8751321f9b1c0"
+        },
+        "osp": {
+          "bytes": 50043880,
+          "mtime_ns": 1794664898381813688,
+          "sha256": "81a4de0a9b0ea49a97abd7040ff507e8ffdd7a1e3a3f8bb96fb211cb34b270e6"
+        },
+        "pos": {
+          "bytes": 38249186,
+          "mtime_ns": 1794664897786348179,
+          "sha256": "fdc21e07a57a66438b63880d2b5b4a1bb6aac6d88a4a7157fdaa4541a47ef71f"
+        },
+        "pso": {
+          "bytes": 43158401,
+          "mtime_ns": 1794664897221886374,
+          "sha256": "657315071716e4e7ad8174576bb126efc0db04c88e956088969691d6dc3daf81"
+        },
+        "sop": {
+          "bytes": 122786252,
+          "mtime_ns": 1794664896317535155,
+          "sha256": "7b61ee453d5245c45e9ca1c52186eff1166b2407a89797a30ff9370e1a57ca52"
+        },
+        "spo": {
+          "bytes": 122769484,
+          "mtime_ns": 1794664894991681426,
+          "sha256": "f72d907150ca00a1e5bf6440b108af0dee6cf6554eaca96ed9c7ffab904158a2"
+        }
+      },
+      "queries": {
+        "C1.rq": {
+          "bytes": 373,
+          "mtime_ns": 1794499966469113492,
+          "sha256": "3cd382d2e6ec0587c1417013cef09dfb94604d69b22132eb7f5cae0473d34800"
+        },
+        "C2.rq": {
+          "bytes": 573,
+          "mtime_ns": 1794499966469546537,
+          "sha256": "a3d25d21a0d84510801b3d26e2804d4fcb58dec6e4c9877c59b40c4aa12ea28e"
+        },
+        "C3.rq": {
+          "bytes": 322,
+          "mtime_ns": 1794499966469852789,
+          "sha256": "84f8202c2c8f02573a467c5c9ae7497c5f548afd355bfd581bfee61a1a421b57"
+        },
+        "F1.rq": {
+          "bytes": 425,
+          "mtime_ns": 1794499966470116833,
+          "sha256": "530784240809642c96065b7edcece661b55eacf4c9a2ff2b39c36734fcfcdc8c"
+        },
+        "F2.rq": {
+          "bytes": 461,
+          "mtime_ns": 1794499966470357585,
+          "sha256": "bb7511a764e755cdd8c030cc22b1212356a3fc1ad325117bc68b687f4f33e563"
+        },
+        "F3.rq": {
+          "bytes": 419,
+          "mtime_ns": 1794499966470624378,
+          "sha256": "201cb3571fc9706885f7eb27464c8c6f08ba550ce5a93bb5eea2a23903f55730"
+        },
+        "F4.rq": {
+          "bytes": 537,
+          "mtime_ns": 1794499966470865630,
+          "sha256": "e1bf628631e42871912e710bef831386ac333ca56a510135239c33ad501bbbb7"
+        },
+        "F5.rq": {
+          "bytes": 392,
+          "mtime_ns": 1794499966471077632,
+          "sha256": "8ae2d4489babb2c73d8b1cade942c1db4578d98716f921c19c9b86944f6bb52c"
+        },
+        "L1.rq": {
+          "bytes": 230,
+          "mtime_ns": 1794499966471320925,
+          "sha256": "0044162a82b45cf28b42bef19aa768c4e6612997a23dce66ce4c846d5c476c8e"
+        },
+        "L2.rq": {
+          "bytes": 269,
+          "mtime_ns": 1794499966471666678,
+          "sha256": "8cb280a8197af9ca3e2e42b7c0e45d15ace473ec9191d08987b053ef66f21afa"
+        },
+        "L3.rq": {
+          "bytes": 187,
+          "mtime_ns": 1794499966471889263,
+          "sha256": "c9c41a3048d5933164a5305e393d894dde83fa55a7d67ec169fa65ee247497f0"
+        },
+        "L4.rq": {
+          "bytes": 142,
+          "mtime_ns": 1794499966472347849,
+          "sha256": "aa11fa9d41af406cafab9816ec2491a8990e9815c4353e7fb44734e9799e0bc2"
+        },
+        "L5.rq": {
+          "bytes": 215,
+          "mtime_ns": 1794499966472568893,
+          "sha256": "18e083f5dd653e158f77d0daac9e34c9171b9a5a5af96977d77f7aa1aaaa4815"
+        },
+        "README.md": {
+          "bytes": 337,
+          "mtime_ns": 1794499966472807395,
+          "sha256": "1a5a888891c867f367b1b14329d02352e7e2d93b4b5e1e31f6e96951bd990462"
+        },
+        "S1.rq": {
+          "bytes": 557,
+          "mtime_ns": 1794499966473041813,
+          "sha256": "ac3f4e2c687e921ce8a927fdd9366c4d9eb73e7d1f2af14284a4ea2b577ff027"
+        },
+        "S2.rq": {
+          "bytes": 321,
+          "mtime_ns": 1794499966473373482,
+          "sha256": "c67031e60c6fe0b9d70e5157a5f432cafa83f0b9ce46e12683f492b04591041a"
+        },
+        "S3.rq": {
+          "bytes": 284,
+          "mtime_ns": 1794499966473734985,
+          "sha256": "1c24f629f35b1c6733a8e566f1f63d31b6e33ba6f3f686b16022f717c0d3fb3b"
+        },
+        "S4.rq": {
+          "bytes": 293,
+          "mtime_ns": 1794499966474052737,
+          "sha256": "cafc3a7108e3dc87758ccef680abdf8757ea649b4ab0ab1342871a92ef9252af"
+        },
+        "S5.rq": {
+          "bytes": 309,
+          "mtime_ns": 1794499966474452157,
+          "sha256": "a5ed189eb0b862a510982542925a8cb647911f481d553ff02e7068af65e453e6"
+        },
+        "S6.rq": {
+          "bytes": 245,
+          "mtime_ns": 1794499966474778701,
+          "sha256": "25e203714c83f6f3ee3611b91ae77349e301036aa569bf0bc1ff2ee20f9c60f4"
+        },
+        "S7.rq": {
+          "bytes": 226,
+          "mtime_ns": 1794499966475024869,
+          "sha256": "048ba4f3535b86e7fc6297d65cb241706cd050593bb0e2a625aecb0f17e797c2"
+        }
+      },
+      "after": {
+        "MANIFEST": {
+          "bytes": 264,
+          "mtime_ns": 1794664899351545585,
+          "sha256": "dc53f607f83d8c3c0f84f2588c9574addaa6e9b103fcacafac805ada260be665"
+        },
+        "dictionary.id": {
+          "bytes": 63355818,
+          "mtime_ns": 1794664894295231760,
+          "sha256": "8d330b7230c168609c4d8b5fbabd062138c20ad982655150359e8e6c64362906"
+        },
+        "dictionary.term": {
+          "bytes": 60018110,
+          "mtime_ns": 1794664893165049477,
+          "sha256": "1f2373a58805a999c23119379a6c5862bb4e3f8ac6d1f914722cadf49859a7ea"
+        },
+        "ops": {
+          "bytes": 49347752,
+          "mtime_ns": 1794664899020267591,
+          "sha256": "d343204c9745b0c63f01375fbb332517615d6f53c2cf110c8de8751321f9b1c0"
+        },
+        "osp": {
+          "bytes": 50043880,
+          "mtime_ns": 1794664898381813688,
+          "sha256": "81a4de0a9b0ea49a97abd7040ff507e8ffdd7a1e3a3f8bb96fb211cb34b270e6"
+        },
+        "pos": {
+          "bytes": 38249186,
+          "mtime_ns": 1794664897786348179,
+          "sha256": "fdc21e07a57a66438b63880d2b5b4a1bb6aac6d88a4a7157fdaa4541a47ef71f"
+        },
+        "pso": {
+          "bytes": 43158401,
+          "mtime_ns": 1794664897221886374,
+          "sha256": "657315071716e4e7ad8174576bb126efc0db04c88e956088969691d6dc3daf81"
+        },
+        "sop": {
+          "bytes": 122786252,
+          "mtime_ns": 1794664896317535155,
+          "sha256": "7b61ee453d5245c45e9ca1c52186eff1166b2407a89797a30ff9370e1a57ca52"
+        },
+        "spo": {
+          "bytes": 122769484,
+          "mtime_ns": 1794664894991681426,
+          "sha256": "f72d907150ca00a1e5bf6440b108af0dee6cf6554eaca96ed9c7ffab904158a2"
+        }
+      },
+      "plans_sha256": "b92d487cb0474e59ebf0a731532d3877826b2cf5196eb75e0d0ff815738794d2"
+    }
+  }
+}
