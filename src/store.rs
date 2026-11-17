@@ -243,6 +243,8 @@ pub struct Store {
     writer: Mutex<()>,
     /// Set if a WAL write or fsync failed: in-memory and durable state may differ, so further writes are refused.
     poisoned: std::sync::atomic::AtomicBool,
+    /// Held until the other store state is dropped; the persistent file must never be removed on close.
+    _directory_lock: File,
 }
 
 struct Pending { latest: Arc<Overlay>, buf: String, seq: u64 }
@@ -257,6 +259,10 @@ impl Store {
     pub fn open_with(dir: impl AsRef<Path>, initial: Option<&Path>, format: Box<dyn BaseFormat>) -> std::io::Result<Self> {
         let dir = dir.as_ref().to_path_buf();
         std::fs::create_dir_all(&dir)?;
+        // Lock before reading CURRENT, recovery, or deleting any abandoned generation.
+        // The file remains in place to avoid lock-inode replacement races between processes.
+        let directory_lock = OpenOptions::new().read(true).write(true).create(true).truncate(false).open(dir.join("LOCK"))?;
+        directory_lock.try_lock().map_err(|e| std::io::Error::other(format!("database directory is already open or cannot be locked: {e}")))?;
         let generation = match std::fs::read_to_string(dir.join("CURRENT")) {
             Ok(s) => s.trim().strip_prefix("base-").and_then(|n| n.parse().ok())
                 .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?,
@@ -293,6 +299,7 @@ impl Store {
             wal: Mutex::new(Wal { file: wal, durable: 0 }),
             writer: Mutex::new(()),
             poisoned: std::sync::atomic::AtomicBool::new(false),
+            _directory_lock: directory_lock,
         })
     }
 
