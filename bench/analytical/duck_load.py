@@ -8,6 +8,9 @@ import argparse
 import hashlib
 import json
 import os
+import resource
+import shutil
+import threading
 from pathlib import Path
 import sys
 import time
@@ -22,6 +25,8 @@ def load(args):
     from native import LINE, term
     if args.database.exists() or args.report.exists():
         raise FileExistsError('Refusing to overwrite existing baseline/evidence')
+    if shutil.disk_usage(args.database.parent if args.database.parent.exists() else Path('/private/tmp')).free < 40*1024**3:
+        raise RuntimeError('Shared-host free space is below the 40 GiB floor')
     args.database.parent.mkdir(parents=True,exist_ok=True)
     args.spill.mkdir(parents=True,exist_ok=True)
     if any(args.spill.iterdir()):
@@ -29,7 +34,8 @@ def load(args):
     stats={'schema':'plain-triples-arrow-v1','duckdb':duckdb.__version__,'pyarrow':pa.__version__,
            'source':str(args.source.resolve()),'database':str(args.database.resolve()),
            'threads':args.threads,'memory_limit':args.memory_limit,'spill':str(args.spill.resolve()),
-           'max_spill':args.max_spill,'batch_rows':args.batch_rows,'parsed_triples':0,'complete':False}
+           'max_spill':args.max_spill,'batch_rows':args.batch_rows,'parsed_triples':0,'complete':False,
+           'spill_peak_sampled_bytes':0,'spill_sample_seconds':0.2,'spill_sampling_errors':[]}
     schema=pa.schema([('s',pa.string()),('p',pa.string()),('o',pa.struct([
         ('kind',pa.uint8()),('value',pa.string()),('datatype',pa.string()),('lang',pa.string())]))])
     digest=hashlib.sha256()
@@ -55,6 +61,20 @@ def load(args):
                     yield pa.RecordBatch.from_pylist(rows,schema=schema);rows=[]
             if rows:yield pa.RecordBatch.from_pylist(rows,schema=schema)
     connection=duckdb.connect(str(args.database))
+    stop=threading.Event()
+    def sample_spill():
+        total=0
+        try:
+            for path in args.spill.rglob('*'):
+                try:
+                    if path.is_file():total+=path.stat().st_size
+                except FileNotFoundError:pass  # DuckDB can remove a file during sampling.
+            stats['spill_peak_sampled_bytes']=max(stats['spill_peak_sampled_bytes'],total)
+        except OSError as exc:
+            stats['spill_sampling_errors'].append(type(exc).__name__+': '+str(exc))
+    def monitor():
+        while not stop.wait(stats['spill_sample_seconds']):sample_spill()
+    sampler=threading.Thread(target=monitor,daemon=True);sampler.start()
     start=time.perf_counter()
     try:
         connection.execute('SET threads=?',[args.threads])
@@ -75,7 +95,13 @@ def load(args):
         stats['error']=type(exc).__name__+': '+str(exc)
         raise
     finally:
+        stop.set();sampler.join();sample_spill()
         connection.close()
+        peak=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        stats['process_peak_rss_bytes']=peak if sys.platform=='darwin' else peak*1024
+        stats['peak_rss_scope']='whole importer process, including Python, Arrow and DuckDB'
+        stats['spill_metric_scope']='sampled file lengths, not allocated blocks or guaranteed instantaneous peak'
+        stats['free_disk_bytes_after']=shutil.disk_usage(args.database.parent).free
         stats['database_bytes']=args.database.stat().st_size if args.database.exists() else None
         args.report.write_text(json.dumps(stats,indent=2))
     print(json.dumps(stats,indent=2))
