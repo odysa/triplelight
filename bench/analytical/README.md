@@ -1,8 +1,11 @@
 # Analytical RDF benchmark — task25
 
-Status: **in development**. Five offline qualification tests pass. Java workload
-export, DuckDB import/SQL, actual database fixtures and large-data comparisons
-have not yet run. There are no BI performance numbers in this directory.
+Status: **in development**. Five offline qualification tests pass; the Java
+exporter has produced 60 BSBM-10M query instances. On the initial actual-engine
+fixture, DuckDB's eight SQL translations match Jena exactly; rdfdb fails the five
+floating-output templates on datatype. See the
+[qualification report](../../docs/analytical-benchmark/README.md). Large-data
+comparisons have not run. There are no BI performance numbers in this directory.
 
 The goal is an embedded analytical RDF engine. The earlier 20 BSBM exploration
 queries are a different workload. BSBM's author describes BI as GROUP BY/COUNT
@@ -71,10 +74,10 @@ survive. The number of survivors is bounded by the available boundary slots and
 blocked products. We do not append a tie-breaker to the official query or report
 permitted alternatives as wrong bags.
 
-The planned actual-engine fixtures cover q5 unbound compatibility, q6 bag and
-scope behavior, invalid/unbound numeric aggregates, float promotion, empty
-groups, ordering and q7 boundary ties. The current standard-library tests exercise
-only the oracle/parameter recovery; they are not engine qualification.
+The first actual-engine fixture covers q5 unbound compatibility, q6 bag/scope
+behavior and all eight templates. Invalid/empty numeric aggregates and the actual
+q7 cutoff boundary still need extended fixtures. The standard-library tests
+exercise only the oracle/parameter recovery; they are not engine qualification.
 
 ## Execution and resource boundaries
 
