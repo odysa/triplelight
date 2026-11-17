@@ -1,0 +1,17 @@
+{
+  "head": {
+    "vars": [
+      "product"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "product": {
+          "type": "uri",
+          "value": "urn:p3"
+        }
+      }
+    ]
+  }
+}
