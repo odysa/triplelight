@@ -349,8 +349,6 @@ impl DiskIndex {
         self.identity
     }
     pub fn clear_cache(&self) -> io::Result<()> {
-        // Invalidate every thread's memo entries for this index too (they are keyed by epoch).
-        self.epoch.fetch_add(1, Ordering::AcqRel);
         for shard in &self.cache {
             let mut cache = shard
                 .lock()
@@ -358,6 +356,12 @@ impl DiskIndex {
             cache.entries.clear();
             cache.clock.clear();
         }
+        // Then invalidate every thread's memo entries (they are keyed by epoch). Order matters under concurrent
+        // reads: a reader memoizes under the epoch it loaded *before* its lookup. A reader that saw the old epoch
+        // can only memoize under the old epoch (invalid after this bump), whatever it fetched. A reader that sees
+        // the new epoch started after every shard was emptied, so its block comes from disk (checksummed): shards
+        // are only ever filled from disk reads, never from memo entries.
+        self.epoch.fetch_add(1, Ordering::AcqRel);
         Ok(())
     }
     pub fn len(&self) -> u64 {
