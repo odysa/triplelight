@@ -318,7 +318,7 @@ fn aggregate_errors_poison_like_jena() {
         assert_eq!(rows(q1), vec![
             vec!["\"x\"".into(), "-".into(), int(2), "-".into(), "-".into(), "-".into()],
             vec!["\"y\"".into(), "-".into(), int(1), "-".into(), "-".into(), "-".into()],
-            vec!["\"z\"".into(), int(3), int(1), int(3), int(3), "\"3\"^^<http://www.w3.org/2001/XMLSchema#decimal>".into()],
+            vec!["\"z\"".into(), int(3), int(1), int(3), int(3), "\"3.0\"^^<http://www.w3.org/2001/XMLSchema#decimal>".into()],
         ], "legacy={legacy}");
         assert_eq!(rows(q2), vec![
             vec!["\"x\"".into(), "-".into(), int(1), "-".into(), "-".into()],
