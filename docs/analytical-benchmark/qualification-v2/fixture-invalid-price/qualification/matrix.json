@@ -1,0 +1,154 @@
+{
+  "schema": "actual-bi-fixture-v1",
+  "rdfdb_source": "63d54f75168ebac7cc4c52e536fcfc00809cc53c rebuilt isolated binding",
+  "duckdb": "2.0.0",
+  "templates_requested": [
+    4,
+    5,
+    8
+  ],
+  "data_sha256": "25d76423f70f2810bae52b5566b453c53078184a12c08b9cdceb57f46cfdeacb",
+  "queries": {
+    "4": {
+      "query_sha256": "9d4df8002ba396e3ffe435aafd74d6f0e94fdc892c68f386b9bb49f1d4da17fd",
+      "jena_rows": 2,
+      "jena_order": {
+        "checked": true,
+        "keys": [
+          [
+            "priceRatio",
+            true
+          ],
+          [
+            "feature",
+            false
+          ]
+        ]
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 2
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "priceRatio",
+              true
+            ],
+            [
+              "feature",
+              false
+            ]
+          ]
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "status": "fail",
+        "error": "ValueError: Computed numeric values or multiplicities differ"
+      }
+    },
+    "5": {
+      "query_sha256": "190f77025da6b743a7edb4369df942785472ded18630b53ec7b925bc8cbea7fb",
+      "jena_rows": 3,
+      "jena_order": {
+        "checked": true,
+        "keys": [
+          [
+            "nrOfReviews",
+            true
+          ],
+          [
+            "country",
+            false
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 3
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "nrOfReviews",
+              true
+            ],
+            [
+              "country",
+              false
+            ],
+            [
+              "product",
+              false
+            ]
+          ]
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "status": "fail",
+        "error": "ValueError: Computed numeric values or multiplicities differ"
+      }
+    },
+    "8": {
+      "query_sha256": "1f34138160cc72c4467701d1d07bd6e2fa40dd7f1013bb64cf82b2a1da4e2527",
+      "jena_rows": 1,
+      "jena_order": {
+        "checked": true,
+        "keys": [
+          [
+            "cheapExpensiveRatio",
+            true
+          ],
+          [
+            "vendor",
+            false
+          ]
+        ]
+      },
+      "duckdb": {
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 1
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "cheapExpensiveRatio",
+              true
+            ],
+            [
+              "vendor",
+              false
+            ]
+          ]
+        },
+        "status": "pass"
+      },
+      "rdfdb": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    }
+  },
+  "complete": true
+}

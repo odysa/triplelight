@@ -1,0 +1,68 @@
+🍹 Building a mixed python/rust project
+🐍 Found CPython 3.14 at <agent-workspace>/scratch/analytical25-venv/bin/python
+🔗 Found pyo3 bindings with abi3-py3.9 support
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling target-lexicon v0.12.16
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling pyo3-build-config v0.23.5
+   Compiling once_cell v1.21.4
+   Compiling cfg-if v1.0.5
+   Compiling getrandom v0.3.4
+   Compiling zerocopy v0.8.63
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling crossbeam-utils v0.8.23
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_core v0.9.5
+   Compiling syn v3.0.10
+   Compiling thiserror v2.0.21
+   Compiling typenum v1.20.1
+   Compiling crossbeam-epoch v0.9.21
+   Compiling thiserror-impl v2.0.21
+   Compiling rand_chacha v0.9.0
+   Compiling crossbeam-deque v0.8.8
+   Compiling memchr v2.8.3
+   Compiling rand v0.9.5
+   Compiling pyo3-macros-backend v0.23.5
+   Compiling pyo3-ffi v0.23.5
+   Compiling peg-runtime v0.8.6
+   Compiling rayon-core v1.13.0
+   Compiling oxiri v0.2.11
+   Compiling oxilangtag v0.1.6
+   Compiling autocfg v1.5.1
+   Compiling memoffset v0.9.1
+   Compiling oxrdf v0.3.5
+   Compiling peg-macros v0.8.6
+   Compiling aho-corasick v1.1.5
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling syn v2.0.119
+   Compiling heck v0.5.0
+   Compiling regex-syntax v0.8.11
+   Compiling regex-automata v0.4.18
+   Compiling peg v0.8.6
+   Compiling digest v0.10.7
+   Compiling pyo3 v0.23.5
+   Compiling cpufeatures v0.2.17
+   Compiling httpdate v1.0.3
+   Compiling ascii v1.1.0
+   Compiling log v0.4.35
+   Compiling either v1.19.0
+   Compiling chunked_transfer v1.5.0
+   Compiling tiny_http v0.12.0
+   Compiling rayon v1.12.0
+   Compiling sha2 v0.10.9
+   Compiling spargebra v0.4.8
+   Compiling pyo3-macros v0.23.5
+   Compiling regex v1.13.1
+   Compiling oxttl v0.2.5
+   Compiling indoc v2.0.8
+   Compiling unindent v0.2.4
+   Compiling rdfdb v0.1.0 (/private/tmp/rdf-jianlin-analytical25/fast-group-source)
+   Compiling rdfdb-python v0.1.0 (/private/tmp/rdf-jianlin-analytical25/fast-group-source/bindings/python)
+    Finished `release` profile [optimized] target(s) in 3m 01s
+📦 Built wheel for abi3 Python ≥ 3.9 to <tmpdir>/T/.tmp6EaQOH/rdfdb-0.1.0-cp39-abi3-macosx_11_0_arm64.whl
+✏️ Setting installed package as editable
+🛠 Installed rdfdb-0.1.0
