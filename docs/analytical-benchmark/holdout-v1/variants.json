@@ -1,0 +1,27 @@
+[
+  {
+    "source_commit": "cb827db96c62ee440539eac31e5d73c771b2ceb1",
+    "pythonpath": "/private/tmp/rdf-jianlin-analytical25/main-bi-source/bindings/python/python",
+    "package": "/private/tmp/rdf-jianlin-analytical25/main-bi-source/bindings/python/python/rdfdb/__init__.py",
+    "extension_sha256": "2d30b7b1f84e22b183e59ccb300a2867b3fda49b21ef2b93606f565e89697317",
+    "name": "rdfdb-main",
+    "legacy_group": false
+  },
+  {
+    "source_commit": "cb827db96c62ee440539eac31e5d73c771b2ceb1",
+    "pythonpath": "/private/tmp/rdf-jianlin-analytical25/main-bi-source/bindings/python/python",
+    "package": "/private/tmp/rdf-jianlin-analytical25/main-bi-source/bindings/python/python/rdfdb/__init__.py",
+    "extension_sha256": "2d30b7b1f84e22b183e59ccb300a2867b3fda49b21ef2b93606f565e89697317",
+    "name": "rdfdb-main-legacy",
+    "legacy_group": true
+  },
+  {
+    "name": "rdfdb-float64",
+    "legacy_group": false,
+    "source_commit": "66eaac723d3a5362281260ebbec4f324848bb097",
+    "pythonpath": "/private/tmp/rdf-jianlin-analytical25/float-candidate-66eaac7/bindings/python/python",
+    "package": "/private/tmp/rdf-jianlin-analytical25/float-candidate-66eaac7/bindings/python/python/rdfdb/__init__.py",
+    "extension": "/private/tmp/rdf-jianlin-analytical25/float-candidate-66eaac7/bindings/python/python/rdfdb/_rdfdb.abi3.so",
+    "extension_sha256": "1faef24b9b9b3ecffefbc337ae65a180f0c772c69ca2d22767531cb611a907c9"
+  }
+]

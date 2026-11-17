@@ -1,0 +1,6 @@
+{
+  "commit": "66eaac723d3a5362281260ebbec4f324848bb097",
+  "common_base": "cb827db96c62ee440539eac31e5d73c771b2ceb1",
+  "archive_sha256": "129c7bd34ef735f18799f8d6bda78c4d95c179e356618518d1e321d4edae078a",
+  "difference_scope": "src/exec/expr.rs, src/exec/mod.rs, tests/exec.rs only; bindings/dependencies/storage identical"
+}
