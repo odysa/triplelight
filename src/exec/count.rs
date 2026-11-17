@@ -101,7 +101,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             let n = if missing {
                 0
             } else {
-                let join=bgp::Bgp { snap:self.snap,w:self.vars.len(),profile_plan:self.profile_plan };
+                let join=bgp::Bgp { snap:self.snap,w:self.vars.len(),profile_plan:self.profile_plan,record_order:None };
                 if self.wcoj && pats.len()>=3 && bgp::cyclic(&pats) {
                     join.count_leapfrog(&pats,self.variable_order(&pats))
                 } else {

@@ -230,6 +230,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             snap: &snap,
             w: 3,
             profile_plan: false,
+            record_order: None,
         };
         // One complete warm-up pass, then six rotated/reversed measured passes.
         // Keep all completed rows flushed in case an order is unexpectedly expensive.
@@ -279,6 +280,7 @@ mod tests {
             snap: &snap,
             w: 3,
             profile_plan: false,
+            record_order: None,
         };
         let QueryResult::Ids(ordinary) = query_with(
             &snap,

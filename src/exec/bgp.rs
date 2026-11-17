@@ -17,6 +17,7 @@ pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
     /// Row width (number of query variables).
     pub w: usize,
     pub profile_plan: bool,
+    pub record_order: Option<&'a std::sync::Mutex<Vec<usize>>>,
 }
 
 impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
@@ -41,6 +42,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             let (k, _) = remaining.iter().enumerate().map(|(k, &pi)| (k, self.estimate(&pats[pi], &bound, &sample)))
                 .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap()).unwrap();
             let pi = remaining.remove(k);
+            if let Some(trace) = self.record_order { trace.lock().expect("diagnostic trace poisoned").push(pi); }
             let before = if trace { rows.len()/w.max(1) } else { 0 };
             rows = self.extend(&pats[pi], &rows);
             let extended = if trace { rows.len()/w.max(1) } else { 0 };
@@ -58,6 +60,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         let mut bound: HashSet<usize> = if rows.is_empty() { HashSet::new() } else { (0..w).filter(|&i| rows.chunks(w).all(|r| r[i] != UNBOUND)).collect() };
         for &pi in order {
             if rows.is_empty() { break }
+            if let Some(trace) = self.record_order { trace.lock().expect("diagnostic trace poisoned").push(pi); }
             let before = if trace { rows.len()/w.max(1) } else { 0 };
             rows = self.extend(&pats[pi], &rows);
             let extended = if trace { rows.len()/w.max(1) } else { 0 };
