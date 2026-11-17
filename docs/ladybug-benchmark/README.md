@@ -16,7 +16,16 @@ Every measured query returned the same complete projected result bag, including 
 
 Both Ladybug schemas use the same native API and output path in this run. The tuned schema reduces the generic mapping’s total from 11,866 ms to 820 ms. This comparison combines the effects of the documented physical schema and its equivalent query translations; it does not prove optimal native plans or isolate an individual optimization.
 
-Tuned Ladybug is also lower on Q9 than rdfdb disk: **47.390 versus 100.588 ms**. The aggregate result must not be presented as a win on every query.
+Tuned Ladybug is lower on Q9 than both rdfdb backends: **47.390 ms versus 73.951 ms memory and 100.588 ms disk**. The aggregate result must not be presented as a win on every query.
+
+| LUBM view | rdfdb memory | rdfdb disk | Tuned Ladybug |
+|---|---:|---:|---:|
+| Sum excluding Q6/Q14 | 93.556 ms | 128.135 ms | 123.111 ms |
+| Q6/Q14 share of total | 83.5% | 82.6% | 85.0% |
+
+Q6 and Q14 each return 795,970 rows and dominate the totals. Excluding them, disk and tuned Ladybug have similar observed totals (128 versus 123 ms), while memory is 94 ms. The geometric means are 3.105 / 3.781 ms for rdfdb memory/disk versus 10.383 ms for tuned Ladybug, so rdfdb has lower per-query geometric mean by about 3×. These complementary views should be reported together; the overall 12% disk margin is not the whole result.
+
+The tuned schema explicitly encodes LUBM’s class structure and property ranges. A schema-free store does not receive that schema specialization. This is a deliberately favorable, tested native Ladybug configuration, not a like-for-like schema-free setup or a proof of its optimal possible performance. The generic mapping is the like-for-like primary schema-free case.
 
 ## BSBM-10M: generic RDF mapping
 
@@ -39,7 +48,7 @@ For example, default BSBM q002 reported roughly 3.83 s native compilation and 21
 
 - Apple M1 Max host, 64 GB physical RAM; native host processes, not the earlier Linux VM comparison. LadybugDB 0.22.3, Python 3.14.3, PyArrow 26.0.1 and Jena/Fuseki 6.2.0.
 - rdfdb immutable baseline: production source `cdba2e6`, binary SHA-256 `48d3f913a12ac4e9c922eb4aca446fdf957f1715d13a25bbada2f69f4a288fb7`. Later repository rebases do not change the measured binary.
-- Requested settings: Ladybug 4 native threads and 10,240 MiB buffer pool; rdfdb `RAYON_NUM_THREADS=4`, memory load `--parallel-load=4`, disk `--cache-mb=10240`; Jena `-Xmx10g`. Cache/heap targets are not equal total-RSS limits. rdfdb memory retains its graph in RAM.
+- Requested settings: Ladybug 4 native threads and 10,240 MiB buffer pool; rdfdb `RAYON_NUM_THREADS=4` (capped at four Rayon workers instead of its all-core default, matching Ladybug’s four requested native threads), memory load `--parallel-load=4`, disk `--cache-mb=10240`; Jena `-Xmx10g`. Cache/heap targets are not equal total-RSS limits. rdfdb memory retains its graph in RAM.
 - Sequential servers in one exclusive team benchmark window: Jena, Ladybug generic, optional Ladybug tuned, rdfdb memory, rdfdb disk. One warm-up plus five measured requests per query. OS caches were not cleared; fixed order and shared-host variation limit generalization.
 - The timer covers the complete HTTP response, including backend execution, materialization, serialization and transfer. Client JSON decoding, supplementary-header parsing and canonical hashing occur after the timer. Ladybug uses a Python HTTP bridge and its native Cypher executor; this is not an engine-kernel-only comparison.
 - Native Arrow output assembles complete SPARQL JSON from pre-encoded RDF-term properties. RDF term encodings and URI-to-surrogate-ID mappings are generated during import/query translation, outside query timing. Auxiliary mapping files are separate from native engine-store size. These are explicit choices of this adapter.
@@ -63,7 +72,7 @@ The existing inference-free LUBM cohort uses concrete classes as documented in t
 ## Import measurements
 
 | Mapping | Python conversion/preparation | Native COPY/checkpoint | Observed workflow import | Peak RSS: conversion / native load |
-|---|---:|---:|---|
+|---|---:|---:|---:|---|
 | LUBM generic | 285.63 s | 40.29 s | 325.92 s | 1,693,843,456 / 900,743,168 bytes |
 | BSBM generic | 413.52 s | 72.65 s | 486.17 s | 1,846,984,704 / 2,521,628,672 bytes |
 | LUBM tuned | 47.16 s after shared conversion | 19.26 s | 352.05 s including shared 285.63 s conversion | 388,808,704 / 1,180,975,104 bytes |
