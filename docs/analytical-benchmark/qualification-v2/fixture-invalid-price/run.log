@@ -1,0 +1,22 @@
+{
+  "schema": "plain-triples-arrow-v1",
+  "duckdb": "2.0.0",
+  "pyarrow": "26.0.1",
+  "source": "/private/tmp/rdf-jianlin-analytical25/fixture-invalid-price/data.nt",
+  "database": "/private/tmp/rdf-jianlin-analytical25/fixture-invalid-price/duck.db",
+  "threads": 1,
+  "memory_limit": "256MB",
+  "spill": "/private/tmp/rdf-jianlin-analytical25/fixture-invalid-price/spill",
+  "max_spill": "256MB",
+  "batch_rows": 65536,
+  "parsed_triples": 85,
+  "complete": true,
+  "unique_triples": 84,
+  "source_sha256": "25d76423f70f2810bae52b5566b453c53078184a12c08b9cdceb57f46cfdeacb",
+  "seconds": 0.010984207969158888,
+  "database_bytes": 536576
+}
+disk build strategy: in-memory (estimated 3x input; not an RSS limit)
+q4 pass fail
+q5 pass fail
+q8 pass fail
