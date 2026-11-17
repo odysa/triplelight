@@ -1,0 +1,20 @@
+{ "head": {
+    "vars": [ "reviewer" , "reviewerAvgScore" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "reviewer": { "type": "uri" , "value": "urn:rc" } ,
+        "reviewerAvgScore": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#float" , "value": "5.0" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "urn:rb" } ,
+        "reviewerAvgScore": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#float" , "value": "5.0" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "urn:ra" } ,
+        "reviewerAvgScore": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#float" , "value": "3.0" }
+      }
+    ]
+  }
+}
