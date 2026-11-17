@@ -1,10 +1,9 @@
 # Analytical RDF benchmark — task25
 
-Status: **in development**. The exporter has produced 60 BSBM-10M query instances.
-After the float fix, all eight normal-fixture results match independent Jena
-exactly. An actual q7 cutoff fixture passes its tie-aware oracle. Invalid price
-and rating fixtures expose aggregate-error failures in rdfdb, which the engine
-owner is fixing. DuckDB passes those checks. See the
+Status: **in development**. Sixty BSBM-10M BI query instances and 72 curated
+LUBM/WatDiv aggregate cases are prepared. The corrected engine passes normal,
+actual cutoff, invalid numeric and empty/unbound fixtures against Jena; the
+plain-triples DuckDB translation passes all requested BI fixture cases. See the
 [qualification report](../../docs/analytical-benchmark/README.md).
 Large-data comparisons have not run; there is no BI performance score.
 
@@ -47,7 +46,10 @@ normalized. This corpus-scoped baseline requires named resources and rejects
 blank nodes instead of conflating them with IRIs. It has no property tables,
 materialized joins, aggregate cache or numeric index. DuckDB chooses its physical
 compression and plans. Input SHA-256 and raw-versus-unique triple counts must
-match the pinned dataset before the store is usable as evidence.
+match the pinned dataset before the store is usable as evidence. Imports record
+whole-process peak RSS and spill file lengths sampled every 200 ms. The spill
+figure can miss shorter peaks and is not allocated disk blocks; configured memory
+and spill limits are reported separately from these observations.
 
 `bi_sql.py` contains hand translations for these eight templates only; it is not
 a SPARQL-to-SQL frontend. Resource joins check RDF kind. Prices use lexical casts
