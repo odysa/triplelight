@@ -1,0 +1,11 @@
+load_s=0.007277
+triples=4 subjects=3 characteristic_sets=2 stats_s=0.000142
+plan_trace query=optional__bgp00 patterns=1 gate_work=4.000000000 runtime_binary_eligible=false search=subset-dp reason="acyclic/small/repeated-variable BGP" binary_cost=5.000000000
+plan_patterns query=optional__bgp00 [TriplePattern { s: Var(0), p: Const(TermId(1152921504606846977)), o: Var(1) }]
+plan_tree query=optional__bgp00 Scan { pattern: TriplePattern { s: Var(0), p: Const(TermId(1152921504606846977)), o: Var(1) }, perm: Pso, est: 3.0 }
+plan_trace query=optional__bgp01 patterns=1 gate_work=2.000000000 runtime_binary_eligible=false search=subset-dp reason="acyclic/small/repeated-variable BGP" binary_cost=3.000000000
+plan_patterns query=optional__bgp01 [TriplePattern { s: Var(0), p: Const(TermId(1152921504606846980)), o: Var(1) }]
+plan_tree query=optional__bgp01 Scan { pattern: TriplePattern { s: Var(0), p: Const(TermId(1152921504606846980)), o: Var(1) }, perm: Pso, est: 1.0 }
+plan_trace query=triangle__bgp00 patterns=3 gate_work=14.000000000 runtime_binary_eligible=false search=subset-dp reason="binary fallback: leapfrog executor disabled" binary_cost=21.000000000
+plan_patterns query=triangle__bgp00 [TriplePattern { s: Var(0), p: Const(TermId(1152921504606846977)), o: Var(1) }, TriplePattern { s: Var(1), p: Const(TermId(1152921504606846977)), o: Var(2) }, TriplePattern { s: Var(2), p: Const(TermId(1152921504606846977)), o: Var(0) }]
+plan_tree query=triangle__bgp00 IndexNestedLoop { outer: IndexNestedLoop { outer: Scan { pattern: TriplePattern { s: Var(2), p: Const(TermId(1152921504606846977)), o: Var(0) }, perm: Pos, est: 3.0 }, pattern: TriplePattern { s: Var(1), p: Const(TermId(1152921504606846977)), o: Var(2) }, perm: Ops, est: 3.0 }, pattern: TriplePattern { s: Var(0), p: Const(TermId(1152921504606846977)), o: Var(1) }, perm: Ops, est: 1.0 }

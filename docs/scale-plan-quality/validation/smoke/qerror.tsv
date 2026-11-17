@@ -1,0 +1,4 @@
+query	estimate	actual	q_error	search	physical	estimate_without_exact_prefixes
+optional__bgp00	3.000000000	3	1	subset-dp	scan	3.000000000
+optional__bgp01	1.000000000	1	1	subset-dp	scan	1.000000000
+triangle__bgp00	1.000000000	3	3	subset-dp	index_loop	1.000000000

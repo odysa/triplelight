@@ -1,0 +1,7 @@
+{
+  "source_commit": "d3e18cd",
+  "reference_file": "bench/results/r9-lubm1000/jena-tdb2.json",
+  "reference_sha256": "575cd91c3e0f1e1fb96ebf3e0ea7036ab27de192b6cf7d4ec6a735250aeb02c7",
+  "contract": "Each LUBM SELECT has exactly root/project/BGP. No DISTINCT, FILTER, LIMIT or UNION; projection preserves bag cardinality. Existing full-answer hashes agree with rdfdb in round9.",
+  "probe_manifest_sha256": "439194cfd8a18be477fc3e227e8f72a8052f55769d55be722279d76de0d4206c"
+}

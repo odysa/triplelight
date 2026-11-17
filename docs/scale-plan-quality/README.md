@@ -1,6 +1,8 @@
 # Plan quality at 10x scale (task 17)
 
-Status: diagnostic tools prepared; Rust formatting/parser checks and Python syntax checks only. No task-17 compilation, dataset scan, query or measurement has run. Round 9 currently owns the machine. Parent statistics interface 72dbc39 passed 88 tests separately; that result does not validate these new tools.
+Status: 93 all-target tests passed on source 1652fe5, and release tools compiled. Tiny disk smoke queries verified full multiset equality with profiling enabled/disabled (20 paired output hashes), actual leapfrog and greedy trace events, and the COUNT collection pipeline against hand-counted data. Raw checks are in validation/. The collector smoke server was rdfdb, so this is protocol validation, not independent large-data correctness evidence.
+
+The first LUBM-1000 synopsis/plan run is complete: see LUBM1000.md. All 65 BSBM-100M BGP probes are exported; their exact counts and full-query runtime comparisons are pending. The task-15 statistics-build measurement is separately pinned in ../exact-tag-coverage/MEASUREMENTS.md.
 
 ## Questions and interpretation
 
@@ -10,7 +12,7 @@ For each LUBM-1000 and BSBM-100M query report:
 - Full-query statistics-on/off latency split using the existing opt-in phase trace and exact complete outputs.
 - Cross-reference the owner's round-9 per-query times under bench/results/r9-*, recording the actual commit, dataset receipt and query hashes.
 
-A candidate plan is not proof that execution selected it. Cyclic, initially unbound BGPs can use leapfrog; larger queries and low-work queries retain runtime greedy ordering. Bound OPTIONAL inputs can change the runtime order. The candidate trace labels binary gate eligibility, not observed dispatch. The draft adds opt-in bgp_actual events in exec/bgp.rs: actual binary pattern order and pre-join/extended/post-filter row counts, plus the final leapfrog variable order after fallback selection. These diagnostics have not been compiled or exercised yet. Empty/absent-constant and zero-variable membership early exits do not emit these events.
+A candidate plan is not proof that execution selected it. Cyclic, initially unbound BGPs can use leapfrog; larger queries and low-work queries retain runtime greedy ordering. Bound OPTIONAL inputs can change the runtime order. The candidate trace labels binary gate eligibility, not observed dispatch. The draft adds opt-in bgp_actual events in exec/bgp.rs: actual binary pattern order and pre-join/extended/post-filter row counts, plus the final leapfrog variable order after fallback selection. They compiled and the leapfrog/greedy events were exercised on the preserved tiny fixture; planned dispatch at scale remains pending. Empty/absent-constant and zero-variable membership early exits do not emit these events.
 
 A high q-error does not by itself establish a bad order. Separate preparation/search time from execution, then check whether poor estimates change an order and increase intermediate work. An open gate and slower full query can reflect planning overhead, an order regression, or both. Compare those components at both scales before changing the threshold.
 
