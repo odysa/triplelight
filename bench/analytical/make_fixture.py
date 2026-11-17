@@ -12,7 +12,9 @@ US='http://downlode.org/rdf/iso-3166/countries#US'
 DE='http://downlode.org/rdf/iso-3166/countries#DE'
 
 
-def make(folder):
+def make(folder,cutoff=False,invalid_price=False,invalid_rating=False,empty=False):
+    if empty and (cutoff or invalid_price or invalid_rating):
+        raise ValueError("Empty graph cannot include cutoff or invalid-value additions")
     folder.mkdir(parents=True,exist_ok=False)
     rows=[]
     def resource(s,p,o):rows.append(f'<{s}> <{p}> <{o}> .')
@@ -40,8 +42,17 @@ def make(folder):
         resource('urn:'+offer,BSBM+'vendor','urn:'+vendor)
         value('urn:'+offer,BSBM+'price',price,BSBM+'USD')
     # Graph deduplication must not change solution multiplicities.
-    rows.append(rows[-1])
-    (folder/'data.nt').write_text('\n'.join(rows)+'\n')
+    if invalid_price:value('urn:o1',BSBM+'price','bad',BSBM+'USD')
+    if invalid_rating:value('urn:orphan0',BSBM+'rating1','bad',XSD+'integer')
+    if cutoff:
+        for i in range(1002):
+            product=f'urn:tie{i:04d}';offer=f'urn:tieOffer{i:04d}'
+            resource(product,RDF+'type',BSBM+'Product')
+            resource(product,RDF+'type','urn:Type0')
+            resource(offer,BSBM+'product',product)
+            resource(offer,BSBM+'vendor','urn:v1' if i%2==0 else 'urn:v2')
+    rows=[] if empty else rows+[rows[-1]]
+    (folder/'data.nt').write_text('\n'.join(rows)+('\n' if rows else ''))
     params={'Country1':f'<{US}>','Country2':f'<{DE}>','Country':f'<{US}>',
             'Product':'<urn:p1>','ProductType':'<urn:Type0>','Producer':'<urn:pr1>',
             'ConsecutiveMonth_0':'2007-06-01','ConsecutiveMonth_1':'2007-07-01','ConsecutiveMonth_2':'2007-08-01'}
@@ -52,11 +63,19 @@ def make(folder):
         text=re.sub(r'%([A-Za-z0-9_]+)%',lambda m:params[m[1]],text)
         file=f'q{n}.rq';(queries/file).write_text(text)
         entries.append({'template':n,'file':file,'parameters':params})
-    (folder/'manifest.json').write_text(json.dumps({'fixture':True,'queries':entries,
-        'expected_q6_reviewers':{'urn:ra':3.0,'urn:rb':5.0,'urn:rc':5.0}},indent=2))
+    if cutoff:
+        diagnostic=f'''PREFIX bsbm: <{BSBM}>
+SELECT ?product ?offerCount (EXISTS {{ ?offer bsbm:product ?product . ?offer bsbm:vendor ?vendor . ?vendor bsbm:country <{US}> }} AS ?blocked)
+WHERE {{ {{ SELECT ?product (COUNT(?offer) AS ?offerCount) {{ ?product a <urn:Type0> . ?offer bsbm:product ?product }} GROUP BY ?product }} }}'''
+        (folder/'q7-diagnostic.rq').write_text(diagnostic)
+    (folder/'manifest.json').write_text(json.dumps({'fixture':True,'cutoff':cutoff,
+        'invalid_price':invalid_price,'invalid_rating':invalid_rating,'empty':empty,'queries':entries,
+        'expected_q6_reviewers':{} if empty else {'urn:ra':3.0,'urn:rb':5.0,'urn:rc':5.0}},indent=2))
 
 
 if __name__=='__main__':
     import argparse
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('folder',type=Path)
-    make(p.parse_args().folder)
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('folder',type=Path);p.add_argument('--cutoff',action='store_true')
+    p.add_argument('--invalid-price',action='store_true');p.add_argument('--invalid-rating',action='store_true')
+    p.add_argument('--empty',action='store_true')
+    args=p.parse_args();make(args.folder,args.cutoff,args.invalid_price,args.invalid_rating,args.empty)
