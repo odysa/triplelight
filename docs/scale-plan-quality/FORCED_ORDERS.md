@@ -1,0 +1,11 @@
+# Forced leapfrog-order payoff test (task 17 follow-up)
+
+Kaiming's reading: before changing the estimator, enumerate all six variable orders on in-memory LUBM-1000 Q9 and Q2. Compare the median for our chosen order with the best median. If the best is less than 1.5 times faster, stop estimator work for that query. If it is materially faster, investigate an exact-domain order heuristic next.
+
+Draft example: leapfrog_orders DATA.nt NEW_OUTPUT_DIR Q2.rq Q9.rq. Not compiled or run yet. It includes the production exec/bgp.rs module via a path, so orders enter the existing given path; no copied kernel or new production routing API. The current source reads the profiling flag once per ordinary query, and the forced kernel disables profiling. The example accepts only unmodified single BGP SELECT queries with exactly three variables, a cycle, an open runtime gate and a projection retaining all three variables.
+
+One memory load and one Stats build are shared. For each query, the ordinary query_with result is mapped by variable name into the benchmark slots and used as the exact ID-multiset reference. Every forced order must match the full sorted multiset including multiplicities. Hashing/comparison and variable remapping are outside timed kernels. The chosen order is computed through the same runtime gate and choose_variable_order path; ordinary query API time is supplementary and is not the denominator for the forced-kernel comparison.
+
+All six orders warm up once, then run six rotated/reversed passes. Every completed sample and metadata record is flushed. Preserve partial output if a bad order or a resource failure interrupts the run; do not call a partially enumerated minimum the best of all six. The process can be bounded by an external supervisor using only its own PID. No timeout-completed samples are substituted for successful runs.
+
+The runtime proof is local to Q2/Q9, this dataset, this backend and the tested orders. A 1.5 threshold is an engineering payoff rule, not a statistical significance test. Raw repeated timings, spreads, hashes, source/binary/input receipts and peak RSS must accompany the result. Large-data execution waits for the shared benchmark lock.
