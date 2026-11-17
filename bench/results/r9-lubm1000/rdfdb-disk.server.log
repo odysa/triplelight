@@ -1,0 +1,6 @@
+opened disk snapshot tools/rdfdb-disk-lubm1000 in 0.78s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:7979/sparql
+statistics ready after 19.36s
+rdfdb-disk ready after 23s
+rss_mb 16682
