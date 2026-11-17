@@ -1,0 +1,365 @@
+{
+  "schema": "actual-bi-parameter-qualification-v1",
+  "system": "rdfdb",
+  "runtime_source": "cb827db96c62ee440539eac31e5d73c771b2ceb1 isolated Python; new GROUP path",
+  "dataset_sha256": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+  "manifest_sha256": "638126af630e952e0ee85a98778c274e64d52f9b0fe6456f5e9c70342e2ba13a",
+  "requested_files": [
+    "m000_p00_q1.rq",
+    "m000_p01_q3.rq",
+    "m000_p02_q2.rq",
+    "m000_p03_q2.rq",
+    "m000_p04_q4.rq",
+    "m000_p05_q5.rq",
+    "m000_p06_q5.rq",
+    "m000_p07_q6.rq",
+    "m000_p08_q5.rq",
+    "m000_p09_q6.rq",
+    "m000_p10_q6.rq",
+    "m000_p11_q7.rq",
+    "m000_p12_q8.rq",
+    "m000_p13_q7.rq",
+    "m000_p14_q6.rq"
+  ],
+  "partial_workload": true,
+  "queries": {
+    "m000_p00_q1.rq": {
+      "template": 1,
+      "sha256": "8239f25ea708717824344eb4c8cf7f868f14e230e5784b944d846a04f0ee2d2a",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "status": "pass",
+      "rows": 10,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "reviewCount",
+            true
+          ],
+          [
+            "productType",
+            false
+          ]
+        ]
+      }
+    },
+    "m000_p01_q3.rq": {
+      "template": 3,
+      "sha256": "ededf742b9927ac2fbb8aafb0d8bcabb437bab0a24f81b8143899f18db9a5a86",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "status": "pass",
+      "rows": 10,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "ratio",
+            true
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      }
+    },
+    "m000_p02_q2.rq": {
+      "template": 2,
+      "sha256": "5b3a5b874992d1f6df77f480a1eb59ff4e5a7698f63160134e84a062aa76c755",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "status": "pass",
+      "rows": 10,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      }
+    },
+    "m000_p03_q2.rq": {
+      "template": 2,
+      "sha256": "85155eb095316fe8ef1fbd1fc518bacdc57af94c9b12f774e3237047490ecf65",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "status": "pass",
+      "rows": 10,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      }
+    },
+    "m000_p04_q4.rq": {
+      "template": 4,
+      "sha256": "3368c3d0602471762911b3be364ca33ff73b962375e95055b1045cbb5a8a5607",
+      "status": "fail",
+      "error": "ValueError: Computed numeric values or multiplicities differ"
+    },
+    "m000_p05_q5.rq": {
+      "template": 5,
+      "sha256": "35a2fc791f57aca1cbf7d84ddcd136a57849c619f73d1d3bfb3912734e6d33b0",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": false,
+        "computed_float_max_ulps": 1,
+        "computed_float_allowed_ulps": 4,
+        "rows": 14
+      },
+      "status": "pass",
+      "rows": 14,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "nrOfReviews",
+            true
+          ],
+          [
+            "country",
+            false
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      }
+    },
+    "m000_p06_q5.rq": {
+      "template": 5,
+      "sha256": "2fe6d78319b02c90acf9aae4093315db8da62f3db0d5f13bf37e6de40311a596",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": false,
+        "computed_float_max_ulps": 3,
+        "computed_float_allowed_ulps": 4,
+        "rows": 25
+      },
+      "status": "pass",
+      "rows": 25,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "nrOfReviews",
+            true
+          ],
+          [
+            "country",
+            false
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      }
+    },
+    "m000_p07_q6.rq": {
+      "template": 6,
+      "sha256": "c6e24251db7918bb8283ddbd72feb7a9a4385d1772405f193131a5ae1ca6ccc0",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 14
+      },
+      "status": "pass",
+      "rows": 14,
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      }
+    },
+    "m000_p08_q5.rq": {
+      "template": 5,
+      "sha256": "e60060dc4bd1ec2b53ce5c6ca17317839909ce52ac09eedd13995dcaea21c7ef",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": false,
+        "computed_float_max_ulps": 3,
+        "computed_float_allowed_ulps": 4,
+        "rows": 26
+      },
+      "status": "pass",
+      "rows": 26,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "nrOfReviews",
+            true
+          ],
+          [
+            "country",
+            false
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      }
+    },
+    "m000_p09_q6.rq": {
+      "template": 6,
+      "sha256": "b47a5ffa51c4f3d17c4d560e37d8f3e439a4e9274b14f85f57c52c7309254db3",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 49
+      },
+      "status": "pass",
+      "rows": 49,
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      }
+    },
+    "m000_p10_q6.rq": {
+      "template": 6,
+      "sha256": "fcb1b2012c2d28a985af0436079ea7e8babe3026805dd34627fe73ffe408082f",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 32
+      },
+      "status": "pass",
+      "rows": 32,
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      }
+    },
+    "m000_p11_q7.rq": {
+      "template": 7,
+      "sha256": "bfaf68fec772f499d17bdfb36264152d0ea4d29ff3073bb15dbdd75810b4e00e",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": true,
+          "cutoff_offer_count": 39,
+          "boundary_slots": 196,
+          "boundary_products": 308,
+          "allowed_optional_rows": [
+            0,
+            0
+          ],
+          "rows": 0
+        }
+      },
+      "status": "pass",
+      "rows": 0,
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      }
+    },
+    "m000_p12_q8.rq": {
+      "template": 8,
+      "sha256": "39d4c46556458b004accaaf45fd600f80b9f964f2c81fbe2e3e3129fd13c9288",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "status": "pass",
+      "rows": 10,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "cheapExpensiveRatio",
+            true
+          ],
+          [
+            "vendor",
+            false
+          ]
+        ]
+      }
+    },
+    "m000_p13_q7.rq": {
+      "template": 7,
+      "sha256": "b9d293c8c6d37a0c9692d6a72097f492155573abd31715ee48828ceafa8aa473",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": false,
+          "rows": 2
+        }
+      },
+      "status": "pass",
+      "rows": 2,
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      }
+    },
+    "m000_p14_q6.rq": {
+      "template": 6,
+      "sha256": "666a035dfe924d4af8bd282f9e6690ca5f08e7a65821b9254a0dbec8741547bd",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 53
+      },
+      "status": "pass",
+      "rows": 53,
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      }
+    }
+  },
+  "complete": true,
+  "runtime_package": "/private/tmp/rdf-jianlin-analytical25/main-bi-source/bindings/python/python/rdfdb/__init__.py",
+  "all_requested_pass": false
+}
