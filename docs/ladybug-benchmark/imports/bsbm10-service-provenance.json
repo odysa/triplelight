@@ -1,0 +1,17 @@
+{
+  "git_head": "7b839fc73a6fdb2cde3609ce9c124d581318f550",
+  "source_sha256": {
+    "bench/ladybug/arrow_output.py": "9776272d25b964ca53aa259c333d0b22f9bfb0c629f515493d363f3a1f586ab3",
+    "bench/ladybug/union_queries.py": "a93052b3d22a248055113d2a9598cd521d8c4d33d9cd71657a6b2c0ca8bbdc50",
+    "bench/ladybug/native.py": "035636c84271433e1edca5f0d4b50e4a2f1224a7cfd78034a1beee7daa85eaf8",
+    "bench/ladybug/tuned.py": "d7294efb1d33ab16a90176978722149f015d8f280a47383d39a942d137ffc659",
+    "bench/ladybug/compare.py": "68883a5ed9c04742fbc758bfd1fd3ed8b47171b031ded65964f5c6230dc93a76",
+    "bench/ladybug/test_native.py": "61916554d4791ab35650eea99b4176a64074ffcd219eb0bebefef45113815804"
+  },
+  "rdfdb_binary_sha256": "48d3f913a12ac4e9c922eb4aca446fdf957f1715d13a25bbada2f69f4a288fb7",
+  "compiled_sha256": "5174ecca80bfb5ced158ad9b0574e2123579a49ee6b06b4a55a46c963bef68b2",
+  "output_mode": "arrow",
+  "production_source": "cdba2e6",
+  "ladybug": "0.22.3",
+  "pyarrow": "26.0.1"
+}
