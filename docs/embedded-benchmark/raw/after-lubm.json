@@ -1,0 +1,25 @@
+{
+  "checks": {
+    "<agent-workspace>/rdfdb/bench/tools/lubm100.nt": {
+      "sha256": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d",
+      "size": 2377133547
+    },
+    "<agent-workspace>/rdfdb/bench/tools/bsbm10.nt": {
+      "sha256": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+      "size": 2621082809
+    },
+    "/private/tmp/rdf-jianlin-embedded22/python/rdfdb/_rdfdb.abi3.so": {
+      "sha256": "d07afded246f314e5302be0b141ca90189c7c6c5df156281fae06b3c3d198477",
+      "size": 4599168
+    },
+    "/private/tmp/rdf-jianlin-embedded22/python/rdfdb/__init__.py": {
+      "sha256": "de5456e7a64b440c12af4455c17d983b32926dce00982c496f2a611c913ea37c",
+      "size": 5170
+    }
+  },
+  "loadavg": [
+    6.77880859375,
+    6.2890625,
+    6.1904296875
+  ]
+}
