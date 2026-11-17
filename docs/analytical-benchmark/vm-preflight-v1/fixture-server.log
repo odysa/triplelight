@@ -1,0 +1,62 @@
+2026-11-17 23:43:37.590 - WARN: The Linux kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty may have a bug that causes random stalls, crashes, and corrupt data on arm64, unless it contains the fix https://github.com/torvalds/linux/commit/478a1c3abebfc717db0d1281a9cdd7befafee542. As a workaround, QLever doesn't return freed memory to the operating system. On a kernel with the fix, you can disable the workaround by setting the environment variable QLEVER_DISABLE_KERNEL_BUG_WORKAROUND
+2026-11-17 23:43:37.591 - INFO: [1mQLever server 18c097c, compiled on Sat Nov 14 19:07:21 UTC 2026 using git hash 18c097c[22m
+2026-11-17 23:43:37.591 - INFO: Cleanup of previous index directories after each rebuild enabled (--rebuild-keep-previous-index-dirs original-and-most-recent)
+2026-11-17 23:43:37.592 - INFO: The git hash used to build this index was "18c097c"
+2026-11-17 23:43:37.592 - INFO: Reading vocabulary from file fixture.vocabulary.words ...
+2026-11-17 23:43:37.593 - WARN: io_uring is compiled in but unavailable at runtime (io_uring_queue_init failed in IoUringManager. In file "/qlever/src/util/IoUringManager.cpp" at line 69); falling back to synchronous pread for vocabulary lookups
+2026-11-17 23:43:37.593 - INFO: Done, number of words: 57
+2026-11-17 23:43:37.593 - INFO: Number of words in internal vocabulary (these are also part of the external vocabulary): 5
+2026-11-17 23:43:37.593 - INFO: Registered PSO permutation: #relations = 1, #blocks = 1, #triples = 29
+2026-11-17 23:43:37.593 - INFO: Registered PSO permutation: #relations = 12, #blocks = 1, #triples = 83
+2026-11-17 23:43:37.593 - INFO: Registered POS permutation: #relations = 1, #blocks = 1, #triples = 29
+2026-11-17 23:43:37.593 - INFO: Registered POS permutation: #relations = 12, #blocks = 1, #triples = 83
+2026-11-17 23:43:37.593 - INFO: Registered OPS permutation: #relations = 35, #blocks = 1, #triples = 83
+2026-11-17 23:43:37.594 - INFO: Registered OSP permutation: #relations = 35, #blocks = 1, #triples = 83
+2026-11-17 23:43:37.594 - INFO: Registered SPO permutation: #relations = 29, #blocks = 1, #triples = 83
+2026-11-17 23:43:37.594 - INFO: Registered SOP permutation: #relations = 29, #blocks = 1, #triples = 83
+2026-11-17 23:43:37.594 - INFO: Reading patterns from file fixture.index.patterns ...
+2026-11-17 23:43:37.594 - INFO: Initializing server ...
+2026-11-17 23:43:37.594 - INFO: Access token for restricted API calls is ""
+2026-11-17 23:43:37.594 - INFO: The server is ready, listening for requests on port 31426 ...
+2026-11-17 23:43:52.280 - INFO: 
+2026-11-17 23:43:52.280 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-17 23:43:52.283 - INFO: Processing command "get-settings": get server settings
+2026-11-17 23:43:52.285 - INFO: 
+2026-11-17 23:43:52.285 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-17 23:43:52.285 - INFO: Processing command "cache-stats": get cache statistics
+2026-11-17 23:43:52.286 - INFO: 
+2026-11-17 23:43:52.286 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-17 23:43:52.286 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-17 23:44:07.818 - INFO: 
+2026-11-17 23:44:07.818 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-17 23:44:07.820 - INFO: Processing the following SPARQL query:
+SELECT ?p (COUNT(*) AS ?count) WHERE { ?s ?p ?o } GROUP BY ?p
+2026-11-17 23:44:07.820 - INFO: Requested media types of the result are: "application/qlever-results+json"
+2026-11-17 23:44:07.821 - INFO: Query planning done in 2 ms
+2026-11-17 23:44:07.821 - INFO: Result has unknown size (not computed yet)
+2026-11-17 23:44:07.822 - INFO: Done processing query and sending result, total time was 3 ms
+2026-11-17 23:44:07.824 - INFO: 
+2026-11-17 23:44:07.824 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-17 23:44:07.824 - INFO: Processing command "cache-stats": get cache statistics
+2026-11-17 23:44:07.825 - INFO: 
+2026-11-17 23:44:07.825 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-17 23:44:07.825 - INFO: Processing the following SPARQL query:
+SELECT ?p (COUNT(*) AS ?count) WHERE { ?s ?p ?o } GROUP BY ?p
+2026-11-17 23:44:07.825 - INFO: Requested media types of the result are: "application/qlever-results+json"
+2026-11-17 23:44:07.825 - INFO: Query planning done in 0 ms
+2026-11-17 23:44:07.825 - INFO: Result has size 12 x 2
+2026-11-17 23:44:07.826 - INFO: Done processing query and sending result, total time was 0 ms
+2026-11-17 23:44:07.827 - INFO: 
+2026-11-17 23:44:07.827 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-17 23:44:07.827 - INFO: Processing command "cache-stats": get cache statistics
+2026-11-17 23:44:07.828 - INFO: 
+2026-11-17 23:44:07.828 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-17 23:44:07.828 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-17 23:44:22.376 - INFO: 
+2026-11-17 23:44:22.377 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-17 23:44:22.377 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count) WHERE { ?s ?p ?o }
+2026-11-17 23:44:22.377 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-17 23:44:22.377 - INFO: Query planning done in 0 ms
+2026-11-17 23:44:22.377 - INFO: Result has size 1 x 1
+2026-11-17 23:44:22.378 - INFO: Done processing query and sending result, total time was 0 ms
