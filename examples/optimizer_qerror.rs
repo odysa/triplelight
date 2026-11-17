@@ -82,21 +82,39 @@ fn main() -> Result<(), Box<dyn Error>> {
         .into());
     }
     let start = Instant::now();
-    let snapshot: Box<dyn Snapshot> = if Path::new(&args[1]).is_dir() {
-        Box::new(DiskSnapshot::open(&args[1])?)
+    if Path::new(&args[1]).is_dir() {
+        return analyze(
+            &DiskSnapshot::open(&args[1])?,
+            &args,
+            verify,
+            verify_wcoj,
+            bench,
+            trace,
+            start,
+        );
+    }
+    let input = BufReader::new(fs::File::open(&args[1])?);
+    let snapshot = if args[1].ends_with(".snapshot") {
+        MemorySnapshot::read_snapshot(input)?
+    } else if args[1].ends_with(".ttl") {
+        MemorySnapshot::from_turtle(input)?
     } else {
-        let input = BufReader::new(fs::File::open(&args[1])?);
-        Box::new(if args[1].ends_with(".snapshot") {
-            MemorySnapshot::read_snapshot(input)?
-        } else if args[1].ends_with(".ttl") {
-            MemorySnapshot::from_turtle(input)?
-        } else {
-            MemorySnapshot::from_ntriples(input)?
-        })
+        MemorySnapshot::from_ntriples(input)?
     };
+    analyze(&snapshot, &args, verify, verify_wcoj, bench, trace, start)
+}
+fn analyze<S: Snapshot>(
+    snapshot: &S,
+    args: &[String],
+    verify: bool,
+    verify_wcoj: bool,
+    bench: bool,
+    trace: bool,
+    start: Instant,
+) -> Result<(), Box<dyn Error>> {
     eprintln!("load_s={:.6}", start.elapsed().as_secs_f64());
     let t = Instant::now();
-    let stats = Stats::from_snapshot(&*snapshot)?;
+    let stats = Stats::from_snapshot(snapshot)?;
     eprintln!(
         "triples={} subjects={} characteristic_sets={} stats_s={:.6}",
         stats.triple_count,
@@ -138,7 +156,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let name = file.file_stem().unwrap().to_string_lossy();
         let actual = reference[name.as_ref()];
         let query = fs::read_to_string(&file)?;
-        let encoded = encode(&query, &*snapshot)?;
+        let encoded = encode(&query, snapshot)?;
         let (estimate, raw, search, kind) = if let Some(patterns) = encoded {
             if bench {
                 let mut samples = Vec::new();
@@ -146,7 +164,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     let start = Instant::now();
                     let mut cached = std::hint::black_box(&stats).clone();
                     let cloned = start.elapsed().as_nanos();
-                    cached.cache_pattern_counts(&patterns, &*snapshot)?;
+                    cached.cache_pattern_counts(&patterns, snapshot)?;
                     let prepared = start.elapsed().as_nanos();
                     let plan = plan_bgp_with_options(&patterns, &cached, PlannerOptions::default());
                     let planned = start.elapsed().as_nanos();
@@ -171,7 +189,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
             let raw = stats.estimate_bgp(&patterns);
             let mut cached = stats.clone();
-            cached.cache_pattern_counts(&patterns, &*snapshot)?;
+            cached.cache_pattern_counts(&patterns, snapshot)?;
             let decision = plan_bgp_with_options(&patterns, &cached, PlannerOptions::default());
             if trace {
                 use rdfdb::opt::planner::{
@@ -217,7 +235,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             };
             for (mode, wcoj) in modes {
                 let QueryResult::Solutions { rows, .. } = query_with(
-                    &*snapshot,
+                    snapshot,
                     &query,
                     &Options {
                         stats: mode,

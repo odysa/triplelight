@@ -16,6 +16,7 @@ pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
     pub snap: &'a S,
     /// Row width (number of query variables).
     pub w: usize,
+    pub profile_plan: bool,
 }
 
 impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
@@ -29,7 +30,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// their variables are bound).
     pub fn eval_greedy(&self, pats: &[[Slot; 3]], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>)) -> Vec<TermId> {
         let w = self.w;
-        let trace = std::env::var_os("RDFDB_PROFILE_PLAN").is_some();
+        let trace = self.profile_plan;
         if trace { eprintln!("bgp_actual mode=index-greedy width={w} input_rows={} patterns={pats:?}", rows.len()/w.max(1)); }
         if rows.is_empty() { return rows }
         let mut remaining: Vec<usize> = (0..pats.len()).collect();
@@ -40,9 +41,9 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             let (k, _) = remaining.iter().enumerate().map(|(k, &pi)| (k, self.estimate(&pats[pi], &bound, &sample)))
                 .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap()).unwrap();
             let pi = remaining.remove(k);
-            let before = rows.len()/w.max(1);
+            let before = if trace { rows.len()/w.max(1) } else { 0 };
             rows = self.extend(&pats[pi], &rows);
-            let extended = rows.len()/w.max(1);
+            let extended = if trace { rows.len()/w.max(1) } else { 0 };
             for s in &pats[pi] { if let Slot::Var(v) = s { bound.insert(*v); } }
             post(&mut rows, &bound);
             if trace { eprintln!("bgp_actual_step mode=index-greedy pattern={pi} before={before} extended={extended} filtered={}", rows.len()/w.max(1)); }
@@ -52,14 +53,14 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
 
     pub fn eval_order(&self, pats: &[[Slot; 3]], order: &[usize], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>)) -> Vec<TermId> {
         let w = self.w;
-        let trace = std::env::var_os("RDFDB_PROFILE_PLAN").is_some();
+        let trace = self.profile_plan;
         if trace { eprintln!("bgp_actual mode=index-planned width={w} input_rows={} order={order:?} patterns={pats:?}", rows.len()/w.max(1)); }
         let mut bound: HashSet<usize> = if rows.is_empty() { HashSet::new() } else { (0..w).filter(|&i| rows.chunks(w).all(|r| r[i] != UNBOUND)).collect() };
         for &pi in order {
             if rows.is_empty() { break }
-            let before = rows.len()/w.max(1);
+            let before = if trace { rows.len()/w.max(1) } else { 0 };
             rows = self.extend(&pats[pi], &rows);
-            let extended = rows.len()/w.max(1);
+            let extended = if trace { rows.len()/w.max(1) } else { 0 };
             for s in &pats[pi] { if let Slot::Var(v) = s { bound.insert(*v); } }
             post(&mut rows, &bound);
             if trace { eprintln!("bgp_actual_step mode=index-planned pattern={pi} before={before} extended={extended} filtered={}", rows.len()/w.max(1)); }
@@ -161,7 +162,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             }).copied().unwrap();
             order.push(cand);
         }
-        if std::env::var_os("RDFDB_PROFILE_PLAN").is_some() { eprintln!("bgp_actual mode=leapfrog order={order:?} pattern_counts={counts:?} patterns={pats:?}"); }
+        if self.profile_plan { eprintln!("bgp_actual mode=leapfrog order={order:?} pattern_counts={counts:?} patterns={pats:?}"); }
         let rank: HashMap<usize, usize> = order.iter().enumerate().map(|(i, &v)| (v, i)).collect();
         let plans: Vec<(Perm, [Slot; 3])> = pats.iter().map(|p| {
             let mut pos = [0usize, 1, 2];

@@ -179,11 +179,13 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     current: RefCell<Option<Row>>,
     stats: Option<(&'a Stats, &'a dyn Snapshot)>,
     wcoj: bool,
+    /// Read once for this query; evaluation never reads the environment in row loops.
+    profile_plan: bool,
 }
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true }
+        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, profile_plan: std::env::var_os("RDFDB_PROFILE_PLAN").is_some() }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -440,7 +442,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             });
             return if all { rows } else { Vec::new() };
         }
-        let bgp = bgp::Bgp { snap: self.snap, w };
+        let bgp = bgp::Bgp { snap: self.snap, w, profile_plan: self.profile_plan };
         let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
         let flat: Vec<TermId> = rows.concat();
         let out = if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(bgp::no_repeated_var) && bgp::cyclic(&pats) {
@@ -493,7 +495,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let (stats, dynsnap) = self.stats?;
         if pats.len() < 2 || rows.len() != 1 || rows[0].iter().any(|&x| x != UNBOUND) { return None }
         // Explicit diagnostic only; normal requests do not acquire clocks or emit output.
-        let trace = std::env::var_os("RDFDB_PROFILE_PLAN").is_some();
+        let trace = self.profile_plan;
         let clock = || trace.then(std::time::Instant::now);
         let elapsed = |start: Option<std::time::Instant>| start.map_or(0, |s| s.elapsed().as_nanos());
         let total_clock = clock();

@@ -11,23 +11,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("usage: optimizer_hotpath DATA_OR_DISK_DIR QUERY.rq...".into());
     }
     let load = Instant::now();
-    let snapshot: Box<dyn Snapshot> = if Path::new(&args[1]).is_dir() {
-        Box::new(DiskSnapshot::open(&args[1])?)
-    } else {
-        Box::new(MemorySnapshot::from_ntriples(BufReader::new(File::open(
-            &args[1],
-        )?))?)
-    };
+    if Path::new(&args[1]).is_dir() {
+        return profile(&DiskSnapshot::open(&args[1])?, &args[2..], load);
+    }
+    let snapshot = MemorySnapshot::from_ntriples(BufReader::new(File::open(&args[1])?))?;
+    profile(&snapshot, &args[2..], load)
+}
+fn profile<S: Snapshot>(
+    snapshot: &S,
+    files: &[String],
+    load: Instant,
+) -> Result<(), Box<dyn std::error::Error>> {
     eprintln!("load_ns={}", load.elapsed().as_nanos());
     let build = Instant::now();
-    let stats = Stats::from_snapshot(&*snapshot)?;
+    let stats = Stats::from_snapshot(snapshot)?;
     eprintln!(
         "synopsis triples={} characteristic_sets={} stats_build_ns={}",
         stats.triple_count,
         stats.characteristic_sets.len(),
         build.elapsed().as_nanos()
     );
-    for file in &args[2..] {
+    for file in files {
         let text = std::fs::read_to_string(file)?;
         let mut reference = None;
         for sample in 0..5 {
@@ -41,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 eprintln!("profile_begin query={file} stats={mode} sample={sample}");
                 let start = Instant::now();
                 let result = query_with(
-                    &*snapshot,
+                    snapshot,
                     &text,
                     &Options {
                         stats: mode.then_some(&stats),
