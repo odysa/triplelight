@@ -465,6 +465,19 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             let mut row: Row = vec![UNBOUND; w];
             let fast = expr::NumFilter::compile(e, &self.vars);
             let mut memo: HashMap<TermId, Option<expr::Num>> = HashMap::new();
+            if let Some(f) = &fast {
+                // Decode every distinct stored ID the filter reads with one batched dictionary call (one cache access
+                // per dictionary block on disk instead of one random lookup per ID). Scratch IDs resolve lazily below.
+                let mut cols = Vec::new();
+                f.columns(&mut cols);
+                let mut ids: Vec<TermId> = rows.chunks_exact(w).flat_map(|r| cols.iter().map(move |&c| r[c]))
+                    .filter(|&id| id != UNBOUND && id.0 >> 60 != 0xe).collect();
+                ids.sort_unstable();
+                ids.dedup();
+                let mut nums: Vec<Option<expr::Num>> = vec![None; ids.len()];
+                self.snap.with_terms(&ids, &mut |i, t| nums[i] = expr::term_num(&t.into_owned())).unwrap_or_else(|e| storage_failure(e));
+                memo.extend(ids.into_iter().zip(nums));
+            }
             let mut val = |id: TermId| *memo.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
             for r in rows.chunks_exact(w) {
                 let keep = match fast.as_ref().map(|f| f.eval(r, &mut val)) {

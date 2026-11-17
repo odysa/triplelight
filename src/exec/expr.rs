@@ -275,6 +275,9 @@ pub(super) enum NumExpr { Var(usize), Const(Num), Op(char, Box<NumExpr>, Box<Num
 type Fast<T> = Result<T, ()>;
 
 impl NumExpr {
+    fn columns(&self, out: &mut Vec<usize>) {
+        match self { NumExpr::Var(i) => out.push(*i), NumExpr::Const(_) => {}, NumExpr::Op(_, a, b) => { a.columns(out); b.columns(out) } }
+    }
     fn compile(e: &Expression, vars: &std::collections::HashMap<String, usize>) -> Option<NumExpr> {
         Some(match e {
             Expression::Variable(v) => NumExpr::Var(*vars.get(v.as_str())?),
@@ -306,6 +309,16 @@ impl NumExpr {
 }
 
 impl NumFilter {
+    /// Row columns (variable slots) the filter reads.
+    pub(super) fn columns(&self, out: &mut Vec<usize>) {
+        match self {
+            NumFilter::Cmp(_, _, a, b) => { a.columns(out); b.columns(out) }
+            NumFilter::And(a, b) | NumFilter::Or(a, b) => { a.columns(out); b.columns(out) }
+            NumFilter::Not(a) => a.columns(out),
+        }
+        out.sort_unstable();
+        out.dedup();
+    }
     pub(super) fn compile(e: &Expression, vars: &std::collections::HashMap<String, usize>) -> Option<NumFilter> {
         let cmp = |a: &Expression, b: &Expression, o: Ordering, eq: bool| Some(NumFilter::Cmp(o, eq, NumExpr::compile(a, vars)?, NumExpr::compile(b, vars)?));
         match e {
