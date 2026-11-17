@@ -45,9 +45,11 @@ class Ladybug:
 
     def materialize(self, result, rec):
         table = result.get_as_arrow()
-        if table.column_names != rec["vars"]:
+        width = len(rec["vars"])
+        if (table.column_names[:width] != rec["vars"]
+                or any(not re.fullmatch(r"sort_\d+", n) for n in table.column_names[width:])):
             raise ValueError("Native Arrow columns differ from compiled projection")
-        return [column.to_pylist() for column in table.columns]
+        return [table.column(i).to_pylist() for i in range(width)]
 
     def decode(self, columns, rec):
         rows = []
