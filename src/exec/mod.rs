@@ -386,8 +386,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 Some(Literal::from(n as i64).into())
             }
             AggregateExpression::FunctionCall { name, expr, distinct } => {
-                let mut vals: Vec<Term> = rows.iter().filter_map(|r| self.value(expr, r)).collect();
+                // SPARQL 1.1 §18.5: the expression is evaluated per solution; an error (including an unbound
+                // variable) makes SUM/AVG/MIN/MAX/GROUP_CONCAT an error (unbound result). COUNT counts the non-error
+                // values; SAMPLE returns a non-error value. (Matches Jena.)
+                let evaluated: Vec<Option<Term>> = rows.iter().map(|r| self.value(expr, r)).collect();
+                let has_error = evaluated.iter().any(Option::is_none);
+                let mut vals: Vec<Term> = evaluated.into_iter().flatten().collect();
                 if *distinct { let mut s = HashSet::new(); vals.retain(|v| s.insert(v.clone())); }
+                let strict = !matches!(name, AggregateFunction::Count | AggregateFunction::Sample);
+                if strict && has_error { return None }
                 match name {
                     AggregateFunction::Count => Some(Literal::from(vals.len() as i64).into()),
                     AggregateFunction::Sum => vals.iter().try_fold(Term::from(Literal::from(0i64)), |a, b| expr::arith('+', &a, b)),
