@@ -73,6 +73,7 @@ class Rdfdb:
     def __init__(self, args, compiled):
         import rdfdb
         self.api = rdfdb
+        self.mode = args.rdfdb_result
         start = time.perf_counter_ns()
         # Require a populated, dedicated durable store. Never import while timing open.
         if not (args.database / "CURRENT").is_file():
@@ -95,9 +96,12 @@ class Rdfdb:
         self.version = importlib.metadata.version("rdfdb")
 
     def execute(self, name, source):
-        return self.db.query(source)
+        return self.db.query_json(source) if self.mode == "json" else self.db.query(source)
 
     def materialize(self, result, rec):
+        if self.mode == "json":
+            result = json.loads(result)
+            return result["head"]["vars"], result["results"]["bindings"]
         if result.kind != "select":
             raise ValueError("This cohort requires SELECT solutions")
         # The public API already built owned Python rows during execute_return.
@@ -105,6 +109,8 @@ class Rdfdb:
 
     def decode(self, native, rec):
         variables, native_rows = native
+        if self.mode == "json":
+            return variables, [tuple(json_term(row.get(v)) for v in variables) for row in native_rows]
         return variables, [tuple(python_term(t, self.api) for t in row) for row in native_rows]
 
     def close(self):
@@ -137,6 +143,7 @@ def run(args):
             raise ValueError("Ordered query requires explicit projected-key order spec: " + name)
     out = {"schema": "embedded-select-v1", "system": args.system,
            "database": str(args.database.resolve()), "binding_source": args.binding_source,
+           "rdfdb_result": args.rdfdb_result if args.system == "rdfdb" else None,
            "python": sys.version, "platform": platform.platform(), "threads": args.threads,
            "requested_cache_mb": args.cache_mb, "runs": args.runs,
            "query_boundary": "public Python execute + full native materialization + semantic RDF decoding",
@@ -211,6 +218,7 @@ if __name__ == "__main__":
     p.add_argument("--reference", type=Path, help="query name -> contract.signature output from independently validated results")
     p.add_argument("--order-spec", type=Path)
     p.add_argument("--binding-source", required=True, help="Exact binding commit / wheel source, not inferred from version")
+    p.add_argument("--rdfdb-result", choices=["objects", "json"], default="objects")
     p.add_argument("--lock-owner", required=True, help="Exact current owner string of your acquired lock")
     p.add_argument("--runs", type=int, default=5)
     p.add_argument("--threads", type=int, default=4)
