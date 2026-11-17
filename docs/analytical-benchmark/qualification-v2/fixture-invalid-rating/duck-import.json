@@ -1,0 +1,18 @@
+{
+  "schema": "plain-triples-arrow-v1",
+  "duckdb": "2.0.0",
+  "pyarrow": "26.0.1",
+  "source": "/private/tmp/rdf-jianlin-analytical25/fixture-invalid-rating/data.nt",
+  "database": "/private/tmp/rdf-jianlin-analytical25/fixture-invalid-rating/duck.db",
+  "threads": 1,
+  "memory_limit": "256MB",
+  "spill": "/private/tmp/rdf-jianlin-analytical25/fixture-invalid-rating/spill",
+  "max_spill": "256MB",
+  "batch_rows": 65536,
+  "parsed_triples": 85,
+  "complete": true,
+  "unique_triples": 84,
+  "source_sha256": "3bf1e3045a7cc8045074ae7658610dac1a74343fd6e951001f24e8763f7e8a18",
+  "seconds": 0.011066167149692774,
+  "database_bytes": 536576
+}
