@@ -1,0 +1,124 @@
+{
+  "mapping": "rdf-terms-per-predicate-v1",
+  "input": "<agent-workspace>/rdfdb/bench/tools/lubm100.nt",
+  "input_sha256": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d",
+  "counts": {
+    "source_lines": 13879970,
+    "unique_triples": 13409395,
+    "resource_nodes": 2181789,
+    "literal_nodes": 1121935
+  },
+  "predicates": {
+    "http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "P0",
+    "http://www.w3.org/2002/07/owl#imports": "P1",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#name": "P2",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#subOrganizationOf": "P3",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#teacherOf": "P4",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#undergraduateDegreeFrom": "P5",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#mastersDegreeFrom": "P6",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#doctoralDegreeFrom": "P7",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#worksFor": "P8",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#emailAddress": "P9",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#telephone": "P10",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#researchInterest": "P11",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#headOf": "P12",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#memberOf": "P13",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse": "P14",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#advisor": "P15",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#publicationAuthor": "P16",
+    "http://swat.cse.lehigh.edu/onto/univ-bench.owl#teachingAssistantOf": "P17"
+  },
+  "relationships": [
+    {
+      "table": "P5R",
+      "target": "Resource",
+      "rows": 324864
+    },
+    {
+      "table": "P11L",
+      "target": "Literal",
+      "rows": 60268
+    },
+    {
+      "table": "P13R",
+      "target": "Resource",
+      "rows": 1048532
+    },
+    {
+      "table": "P8R",
+      "target": "Resource",
+      "rows": 72302
+    },
+    {
+      "table": "P12R",
+      "target": "Resource",
+      "rows": 2007
+    },
+    {
+      "table": "P10L",
+      "target": "Literal",
+      "rows": 1120834
+    },
+    {
+      "table": "P4R",
+      "target": "Resource",
+      "rows": 217148
+    },
+    {
+      "table": "P3R",
+      "target": "Resource",
+      "rows": 32043
+    },
+    {
+      "table": "P15R",
+      "target": "Resource",
+      "rows": 411501
+    },
+    {
+      "table": "P14R",
+      "target": "Resource",
+      "rows": 2894749
+    },
+    {
+      "table": "P17R",
+      "target": "Resource",
+      "rows": 55994
+    },
+    {
+      "table": "P1R",
+      "target": "Resource",
+      "rows": 2007
+    },
+    {
+      "table": "P0R",
+      "target": "Resource",
+      "rows": 2310694
+    },
+    {
+      "table": "P16R",
+      "target": "Resource",
+      "rows": 1442184
+    },
+    {
+      "table": "P2L",
+      "target": "Literal",
+      "rows": 2148830
+    },
+    {
+      "table": "P7R",
+      "target": "Resource",
+      "rows": 72302
+    },
+    {
+      "table": "P9L",
+      "target": "Literal",
+      "rows": 1120834
+    },
+    {
+      "table": "P6R",
+      "target": "Resource",
+      "rows": 72302
+    }
+  ],
+  "prepare_seconds": 285.5391706249211
+}
