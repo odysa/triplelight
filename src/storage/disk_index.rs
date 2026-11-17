@@ -210,7 +210,10 @@ struct CacheShard {
     clock: VecDeque<u64>,
 }
 const MEMO_SLOTS: usize = 8;
-type MemoEntry = Option<(u64, u64, Arc<Vec<[TermId; 3]>>)>;
+/// (index instance, cache epoch, block id, rows). Up to `MEMO_SLOTS` decoded blocks per long-lived thread stay
+/// pinned outside the cache budget (about 6 KB each), also after the index is dropped, until the slot is reused.
+/// Memo hits are not counted by the shared-cache trace counters.
+type MemoEntry = Option<(u64, u64, u64, Arc<Vec<[TermId; 3]>>)>;
 thread_local! {
     static BLOCK_MEMO: std::cell::RefCell<[MemoEntry; MEMO_SLOTS]> = const { std::cell::RefCell::new([const { None }; MEMO_SLOTS]) };
 }
@@ -218,6 +221,8 @@ thread_local! {
 static NEXT_INSTANCE: AtomicU64 = AtomicU64::new(1);
 pub struct DiskIndex {
     instance: u64,
+    /// Bumped by `clear_cache`; memo entries from an older epoch are ignored, so verification re-reads from disk.
+    epoch: AtomicU64,
     file: File,
     rows: u64,
     identity: [u8; 32],
@@ -318,6 +323,7 @@ impl DiskIndex {
         }
         Ok(Self {
             instance: NEXT_INSTANCE.fetch_add(1, Ordering::Relaxed),
+            epoch: AtomicU64::new(0),
             file,
             rows,
             trace_slot,
@@ -343,6 +349,8 @@ impl DiskIndex {
         self.identity
     }
     pub fn clear_cache(&self) -> io::Result<()> {
+        // Invalidate every thread's memo entries for this index too (they are keyed by epoch).
+        self.epoch.fetch_add(1, Ordering::AcqRel);
         for shard in &self.cache {
             let mut cache = shard
                 .lock()
@@ -363,14 +371,15 @@ impl DiskIndex {
         // blocks back to back from every rayon worker, and taking the shard mutex each time serialized them
         // (mutex waits dominated a disk LUBM-1000 Q2 profile). Blocks are immutable for an index instance, so a
         // memo entry keyed by (instance, block) never goes stale.
-        if let Some(rows) = BLOCK_MEMO.with(|m| m.borrow().iter().flatten().find(|e| e.0 == self.instance && e.1 == id).map(|e| Arc::clone(&e.2))) {
+        let epoch = self.epoch.load(Ordering::Acquire);
+        if let Some(rows) = BLOCK_MEMO.with(|m| m.borrow().iter().flatten().find(|e| e.0 == self.instance && e.1 == epoch && e.2 == id).map(|e| Arc::clone(&e.3))) {
             return Ok(rows);
         }
         let rows = self.block_shared(id)?;
         BLOCK_MEMO.with(|m| {
             let mut m = m.borrow_mut();
             let slot = m.iter().position(Option::is_none).unwrap_or_else(|| { m.rotate_left(1); MEMO_SLOTS - 1 });
-            m[slot] = Some((self.instance, id, Arc::clone(&rows)));
+            m[slot] = Some((self.instance, epoch, id, Arc::clone(&rows)));
         });
         Ok(rows)
     }
@@ -582,6 +591,25 @@ mod tests {
         let cut = index.blocks[2].offset as usize + index.blocks[2].length / 2;
         std::fs::write(&path, &bytes[..cut]).unwrap();
         assert!(index.get(699).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn clear_cache_invalidates_thread_memo() {
+        // Warm a block on this thread, corrupt it on disk, clear caches: the next read must hit disk and fail.
+        let path = std::env::temp_dir().join(format!("rdf-memo-{}", std::process::id()));
+        let rows: Vec<_> = (1..=700).map(|i| [TermId(i), TermId(1), TermId(2)]).collect();
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::open(&path).unwrap();
+        assert!(index.get(300).is_ok());
+        let mut bad = bytes.clone();
+        let pos = index.blocks[1].offset as usize + 3;
+        bad[pos] ^= 0xff;
+        std::fs::write(&path, &bad).unwrap();
+        assert!(index.get(300).is_ok(), "memoized/cached read before invalidation");
+        index.clear_cache().unwrap();
+        assert!(index.get(300).is_err(), "corruption must be detected after clear_cache");
         std::fs::remove_file(path).unwrap();
     }
     #[test]
