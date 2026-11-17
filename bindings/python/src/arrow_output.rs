@@ -15,8 +15,8 @@ const BATCH_ROWS: usize = 8192;
 /// Null struct = unbound; literal lexical strings and datatype/language stay exact.
 fn term_fields() -> Fields {
     vec![
-        Field::new("kind", DataType::Utf8, false),
-        Field::new("value", DataType::LargeUtf8, false),
+        Field::new("kind", DataType::Utf8, true),
+        Field::new("value", DataType::LargeUtf8, true),
         Field::new("datatype", DataType::LargeUtf8, true),
         Field::new("language", DataType::LargeUtf8, true),
     ].into()

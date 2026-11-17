@@ -73,3 +73,16 @@ def test_arrow_multi_batch(tmp_path):
     assert [batch.num_rows for batch in batches] == [8192, 9]
     assert sum(batch.num_rows for batch in batches) == 8201
     db.close()
+
+
+def test_pandas_and_polars_preserve_struct_values(tmp_path):
+    pd = pytest.importorskip("pandas")
+    pl = pytest.importorskip("polars")
+    db = rdfdb.Database(tmp_path / "db")
+    db.update('INSERT DATA { <urn:s> <urn:p> "" . <urn:t> <urn:p> "bonjour"@fr . }')
+    table = db.query_arrow('SELECT ?s ?o ?missing WHERE { ?s <urn:p> ?o OPTIONAL { ?s <urn:no> ?missing } }').read_all()
+    pandas_frame = table.to_pandas(types_mapper=pd.ArrowDtype)
+    polars_frame = pl.from_arrow(table, rechunk=False)
+    assert pandas_frame.to_dict("records") == table.to_pylist()
+    assert polars_frame.to_arrow().to_pylist() == table.to_pylist()
+    db.close()
