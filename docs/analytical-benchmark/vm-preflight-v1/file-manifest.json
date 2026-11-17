@@ -1,0 +1,162 @@
+[
+  {
+    "file": "README.md",
+    "bytes": 1698,
+    "sha256": "6fa4b0181a2cd6c345756f041f79ab55bab544492a0d60092d53e010535ee906"
+  },
+  {
+    "file": "adfreiburg-image.json",
+    "bytes": 317,
+    "sha256": "468dfa97094b96a7573da78ea1455c43bdb2e4b2a75dbf39a2a0918febd51455"
+  },
+  {
+    "file": "bypass-cache.json",
+    "bytes": 163,
+    "sha256": "0313b6431ece68af2b0a88a2110aa54448b92668621bb60be73344361850beb1"
+  },
+  {
+    "file": "bypass-container-id",
+    "bytes": 64,
+    "sha256": "5607605d3a6a9de5ec288b3bd46daeaa1e10ac1fee4c9e1d4720120a05614ff6"
+  },
+  {
+    "file": "bypass-first.json",
+    "bytes": 2631,
+    "sha256": "322637f259ccf31a6b9938de6141e7336364832a2da3ba6587df04fb1328ece6"
+  },
+  {
+    "file": "bypass-second.json",
+    "bytes": 2631,
+    "sha256": "90a89f23b6f82687f8fef0eef35b04fc9ebd2e2069a2e348c334a1b3a7eac5e4"
+  },
+  {
+    "file": "bypass-server-command.json",
+    "bytes": 677,
+    "sha256": "4a4441510b64e7179aaa3f625788006a60e2ec34d2b3b0f7e6fe4ae36b85f1a6"
+  },
+  {
+    "file": "bypass-settings.json",
+    "bytes": 2213,
+    "sha256": "b04d76e84156862028463b813f71047ebd86dc89005ee88ed6498bf5e0afba94"
+  },
+  {
+    "file": "cache-after-first.json",
+    "bytes": 165,
+    "sha256": "a42bbac9381132c15fe5e65e9883a9943d25cc54acfd531cedce0cca8c7c1185"
+  },
+  {
+    "file": "cache-after-second.json",
+    "bytes": 165,
+    "sha256": "a42bbac9381132c15fe5e65e9883a9943d25cc54acfd531cedce0cca8c7c1185"
+  },
+  {
+    "file": "clear-after-second.json",
+    "bytes": 163,
+    "sha256": "0313b6431ece68af2b0a88a2110aa54448b92668621bb60be73344361850beb1"
+  },
+  {
+    "file": "count-sparql-json.json",
+    "bytes": 207,
+    "sha256": "311da69bb8e58400c36c084aaeeedc52f902c205cea67ed48dd9c04ef6ebbdf8"
+  },
+  {
+    "file": "fixture-build-command.json",
+    "bytes": 602,
+    "sha256": "c19fd516f7e842178b4c17456f7ac0dbb9d109405fcfd658499050a1e35d0ace"
+  },
+  {
+    "file": "fixture-build.log",
+    "bytes": 5334,
+    "sha256": "1d83540f7ad281f8d034a3fed92cc56505e421e2c9d807c5c87c76d2f9cb8bd8"
+  },
+  {
+    "file": "fixture-container-id",
+    "bytes": 64,
+    "sha256": "496dce839c40e7813b404db361897b4bf57464fcdde9240efc14f3cc70a6e828"
+  },
+  {
+    "file": "fixture-server-command.json",
+    "bytes": 561,
+    "sha256": "c5e57f0ff9c3cb59e3b8a285394681fb653b684d0a26ce5c3069d5d6a8f936e3"
+  },
+  {
+    "file": "fixture-server.log",
+    "bytes": 5697,
+    "sha256": "7c577bcbdb9a0e7b8dc95b77cdf67b55e457ed430e5c35f11d970020b74d9ac0"
+  },
+  {
+    "file": "help.stderr",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "help.stdout",
+    "bytes": 18815,
+    "sha256": "0c289127c16e260149f59a6f16f6ab4ce9d7353452b8ce1e4adc3ed5c225c674"
+  },
+  {
+    "file": "index-help.stderr",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "index-help.stdout",
+    "bytes": 15176,
+    "sha256": "7aea59c2f3d154c30532cc28f9c15ff6a2f4d8ca7ca3fce3c3c303bebaab4015"
+  },
+  {
+    "file": "initial-cache.json",
+    "bytes": 163,
+    "sha256": "0313b6431ece68af2b0a88a2110aa54448b92668621bb60be73344361850beb1"
+  },
+  {
+    "file": "initial-clear.json",
+    "bytes": 163,
+    "sha256": "0313b6431ece68af2b0a88a2110aa54448b92668621bb60be73344361850beb1"
+  },
+  {
+    "file": "openlink-image.json",
+    "bytes": 330,
+    "sha256": "00b2aa0e624baa02b9c750c258f8285d65aca72ca5a6be19f93ceb035b679ba4"
+  },
+  {
+    "file": "query-first.json",
+    "bytes": 2631,
+    "sha256": "99186cbdfad18018bdd1fb2d5c54d66e8721d3ea16ca2aec5d6bebbe554fc2ea"
+  },
+  {
+    "file": "query-second.json",
+    "bytes": 2639,
+    "sha256": "809b4fc3c725e1f39bb891611cfbffe421d51eb03416cf873d769e6c72a8ed10"
+  },
+  {
+    "file": "runtime-parameters.stderr",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "runtime-parameters.stdout",
+    "bytes": 2440,
+    "sha256": "dfd843eef75f57ebef46aff20d406e0ccfb09776495d01fb328fbc919bdc2e37"
+  },
+  {
+    "file": "settings.json",
+    "bytes": 2214,
+    "sha256": "66116c67377bbcb2460beaa26ef002212a14485513485f527fa6c26cfe6fa891"
+  },
+  {
+    "file": "version.stderr",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "version.stdout",
+    "bytes": 515,
+    "sha256": "af7dfd942ee96151c3d007ac11b1e670095872d3b840e2509b95c0bb9336b994"
+  },
+  {
+    "file": "vm.json",
+    "bytes": 197,
+    "sha256": "0c5702a8985d7675d4a0baf14f6dd03844b7f11f96b6552edfdbe37374d39542"
+  }
+]
