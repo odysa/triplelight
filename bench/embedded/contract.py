@@ -1,7 +1,10 @@
 """Common, lossless SELECT result boundary for embedded Python benchmarks."""
 from decimal import Decimal
+from datetime import datetime
 import hashlib
 import json
+import math
+import re
 
 XSD = "http://www.w3.org/2001/XMLSchema#"
 
@@ -90,6 +93,18 @@ def check_order(variables, rows, spec):
             value = Decimal(t[1])
             if not value.is_finite():
                 raise ValueError("Non-finite ORDER BY requires a separate comparator")
+        elif s["kind"] == "double_cast":
+            # Exact declared expression: xsd:double(str(?var)), not RDF numeric promotion.
+            if t[0] != "literal":
+                raise ValueError("Cast cohort requires literal keys")
+            value = float(t[1])
+            if not math.isfinite(value):
+                raise ValueError("Non-finite cast key")
+        elif s["kind"] == "iso_datetime":
+            if (t[0] != "literal" or t[2] != XSD + "dateTime" or t[3] is not None
+                    or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", t[1])):
+                raise ValueError("Datetime cohort requires timezone-free second-resolution values")
+            value = datetime.fromisoformat(t[1])
         elif s["kind"] == "lexical":
             if t[0] != s["term_kind"] or t[2] != s.get("datatype") or t[3] is not None:
                 raise ValueError("ORDER BY lexical key type differs from declared homogeneous type")
