@@ -1,0 +1,14 @@
+{
+  "commit": "5b3970b379d307d071ca05d3a1d1cecb2d7094b2",
+  "files": {
+    "rdfdb-0.1.0.dist-info/RECORD": "70c6f2c8d4e65808f3c2ebde2e7f0abb2b9476dbf395b941c3e986510a501483",
+    "rdfdb-0.1.0.dist-info/direct_url.json": "8276c42b6e8735233008893f9af0303f0c74ff11533636865d3c456c74a5a87a",
+    "rdfdb-0.1.0.dist-info/WHEEL": "e1a311b427a3da66f56ef6fa74b9bc3acac726da59676adb91b2a54cd8ed0de4",
+    "rdfdb-0.1.0.dist-info/REQUESTED": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "rdfdb-0.1.0.dist-info/INSTALLER": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508",
+    "rdfdb-0.1.0.dist-info/METADATA": "3ede6f25c57632ab1c2a041939b4c9959997f2c60067adad6c92937c1bf99e24",
+    "rdfdb/_rdfdb.abi3.so": "898940920addbc19743b4b06714787d0766415e55ffa34790b91da1c61de05e1",
+    "rdfdb/__init__.py": "de5456e7a64b440c12af4455c17d983b32926dce00982c496f2a611c913ea37c",
+    "rdfdb-0.1.0.dist-info/sboms/rdfdb-python.cyclonedx.json": "2a9e13916f9b9db38aa43de49b27641209ceee72f3eae253484aa7f20aef67d4"
+  }
+}

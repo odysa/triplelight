@@ -1,0 +1,17 @@
+{
+  "commit": "fe6db89",
+  "package_original": "/private/tmp/pyb/bindings/python/python/rdfdb",
+  "extension_original": "/private/tmp/pyb/bindings/python/python/rdfdb/_rdfdb.abi3.so",
+  "files": {
+    "python/rdfdb-0.1.0.dist-info/RECORD": "abd6e9ec1fee3b1c3c8cc52538256919962ddc3fdf0d8aaad26d3b791124fa24",
+    "python/rdfdb-0.1.0.dist-info/direct_url.json": "8276c42b6e8735233008893f9af0303f0c74ff11533636865d3c456c74a5a87a",
+    "python/rdfdb-0.1.0.dist-info/WHEEL": "e1a311b427a3da66f56ef6fa74b9bc3acac726da59676adb91b2a54cd8ed0de4",
+    "python/rdfdb-0.1.0.dist-info/REQUESTED": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "python/rdfdb-0.1.0.dist-info/INSTALLER": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508",
+    "python/rdfdb-0.1.0.dist-info/METADATA": "3ede6f25c57632ab1c2a041939b4c9959997f2c60067adad6c92937c1bf99e24",
+    "python/rdfdb/_rdfdb.abi3.so": "d07afded246f314e5302be0b141ca90189c7c6c5df156281fae06b3c3d198477",
+    "python/rdfdb/__init__.py": "de5456e7a64b440c12af4455c17d983b32926dce00982c496f2a611c913ea37c",
+    "python/rdfdb/__pycache__/__init__.cpython-314.pyc": "73be163d6aad8a73daf5fb7064f006f75e815fde78ff5257478ebaced3c67153",
+    "python/rdfdb-0.1.0.dist-info/sboms/rdfdb-python.cyclonedx.json": "be6057755a22b9fd80afe6a59b2c6ffd2faba773b83f45e81272835269d51a25"
+  }
+}
