@@ -210,6 +210,15 @@ fn main() {
             println!("snapshot verified");
         }
         Some("build-disk") => {
+            if args.iter().skip(2).any(|arg| arg == "--help" || arg == "-h") {
+                println!("usage: rdfdb build-disk <source.nt|source.ttl> <new-directory> [--parallel-load=N] [--build-memory-mb=N] [--build-external]\n\
+                    --parallel-load=N  Ingestion workers; defaults to available cores, 1 forces serial.\n\
+                    External N-Triples parsing uses at most 8 workers and 3 index builders.\n\
+                    --build-memory-mb=N  Advisory strategy/run-buffer target, not a process RSS limit.\n\
+                    Temporary files, caches, allocator overhead and concurrent work add memory.\n\
+                    --build-external  Force the scratch-backed N-Triples builder.");
+                return;
+            }
             if args.len() < 4 || args.iter().any(|a| a == "--disk") {
                 eprintln!("usage: rdfdb build-disk <source.nt|source.ttl> <new-directory> [--parallel-load=N]");
                 std::process::exit(2);
