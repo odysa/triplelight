@@ -186,3 +186,32 @@ fn iri_equality_filter_fast_path_matches_general_evaluator() {
     }
     assert_eq!(rows("SELECT ?x WHERE { ?x <http://ex/knows> ?y FILTER(?y != <http://ex/carol>) }").len(), 2);
 }
+
+/// ORDER BY over an XSD cast (BSBM q023: `ORDER BY xsd:double(str(?price))`) sorts by the cast value; casts follow
+/// SPARQL 1.1 §17.5 (unparsable lexical forms are errors, which sort first as unbound).
+#[test]
+fn order_by_xsd_cast_and_casts() {
+    let data = r#"
+<http://ex/a> <http://ex/price> "7851.30"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+<http://ex/b> <http://ex/price> "2216.71"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+<http://ex/c> <http://ex/price> "5947.37"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+<http://ex/d> <http://ex/price> "10.5" .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let ordered = |q: &str| -> Vec<String> {
+        match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| r[0].as_ref().unwrap().to_string()).collect(), r => panic!("{r:?}") }
+    };
+    let q = "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ?s WHERE { ?s <http://ex/price> ?p } ORDER BY xsd:double(str(?p))";
+    assert_eq!(ordered(q), vec!["<http://ex/d>", "<http://ex/b>", "<http://ex/c>", "<http://ex/a>"]);
+    let desc = "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ?s WHERE { ?s <http://ex/price> ?p } ORDER BY DESC(xsd:double(?p)) LIMIT 1";
+    assert_eq!(ordered(desc), vec!["<http://ex/a>"]);
+    let one = |e: &str| -> String {
+        match query(&s, &format!("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ?v WHERE {{ BIND({e} AS ?v) }}")).unwrap() {
+            QueryResult::Solutions { rows, .. } => rows[0][0].as_ref().map_or("-".into(), |t| t.to_string()), r => panic!("{r:?}") }
+    };
+    assert_eq!(one("xsd:integer(\"42\")"), "\"42\"^^<http://www.w3.org/2001/XMLSchema#integer>");
+    assert_eq!(one("xsd:integer(3.9)"), "\"3\"^^<http://www.w3.org/2001/XMLSchema#integer>");
+    assert_eq!(one("xsd:boolean(\"1\")"), "\"true\"^^<http://www.w3.org/2001/XMLSchema#boolean>");
+    assert_eq!(one("xsd:string(<http://ex/a>)"), "\"http://ex/a\"");
+    assert_eq!(one("xsd:double(\"abc\")"), "-"); // cast error -> unbound
+}
