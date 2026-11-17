@@ -3,6 +3,7 @@
 //! Solutions are full-width rows of `TermId` over every variable of the query; `UNBOUND` (0) marks an unbound
 //! slot. Storage guarantees real IDs are never 0. Terms computed by expressions (BIND, aggregates) that are not
 //! in the store get per-query scratch IDs, so ID equality stays term equality throughout.
+mod agg;
 mod bgp;
 mod count;
 mod expr;
@@ -357,6 +358,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         if let Some(rows) = self.try_count_group(inner, keys, aggs, &input) { return rows; }
         let rows = self.eval(inner, input);
         let kidx: Vec<usize> = keys.iter().map(|v| self.var(v)).collect();
+        if std::env::var_os("RDFDB_LEGACY_GROUP").is_none() {
+            if let Some(out) = self.try_fast_group(&rows, &kidx, aggs) { return out; }
+        }
         let mut groups: Vec<(Vec<TermId>, Vec<Row>)> = Vec::new();
         let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
         for r in rows {
@@ -382,8 +386,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 Some(Literal::from(n as i64).into())
             }
             AggregateExpression::FunctionCall { name, expr, distinct } => {
-                let mut vals: Vec<Term> = rows.iter().filter_map(|r| self.value(expr, r)).collect();
+                // SPARQL 1.1 §18.5: the expression is evaluated per solution; an error (including an unbound
+                // variable) makes SUM/AVG/MIN/MAX/GROUP_CONCAT an error (unbound result). COUNT counts the non-error
+                // values; SAMPLE returns a non-error value. (Matches Jena.)
+                let evaluated: Vec<Option<Term>> = rows.iter().map(|r| self.value(expr, r)).collect();
+                let has_error = evaluated.iter().any(Option::is_none);
+                let mut vals: Vec<Term> = evaluated.into_iter().flatten().collect();
                 if *distinct { let mut s = HashSet::new(); vals.retain(|v| s.insert(v.clone())); }
+                let strict = !matches!(name, AggregateFunction::Count | AggregateFunction::Sample);
+                if strict && has_error { return None }
                 match name {
                     AggregateFunction::Count => Some(Literal::from(vals.len() as i64).into()),
                     AggregateFunction::Sum => vals.iter().try_fold(Term::from(Literal::from(0i64)), |a, b| expr::arith('+', &a, b)),
