@@ -9,7 +9,7 @@ use crate::model::{Perm, TermId};
 use oxrdf::{Term, Triple};
 use std::{
     fs::{self, File, OpenOptions},
-    io::{self, BufReader, BufWriter, Read, Seek, SeekFrom, Write},
+    io::{self, BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write},
     path::Path,
 };
 const MEMORY: usize = 128 * 1024 * 1024;
@@ -50,7 +50,7 @@ pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io:
         }
     }
     eprintln!("disk build strategy: external sort (budget is advisory, not an RSS limit)");
-    from_nt(dir, source)
+    from_nt_parallel(dir, source, workers.max(1))
 }
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, s)
@@ -68,13 +68,16 @@ impl Builder {
         })
     }
     fn add(&mut self, terms: [String; 3]) -> io::Result<()> {
+        self.add_with_id(terms, self.triples)
+    }
+    fn add_with_id(&mut self, terms: [String; 3], triple_id: u64) -> io::Result<()> {
         for (pos, term) in terms.into_iter().enumerate() {
             if term.len() > MAX_TERM || term.as_bytes().contains(&0) {
                 return Err(bad("invalid or oversized encoded RDF term"));
             }
             let mut r = term.into_bytes();
             r.push(0);
-            r.extend_from_slice(&self.triples.to_be_bytes());
+            r.extend_from_slice(&triple_id.to_be_bytes());
             r.push(pos as u8);
             self.terms.push(r)?;
         }
@@ -143,15 +146,21 @@ impl Builder {
         let raw = dir.join(".triples.raw");
         let mut triples =
             BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&raw)?);
-        for id in 0..self.triples {
+        let mut previous_id = None;
+        for _ in 0..self.triples {
+            let mut current_id = None;
             for pos in 0..3u8 {
                 let r =
                     read_record(&mut input, 17)?.ok_or_else(|| bad("missing term assignment"))?;
-                if r.len() != 17 || r[..8] != id.to_be_bytes() || r[8] != pos {
-                    return Err(bad("invalid term assignment"));
-                }
+                if r.len() != 17 || r[8] != pos { return Err(bad("invalid term assignment")); }
+                let id = u64::from_be_bytes(r[..8].try_into().unwrap());
+                if pos == 0 {
+                    if previous_id.is_some_and(|prev| id <= prev) { return Err(bad("unordered term assignment")); }
+                    current_id = Some(id);
+                } else if current_id != Some(id) { return Err(bad("invalid term assignment")); }
                 triples.write_all(&r[9..17])?;
             }
+            previous_id = current_id;
         }
         if read_record(&mut input, 17)?.is_some() {
             return Err(bad("extra term assignment"));
@@ -273,6 +282,71 @@ impl Iterator for UniqueRows {
         }
     }
 }
+/// Find the next line boundary without buffering an arbitrarily long line.
+fn next_line_boundary(path: &Path, offset: u64, size: u64) -> io::Result<u64> {
+    if offset == 0 || offset >= size { return Ok(offset.min(size)); }
+    let mut file = BufReader::new(File::open(path)?);
+    file.seek(SeekFrom::Start(offset - 1))?;
+    let mut prev = [0u8; 1]; file.read_exact(&mut prev)?;
+    if prev[0] == b'\n' { return Ok(offset); }
+    let mut at = offset;
+    loop {
+        let buf = file.fill_buf()?;
+        if buf.is_empty() { return Ok(size); }
+        let n = buf.iter().position(|&b| b == b'\n').map_or(buf.len(), |i| i + 1);
+        let found = buf[n - 1] == b'\n';
+        file.consume(n); at += n as u64;
+        if found { return Ok(at); }
+    }
+}
+
+/// Eight independent parsers create private sorted runs; worker IDs occupy disjoint ranges.
+/// The split is only used for N-Triples (Turtle grammar is not line splittable).
+fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Result<()> {
+    let Some(path) = path else { return from_nt(dir, None); };
+    let shards = workers.clamp(1, 8);
+    if shards == 1 { return from_nt(dir, Some(path)); }
+    let size = fs::metadata(path)?.len();
+    let mut boundaries = vec![0u64];
+    for i in 1..shards {
+        boundaries.push(next_line_boundary(path, (size as u128 * i as u128 / shards as u128) as u64, size)?);
+    }
+    boundaries.push(size);
+    fs::create_dir(dir)?;
+    let results = std::thread::scope(|scope| {
+        let mut handles = Vec::new();
+        for (shard, limits) in boundaries.windows(2).enumerate() {
+            let (start, end) = (limits[0], limits[1]);
+            handles.push(scope.spawn(move || -> io::Result<(Builder, std::path::PathBuf)> {
+                let mut b = Builder::new(dir)?;
+                let mut file = File::open(path)?; file.seek(SeekFrom::Start(start))?;
+                let input = BufReader::new(file.take(end - start));
+                for t in oxttl::NTriplesParser::new().for_reader(input) {
+                    let t: Triple = t.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                    if b.triples >= (1u64 << 56) { return Err(bad("too many triples in shard")); }
+                    let id = ((shard as u64) << 56) | b.triples;
+                    b.add_with_id([t.subject.to_string(), t.predicate.to_string(), t.object.to_string()], id)?;
+                }
+                let sorted = b.terms.finish()?;
+                Ok((b, sorted))
+            }));
+        }
+        handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(io::Error::other("N-Triples worker panicked")))).collect::<Vec<_>>()
+    });
+    let builders = results.into_iter().collect::<io::Result<Vec<_>>>()?;
+    let mut paths = Vec::with_capacity(builders.len());
+    let mut count = 0u64;
+    for (b, path) in &builders {
+        count = count.checked_add(b.triples).ok_or_else(|| bad("too many triples"))?;
+        paths.push(path.clone());
+    }
+    let mut combined = Builder::new(dir)?;
+    combined.terms.import_sorted(&paths)?;
+    combined.triples = count;
+    drop(builders);
+    combined.finish(dir)
+}
+
 pub(super) fn from_nt(dir: &Path, path: Option<&Path>) -> io::Result<()> {
     fs::create_dir(dir)?;
     let mut builder = Builder::new(dir)?;
@@ -315,6 +389,33 @@ mod tests {
         exec::{QueryResult, query},
         storage::DiskSnapshot,
     };
+    #[test]
+    fn sharded_nt_preserves_terms_across_boundaries() {
+        let root = std::env::temp_dir().join(format!("rdf-shards-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root); fs::create_dir(&root).unwrap();
+        let file = root.join("input.nt");
+        fs::write(&file, "# comment\r\n<urn:s> <urn:p> \"é\"@fr .\r\n\n_:a <urn:p> <urn:o> .\n<urn:s> <urn:p> \"é\"@fr .\n<urn:last> <urn:p> \"x\" .").unwrap();
+        let a = root.join("serial"); let b = root.join("parallel");
+        from_nt(&a, Some(&file)).unwrap(); from_nt_parallel(&b, Some(&file), 8).unwrap();
+        for name in FILES[1..].iter().copied().chain(["dictionary.id", "dictionary.term"]) { assert_eq!(fs::read(a.join(name)).unwrap(), fs::read(b.join(name)).unwrap(), "{name}"); }
+        assert_eq!(fs::read(a.join("MANIFEST")).unwrap(), fs::read(b.join("MANIFEST")).unwrap());
+        let snap = DiskSnapshot::open(&b).unwrap(); snap.verify().unwrap(); drop(snap);
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn sharded_nt_rejects_invalid_and_empty_works() {
+        let root = std::env::temp_dir().join(format!("rdf-shards-invalid-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root); fs::create_dir(&root).unwrap();
+        let file = root.join("input.nt");
+        fs::write(&file, "<urn:a> <urn:p> <urn:o> .\nnot a triple\n").unwrap();
+        let invalid = root.join("invalid");
+        assert!(from_nt_parallel(&invalid, Some(&file), 8).is_err());
+        assert!(!invalid.join("MANIFEST").exists());
+        fs::write(&file, "").unwrap();
+        let empty = root.join("empty"); from_nt_parallel(&empty, Some(&file), 8).unwrap();
+        let snap = DiskSnapshot::open(&empty).unwrap(); snap.verify().unwrap(); drop(snap);
+        fs::remove_dir_all(root).unwrap();
+    }
     #[test]
     fn ntriples_deduplicate_and_preserve_rdf_terms() {
         let dir = std::env::temp_dir().join(format!("rdf-ext-test-{}", std::process::id()));
