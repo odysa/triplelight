@@ -1,0 +1,61 @@
+{
+  "head": {
+    "vars": [
+      "product",
+      "offerCount",
+      "blocked"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "product": {
+          "type": "uri",
+          "value": "urn:p3"
+        },
+        "offerCount": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+          "value": "2"
+        },
+        "blocked": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+          "value": "false"
+        }
+      },
+      {
+        "product": {
+          "type": "uri",
+          "value": "urn:p1"
+        },
+        "offerCount": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+          "value": "2"
+        },
+        "blocked": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+          "value": "true"
+        }
+      },
+      {
+        "product": {
+          "type": "uri",
+          "value": "urn:p2"
+        },
+        "offerCount": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+          "value": "2"
+        },
+        "blocked": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+          "value": "true"
+        }
+      }
+    ]
+  }
+}
