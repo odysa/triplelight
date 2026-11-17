@@ -2,7 +2,7 @@
 
 Status: 93 all-target tests passed on source 1652fe5, and release tools compiled. Tiny disk smoke queries verified full multiset equality with profiling enabled/disabled (20 paired output hashes), actual leapfrog and greedy trace events, and the COUNT collection pipeline against hand-counted data. Raw checks are in validation/. The collector smoke server was rdfdb, so this is protocol validation, not independent large-data correctness evidence.
 
-The first LUBM-1000 synopsis/plan run is complete: see LUBM1000.md. All 65 BSBM-100M BGP probes are exported; their exact counts and full-query runtime comparisons are pending. The task-15 statistics-build measurement is separately pinned in ../exact-tag-coverage/MEASUREMENTS.md.
+The first LUBM-1000 synopsis/plan run is complete: see LUBM1000.md. The follow-up forced-order test found the selected order already best of six for Q9 and Q2; see FORCED_ORDERS_RESULT.md. No estimator change follows from those two cases. The forced-order helper passed two further targeted tests plus its 42-sample CLI smoke; the measured source is pinned by task17-orders-measured. All 65 BSBM-100M BGP probes are exported; their exact counts and full-query runtime comparisons are pending. The task-15 statistics-build measurement is separately pinned in ../exact-tag-coverage/MEASUREMENTS.md.
 
 ## Questions and interpretation
 

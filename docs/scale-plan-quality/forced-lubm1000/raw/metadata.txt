@@ -1,0 +1,4 @@
+data=<agent-workspace>/rdfdb/bench/tools/lubm1000.nt workers=10 load_s=214.139606083
+triples=133613894 stats_s=24.240309291
+query=q9 vars={"X": 0, "Y": 1, "Z": 2} chosen=[1, 2, 0] gate_work=9829823.103622412 normal_query_ns=294529167 rows=44190 id_hash=1de5c7fe69713d7761caf3b1661abf1ec1d2b95af7f0f0936906d4cff3af2749
+query=q2 vars={"X": 0, "Y": 1, "Z": 2} chosen=[1, 2, 0] gate_work=16338899.557051832 normal_query_ns=52083750 rows=2528 id_hash=53a30b73b06b00d8b741208191f204392d82edebe8fdb46a0e16a985c5e82de9
