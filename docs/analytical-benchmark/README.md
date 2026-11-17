@@ -41,6 +41,8 @@ matrices, numeric diagnostics, source/runtime identities and process logs.
 [workload-check-smoke/](workload-check-smoke/) retains the earlier actual-engine
 runner validation. The 10M cohort uses its own earlier source snapshot; newer
 spill configuration in the current runner is not retroactively attributed to it.
+A separate [bounded-spill smoke](workload-check-spill-smoke/) passes the eight
+small-graph DuckDB queries with a 256 MB query-spill setting.
 
 ## 10M DuckDB baseline setup
 
