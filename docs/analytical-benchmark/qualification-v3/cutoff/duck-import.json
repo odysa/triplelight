@@ -1,0 +1,18 @@
+{
+  "schema": "plain-triples-arrow-v1",
+  "duckdb": "2.0.0",
+  "pyarrow": "26.0.1",
+  "source": "/private/tmp/rdf-jianlin-analytical25/fixture-cutoff/data.nt",
+  "database": "/private/tmp/rdf-jianlin-analytical25/fixture-cutoff/duck.db",
+  "threads": 1,
+  "memory_limit": "256MB",
+  "spill": "/private/tmp/rdf-jianlin-analytical25/fixture-cutoff/spill",
+  "max_spill": "256MB",
+  "batch_rows": 65536,
+  "parsed_triples": 4092,
+  "complete": true,
+  "unique_triples": 4091,
+  "source_sha256": "c7aa821229767d5aaddc1ac3fa0ad8f08d0229508a0042f58da10129abe9f6d9",
+  "seconds": 0.04955583321861923,
+  "database_bytes": 536576
+}

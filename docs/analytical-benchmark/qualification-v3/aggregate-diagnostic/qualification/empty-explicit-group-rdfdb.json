@@ -1,0 +1,18 @@
+{
+  "head": {
+    "vars": [
+      "rows",
+      "count",
+      "distinctCount",
+      "sum",
+      "avg",
+      "min",
+      "max",
+      "sample",
+      "concat"
+    ]
+  },
+  "results": {
+    "bindings": []
+  }
+}

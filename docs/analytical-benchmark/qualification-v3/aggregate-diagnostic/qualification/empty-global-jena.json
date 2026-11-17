@@ -1,0 +1,16 @@
+{ "head": {
+    "vars": [ "rows" , "count" , "distinctCount" , "sum" , "avg" , "min" , "max" , "sample" , "concat" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "rows": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "0" } ,
+        "count": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "0" } ,
+        "distinctCount": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "0" } ,
+        "sum": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "0" } ,
+        "avg": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "0" } ,
+        "concat": { "type": "literal" , "value": "" }
+      }
+    ]
+  }
+}
