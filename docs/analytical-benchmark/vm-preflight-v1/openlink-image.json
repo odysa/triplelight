@@ -1,0 +1,10 @@
+{
+  "Id": "sha256:a1dcc3231b97071dee537e180a7b18f4cef0d8257a77a30265d2237a87f0d3dd",
+  "RepoDigests": [
+    "openlink/virtuoso-opensource-7@sha256:0dbe1ab4fa0cb7bbafc1f6c0c2b0a5d6f22d918dbd17672f2ddb24580aa6756a"
+  ],
+  "Architecture": "arm64",
+  "Os": "linux",
+  "Created": "2026-08-05T09:20:15.904235882Z",
+  "Size": 157669806
+}
