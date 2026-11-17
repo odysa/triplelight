@@ -82,9 +82,10 @@ answers are identical. Virtuoso matches except for the two truncated LUBM-1000 r
 - BSBM-100M q010 and q013 (numeric range filters): 100 and 38 ms against Virtuoso's 70 and 24 ms.
 - Load time. Building the disk store takes 1,035 s for LUBM-1000 and 1,028–1,436 s for BSBM-100M, against
   QLever's 425 s and 139 s; the build is mostly single-threaded.
-- Compaction (merging updates into a new base) of LUBM-1000 takes 25–33 min. Its peak memory follows the cache
-  budget (2.3 GB at a 2 GB target, 7.6 GB at 16 GB) rather than the data size, but temporary disk use peaks
-  at about 54–56 GB for a 5.3 GB store.
+- Compaction (merging updates into a new base) of LUBM-1000 takes 25–33 min. On the same 138M-triple base its peak
+  memory was 2.3 GB at a 2 GB cache target and 7.6 GB at 16 GB (one run each), which points to the cache
+  budget as a large factor; how peak memory scales with data size is not yet measured. Temporary disk use
+  peaks at about 54–56 GB for a 5.3 GB store.
 
 ## Negative results
 
