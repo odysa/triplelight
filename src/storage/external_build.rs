@@ -52,6 +52,27 @@ pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io:
     eprintln!("disk build strategy: external sort (budget is advisory, not an RSS limit)");
     from_nt_parallel(dir, source, workers.max(1))
 }
+fn build_permutation(dir: &Path, raw: &Path, triples: u64, name: &str, perm: Perm, run_budget: usize) -> io::Result<[u8; 32]> {
+    let mut sorter = ExternalSort::new(dir, run_budget, 24)?;
+    let mut input = BufReader::new(File::open(raw)?);
+    for _ in 0..triples {
+        let mut triple = [0u8; 24];
+        input.read_exact(&mut triple)?;
+        let mut key = Vec::with_capacity(24);
+        for i in perm.order() { key.extend_from_slice(&triple[i * 8..i * 8 + 8]); }
+        sorter.push(key)?;
+    }
+    let sorted = sorter.finish()?;
+    let mut reader = UniqueRows::open(&sorted)?;
+    let mut count = 0u64;
+    while reader.next().transpose()?.is_some() { count += 1; }
+    let rows = UniqueRows::open(&sorted)?;
+    let path = dir.join(name);
+    let mut output = BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&path)?);
+    write_index_stream(&mut output, count, rows)?;
+    output.flush()?; output.get_ref().sync_all()?; drop(output);
+    Ok(DiskIndex::open(path)?.identity())
+}
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, s)
 }
@@ -59,6 +80,7 @@ fn bad(s: &'static str) -> io::Error {
 pub(super) struct Builder {
     terms: ExternalSort,
     triples: u64,
+    index_workers: usize,
 }
 impl Builder {
     fn new(dir: &Path) -> io::Result<Self> { Self::with_budget(dir, MEMORY) }
@@ -66,6 +88,7 @@ impl Builder {
         Ok(Self {
             terms: ExternalSort::new(dir, bytes, MAX_TERM + 10)?,
             triples: 0,
+            index_workers: 1,
         })
     }
     fn add(&mut self, terms: [String; 3]) -> io::Result<()> {
@@ -170,38 +193,19 @@ impl Builder {
         drop(triples);
         let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir)?;
         let mut identities = vec![term_identity, id_identity];
-        for (name, perm) in FILES[1..].iter().zip(Perm::ALL) {
-            let mut sorter = ExternalSort::new(dir, MEMORY, 24)?;
-            let mut input = BufReader::new(File::open(&raw)?);
-            for _ in 0..self.triples {
-                let mut triple = [0u8; 24];
-                input.read_exact(&mut triple)?;
-                let order = perm.order();
-                let mut key = Vec::with_capacity(24);
-                for i in order {
-                    key.extend_from_slice(&triple[i * 8..i * 8 + 8]);
-                }
-                sorter.push(key)?;
-            }
-            let sorted = sorter.finish()?;
-            let mut reader = UniqueRows::open(&sorted)?;
-            let mut count = 0u64;
-            while reader.next().transpose()?.is_some() {
-                count += 1;
-            }
-            let rows = UniqueRows::open(&sorted)?;
-            let path = dir.join(name);
-            let mut output = BufWriter::new(
-                OpenOptions::new()
-                    .write(true)
-                    .create_new(true)
-                    .open(&path)?,
-            );
-            write_index_stream(&mut output, count, rows)?;
-            output.flush()?;
-            output.get_ref().sync_all()?;
-            drop(output);
-            identities.push(DiskIndex::open(path)?.identity());
+        let jobs: Vec<_> = FILES[1..].iter().copied().zip(Perm::ALL).collect();
+        let workers = self.index_workers;
+        let run_budget = (budget_mb().saturating_mul(1_048_576) / workers).min(MEMORY);
+        for batch in jobs.chunks(workers) {
+            let results = std::thread::scope(|scope| {
+                let handles: Vec<_> = batch.iter().map(|&(name, perm)| {
+                    let raw = &raw; let triples = self.triples;
+                    scope.spawn(move || build_permutation(dir, raw, triples, name, perm, run_budget))
+                }).collect();
+                handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(io::Error::other("permutation build worker panicked")))).collect::<Vec<_>>()
+            });
+            // Join all workers before returning any failure, so no background writer survives.
+            for result in results { identities.push(result?); }
         }
         fs::remove_file(raw)?;
         // Finish and remove all scratch before publishing the manifest.
@@ -349,6 +353,7 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
     let mut combined = Builder::new(dir)?;
     combined.terms.import_sorted(&paths)?;
     combined.triples = count;
+    combined.index_workers = shards.min(3);
     drop(builders);
     combined.finish(dir)
 }
@@ -406,6 +411,19 @@ mod tests {
         for name in FILES[1..].iter().copied().chain(["dictionary.id", "dictionary.term"]) { assert_eq!(fs::read(a.join(name)).unwrap(), fs::read(b.join(name)).unwrap(), "{name}"); }
         assert_eq!(fs::read(a.join("MANIFEST")).unwrap(), fs::read(b.join("MANIFEST")).unwrap());
         let snap = DiskSnapshot::open(&b).unwrap(); snap.verify().unwrap(); drop(snap);
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn parallel_index_failure_does_not_publish_manifest() {
+        let root = std::env::temp_dir().join(format!("rdf-index-failure-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root); fs::create_dir(&root).unwrap();
+        let mut builder = Builder::new(&root).unwrap();
+        builder.index_workers = 3;
+        builder.add(["<urn:s>".into(), "<urn:p>".into(), "<urn:o>".into()]).unwrap();
+        fs::write(root.join("spo"), b"collision").unwrap();
+        assert!(builder.finish(&root).is_err());
+        assert!(!root.join("MANIFEST").exists());
+        assert!(!fs::read_dir(&root).unwrap().any(|entry| entry.unwrap().file_name().to_string_lossy().starts_with(".rdf-sort-")));
         fs::remove_dir_all(root).unwrap();
     }
     #[test]
