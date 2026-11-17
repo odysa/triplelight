@@ -86,12 +86,20 @@ def run(args):
                 raise ValueError('Cache-cold profile requires an explicit clear request')
         elif evidence['cache_profile'] != 'full-bypass':
             raise ValueError('Unsupported QLever cache profile')
+    count_freeze = getattr(args, 'count_policy_freeze', None)
+    count_policy_sha = None
+    if count_freeze:
+        from count_equivalence import load_freeze
+        count_policy_sha = load_freeze(count_freeze, args.count_policy_sha256)
     args.out.mkdir(parents=True, exist_ok=False)
+    if count_freeze:
+        (args.out / 'count-policy-freeze.json').write_bytes(count_freeze.read_bytes())
     (args.out / 'runtime-evidence.json').write_bytes(evidence_raw)
     (args.out / 'manifest.json').write_bytes(manifest_raw)
     report = {'schema': 'http-bi-measurement-v1', 'complete': False,
               'runtime_evidence_sha256': hashlib.sha256(evidence_raw).hexdigest(),
               'numeric_freeze_sha256': frozen.freeze_sha256,
+              'count_equivalence_freeze_sha256': count_policy_sha,
               'timer': 'HTTP request through complete body read; excludes JSON parsing and qualification',
               'queries': {}, 'ranking_eligible': False}
     def persist():
@@ -135,8 +143,19 @@ def run(args):
             reference = json.loads((args.reference / (stem + '.json')).read_text())
             diagnostic = (json.loads((args.reference / (stem + '-diagnostic.json')).read_text())
                           if number == 7 else None)
-            entry.update(verify(number, actual, reference, diagnostic, frozen, query))
-            entry['status'] = 'pass'
+            try:
+                entry.update(verify(number, actual, reference, diagnostic, frozen, query))
+                entry['status'] = 'pass'
+            except Exception as exc:
+                entry['error'] = type(exc).__name__ + ': ' + str(exc)
+            if count_policy_sha:
+                from count_equivalence import normalize
+                try:
+                    detail = verify(number, normalize(number, actual), normalize(number, reference),
+                                    diagnostic, frozen, query)
+                    entry['count_equivalence'] = {'status': 'pass', **detail}
+                except Exception as exc:
+                    entry['count_equivalence'] = {'status': 'fail', 'error': type(exc).__name__+': '+str(exc)}
         except Exception as exc:
             entry['error'] = type(exc).__name__ + ': ' + str(exc)
         persist()
@@ -158,6 +177,12 @@ def run(args):
     # incorrect answers masquerading as a complete weighted BI mix.
     report['measured_total_ns'] = (sum(q['elapsed_ns'] for q in report['queries'].values()
                                      if q['scored']) if report['ranking_eligible'] else None)
+    if count_policy_sha:
+        report['integer_value_equivalent_eligible'] = report['complete'] and all(
+            q.get('count_equivalence', {}).get('status') == 'pass' for q in report['queries'].values())
+        report['integer_value_equivalent_total_ns'] = (
+            sum(q['elapsed_ns'] for q in report['queries'].values() if q['scored'])
+            if report['integer_value_equivalent_eligible'] else None)
     persist()
 
 
@@ -166,9 +191,13 @@ if __name__ == '__main__':
     for field in ('workload', 'reference', 'out', 'runtime-evidence', 'numeric-inputs'):
         parser.add_argument('--' + field, type=Path, required=True)
     parser.add_argument('--numeric-freeze-sha256', required=True)
+    parser.add_argument('--count-policy-freeze', type=Path)
+    parser.add_argument('--count-policy-sha256')
     parser.add_argument('--lock-owner', required=True)
     parser.add_argument('--timeout', type=float, default=120)
     args = parser.parse_args()
+    if bool(args.count_policy_freeze) != bool(args.count_policy_sha256):
+        parser.error('count policy freeze and hash must be supplied together')
     if args.timeout <= 0:
         parser.error('positive timeout required')
     run(args)
