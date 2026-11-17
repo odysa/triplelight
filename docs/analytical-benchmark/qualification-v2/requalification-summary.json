@@ -1,0 +1,62 @@
+{
+  "fixture-float": {
+    "1": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "2": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "3": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "4": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "5": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "6": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "7": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    },
+    "8": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    }
+  },
+  "fixture-cutoff": {
+    "7": {
+      "duckdb": "pass",
+      "rdfdb": "pass"
+    }
+  },
+  "fixture-invalid-price": {
+    "4": {
+      "duckdb": "pass",
+      "rdfdb": "fail"
+    },
+    "5": {
+      "duckdb": "pass",
+      "rdfdb": "fail"
+    },
+    "8": {
+      "duckdb": "pass",
+      "rdfdb": "fail"
+    }
+  },
+  "fixture-invalid-rating": {
+    "6": {
+      "duckdb": "pass",
+      "rdfdb": "fail"
+    }
+  }
+}
