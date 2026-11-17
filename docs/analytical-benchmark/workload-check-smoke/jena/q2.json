@@ -1,0 +1,23 @@
+{
+  "head": {
+    "vars": [
+      "otherProduct",
+      "sameFeatures"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "otherProduct": {
+          "type": "uri",
+          "value": "urn:p2"
+        },
+        "sameFeatures": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+          "value": "1"
+        }
+      }
+    ]
+  }
+}
