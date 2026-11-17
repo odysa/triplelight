@@ -1,0 +1,1 @@
+SELECT (COUNT(*) AS ?__rdfdb_diagnostic_count) WHERE { ?X <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://swat.cse.lehigh.edu/onto/univ-bench.owl#ResearchGroup> .?X <http://swat.cse.lehigh.edu/onto/univ-bench.owl#subOrganizationOf> <http://www.Department0.University0.edu> . }

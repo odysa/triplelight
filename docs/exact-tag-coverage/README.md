@@ -1,6 +1,6 @@
 # Exact predicate object-tag coverage
 
-Task #15 supports task #11's numeric range pushdown. Functional regression passed on base `bef6811`; performance measurement remains pending a quiet shared-machine window.
+Task #15 supports task #11's numeric range pushdown. Functional regression passed on base bef6811; integrated all-target validation later passed 93 tests on d3e18cd plus coverage/diagnostics. The serialized statistics-build comparison is in [MEASUREMENTS.md](MEASUREMENTS.md).
 
 ## API and contract
 
@@ -33,4 +33,4 @@ Three new unit tests cover every tag, weighted row counts and duplicate suppress
 
 `examples/stats_build_probe.rs` is the identical baseline/candidate harness. It rebuilds Stats three times on the same disk snapshot (first pass followed by two warmed passes), then records exact float bits and plan hashes on the saved pure BGP queries. A timed comparison must use a quiet, serialized machine window; dataset generation overlap is not valid evidence of negligible overhead.
 
-Statistics-build overhead and baseline/candidate plan-signature comparison remain pending before a mainline merge. No performance improvement is claimed at this stage.
+The measured warm-build ratios were 1.047 on LUBM-100 and 0.977 on WatDiv SF100 in one shared-host ABBA session, with identical estimate bits and plans for all 34 queries. This does not establish zero overhead. A mainline merge and numeric consumer remain the owner's decision.

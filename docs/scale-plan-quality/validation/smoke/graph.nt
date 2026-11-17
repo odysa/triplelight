@@ -1,0 +1,4 @@
+<urn:a> <urn:p> <urn:b> .
+<urn:b> <urn:p> <urn:c> .
+<urn:c> <urn:p> <urn:a> .
+<urn:a> <urn:q> "3"^^<http://www.w3.org/2001/XMLSchema#integer> .

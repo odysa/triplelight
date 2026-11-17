@@ -1,0 +1,132 @@
+load_ns=7335000
+synopsis triples=4 characteristic_sets=2 stats_build_ns=120291
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/triangle.rq stats=false sample=0
+bgp_actual mode=leapfrog order=[0, 1, 2] pattern_counts=[3, 3, 3] patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)], [Var(1), Const(Some(TermId(1152921504606846977))), Var(2)], [Var(2), Const(Some(TermId(1152921504606846977))), Var(0)]]
+profile_end query_ns=2705667 rows=3 multiset_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675 sequence_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/triangle.rq stats=true sample=0
+bgp_actual mode=leapfrog order=[0, 1, 2] pattern_counts=[3, 3, 3] patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)], [Var(1), Const(Some(TermId(1152921504606846977))), Var(2)], [Var(2), Const(Some(TermId(1152921504606846977))), Var(0)]]
+profile_end query_ns=1523375 rows=3 multiset_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675 sequence_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/triangle.rq stats=true sample=1
+bgp_actual mode=leapfrog order=[0, 1, 2] pattern_counts=[3, 3, 3] patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)], [Var(1), Const(Some(TermId(1152921504606846977))), Var(2)], [Var(2), Const(Some(TermId(1152921504606846977))), Var(0)]]
+profile_end query_ns=890417 rows=3 multiset_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675 sequence_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/triangle.rq stats=false sample=1
+bgp_actual mode=leapfrog order=[0, 1, 2] pattern_counts=[3, 3, 3] patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)], [Var(1), Const(Some(TermId(1152921504606846977))), Var(2)], [Var(2), Const(Some(TermId(1152921504606846977))), Var(0)]]
+profile_end query_ns=460583 rows=3 multiset_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675 sequence_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/triangle.rq stats=false sample=2
+bgp_actual mode=leapfrog order=[0, 1, 2] pattern_counts=[3, 3, 3] patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)], [Var(1), Const(Some(TermId(1152921504606846977))), Var(2)], [Var(2), Const(Some(TermId(1152921504606846977))), Var(0)]]
+profile_end query_ns=427875 rows=3 multiset_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675 sequence_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/triangle.rq stats=true sample=2
+bgp_actual mode=leapfrog order=[0, 1, 2] pattern_counts=[3, 3, 3] patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)], [Var(1), Const(Some(TermId(1152921504606846977))), Var(2)], [Var(2), Const(Some(TermId(1152921504606846977))), Var(0)]]
+profile_end query_ns=436125 rows=3 multiset_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675 sequence_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/triangle.rq stats=true sample=3
+bgp_actual mode=leapfrog order=[0, 1, 2] pattern_counts=[3, 3, 3] patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)], [Var(1), Const(Some(TermId(1152921504606846977))), Var(2)], [Var(2), Const(Some(TermId(1152921504606846977))), Var(0)]]
+profile_end query_ns=408750 rows=3 multiset_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675 sequence_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/triangle.rq stats=false sample=3
+bgp_actual mode=leapfrog order=[0, 1, 2] pattern_counts=[3, 3, 3] patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)], [Var(1), Const(Some(TermId(1152921504606846977))), Var(2)], [Var(2), Const(Some(TermId(1152921504606846977))), Var(0)]]
+profile_end query_ns=360750 rows=3 multiset_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675 sequence_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/triangle.rq stats=false sample=4
+bgp_actual mode=leapfrog order=[0, 1, 2] pattern_counts=[3, 3, 3] patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)], [Var(1), Const(Some(TermId(1152921504606846977))), Var(2)], [Var(2), Const(Some(TermId(1152921504606846977))), Var(0)]]
+profile_end query_ns=311000 rows=3 multiset_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675 sequence_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/triangle.rq stats=true sample=4
+bgp_actual mode=leapfrog order=[0, 1, 2] pattern_counts=[3, 3, 3] patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)], [Var(1), Const(Some(TermId(1152921504606846977))), Var(2)], [Var(2), Const(Some(TermId(1152921504606846977))), Var(0)]]
+profile_end query_ns=313541 rows=3 multiset_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675 sequence_sha256=7272d21b5388ea47e4ac56b268932ae9c6a775dde522205592fb8bd647bef675
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/optional.rq stats=false sample=0
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=3 filtered=3
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=1 filtered=1
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+profile_end query_ns=681833 rows=2 multiset_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0 sequence_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/optional.rq stats=true sample=0
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=3 filtered=3
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=1 filtered=1
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+profile_end query_ns=544292 rows=2 multiset_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0 sequence_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/optional.rq stats=true sample=1
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=3 filtered=3
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=1 filtered=1
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+profile_end query_ns=572875 rows=2 multiset_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0 sequence_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/optional.rq stats=false sample=1
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=3 filtered=3
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=1 filtered=1
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+profile_end query_ns=537667 rows=2 multiset_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0 sequence_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/optional.rq stats=false sample=2
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=3 filtered=3
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=1 filtered=1
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+profile_end query_ns=570708 rows=2 multiset_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0 sequence_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/optional.rq stats=true sample=2
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=3 filtered=3
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=1 filtered=1
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+profile_end query_ns=554958 rows=2 multiset_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0 sequence_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/optional.rq stats=true sample=3
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=3 filtered=3
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=1 filtered=1
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+profile_end query_ns=548458 rows=2 multiset_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0 sequence_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/optional.rq stats=false sample=3
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=3 filtered=3
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=1 filtered=1
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+profile_end query_ns=540333 rows=2 multiset_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0 sequence_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/optional.rq stats=false sample=4
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=3 filtered=3
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=1 filtered=1
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+profile_end query_ns=560833 rows=2 multiset_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0 sequence_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0
+profile_begin query=/tmp/rdf-jianlin-task17-smoke/queries/optional.rq stats=true sample=4
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846977))), Var(1)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=3 filtered=3
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=1 filtered=1
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+bgp_actual mode=index-greedy width=3 input_rows=1 patterns=[[Var(0), Const(Some(TermId(1152921504606846980))), Var(2)]]
+bgp_actual_step mode=index-greedy pattern=0 before=1 extended=0 filtered=0
+profile_end query_ns=540625 rows=2 multiset_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0 sequence_sha256=cdbb3d83b0795edb5c256ad7bc423289e2efc582220569f1ddd368c9ede9aad0

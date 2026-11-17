@@ -1,0 +1,25 @@
+{
+  "dataset_id_supplied_by_operator": "tiny graph: 4 explicit triples, known counts 3/1/3",
+  "endpoint": "http://127.0.0.1:57548/sparql",
+  "manifest_sha256": "d915c78e135ed7de3784a41b18430d4bee2dad7c2c5bf38e18615f95b9eb16d6",
+  "probes": [
+    {
+      "probe": "optional__bgp00",
+      "query_sha256": "ca2a4fe4d3604a2c09099389a04d5b3d82f51111e9b6e9f8ec3b8550b6b3f73d",
+      "response_sha256": "d8ebda54af96744722011a96d7289f2ab6c2562aac3011fd75b1143f13dc3197",
+      "rows": 3
+    },
+    {
+      "probe": "optional__bgp01",
+      "query_sha256": "fff04a318d7c3423cd107d138ab18d76bd92f11e53bedb4ba8abfbee2f3a88ff",
+      "response_sha256": "fbc123d011a8bb48c5f968a01fe1de56b295e44b4f66e2c3e45609e51b2d75f7",
+      "rows": 1
+    },
+    {
+      "probe": "triangle__bgp00",
+      "query_sha256": "3a303650edd34fe7c7fe19f532c78436abe16962c9dd516ae2faf4f32a1694fa",
+      "response_sha256": "d8ebda54af96744722011a96d7289f2ab6c2562aac3011fd75b1143f13dc3197",
+      "rows": 3
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+probe	source	source_sha256	algebra_path	patterns
+optional__bgp00	optional	457d8ce846e406e07b966018bd4d63593b2b115600c59cde8ac7ce47006857ab	root/slice/distinct/project/order/optional.left	1
+optional__bgp01	optional	457d8ce846e406e07b966018bd4d63593b2b115600c59cde8ac7ce47006857ab	root/slice/distinct/project/order/optional.right	1
+triangle__bgp00	triangle	1879d8d59943c464b4004316998f83743dfe3f520befa044b00993682008d88a	root/project	3

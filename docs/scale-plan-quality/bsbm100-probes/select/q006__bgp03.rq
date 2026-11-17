@@ -1,0 +1,1 @@
+SELECT * WHERE { <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer5601/Product283789> <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/productPropertyNumeric4> ?propertyNumeric4 . }
