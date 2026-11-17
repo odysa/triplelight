@@ -1,0 +1,32 @@
+{"source_lines": 1000000, "unique_triples": 0, "resource_nodes": 158491, "literal_nodes": 81787}
+{"source_lines": 2000000, "unique_triples": 0, "resource_nodes": 315211, "literal_nodes": 162903}
+{"source_lines": 3000000, "unique_triples": 0, "resource_nodes": 472461, "literal_nodes": 243185}
+{"source_lines": 4000000, "unique_triples": 0, "resource_nodes": 630205, "literal_nodes": 323161}
+{"source_lines": 5000000, "unique_triples": 0, "resource_nodes": 787629, "literal_nodes": 403686}
+{"source_lines": 6000000, "unique_triples": 0, "resource_nodes": 944202, "literal_nodes": 484647}
+{"source_lines": 7000000, "unique_triples": 0, "resource_nodes": 1101443, "literal_nodes": 565341}
+{"source_lines": 8000000, "unique_triples": 0, "resource_nodes": 1258672, "literal_nodes": 646073}
+{"source_lines": 9000000, "unique_triples": 0, "resource_nodes": 1415887, "literal_nodes": 727203}
+{"source_lines": 10000000, "unique_triples": 0, "resource_nodes": 1573004, "literal_nodes": 807832}
+{"source_lines": 11000000, "unique_triples": 0, "resource_nodes": 1729604, "literal_nodes": 889158}
+{"source_lines": 12000000, "unique_triples": 0, "resource_nodes": 1886459, "literal_nodes": 969979}
+{"source_lines": 13000000, "unique_triples": 0, "resource_nodes": 2043747, "literal_nodes": 1050619}
+{"mapping": "rdf-terms-per-predicate-v1", "input": "<agent-workspace>/rdfdb/bench/tools/lubm100.nt", "input_sha256": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d", "counts": {"source_lines": 13879970, "unique_triples": 13409395, "resource_nodes": 2181789, "literal_nodes": 1121935}, "predicates": {"http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "P0", "http://www.w3.org/2002/07/owl#imports": "P1", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#name": "P2", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#subOrganizationOf": "P3", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#teacherOf": "P4", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#undergraduateDegreeFrom": "P5", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#mastersDegreeFrom": "P6", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#doctoralDegreeFrom": "P7", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#worksFor": "P8", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#emailAddress": "P9", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#telephone": "P10", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#researchInterest": "P11", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#headOf": "P12", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#memberOf": "P13", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse": "P14", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#advisor": "P15", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#publicationAuthor": "P16", "http://swat.cse.lehigh.edu/onto/univ-bench.owl#teachingAssistantOf": "P17"}, "relationships": [{"table": "P5R", "target": "Resource", "rows": 324864}, {"table": "P11L", "target": "Literal", "rows": 60268}, {"table": "P13R", "target": "Resource", "rows": 1048532}, {"table": "P8R", "target": "Resource", "rows": 72302}, {"table": "P12R", "target": "Resource", "rows": 2007}, {"table": "P10L", "target": "Literal", "rows": 1120834}, {"table": "P4R", "target": "Resource", "rows": 217148}, {"table": "P3R", "target": "Resource", "rows": 32043}, {"table": "P15R", "target": "Resource", "rows": 411501}, {"table": "P14R", "target": "Resource", "rows": 2894749}, {"table": "P17R", "target": "Resource", "rows": 55994}, {"table": "P1R", "target": "Resource", "rows": 2007}, {"table": "P0R", "target": "Resource", "rows": 2310694}, {"table": "P16R", "target": "Resource", "rows": 1442184}, {"table": "P2L", "target": "Literal", "rows": 2148830}, {"table": "P7R", "target": "Resource", "rows": 72302}, {"table": "P9L", "target": "Literal", "rows": 1120834}, {"table": "P6R", "target": "Resource", "rows": 72302}], "prepare_seconds": 285.5391706249211}
+      285.63 real       282.51 user         2.71 sys
+          1693843456  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              171988  page reclaims
+                  18  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  76  voluntary context switches
+               16855  involuntary context switches
+       1859727352620  instructions retired
+        417151504187  cycles elapsed
+          1683146408  peak memory footprint
