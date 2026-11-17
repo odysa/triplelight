@@ -1,0 +1,13 @@
+{
+  "physical_memory_bytes": 68719476736,
+  "rdfdb_default_cache_mb": 16384,
+  "native_requested_cache_mb": 16384,
+  "cache_scope": "rdfdb per-snapshot aggregate block target vs Ladybug buffer pool; neither is total process RSS",
+  "threads": 4,
+  "binding_commit": "fe6db89",
+  "stats": "wait ready on unchanged dedicated base; one query warmup plus three measured per process; process order reversed in second pass",
+  "datasets": {
+    "lubm100": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d",
+    "bsbm10": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e"
+  }
+}

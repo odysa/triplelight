@@ -1,0 +1,314 @@
+{
+  "jena_source": "Apache Jena 6.2.0 existing task18 validated TDB2 store",
+  "store": "<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+  "queries": {
+    "q001": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q001.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "e7bfc861fbd312e1ef79f447e570a043e78ab63f847ac418c57ed84af0873259",
+      "json_sha256": "d7f61f69a806b1c186709ad86a4b0ed57efd7c49e19f464e937c68b838a52702",
+      "order": {
+        "checked": true,
+        "keys": [
+          {
+            "var": "label",
+            "kind": "lexical",
+            "term_kind": "literal"
+          }
+        ],
+        "ties": "arbitrary row order permitted within equal keys"
+      }
+    },
+    "q002": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q002.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "15a6df1c7868788e2dc8b9044d277636cf6fbe32c3ae841e8d39639546f313ea",
+      "json_sha256": "2f1177e31e782c02858095f41719a6ed4bcf47414fc096ed1abea3c1098b463b",
+      "order": null
+    },
+    "q003": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q003.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "b553bd17ffbc82aa1b622925a74d354793a12a1d3441af18e3de528bd8a794bb",
+      "json_sha256": "4797e1f38a8bdebf07df1b369eef5c2485e2b72e62f39f6b424da21c4644c032",
+      "order": null
+    },
+    "q004": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q004.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "0ae8810ddbceadb10499574e85b8283c5d1069f895b802c10a420fe69389e47a",
+      "json_sha256": "0a8e894452c0206b997276a28d2e2b456f520cc68872ee2c69114181376a6ff2",
+      "order": {
+        "checked": true,
+        "keys": [
+          {
+            "var": "label",
+            "kind": "lexical",
+            "term_kind": "literal"
+          }
+        ],
+        "ties": "arbitrary row order permitted within equal keys"
+      }
+    },
+    "q005": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q005.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "ad7e8fba53c245235b5cda044baa0b1a88b1a73fd114de790070f7487c3e8f46",
+      "json_sha256": "f11965769f9bf689fb3e9e5b722457e19d0a84c829e4b5150c50b2ac93d62980",
+      "order": null
+    },
+    "q006": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q006.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "762bb1a38911bf1dd75afcce4e0491d4a3b76243aacd84130665b6a1a408a196",
+      "json_sha256": "fcad8b78c108f2b8a8b09cb9e2bed51811f611ef719c07fc28cc6ec177fad41f",
+      "order": null
+    },
+    "q007": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q007.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "65b8907f7beb63a0a459d071d39124975a4ca8bcf8e9815436020bbe3d4e26f8",
+      "json_sha256": "6613bdc1aa2e8c48e685164c4b16154179be054014951e9d3e623f0fde33fc5f",
+      "order": {
+        "checked": true,
+        "keys": [
+          {
+            "var": "label",
+            "kind": "lexical",
+            "term_kind": "literal"
+          }
+        ],
+        "ties": "arbitrary row order permitted within equal keys"
+      }
+    },
+    "q008": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q008.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "a68c5de8fa504bc7dcf601e26c8ab0d4a9ba9247e81f4e33c689948930c1889e",
+      "json_sha256": "21ffc7607b13c9b53de09af29373ec31a86fc5c51613ef383112824742e6da0e",
+      "order": null
+    },
+    "q009": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q009.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "bbe69a89b20d1dc883817771ae3e9a07e56af9271b1a563a287f05e4c396f24a",
+      "json_sha256": "f4ea2074a02d25109ac65c14aa4b22928f605523c6558d6c323d3fe3306b1136",
+      "order": null
+    },
+    "q010": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q010.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "7bc2dc79cf827b166b428c135d5c536bac05475c1f1bb0f77d1822a1442542d8",
+      "json_sha256": "912ae0c97d5f4819fde13a41395f228fbed957bb941400725fb803bbf04fd978",
+      "order": {
+        "checked": true,
+        "keys": [
+          {
+            "var": "productLabel",
+            "kind": "lexical",
+            "term_kind": "literal"
+          }
+        ],
+        "ties": "arbitrary row order permitted within equal keys"
+      }
+    },
+    "q011": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q011.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "30dfb42fe8fed145a90df5a4e5006386d9b9094ed8249dbf085c9b19d0fa9551",
+      "json_sha256": "466b3bcc16c6184de2e5c4ff6fa4eddc3a784384274005198db039a40540af4f",
+      "order": null
+    },
+    "q012": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q012.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "61c71e08adfef3c6433c439478fcc5a49f1f034df5401256e94ca7d5512a1b53",
+      "json_sha256": "a20252a0d90aa427fef03696b1a0b16e9ab19a3d082ab077e9afe7e9dfb215d6",
+      "order": null
+    },
+    "q013": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q013.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "2b02fc40caa3dd727c55160022ccdea0f71a536f5589ce7b191ce59fc0cc9a21",
+      "json_sha256": "146b42e561aa7855471c137d717b3264d95db578e9db4aa7b238040021247a90",
+      "order": {
+        "checked": true,
+        "keys": [
+          {
+            "var": "productLabel",
+            "kind": "lexical",
+            "term_kind": "literal"
+          }
+        ],
+        "ties": "arbitrary row order permitted within equal keys"
+      }
+    },
+    "q014": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q014.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "fa9510327eec353afe3f2c0f6e900fbd30cb6132640d9857c983f721c947e537",
+      "json_sha256": "9d2bd09663b26188bfbb74ece2026e38a43e69dfd6dee07cd1e0dc45d382c384",
+      "order": null
+    },
+    "q015": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q015.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "b43e7a3aa2ce45f493f97bb1498d9423dae11107ee041e5d58addc62128160d6",
+      "json_sha256": "41252027f1a320d4f75e8ab16b0d7d802150ed77742462b722b0517bd1e38c58",
+      "order": null
+    },
+    "q016": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q016.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "ef5b9914425ab593040f174caf878ae36ff0d296bb47735adc8e130dd056e8e0",
+      "json_sha256": "bad0caa6d3b742aef4b74ac0706d34a0ba9555b0ceae6c940cba52458e99f380",
+      "order": {
+        "checked": true,
+        "keys": [
+          {
+            "var": "reviewDate",
+            "kind": "iso_datetime",
+            "descending": true
+          }
+        ],
+        "ties": "arbitrary row order permitted within equal keys"
+      }
+    },
+    "q019": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q019.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "ab070b1985b4b0abb1fbae7d4513ceec25a81d3caab726df5c46445bb3f4b1a5",
+      "json_sha256": "e5dbe3b6e837aaa7f27e8f72e59e38724b9528b6b6f6a8a8612a21d90a8b14f8",
+      "order": {
+        "checked": true,
+        "keys": [
+          {
+            "var": "reviewDate",
+            "kind": "iso_datetime",
+            "descending": true
+          }
+        ],
+        "ties": "arbitrary row order permitted within equal keys"
+      }
+    },
+    "q022": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q022.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "0e3d7f0f649ad04c1ed4e42aca1b055419bf2b5c94cc654a1e9a64d986e6cb3b",
+      "json_sha256": "70183fb2cc0ddbb07c8f65a73d7b8e5f337db6ab5a866696d1caf9a49e693541",
+      "order": {
+        "checked": true,
+        "keys": [
+          {
+            "var": "price",
+            "kind": "double_cast"
+          }
+        ],
+        "ties": "arbitrary row order permitted within equal keys"
+      }
+    },
+    "q023": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q023.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "d49eadeda177073e3849ad0a83ae67112bb947d5a9a0264944cae249bcf74701",
+      "json_sha256": "af63f350bc795c281a50b04ae5aa6c2dbf7f86df8be9dda84942911e83d85a07",
+      "order": {
+        "checked": true,
+        "keys": [
+          {
+            "var": "price",
+            "kind": "double_cast"
+          }
+        ],
+        "ties": "arbitrary row order permitted within equal keys"
+      }
+    },
+    "q024": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/tdb2.tdbquery",
+        "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm10",
+        "--query=<agent-workspace>/rdfdb/bench/bsbm/q024.rq",
+        "--results=JSON"
+      ],
+      "query_sha256": "816ddc8b55f11f8f3e7364b094d61beb464e97c83664b86f8be2174ea0945b78",
+      "json_sha256": "543aa8cf05fda75987534905a1edd443bcd26618f8b449791a361fa285731b1c",
+      "order": null
+    }
+  }
+}
