@@ -121,9 +121,11 @@ impl ExternalSort {
                 let path = self.path();
                 merge(group, &path, self.max_record)?;
                 next.push(path);
-            }
-            for path in old {
-                fs::remove_file(path)?;
+                // Runs are private scratch. Once their replacement is complete,
+                // discard this group before starting the next to reduce peak space.
+                for input in group {
+                    fs::remove_file(input)?;
+                }
             }
             self.runs = next;
         }
