@@ -328,3 +328,34 @@ fn aggregate_errors_poison_like_jena() {
         if legacy { unsafe { std::env::remove_var("RDFDB_LEGACY_GROUP") } }
     }
 }
+
+/// Float SUM accumulates in f64 and rounds to binary32 once: 2^24 + 1 + 1 (each 1 alone would be lost to per-step
+/// binary32 rounding) sums to the binary32 value nearest the exact 16777218.
+#[test]
+fn float_sum_rounds_once() {
+    let data = r#"
+<urn:a> <urn:f> "16777216"^^<http://www.w3.org/2001/XMLSchema#float> .
+<urn:b> <urn:f> "1"^^<http://www.w3.org/2001/XMLSchema#float> .
+<urn:c> <urn:f> "1.0"^^<http://www.w3.org/2001/XMLSchema#float> .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    match query(&s, "SELECT (SUM(?f) AS ?v) WHERE { ?x <urn:f> ?f }").unwrap() {
+        QueryResult::Solutions { rows, .. } => assert_eq!(rows[0][0].as_ref().unwrap().to_string(), "\"1.6777218E7\"^^<http://www.w3.org/2001/XMLSchema#float>"),
+        r => panic!("{r:?}"),
+    }
+}
+
+/// Expression arithmetic still rounds each float operation (only SUM/AVG accumulate wider): 2^24 + 1 in binary32 is
+/// 2^24, so this filter rejects the row on both the compiled and the general path.
+#[test]
+fn float_expression_rounds_per_operation() {
+    let data = r#"
+<urn:r> <urn:a> "16777216"^^<http://www.w3.org/2001/XMLSchema#float> .
+<urn:r> <urn:b> "1"^^<http://www.w3.org/2001/XMLSchema#float> .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
+    let f = "FILTER((?a + ?b) > \"16777216\"^^<http://www.w3.org/2001/XMLSchema#float>)";
+    assert_eq!(n(&format!("SELECT * WHERE {{ ?r <urn:a> ?a . ?r <urn:b> ?b {f} }}")), 0);
+    assert_eq!(n(&format!("SELECT * WHERE {{ {{ ?r <urn:a> ?a . ?r <urn:b> ?b }} OPTIONAL {{ ?r <urn:none> ?z }} {f} }}")), 0);
+}
