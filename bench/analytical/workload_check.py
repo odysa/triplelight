@@ -57,6 +57,13 @@ def run(args):
             'dataset_sha256':args.dataset_sha256,'manifest_sha256':hashlib.sha256((args.workload/'manifest.json').read_bytes()).hexdigest(),
             'requested_files':[q['file'] for q in requested],'partial_workload':len(requested)!=len(manifest['queries']),
             'queries':{},'complete':False}
+    frozen_inputs=None
+    if args.numeric_inputs:
+        from envelope_qualify import FrozenInputs
+        frozen_inputs=FrozenInputs(args.numeric_inputs,args.numeric_freeze_sha256,args.dataset_sha256,matrix['manifest_sha256'])
+        matrix['numeric_freeze_sha256']=frozen_inputs.freeze_sha256
+        matrix['numeric_policy']='exact-anchor-binary32-v1'
+    else:matrix['numeric_policy']='original-four-binary32-ulps'
     connection=db=None
     try:
         if args.system=='duckdb':
@@ -90,6 +97,8 @@ def run(args):
                 diagnostic=None
                 if args.system=='jena':
                     actual=ask(args.endpoint,source,args.timeout)
+                    # Preserve raw reference output even if its numeric envelope fails.
+                    (args.out/(stem+'.json')).write_text(json.dumps(actual,indent=2))
                     if n==7:
                         text=diagnostic_query(q['parameters']);(args.out/(stem+'-diagnostic.rq')).write_text(text)
                         diagnostic=ask(args.endpoint,text,args.timeout)
@@ -112,7 +121,13 @@ def run(args):
                         if actual['head']['vars']!=['product'] or any(r['product']['type']!='uri' for r in actual['results']['bindings']):
                             raise ValueError('q7 result shape/type differs')
                         entry['qualification']={'q7_cutoff':q7_allowed_products([r['product']['value'] for r in actual['results']['bindings']],diagnostics(diagnostic))}
+                    elif frozen_inputs is not None and n in (4,5,6):
+                        from envelope_qualify import qualify_enveloped
+                        entry['qualification']=qualify_enveloped(n,actual,reference,frozen_inputs.for_instance(q))
                     else:entry['qualification']=qualify(n,actual,reference)
+                if args.system=='jena' and frozen_inputs is not None and n in (4,5,6):
+                    from envelope_qualify import qualify_enveloped
+                    entry['qualification']=qualify_enveloped(n,actual,actual,frozen_inputs.for_instance(q))
                 (args.out/(stem+'.json')).write_text(json.dumps(actual,indent=2))
                 entry.update(status='pass',rows=len(actual['results']['bindings']),order=check_order(n,actual))
             except Exception as exc:entry.update(status='fail',error=type(exc).__name__+': '+str(exc))
@@ -131,12 +146,14 @@ if __name__=='__main__':
     for name in ['workload','out']:p.add_argument('--'+name,type=Path,required=True)
     for name in ['database','import-report','reference','source']:p.add_argument('--'+name,type=Path)
     for name in ['lock-owner','dataset-sha256','runtime-source']:p.add_argument('--'+name,required=True)
+    p.add_argument('--numeric-inputs',type=Path);p.add_argument('--numeric-freeze-sha256')
     p.add_argument('--endpoint');p.add_argument('--timeout',type=int,default=120)
     p.add_argument('--limit',type=int,default=0);p.add_argument('--threads',type=int,default=4)
     p.add_argument('--memory-limit',default='8GB');p.add_argument('--max-spill',default='8GB')
     p.add_argument('--spill',type=Path)
     args=p.parse_args()
     if args.limit<0 or min(args.timeout,args.threads)<1:p.error('positive timeout/threads and nonnegative limit required')
+    if bool(args.numeric_inputs)!=bool(args.numeric_freeze_sha256):p.error('numeric inputs and freeze hash must be supplied together')
     if args.system=='jena' and not args.endpoint:p.error('Jena needs --endpoint')
     if args.system!='jena' and (not args.database or not args.reference):p.error('candidate needs --database and --reference')
     if args.system=='duckdb' and not args.import_report:p.error('DuckDB needs --import-report')
