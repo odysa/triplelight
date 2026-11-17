@@ -3,6 +3,7 @@
 //! Solutions are full-width rows of `TermId` over every variable of the query; `UNBOUND` (0) marks an unbound
 //! slot. Storage guarantees real IDs are never 0. Terms computed by expressions (BIND, aggregates) that are not
 //! in the store get per-query scratch IDs, so ID equality stays term equality throughout.
+mod agg;
 mod bgp;
 mod count;
 mod expr;
@@ -357,6 +358,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         if let Some(rows) = self.try_count_group(inner, keys, aggs, &input) { return rows; }
         let rows = self.eval(inner, input);
         let kidx: Vec<usize> = keys.iter().map(|v| self.var(v)).collect();
+        if std::env::var_os("RDFDB_LEGACY_GROUP").is_none() {
+            if let Some(out) = self.try_fast_group(&rows, &kidx, aggs) { return out; }
+        }
         let mut groups: Vec<(Vec<TermId>, Vec<Row>)> = Vec::new();
         let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
         for r in rows {
