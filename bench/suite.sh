@@ -11,7 +11,7 @@ if [ -z "${BENCH_LOCK_HELD:-}" ]; then
   if mkdir /tmp/rdf-bench.lock 2>/dev/null; then echo "suite.sh $D $* ($(whoami), pid $$)" > /tmp/rdf-bench.lock/owner; trap 'rm -rf /tmp/rdf-bench.lock' EXIT
   else echo "machine locked by: $(cat /tmp/rdf-bench.lock/owner 2>/dev/null)" >&2; exit 1; fi
 fi
-T=tools; R=rdf4j-server; OUT=${OUT_PREFIX:-results/}$D; QDIR=${D//[0-9]/}; mkdir -p $OUT
+T=tools; R=rdf4j-server; OUT=${OUT_PREFIX:-results/}$D; QDIR=${QDIR:-${D//[0-9]/}}; mkdir -p $OUT
 CP="$R/target/rdf4j-server-1.jar:$R/target/lib/*"
 NT=$T/$D.nt
 for sys in "$@"; do
