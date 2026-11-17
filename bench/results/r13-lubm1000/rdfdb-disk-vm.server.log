@@ -1,0 +1,5 @@
+opened disk snapshot /data/rdfdb-diskvm-lubm1000 in 1.67s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:7979/sparql
+statistics ready after 59.97s
+container_mem 10.45GiB
