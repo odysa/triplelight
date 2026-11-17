@@ -1,0 +1,512 @@
+{
+  "schema": "curated-aggregate-workload-v1",
+  "description": "COUNT-star and DISTINCT-first-variable rewrites of the original 34 BGP queries, plus four prefix GROUP BY cases. Not an official BI mix. No current engine or competitor measurements.",
+  "source_commit": "ac101b3",
+  "queries": [
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q1.rq",
+      "sha256": "e2021deb52c3ce33fec92d733a0e5123a17e3c1115335c9b3e50bdc94ebbc71f",
+      "source": "docs/count-pushdown/queries/lubm/all_q1.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q10.rq",
+      "sha256": "e2021deb52c3ce33fec92d733a0e5123a17e3c1115335c9b3e50bdc94ebbc71f",
+      "source": "docs/count-pushdown/queries/lubm/all_q10.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q11.rq",
+      "sha256": "784c39bd61f2aa9910e46d18ba774b12057321cd0aeab9740b76b0605b05541b",
+      "source": "docs/count-pushdown/queries/lubm/all_q11.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q12.rq",
+      "sha256": "16078a4f7a3ab7e8e96e384b21bdb495530901bfb207e211a6250cc6e4989356",
+      "source": "docs/count-pushdown/queries/lubm/all_q12.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q13.rq",
+      "sha256": "df8e9579b6d1362a3292ae1ecfeffddd20ee5a4972e2d4400a9e8add1b287d22",
+      "source": "docs/count-pushdown/queries/lubm/all_q13.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q14.rq",
+      "sha256": "a63cc484463f97b3b2b4d0394b4cfe00579e7fb36b8f586a01c3791985d33c32",
+      "source": "docs/count-pushdown/queries/lubm/all_q14.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q2.rq",
+      "sha256": "36b3d70830a9bb19c1cdca7c303d8a4faa8be728f25957987bf381021434ccf0",
+      "source": "docs/count-pushdown/queries/lubm/all_q2.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q3.rq",
+      "sha256": "df2b9bee310e91bd461acf336b1bf263d9a64d23a2231b3718505c362b69625c",
+      "source": "docs/count-pushdown/queries/lubm/all_q3.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q4.rq",
+      "sha256": "b26a3c521553486ecdfd3312bdad4d2cb6add7776e1c220cf0cb02ab802f28cd",
+      "source": "docs/count-pushdown/queries/lubm/all_q4.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q5.rq",
+      "sha256": "f0bb6e9f984093a6cba464e98f6c19078fd071e8adc16d6f953b915303e09952",
+      "source": "docs/count-pushdown/queries/lubm/all_q5.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q6.rq",
+      "sha256": "a63cc484463f97b3b2b4d0394b4cfe00579e7fb36b8f586a01c3791985d33c32",
+      "source": "docs/count-pushdown/queries/lubm/all_q6.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q7.rq",
+      "sha256": "3ecdf1fab7614d274761308d888c243ceab81f9e88419de8575e1a8af9b7d2e0",
+      "source": "docs/count-pushdown/queries/lubm/all_q7.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q8.rq",
+      "sha256": "8b2d591973fe29e8f0df816cd8eafd45a34c6fd02742bcb63efa57e1cea60240",
+      "source": "docs/count-pushdown/queries/lubm/all_q8.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/all_q9.rq",
+      "sha256": "10c3fc29adc42ad122b06e237b26bf8f99dcebce30468dbd4695735167241a87",
+      "source": "docs/count-pushdown/queries/lubm/all_q9.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q1.rq",
+      "sha256": "1596245303aa0af7376689eab55cf204d3d11bd30329d35cee830254081e08a9",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q1.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q10.rq",
+      "sha256": "1596245303aa0af7376689eab55cf204d3d11bd30329d35cee830254081e08a9",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q10.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q11.rq",
+      "sha256": "beffab2858645b1c3e1d3f537985320509863f81042b249059c97070c631044e",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q11.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q12.rq",
+      "sha256": "a6801761b91c54dff59078dc420ebe7d9992b573219a042c62d61acff4012336",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q12.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q13.rq",
+      "sha256": "e7ca2e0b6b81e8ed2d1d9525b71a5ccdbe4309a1fe6db1044db4d7f25d9d5618",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q13.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q14.rq",
+      "sha256": "8dd0af6621a6eff0c4bc44f58762d8b646c5f334d50cded4e027271419fe508e",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q14.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q2.rq",
+      "sha256": "fc1149c06abf4844cf5f05e8fd4cb245c2f5283ce91e825f2ace2cd45828ef79",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q2.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q3.rq",
+      "sha256": "7941c09fa4906559342b6a7279024718f7a062f13eb134573d0d86be7f2c82a4",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q3.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q4.rq",
+      "sha256": "75cd853d15f796c797d74e0614742edb3146d29cc94b7a196e6ba713230b6fd5",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q4.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q5.rq",
+      "sha256": "5b3a5ae0d17c51aec3240614fcdf6423f7e1cd7ade89669c2da65f10b44ceffb",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q5.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q6.rq",
+      "sha256": "8dd0af6621a6eff0c4bc44f58762d8b646c5f334d50cded4e027271419fe508e",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q6.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q7.rq",
+      "sha256": "784027561102d2e26db5a345b4c287f9e81a874513408b55d8aa08ce7cc7a6d4",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q7.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q8.rq",
+      "sha256": "2fb0c129ca6cc6540ea97b1954da7816397c0f2f9df28eff064b740ac566ca07",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q8.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/distinct_q9.rq",
+      "sha256": "fbf9aeb9f2f206a90272f78b1e81360305cd2ae27d363f0b3a541fc5c720ca00",
+      "source": "docs/count-pushdown/queries/lubm/distinct_q9.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/group_advisors.rq",
+      "sha256": "4a69f8d7faab74aa58371dd1a9826ee33204e095cc77ab3cfc22064184c81f2c",
+      "source": "docs/count-pushdown/queries/lubm/group_advisors.rq",
+      "kind": "group"
+    },
+    {
+      "dataset": "lubm",
+      "file": "lubm/group_type.rq",
+      "sha256": "10930cc79af80c3e03d179fb8be83c6bca8159ae077032ee5577a0285930cdcc",
+      "source": "docs/count-pushdown/queries/lubm/group_type.rq",
+      "kind": "group"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_C1.rq",
+      "sha256": "143f34d370a7c071a5963e4eb2b0b76d6f3e7fd9a8535d3038dfb3bddf714866",
+      "source": "docs/count-pushdown/queries/watdiv/all_C1.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_C2.rq",
+      "sha256": "c503a6e1a139c859674d84701bf1fed3dcb0051c2a6bbff5fe78df73fff59666",
+      "source": "docs/count-pushdown/queries/watdiv/all_C2.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_C3.rq",
+      "sha256": "2016e48195b2447bb1e4a77f7147615afb9b368fb49537a41dd3d86cd6247d6c",
+      "source": "docs/count-pushdown/queries/watdiv/all_C3.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_F1.rq",
+      "sha256": "8abc40c85dd0f0f171917bebf02e97047ea018aeac4540686248463772bac093",
+      "source": "docs/count-pushdown/queries/watdiv/all_F1.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_F2.rq",
+      "sha256": "97bfc742462032ed51dd2a857f32d3807266e863172d0c50a794bd953e34d821",
+      "source": "docs/count-pushdown/queries/watdiv/all_F2.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_F3.rq",
+      "sha256": "6df77cfeeb5f478d60fc47f4450bd65ed5cd319b5b2ebdd01a324f1d86fdab98",
+      "source": "docs/count-pushdown/queries/watdiv/all_F3.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_F4.rq",
+      "sha256": "9332d8e4ff4ed465241d2da78ef6219afd3b56c4356e719ea81b41ddd65a2c5a",
+      "source": "docs/count-pushdown/queries/watdiv/all_F4.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_F5.rq",
+      "sha256": "3b7d55f54e10e3010062f8807059487fd6f2056cd1ad7b7ac7774c74c28de815",
+      "source": "docs/count-pushdown/queries/watdiv/all_F5.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_L1.rq",
+      "sha256": "71f241e7b5c1ec62db06e787b9acde313ae7b6f00941d77eabdfc964b2c57028",
+      "source": "docs/count-pushdown/queries/watdiv/all_L1.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_L2.rq",
+      "sha256": "962dd9eb34ec06b56b98627b8b88780a0c6a35920c0c859ba211d93f5338cb48",
+      "source": "docs/count-pushdown/queries/watdiv/all_L2.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_L3.rq",
+      "sha256": "aadfd374b6f271fb9011990724becad63cd6dff72e25280f01f6d90f48016a23",
+      "source": "docs/count-pushdown/queries/watdiv/all_L3.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_L4.rq",
+      "sha256": "69a0d30f81ad963b33538b212ec8088d34b9f18dcccfa2fe3a8186b98f2980e4",
+      "source": "docs/count-pushdown/queries/watdiv/all_L4.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_L5.rq",
+      "sha256": "487697bf678179303032af2da007d632488dea3d5f4c6ecda986573ceb9e6578",
+      "source": "docs/count-pushdown/queries/watdiv/all_L5.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_S1.rq",
+      "sha256": "70317dfed611480040d25517d2afcd3d4715eae3927610097be2ee3414265202",
+      "source": "docs/count-pushdown/queries/watdiv/all_S1.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_S2.rq",
+      "sha256": "98dd25a83d2dec1160f3fe3914a2330cfbbdeddac9ff8570a2f60a9392e82306",
+      "source": "docs/count-pushdown/queries/watdiv/all_S2.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_S3.rq",
+      "sha256": "88d37315831156385300c4e74401aa68bda3c27f4662552413b9a31519e33591",
+      "source": "docs/count-pushdown/queries/watdiv/all_S3.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_S4.rq",
+      "sha256": "edbb5080e9140f12805dde704adff70fab93c3504b7416db788e4e4018b476e1",
+      "source": "docs/count-pushdown/queries/watdiv/all_S4.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_S5.rq",
+      "sha256": "012319103abd539f70ee5c0a97e6a169a2d65d31b2c9ff09bcf61ca7341e5574",
+      "source": "docs/count-pushdown/queries/watdiv/all_S5.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_S6.rq",
+      "sha256": "51afd20cb145f6400f8db77ed899717470040920b96d180de918016b03ada560",
+      "source": "docs/count-pushdown/queries/watdiv/all_S6.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/all_S7.rq",
+      "sha256": "3a3b8be844eb957d61b60fa9cbca6e304fc7c13ab191900bc8f424ef9df1dfd4",
+      "source": "docs/count-pushdown/queries/watdiv/all_S7.rq",
+      "kind": "all"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_C1.rq",
+      "sha256": "defe54f969a02e62824fa79cc0b1b0400941e073ebfb17c4844dacc86a7b2432",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_C1.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_C2.rq",
+      "sha256": "2bc3ffd2704a2f0da702eb467b93a594cbebc5d441cfe9e7b75009aa9cb8ff35",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_C2.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_C3.rq",
+      "sha256": "987c812c23678326f257fc48a3df0732bd131d7c8b8c5bfb5ed6efaec4be58f8",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_C3.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_F1.rq",
+      "sha256": "7d002398214035646a4dbe3b6aa42808878cc7d37e34b88d710dff50c4a557ec",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_F1.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_F2.rq",
+      "sha256": "a904e5692dc4b1ae696abde1a0b4d94013d9fcd7871c8733d8c3fbf7520fcbc8",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_F2.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_F3.rq",
+      "sha256": "ed8cc93b05081809e113a1dbeeeeda597efb08ea90ff043da2625fd43f27c873",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_F3.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_F4.rq",
+      "sha256": "30c4ca05deed2f1d067088f34c22f11413da680ace661078a35e800764add20f",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_F4.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_F5.rq",
+      "sha256": "235ed0df443436b4c675ded2211a26955af80086c64c2c16e3b8fe3c17d0a143",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_F5.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_L1.rq",
+      "sha256": "916a16900805780cd193c87ada7bf3bd6b9e5a5f609dfaf897d4cb065563e27d",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_L1.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_L2.rq",
+      "sha256": "de0e4b67812aedffa05a828168c3c2dbb31f2926a397c8a5093d1b6c5dbc121a",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_L2.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_L3.rq",
+      "sha256": "7990b8d026372ace385ac9966fa5378c23ff4707039ac131fcddd6954fb5f801",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_L3.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_L4.rq",
+      "sha256": "30a3351e6e53c41a2f63f5d3513697e7bda4c4ede0a5d4782c7dad9a5c37e99c",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_L4.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_L5.rq",
+      "sha256": "e2743c45b18244a0dfb0049d2a3fef00e918f228ae2517def443fdd1fb3af11c",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_L5.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_S1.rq",
+      "sha256": "0b236b682603d5c7973f78be1532210c17751d6cc138e0325d177a98b7b242b3",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_S1.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_S2.rq",
+      "sha256": "16be0aa61515476b8b2d35b556e94b882804b3584ae33d7799fe5af3725ad33f",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_S2.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_S3.rq",
+      "sha256": "72d8947dc3e3daaef075b9ed16a373e940c63a7c1726cdc923820500a5b197e3",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_S3.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_S4.rq",
+      "sha256": "cff7a0f80fa6ae8c92f399f0ee4a816f3f11370c13c6058a8f82bf04679fb7fa",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_S4.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_S5.rq",
+      "sha256": "51fd7905b3a9a6b9f1c19c714ecb55bd632ead5884cb05e6a846260aaac2adcc",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_S5.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_S6.rq",
+      "sha256": "28d5fda35f22dca7a50d4e958100996ace0f3fa39d9db90f5e83bbef9db9b524",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_S6.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/distinct_S7.rq",
+      "sha256": "ca8ad7aaf2f618315fd7b5f8e1054ae9bdda53f032a5f2236373527f5b32a31d",
+      "source": "docs/count-pushdown/queries/watdiv/distinct_S7.rq",
+      "kind": "distinct"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/group_age.rq",
+      "sha256": "3dcb4307de359b08a6d4fab5f70cd6116d4c0291ae8e1c93082dbfc325952529",
+      "source": "docs/count-pushdown/queries/watdiv/group_age.rq",
+      "kind": "group"
+    },
+    {
+      "dataset": "watdiv",
+      "file": "watdiv/group_gender.rq",
+      "sha256": "9cd1937744f195226b5b8514fef854f0bad8dcc07e793241efc4630ccd2f8e84",
+      "source": "docs/count-pushdown/queries/watdiv/group_gender.rq",
+      "kind": "group"
+    }
+  ],
+  "source_content_verified_against_commit": true
+}
