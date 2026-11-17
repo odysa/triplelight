@@ -1,0 +1,130 @@
+{
+  "fixture": true,
+  "cutoff": false,
+  "invalid_price": false,
+  "invalid_rating": false,
+  "empty": true,
+  "queries": [
+    {
+      "template": 1,
+      "file": "q1.rq",
+      "parameters": {
+        "Country1": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Country2": "<http://downlode.org/rdf/iso-3166/countries#DE>",
+        "Country": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Product": "<urn:p1>",
+        "ProductType": "<urn:Type0>",
+        "Producer": "<urn:pr1>",
+        "ConsecutiveMonth_0": "2007-06-01",
+        "ConsecutiveMonth_1": "2007-07-01",
+        "ConsecutiveMonth_2": "2007-08-01"
+      }
+    },
+    {
+      "template": 2,
+      "file": "q2.rq",
+      "parameters": {
+        "Country1": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Country2": "<http://downlode.org/rdf/iso-3166/countries#DE>",
+        "Country": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Product": "<urn:p1>",
+        "ProductType": "<urn:Type0>",
+        "Producer": "<urn:pr1>",
+        "ConsecutiveMonth_0": "2007-06-01",
+        "ConsecutiveMonth_1": "2007-07-01",
+        "ConsecutiveMonth_2": "2007-08-01"
+      }
+    },
+    {
+      "template": 3,
+      "file": "q3.rq",
+      "parameters": {
+        "Country1": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Country2": "<http://downlode.org/rdf/iso-3166/countries#DE>",
+        "Country": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Product": "<urn:p1>",
+        "ProductType": "<urn:Type0>",
+        "Producer": "<urn:pr1>",
+        "ConsecutiveMonth_0": "2007-06-01",
+        "ConsecutiveMonth_1": "2007-07-01",
+        "ConsecutiveMonth_2": "2007-08-01"
+      }
+    },
+    {
+      "template": 4,
+      "file": "q4.rq",
+      "parameters": {
+        "Country1": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Country2": "<http://downlode.org/rdf/iso-3166/countries#DE>",
+        "Country": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Product": "<urn:p1>",
+        "ProductType": "<urn:Type0>",
+        "Producer": "<urn:pr1>",
+        "ConsecutiveMonth_0": "2007-06-01",
+        "ConsecutiveMonth_1": "2007-07-01",
+        "ConsecutiveMonth_2": "2007-08-01"
+      }
+    },
+    {
+      "template": 5,
+      "file": "q5.rq",
+      "parameters": {
+        "Country1": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Country2": "<http://downlode.org/rdf/iso-3166/countries#DE>",
+        "Country": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Product": "<urn:p1>",
+        "ProductType": "<urn:Type0>",
+        "Producer": "<urn:pr1>",
+        "ConsecutiveMonth_0": "2007-06-01",
+        "ConsecutiveMonth_1": "2007-07-01",
+        "ConsecutiveMonth_2": "2007-08-01"
+      }
+    },
+    {
+      "template": 6,
+      "file": "q6.rq",
+      "parameters": {
+        "Country1": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Country2": "<http://downlode.org/rdf/iso-3166/countries#DE>",
+        "Country": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Product": "<urn:p1>",
+        "ProductType": "<urn:Type0>",
+        "Producer": "<urn:pr1>",
+        "ConsecutiveMonth_0": "2007-06-01",
+        "ConsecutiveMonth_1": "2007-07-01",
+        "ConsecutiveMonth_2": "2007-08-01"
+      }
+    },
+    {
+      "template": 7,
+      "file": "q7.rq",
+      "parameters": {
+        "Country1": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Country2": "<http://downlode.org/rdf/iso-3166/countries#DE>",
+        "Country": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Product": "<urn:p1>",
+        "ProductType": "<urn:Type0>",
+        "Producer": "<urn:pr1>",
+        "ConsecutiveMonth_0": "2007-06-01",
+        "ConsecutiveMonth_1": "2007-07-01",
+        "ConsecutiveMonth_2": "2007-08-01"
+      }
+    },
+    {
+      "template": 8,
+      "file": "q8.rq",
+      "parameters": {
+        "Country1": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Country2": "<http://downlode.org/rdf/iso-3166/countries#DE>",
+        "Country": "<http://downlode.org/rdf/iso-3166/countries#US>",
+        "Product": "<urn:p1>",
+        "ProductType": "<urn:Type0>",
+        "Producer": "<urn:pr1>",
+        "ConsecutiveMonth_0": "2007-06-01",
+        "ConsecutiveMonth_1": "2007-07-01",
+        "ConsecutiveMonth_2": "2007-08-01"
+      }
+    }
+  ],
+  "expected_q6_reviewers": {}
+}
