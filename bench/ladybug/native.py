@@ -223,7 +223,11 @@ def compile_bgp(query, manifest, resources):
             return f'({ident} {m[2]} v_{m[3][1:]}.id)'
         s=re.sub(r'(<[^>]+>)\s*(!=|=)\s*(\?\w+)',iri_compare,s)
         # The benchmark's date constants/values use one timezone-free ISO format.
-        s=re.sub(r'(\?\w+)\s*(>|<|>=|<=)\s*("[^"]+"\^\^<[^>]+>)',lambda m:f'v_{m[1][1:]}.value {m[2]} '+json.dumps(term(m[3])['value']),s)
+        def date_compare(m):
+            constant=term(m[3])
+            if constant.get('datatype')!=XSD+'dateTime':raise ValueError('Only fixed-format dateTime comparison is translated')
+            return f'(v_{m[1][1:]}.datatype = '+json.dumps(XSD+'dateTime')+f' AND v_{m[1][1:]}.value {m[2]} '+json.dumps(constant['value'])+')'
+        s=re.sub(r'(\?\w+)\s*(>|<|>=|<=)\s*("[^"]+"\^\^<[^>]+>)',date_compare,s)
         s=re.sub(r'\?(\w+)',r'v_\1.num',s)
         s=s.replace('&&',' AND ').replace('||',' OR ').replace('!=','<>')
         # Reject untranslated functions, IRIs and unsupported operators.
@@ -231,6 +235,11 @@ def compile_bgp(query, manifest, resources):
         return s
     def render(g,optional=False):
         triples,opts,filters=g;patterns=[];constraints=[]
+        mandatory_vars={t for triple in triples for t in triple if t.startswith('?')}
+        before_optional=[];after_optional=[]
+        for f in filters:
+            (before_optional if set(re.findall(r'\?\w+',f))<=mandatory_vars else after_optional).append(f)
+        if optional and after_optional:raise ValueError('Filter over nested optional bindings is not translated')
         usedconstants=set()
         for s,p,o in triples:
             a=node(s);b=node(o);pred=expand(p)
@@ -242,15 +251,15 @@ def compile_bgp(query, manifest, resources):
             patterns.append(f'({a})-[:'+ '|'.join(labels)+f']->({b})')
         constraints=[f'{constants[c][0]}.id = {constants[c][1]}' for c in sorted(usedconstants)]
         text=('OPTIONAL MATCH ' if optional else 'MATCH ')+', '.join(patterns)
-        if optional:constraints += [expression(s) for s in filters]
+        constraints += [expression(s) for s in before_optional]
         if constraints:text+=' WHERE '+' AND '.join('('+s+')' for s in constraints)
         for child in opts:text+=' '+render(child,True)
-        if filters and not optional:text+=' WITH * WHERE '+' AND '.join('('+expression(s)+')' for s in filters)
+        if after_optional:text+=' WITH * WHERE '+' AND '.join('('+expression(s)+')' for s in after_optional)
         return text
     cypher=render(group)
     if not set(projection)<=bound:raise ValueError('Unbound projection')
     tail=m[3].strip();order=[]
-    ordermatch=re.search(r'ORDER\s+BY\s+(.*?)(?=\bOFFSET\b|\bLIMIT\b|$)',tail,re.I)
+    ordermatch=re.search(r'ORDER\s+BY\s+(.*?)(?=\bOFFSET\b|\bLIMIT\b|$)',tail,re.I|re.S)
     if ordermatch:
         expr=ordermatch[1].strip();desc=False
         dm=re.fullmatch(r'DESC\s*\(\s*(\?\w+)\s*\)',expr,re.I)
@@ -278,13 +287,17 @@ def compile_queries(csvdir,qdir,out):
     result={}
     for q in qdir.glob('*.rq'):
         source=q.read_text()
-        try: rec=compile_bgp(source,manifest,resources)
+        try:
+            if re.search(r'\bUNION\b',source,re.I):
+                from union_queries import compile_union
+                rec=compile_union(source,manifest,resources,compile_bgp,key)
+            else:rec=compile_bgp(source,manifest,resources)
         except ValueError as e: rec={'unsupported':str(e)}
         result[q.stem]={'source_sha256':hashlib.sha256(source.encode()).hexdigest(),**rec}
     out.write_text(json.dumps(result,indent=2))
 
 
-def serve(dbpath, queries, port, memory_mb, threads):
+def serve(dbpath, queries, port, memory_mb, threads, output_mode='row',plan_mode='compile'):
     import ladybug as lb
     import http.server
     import urllib.parse
@@ -292,6 +305,12 @@ def serve(dbpath, queries, port, memory_mb, threads):
     byhash={q['source_sha256']:q for q in compiled.values()}
     db=lb.Database(str(dbpath),buffer_pool_size=memory_mb*1024**2,max_num_threads=threads,read_only=True)
     conn=lb.Connection(db)
+    if plan_mode=='parameterized':
+        from parameters import parameterize
+        for name,rec in compiled.items():
+            if 'unsupported' in rec:continue
+            rec['_query'],rec['_parameters']=parameterize(rec['cypher'])
+            print(json.dumps({'event':'parameterized_query','name':name,'query':rec['_query'],'parameters':rec['_parameters']}),flush=True)
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_POST(self):
             try:
@@ -299,13 +318,20 @@ def serve(dbpath, queries, port, memory_mb, threads):
                 q=args['query'][0]
                 rec=byhash[hashlib.sha256(q.encode()).hexdigest()]
                 if 'unsupported' in rec:raise ValueError(rec['unsupported'])
-                result=conn.execute(rec['cypher'])
-                bindings=[]
-                while result.has_next():
-                    row=result.get_next()
-                    bindings.append({v:json.loads(x) for v,x in zip(rec['vars'],row) if x is not None})
-                body=json.dumps({'head':{'vars':rec['vars']},'results':{'bindings':bindings}},ensure_ascii=False).encode()
-                self.send_response(200);self.send_header('Content-Type','application/sparql-results+json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+                result=conn.execute(rec.get('_query',rec['cypher']),rec.get('_parameters',{}))
+                if output_mode=='arrow':
+                    from arrow_output import encode
+                    body=encode(result.get_as_arrow(),rec)
+                else:
+                    bindings=[]
+                    while result.has_next():
+                        row=result.get_next()
+                        bindings.append({v:({'type':'uri','value':rec['predicate_labels'][x]} if v in rec.get('predicate_columns',[]) else json.loads(x)) for v,x in zip(rec['vars'],row) if x is not None})
+                    body=json.dumps({'head':{'vars':rec['vars']},'results':{'bindings':bindings}},ensure_ascii=False).encode()
+                self.send_response(200);self.send_header('Content-Type','application/sparql-results+json');self.send_header('Content-Length',str(len(body)))
+                self.send_header('X-Ladybug-Execution-Ms',str(result.get_execution_time()))
+                self.send_header('X-Ladybug-Compilation-Ms',str(result.get_compiling_time()))
+                self.end_headers();self.wfile.write(body)
             except Exception as e:
                 body=str(e).encode();self.send_response(500);self.end_headers();self.wfile.write(body)
         def log_message(self,*args):pass
@@ -320,6 +346,8 @@ if __name__=='__main__':
     s=sub.add_parser('load');s.add_argument('csvdir',type=Path);s.add_argument('dbpath',type=Path)
     s=sub.add_parser('compile');s.add_argument('csvdir',type=Path);s.add_argument('qdir',type=Path);s.add_argument('out',type=Path)
     s=sub.add_parser('serve');s.add_argument('dbpath',type=Path);s.add_argument('queries',type=Path);s.add_argument('--port',type=int,default=7981)
+    s.add_argument('--output-mode',choices=['row','arrow'],default='row')
+    s.add_argument('--plan-mode',choices=['compile','parameterized'],default='compile')
     for s in [sub.choices['load'],sub.choices['serve']]:
         s.add_argument('--memory-mb',type=int,default=10240);s.add_argument('--threads',type=int,default=4)
     args=vars(p.parse_args());mode=args.pop('mode');globals()[{'compile':'compile_queries'}.get(mode,mode)](**args)

@@ -1,0 +1,15 @@
+{"event": "parameterized_query", "name": "q2", "query": "MATCH (v_X:T14|T15|T9)-[:P13_T9_T3|P13_T15_T3|P13_T14_T3]->(v_Z:T3), (v_Z:T3)-[:P3_T3_T2]->(v_Y:T2), (v_X:T14|T15|T9)-[:P5_T9_T2|P5_T15_T2|P5_T14_T2]->(v_Y:T2) WHERE $benchmark_enabled RETURN v_X.term AS X, v_Y.term AS Y, v_Z.term AS Z", "parameters": {"benchmark_enabled": true}}
+{"event": "parameterized_query", "name": "q6", "query": "MATCH (v_X:T8) WHERE $benchmark_enabled RETURN v_X.term AS X", "parameters": {"benchmark_enabled": true}}
+{"event": "parameterized_query", "name": "q7", "query": "MATCH (v_X:T8)-[:P14_T8_T12]->(v_Y:T12), (c_2:T5)-[:P4_T5_T12]->(v_Y:T12) WHERE c_2.id = $rdf_id_0 RETURN v_X.term AS X, v_Y.term AS Y", "parameters": {"rdf_id_0": 111}}
+{"event": "parameterized_query", "name": "q3", "query": "MATCH (v_X:T11)-[:P16_T11_T6]->(c_1:T6) WHERE c_1.id = $rdf_id_0 RETURN v_X.term AS X", "parameters": {"rdf_id_0": 248}}
+{"event": "parameterized_query", "name": "q8", "query": "MATCH (v_X:T8)-[:P13_T8_T3]->(v_Y:T3), (v_Y:T3)-[:P3_T3_T2]->(c_2:T2) WHERE c_2.id = $rdf_id_0 UNWIND v_X.P9 AS l_Z RETURN v_X.term AS X, v_Y.term AS Y, l_Z AS Z", "parameters": {"rdf_id_0": 3}}
+{"event": "parameterized_query", "name": "q12", "query": "MATCH (v_X:T4)-[:P8_T4_T3]->(v_Y:T3), (v_Y:T3)-[:P3_T3_T2]->(c_2:T2) WHERE c_2.id = $rdf_id_0 RETURN v_X.term AS X, v_Y.term AS Y", "parameters": {"rdf_id_0": 3}}
+{"event": "parameterized_query", "name": "q13", "query": "MATCH (v_X:T14|T15|T9)-[:P5_T9_T2|P5_T15_T2|P5_T14_T2]->(c_1:T2) WHERE c_1.id = $rdf_id_0 RETURN v_X.term AS X", "parameters": {"rdf_id_0": 3}}
+{"event": "parameterized_query", "name": "q9", "query": "MATCH (v_X:T8)-[:P15_T8_T4]->(v_Y:T4), (v_Y:T4)-[:P4_T4_T12]->(v_Z:T12), (v_X:T8)-[:P14_T8_T12]->(v_Z:T12) WHERE $benchmark_enabled RETURN v_X.term AS X, v_Y.term AS Y, v_Z.term AS Z", "parameters": {"benchmark_enabled": true}}
+{"event": "parameterized_query", "name": "q10", "query": "MATCH (v_X:T14|T15|T9)-[:P14_T9_T13|P14_T15_T13|P14_T14_T13]->(c_1:T13) WHERE c_1.id = $rdf_id_0 RETURN v_X.term AS X", "parameters": {"rdf_id_0": 13}}
+{"event": "parameterized_query", "name": "q14", "query": "MATCH (v_X:T8) WHERE $benchmark_enabled RETURN v_X.term AS X", "parameters": {"benchmark_enabled": true}}
+{"event": "parameterized_query", "name": "q11", "query": "MATCH (v_X:T10)-[:P3_T10_T3]->(c_1:T3) WHERE c_1.id = $rdf_id_0 RETURN v_X.term AS X", "parameters": {"rdf_id_0": 6}}
+{"event": "parameterized_query", "name": "q4", "query": "MATCH (v_X:T4)-[:P8_T4_T3]->(c_1:T3) WHERE c_1.id = $rdf_id_0 UNWIND v_X.P2 AS l_Y1 UNWIND v_X.P9 AS l_Y2 UNWIND v_X.P10 AS l_Y3 RETURN v_X.term AS X, l_Y1 AS Y1, l_Y2 AS Y2, l_Y3 AS Y3", "parameters": {"rdf_id_0": 6}}
+{"event": "parameterized_query", "name": "q1", "query": "MATCH (v_X:T14|T15|T9)-[:P14_T9_T13|P14_T15_T13|P14_T14_T13]->(c_1:T13) WHERE c_1.id = $rdf_id_0 RETURN v_X.term AS X", "parameters": {"rdf_id_0": 13}}
+{"event": "parameterized_query", "name": "q5", "query": "MATCH (v_X:T8)-[:P13_T8_T3]->(c_1:T3) WHERE c_1.id = $rdf_id_0 RETURN v_X.term AS X", "parameters": {"rdf_id_0": 6}}
+READY
