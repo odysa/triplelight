@@ -1,0 +1,256 @@
+2026-11-17 23:42:20.597 - WARN: The Linux kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty may have a bug that causes random stalls, crashes, and corrupt data on arm64, unless it contains the fix https://github.com/torvalds/linux/commit/478a1c3abebfc717db0d1281a9cdd7befafee542. As a workaround, QLever doesn't return freed memory to the operating system. On a kernel with the fix, you can disable the workaround by setting the environment variable QLEVER_DISABLE_KERNEL_BUG_WORKAROUND
+Options for qlever-server:
+  -h [ --help ]                         Produce this help message.
+  -v [ --version ]                      Print version information.
+  -i [ --index-basename ] arg           The basename of the index files 
+                                        (required).
+  -p [ --port ] arg                     The port on which HTTP requests are 
+                                        served (required).
+  -a [ --access-token ] arg             Access token for restricted API calls 
+                                        (default: no access).
+  -n [ --no-access-check ]              If set to true, no access-token check 
+                                        is performed for restricted API calls 
+                                        (default: false).
+  -j [ --num-simultaneous-queries ] arg (=1)
+                                        The number of queries that can be 
+                                        processed simultaneously.
+  -m [ --memory-for-queries ] arg (=4 GB)
+                                        Limit on the total amount of memory 
+                                        that can be used for query processing 
+                                        and caching. If exceeded, query will 
+                                        return with an error, but the engine 
+                                        will not crash. Can be changed at 
+                                        runtime via the runtime parameter of 
+                                        the same name, where a decrease is only
+                                        possible if the freed part is currently
+                                        unused.
+  -c [ --cache-max-size ] arg (=30 GB)  Maximum memory size for all cache 
+                                        entries (pinned and not pinned). Note 
+                                        that the cache is part of the total 
+                                        memory limited by --memory-for-queries.
+  -e [ --cache-max-size-single-entry ] arg (=5 GB)
+                                        Maximum size for a single cache entry. 
+                                        That is, results larger than this will 
+                                        not be cached unless pinned.
+  -E [ --cache-max-size-lazy-result ] arg (=5 MB)
+                                        Maximum size up to which lazy results 
+                                        will be cached by aggregating partial 
+                                        results. Caching does cause significant
+                                        overhead for this case.
+  -k [ --cache-max-num-entries ] arg (=1000)
+                                        Maximum number of entries in the cache.
+                                        If exceeded, remove least-recently used
+                                        non-pinned entries from the cache. Note
+                                        that this condition and the size limit 
+                                        specified via --cache-max-size both 
+                                        have to hold (logical AND).
+  -P [ --no-patterns ]                  Disable the use of patterns. If 
+                                        disabled, the special predicate 
+                                        `ql:has-predicate` is not available.
+  --no-metrics-log                      Disable the per-query metrics log. By 
+                                        default a JSONL log of query start/end 
+                                        events is written next to the index 
+                                        files (`<index-basename>.metrics-log.js
+                                        onl`).
+  --no-resource-usage-log               Disable the resource-usage log. By 
+                                        default a TSV log is written next to 
+                                        the index files (`<index-basename>.serv
+                                        er.resource-usage-log.tsv`). Each row 
+                                        holds the RSS, CPU and disk I/O of the 
+                                        server, the system-wide I/O stall 
+                                        (Linux only) and the ID of a running 
+                                        index rebuild.
+  --resource-usage-interval-s arg (=2)  The sampling interval of the 
+                                        resource-usage log in seconds.
+  -t [ --text ]                         Also load the text index. The text 
+                                        index must have been built before using
+                                        `qlever-index` with options `-d` and `-
+                                        w`.
+  --index-description arg               A description of the index (typically 
+                                        the dataset and its version). It is 
+                                        returned by the API (`cmd=stats`, field
+                                        `name-index`), which is used, for 
+                                        example, by the QLever UI. Can also be 
+                                        changed while the server is running, 
+                                        via the `index-description` API 
+                                        command.
+  --text-description arg                A description of the text index, 
+                                        analogous to `--index-description` 
+                                        (field `name-text-index`).
+  -o [ --only-pso-and-pos-permutations ] 
+                                        Only load the PSO and POS permutations.
+                                        This disables queries with predicate 
+                                        variables.
+  -s [ --default-query-timeout ] arg (=30s)
+                                        Set the default timeout in seconds 
+                                        after which queries are 
+                                        cancelledautomatically.
+  -S [ --service-max-value-rows ] arg (=10000)
+                                        The maximal number of result rows to be
+                                        passed to a SERVICE operation as a 
+                                        VALUES clause to optimize its 
+                                        computation.
+  --throw-on-unbound-variables arg (=false)
+                                        If set to true, the queries that use 
+                                        GROUP BY, BIND, or ORDER BY with 
+                                        variables that are unbound in the query
+                                        throw an exception. These queries 
+                                        technically are allowed by the SPARQL 
+                                        standard, but typically are the result 
+                                        of typos and unintended by the user
+  --request-body-limit arg (=1 GB)      Set the maximum size for the body of 
+                                        requests the server will process. Set 
+                                        to zero to disable the limit.
+  --cache-service-results arg (=false)  SERVICE is not cached because we have 
+                                        to assume that any remote endpoint 
+                                        might change at any point in time. If 
+                                        you control the endpoints, you can 
+                                        override this setting. This will 
+                                        disable the sibling optimization where 
+                                        VALUES are dynamically pushed into 
+                                        `SERVICE`.
+  --persist-updates                     If set, then SPARQL UPDATES will be 
+                                        persisted on disk. Otherwise they will 
+                                        be lost when the engine is stopped
+  --read-from-blob-file arg             Do not load the index from the files 
+                                        with the given index basename, but from
+                                        the compressed blob in the given file 
+                                        (which contains the vocabulary and the 
+                                        named result cache, see 
+                                        `Qlever::serializeVocabAndNamedCacheToC
+                                        ompressedBlob`). This mode is only 
+                                        meant for serving a fixed set of 
+                                        precomputed results: the blob contains 
+                                        no permutations, so only queries that 
+                                        read from the named result cache 
+                                        (`SERVICE ql:cached-result-with-name-..
+                                        .`) or that need no triples at all can 
+                                        be answered. Updates, materialized 
+                                        views, and index rebuilds are not 
+                                        supported, so this option cannot be 
+                                        combined with `--persist-updates`, 
+                                        `--text`, an automatic 
+                                        `--rebuild-index-strategy`, or 
+                                        `--preload-materialized-views`. The 
+                                        `--index-basename` is still required, 
+                                        it determines the names of the log 
+                                        files.
+  --rebuild-index-strategy arg (=manual)
+                                        When to rebuild the index from the 
+                                        current data (including updates). 
+                                        "manual" (the default): only when 
+                                        explicitly requested via the 
+                                        `cmd=rebuild-index` HTTP request. 
+                                        "automatic:min:max:fraction": 
+                                        additionally trigger a rebuild 
+                                        automatically in the background after 
+                                        an update, once the number of delta 
+                                        triples (inserted plus deleted) reaches
+                                        the given `fraction` (a number greater 
+                                        than 0) of the number of index triples,
+                                        but never below `min` and always at 
+                                        `max` (e.g. "automatic:10000:1000000:0.
+                                        1").
+  --rebuild-keep-previous-index-dirs arg (=original-and-most-recent)
+                                        Which `previous.*` index directories to
+                                        keep after a successful index rebuild, 
+                                        manual or automatic (each rebuild moves
+                                        the index that was served so far into 
+                                        such a directory): "all" (keep all of 
+                                        them), "none" (delete all of them), 
+                                        "original-only" (keep only the oldest),
+                                        "most-recent-only" (keep only the most 
+                                        recently created), or 
+                                        "original-and-most-recent" (the 
+                                        default, keep both). The choices and 
+                                        the default are the same as for the 
+                                        `--keep-previous-index-dirs` option of 
+                                        the `qlever rebuild-index` command, 
+                                        which applies the same policy on the 
+                                        client side.
+  --syntax-test-mode arg (=false)       Make several query patterns that are 
+                                        syntactially valid, but otherwise 
+                                        erroneous silently into empty results 
+                                        (e.g. LOAD or SERVICE requests to 
+                                        nonexisting endpoints). This mode 
+                                        should only be used for running the 
+                                        syntax tests from the W3C SPARQL 1.1 
+                                        test suite.
+  --enable-prefilter-on-index-scans arg (=true)
+                                        If set to false, the prefilter 
+                                        procedures for FILTER expressions are 
+                                        disabled.
+  --spatial-join-max-num-threads arg (=8)
+                                        The maximum number of threads to be 
+                                        used for spatial join processing. If 
+                                        this option is set to `0`, the number 
+                                        of CPU threads will be used.
+  --spatial-join-prefilter-max-size arg (=2500)
+                                        The maximum size in square coordinates 
+                                        of the aggregated bounding box of the 
+                                        smaller join partner in a spatial join,
+                                        such that prefiltering will be 
+                                        employed. To disable prefiltering for 
+                                        non-point geometries, set this option 
+                                        to 0.
+  --materialized-view-writer-memory arg (=4 GB)
+                                        Memory limit for sorting rows during 
+                                        the writing of materialized views.
+  -l [ --preload-materialized-views ] arg
+                                        The names of materialized views to be 
+                                        loaded automatically on server start 
+                                        (this option takes an arbitrary number 
+                                        of arguments).
+  --enable-materialized-view-query-rewrite arg (=true)
+                                        If set to true, loaded materialized 
+                                        views will be considered as alternative
+                                        query plans for certain supported query
+                                        patterns.
+  --service-allowed-iri-prefixes arg    IRI prefixes that are allowed as 
+                                        SERVICE endpoints (this option takes an
+                                        arbitrary number of arguments). If none
+                                        are given (the default), all IRIs are 
+                                        allowed. If given, SERVICE requests to 
+                                        IRIs not matching any prefix are 
+                                        rejected. To disable all federated 
+                                        queries, set this option to an invalid 
+                                        IRI prefix like `-`. Magic services 
+                                        (for example spatial search or 
+                                        materialized views) are never affected.
+  --log-level arg (=INFO)               Runtime log level: FATAL, ERROR, WARN, 
+                                        INFO, DEBUG, TIMING, or TRACE. Default 
+                                        is INFO. The compile-time level (INFO) 
+                                        applies as an upper bound — messages 
+                                        above it are never emitted regardless 
+                                        of this setting.
+  --construct-deduplication arg (=none) "Controls deduplication of triples in 
+                                        CONSTRUCT query results. "
+                                              "\"none\" (default): no 
+                                        deduplication, every triple is emitted.
+                                        "
+                                              "\"full\": a triple is emitted at
+                                        most once across the entire result. "
+                                              "\"lru:N\" (positive integer N): 
+                                        deduplicate against the N most "
+                                              "recently used unique triples, 
+                                        with one cache shared across all "
+                                              "template triples (bounded 
+                                        memory, partial deduplication)."
+  --enable-metrics                      Enable metrics collection and expose a 
+                                        Prometheus /metrics endpoint on the 
+                                        main server port. Accessing the 
+                                        endpoint requires a valid access token.
+  --set-runtime-parameter arg           Set any runtime parameter at startup, 
+                                        in the form <name>=<value>, for example
+                                        `--set-runtime-parameter 
+                                        default-query-timeout=300s`. Can be 
+                                        given multiple times. Use 
+                                        `--set-runtime-parameter help` to list 
+                                        all runtime parameters together with 
+                                        their default values. The parameters 
+                                        can also be changed while the server is
+                                        running, via the API. If a parameter 
+                                        can also be set by one of the dedicated
+                                        options above, the value given here 
+                                        wins.
+
