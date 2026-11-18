@@ -1,0 +1,7 @@
+{
+  "error": "Owned scratch baseline exceeded conservative 13 GiB guard",
+  "observed_owned_kib": 13789072,
+  "queries_started": 0,
+  "containers_started": 0,
+  "allocation_limit_gib": 20
+}

@@ -1,0 +1,636 @@
+{
+  "schema": "http-bi-measurement-v1",
+  "complete": false,
+  "runtime_evidence_sha256": "ea31ec6ceb032a13b27002d2c8ca17ad27942d35742abd8b72fe6ca1f4d96063",
+  "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+  "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790",
+  "timer": "HTTP request through complete body read; excludes JSON parsing and qualification",
+  "queries": {
+    "m000_p00_q1.rq": {
+      "mix": 0,
+      "template": 1,
+      "scored": false,
+      "status": "pass",
+      "elapsed_ns": 256047000,
+      "http_status": 200,
+      "bytes": 2482,
+      "transport_error": null,
+      "body_sha256": "e27e2853cab66e3f3f8979b08c88c056b37e15fcea96f73c8ba1a18871b7eeb9",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "reviewCount",
+            true
+          ],
+          [
+            "productType",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "reviewCount",
+              true
+            ],
+            [
+              "productType",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m000_p01_q3.rq": {
+      "mix": 0,
+      "template": 3,
+      "scored": false,
+      "status": "pass",
+      "elapsed_ns": 268890833,
+      "http_status": 200,
+      "bytes": 2541,
+      "transport_error": null,
+      "body_sha256": "78ae3abb7d8c14926bf4f6c4fdec728dbde8e15a2df7cccd5fdb7e410a86de1c",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "ratio",
+            true
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "ratio",
+              true
+            ],
+            [
+              "product",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m000_p02_q2.rq": {
+      "mix": 0,
+      "template": 2,
+      "scored": false,
+      "status": "pass",
+      "elapsed_ns": 142763041,
+      "http_status": 200,
+      "bytes": 2670,
+      "transport_error": null,
+      "body_sha256": "e8a7c9c1c793c716e0a2719c10d20a59e4f6607d952bc424c65fa84490aa5127",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m000_p03_q2.rq": {
+      "mix": 0,
+      "template": 2,
+      "scored": false,
+      "status": "pass",
+      "elapsed_ns": 24570875,
+      "http_status": 200,
+      "bytes": 2674,
+      "transport_error": null,
+      "body_sha256": "7e06113d44a8b245f7647fe8027e9f366e1722765cfb5dd6ebab40df32ae44ae",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m000_p04_q4.rq": {
+      "mix": 0,
+      "template": 4,
+      "scored": false,
+      "status": "fail",
+      "elapsed_ns": 120002963708,
+      "http_status": null,
+      "bytes": 0,
+      "transport_error": "TimeoutError: timed out",
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error": "RuntimeError: TimeoutError: timed out"
+    },
+    "m000_p05_q5.rq": {
+      "mix": 0,
+      "template": 5,
+      "scored": false,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m000_p06_q5.rq": {
+      "mix": 0,
+      "template": 5,
+      "scored": false,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m000_p07_q6.rq": {
+      "mix": 0,
+      "template": 6,
+      "scored": false,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m000_p08_q5.rq": {
+      "mix": 0,
+      "template": 5,
+      "scored": false,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m000_p09_q6.rq": {
+      "mix": 0,
+      "template": 6,
+      "scored": false,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m000_p10_q6.rq": {
+      "mix": 0,
+      "template": 6,
+      "scored": false,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m000_p11_q7.rq": {
+      "mix": 0,
+      "template": 7,
+      "scored": false,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m000_p12_q8.rq": {
+      "mix": 0,
+      "template": 8,
+      "scored": false,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m000_p13_q7.rq": {
+      "mix": 0,
+      "template": 7,
+      "scored": false,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m000_p14_q6.rq": {
+      "mix": 0,
+      "template": 6,
+      "scored": false,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p00_q1.rq": {
+      "mix": 1,
+      "template": 1,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p01_q3.rq": {
+      "mix": 1,
+      "template": 3,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p02_q2.rq": {
+      "mix": 1,
+      "template": 2,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p03_q2.rq": {
+      "mix": 1,
+      "template": 2,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p04_q4.rq": {
+      "mix": 1,
+      "template": 4,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p05_q5.rq": {
+      "mix": 1,
+      "template": 5,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p06_q5.rq": {
+      "mix": 1,
+      "template": 5,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p07_q6.rq": {
+      "mix": 1,
+      "template": 6,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p08_q5.rq": {
+      "mix": 1,
+      "template": 5,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p09_q6.rq": {
+      "mix": 1,
+      "template": 6,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p10_q6.rq": {
+      "mix": 1,
+      "template": 6,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p11_q7.rq": {
+      "mix": 1,
+      "template": 7,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p12_q8.rq": {
+      "mix": 1,
+      "template": 8,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p13_q7.rq": {
+      "mix": 1,
+      "template": 7,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m001_p14_q6.rq": {
+      "mix": 1,
+      "template": 6,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p00_q1.rq": {
+      "mix": 2,
+      "template": 1,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p01_q3.rq": {
+      "mix": 2,
+      "template": 3,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p02_q2.rq": {
+      "mix": 2,
+      "template": 2,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p03_q2.rq": {
+      "mix": 2,
+      "template": 2,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p04_q4.rq": {
+      "mix": 2,
+      "template": 4,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p05_q5.rq": {
+      "mix": 2,
+      "template": 5,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p06_q5.rq": {
+      "mix": 2,
+      "template": 5,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p07_q6.rq": {
+      "mix": 2,
+      "template": 6,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p08_q5.rq": {
+      "mix": 2,
+      "template": 5,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p09_q6.rq": {
+      "mix": 2,
+      "template": 6,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p10_q6.rq": {
+      "mix": 2,
+      "template": 6,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p11_q7.rq": {
+      "mix": 2,
+      "template": 7,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p12_q8.rq": {
+      "mix": 2,
+      "template": 8,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p13_q7.rq": {
+      "mix": 2,
+      "template": 7,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m002_p14_q6.rq": {
+      "mix": 2,
+      "template": 6,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p00_q1.rq": {
+      "mix": 3,
+      "template": 1,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p01_q3.rq": {
+      "mix": 3,
+      "template": 3,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p02_q2.rq": {
+      "mix": 3,
+      "template": 2,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p03_q2.rq": {
+      "mix": 3,
+      "template": 2,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p04_q4.rq": {
+      "mix": 3,
+      "template": 4,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p05_q5.rq": {
+      "mix": 3,
+      "template": 5,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p06_q5.rq": {
+      "mix": 3,
+      "template": 5,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p07_q6.rq": {
+      "mix": 3,
+      "template": 6,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p08_q5.rq": {
+      "mix": 3,
+      "template": 5,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p09_q6.rq": {
+      "mix": 3,
+      "template": 6,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p10_q6.rq": {
+      "mix": 3,
+      "template": 6,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p11_q7.rq": {
+      "mix": 3,
+      "template": 7,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p12_q8.rq": {
+      "mix": 3,
+      "template": 8,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p13_q7.rq": {
+      "mix": 3,
+      "template": 7,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    },
+    "m003_p14_q6.rq": {
+      "mix": 3,
+      "template": 6,
+      "scored": true,
+      "status": "not_run",
+      "error": "Transport failed; server execution state must be checked before resuming"
+    }
+  },
+  "ranking_eligible": false,
+  "abort_reason": "Transport failed; server execution state must be checked before resuming",
+  "measured_total_ns": null,
+  "integer_value_equivalent_eligible": false,
+  "integer_value_equivalent_total_ns": null
+}
