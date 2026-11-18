@@ -1,0 +1,56 @@
+{
+  "add": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/controls/add.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0
+  },
+  "sum": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/controls/sum.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0
+  },
+  "avg": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/controls/avg.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0
+  },
+  "quarter": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/controls/quarter.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0
+  },
+  "integer-zero": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/controls/integer-zero.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0
+  },
+  "decimal-zero": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/controls/decimal-zero.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 1
+  }
+}
