@@ -183,11 +183,19 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// LIMIT (+OFFSET) of a Slice directly above the next ORDER BY (through at most a Project): lets ORDER BY keep
     /// only the first `k` rows (stable top-k) instead of sorting everything. Taken by that ORDER BY.
     order_limit: std::cell::Cell<Option<usize>>,
+    /// EXISTS / NOT EXISTS results memoized per pattern and per binding of the pattern's variables. Whether a
+    /// pattern has a solution compatible with a row depends only on the row's values for the pattern's own
+    /// variables, so rows that differ elsewhere (e.g. many offers of one product) share one evaluation.
+    exists_memo: RefCell<HashMap<(usize, Vec<TermId>), bool>>,
+    exists_vars: RefCell<HashMap<usize, Option<Vec<usize>>>>,
+    /// Aggregate argument values memoized per expression and per ID of its single variable: the same term (e.g.
+    /// one offer's price) recurs in many groups, and evaluating it means a dictionary decode each time.
+    agg_arg_memo: RefCell<HashMap<(usize, TermId), Option<Term>>>,
 }
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None) }
+        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -450,7 +458,23 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 // SPARQL 1.1 §18.5: the expression is evaluated per solution; an error (including an unbound
                 // variable) makes SUM/AVG/MIN/MAX/GROUP_CONCAT an error (unbound result). COUNT counts the non-error
                 // values; SAMPLE returns a non-error value. (Matches Jena.)
-                let evaluated: Vec<Option<Term>> = rows.iter().map(|r| self.value(expr, r)).collect();
+                // Expressions are deterministic (NOW/RAND/UUID/BNODE are unsupported); EXISTS reads other variables.
+                let single = match expr_vars(expr).as_slice() { [v] if !has_exists(expr) => self.vars.get(v).copied(), _ => None };
+                let evaluated: Vec<Option<Term>> = match single {
+                    Some(vi) => {
+                        const MEMO_CAP: usize = 1 << 20;
+                        let e: &Expression = expr; let eid = e as *const Expression as usize;
+                        rows.iter().map(|r| {
+                            let key = (eid, r[vi]);
+                            if let Some(v) = self.agg_arg_memo.borrow().get(&key) { return v.clone() }
+                            let v = self.value(expr, r);
+                            let mut m = self.agg_arg_memo.borrow_mut();
+                            if m.len() < MEMO_CAP { m.insert(key, v.clone()); }
+                            v
+                        }).collect()
+                    }
+                    None => rows.iter().map(|r| self.value(expr, r)).collect(),
+                };
                 let has_error = evaluated.iter().any(Option::is_none);
                 let mut vals: Vec<Term> = evaluated.into_iter().flatten().collect();
                 if *distinct { let mut s = HashSet::new(); vals.retain(|v| s.insert(v.clone())); }
@@ -688,7 +712,24 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let id = *r.get(*self.vars.get(v.as_str())?)?;
         (id != UNBOUND).then(|| self.resolve(id))
     }
-    pub(crate) fn exists(&self, p: &GraphPattern, r: &Row) -> bool { !self.eval(p, vec![r.clone()]).is_empty() }
+    pub(crate) fn exists(&self, p: &GraphPattern, r: &Row) -> bool {
+        const MEMO_CAP: usize = 1 << 20;
+        let pid = p as *const GraphPattern as usize;
+        let idx = self.exists_vars.borrow_mut().entry(pid).or_insert_with(|| {
+            // GRAPH/SERVICE names are not visited by `walk_vars`; never memoize those patterns.
+            if !memo_safe(p) { return None }
+            let mut v = Vec::new();
+            walk_vars(p, &mut v);
+            Some(v.iter().filter_map(|n| self.vars.get(n).copied()).filter(|&i| i < r.len()).collect())
+        }).clone();
+        let Some(idx) = idx else { return !self.eval(p, vec![r.clone()]).is_empty() };
+        let key = (pid, idx.iter().map(|&i| r[i]).collect::<Vec<_>>());
+        if let Some(&b) = self.exists_memo.borrow().get(&key) { return b }
+        let b = !self.eval(p, vec![r.clone()]).is_empty();
+        let mut m = self.exists_memo.borrow_mut();
+        if m.len() < MEMO_CAP { m.insert(key, b); }
+        b
+    }
 }
 
 /// Marker payload for storage failures raised inside evaluation.
@@ -735,6 +776,21 @@ fn join_rows(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
         }
     }
     out
+}
+
+fn memo_safe(p: &GraphPattern) -> bool {
+    match p {
+        GraphPattern::Bgp { .. } | GraphPattern::Path { .. } | GraphPattern::Values { .. } => true,
+        GraphPattern::Graph { .. } | GraphPattern::Service { .. } => false,
+        GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right }
+        => memo_safe(left) && memo_safe(right),
+        GraphPattern::LeftJoin { left, right, expression } => memo_safe(left) && memo_safe(right) && !expression.as_ref().is_some_and(has_exists),
+        GraphPattern::Filter { inner, expr } => memo_safe(inner) && !has_exists(expr),
+        GraphPattern::Extend { inner, expression, .. } => memo_safe(inner) && !has_exists(expression),
+        GraphPattern::OrderBy { inner, .. }
+        | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. }
+        | GraphPattern::Project { inner, .. } | GraphPattern::Group { inner, .. } => memo_safe(inner),
+    }
 }
 
 fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
