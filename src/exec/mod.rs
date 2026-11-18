@@ -267,14 +267,20 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             GraphPattern::Bgp { patterns } => self.eval_bgp(patterns, input),
             GraphPattern::Join { left, right } => {
                 let l = self.eval(left, input);
-                self.eval(right, l)
+                // Passing the left solutions into the right group (sideways) is only equivalent to SPARQL's
+                // bottom-up join when no FILTER/BIND in the right group reads a variable that group does not bind
+                // itself; otherwise evaluate the right group on its own and join the solution sets.
+                if scope_safe(right) { self.eval(right, l) } else { join_rows(l, self.eval(right, vec![self.empty_row()])) }
             }
             GraphPattern::LeftJoin { left, right, expression } => {
                 let l = self.eval(left, input);
                 let mut out = Vec::new();
+                // As for Join: the OPTIONAL group sees the left solution only if it is scope-safe. The LeftJoin's own
+                // expression is evaluated on the merged solution either way.
+                let standalone = (!scope_safe(right)).then(|| self.eval(right, vec![self.empty_row()]));
                 for row in l {
-                    let ext: Vec<Row> = self.eval(right, vec![row.clone()]).into_iter()
-                        .filter(|r| expression.as_ref().map_or(true, |e| self.ebv(e, r))).collect();
+                    let merged = match &standalone { Some(r) => join_rows(vec![row.clone()], r.clone()), None => self.eval(right, vec![row.clone()]) };
+                    let ext: Vec<Row> = merged.into_iter().filter(|r| expression.as_ref().map_or(true, |e| self.ebv(e, r))).collect();
                     if ext.is_empty() { out.push(row) } else { out.extend(ext) }
                 }
                 out
@@ -850,6 +856,26 @@ fn distributive(p: &GraphPattern) -> bool {
         GraphPattern::Join { left, right } => distributive(left) && distributive(right),
         GraphPattern::Filter { inner, expr } => distributive(inner) && !has_exists(expr),
         _ => false,
+    }
+}
+
+/// Whether evaluating `p` with outer solutions passed in (sideways information passing) equals evaluating it on its
+/// own and joining: true when every FILTER / BIND / OPTIONAL condition inside `p` only reads variables bound by the
+/// pattern it applies to. SPARQL evaluates groups bottom-up, so e.g. `{ BIND(?o+1 AS ?z) }` must not see an outer ?o.
+fn scope_safe(p: &GraphPattern) -> bool {
+    let bound = |q: &GraphPattern| -> HashSet<String> { let mut v = Vec::new(); walk_vars(q, &mut v); v.into_iter().collect() };
+    let reads_only = |e: &Expression, q: &GraphPattern| { let b = bound(q); expr_vars(e).iter().all(|n| b.contains(n)) };
+    match p {
+        GraphPattern::Bgp { .. } | GraphPattern::Path { .. } | GraphPattern::Values { .. } => true,
+        GraphPattern::Filter { expr, inner } => scope_safe(inner) && reads_only(expr, inner),
+        GraphPattern::Extend { inner, expression, .. } => scope_safe(inner) && reads_only(expression, inner),
+        GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right } => scope_safe(left) && scope_safe(right),
+        GraphPattern::LeftJoin { left, right, expression } => scope_safe(left) && scope_safe(right) && expression.as_ref().is_none_or(|e| {
+            let (bl, br) = (bound(left), bound(right));
+            expr_vars(e).iter().all(|n| bl.contains(n) || br.contains(n))
+        }),
+        GraphPattern::OrderBy { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. }
+        | GraphPattern::Project { inner, .. } | GraphPattern::Group { inner, .. } | GraphPattern::Graph { inner, .. } | GraphPattern::Service { inner, .. } => scope_safe(inner),
     }
 }
 
