@@ -1,0 +1,25 @@
+{
+  "command": [
+    "<agent-workspace>/rdfdb/bench/tools/apache-jena-fuseki-6.2.0/fuseki-server",
+    "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-bsbm100",
+    "--port=31436",
+    "/ds"
+  ],
+  "environment": {
+    "JVM_ARGS": "-Xmx8g -XX:ActiveProcessorCount=4"
+  },
+  "authorization": "Kaiming c59faed7 in task25: query-only shared store under owned lock",
+  "updates_requested": false,
+  "update_flag_supplied": false,
+  "scope": "independent input group COUNT diagnostics, not BI outputs or speed comparison",
+  "source_input_identity": {
+    "source": "<agent-workspace>/rdfdb/bench/tools/bsbm100.nt",
+    "bytes": 25965260343,
+    "sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
+    "stat_unchanged_during_hash": true,
+    "mtime_ns": 1794884566689423931,
+    "operation": "read-only hash, no import or query execution",
+    "hash_elapsed_seconds": 28.69657462486066
+  },
+  "launcher_sha256": "d2e1b04f97b567f5f106dd0be5afcff5ba93fe51a6f1dc9dfb4a74bc01e8fb01"
+}

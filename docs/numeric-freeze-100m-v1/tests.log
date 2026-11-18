@@ -1,0 +1,28 @@
+test_cancellation_is_bounded_in_absolute_units (test_float_envelope.ProposedEnvelopes.test_cancellation_is_bounded_in_absolute_units) ... ok
+test_exact_cast_rounds_ties_to_even (test_float_envelope.ProposedEnvelopes.test_exact_cast_rounds_ties_to_even) ... ok
+test_indeterminate_cases_never_qualify (test_float_envelope.ProposedEnvelopes.test_indeterminate_cases_never_qualify) ... ok
+test_invalid_and_nonfinite_inputs_are_not_numbers (test_float_envelope.ProposedEnvelopes.test_invalid_and_nonfinite_inputs_are_not_numbers) ... ok
+test_long_sum_and_mean_contain_explicit_rounded_arithmetic (test_float_envelope.ProposedEnvelopes.test_long_sum_and_mean_contain_explicit_rounded_arithmetic) ... ok
+test_subnormal_mean_and_ratio (test_float_envelope.ProposedEnvelopes.test_subnormal_mean_and_ratio) ... ok
+test_unrounded_input_and_invalid_statistics_rejected (test_float_envelope.ProposedEnvelopes.test_unrounded_input_and_invalid_statistics_rejected) ... ok
+test_both_engines_checked_against_exact_anchor (test_envelope_qualify.ExactAnchorQualification.test_both_engines_checked_against_exact_anchor) ... ok
+test_empty_rows_and_duplicate_projection (test_envelope_qualify.ExactAnchorQualification.test_empty_rows_and_duplicate_projection) ... ok
+test_failed_reference_output_is_preserved (test_envelope_qualify.ExactAnchorQualification.test_failed_reference_output_is_preserved) ... q4.rq fail
+ok
+test_frozen_input_changes_are_rejected (test_envelope_qualify.ExactAnchorQualification.test_frozen_input_changes_are_rejected) ... ok
+test_product_and_reviewer_mean_keys_and_exact_counts (test_envelope_qualify.ExactAnchorQualification.test_product_and_reviewer_mean_keys_and_exact_counts) ... ok
+test_types_and_entities_are_not_relaxed (test_envelope_qualify.ExactAnchorQualification.test_types_and_entities_are_not_relaxed) ... ok
+test_unbound_and_multiplicity_errors_rejected (test_envelope_qualify.ExactAnchorQualification.test_unbound_and_multiplicity_errors_rejected) ... ok
+test_computed_values_types_and_exact_representation (test_qualify.Qualification.test_computed_values_types_and_exact_representation) ... ok
+test_cutoff_ties_before_filter (test_qualify.Qualification.test_cutoff_ties_before_filter) ... ok
+test_declared_float_ulp_bound (test_qualify.Qualification.test_declared_float_ulp_bound) ... ok
+test_numeric_outer_order_and_null_last_descending (test_qualify.Qualification.test_numeric_outer_order_and_null_last_descending) ... ok
+test_repeated_parameter_fill_identity (test_qualify.Qualification.test_repeated_parameter_fill_identity) ... ok
+test_complete_unseen (test_freeze_numeric100.Freeze100Tests.test_complete_unseen) ... ok
+test_missing_or_false_case (test_freeze_numeric100.Freeze100Tests.test_missing_or_false_case) ... ok
+test_wrong_graph_and_seen_outputs (test_freeze_numeric100.Freeze100Tests.test_wrong_graph_and_seen_outputs) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.158s
+
+OK

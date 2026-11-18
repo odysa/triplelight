@@ -1,0 +1,11 @@
+{
+  "schema": "100m-input-anchor-provenance-v1",
+  "candidate_bi_outputs_read": false,
+  "previously_examined_mixes": [],
+  "all_28_independent_group_counts_agree": true,
+  "verified_group_count": 8304,
+  "dataset_sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
+  "workload_manifest_sha256": "a6d27c91ec733626fa0d132f642d5a348c62cbfc00b423809bf82074cb1a35ef",
+  "import_report_sha256": "8ee907188c77c96f96c40fbfa282d32db3e909402e5b3554162df4a92403ac38",
+  "scope": "Float SUM/AVG exact input anchors before first 100M BI output; not full graph equivalence or query qualification"
+}
