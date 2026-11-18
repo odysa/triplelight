@@ -1,0 +1,12 @@
+{ "head": {
+    "vars": [ "productType" , "reviewCount" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T10" } ,
+        "reviewCount": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      }
+    ]
+  }
+}
