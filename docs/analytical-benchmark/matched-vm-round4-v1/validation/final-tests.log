@@ -1,0 +1,20 @@
+test_bound_unbound (test_value_diagnostic.ValueDiagnosticTests.test_bound_unbound) ... ok
+test_counts_any_exact_numeric_value (test_value_diagnostic.ValueDiagnosticTests.test_counts_any_exact_numeric_value) ... ok
+test_duplicate_count_rows (test_value_diagnostic.ValueDiagnosticTests.test_duplicate_count_rows) ... ok
+test_envelope_no_narrowing (test_value_diagnostic.ValueDiagnosticTests.test_envelope_no_narrowing) ... ok
+test_four_steps_not_narrowed (test_value_diagnostic.ValueDiagnosticTests.test_four_steps_not_narrowed) ... ok
+test_order_report_separate (test_value_diagnostic.ValueDiagnosticTests.test_order_report_separate) ... ok
+test_reject_invalid (test_value_diagnostic.ValueDiagnosticTests.test_reject_invalid) ... ok
+test_value_spaces (test_value_diagnostic.ValueDiagnosticTests.test_value_spaces) ... ok
+test_wrong_entity_and_multiplicity (test_value_diagnostic.ValueDiagnosticTests.test_wrong_entity_and_multiplicity) ... ok
+test_bad_warmup_blocks_measured_total (test_http_measure_value.TimingGateTests.test_bad_warmup_blocks_measured_total) ... ok
+test_not_run_blocks_total (test_http_measure_value.TimingGateTests.test_not_run_blocks_total) ... ok
+test_policy_hash_fails_closed (test_http_measure_value.TimingGateTests.test_policy_hash_fails_closed) ... ok
+test_timeout_blocks_total (test_http_measure_value.TimingGateTests.test_timeout_blocks_total) ... ok
+test_value_pass_preserves_strict_failure (test_http_measure_value.TimingGateTests.test_value_pass_preserves_strict_failure) ... ok
+test_wrong_bag_blocks_total (test_http_measure_value.TimingGateTests.test_wrong_bag_blocks_total) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.025s
+
+OK
