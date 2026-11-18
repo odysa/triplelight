@@ -1,0 +1,9 @@
+{
+  "source_commit": "ef7a77814d23879a7bdf174ffe567b81a402ba9f",
+  "sha256": "14c83f93abb778a3c99fb6f287b3995a1f98dd832cdfa12432736d77ba45c34d",
+  "bytes": 7265752,
+  "build_die_exit_codes": [
+    "0"
+  ],
+  "note": "Fresh hash-checked /b source build; copied target cache was reused, old target directory unchanged"
+}

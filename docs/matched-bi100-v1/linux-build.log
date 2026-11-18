@@ -1,0 +1,86 @@
+Cargo.toml: OK
+Cargo.lock: OK
+src/bin/rdfdb.rs: OK
+src/embedded.rs: OK
+src/exec/agg.rs: OK
+src/exec/bgp.rs: OK
+src/exec/count.rs: OK
+src/exec/expr.rs: OK
+src/exec/mod.rs: OK
+src/exec/results.rs: OK
+src/exec/support.rs: OK
+src/lib.rs: OK
+src/model.rs: OK
+src/opt/mod.rs: OK
+src/opt/plan.rs: OK
+src/opt/planner.rs: OK
+src/opt/stats.rs: OK
+src/storage/block_codec.rs: OK
+src/storage/disk_index.rs: OK
+src/storage/disk_snapshot.rs: OK
+src/storage/external_build.rs: OK
+src/storage/external_sort.rs: OK
+src/storage/lazy_dictionary.rs: OK
+src/storage/memory.rs: OK
+src/storage/mod.rs: OK
+src/storage/term_block_codec.rs: OK
+src/store.rs: OK
+rustc 1.100.0 (0ef1bc386 2026-11-09)
+cargo 1.100.0 (3acc79c0c 2026-11-05)
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded httpdate v1.0.3
+  Downloaded mimalloc v0.1.52
+  Downloaded cfg-if v1.0.5
+  Downloaded crossbeam-epoch v0.9.21
+  Downloaded peg-runtime v0.8.6
+  Downloaded crypto-common v0.1.7
+  Downloaded either v1.19.0
+  Downloaded rand_chacha v0.9.0
+  Downloaded chunked_transfer v1.5.0
+  Downloaded cpufeatures v0.2.17
+  Downloaded generic-array v0.14.7
+  Downloaded block-buffer v0.10.4
+  Downloaded version_check v0.9.5
+  Downloaded find-msvc-tools v0.1.15
+  Downloaded digest v0.10.7
+  Downloaded peg-macros v0.8.6
+  Downloaded oxilangtag v0.1.6
+  Downloaded peg v0.8.6
+  Downloaded oxiri v0.2.11
+  Downloaded crossbeam-deque v0.8.8
+  Downloaded ppv-lite86 v0.2.21
+  Downloaded rand_core v0.9.5
+  Downloaded thiserror-impl v2.0.21
+  Downloaded thiserror v2.0.21
+  Downloaded oxrdf v0.3.5
+  Downloaded quote v1.0.47
+  Downloaded log v0.4.35
+  Downloaded unicode-ident v1.0.27
+  Downloaded sha2 v0.10.9
+  Downloaded shlex v2.0.1
+  Downloaded ascii v1.1.0
+  Downloaded spargebra v0.4.8
+  Downloaded getrandom v0.3.4
+  Downloaded oxttl v0.2.5
+  Downloaded serde_core v1.0.229
+  Downloaded crossbeam-utils v0.8.23
+  Downloaded rayon-core v1.13.0
+  Downloaded tiny_http v0.12.0
+  Downloaded proc-macro2 v1.0.107
+  Downloaded serde v1.0.229
+  Downloaded memchr v2.8.3
+  Downloaded typenum v1.20.1
+  Downloaded rand v0.9.5
+  Downloaded cc v1.11.2
+  Downloaded aho-corasick v1.1.5
+  Downloaded rayon v1.12.0
+  Downloaded regex v1.13.1
+  Downloaded syn v3.0.10
+  Downloaded zerocopy v0.8.63
+  Downloaded regex-syntax v0.8.11
+  Downloaded libmimalloc-sys v0.1.49
+  Downloaded regex-automata v0.4.18
+  Downloaded libc v0.2.191
+   Compiling rdfdb v0.1.0 (/b)
+    Finished `release` profile [optimized] target(s) in 35.37s
