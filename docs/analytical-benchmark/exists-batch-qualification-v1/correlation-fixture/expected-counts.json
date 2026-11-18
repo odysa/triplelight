@@ -1,0 +1,14 @@
+{
+  "bound-exists": 32,
+  "bound-notexists": 32,
+  "empty-key-exists": 64,
+  "empty-key-notexists": 64,
+  "mixed-bound": 43,
+  "filter-only-outer": 32,
+  "join-body": 32,
+  "optional-fallback": 32,
+  "plain-bgp": 36,
+  "plain-bgp-outer-filter": 5,
+  "all-unbound": 64,
+  "empty-body": 64
+}
