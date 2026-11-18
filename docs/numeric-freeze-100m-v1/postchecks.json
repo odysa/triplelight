@@ -1,0 +1,24 @@
+{
+  "freeze_sha256": "63e127b60ac8de510a172748108639f0834e17bc3772e1d16ce226404aa58cca",
+  "frozen_numeric_instances": 32,
+  "protected_10m_sources_unchanged": {
+    "float_envelope.py": true,
+    "envelope_qualify.py": true,
+    "qualify.py": true,
+    "numeric_inputs.py": true,
+    "workload_check.py": true,
+    "bi_sql.py": true,
+    "fixture_check.py": true,
+    "freeze_numeric.py": true,
+    "test_float_envelope.py": true,
+    "test_envelope_qualify.py": true,
+    "test_qualify.py": true
+  },
+  "negative_identity_checks": {
+    "freeze": true,
+    "dataset": true,
+    "workload": true,
+    "mutated_anchor": true
+  },
+  "candidate_outputs_read": false
+}

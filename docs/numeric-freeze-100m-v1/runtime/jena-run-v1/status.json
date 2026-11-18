@@ -1,0 +1,102 @@
+{
+  "pid": 55366,
+  "complete": true,
+  "candidate_bi_queries_executed": false,
+  "cases": {
+    "4-b3e23972960206149d33": {
+      "complete": true
+    },
+    "5-1be9f400408ef3c417b5": {
+      "complete": true
+    },
+    "5-64007e848123b7f021dc": {
+      "complete": true
+    },
+    "6-1e3e1fb3d9ec3f67c464": {
+      "complete": true
+    },
+    "5-3d34fe8dc871b3a46ae1": {
+      "complete": true
+    },
+    "6-7d94eeda12fb69a54a94": {
+      "complete": true
+    },
+    "6-d1d35256712fceca20c4": {
+      "complete": true
+    },
+    "6-bcf79e90a2e1276aedd7": {
+      "complete": true
+    },
+    "4-f7703aa60c0748408b4c": {
+      "complete": true
+    },
+    "5-c31d6d49f5881854a2ba": {
+      "complete": true
+    },
+    "6-87e44d80399bff40e36c": {
+      "complete": true
+    },
+    "5-c1e4fe3f22491260ffa1": {
+      "complete": true
+    },
+    "6-4dab0f3c75721dfd1c33": {
+      "complete": true
+    },
+    "6-637c44afe32c44fb9856": {
+      "complete": true
+    },
+    "6-b995a666c17f7f8e35f5": {
+      "complete": true
+    },
+    "4-a4f59c040e8fd1f3df3b": {
+      "complete": true
+    },
+    "5-d01205a275913e63cabc": {
+      "complete": true
+    },
+    "6-e871c0d67f98c1a763a0": {
+      "complete": true
+    },
+    "6-64181ab46935936c0424": {
+      "complete": true
+    },
+    "6-aa2e2557118cb1805bd8": {
+      "complete": true
+    },
+    "6-75c22d415d2f363a8779": {
+      "complete": true
+    },
+    "4-11a754976229c61e6229": {
+      "complete": true
+    },
+    "5-55609a074ae8571de712": {
+      "complete": true
+    },
+    "6-650954fb2703ae4d0194": {
+      "complete": true
+    },
+    "5-6a836f30c04ab2b56133": {
+      "complete": true
+    },
+    "6-1405fdb3e8d1e5dae9fe": {
+      "complete": true
+    },
+    "6-de42036f434586a9aaa3": {
+      "complete": true
+    },
+    "6-e5f81f0186f4254837d1": {
+      "complete": true
+    }
+  },
+  "reference_unique_triples": 98861444,
+  "diagnostic_elapsed_seconds": 55.988872417015955,
+  "nt_import_count_comparison_pass": true,
+  "server_exit": 143,
+  "nt_stat_unchanged": true,
+  "store_metadata_changed": [
+    "tdb.lock",
+    "Data-0001/tdb.lock"
+  ],
+  "only_expected_lock_metadata_changed": true,
+  "own_lock_released": true
+}
