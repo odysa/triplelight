@@ -1,0 +1,28 @@
+{
+  "complete": false,
+  "comparative_timing_claim": false,
+  "datasets": {
+    "lubm": {
+      "queries": {},
+      "input_before": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d",
+      "command": [
+        "java",
+        "-Xmx8g",
+        "-XX:ActiveProcessorCount=4",
+        "-jar",
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-fuseki-6.2.0/fuseki-server.jar",
+        "--localhost",
+        "--port=31446",
+        "--file=<agent-workspace>/rdfdb/bench/tools/lubm100.nt",
+        "/ds"
+      ],
+      "pid": 75995
+    }
+  },
+  "owner": "Jianlin task25 aggregate72 Jena reference v1",
+  "started": 1795040023.795365,
+  "jar": {
+    "path": "<agent-workspace>/rdfdb/bench/tools/apache-jena-fuseki-6.2.0/fuseki-server.jar",
+    "sha256": "2c92c598e65ab69d99820052e05f4277ed1d77980a8845f87545ad35b71a76ee"
+  }
+}
