@@ -1,0 +1,24 @@
+{
+  "system": "rdfdb",
+  "endpoint": "http://127.0.0.1:31429/sparql",
+  "source_or_image": "rust@sha256:0b0ea86881537b3f645aace7e8e39556289f8787db057317c8d4978548213b9e",
+  "dataset_sha256": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+  "threads": 4,
+  "memory_configuration": {
+    "container_bytes": 12884901888,
+    "rdfdb_cache_mib": 10240,
+    "qlever_query_memory": null,
+    "duckdb_working_memory": null,
+    "duckdb_spill_limit": null,
+    "virtuoso_number_of_buffers": null
+  },
+  "cache_profile": "no-answer-cache",
+  "query_fields": {},
+  "source_commit": "20b257a239c825d547b2e08ca6bfb69faa8a4c7e",
+  "binary": {
+    "source_commit": "20b257a239c825d547b2e08ca6bfb69faa8a4c7e",
+    "sha256": "b302f11c49cc2e24d6d2a23d1b7cb3c51f2c358f5f17ee49c5395d2cfa3579d4",
+    "bytes": 7199848,
+    "in_container_source_hashes_verified": true
+  }
+}

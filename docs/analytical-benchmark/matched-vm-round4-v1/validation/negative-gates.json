@@ -1,0 +1,14 @@
+[
+  {
+    "injected_case": "wrong-bag",
+    "rejected_ranking": true
+  },
+  {
+    "injected_case": "transport",
+    "rejected_ranking": true
+  },
+  {
+    "injected_case": "not-run",
+    "rejected_ranking": true
+  }
+]
