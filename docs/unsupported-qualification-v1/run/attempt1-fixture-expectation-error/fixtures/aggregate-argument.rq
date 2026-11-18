@@ -1,0 +1,1 @@
+SELECT (SUM(RAND()) AS ?v) WHERE { VALUES ?x {1 2} }

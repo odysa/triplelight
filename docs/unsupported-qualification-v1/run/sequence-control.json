@@ -1,0 +1,95 @@
+{
+  "queries": {
+    "sequence": "SELECT ?s ?o WHERE {?s <urn:p>/<urn:q> ?o}",
+    "join": "SELECT ?s ?o WHERE {?s <urn:p> ?m . ?m <urn:q> ?o}"
+  },
+  "results": {
+    "sequence": {
+      "head": {
+        "vars": [
+          "s",
+          "o"
+        ]
+      },
+      "results": {
+        "bindings": [
+          {
+            "s": {
+              "type": "uri",
+              "value": "urn:s"
+            },
+            "o": {
+              "type": "uri",
+              "value": "urn:o"
+            }
+          },
+          {
+            "s": {
+              "type": "uri",
+              "value": "urn:s"
+            },
+            "o": {
+              "type": "uri",
+              "value": "urn:o"
+            }
+          }
+        ]
+      }
+    },
+    "join": {
+      "head": {
+        "vars": [
+          "s",
+          "o"
+        ]
+      },
+      "results": {
+        "bindings": [
+          {
+            "s": {
+              "type": "uri",
+              "value": "urn:s"
+            },
+            "o": {
+              "type": "uri",
+              "value": "urn:o"
+            }
+          },
+          {
+            "s": {
+              "type": "uri",
+              "value": "urn:s"
+            },
+            "o": {
+              "type": "uri",
+              "value": "urn:o"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "expected": [
+    {
+      "s": {
+        "type": "uri",
+        "value": "urn:s"
+      },
+      "o": {
+        "type": "uri",
+        "value": "urn:o"
+      }
+    },
+    {
+      "s": {
+        "type": "uri",
+        "value": "urn:s"
+      },
+      "o": {
+        "type": "uri",
+        "value": "urn:o"
+      }
+    }
+  ],
+  "pass": true
+}
