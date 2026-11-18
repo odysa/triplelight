@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/rdfdb",
+    "serve",
+    "/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+    "31437",
+    "--no-stats",
+    "--parallel-load=1"
+  ],
+  "binary_sha256": "2d8a16d808de229112ceb65e0e7a5dfaefe3ff11ddffcf0b677e99cd13d3a1e5",
+  "env": {
+    "RAYON_NUM_THREADS": "1"
+  }
+}
