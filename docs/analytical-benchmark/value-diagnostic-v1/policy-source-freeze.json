@@ -1,0 +1,12 @@
+{
+  "schema": "retrospective-value-diagnostic-policy-v1",
+  "retrospective": true,
+  "changes_frozen_qualification": false,
+  "files": {
+    "value_diagnostic.py": "bd525ce1805440d935d2f47c0a69a4eb0cb64cf91a69ea7dfc2d566d3b7c1dbb",
+    "rescore_value_diagnostic.py": "6995e9a5ff37231646d50ef0f8b6f20c51c29aa412f0c37b537ce4aaa24695fd",
+    "test_value_diagnostic.py": "50b0ffcdc4574505f0a6dda27b46c7a394314c1c8fc5a65db08aa4324ddddb9c",
+    "http_measure.py": "d10321a45381b511bd9fe6b0844f457f84fc7ef8ac0df164bc7937e87955c9ac"
+  },
+  "policy_text_sha256": "b049f716d735b20d441870782a24d3b472ac536e9cb0df638c48f5204329626c"
+}
