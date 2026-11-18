@@ -1,0 +1,92 @@
+[
+  {
+    "query": "mixed-free-fallback.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/mixed-free-fallback.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "mixed-key-fallback.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/mixed-key-fallback.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "orientation-012.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/orientation-012.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "orientation-021.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/orientation-021.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "orientation-102.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/orientation-102.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "orientation-120.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/orientation-120.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "orientation-201.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/orientation-201.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "orientation-210.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/orientation-210.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "repeated-variable.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/repeated-variable.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  }
+]
