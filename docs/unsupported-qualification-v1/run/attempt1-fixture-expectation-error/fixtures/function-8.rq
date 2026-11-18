@@ -1,0 +1,1 @@
+SELECT (SHA256("a") AS ?v) WHERE {}
