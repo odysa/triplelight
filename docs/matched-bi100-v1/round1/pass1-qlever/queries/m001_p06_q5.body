@@ -1,0 +1,1 @@
+{"head":{"vars":["country","product","nrOfReviews","avgPrice"]},"results":{"bindings":[]},"meta":{"query-time-ms":41,"result-size-total":0,"warnings":["Variable ?country was used by GROUP BY, but is not defined in the query body."]}}
