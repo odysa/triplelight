@@ -318,7 +318,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                         return rows.into_iter().filter(|r| late.iter().all(|c| self.ebv(c, r))).collect();
                     }
                 }
-                self.eval(inner, input).into_iter().filter(|r| self.ebv(expr, r)).collect()
+                let rows = self.eval(inner, input);
+                if let Some(out) = self.exists_batch(expr, &rows) { return out }
+                rows.into_iter().filter(|r| self.ebv(expr, r)).collect()
             }
             GraphPattern::Union { left, right } => {
                 let mut l = self.eval(left, input.clone());
@@ -736,6 +738,33 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let id = *r.get(*self.vars.get(v.as_str())?)?;
         (id != UNBOUND).then(|| self.resolve(id))
     }
+    /// `FILTER [NOT] EXISTS { P }` over many rows as one batched evaluation (a semi-/anti-join): P is evaluated
+    /// once with one input row per distinct binding of P's variables, and each row is kept by set membership.
+    /// Only for P built from BGPs, joins and EXISTS-free filters, whose evaluation distributes over input rows.
+    fn exists_batch(&self, expr: &Expression, rows: &[Row]) -> Option<Vec<Row>> {
+        let (neg, p) = match expr {
+            Expression::Exists(p) => (false, &**p),
+            Expression::Not(e) => match &**e { Expression::Exists(p) => (true, &**p), _ => return None },
+            _ => return None,
+        };
+        if rows.len() < 64 || !distributive(p) { return None }
+        let mut names = Vec::new();
+        walk_vars(p, &mut names);
+        let w = rows[0].len();
+        let idx: Vec<usize> = names.iter().filter_map(|n| self.vars.get(n).copied()).filter(|&i| i < w).collect();
+        let key: Vec<usize> = idx.iter().copied().filter(|&i| rows[0][i] != UNBOUND).collect();
+        // Every row must bind exactly the same P variables (so one key layout describes all of them).
+        if rows.iter().any(|r| idx.iter().any(|&i| (r[i] != UNBOUND) != key.contains(&i))) { return None }
+        let mut reps: Vec<Row> = Vec::new();
+        let mut seen: HashSet<Vec<TermId>> = HashSet::new();
+        for r in rows {
+            let k: Vec<TermId> = key.iter().map(|&i| r[i]).collect();
+            if seen.insert(k) { let mut x = self.empty_row(); for &i in &key { x[i] = r[i] } reps.push(x) }
+        }
+        let hits: HashSet<Vec<TermId>> = self.eval(p, reps).iter().map(|r| key.iter().map(|&i| r[i]).collect()).collect();
+        Some(rows.iter().filter(|r| hits.contains(&key.iter().map(|&i| r[i]).collect::<Vec<_>>()) != neg).cloned().collect())
+    }
+
     pub(crate) fn exists(&self, p: &GraphPattern, r: &Row) -> bool {
         const MEMO_CAP: usize = 1 << 20;
         let addr = p as *const GraphPattern as usize;
@@ -810,6 +839,15 @@ fn join_rows(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
         }
     }
     out
+}
+
+fn distributive(p: &GraphPattern) -> bool {
+    match p {
+        GraphPattern::Bgp { .. } => true,
+        GraphPattern::Join { left, right } => distributive(left) && distributive(right),
+        GraphPattern::Filter { inner, expr } => distributive(inner) && !has_exists(expr),
+        _ => false,
+    }
 }
 
 fn memo_safe(p: &GraphPattern) -> bool {
