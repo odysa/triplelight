@@ -1,0 +1,12 @@
+{
+  "failure": "Conservative host bind probe rejected recently closed QLever port in TIME_WAIT; no listener existed",
+  "timed_queries_started_for_hash_profile": 0,
+  "controller_v4_exit": 1,
+  "preserved_complete_phases": [
+    "pass1-rdfdb",
+    "pass1-duckdb",
+    "pass1-virtuoso",
+    "pass1-qlever"
+  ],
+  "change": "Rely on successful fresh Docker port publication and owned container identity; Docker start failure remains fatal rather than querying an old service"
+}
