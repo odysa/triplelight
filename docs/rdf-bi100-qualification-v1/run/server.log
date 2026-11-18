@@ -1,0 +1,4 @@
+opened disk snapshot <agent-workspace>/rdfdb/bench/tools/rdfdb-disk-bsbm100-main in 1.37s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:31435/sparql
+statistics ready after 42.79s
