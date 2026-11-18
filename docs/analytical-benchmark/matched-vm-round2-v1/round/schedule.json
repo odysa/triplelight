@@ -1,0 +1,23 @@
+{
+  "passes": [
+    [
+      "rdfdb",
+      "duckdb"
+    ],
+    [
+      "duckdb",
+      "rdfdb"
+    ]
+  ],
+  "per_phase_queries": 60,
+  "query_warmup_mix": 0,
+  "scored_mixes": [
+    1,
+    2,
+    3
+  ],
+  "quality": "strict and count-equivalence separately; failed cohorts have no total",
+  "request_timeout_seconds": 120,
+  "phase_timeout_seconds": 1200,
+  "mode": "HTTP full body consumption; two-engine same-session rerun; totals only for qualified complete cohorts"
+}
