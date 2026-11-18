@@ -1,0 +1,4 @@
+
+*** Error 37000: [Virtuoso Driver][Virtuoso Server]SQ074: Line 1: syntax error
+at line 1 of Top-Level:
+ld_dir('/import', 'bsbm10.nt', 'http://bench/bsbm10'); rdf_loader_run(); checkpoint; select ll_state,ll_error from DB.DBA.load_list
