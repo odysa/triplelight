@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/private/tmp/rdf-jianlin-analytical25/duck100-import-v1/bench-source/analytical/supervise_import.py", line 93, in <module>
+    supervise(args)
+    ~~~~~~~~~^^^^^^
+  File "/private/tmp/rdf-jianlin-analytical25/duck100-import-v1/bench-source/analytical/supervise_import.py", line 79, in supervise
+    if not record['complete']:raise RuntimeError('Import failed; inspect durable receipt and log')
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Import failed; inspect durable receipt and log
