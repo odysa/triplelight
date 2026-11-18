@@ -1,0 +1,136 @@
+{ "head": {
+    "vars": [ "x" , "tag" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "0" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "6" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "8" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "10" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "12" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "14" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "16" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "18" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "20" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "22" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "24" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "26" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "28" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "30" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "32" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "34" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "36" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "38" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "40" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "42" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "44" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "46" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "48" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "50" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "52" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "54" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "56" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "58" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "60" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "62" }
+      }
+    ]
+  }
+}
