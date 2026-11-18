@@ -1,0 +1,556 @@
+{
+  "schema": "matched-bi-three-value-http-summary-v1",
+  "schedule": {
+    "passes": [
+      [
+        "rdfdb",
+        "duckdb",
+        "qlever"
+      ],
+      [
+        "qlever",
+        "duckdb",
+        "rdfdb"
+      ]
+    ],
+    "per_phase_queries": 60,
+    "query_warmup_mix": 0,
+    "scored_mixes": [
+      1,
+      2,
+      3
+    ],
+    "quality": "strict, COUNT and prospectively frozen value-compatible gate separately; failed cohorts have no total",
+    "request_timeout_seconds": 120,
+    "phase_timeout_seconds": 1200,
+    "mode": "HTTP full body consumption; three-engine same-session rerun; totals only for qualified complete cohorts"
+  },
+  "profiles": {
+    "pass1-rdfdb": {
+      "controller": {
+        "client_exit": 0,
+        "complete": true,
+        "strict_pass": 60,
+        "equivalent_pass": 60,
+        "attempted": 60,
+        "value_pass": 60
+      },
+      "complete": true,
+      "requested": 60,
+      "attempted": 60,
+      "strict_pass": 60,
+      "count_equivalent_pass": 60,
+      "failures": {
+        "strict": [],
+        "count_equivalent": []
+      },
+      "strict_eligible": true,
+      "count_equivalent_eligible": true,
+      "measured_requests": 45,
+      "measured_total_ms": 9428.39366,
+      "count_equivalent_total_ms": 9428.39366,
+      "qualified_template_totals_ms": {
+        "1": 320.540083,
+        "2": 93.056748,
+        "3": 740.300957,
+        "4": 6434.484626,
+        "5": 954.927247,
+        "6": 195.696999,
+        "7": 614.396833,
+        "8": 74.990167
+      },
+      "resource": {
+        "scope": "whole server lifetime, including startup/readiness/warmup and measured queries",
+        "VmHWM_bytes": 1448091648,
+        "VmRSS_bytes": 797417472,
+        "VmPeak_bytes": 3061202944,
+        "cgroup_memory_peak_bytes": 1777405952,
+        "cgroup_memory_limit_bytes": 12884901888
+      },
+      "named_temp_observation": {
+        "peak_sampled_named_temp_bytes": 0,
+        "sample_seconds": 0.2,
+        "abort_threshold_bytes": 5368709120,
+        "metric_scope": "named files under configured TMPDIR and DuckDB spill; excludes unlinked/other locations",
+        "errors": []
+      },
+      "runtime_evidence_sha256": "232b5666f6fc3699eb9688e367ec7065f1f88ea5d169cd8c157930b1ab1c3600",
+      "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+      "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790",
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_compatible_eligible": true,
+      "value_compatible_total_ms": 9428.39366,
+      "value_compatible_template_ms": {
+        "1": 320.540083,
+        "2": 93.056748,
+        "3": 740.300957,
+        "4": 6434.484626,
+        "5": 954.927247,
+        "6": 195.696999,
+        "7": 614.396833,
+        "8": 74.990167
+      },
+      "value_failures": []
+    },
+    "pass1-duckdb": {
+      "controller": {
+        "client_exit": 0,
+        "complete": true,
+        "strict_pass": 60,
+        "equivalent_pass": 60,
+        "attempted": 60,
+        "value_pass": 60
+      },
+      "complete": true,
+      "requested": 60,
+      "attempted": 60,
+      "strict_pass": 60,
+      "count_equivalent_pass": 60,
+      "failures": {
+        "strict": [],
+        "count_equivalent": []
+      },
+      "strict_eligible": true,
+      "count_equivalent_eligible": true,
+      "measured_requests": 45,
+      "measured_total_ms": 118179.027542,
+      "count_equivalent_total_ms": 118179.027542,
+      "qualified_template_totals_ms": {
+        "1": 10216.190041,
+        "2": 6996.359084,
+        "3": 6322.528582,
+        "4": 12402.957251,
+        "5": 23691.210168,
+        "6": 33774.024457,
+        "7": 11765.221624,
+        "8": 13010.536335
+      },
+      "resource": {
+        "scope": "whole server lifetime, including startup/readiness/warmup and measured queries",
+        "VmHWM_bytes": 1578848256,
+        "VmRSS_bytes": 886669312,
+        "VmPeak_bytes": 3442913280,
+        "cgroup_memory_peak_bytes": 1807523840,
+        "cgroup_memory_limit_bytes": 12884901888
+      },
+      "named_temp_observation": {
+        "peak_sampled_named_temp_bytes": 0,
+        "sample_seconds": 0.2,
+        "abort_threshold_bytes": 5368709120,
+        "metric_scope": "named files under configured TMPDIR and DuckDB spill; excludes unlinked/other locations",
+        "errors": []
+      },
+      "runtime_evidence_sha256": "422b3fcd834aaa4556c34be5761cee4b172c0d764f69e344d4f7d964ad1b4344",
+      "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+      "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790",
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_compatible_eligible": true,
+      "value_compatible_total_ms": 118179.027542,
+      "value_compatible_template_ms": {
+        "1": 10216.190041,
+        "2": 6996.359084,
+        "3": 6322.528582,
+        "4": 12402.957251,
+        "5": 23691.210168,
+        "6": 33774.024457,
+        "7": 11765.221624,
+        "8": 13010.536335
+      },
+      "value_failures": []
+    },
+    "pass1-qlever": {
+      "controller": {
+        "client_exit": 0,
+        "complete": true,
+        "strict_pass": 9,
+        "equivalent_pass": 21,
+        "attempted": 60,
+        "value_pass": 60
+      },
+      "complete": true,
+      "requested": 60,
+      "attempted": 60,
+      "strict_pass": 9,
+      "count_equivalent_pass": 21,
+      "failures": {
+        "strict": [
+          {
+            "template": 1,
+            "error": "ValueError: Count datatype mismatch",
+            "instances": 4
+          },
+          {
+            "template": 3,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 4
+          },
+          {
+            "template": 2,
+            "error": "ValueError: Count datatype mismatch",
+            "instances": 8
+          },
+          {
+            "template": 4,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 4
+          },
+          {
+            "template": 5,
+            "error": "ValueError: Count datatype differs",
+            "instances": 12
+          },
+          {
+            "template": 6,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 15
+          },
+          {
+            "template": 8,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 4
+          }
+        ],
+        "count_equivalent": [
+          {
+            "template": 3,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 4
+          },
+          {
+            "template": 4,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 4
+          },
+          {
+            "template": 5,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 12
+          },
+          {
+            "template": 6,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 15
+          },
+          {
+            "template": 8,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 4
+          }
+        ]
+      },
+      "strict_eligible": false,
+      "count_equivalent_eligible": false,
+      "measured_requests": 45,
+      "measured_total_ms": null,
+      "count_equivalent_total_ms": null,
+      "qualified_template_totals_ms": null,
+      "resource": {
+        "scope": "whole server lifetime, including startup/readiness/warmup and measured queries",
+        "VmHWM_bytes": 379006976,
+        "VmRSS_bytes": 373297152,
+        "VmPeak_bytes": 789897216,
+        "cgroup_memory_peak_bytes": 473522176,
+        "cgroup_memory_limit_bytes": 12884901888
+      },
+      "named_temp_observation": {
+        "peak_sampled_named_temp_bytes": 0,
+        "sample_seconds": 0.2,
+        "abort_threshold_bytes": 5368709120,
+        "metric_scope": "named files under configured TMPDIR and DuckDB spill; excludes unlinked/other locations",
+        "errors": []
+      },
+      "runtime_evidence_sha256": "cdc97b37e460adbd5b87dc4e50f516222f7f25a5e3ef0fdd12183b4789ccb5ea",
+      "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+      "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790",
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_compatible_eligible": true,
+      "value_compatible_total_ms": 19355.110876,
+      "value_compatible_template_ms": {
+        "1": 275.245208,
+        "2": 2310.24525,
+        "3": 458.282251,
+        "4": 11437.374875,
+        "5": 1891.779502,
+        "6": 1942.887665,
+        "7": 564.021084,
+        "8": 475.275041
+      },
+      "value_failures": []
+    },
+    "pass2-qlever": {
+      "controller": {
+        "client_exit": 0,
+        "complete": true,
+        "strict_pass": 9,
+        "equivalent_pass": 21,
+        "attempted": 60,
+        "value_pass": 60
+      },
+      "complete": true,
+      "requested": 60,
+      "attempted": 60,
+      "strict_pass": 9,
+      "count_equivalent_pass": 21,
+      "failures": {
+        "strict": [
+          {
+            "template": 1,
+            "error": "ValueError: Count datatype mismatch",
+            "instances": 4
+          },
+          {
+            "template": 3,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 4
+          },
+          {
+            "template": 2,
+            "error": "ValueError: Count datatype mismatch",
+            "instances": 8
+          },
+          {
+            "template": 4,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 4
+          },
+          {
+            "template": 5,
+            "error": "ValueError: Count datatype differs",
+            "instances": 12
+          },
+          {
+            "template": 6,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 15
+          },
+          {
+            "template": 8,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 4
+          }
+        ],
+        "count_equivalent": [
+          {
+            "template": 3,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 4
+          },
+          {
+            "template": 4,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 4
+          },
+          {
+            "template": 5,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 12
+          },
+          {
+            "template": 6,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 15
+          },
+          {
+            "template": 8,
+            "error": "ValueError: Computed float output must have xsd:float datatype",
+            "instances": 4
+          }
+        ]
+      },
+      "strict_eligible": false,
+      "count_equivalent_eligible": false,
+      "measured_requests": 45,
+      "measured_total_ms": null,
+      "count_equivalent_total_ms": null,
+      "qualified_template_totals_ms": null,
+      "resource": {
+        "scope": "whole server lifetime, including startup/readiness/warmup and measured queries",
+        "VmHWM_bytes": 378601472,
+        "VmRSS_bytes": 364638208,
+        "VmPeak_bytes": 789897216,
+        "cgroup_memory_peak_bytes": 387190784,
+        "cgroup_memory_limit_bytes": 12884901888
+      },
+      "named_temp_observation": {
+        "peak_sampled_named_temp_bytes": 0,
+        "sample_seconds": 0.2,
+        "abort_threshold_bytes": 5368709120,
+        "metric_scope": "named files under configured TMPDIR and DuckDB spill; excludes unlinked/other locations",
+        "errors": []
+      },
+      "runtime_evidence_sha256": "cdc97b37e460adbd5b87dc4e50f516222f7f25a5e3ef0fdd12183b4789ccb5ea",
+      "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+      "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790",
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_compatible_eligible": true,
+      "value_compatible_total_ms": 17079.742086,
+      "value_compatible_template_ms": {
+        "1": 246.048499,
+        "2": 2055.115042,
+        "3": 401.571666,
+        "4": 10056.190167,
+        "5": 1694.945834,
+        "6": 1739.553335,
+        "7": 492.048376,
+        "8": 394.269167
+      },
+      "value_failures": []
+    },
+    "pass2-duckdb": {
+      "controller": {
+        "client_exit": 0,
+        "complete": true,
+        "strict_pass": 60,
+        "equivalent_pass": 60,
+        "attempted": 60,
+        "value_pass": 60
+      },
+      "complete": true,
+      "requested": 60,
+      "attempted": 60,
+      "strict_pass": 60,
+      "count_equivalent_pass": 60,
+      "failures": {
+        "strict": [],
+        "count_equivalent": []
+      },
+      "strict_eligible": true,
+      "count_equivalent_eligible": true,
+      "measured_requests": 45,
+      "measured_total_ms": 118302.636829,
+      "count_equivalent_total_ms": 118302.636829,
+      "qualified_template_totals_ms": {
+        "1": 10101.620125,
+        "2": 7177.234373,
+        "3": 6248.57354,
+        "4": 13164.668082,
+        "5": 23918.604543,
+        "6": 33532.840416,
+        "7": 11465.422458,
+        "8": 12693.673292
+      },
+      "resource": {
+        "scope": "whole server lifetime, including startup/readiness/warmup and measured queries",
+        "VmHWM_bytes": 1518145536,
+        "VmRSS_bytes": 920809472,
+        "VmPeak_bytes": 3375824896,
+        "cgroup_memory_peak_bytes": 2150764544,
+        "cgroup_memory_limit_bytes": 12884901888
+      },
+      "named_temp_observation": {
+        "peak_sampled_named_temp_bytes": 0,
+        "sample_seconds": 0.2,
+        "abort_threshold_bytes": 5368709120,
+        "metric_scope": "named files under configured TMPDIR and DuckDB spill; excludes unlinked/other locations",
+        "errors": []
+      },
+      "runtime_evidence_sha256": "422b3fcd834aaa4556c34be5761cee4b172c0d764f69e344d4f7d964ad1b4344",
+      "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+      "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790",
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_compatible_eligible": true,
+      "value_compatible_total_ms": 118302.636829,
+      "value_compatible_template_ms": {
+        "1": 10101.620125,
+        "2": 7177.234373,
+        "3": 6248.57354,
+        "4": 13164.668082,
+        "5": 23918.604543,
+        "6": 33532.840416,
+        "7": 11465.422458,
+        "8": 12693.673292
+      },
+      "value_failures": []
+    },
+    "pass2-rdfdb": {
+      "controller": {
+        "client_exit": 0,
+        "complete": true,
+        "strict_pass": 60,
+        "equivalent_pass": 60,
+        "attempted": 60,
+        "value_pass": 60
+      },
+      "complete": true,
+      "requested": 60,
+      "attempted": 60,
+      "strict_pass": 60,
+      "count_equivalent_pass": 60,
+      "failures": {
+        "strict": [],
+        "count_equivalent": []
+      },
+      "strict_eligible": true,
+      "count_equivalent_eligible": true,
+      "measured_requests": 45,
+      "measured_total_ms": 10626.303918,
+      "count_equivalent_total_ms": 10626.303918,
+      "qualified_template_totals_ms": {
+        "1": 360.264626,
+        "2": 94.02475,
+        "3": 827.371917,
+        "4": 7168.238958,
+        "5": 1140.486459,
+        "6": 196.35125,
+        "7": 745.271041,
+        "8": 94.294917
+      },
+      "resource": {
+        "scope": "whole server lifetime, including startup/readiness/warmup and measured queries",
+        "VmHWM_bytes": 1470238720,
+        "VmRSS_bytes": 734216192,
+        "VmPeak_bytes": 3061202944,
+        "cgroup_memory_peak_bytes": 1770496000,
+        "cgroup_memory_limit_bytes": 12884901888
+      },
+      "named_temp_observation": {
+        "peak_sampled_named_temp_bytes": 0,
+        "sample_seconds": 0.2,
+        "abort_threshold_bytes": 5368709120,
+        "metric_scope": "named files under configured TMPDIR and DuckDB spill; excludes unlinked/other locations",
+        "errors": []
+      },
+      "runtime_evidence_sha256": "232b5666f6fc3699eb9688e367ec7065f1f88ea5d169cd8c157930b1ab1c3600",
+      "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+      "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790",
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_compatible_eligible": true,
+      "value_compatible_total_ms": 10626.303918,
+      "value_compatible_template_ms": {
+        "1": 360.264626,
+        "2": 94.02475,
+        "3": 827.371917,
+        "4": 7168.238958,
+        "5": 1140.486459,
+        "6": 196.35125,
+        "7": 745.271041,
+        "8": 94.294917
+      },
+      "value_failures": []
+    }
+  },
+  "official_bsbm_throughput_score": false,
+  "complete_cross_engine_ranking": false,
+  "primary_profile_modes": [
+    "rdfdb",
+    "duckdb",
+    "qlever"
+  ],
+  "all_primary_profiles_strictly_qualify": false,
+  "all_primary_profiles_count_equivalent_qualify": false,
+  "value_policy_sha256": "70ad4ab0cc3299c20a8177c64568d0698bbe8eed3b391d122214d94ebf1f0f6a",
+  "value_policy_origin": "Retrospective numeric rule frozen before this new same-session timing cohort; previously seen workload",
+  "complete_value_compatible_three_engine_ranking": true
+}
