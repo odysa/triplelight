@@ -289,7 +289,10 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             Some(match n { Num::Int(i) => Num::Int(i), Num::Dec(d) => Num::Dec(g(d)), Num::Flt(d) => Num::Flt(g(d)), Num::Dbl(d) => Num::Dbl(g(d)) }.term())
         }
         Function::Year | Function::Month | Function::Day | Function::Hours | Function::Minutes => {
-            let x = s(0)?;
+            // Date/time accessors take xsd:dateTime (and xsd:date) literals, not strings.
+            let t = a(0)?;
+            let l = lit(&t).filter(|l| matches!(xsd_local(l), Some("dateTime" | "date")))?;
+            let x = l.value().to_string();
             let (date, time) = x.split_once('T').unwrap_or((x.as_str(), ""));
             let neg = date.starts_with('-');
             let parts: Vec<&str> = date.trim_start_matches('-').split('-').collect();
