@@ -50,7 +50,24 @@ fn fmt_dec(d: Decimal) -> String {
 fn num_cmp(x: Num, y: Num) -> Option<Ordering> {
     if let (Num::Int(i), Num::Int(j)) = (x, y) { return Some(i.cmp(&j)) }
     if let (Some(a), Some(b)) = (x.dec(), y.dec()) { return Some(a.cmp(&b)) }
+    // Promotion converts each operand to the common type first: compared as float, a decimal is rounded to binary32.
+    if x.rank().max(y.rank()) == 2 { return (x.f() as f32).partial_cmp(&(y.f() as f32)) }
     x.f().partial_cmp(&y.f())
+}
+
+/// Exact decimal operations: a result that `Decimal` cannot represent exactly (overflow, or more than 28 fractional
+/// digits) is a SPARQL error rather than a silently rounded value. Division by a non-terminating divisor is rounded to
+/// 28 digits, as XPath allows for decimal division.
+fn dec_exact(op: char, a: Decimal, b: Decimal) -> Option<Decimal> {
+    match op {
+        '+' | '-' => {
+            let r = if op == '+' { a.checked_add(b)? } else { a.checked_sub(b)? };
+            let back = if op == '+' { r.checked_sub(b)? } else { r.checked_add(b)? };
+            (back == a).then_some(r)
+        }
+        '*' => { if a.scale() + b.scale() > 28 { return None } a.checked_mul(b) }
+        _ => { if b.is_zero() { None } else { a.checked_div(b) } }
+    }
 }
 
 /// XPath op:numeric-add/subtract/multiply/divide with type promotion. Integer arithmetic is checked; integer and
@@ -62,12 +79,14 @@ pub(super) fn num_op(op: char, x: Num, y: Num) -> Option<Num> {
         let (Num::Int(i), Num::Int(j)) = (x, y) else { unreachable!() };
         return match op { '+' => i.checked_add(j), '-' => i.checked_sub(j), _ => i.checked_mul(j) }.map(Num::Int);
     }
-    if rank <= 1 {
-        let (a, b) = (x.dec()?, y.dec()?);
-        return match op { '+' => a.checked_add(b), '-' => a.checked_sub(b), '*' => a.checked_mul(b), _ => if b.is_zero() { None } else { a.checked_div(b) } }.map(Num::Dec);
+    if rank <= 1 { return dec_exact(op, x.dec()?, y.dec()?).map(Num::Dec) }
+    if rank == 2 {
+        // Float: each operand is converted to binary32 first, then the operation is done in binary32.
+        let (i, j) = (x.f() as f32, y.f() as f32);
+        return Some(Num::Flt(match op { '+' => i + j, '-' => i - j, '*' => i * j, _ => i / j } as f64));
     }
     let (i, j) = (x.f(), y.f());
-    Some(Num::of_rank(rank, match op { '+' => i + j, '-' => i - j, '*' => i * j, _ => i / j }))
+    Some(Num::Dbl(match op { '+' => i + j, '-' => i - j, '*' => i * j, _ => i / j }))
 }
 
 fn num(t: &Term) -> Option<Num> {
@@ -307,7 +326,11 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             let n = num(&a(0)?)?;
             let g = |d: f64| match f { Function::Ceil => d.ceil(), Function::Floor => d.floor(), _ => (d + 0.5).floor() };
             // fn:round rounds halves towards positive infinity.
-            let gd = |d: Decimal| match f { Function::Ceil => d.ceil(), Function::Floor => d.floor(), _ => (d + Decimal::new(5, 1)).floor() };
+            let gd = |d: Decimal| match f {
+                Function::Ceil => d.ceil(),
+                Function::Floor => d.floor(),
+                _ => if d.fract().is_zero() { d } else { d.checked_add(Decimal::new(5, 1)).map(|x| x.floor()).unwrap_or(d.round()) },
+            };
             Some(match n { Num::Int(i) => Num::Int(i), Num::Dec(d) => Num::Dec(gd(d)), Num::Flt(d) => Num::Flt(g(d)), Num::Dbl(d) => Num::Dbl(g(d)) }.term())
         }
         Function::Year | Function::Month | Function::Day | Function::Hours | Function::Minutes => {
@@ -464,7 +487,8 @@ fn format_double(d: f64) -> String {
 pub(super) fn num_add(a: Num, b: Num) -> Option<Num> {
     match a.rank().max(b.rank()) {
         0 | 1 => num_op('+', a, b),
-        2 => Some(Num::Flt(a.f() + b.f())),
+        // Operands are promoted to float (binary32) first; the accumulation itself stays wide (rounded once later).
+        2 => Some(Num::Flt(if a.rank() == 2 { a.f() } else { a.f() as f32 as f64 } + if b.rank() == 2 { b.f() } else { b.f() as f32 as f64 })),
         _ => Some(Num::Dbl(a.f() + b.f())),
     }
 }
@@ -481,7 +505,8 @@ fn parse_decimal(v: &str) -> Option<Decimal> {
     let v = v.trim().trim_start_matches('+');
     if v.is_empty() || v.contains(['e', 'E']) { return None }
     let v = if let Some(rest) = v.strip_prefix("-.") { format!("-0.{rest}") } else if let Some(rest) = v.strip_prefix('.') { format!("0.{rest}") } else { v.to_string() };
-    Decimal::from_str(&v).ok()
+    // Exact or not at all: a lexical form with more precision than Decimal holds is out of the supported range.
+    Decimal::from_str_exact(&v).ok()
 }
 
 /// xsd:double / xsd:float lexical forms, including INF, -INF and NaN (Rust's parser spells them differently).

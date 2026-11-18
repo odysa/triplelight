@@ -671,3 +671,19 @@ fn decimal_arithmetic_is_exact() {
     assert!(!one("SELECT ((1.0 / 0) AS ?q) {}").contains("Some"));
     assert!(one("SELECT ((1.0e0 / 0) AS ?q) {}").contains("INF"));
 }
+
+/// Jianlin's decimal controls: ROUND at the Decimal maximum does not panic; a decimal beyond the representable
+/// precision is an error, never a silently different value; float promotion converts each operand to binary32 first.
+#[test]
+fn decimal_edge_cases_and_float_promotion() {
+    let s = MemorySnapshot::from_ntriples(&b""[..]).unwrap();
+    let one = |q: &str| -> String { match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => format!("{rows:?}"), r => panic!("{r:?}") } };
+    assert!(one("SELECT (ROUND(79228162514264337593543950335.0) AS ?r) {}").contains("79228162514264337593543950335"));
+    // 1e-29 is beyond Decimal's 28 fractional digits: an error (unbound), not 0.0.
+    let r = one("SELECT ((0.00000000000000000000000000001 + 0.0) AS ?r) {}");
+    assert!(!r.contains("Some"), "{r}");
+    let x = "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> ";
+    // decimal 16777217 promoted to float is 16777216.
+    assert!(one(&format!("{x} SELECT ((16777217.0 + xsd:float(\"-16777216\")) AS ?r) {{}}")).contains("\"0.0\"") || one(&format!("{x} SELECT ((16777217.0 + xsd:float(\"-16777216\")) AS ?r) {{}}")).contains("\"0\""));
+    assert!(one(&format!("{x} SELECT ?ok {{ BIND(16777217.0 = xsd:float(\"16777216\") AS ?ok) }}")).contains("true"));
+}
