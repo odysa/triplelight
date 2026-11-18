@@ -1,0 +1,1154 @@
+{
+  "source": "https://www.w3.org/TR/sparql11-query/#func-strings",
+  "cases": {
+    "length-unicode": {
+      "name": "length-unicode",
+      "expression": "STRLEN(\"a\u03b2\")",
+      "expected": {
+        "type": "literal",
+        "value": "2",
+        "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "upper-tag": {
+      "name": "upper-tag",
+      "expression": "UCASE(\"foo\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "FOO",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "lower-tag": {
+      "name": "lower-tag",
+      "expression": "LCASE(\"BAR\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "bar",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "substring-unicode": {
+      "name": "substring-unicode",
+      "expression": "SUBSTR(\"\u03b1\u03b2\u03b3\"@el,2,1)",
+      "expected": {
+        "type": "literal",
+        "value": "\u03b2",
+        "xml:lang": "el"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "replace-tag": {
+      "name": "replace-tag",
+      "expression": "REPLACE(\"Abc\"@en,\"A\",\"z\")",
+      "expected": {
+        "type": "literal",
+        "value": "zbc",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "regex-tag": {
+      "name": "regex-tag",
+      "expression": "REGEX(\"abc\"@en,\"^a\")",
+      "expected": {
+        "type": "literal",
+        "value": "true",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "encode-uri": {
+      "name": "encode-uri",
+      "expression": "ENCODE_FOR_URI(\"a b\")",
+      "expected": {
+        "type": "literal",
+        "value": "a%20b"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "str-number": {
+      "name": "str-number",
+      "expression": "STR(7)",
+      "expected": {
+        "type": "literal",
+        "value": "7"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "cast-string": {
+      "name": "cast-string",
+      "expression": "xsd:string(7)",
+      "expected": {
+        "type": "literal",
+        "value": "7"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "lang-matches": {
+      "name": "lang-matches",
+      "expression": "LANGMATCHES(LANG(\"abc\"@en-US),\"en\")",
+      "expected": {
+        "type": "literal",
+        "value": "true",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "strlang-case": {
+      "name": "strlang-case",
+      "expression": "STRLANG(\"abc\",\"EN\")",
+      "expected": {
+        "type": "literal",
+        "value": "abc",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "strdt-lexical": {
+      "name": "strdt-lexical",
+      "expression": "STRDT(\"01\",xsd:integer)",
+      "expected": {
+        "type": "literal",
+        "value": "01",
+        "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "before-no-match": {
+      "name": "before-no-match",
+      "expression": "STRBEFORE(\"abc\"@en,\"z\")",
+      "expected": {
+        "type": "literal",
+        "value": ""
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "after-no-match": {
+      "name": "after-no-match",
+      "expression": "STRAFTER(\"abc\"@en,\"z\")",
+      "expected": {
+        "type": "literal",
+        "value": ""
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "before-empty-search": {
+      "name": "before-empty-search",
+      "expression": "STRBEFORE(\"abc\"@en,\"\")",
+      "expected": {
+        "type": "literal",
+        "value": "",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "after-empty-search": {
+      "name": "after-empty-search",
+      "expression": "STRAFTER(\"abc\"@en,\"\")",
+      "expected": {
+        "type": "literal",
+        "value": "abc",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "before-unicode": {
+      "name": "before-unicode",
+      "expression": "STRBEFORE(\"\u03b1\u03b2\u03b3\"@el,\"\u03b2\")",
+      "expected": {
+        "type": "literal",
+        "value": "\u03b1",
+        "xml:lang": "el"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "after-unicode": {
+      "name": "after-unicode",
+      "expression": "STRAFTER(\"\u03b1\u03b2\u03b3\"@el,\"\u03b2\")",
+      "expected": {
+        "type": "literal",
+        "value": "\u03b3",
+        "xml:lang": "el"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "concat-tag": {
+      "name": "concat-tag",
+      "expression": "CONCAT(\"a\"@en,\"b\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "ab",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "concat-tag-case": {
+      "name": "concat-tag-case",
+      "expression": "CONCAT(\"a\"@EN,\"b\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "ab",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "concat-different-tag": {
+      "name": "concat-different-tag",
+      "expression": "CONCAT(\"a\"@en,\"b\"@fr)",
+      "expected": {
+        "type": "literal",
+        "value": "ab"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "concat-mixed-plain": {
+      "name": "concat-mixed-plain",
+      "expression": "CONCAT(\"a\"@en,\"b\")",
+      "expected": {
+        "type": "literal",
+        "value": "ab"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "concat-mismatch-stays-plain": {
+      "name": "concat-mismatch-stays-plain",
+      "expression": "CONCAT(\"a\"@en,\"b\"@fr,\"c\"@fr)",
+      "expected": {
+        "type": "literal",
+        "value": "abc"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "CONTAINS-plain": {
+      "name": "CONTAINS-plain",
+      "expression": "CONTAINS(\"abc\",\"a\")",
+      "expected": {
+        "type": "literal",
+        "value": "true",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "CONTAINS-tag-plain": {
+      "name": "CONTAINS-tag-plain",
+      "expression": "CONTAINS(\"abc\"@en,\"a\")",
+      "expected": {
+        "type": "literal",
+        "value": "true",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "CONTAINS-same-tag": {
+      "name": "CONTAINS-same-tag",
+      "expression": "CONTAINS(\"abc\"@en,\"a\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "true",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "CONTAINS-tag-case": {
+      "name": "CONTAINS-tag-case",
+      "expression": "CONTAINS(\"abc\"@EN,\"a\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "true",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "CONTAINS-plain-tag": {
+      "name": "CONTAINS-plain-tag",
+      "expression": "CONTAINS(\"abc\",\"a\"@en)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "CONTAINS-plain-tag-coalesce": {
+      "name": "CONTAINS-plain-tag-coalesce",
+      "expression": "COALESCE(CONTAINS(\"abc\",\"a\"@en),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "CONTAINS-different-tag": {
+      "name": "CONTAINS-different-tag",
+      "expression": "CONTAINS(\"abc\"@en,\"a\"@fr)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "CONTAINS-different-tag-coalesce": {
+      "name": "CONTAINS-different-tag-coalesce",
+      "expression": "COALESCE(CONTAINS(\"abc\"@en,\"a\"@fr),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRSTARTS-plain": {
+      "name": "STRSTARTS-plain",
+      "expression": "STRSTARTS(\"abc\",\"a\")",
+      "expected": {
+        "type": "literal",
+        "value": "true",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRSTARTS-tag-plain": {
+      "name": "STRSTARTS-tag-plain",
+      "expression": "STRSTARTS(\"abc\"@en,\"a\")",
+      "expected": {
+        "type": "literal",
+        "value": "true",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRSTARTS-same-tag": {
+      "name": "STRSTARTS-same-tag",
+      "expression": "STRSTARTS(\"abc\"@en,\"a\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "true",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRSTARTS-tag-case": {
+      "name": "STRSTARTS-tag-case",
+      "expression": "STRSTARTS(\"abc\"@EN,\"a\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "true",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRSTARTS-plain-tag": {
+      "name": "STRSTARTS-plain-tag",
+      "expression": "STRSTARTS(\"abc\",\"a\"@en)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "STRSTARTS-plain-tag-coalesce": {
+      "name": "STRSTARTS-plain-tag-coalesce",
+      "expression": "COALESCE(STRSTARTS(\"abc\",\"a\"@en),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRSTARTS-different-tag": {
+      "name": "STRSTARTS-different-tag",
+      "expression": "STRSTARTS(\"abc\"@en,\"a\"@fr)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "STRSTARTS-different-tag-coalesce": {
+      "name": "STRSTARTS-different-tag-coalesce",
+      "expression": "COALESCE(STRSTARTS(\"abc\"@en,\"a\"@fr),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRENDS-plain": {
+      "name": "STRENDS-plain",
+      "expression": "STRENDS(\"abc\",\"a\")",
+      "expected": {
+        "type": "literal",
+        "value": "false",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRENDS-tag-plain": {
+      "name": "STRENDS-tag-plain",
+      "expression": "STRENDS(\"abc\"@en,\"a\")",
+      "expected": {
+        "type": "literal",
+        "value": "false",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRENDS-same-tag": {
+      "name": "STRENDS-same-tag",
+      "expression": "STRENDS(\"abc\"@en,\"a\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "false",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRENDS-tag-case": {
+      "name": "STRENDS-tag-case",
+      "expression": "STRENDS(\"abc\"@EN,\"a\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "false",
+        "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRENDS-plain-tag": {
+      "name": "STRENDS-plain-tag",
+      "expression": "STRENDS(\"abc\",\"a\"@en)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "STRENDS-plain-tag-coalesce": {
+      "name": "STRENDS-plain-tag-coalesce",
+      "expression": "COALESCE(STRENDS(\"abc\",\"a\"@en),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRENDS-different-tag": {
+      "name": "STRENDS-different-tag",
+      "expression": "STRENDS(\"abc\"@en,\"a\"@fr)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "STRENDS-different-tag-coalesce": {
+      "name": "STRENDS-different-tag-coalesce",
+      "expression": "COALESCE(STRENDS(\"abc\"@en,\"a\"@fr),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRBEFORE-plain": {
+      "name": "STRBEFORE-plain",
+      "expression": "STRBEFORE(\"abc\",\"a\")",
+      "expected": {
+        "type": "literal",
+        "value": ""
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRBEFORE-tag-plain": {
+      "name": "STRBEFORE-tag-plain",
+      "expression": "STRBEFORE(\"abc\"@en,\"a\")",
+      "expected": {
+        "type": "literal",
+        "value": "",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRBEFORE-same-tag": {
+      "name": "STRBEFORE-same-tag",
+      "expression": "STRBEFORE(\"abc\"@en,\"a\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRBEFORE-tag-case": {
+      "name": "STRBEFORE-tag-case",
+      "expression": "STRBEFORE(\"abc\"@EN,\"a\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRBEFORE-plain-tag": {
+      "name": "STRBEFORE-plain-tag",
+      "expression": "STRBEFORE(\"abc\",\"a\"@en)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "STRBEFORE-plain-tag-coalesce": {
+      "name": "STRBEFORE-plain-tag-coalesce",
+      "expression": "COALESCE(STRBEFORE(\"abc\",\"a\"@en),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRBEFORE-different-tag": {
+      "name": "STRBEFORE-different-tag",
+      "expression": "STRBEFORE(\"abc\"@en,\"a\"@fr)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "STRBEFORE-different-tag-coalesce": {
+      "name": "STRBEFORE-different-tag-coalesce",
+      "expression": "COALESCE(STRBEFORE(\"abc\"@en,\"a\"@fr),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRAFTER-plain": {
+      "name": "STRAFTER-plain",
+      "expression": "STRAFTER(\"abc\",\"a\")",
+      "expected": {
+        "type": "literal",
+        "value": "bc"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRAFTER-tag-plain": {
+      "name": "STRAFTER-tag-plain",
+      "expression": "STRAFTER(\"abc\"@en,\"a\")",
+      "expected": {
+        "type": "literal",
+        "value": "bc",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRAFTER-same-tag": {
+      "name": "STRAFTER-same-tag",
+      "expression": "STRAFTER(\"abc\"@en,\"a\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "bc",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRAFTER-tag-case": {
+      "name": "STRAFTER-tag-case",
+      "expression": "STRAFTER(\"abc\"@EN,\"a\"@en)",
+      "expected": {
+        "type": "literal",
+        "value": "bc",
+        "xml:lang": "en"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRAFTER-plain-tag": {
+      "name": "STRAFTER-plain-tag",
+      "expression": "STRAFTER(\"abc\",\"a\"@en)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "STRAFTER-plain-tag-coalesce": {
+      "name": "STRAFTER-plain-tag-coalesce",
+      "expression": "COALESCE(STRAFTER(\"abc\",\"a\"@en),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "STRAFTER-different-tag": {
+      "name": "STRAFTER-different-tag",
+      "expression": "STRAFTER(\"abc\"@en,\"a\"@fr)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "STRAFTER-different-tag-coalesce": {
+      "name": "STRAFTER-different-tag-coalesce",
+      "expression": "COALESCE(STRAFTER(\"abc\"@en,\"a\"@fr),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-0": {
+      "name": "type-error-0",
+      "expression": "STRLEN(7)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-0-coalesce": {
+      "name": "type-error-0-coalesce",
+      "expression": "COALESCE(STRLEN(7),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-1": {
+      "name": "type-error-1",
+      "expression": "SUBSTR(7,1)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-1-coalesce": {
+      "name": "type-error-1-coalesce",
+      "expression": "COALESCE(SUBSTR(7,1),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-2": {
+      "name": "type-error-2",
+      "expression": "UCASE(7)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-2-coalesce": {
+      "name": "type-error-2-coalesce",
+      "expression": "COALESCE(UCASE(7),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-3": {
+      "name": "type-error-3",
+      "expression": "LCASE(7)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-3-coalesce": {
+      "name": "type-error-3-coalesce",
+      "expression": "COALESCE(LCASE(7),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-4": {
+      "name": "type-error-4",
+      "expression": "CONTAINS(7,\"x\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-4-coalesce": {
+      "name": "type-error-4-coalesce",
+      "expression": "COALESCE(CONTAINS(7,\"x\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-5": {
+      "name": "type-error-5",
+      "expression": "STRSTARTS(7,\"x\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-5-coalesce": {
+      "name": "type-error-5-coalesce",
+      "expression": "COALESCE(STRSTARTS(7,\"x\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-6": {
+      "name": "type-error-6",
+      "expression": "STRENDS(7,\"x\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-6-coalesce": {
+      "name": "type-error-6-coalesce",
+      "expression": "COALESCE(STRENDS(7,\"x\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-7": {
+      "name": "type-error-7",
+      "expression": "STRBEFORE(7,\"x\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-7-coalesce": {
+      "name": "type-error-7-coalesce",
+      "expression": "COALESCE(STRBEFORE(7,\"x\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-8": {
+      "name": "type-error-8",
+      "expression": "STRAFTER(7,\"x\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-8-coalesce": {
+      "name": "type-error-8-coalesce",
+      "expression": "COALESCE(STRAFTER(7,\"x\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-9": {
+      "name": "type-error-9",
+      "expression": "CONCAT(\"x\",7)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-9-coalesce": {
+      "name": "type-error-9-coalesce",
+      "expression": "COALESCE(CONCAT(\"x\",7),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-10": {
+      "name": "type-error-10",
+      "expression": "REGEX(7,\"x\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-10-coalesce": {
+      "name": "type-error-10-coalesce",
+      "expression": "COALESCE(REGEX(7,\"x\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-11": {
+      "name": "type-error-11",
+      "expression": "REPLACE(7,\"x\",\"y\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-11-coalesce": {
+      "name": "type-error-11-coalesce",
+      "expression": "COALESCE(REPLACE(7,\"x\",\"y\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-12": {
+      "name": "type-error-12",
+      "expression": "ENCODE_FOR_URI(7)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-12-coalesce": {
+      "name": "type-error-12-coalesce",
+      "expression": "COALESCE(ENCODE_FOR_URI(7),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-13": {
+      "name": "type-error-13",
+      "expression": "STRLEN(<urn:iri>)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-13-coalesce": {
+      "name": "type-error-13-coalesce",
+      "expression": "COALESCE(STRLEN(<urn:iri>),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-14": {
+      "name": "type-error-14",
+      "expression": "STRLEN(\"abc\"^^<urn:custom-type>)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-14-coalesce": {
+      "name": "type-error-14-coalesce",
+      "expression": "COALESCE(STRLEN(\"abc\"^^<urn:custom-type>),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-15": {
+      "name": "type-error-15",
+      "expression": "STRDT(\"a\"@en,xsd:string)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-15-coalesce": {
+      "name": "type-error-15-coalesce",
+      "expression": "COALESCE(STRDT(\"a\"@en,xsd:string),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-16": {
+      "name": "type-error-16",
+      "expression": "STRDT(7,xsd:string)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-16-coalesce": {
+      "name": "type-error-16-coalesce",
+      "expression": "COALESCE(STRDT(7,xsd:string),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-17": {
+      "name": "type-error-17",
+      "expression": "STRDT(\"a\",\"urn:datatype\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-17-coalesce": {
+      "name": "type-error-17-coalesce",
+      "expression": "COALESCE(STRDT(\"a\",\"urn:datatype\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-18": {
+      "name": "type-error-18",
+      "expression": "STRLANG(\"a\"@en,\"en\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-18-coalesce": {
+      "name": "type-error-18-coalesce",
+      "expression": "COALESCE(STRLANG(\"a\"@en,\"en\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-19": {
+      "name": "type-error-19",
+      "expression": "STRLANG(7,\"en\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-19-coalesce": {
+      "name": "type-error-19-coalesce",
+      "expression": "COALESCE(STRLANG(7,\"en\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-20": {
+      "name": "type-error-20",
+      "expression": "STRLANG(\"a\",\"en\"@en)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-20-coalesce": {
+      "name": "type-error-20-coalesce",
+      "expression": "COALESCE(STRLANG(\"a\",\"en\"@en),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-21": {
+      "name": "type-error-21",
+      "expression": "STRLANG(\"a\",7)",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "type-error-21-coalesce": {
+      "name": "type-error-21-coalesce",
+      "expression": "COALESCE(STRLANG(\"a\",7),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "YEAR-datetime": {
+      "name": "YEAR-datetime",
+      "expression": "YEAR(\"2011-01-10T14:45:13.815-05:00\"^^xsd:dateTime)",
+      "expected": {
+        "type": "literal",
+        "value": "2011",
+        "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "YEAR-plain-string": {
+      "name": "YEAR-plain-string",
+      "expression": "YEAR(\"2011-01-10T14:45:13.815-05:00\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "YEAR-plain-string-coalesce": {
+      "name": "YEAR-plain-string-coalesce",
+      "expression": "COALESCE(YEAR(\"2011-01-10T14:45:13.815-05:00\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "MONTH-datetime": {
+      "name": "MONTH-datetime",
+      "expression": "MONTH(\"2011-01-10T14:45:13.815-05:00\"^^xsd:dateTime)",
+      "expected": {
+        "type": "literal",
+        "value": "1",
+        "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "MONTH-plain-string": {
+      "name": "MONTH-plain-string",
+      "expression": "MONTH(\"2011-01-10T14:45:13.815-05:00\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "MONTH-plain-string-coalesce": {
+      "name": "MONTH-plain-string-coalesce",
+      "expression": "COALESCE(MONTH(\"2011-01-10T14:45:13.815-05:00\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "DAY-datetime": {
+      "name": "DAY-datetime",
+      "expression": "DAY(\"2011-01-10T14:45:13.815-05:00\"^^xsd:dateTime)",
+      "expected": {
+        "type": "literal",
+        "value": "10",
+        "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "DAY-plain-string": {
+      "name": "DAY-plain-string",
+      "expression": "DAY(\"2011-01-10T14:45:13.815-05:00\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "DAY-plain-string-coalesce": {
+      "name": "DAY-plain-string-coalesce",
+      "expression": "COALESCE(DAY(\"2011-01-10T14:45:13.815-05:00\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "HOURS-datetime": {
+      "name": "HOURS-datetime",
+      "expression": "HOURS(\"2011-01-10T14:45:13.815-05:00\"^^xsd:dateTime)",
+      "expected": {
+        "type": "literal",
+        "value": "14",
+        "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "HOURS-plain-string": {
+      "name": "HOURS-plain-string",
+      "expression": "HOURS(\"2011-01-10T14:45:13.815-05:00\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "HOURS-plain-string-coalesce": {
+      "name": "HOURS-plain-string-coalesce",
+      "expression": "COALESCE(HOURS(\"2011-01-10T14:45:13.815-05:00\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "MINUTES-datetime": {
+      "name": "MINUTES-datetime",
+      "expression": "MINUTES(\"2011-01-10T14:45:13.815-05:00\"^^xsd:dateTime)",
+      "expected": {
+        "type": "literal",
+        "value": "45",
+        "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+      },
+      "pass": true,
+      "http_status": 200
+    },
+    "MINUTES-plain-string": {
+      "name": "MINUTES-plain-string",
+      "expression": "MINUTES(\"2011-01-10T14:45:13.815-05:00\")",
+      "expected": null,
+      "pass": true,
+      "http_status": 200
+    },
+    "MINUTES-plain-string-coalesce": {
+      "name": "MINUTES-plain-string-coalesce",
+      "expression": "COALESCE(MINUTES(\"2011-01-10T14:45:13.815-05:00\"),\"fallback\")",
+      "expected": {
+        "type": "literal",
+        "value": "fallback"
+      },
+      "pass": true,
+      "http_status": 200
+    }
+  },
+  "complete": true,
+  "all_pass": true
+}
