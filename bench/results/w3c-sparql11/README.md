@@ -1,6 +1,19 @@
 # W3C SPARQL 1.1 query test suite
 
-## Latest: main `ef7a778` (string-function semantics fixed)
+## Latest: main `99ad969` (group scoping, LIMIT subqueries, IRI() BASE fixed)
+
+| Outcome | Tests |
+|---|---:|
+| pass | 280 (97 syntax, 183 evaluation) |
+| fail | 7 |
+| unsupported (explicit error) | 44 (24 property paths, 20 functions) |
+| skipped: named graphs / harness | 19 / 3 |
+
+Remaining failures: 3 lexical form only (`ceil01`, `floor01`, `round01`: `"2.0"` vs `"2"`); 4 real bugs —
+`agg-sum-01` (decimal SUM uses f64), `cast-decimal`, `cast-string`, and `values-construct-group-by` (valid query
+rejected by the parser). Details: `99ad969.json`.
+
+## Previous: main `ef7a778` (string-function semantics fixed)
 
 | Outcome | Tests |
 |---|---:|
