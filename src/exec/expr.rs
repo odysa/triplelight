@@ -505,6 +505,9 @@ fn parse_decimal(v: &str) -> Option<Decimal> {
     let v = v.trim().trim_start_matches('+');
     if v.is_empty() || v.contains(['e', 'E']) { return None }
     let v = if let Some(rest) = v.strip_prefix("-.") { format!("-0.{rest}") } else if let Some(rest) = v.strip_prefix('.') { format!("0.{rest}") } else { v.to_string() };
+    // Trailing fractional zeros do not change the value but can push the mantissa past 96 bits ("…335.0").
+    let v = if v.contains('.') { v.trim_end_matches('0').trim_end_matches('.').to_string() } else { v };
+    let v = if v.is_empty() || v == "-" { "0".to_string() } else { v };
     // Exact or not at all: a lexical form with more precision than Decimal holds is out of the supported range.
     Decimal::from_str_exact(&v).ok()
 }
