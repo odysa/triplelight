@@ -1,0 +1,369 @@
+{
+  "schema": "complete-independent-jena-reference-100m-v1",
+  "queries": {
+    "m000_p00_q1.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p00_q1.json",
+      "body_sha256": "2f9cf1956ce728ec55751c08604d65184d67b192e9bcda035dbbd3cbdbc7c05c",
+      "query_sha256": "8239f25ea708717824344eb4c8cf7f868f14e230e5784b944d846a04f0ee2d2a"
+    },
+    "m000_p01_q3.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p01_q3.json",
+      "body_sha256": "adadda150d81ddcb4da2d75843e72feb3293d6ba27313426cea5e100037e775d",
+      "query_sha256": "ededf742b9927ac2fbb8aafb0d8bcabb437bab0a24f81b8143899f18db9a5a86"
+    },
+    "m000_p02_q2.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p02_q2.json",
+      "body_sha256": "4b9529cee767680174f9d974e7f68b3e6659f92e10c23bc6a7b79996d2cc599a",
+      "query_sha256": "9d7b757e65b2c7d1deaf09a520937d8c54897d8123ca4310999996d896f351cf"
+    },
+    "m000_p03_q2.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p03_q2.json",
+      "body_sha256": "141114d5bd1f96bb4b967e3d4ea0e36ffda34406472772d50d5f9cb2aae2c9bd",
+      "query_sha256": "19cbc5798f67631fcb85fc6ff4601a0a0dacb8f27a04c3b02ecfc07aec6097ae"
+    },
+    "m000_p04_q4.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p04_q4.json",
+      "body_sha256": "92728bfdfc55064a85b7c6a9b702d38b35819d4dafc8407420f735e42da743bd",
+      "query_sha256": "4db63a184ec9ae4f38f91b75443cda9a12f470f1a1ef12c26676d8935bb28e04"
+    },
+    "m000_p05_q5.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p05_q5.json",
+      "body_sha256": "af819409a10540951fd06522e9e8a5ce9411ce8894fec5889312a0e9c0a72ff6",
+      "query_sha256": "8e6f2fbbaeb80a0233418a1ba5fadf5d35e05d0a8f5f3d8ee7e990e256754725"
+    },
+    "m000_p06_q5.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p06_q5.json",
+      "body_sha256": "af819409a10540951fd06522e9e8a5ce9411ce8894fec5889312a0e9c0a72ff6",
+      "query_sha256": "80dc994e0f976ad3dd2a11256daa27b153147c0eb9f42322523c06bef913638e"
+    },
+    "m000_p07_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p07_q6.json",
+      "body_sha256": "1775759f356a451d2c0070684f6d2fbb9bcf003eda467757c546ac7684310d73",
+      "query_sha256": "0773eb95bd13eca6a3bca0f0aa8749de82899efd6612d2f4e51fc65b83d46b24"
+    },
+    "m000_p08_q5.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p08_q5.json",
+      "body_sha256": "e2900cf2fdd35bfe8b3b686c7dbdfbe2988f64b6c9f84e56fc7dfb74b07c27cb",
+      "query_sha256": "acf3a0b980afba09281b180d458cee0ceca18d0c237a6834ed2382f00af947a4"
+    },
+    "m000_p09_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p09_q6.json",
+      "body_sha256": "71c13f3c3afe0ff362419b1618717d91647fb265ba9649bff21f512309f00e34",
+      "query_sha256": "5a58182857dbf2beb28675ba01928cddd196855519f52ec3146a3dd07ac69261"
+    },
+    "m000_p10_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p10_q6.json",
+      "body_sha256": "fec012f5cc4e719b5e2e629844550777c6e13c1db21e87670486f71e0c38bd73",
+      "query_sha256": "10324d68ac05ab4a293dd11eaddca058a7713a0a1f2e5b2b4fe50c4fa5a9b36f"
+    },
+    "m000_p11_q7.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p11_q7.json",
+      "body_sha256": "7332072906a73f2c7182094f04c35777520ac290996e25f0bb7852727af5ffcf",
+      "query_sha256": "bfaf68fec772f499d17bdfb36264152d0ea4d29ff3073bb15dbdd75810b4e00e"
+    },
+    "m000_p12_q8.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p12_q8.json",
+      "body_sha256": "70689c57afbda5f9f07527f68df8e33cd66d9726fca132eb7d562232d88764df",
+      "query_sha256": "eed274c4cc7bd542f1eaae156d074ad190f1ce7fb79e6fe9504422dbfeb8da95"
+    },
+    "m000_p13_q7.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p13_q7.json",
+      "body_sha256": "ecc6364307dd7ebcdd43038ea6092c568c5e480255ec1a899452a00c4cd49aef",
+      "query_sha256": "14b5c88939ad4840d72a247970e8c5afc6c87fde85d052f1a1b76039d92e41cc"
+    },
+    "m000_p14_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m000_p14_q6.json",
+      "body_sha256": "6b0d9da7d0cf2037127f5a8f7d10bb0001fee715471ed41a0c2f3e7a37c0223e",
+      "query_sha256": "5b9294b32403d1362786ff25debc5724175bcb39f8675f02dff413eaf53c85c1"
+    },
+    "m001_p00_q1.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p00_q1.json",
+      "body_sha256": "bc207482aa1b622e047890fd77b8c62aa1a753b69a305d23f78be7a727aa12d2",
+      "query_sha256": "65a56fc4f3107ea86c484f38f2bc7d470c9324ac721cf6903ba44cdc4c18f206"
+    },
+    "m001_p01_q3.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p01_q3.json",
+      "body_sha256": "da7bf603fa2b0fae34e3bfd6e33ebd1940af462551071a2e95baf787957b27e9",
+      "query_sha256": "7d2623be431a0cfa493017e8ffb26dbe034e834e497cb0d61e1fda030ead26da"
+    },
+    "m001_p02_q2.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p02_q2.json",
+      "body_sha256": "c39d6eb9a13799494ab4207abfacc4dc600e04ac8c49d76e5cf7fbf87b554597",
+      "query_sha256": "17f803488f7520caa9869c2626e53afc4397bc4f05799dc2a0a5f9f61146c2ae"
+    },
+    "m001_p03_q2.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p03_q2.json",
+      "body_sha256": "b99684dd7476c3c913d140ad2dbb8eee5dd9a8ff53563f15b9406247b5c207d3",
+      "query_sha256": "2375d4e66fc7ef9af513db44a684eb893e801ca3a5ed108442c8035adcc6714a"
+    },
+    "m001_p04_q4.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p04_q4.json",
+      "body_sha256": "8514d0c9e29c8fb868c9d001ffc3f4e2a9173cb093879990225c04fe9f12305d",
+      "query_sha256": "664472773948c82b29435f806e41dee81b2d56cd9c21e7fc9a1a4e44e6632739"
+    },
+    "m001_p05_q5.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p05_q5.json",
+      "body_sha256": "af819409a10540951fd06522e9e8a5ce9411ce8894fec5889312a0e9c0a72ff6",
+      "query_sha256": "10715ff4178b17de4f9019b9fcaab17dcb1bb7d544d3f52d913b0ecd6c391af3"
+    },
+    "m001_p06_q5.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p06_q5.json",
+      "body_sha256": "af819409a10540951fd06522e9e8a5ce9411ce8894fec5889312a0e9c0a72ff6",
+      "query_sha256": "10715ff4178b17de4f9019b9fcaab17dcb1bb7d544d3f52d913b0ecd6c391af3"
+    },
+    "m001_p07_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p07_q6.json",
+      "body_sha256": "f8a1659cf0a505d70c19db618be2045547f1b4b3c2509c23c9ac10747def1ac7",
+      "query_sha256": "066885b891f21935077ed3ec46eac38ef54aebafa8f97092440d22739e85aa53"
+    },
+    "m001_p08_q5.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p08_q5.json",
+      "body_sha256": "af819409a10540951fd06522e9e8a5ce9411ce8894fec5889312a0e9c0a72ff6",
+      "query_sha256": "03fbfae142f8f7b9ad2cc988bb8500540fa3b3cb63cc77e4298f13a4e822b5fc"
+    },
+    "m001_p09_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p09_q6.json",
+      "body_sha256": "ded279fcb794d21d5df34dc3493766e149f204994d3569ac45d70007a765e571",
+      "query_sha256": "34d7cf59b9f0ce9e5cbae72bae978dcbdb643c2b7b0be1316ba5f3bc5447cfa9"
+    },
+    "m001_p10_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p10_q6.json",
+      "body_sha256": "56180646c48660ed0cf68995619021b361d933e35222502d503d1f0ab875fc9a",
+      "query_sha256": "8264b290bc8fe5f7751baab651fb858f66987f273c5a664a2bda596130b43280"
+    },
+    "m001_p11_q7.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p11_q7.json",
+      "body_sha256": "7332072906a73f2c7182094f04c35777520ac290996e25f0bb7852727af5ffcf",
+      "query_sha256": "aa65d11df4cb5b62f4be7fd15ca2677e3a4cdb53d604494ed0510dfd5fd5bece"
+    },
+    "m001_p12_q8.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p12_q8.json",
+      "body_sha256": "70689c57afbda5f9f07527f68df8e33cd66d9726fca132eb7d562232d88764df",
+      "query_sha256": "eed274c4cc7bd542f1eaae156d074ad190f1ce7fb79e6fe9504422dbfeb8da95"
+    },
+    "m001_p13_q7.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p13_q7.json",
+      "body_sha256": "7332072906a73f2c7182094f04c35777520ac290996e25f0bb7852727af5ffcf",
+      "query_sha256": "bfaf68fec772f499d17bdfb36264152d0ea4d29ff3073bb15dbdd75810b4e00e"
+    },
+    "m001_p14_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m001_p14_q6.json",
+      "body_sha256": "cc69f3fc26d3aa61d1931d2faec04535a5e84d15a76e4800d147ad11c680ca2e",
+      "query_sha256": "8c08a7c989d4db9452f2f4d65853e54cef1bbec4bf672fea26ba1b083de161b0"
+    },
+    "m002_p00_q1.rq": {
+      "kind": "Jena group-key partitioned execution; original full query timed out",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-v1/reference/m002_p00_q1.json",
+      "body_sha256": "3d1deab0975f2831c8f0d6ea208d02e8d1eaf88889257dd6931cc400a2b26de3",
+      "query_sha256": "95e08aa1eb58dbed5deefe601bdcfb5fa3b9453602c6c243577d91fa9f779e02"
+    },
+    "m002_p01_q3.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p01_q3.json",
+      "body_sha256": "c05f79ed87ef1a5d67250dabd87f32d1d09ddfb62ed82527bbcaf9d289f0976b",
+      "query_sha256": "3a283b1fef638f10f0a4fb18a7f47ff2baebf20ae236dfa9d0d74b55a8b1f997"
+    },
+    "m002_p02_q2.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p02_q2.json",
+      "body_sha256": "0da725f7d704fc603fb4d6fd6ca470f3fe5b20bd85dad20232825efa461ab7a4",
+      "query_sha256": "b659823bd66810592a7bfb0cf2e3cea17151a8ca3b9771ff24431a2aaa9c12b9"
+    },
+    "m002_p03_q2.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p03_q2.json",
+      "body_sha256": "96196ba942aa12aa7a3f91692f81087d87a47405ce2fdf79cc9fe0cdc18da1fb",
+      "query_sha256": "4e63b31d9a0f17026699e990e3e8b7a48906b8e8afc897a5853cf25df39ec034"
+    },
+    "m002_p04_q4.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p04_q4.json",
+      "body_sha256": "8514d0c9e29c8fb868c9d001ffc3f4e2a9173cb093879990225c04fe9f12305d",
+      "query_sha256": "6de8688078415870380441fec6cec914b046fe4cdd730d05bf3982d06d814493"
+    },
+    "m002_p05_q5.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p05_q5.json",
+      "body_sha256": "af819409a10540951fd06522e9e8a5ce9411ce8894fec5889312a0e9c0a72ff6",
+      "query_sha256": "ec89881eae7b1a639975e2360f6da041e229e77d0278fb6aa2fac90a6315fe91"
+    },
+    "m002_p06_q5.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p06_q5.json",
+      "body_sha256": "af819409a10540951fd06522e9e8a5ce9411ce8894fec5889312a0e9c0a72ff6",
+      "query_sha256": "80dc994e0f976ad3dd2a11256daa27b153147c0eb9f42322523c06bef913638e"
+    },
+    "m002_p07_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p07_q6.json",
+      "body_sha256": "b56994d141b987c34a0cb25800872f6e350f4f5b123798f4b117e61e0c14ae14",
+      "query_sha256": "350c916fb4c978b3883916a94db9a5585c0932bc83cde44cf0a46d53d02c9492"
+    },
+    "m002_p08_q5.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p08_q5.json",
+      "body_sha256": "af819409a10540951fd06522e9e8a5ce9411ce8894fec5889312a0e9c0a72ff6",
+      "query_sha256": "03fbfae142f8f7b9ad2cc988bb8500540fa3b3cb63cc77e4298f13a4e822b5fc"
+    },
+    "m002_p09_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p09_q6.json",
+      "body_sha256": "6d27a0fb14dd7f0a595e0d3c5678dbbde0e9bc638114b4d31dff49c6fabd686b",
+      "query_sha256": "4b2590c61a13079f45cce30dce0b28e843d1b3ec85dacd51cdd0d2dfdde1dba9"
+    },
+    "m002_p10_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p10_q6.json",
+      "body_sha256": "ec76853b095f0f14ec87e2ad1d199e65f9ce0c46cc1bf72de6a0e40be88a6114",
+      "query_sha256": "187fa6b07351028f62d5b01bfe90786c1a11e42faf369cad341f17638b9ed370"
+    },
+    "m002_p11_q7.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p11_q7.json",
+      "body_sha256": "7332072906a73f2c7182094f04c35777520ac290996e25f0bb7852727af5ffcf",
+      "query_sha256": "266da3b6e5b0dc1063c43f4cb71279ae7291be66f95fddc7dfd98c2a262de048"
+    },
+    "m002_p12_q8.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p12_q8.json",
+      "body_sha256": "e5c42e9784a4076b828e62c8524d74364fbbfe204dbd374b9416fcb66b2bb94e",
+      "query_sha256": "3f0480f99d57e39991c9910fc973d2defed8b927513cdff64229e89640087c4a"
+    },
+    "m002_p13_q7.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p13_q7.json",
+      "body_sha256": "453bc71f77bc803a85a7c57645633c62c26406979e55d78a4095fa5c60bd8972",
+      "query_sha256": "3ab5a0b7cb531f93c1059cb41ccfeb39be73cd42b1f792a8addbc245b8ad8f6d"
+    },
+    "m002_p14_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m002_p14_q6.json",
+      "body_sha256": "32621d0e33aafded7cca1aa9d9d3138a95d0b98de8bc9847a65e07ea900eafcf",
+      "query_sha256": "497f1bdd037c32db8989ec85e264902bc0f8da22864cd23f4bb10f336c3f04d2"
+    },
+    "m003_p00_q1.rq": {
+      "kind": "Jena original full query, separate 600-second retry",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-retry-v1/reference/m003_p00_q1.json",
+      "body_sha256": "45d2bcdd245d1fcf1bd7d978a21b28b750cff36f80c4d563e5f33dae01479f80",
+      "query_sha256": "ad46ce93b94f8a02ba783d335effe8231321b7b9da75a88ebb393d24d9130fc0"
+    },
+    "m003_p01_q3.rq": {
+      "kind": "Jena original full query, separate 600-second retry",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-retry-v1/reference/m003_p01_q3.json",
+      "body_sha256": "9dffbe53de0ae1e996476ef81ff49c097a75e984279a4e055e73526f3ada7c90",
+      "query_sha256": "83bfc38de67c8ca594cb73c4e22af943aa77761532847af12212b87de064fd15"
+    },
+    "m003_p02_q2.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p02_q2.json",
+      "body_sha256": "79156517276597271f5b740549c83579713e5b3c3bf08ccbbf5576fe3981f91f",
+      "query_sha256": "e9f6d38807b5f9b3a664608ad92ea9ee60bfbcac448562c7dac83be1c71e296d"
+    },
+    "m003_p03_q2.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p03_q2.json",
+      "body_sha256": "d3cd0e41d473854c11924ad917080c81e2559fe3c4d1798317d8b8ded8a12b7c",
+      "query_sha256": "8b3452fd67b9ae787efa21ad762a4899ac705724984b23b1cc4b7a76ec940486"
+    },
+    "m003_p04_q4.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p04_q4.json",
+      "body_sha256": "8514d0c9e29c8fb868c9d001ffc3f4e2a9173cb093879990225c04fe9f12305d",
+      "query_sha256": "981a39f805674cbdb0d127d7e5968b0d49d22d7242531efdf3d4e4a1ebde179d"
+    },
+    "m003_p05_q5.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p05_q5.json",
+      "body_sha256": "af819409a10540951fd06522e9e8a5ce9411ce8894fec5889312a0e9c0a72ff6",
+      "query_sha256": "ed2cf94977377dcc4536c379c1187d7defcfdb8a0d86d0ad3959c56211148013"
+    },
+    "m003_p06_q5.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p06_q5.json",
+      "body_sha256": "af819409a10540951fd06522e9e8a5ce9411ce8894fec5889312a0e9c0a72ff6",
+      "query_sha256": "80dc994e0f976ad3dd2a11256daa27b153147c0eb9f42322523c06bef913638e"
+    },
+    "m003_p07_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p07_q6.json",
+      "body_sha256": "86ee231e474d66156cecad1062e76c0e960e12bbb557bcb2b0ea1769dd71a264",
+      "query_sha256": "b2fe996cdb59f3bc5d5f05e3b355918d79b3342fd07a9930f6fecd3d4f17171d"
+    },
+    "m003_p08_q5.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p08_q5.json",
+      "body_sha256": "af819409a10540951fd06522e9e8a5ce9411ce8894fec5889312a0e9c0a72ff6",
+      "query_sha256": "80a3f71e7f8e592b7e93f854fadcc7c2bb1ddd04adf6bcc8b8aafb5c7c57b852"
+    },
+    "m003_p09_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p09_q6.json",
+      "body_sha256": "2bc6dec7fbc389a86769f5902b2f8d6f71af2dd22a31133ae4935401f72cc3d5",
+      "query_sha256": "34460398e5939edf6968717abe3cbb33e6ff09054d4ff4c2031f9ec0a9555df6"
+    },
+    "m003_p10_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p10_q6.json",
+      "body_sha256": "0b1e423b21527e09dfca9e3b6167c6ee2a113f2d8be997a67dbcbc2511fbf905",
+      "query_sha256": "4287b8a44a6355309cbc1fab596e209e4d77862add63bcc9e0b9546b121b718e"
+    },
+    "m003_p11_q7.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p11_q7.json",
+      "body_sha256": "7332072906a73f2c7182094f04c35777520ac290996e25f0bb7852727af5ffcf",
+      "query_sha256": "aa91f46e55778170bb179e8eb30692ee2f3faa18ba1aef9d1022c9d0f390327f"
+    },
+    "m003_p12_q8.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p12_q8.json",
+      "body_sha256": "70689c57afbda5f9f07527f68df8e33cd66d9726fca132eb7d562232d88764df",
+      "query_sha256": "eed274c4cc7bd542f1eaae156d074ad190f1ce7fb79e6fe9504422dbfeb8da95"
+    },
+    "m003_p13_q7.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p13_q7.json",
+      "body_sha256": "7332072906a73f2c7182094f04c35777520ac290996e25f0bb7852727af5ffcf",
+      "query_sha256": "5f5157e953185d2299f518d9916c0cb1cd91d585a23834d1e14b8333ab26dff0"
+    },
+    "m003_p14_q6.rq": {
+      "kind": "Jena original full query, 180-second attempt",
+      "source": "/private/tmp/rdf-jianlin-analytical25/jena100-bi-reference-v1/reference/m003_p14_q6.json",
+      "body_sha256": "64796383964b436296d280be00ad3024c794d805353044dbe74c13910e8add5c",
+      "query_sha256": "58fb88ec5a3328c71c2bd489babc629fa0112df62a92a57bc4fb20f5142e57f8"
+    }
+  },
+  "original_full_query_responses": 59,
+  "partitioned_query_responses": 1,
+  "original_timeouts_retained": true,
+  "reference_construction_not_a_performance_measurement": true
+}

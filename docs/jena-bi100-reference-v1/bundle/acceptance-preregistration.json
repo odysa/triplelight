@@ -1,0 +1,24 @@
+{
+  "schema": "100m-bi-acceptance-preregistration-v1",
+  "created_utc": "2026-11-18T16:11:16.783575+00:00",
+  "cohort": "100M BI mixes 0/1/2/3; no reference or candidate BI outputs read",
+  "origin": "Policies developed on the prior 10M cohort; fixed prospectively for this new scale, not a blind algorithm-design holdout",
+  "dataset_sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
+  "workload_manifest_sha256": "a6d27c91ec733626fa0d132f642d5a348c62cbfc00b423809bf82074cb1a35ef",
+  "numeric_freeze_sha256": "63e127b60ac8de510a172748108639f0834e17bc3772e1d16ce226404aa58cca",
+  "count_freeze_sha256": "5049fb75210fc6fc78ebf1fb2553b88baef197ae73495b70f110a203a70a4663",
+  "strict_and_count_scores_retained_separately": true,
+  "rule": "Declared numeric value without narrowing, original anchor envelopes q4/5/6 and four-step endpoints q3/8; exact integral nonnegative COUNT. Other term identities, multiplicities, binding state, cutoff and order preserved. All60 scheduled requests must pass; total45 measured requests; strict and COUNT remain separate.",
+  "validator_sources": {
+    "http_measure_value.py": "c08f4a64bd43b6f233d1cfeaa30b865bea749f931d19ad2c2019b17d72ea4615",
+    "value_diagnostic.py": "bd525ce1805440d935d2f47c0a69a4eb0cb64cf91a69ea7dfc2d566d3b7c1dbb",
+    "http_measure.py": "d10321a45381b511bd9fe6b0844f457f84fc7ef8ac0df164bc7937e87955c9ac",
+    "qualify.py": "2fe4528d6dc37b4dca42c3bdea11fb1e5565f62d5ab56d81a65ef9bd29569be1",
+    "envelope_qualify.py": "7ee98959fa12ee106a028aaf3116b581b938131eb4b030f9fa63ad5c677bc542",
+    "float_envelope.py": "7316ee55304d9eeaf7ae8730559e82a1e4a15bb6b46d9922b58ef33a093aca32",
+    "workload_check.py": "0f1f1e00bbd14d0456dcd241090317b040778fe8db33ea6148d73aeee2673b36",
+    "count_equivalence.py": "3b19b1c63e92927038db950b25c4bbd14c6d67c0523875affc9727e2087f154c"
+  },
+  "eligibility": "All 60 requests, including 15 warmup, must pass to report total of 45 measured HTTP requests. Failed/timeout/not-run records remain visible; no partial total or post-output tolerance change.",
+  "reference_binding": "Independent Jena BI responses and q7 cutoff diagnostics will be hashed after collection, then bound into the runnable policy without changing these rules, source pins, input freeze or workload."
+}

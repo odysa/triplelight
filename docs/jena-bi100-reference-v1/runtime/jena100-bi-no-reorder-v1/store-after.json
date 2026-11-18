@@ -1,0 +1,174 @@
+{
+  "tdb.lock": {
+    "bytes": 6,
+    "mtime_ns": 1795021096379918129
+  },
+  "Data-0001/SPOG.dat": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534392505698
+  },
+  "Data-0001/GSPO.idn": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534227396522
+  },
+  "Data-0001/nodes.idn": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888814861374954
+  },
+  "Data-0001/OSP.dat": {
+    "bytes": 4404019200,
+    "mtime_ns": 1794888954221791391
+  },
+  "Data-0001/GPOS.dat": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534267637699
+  },
+  "Data-0001/GPU.dat": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534468126073
+  },
+  "Data-0001/POSG.dat": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534329407398
+  },
+  "Data-0001/GOSP.bpt": {
+    "bytes": 24,
+    "mtime_ns": 1794888534281005618
+  },
+  "Data-0001/POS.bpt": {
+    "bytes": 24,
+    "mtime_ns": 1794888953493267978
+  },
+  "Data-0001/nodes-data.obj": {
+    "bytes": 5688438740,
+    "mtime_ns": 1794888815140781264
+  },
+  "Data-0001/journal.jrnl": {
+    "bytes": 0,
+    "mtime_ns": 1794888534018610699
+  },
+  "Data-0001/GOSP.idn": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534286046474
+  },
+  "Data-0001/POS.idn": {
+    "bytes": 33554432,
+    "mtime_ns": 1794888952996608775
+  },
+  "Data-0001/SPO.dat": {
+    "bytes": 4764729344,
+    "mtime_ns": 1794888815012708903
+  },
+  "Data-0001/nodes.bpt": {
+    "bytes": 24,
+    "mtime_ns": 1794888815141452935
+  },
+  "Data-0001/OSPG.dat": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534361564473
+  },
+  "Data-0001/prefixes.dat": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534428388611
+  },
+  "Data-0001/nodes-data.bdf": {
+    "bytes": 16,
+    "mtime_ns": 1794888815149036991
+  },
+  "Data-0001/GSPO.bpt": {
+    "bytes": 24,
+    "mtime_ns": 1794888814862626839
+  },
+  "Data-0001/tdb.lock": {
+    "bytes": 6,
+    "mtime_ns": 1795021096383450027
+  },
+  "Data-0001/prefixes-data.bdf": {
+    "bytes": 16,
+    "mtime_ns": 1794888815165301528
+  },
+  "Data-0001/GOSP.dat": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534295696346
+  },
+  "Data-0001/POS.dat": {
+    "bytes": 4487905280,
+    "mtime_ns": 1794888953359709535
+  },
+  "Data-0001/POSG.bpt": {
+    "bytes": 24,
+    "mtime_ns": 1794888534313540406
+  },
+  "Data-0001/SPO.idn": {
+    "bytes": 33554432,
+    "mtime_ns": 1794888814904597732
+  },
+  "Data-0001/prefixes.idn": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534419210786
+  },
+  "Data-0001/OSP.bpt": {
+    "bytes": 24,
+    "mtime_ns": 1794888954848787598
+  },
+  "Data-0001/GPOS.bpt": {
+    "bytes": 24,
+    "mtime_ns": 1794888534250901695
+  },
+  "Data-0001/GPU.bpt": {
+    "bytes": 24,
+    "mtime_ns": 1794888815154336530
+  },
+  "Data-0001/OSPG.idn": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534349672988
+  },
+  "Data-0001/SPOG.bpt": {
+    "bytes": 24,
+    "mtime_ns": 1794888534377357881
+  },
+  "Data-0001/GSPO.dat": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534236392386
+  },
+  "Data-0001/SPOG.idn": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534382407903
+  },
+  "Data-0001/OSP.idn": {
+    "bytes": 33554432,
+    "mtime_ns": 1794888953059919866
+  },
+  "Data-0001/prefixes.bpt": {
+    "bytes": 24,
+    "mtime_ns": 1794888815160097406
+  },
+  "Data-0001/GPOS.idn": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534257663364
+  },
+  "Data-0001/GPU.idn": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534458291323
+  },
+  "Data-0001/prefixes-data.obj": {
+    "bytes": 0,
+    "mtime_ns": 1794888534443323633
+  },
+  "Data-0001/nodes.dat": {
+    "bytes": 847249408,
+    "mtime_ns": 1794888815111095628
+  },
+  "Data-0001/OSPG.bpt": {
+    "bytes": 24,
+    "mtime_ns": 1794888534344549965
+  },
+  "Data-0001/POSG.idn": {
+    "bytes": 8388608,
+    "mtime_ns": 1794888534319742109
+  },
+  "Data-0001/SPO.bpt": {
+    "bytes": 24,
+    "mtime_ns": 1794888815075787743
+  }
+}
