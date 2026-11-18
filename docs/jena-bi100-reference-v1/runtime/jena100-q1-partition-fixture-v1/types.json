@@ -1,0 +1,53 @@
+{ "head": {
+    "vars": [ "productType" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/A" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/B" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/Empty" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T00" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T01" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T02" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T03" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T04" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T05" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T06" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T07" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T08" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T09" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T10" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T11" }
+      }
+    ]
+  }
+}

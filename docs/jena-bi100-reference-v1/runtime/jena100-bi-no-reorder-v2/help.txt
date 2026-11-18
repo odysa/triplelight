@@ -1,0 +1,43 @@
+12:20:42 INFO  Fuseki          :: Apache Jena Fuseki 6.2.0
+fuseki [--config=FILE|--mem|--loc=DIR|--file=FILE] [--port PORT] /DatasetPathName
+  Admin
+      --admin                Enable server admin with user:password
+      --adminRun             Directory for server configuration
+      --shiro                Set the shiro.ini file
+  Fuseki
+      --config=FILE          Use a configuration file to determine the services
+      --mem                  Create an in-memory, non-persistent dataset for the server
+      --file=FILE            Create an in-memory, non-persistent dataset for the server, initialised with the contents of the file
+      --tdb2                 Use TDB2 for command line persistent datasets
+      --tdb1                 Use TDB1 for command line persistent datasets (default is TDB2)
+      --loc=DIR              Use an existing TDB database (or create if does not exist)
+      --memTDB               Create an in-memory, non-persistent dataset using TDB (testing only)
+      --rdfs=FILE            Apply RDFS on top of the dataset
+      --update               Allow updates (via SPARQL Update and SPARQL HTTP Update)
+      --desc=                Assembler description file
+      --port                 Listen on this port number
+      --localhost            Listen only on the localhost interface
+      --gzip=on|off          Enable GZip compression (HTTP Accept-Encoding) if request header set
+      --base=DIR             Directory for static content
+      --contextPath=PATH     Context path for the server
+      --https=CONF           https certificate access details. JSON file { "cert":FILE , "passwd"; SECRET } 
+      --httpsPort=NUM        https port (default port is 3043)
+      --passwd=FILE          Password file
+      --timeout=             Global timeout applied to queries (value in ms) -- format is X[,Y] 
+      --sparqler=DIR         Run with SPARQLer services Directory for static content
+      --validators           Install validators
+      --general=PATH         Add a general SPARQL endpoint (without a dataset) at /PATH
+      --auth=[basic|digest]   Run the server using basic or digest authentication
+      --jetty=FILE           jetty.xml server configuration
+      --cors=FILE            Configure CORS settings from file
+      --no-cors              Disable CORS
+      --ping                 Enable /$/ping
+      --stats                Enable /$/stats
+      --metrics              Enable /$/metrics
+      --compact              Enable /$/compact/*
+  General
+      -v   --verbose         Verbose
+      -q   --quiet           Run with minimal output
+      --debug                Output information for debugging
+      --help
+      --version              Version information
