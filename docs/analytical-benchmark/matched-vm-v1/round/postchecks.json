@@ -1,0 +1,42 @@
+{
+  "target-linux/release/rdfdb": {
+    "expected": "4e9e3e11b7d6fb530856ec39ff41430c86123f4412803d6ed38b46fc97f26352",
+    "observed": "4e9e3e11b7d6fb530856ec39ff41430c86123f4412803d6ed38b46fc97f26352",
+    "matches": true
+  },
+  "duck.db": {
+    "expected": "f86cb05c12f8cd1dbe7d62f5b918b03ea95e945435a7148f71d1255927dba421",
+    "observed": "f86cb05c12f8cd1dbe7d62f5b918b03ea95e945435a7148f71d1255927dba421",
+    "matches": true
+  },
+  "source_nt": {
+    "observed": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+    "matches": true
+  },
+  "/private/tmp/rdf-jianlin-analytical25/numeric-diagnostics-10m/freeze.json": {
+    "sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+    "sources_match": {
+      "float_envelope.py": true,
+      "envelope_qualify.py": true,
+      "qualify.py": true,
+      "numeric_inputs.py": true,
+      "workload_check.py": true,
+      "bi_sql.py": true,
+      "fixture_check.py": true,
+      "freeze_numeric.py": true,
+      "test_float_envelope.py": true,
+      "test_envelope_qualify.py": true,
+      "test_qualify.py": true
+    }
+  },
+  "rdfdb/docs/analytical-benchmark/count-equivalence-v1/freeze.json": {
+    "sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790",
+    "sources_match": {
+      "count_equivalence.py": true,
+      "http_measure.py": true,
+      "test_count_equivalence.py": true,
+      "test_http_measure.py": true
+    }
+  },
+  "owned_containers_remaining": []
+}
