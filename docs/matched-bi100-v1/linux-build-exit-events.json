@@ -1,0 +1,19 @@
+[
+  {
+    "Type": "container",
+    "Action": "die",
+    "Actor": {
+      "ID": "4f43d0b7ec0281826c87b03f79ff481cfd3d8def4c9d77696bcde363d0f7f9f3",
+      "Attributes": {
+        "execDuration": "36",
+        "exitCode": "0",
+        "image": "rust@sha256:0b0ea86881537b3f645aace7e8e39556289f8787db057317c8d4978548213b9e",
+        "name": "rdf-jianlin-bi100-linux-build-ef7a778",
+        "org.opencontainers.image.source": "https://github.com/rust-lang/docker-rust"
+      }
+    },
+    "scope": "local",
+    "time": 1795034366,
+    "timeNano": 1795034366182033176
+  }
+]

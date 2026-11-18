@@ -1,0 +1,148 @@
+{
+  "rdfdb": {
+    "MANIFEST": {
+      "size": 264,
+      "mtime_ns": 1795030921375467668,
+      "sha256": "0a2922e2908272a6f0e1c3c28fed1744b1f0bc55889a7c57fe4711400a6a5c32"
+    },
+    "dictionary.id": {
+      "size": 4597902669,
+      "mtime_ns": 1795030649560082878,
+      "sha256": "f67c41f4bf4377d764da6296f799f71358d81be162045f093fef31ef7370d1ba"
+    },
+    "dictionary.term": {
+      "size": 4619108460,
+      "mtime_ns": 1795030529353463631,
+      "sha256": "76def78fa4dba093711e02c9ea4efeed1f177a8c88d90681af5740ba222e3b07"
+    },
+    "ops": {
+      "size": 268212982,
+      "mtime_ns": 1795030920377499329,
+      "sha256": "8b48067a3536f41b9497c4ea8c522dbcdfbb559ffc5716832bf22d4505266e7c"
+    },
+    "osp": {
+      "size": 299437398,
+      "mtime_ns": 1795030910642359244,
+      "sha256": "20e5862a6f67625c77738b07c6feaf7a6b24702f5baa064a64d018956c58815e"
+    },
+    "pos": {
+      "size": 252863076,
+      "mtime_ns": 1795030920670606671,
+      "sha256": "3a869e91ecddf35c33e4b328ec1ed27376ff0ef44b00fff526d2eda53deb45f1"
+    },
+    "pso": {
+      "size": 286142347,
+      "mtime_ns": 1795030754178074357,
+      "sha256": "f8630dd05b0cf0f59e5e7298d6e577e3f8bc7c099c725170eaf4e879d42d0417"
+    },
+    "sop": {
+      "size": 1104721706,
+      "mtime_ns": 1795030753924835608,
+      "sha256": "91512666d138259dabf3f9eb6711a5b7d9e13db6666ed75173c1007d871ece65"
+    },
+    "spo": {
+      "size": 1104721706,
+      "mtime_ns": 1795030753685121420,
+      "sha256": "fc337beae79ee5613486a2452250cc07586cd025ba5ff922370962ee1cc7dd2a"
+    }
+  },
+  "qlever": {
+    "bsbm100.index.ops": {
+      "bytes": 224779453,
+      "sha256": "331bb998d0350854084dc989cd7275fb840ae695bfed7f44af572245b59068e7"
+    },
+    "bsbm100.index.ops.meta": {
+      "bytes": 10592,
+      "sha256": "fa198e5c41d77c7bc297d758e378d3bee9ff826730317fb36da9664fa2336ba8"
+    },
+    "bsbm100.index.osp": {
+      "bytes": 228323910,
+      "sha256": "b2a26edcdf13d4b33eeb6fee5b1f76d3fdff8ce8f1dbcbc4f0c772879c113296"
+    },
+    "bsbm100.index.osp.meta": {
+      "bytes": 10592,
+      "sha256": "ae42f990fc4376d88d1b54e0e3040a5dd3dce254c63ae103f984a31699d83310"
+    },
+    "bsbm100.index.patterns": {
+      "bytes": 5384,
+      "sha256": "42e82c29adc586dc70bc6f6fceac203295cfcccc3a22a25456ca6c83911087cc"
+    },
+    "bsbm100.index.pos": {
+      "bytes": 222593528,
+      "sha256": "7786192f88976a31ac97d06c1cae86297114e188d122e5889168e45d9d14214c"
+    },
+    "bsbm100.index.pos.meta": {
+      "bytes": 1248,
+      "sha256": "f6c8438e3a30987c9b3664bbdf4891c521ef11c28c084d27481ff90136a10e18"
+    },
+    "bsbm100.index.pso": {
+      "bytes": 250692564,
+      "sha256": "a055efdef9f3120fce61ef7c880adcc4b91a42bdb15cb0f2d81993e093fb1a1b"
+    },
+    "bsbm100.index.pso.meta": {
+      "bytes": 1248,
+      "sha256": "488e5573d0356b52dc5daa6df9be64e1d13b7bb80e650f8e76b911403e150e30"
+    },
+    "bsbm100.index.resource-usage-log.tsv": {
+      "bytes": 22917,
+      "sha256": "355f5f51e18dceb95d19dc7706a1fc6acb4bb20c0a874e65c153f48424a8efca"
+    },
+    "bsbm100.index.sop": {
+      "bytes": 221095679,
+      "sha256": "02e010d1d78b29f8f4dbbde142de2544c8688fdf6659f5cb87d7e2e1893800dc"
+    },
+    "bsbm100.index.sop.meta": {
+      "bytes": 32,
+      "sha256": "72345d3e4997db59879d91729b1bfde8efc675f862cca24f6c12e7fb5ac0fb30"
+    },
+    "bsbm100.index.spo": {
+      "bytes": 215839228,
+      "sha256": "167a6579d36ba7120327619ee745d91c89a5b6d95f5b855846e9ad22299f5c30"
+    },
+    "bsbm100.index.spo.meta": {
+      "bytes": 32,
+      "sha256": "72345d3e4997db59879d91729b1bfde8efc675f862cca24f6c12e7fb5ac0fb30"
+    },
+    "bsbm100.internal.index.pos": {
+      "bytes": 26223664,
+      "sha256": "4ba0b3c4dcde980029042da0c5c0c8246444041990d47f0dfe5ec547d209964c"
+    },
+    "bsbm100.internal.index.pos.meta": {
+      "bytes": 352,
+      "sha256": "04c4c14353d8b1ced655b6dbde33670be481bcdc15d885d4d7af2d1586c85ca1"
+    },
+    "bsbm100.internal.index.pso": {
+      "bytes": 27513205,
+      "sha256": "fd7188bdc8f7845b366fa403855d8df4660598f1f74da54d76baa5903f70cfbf"
+    },
+    "bsbm100.internal.index.pso.meta": {
+      "bytes": 352,
+      "sha256": "0616fd294b4ab299726c0fc83960df434de26c5ddc3591c1fb1b6c007be1d59a"
+    },
+    "bsbm100.meta-data.json": {
+      "bytes": 914,
+      "sha256": "2ac78a3ec147587f7347e52581cca7a88050247344cdd66dda4a0e2c14b5034f"
+    },
+    "bsbm100.vocabulary.codebooks": {
+      "bytes": 105992,
+      "sha256": "fccf63ffa5927bfc4f4fc3cd89a6d08bc753c660e139d562a6a6868d8eb363e6"
+    },
+    "bsbm100.vocabulary.words.external": {
+      "bytes": 2242803577,
+      "sha256": "6802846aade1b88ec7faffc70d30501d87d529262a5bb2339b6a3aff6098ba30"
+    },
+    "bsbm100.vocabulary.words.external.offsets": {
+      "bytes": 187979240,
+      "sha256": "0653ae0e1b8622a691926c7d000f83cfed7cfeebe56ef2a5c0dbd45c940bbad6"
+    },
+    "bsbm100.vocabulary.words.internal": {
+      "bytes": 2387001,
+      "sha256": "add2a97c30217352449765fd56f36ce7c982bc2ed216c4dc730b1354e6acefa6"
+    },
+    "bsbm100.vocabulary.words.internal.ids": {
+      "bytes": 188152,
+      "sha256": "b42f496437a26078e4fe2a6e8d7c86a51ade6d3fbda1fddfa95fe55b366639f7"
+    }
+  },
+  "duckdb": "1ad0939f1aead75a8b21f157e349f5a8d1db527305d4d0424c5c014d87aa8f9d"
+}

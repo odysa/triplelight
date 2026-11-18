@@ -1,0 +1,24 @@
+{
+  "system": "rdfdb",
+  "endpoint": "http://127.0.0.1:31441/sparql",
+  "source_or_image": "rust@sha256:0b0ea86881537b3f645aace7e8e39556289f8787db057317c8d4978548213b9e",
+  "dataset_sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
+  "threads": 4,
+  "memory_configuration": {
+    "container_bytes": 12884901888,
+    "extra_swap_bytes": 0,
+    "engine_budget": "10240 MB shared cache"
+  },
+  "cache_profile": "normal engine caches, no result cache",
+  "source_commit": "ef7a77814d23879a7bdf174ffe567b81a402ba9f",
+  "binary": {
+    "source_commit": "ef7a77814d23879a7bdf174ffe567b81a402ba9f",
+    "sha256": "14c83f93abb778a3c99fb6f287b3995a1f98dd832cdfa12432736d77ba45c34d",
+    "bytes": 7265752,
+    "build_die_exit_codes": [
+      "0"
+    ],
+    "note": "Fresh hash-checked /b source build; copied target cache was reused, old target directory unchanged"
+  },
+  "statistics_ready": true
+}
