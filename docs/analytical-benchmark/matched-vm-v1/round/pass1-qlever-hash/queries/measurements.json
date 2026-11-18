@@ -1,0 +1,1846 @@
+{
+  "schema": "http-bi-measurement-v1",
+  "complete": true,
+  "runtime_evidence_sha256": "cdc97b37e460adbd5b87dc4e50f516222f7f25a5e3ef0fdd12183b4789ccb5ea",
+  "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+  "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790",
+  "timer": "HTTP request through complete body read; excludes JSON parsing and qualification",
+  "queries": {
+    "m000_p00_q1.rq": {
+      "mix": 0,
+      "template": 1,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 18723000,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 115394834,
+      "http_status": 200,
+      "bytes": 2224,
+      "transport_error": null,
+      "body_sha256": "6d74bb21f7ff855f27334ee66749153ae123f1f626337d8eda79228308789632",
+      "error": "ValueError: Count datatype mismatch",
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "reviewCount",
+              true
+            ],
+            [
+              "productType",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m000_p01_q3.rq": {
+      "mix": 0,
+      "template": 3,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1524209,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 43078791,
+      "http_status": 200,
+      "bytes": 2342,
+      "transport_error": null,
+      "body_sha256": "c014bc8e6d15fba9f9aed505ec6f1b6aa7bf6de9fab7c01bdeb769942b1e87a9",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p02_q2.rq": {
+      "mix": 0,
+      "template": 2,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1293042,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 308480000,
+      "http_status": 200,
+      "bytes": 2412,
+      "transport_error": null,
+      "body_sha256": "6a4183b5d14859595c4eeff97fbdecf18fac88ecde2d8c20562b19e6bf42ea30",
+      "error": "ValueError: Count datatype mismatch",
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m000_p03_q2.rq": {
+      "mix": 0,
+      "template": 2,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 3853083,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 291190459,
+      "http_status": 200,
+      "bytes": 2416,
+      "transport_error": null,
+      "body_sha256": "2425727feb9541d5e1d52d90281ca3ef84eefa187f1c48783b62d44c2c46782b",
+      "error": "ValueError: Count datatype mismatch",
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m000_p04_q4.rq": {
+      "mix": 0,
+      "template": 4,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2763083,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 5094575583,
+      "http_status": 200,
+      "bytes": 2382,
+      "transport_error": null,
+      "body_sha256": "544b45e93a570721791bc48626943e6e69742ac4d92c3b576dd9a17193472a69",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p05_q5.rq": {
+      "mix": 0,
+      "template": 5,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1905125,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 126800500,
+      "http_status": 200,
+      "bytes": 5973,
+      "transport_error": null,
+      "body_sha256": "632f5c666cfbf042150b82bfa542a42f1c313719215cf70c95c40d6fa37c7ba9",
+      "error": "ValueError: Count datatype differs",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p06_q5.rq": {
+      "mix": 0,
+      "template": 5,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2005542,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 334517417,
+      "http_status": 200,
+      "bytes": 10506,
+      "transport_error": null,
+      "body_sha256": "ee61a24ea328815aee9ecd66ea1834ca7885f1f200e58d37bd8fc780f6a2f14f",
+      "error": "ValueError: Count datatype differs",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p07_q6.rq": {
+      "mix": 0,
+      "template": 6,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2168125,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 126644125,
+      "http_status": 200,
+      "bytes": 3477,
+      "transport_error": null,
+      "body_sha256": "a52aa801318e80bddf16ddffbd6e6eaaee860201bb7f57dcf37c2fd5c8799c03",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p08_q5.rq": {
+      "mix": 0,
+      "template": 5,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2162459,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 138265250,
+      "http_status": 200,
+      "bytes": 10901,
+      "transport_error": null,
+      "body_sha256": "22aa2d44ee5049bec0ab5020ade1deb843d0d8047f1928e5c17b9cfb2ce19e7a",
+      "error": "ValueError: Count datatype differs",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p09_q6.rq": {
+      "mix": 0,
+      "template": 6,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 3191000,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 134181333,
+      "http_status": 200,
+      "bytes": 11826,
+      "transport_error": null,
+      "body_sha256": "b58fbba924d5c27a2c8b46812a24f54b678bb5b06d2153e8b6f07cad4062e168",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p10_q6.rq": {
+      "mix": 0,
+      "template": 6,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2353791,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 122472958,
+      "http_status": 200,
+      "bytes": 7754,
+      "transport_error": null,
+      "body_sha256": "c554e999b18a60813d1268cad155f2ae4192b75f76b152cb07029d274a60427b",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p11_q7.rq": {
+      "mix": 0,
+      "template": 7,
+      "scored": false,
+      "status": "pass",
+      "cache_control": {
+        "elapsed_ns": 3792583,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 121383708,
+      "http_status": 200,
+      "bytes": 120,
+      "transport_error": null,
+      "body_sha256": "ef9691e4d75ead007cc2e83416f784aedcfc07b1b5c3fc908964340e8700b30d",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": true,
+          "cutoff_offer_count": 39,
+          "boundary_slots": 196,
+          "boundary_products": 308,
+          "allowed_optional_rows": [
+            0,
+            0
+          ],
+          "rows": 0
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 0,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": true,
+            "cutoff_offer_count": 39,
+            "boundary_slots": 196,
+            "boundary_products": 308,
+            "allowed_optional_rows": [
+              0,
+              0
+            ],
+            "rows": 0
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 0
+      }
+    },
+    "m000_p12_q8.rq": {
+      "mix": 0,
+      "template": 8,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2363125,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 657033834,
+      "http_status": 200,
+      "bytes": 2543,
+      "transport_error": null,
+      "body_sha256": "5b3a21a1d69efad6ef117327e40012d3f77aa96c1a960792d6c4a8fc5348c23c",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p13_q7.rq": {
+      "mix": 0,
+      "template": 7,
+      "scored": false,
+      "status": "pass",
+      "cache_control": {
+        "elapsed_ns": 1695417,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 80971417,
+      "http_status": 200,
+      "bytes": 365,
+      "transport_error": null,
+      "body_sha256": "69f60639bea13daf4dccb3af9373262f8824f670824173779a282dcdc38738e0",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": false,
+          "rows": 2
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 2,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": false,
+            "rows": 2
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 2
+      }
+    },
+    "m000_p14_q6.rq": {
+      "mix": 0,
+      "template": 6,
+      "scored": false,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 3418250,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 129508666,
+      "http_status": 200,
+      "bytes": 12764,
+      "transport_error": null,
+      "body_sha256": "6bbc4678a55438fd36ab4e9fd556f8791c2a705367aaa80926fbe3b11cd67c18",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p00_q1.rq": {
+      "mix": 1,
+      "template": 1,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2526625,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 49436833,
+      "http_status": 200,
+      "bytes": 2218,
+      "transport_error": null,
+      "body_sha256": "4a696161c6b62c07fcb8a35c387675664f89995e0b7c34b387fe48587daa4ac1",
+      "error": "ValueError: Count datatype mismatch",
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "reviewCount",
+              true
+            ],
+            [
+              "productType",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m001_p01_q3.rq": {
+      "mix": 1,
+      "template": 3,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1964416,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 71005708,
+      "http_status": 200,
+      "bytes": 2347,
+      "transport_error": null,
+      "body_sha256": "f90b33415e8b08109c647b44dd2271f18643c20e057865f2522dba0a2363bfa9",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p02_q2.rq": {
+      "mix": 1,
+      "template": 2,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 3368625,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 309499917,
+      "http_status": 200,
+      "bytes": 2424,
+      "transport_error": null,
+      "body_sha256": "28cdac59e9c5bb4311666576375fae9d3a9ddd9df0416c4196903fb46a479a48",
+      "error": "ValueError: Count datatype mismatch",
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m001_p03_q2.rq": {
+      "mix": 1,
+      "template": 2,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1789125,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 276470250,
+      "http_status": 200,
+      "bytes": 2419,
+      "transport_error": null,
+      "body_sha256": "4c6ba8d4eddf25af921c24438dfa910b55bd8c1c91338e113a08303254293011",
+      "error": "ValueError: Count datatype mismatch",
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m001_p04_q4.rq": {
+      "mix": 1,
+      "template": 4,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1719708,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 369304125,
+      "http_status": 200,
+      "bytes": 2360,
+      "transport_error": null,
+      "body_sha256": "37cf690a55e121dfc891ae1ece24455a9e6b709c9560b5908e9a190b874e9472",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p05_q5.rq": {
+      "mix": 1,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2759375,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 139298834,
+      "http_status": 200,
+      "bytes": 12980,
+      "transport_error": null,
+      "body_sha256": "78c4eac1d0cb94d896e9c7129dd60a50522a13fc299298d1530115371aa7f918",
+      "error": "ValueError: Count datatype differs",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p06_q5.rq": {
+      "mix": 1,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2270750,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 139453541,
+      "http_status": 200,
+      "bytes": 10927,
+      "transport_error": null,
+      "body_sha256": "2bc41349a78f03a2bc605b846a8a00ac6835fb8a85c0da4584d6c061c6ac1c81",
+      "error": "ValueError: Count datatype differs",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p07_q6.rq": {
+      "mix": 1,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2300667,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 123586417,
+      "http_status": 200,
+      "bytes": 4869,
+      "transport_error": null,
+      "body_sha256": "ba9c0930b851ccb1eb9a40cd420658c9e00591ea2ded25c1afd78d590d5230a3",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p08_q5.rq": {
+      "mix": 1,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2656000,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 137657042,
+      "http_status": 200,
+      "bytes": 12979,
+      "transport_error": null,
+      "body_sha256": "97db4761597e24c91a302b302f3ca782abbb42dd7c4afab1883b703727183250",
+      "error": "ValueError: Count datatype differs",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p09_q6.rq": {
+      "mix": 1,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2362041,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 137917292,
+      "http_status": 200,
+      "bytes": 18192,
+      "transport_error": null,
+      "body_sha256": "19b2314e81ce756fd22236dc99743ae275c15a48346a280ce26912a129b594b5",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p10_q6.rq": {
+      "mix": 1,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2720750,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 132371667,
+      "http_status": 200,
+      "bytes": 13444,
+      "transport_error": null,
+      "body_sha256": "d062fe2eb3cfa03a19e0ef1b61e22eb34ff3ac95dff27675f56e924ba8665d1a",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p11_q7.rq": {
+      "mix": 1,
+      "template": 7,
+      "scored": true,
+      "status": "pass",
+      "cache_control": {
+        "elapsed_ns": 1816042,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 70884375,
+      "http_status": 200,
+      "bytes": 9360,
+      "transport_error": null,
+      "body_sha256": "46e5e63c152c5b6260e013cc73edae962196fcd96c38255c6d9a81caccf520e5",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": true,
+          "cutoff_offer_count": 15,
+          "boundary_slots": 20,
+          "boundary_products": 36,
+          "allowed_optional_rows": [
+            0,
+            7
+          ],
+          "rows": 73
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 73,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": true,
+            "cutoff_offer_count": 15,
+            "boundary_slots": 20,
+            "boundary_products": 36,
+            "allowed_optional_rows": [
+              0,
+              7
+            ],
+            "rows": 73
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 73
+      }
+    },
+    "m001_p12_q8.rq": {
+      "mix": 1,
+      "template": 8,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1757042,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 155338625,
+      "http_status": 200,
+      "bytes": 2526,
+      "transport_error": null,
+      "body_sha256": "f943485474fd7922ceecf2536945506cdb167164794b81d7d3bbc3fa82e61ee0",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p13_q7.rq": {
+      "mix": 1,
+      "template": 7,
+      "scored": true,
+      "status": "pass",
+      "cache_control": {
+        "elapsed_ns": 2026792,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 78203042,
+      "http_status": 200,
+      "bytes": 119,
+      "transport_error": null,
+      "body_sha256": "333a3ab966ad5baf687c4fe0bd01b78749aae6f3445930d4214b1f91f71a0f99",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": false,
+          "rows": 0
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 0,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": false,
+            "rows": 0
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 0
+      }
+    },
+    "m001_p14_q6.rq": {
+      "mix": 1,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2955208,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 139553750,
+      "http_status": 200,
+      "bytes": 4708,
+      "transport_error": null,
+      "body_sha256": "3bc871a963ba5e9aa96fa2752d05c246e9ef8ea370d223f419ab83b9b5714a19",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p00_q1.rq": {
+      "mix": 2,
+      "template": 1,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1882125,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 116544209,
+      "http_status": 200,
+      "bytes": 2230,
+      "transport_error": null,
+      "body_sha256": "0cc2b5e9a3266b0468640722259daccaacffb0ab112484b040366d877cff33ee",
+      "error": "ValueError: Count datatype mismatch",
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "reviewCount",
+              true
+            ],
+            [
+              "productType",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m002_p01_q3.rq": {
+      "mix": 2,
+      "template": 3,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1768125,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 159516666,
+      "http_status": 200,
+      "bytes": 2348,
+      "transport_error": null,
+      "body_sha256": "3179697877a4e4c54b029ef928ebb7fe420dd2b3da74f6550267456c7797f450",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p02_q2.rq": {
+      "mix": 2,
+      "template": 2,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2207250,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 302861625,
+      "http_status": 200,
+      "bytes": 2415,
+      "transport_error": null,
+      "body_sha256": "ea7d30a53ccd015776a4e9532be266fef5f2ff81d258f175f6ab5b3ba174fbfb",
+      "error": "ValueError: Count datatype mismatch",
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m002_p03_q2.rq": {
+      "mix": 2,
+      "template": 2,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2297917,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 320614042,
+      "http_status": 200,
+      "bytes": 2422,
+      "transport_error": null,
+      "body_sha256": "be72ae7271ae611dfccf1c0ea646fa9a83ead621aeb1f044df90da5f410831bc",
+      "error": "ValueError: Count datatype mismatch",
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m002_p04_q4.rq": {
+      "mix": 2,
+      "template": 4,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2021334,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 3357194834,
+      "http_status": 200,
+      "bytes": 2383,
+      "transport_error": null,
+      "body_sha256": "24a695e49d769f2ce18ec92e57277630c9d39af9b7875419458503d100a8b95a",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p05_q5.rq": {
+      "mix": 2,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2122000,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 135549208,
+      "http_status": 200,
+      "bytes": 10901,
+      "transport_error": null,
+      "body_sha256": "c1c19051ff36b69833367d005b30a4428b696c144ea56dcbe20ec6f4e1434907",
+      "error": "ValueError: Count datatype differs",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p06_q5.rq": {
+      "mix": 2,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 3050917,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 155588417,
+      "http_status": 200,
+      "bytes": 13799,
+      "transport_error": null,
+      "body_sha256": "76503a49b6bb09d0782a652bb115f3c979c6d105b61de111d457519b905390ac",
+      "error": "ValueError: Count datatype differs",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p07_q6.rq": {
+      "mix": 2,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1752083,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 135662875,
+      "http_status": 200,
+      "bytes": 13201,
+      "transport_error": null,
+      "body_sha256": "09510a2451672e46eeebac1a91c7a4cbfd5ea4d88c63baabbd6f426844d77f24",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p08_q5.rq": {
+      "mix": 2,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1773583,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 133161459,
+      "http_status": 200,
+      "bytes": 11720,
+      "transport_error": null,
+      "body_sha256": "a94611f0f922dbcf9f2e2e50ff18b4e6294bac91263b1eec1bb51c9496bf31d3",
+      "error": "ValueError: Count datatype differs",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p09_q6.rq": {
+      "mix": 2,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1908584,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 126753375,
+      "http_status": 200,
+      "bytes": 3247,
+      "transport_error": null,
+      "body_sha256": "cc0a4a494a0525bcd421e6f6e8ce16a8c97272a8a1d117262a934de32b94da8f",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p10_q6.rq": {
+      "mix": 2,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2099208,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 129266834,
+      "http_status": 200,
+      "bytes": 4922,
+      "transport_error": null,
+      "body_sha256": "a5f98e23bd1a00fe7038ba6f7ef9f710122fe6a644aa8c5246efbd791aa36f28",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p11_q7.rq": {
+      "mix": 2,
+      "template": 7,
+      "scored": true,
+      "status": "pass",
+      "cache_control": {
+        "elapsed_ns": 1958250,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 72003292,
+      "http_status": 200,
+      "bytes": 14467,
+      "transport_error": null,
+      "body_sha256": "a84b3ac43e5e6680eb7d545132195a022062cdb9c705b815070225815c5eb280",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": true,
+          "cutoff_offer_count": 31,
+          "boundary_slots": 110,
+          "boundary_products": 159,
+          "allowed_optional_rows": [
+            0,
+            19
+          ],
+          "rows": 113
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 113,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": true,
+            "cutoff_offer_count": 31,
+            "boundary_slots": 110,
+            "boundary_products": 159,
+            "allowed_optional_rows": [
+              0,
+              19
+            ],
+            "rows": 113
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 113
+      }
+    },
+    "m002_p12_q8.rq": {
+      "mix": 2,
+      "template": 8,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1922708,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 107178250,
+      "http_status": 200,
+      "bytes": 2439,
+      "transport_error": null,
+      "body_sha256": "8a8ac4e98bc62a07a313665877774af9a3482cf3720e1a51727407410a97f3af",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p13_q7.rq": {
+      "mix": 2,
+      "template": 7,
+      "scored": true,
+      "status": "pass",
+      "cache_control": {
+        "elapsed_ns": 6231541,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 57967417,
+      "http_status": 200,
+      "bytes": 1880,
+      "transport_error": null,
+      "body_sha256": "ad1cae729885fd44c91dd7e1871a015365e5235992ed332368af55934d912889",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": false,
+          "rows": 14
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 14,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": false,
+            "rows": 14
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 14
+      }
+    },
+    "m002_p14_q6.rq": {
+      "mix": 2,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2081625,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 120454541,
+      "http_status": 200,
+      "bytes": 1819,
+      "transport_error": null,
+      "body_sha256": "0c7cc3c2bf85968791d15b184c23eb1ca1c6ce37fb7a6d20f6a1e8468e701a40",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p00_q1.rq": {
+      "mix": 3,
+      "template": 1,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 3755542,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 59035042,
+      "http_status": 200,
+      "bytes": 2219,
+      "transport_error": null,
+      "body_sha256": "4d1b3ad0bb4ffa1f10713be4b2999a0ec8b95427d05c95889e1748b4ea8acb41",
+      "error": "ValueError: Count datatype mismatch",
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "reviewCount",
+              true
+            ],
+            [
+              "productType",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m003_p01_q3.rq": {
+      "mix": 3,
+      "template": 3,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1889375,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 113903167,
+      "http_status": 200,
+      "bytes": 2345,
+      "transport_error": null,
+      "body_sha256": "0d62a6caf2582a1bbb20e27d477e61f7d1c75a8d33f79758064ffd5ab0a9830a",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p02_q2.rq": {
+      "mix": 3,
+      "template": 2,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2055792,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 279847542,
+      "http_status": 200,
+      "bytes": 2417,
+      "transport_error": null,
+      "body_sha256": "ba64c2ff7a7d8951cbb18903837054d69f657dfdeafe5ae2d586d57e95bd3a21",
+      "error": "ValueError: Count datatype mismatch",
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m003_p03_q2.rq": {
+      "mix": 3,
+      "template": 2,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2413959,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 263213333,
+      "http_status": 200,
+      "bytes": 2413,
+      "transport_error": null,
+      "body_sha256": "b0210f5c748ecada3423d431ba7d220f71bfac7b1fb4dbb4541a455d511983f2",
+      "error": "ValueError: Count datatype mismatch",
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m003_p04_q4.rq": {
+      "mix": 3,
+      "template": 4,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2102375,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 5296133167,
+      "http_status": 200,
+      "bytes": 2372,
+      "transport_error": null,
+      "body_sha256": "44f3959165c474f954b2b566a945dd845d4c4971854b0100b6f1d6b6fd463c2d",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p05_q5.rq": {
+      "mix": 3,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 1817750,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 203759000,
+      "http_status": 200,
+      "bytes": 6395,
+      "transport_error": null,
+      "body_sha256": "075cffc63331a1741e447c0c63221db72d604d7426f6fd841edcffbfc1ec5537",
+      "error": "ValueError: Count datatype differs",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p06_q5.rq": {
+      "mix": 3,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2231625,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 431338375,
+      "http_status": 200,
+      "bytes": 17089,
+      "transport_error": null,
+      "body_sha256": "f5f0f26750653746a5c493bba2b26d9a92c48744e188b320503b8808b84c28c0",
+      "error": "ValueError: Count datatype differs",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p07_q6.rq": {
+      "mix": 3,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2807084,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 134151375,
+      "http_status": 200,
+      "bytes": 4934,
+      "transport_error": null,
+      "body_sha256": "b9902c7837b303e21b1e22c65957244408389cd1905a82a477cc6fe86f84c6cb",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p08_q5.rq": {
+      "mix": 3,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 3666500,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 132153708,
+      "http_status": 200,
+      "bytes": 6808,
+      "transport_error": null,
+      "body_sha256": "5e28f56e1027793aee45b8fdb8b70a3581e3cbaef547083c0393cf7fcec7db29",
+      "error": "ValueError: Count datatype differs",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p09_q6.rq": {
+      "mix": 3,
+      "template": 6,
+      "scored": true,
+      "status": "pass",
+      "cache_control": {
+        "elapsed_ns": 1943541,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 120151250,
+      "http_status": 200,
+      "bytes": 140,
+      "transport_error": null,
+      "body_sha256": "4803604b5e56adefca8b0df18046fa8f518eb66b21d479bf134473a217ec0bf1",
+      "qualification": {
+        "all_columns_compatible": true,
+        "numeric_policy": "exact-anchor-binary32-v1",
+        "reference_and_candidate_inside_envelopes": true,
+        "exact_term_bag": true,
+        "max_binary32_ulps_vs_reference": 0,
+        "rows": 0,
+        "numeric_details": {}
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 0,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "numeric_policy": "exact-anchor-binary32-v1",
+          "reference_and_candidate_inside_envelopes": true,
+          "exact_term_bag": true,
+          "max_binary32_ulps_vs_reference": 0,
+          "rows": 0,
+          "numeric_details": {}
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 0
+      }
+    },
+    "m003_p10_q6.rq": {
+      "mix": 3,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2512750,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 131696250,
+      "http_status": 200,
+      "bytes": 17299,
+      "transport_error": null,
+      "body_sha256": "bea09e63abe027dcfb04fc1a9293ed5dd7bcb09e40145e11a4b90b9eccc718a8",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p11_q7.rq": {
+      "mix": 3,
+      "template": 7,
+      "scored": true,
+      "status": "pass",
+      "cache_control": {
+        "elapsed_ns": 2366000,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 122253959,
+      "http_status": 200,
+      "bytes": 120,
+      "transport_error": null,
+      "body_sha256": "16f9c525b9a75bd7f0b770e7cab180e45770bd321ade1315a294ba4fe0963a4c",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": true,
+          "cutoff_offer_count": 39,
+          "boundary_slots": 196,
+          "boundary_products": 308,
+          "allowed_optional_rows": [
+            0,
+            0
+          ],
+          "rows": 0
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 0,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": true,
+            "cutoff_offer_count": 39,
+            "boundary_slots": 196,
+            "boundary_products": 308,
+            "allowed_optional_rows": [
+              0,
+              0
+            ],
+            "rows": 0
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 0
+      }
+    },
+    "m003_p12_q8.rq": {
+      "mix": 3,
+      "template": 8,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2374041,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 111706791,
+      "http_status": 200,
+      "bytes": 2441,
+      "transport_error": null,
+      "body_sha256": "73f2d53c2063d427e18361423db8b464ecff8167dcbb31d9c94d39bd9d54f630",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p13_q7.rq": {
+      "mix": 3,
+      "template": 7,
+      "scored": true,
+      "status": "pass",
+      "cache_control": {
+        "elapsed_ns": 2260000,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 67786000,
+      "http_status": 200,
+      "bytes": 6971,
+      "transport_error": null,
+      "body_sha256": "c9ef34ca4ec8c1845588df8095da52925d47604fffa7e683f1f92a894bd13404",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": true,
+          "cutoff_offer_count": 26,
+          "boundary_slots": 47,
+          "boundary_products": 92,
+          "allowed_optional_rows": [
+            0,
+            8
+          ],
+          "rows": 54
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 54,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": true,
+            "cutoff_offer_count": 26,
+            "boundary_slots": 47,
+            "boundary_products": 92,
+            "allowed_optional_rows": [
+              0,
+              8
+            ],
+            "rows": 54
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 54
+      }
+    },
+    "m003_p14_q6.rq": {
+      "mix": 3,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "cache_control": {
+        "elapsed_ns": 2024875,
+        "http_status": 200,
+        "bytes": 163,
+        "transport_error": null
+      },
+      "elapsed_ns": 138787709,
+      "http_status": 200,
+      "bytes": 5865,
+      "transport_error": null,
+      "body_sha256": "bc7d32566d930d57ac0a6e6a5eeb192c6043e86ac22fc223cdd6db805b5d0795",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    }
+  },
+  "ranking_eligible": false,
+  "measured_total_ns": null,
+  "integer_value_equivalent_eligible": false,
+  "integer_value_equivalent_total_ns": null
+}

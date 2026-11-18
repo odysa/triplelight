@@ -1,0 +1,152 @@
+Checking Plugins section
+Applying settings to virtuoso.ini
+[credential-related operational log line omitted]
+Generating SSL keypair
+Creating initial database
+Running initialization scripts
+[credential-related operational log line omitted]
+Fixing ownership of database volume
+Starting the Virtuoso Server
+-----
+
+		Wed Nov 18 2026
+00:03:07 { Loading plugin 1: Type `plain', file `geos' in `../hosting'
+00:03:07   plain version 1.2.3243 from OpenLink Software
+00:03:07   GEOS plugin based on Geometry Engine Open Source library from Open Source Geospatial Foundation
+00:03:07   SUCCESS plugin 1: loaded from ../hosting/geos.so }
+00:03:07 { Loading plugin 2: Type `plain', file `graphql' in `../hosting'
+00:03:07   GraphQL/SPARQL Bridge version 0.9.3 (8439c5e52f) from OpenLink Software
+00:03:07   Support functions for GraphQL/SPARQL Bridge
+00:03:07   SUCCESS plugin 2: loaded from ../hosting/graphql.so }
+00:03:07 { Loading plugin 3: Type `plain', file `proj4' in `../hosting'
+00:03:07   plain version 1.1.3243 from OpenLink Software
+00:03:07   Cartographic Projections support based on Frank Warmerdam's proj4 library
+00:03:07   SUCCESS plugin 3: loaded from ../hosting/proj4.so }
+00:03:07 { Loading plugin 4: Type `plain', file `shapefileio' in `../hosting'
+00:03:07   ShapefileIO version 0.1virt71 from OpenLink Software
+00:03:07   Shapefile support based on Frank Warmerdam's Shapelib
+00:03:07   SUCCESS plugin 4: loaded from ../hosting/shapefileio.so }
+00:03:07 SPARQL/MaxConstructTriples parameter cannot be more than 2097150, will use maximum possible limit.
+00:03:07 OpenLink Virtuoso Universal Server
+00:03:07 Version 07.20.3243-pthreads for Linux as of Aug  5 2026 (8439c5e52f)
+00:03:07 uses OpenSSL 3.0.13 30 Jan 2024
+00:03:07 uses parts of PCRE, Html Tidy
+00:03:10 SQL Optimizer enabled (max 1000 layouts)
+00:03:10 Compiler unit is timed at 0.000486 msec
+00:03:12 Checkpoint started
+00:03:12 Checkpoint finished.
+00:03:12 Roll forward started
+00:03:12 Roll forward complete
+00:03:13 PL LOG: Can't get list of vad packages in ../vad/
+00:03:13 PL LOG: Initializing DB.DBA.SYS_PROJ4_SRIDS
+00:03:13 PL LOG: ... checking for data files in "/usr/share/proj"
+00:03:13 PL LOG: ... using built-in data
+00:03:13 PL LOG: Initializing DB.DBA.SYS_PROJ4_SRIDS using built-in data
+00:03:13 PL LOG: DB.DBA.SYS_PROJ4_SRIDS initialized with 8650 spatial reference systems
+00:03:13 Checkpoint started
+00:03:13 Checkpoint finished, log reused
+00:03:13 Server exiting
+
+		Wed Nov 18 2026
+00:03:13 { Loading plugin 1: Type `plain', file `geos' in `../hosting'
+00:03:13   plain version 1.2.3243 from OpenLink Software
+00:03:13   GEOS plugin based on Geometry Engine Open Source library from Open Source Geospatial Foundation
+00:03:13   SUCCESS plugin 1: loaded from ../hosting/geos.so }
+00:03:13 { Loading plugin 2: Type `plain', file `graphql' in `../hosting'
+00:03:13   GraphQL/SPARQL Bridge version 0.9.3 (8439c5e52f) from OpenLink Software
+00:03:13   Support functions for GraphQL/SPARQL Bridge
+00:03:13   SUCCESS plugin 2: loaded from ../hosting/graphql.so }
+00:03:13 { Loading plugin 3: Type `plain', file `proj4' in `../hosting'
+00:03:13   plain version 1.1.3243 from OpenLink Software
+00:03:13   Cartographic Projections support based on Frank Warmerdam's proj4 library
+00:03:13   SUCCESS plugin 3: loaded from ../hosting/proj4.so }
+00:03:13 { Loading plugin 4: Type `plain', file `shapefileio' in `../hosting'
+00:03:13   ShapefileIO version 0.1virt71 from OpenLink Software
+00:03:13   Shapefile support based on Frank Warmerdam's Shapelib
+00:03:13   SUCCESS plugin 4: loaded from ../hosting/shapefileio.so }
+00:03:13 SPARQL/MaxConstructTriples parameter cannot be more than 2097150, will use maximum possible limit.
+00:03:13 OpenLink Virtuoso Universal Server
+00:03:13 Version 07.20.3243-pthreads for Linux as of Aug  5 2026 (8439c5e52f)
+00:03:13 uses OpenSSL 3.0.13 30 Jan 2024
+00:03:13 uses parts of PCRE, Html Tidy
+[credential-related operational log line omitted]
+00:03:16 Database version 3126
+00:03:16 SQL Optimizer enabled (max 1000 layouts)
+00:03:17 Compiler unit is timed at 0.000157 msec
+00:03:17 Roll forward started
+00:03:17     3 transactions, 185 bytes replayed (100 %)
+00:03:17 Roll forward complete
+00:03:17 PL LOG: Can't get list of vad packages in ../vad/
+[credential-related operational log line omitted]
+[credential-related operational log line omitted]
+00:03:17 Checkpoint started
+00:03:18 Checkpoint finished, log reused
+00:03:18 Server exiting
+
+		Wed Nov 18 2026
+00:03:18 { Loading plugin 1: Type `plain', file `geos' in `../hosting'
+00:03:18   plain version 1.2.3243 from OpenLink Software
+00:03:18   GEOS plugin based on Geometry Engine Open Source library from Open Source Geospatial Foundation
+00:03:18   SUCCESS plugin 1: loaded from ../hosting/geos.so }
+00:03:18 { Loading plugin 2: Type `plain', file `graphql' in `../hosting'
+00:03:18   GraphQL/SPARQL Bridge version 0.9.3 (8439c5e52f) from OpenLink Software
+00:03:18   Support functions for GraphQL/SPARQL Bridge
+00:03:18   SUCCESS plugin 2: loaded from ../hosting/graphql.so }
+00:03:18 { Loading plugin 3: Type `plain', file `proj4' in `../hosting'
+00:03:18   plain version 1.1.3243 from OpenLink Software
+00:03:18   Cartographic Projections support based on Frank Warmerdam's proj4 library
+00:03:18   SUCCESS plugin 3: loaded from ../hosting/proj4.so }
+00:03:18 { Loading plugin 4: Type `plain', file `shapefileio' in `../hosting'
+00:03:18   ShapefileIO version 0.1virt71 from OpenLink Software
+00:03:18   Shapefile support based on Frank Warmerdam's Shapelib
+00:03:18   SUCCESS plugin 4: loaded from ../hosting/shapefileio.so }
+00:03:18 SPARQL/MaxConstructTriples parameter cannot be more than 2097150, will use maximum possible limit.
+00:03:18 OpenLink Virtuoso Universal Server
+00:03:18 Version 07.20.3243-pthreads for Linux as of Aug  5 2026 (8439c5e52f)
+00:03:18 uses OpenSSL 3.0.13 30 Jan 2024
+00:03:18 uses parts of PCRE, Html Tidy
+00:03:19 Database version 3126
+00:03:19 SQL Optimizer enabled (max 1000 layouts)
+00:03:20 Compiler unit is timed at 0.000157 msec
+00:03:20 Roll forward started
+00:03:20 Roll forward complete
+00:03:20 PL LOG: Can't get list of vad packages in ../vad/
+00:03:21 Checkpoint started
+00:03:21 Checkpoint finished, log reused
+00:03:21 SSL server online at 1112
+00:03:21 HTTP/WebDAV server online at 8890
+00:03:21 HTTPS server online at 8891
+00:03:21 Server online at 1111 (pid 1)
+00:03:21 Incorrect login for dba from IP [127.0.0.1]
+00:03:21 Incorrect login for dba from IP [127.0.0.1]
+00:03:22 Incorrect login for dba from IP [127.0.0.1]
+00:03:22 Incorrect login for dba from IP [127.0.0.1]
+00:03:22 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:25 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:27 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:27 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:29 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:32 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:34 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:36 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:39 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:39 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:39 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:41 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:42 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:42 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:44 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:47 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:49 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:51 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:53 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:56 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:56 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:03:58 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:04:01 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:04:01 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:04:01 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:04:04 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:04:04 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:04:04 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
+00:04:06 Too many (4) failed connection attempts from IP [127.0.0.1]. Disabled logging in from that IP for 60 sec.
