@@ -1,0 +1,56 @@
+{
+  "duckdb": "2.0.0",
+  "jena": "6.2.0",
+  "cases": {
+    "bag.rq": {
+      "all_columns_compatible": true,
+      "exact_term_bag": true,
+      "computed_float_max_ulps": 0,
+      "computed_float_allowed_ulps": 0,
+      "rows": 1
+    },
+    "cross-position.rq": {
+      "all_columns_compatible": true,
+      "exact_term_bag": true,
+      "computed_float_max_ulps": 0,
+      "computed_float_allowed_ulps": 0,
+      "rows": 1
+    },
+    "distinct-identity.rq": {
+      "all_columns_compatible": true,
+      "exact_term_bag": true,
+      "computed_float_max_ulps": 0,
+      "computed_float_allowed_ulps": 0,
+      "rows": 1
+    },
+    "empty-global.rq": {
+      "all_columns_compatible": true,
+      "exact_term_bag": true,
+      "computed_float_max_ulps": 0,
+      "computed_float_allowed_ulps": 0,
+      "rows": 1
+    },
+    "empty-group.rq": {
+      "all_columns_compatible": true,
+      "exact_term_bag": true,
+      "computed_float_max_ulps": 0,
+      "computed_float_allowed_ulps": 0,
+      "rows": 0
+    },
+    "group.rq": {
+      "all_columns_compatible": true,
+      "exact_term_bag": true,
+      "computed_float_max_ulps": 0,
+      "computed_float_allowed_ulps": 0,
+      "rows": 3
+    },
+    "repeated-variable.rq": {
+      "all_columns_compatible": true,
+      "exact_term_bag": true,
+      "computed_float_max_ulps": 0,
+      "computed_float_allowed_ulps": 0,
+      "rows": 1
+    }
+  },
+  "complete": true
+}
