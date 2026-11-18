@@ -1,0 +1,22 @@
+[
+  "docker",
+  "run",
+  "--rm",
+  "--name",
+  "rdf-jianlin-bi-linux-build-20b257a",
+  "--cpus",
+  "4",
+  "--memory",
+  "8g",
+  "-v",
+  "/private/tmp/rdf-jianlin-analytical25/matched-vm-10m:/work",
+  "-e",
+  "CARGO_BUILD_JOBS=2",
+  "-e",
+  "CARGO_TARGET_DIR=/work/target-linux-20b257a",
+  "--entrypoint",
+  "sh",
+  "rust@sha256:0b0ea86881537b3f645aace7e8e39556289f8787db057317c8d4978548213b9e",
+  "-c",
+  "mkdir /b && cp -r /work/rdfdb-source-20b257a/src /work/rdfdb-source-20b257a/Cargo.toml /work/rdfdb-source-20b257a/Cargo.lock /b/ && cp /work/rdfdb-source-20b257a.sha256 /b/source.sha256 && cd /b && sha256sum -c source.sha256 && rustc --version && cargo --version && cargo build --locked --release"
+]
