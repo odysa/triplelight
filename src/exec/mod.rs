@@ -696,7 +696,33 @@ struct StorageFailure(String);
 fn storage_failure(e: crate::storage::StorageError) -> ! { std::panic::panic_any(StorageFailure(e.to_string())) }
 
 /// Compatible-mapping join (used to merge subquery results back into the outer rows).
+/// Compatible-mapping join of two row sets. Columns bound in every row on both sides are a sound hash key: two
+/// compatible mappings must agree there. The remaining columns are merged with the usual compatibility check. Without
+/// such a column (partial or unbound mappings), the nested-loop join is used.
 fn join_rows(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
+    if left.is_empty() || right.is_empty() { return Vec::new() }
+    let width = left[0].len();
+    let key: Vec<usize> = (0..width).filter(|&i| left.iter().all(|r| r[i] != UNBOUND) && right.iter().all(|r| r[i] != UNBOUND)).collect();
+    if !key.is_empty() && left.len().saturating_mul(right.len()) > 64 {
+        let mut table: HashMap<Vec<TermId>, Vec<usize>> = HashMap::new();
+        for (j, b) in right.iter().enumerate() { table.entry(key.iter().map(|&i| b[i]).collect()).or_default().push(j) }
+        let mut out = Vec::new();
+        let mut k: Vec<TermId> = Vec::with_capacity(key.len());
+        for a in &left {
+            k.clear(); k.extend(key.iter().map(|&i| a[i]));
+            let Some(matches) = table.get(k.as_slice()) else { continue };
+            'm: for &j in matches {
+                let b = &right[j];
+                let mut r = a.clone();
+                for (i, &y) in b.iter().enumerate() {
+                    if y == UNBOUND { continue }
+                    if r[i] == UNBOUND { r[i] = y } else if r[i] != y { continue 'm }
+                }
+                out.push(r);
+            }
+        }
+        return out;
+    }
     let mut out = Vec::new();
     for a in &left {
         'r: for b in &right {
