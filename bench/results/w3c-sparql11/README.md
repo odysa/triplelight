@@ -1,6 +1,12 @@
 # W3C SPARQL 1.1 query test suite
 
-## Latest: main `99ad969` (group scoping, LIMIT subqueries, IRI() BASE fixed)
+## Latest: main `9a2f49b` (exact decimals)
+
+pass 281, fail 6, unsupported 44, skipped 19 / 3. `agg-sum-01` now passes. Remaining: 5 lexical canonical-form
+cases (`ceil01`, `floor01`, `round01`, `cast-decimal`, `cast-string`) and `values-construct-group-by` (parser).
+Details: `9a2f49b.json`.
+
+## Previous: main `99ad969` (group scoping, LIMIT subqueries, IRI() BASE fixed)
 
 | Outcome | Tests |
 |---|---:|
