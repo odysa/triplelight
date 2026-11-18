@@ -1,0 +1,805 @@
+{
+  "schema": "bi-exact-float-inputs-v1",
+  "dataset_sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
+  "workload_manifest_sha256": "a6d27c91ec733626fa0d132f642d5a348c62cbfc00b423809bf82074cb1a35ef",
+  "cases": {
+    "4-b3e23972960206149d33": {
+      "template": 4,
+      "parameters": {
+        "ProductType": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1300>"
+      },
+      "sql": {
+        "prices": {
+          "file": "4-b3e23972960206149d33/prices.sql",
+          "sha256": "21e4d94c0b825448567297e6abb7742909c06be3f0364f5f64bec6856a9895ce"
+        },
+        "features": {
+          "file": "4-b3e23972960206149d33/features.sql",
+          "sha256": "21704edc3d5a72672c059fd56f17d624517ee5b4ffe8f0ace9357070321da4d8"
+        }
+      },
+      "jena": {
+        "groups": {
+          "file": "4-b3e23972960206149d33/groups.rq",
+          "sha256": "45813bb9b05ba112cdb2ab3f6490a0c6402c0cb930fc8f9b2a29a051dc572955"
+        }
+      }
+    },
+    "5-1be9f400408ef3c417b5": {
+      "template": 5,
+      "parameters": {
+        "ProductType": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType83>"
+      },
+      "sql": {
+        "prices": {
+          "file": "5-1be9f400408ef3c417b5/prices.sql",
+          "sha256": "daebb3cf904d7763ffa8c3360ae091b5b361478ce1e40860e2454686e872d207"
+        }
+      },
+      "jena": {
+        "groups": {
+          "file": "5-1be9f400408ef3c417b5/groups.rq",
+          "sha256": "05b44b1e75f16bb22a9874b5e0dcbd3ed177590cb3e9edf48b3248e8342fad72"
+        }
+      }
+    },
+    "5-64007e848123b7f021dc": {
+      "template": 5,
+      "parameters": {
+        "ProductType": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType7>"
+      },
+      "sql": {
+        "prices": {
+          "file": "5-64007e848123b7f021dc/prices.sql",
+          "sha256": "edfd8da968c82a27197f1fb1dc5a39208b7962fd32a93e6db49101afb62b5129"
+        }
+      },
+      "jena": {
+        "groups": {
+          "file": "5-64007e848123b7f021dc/groups.rq",
+          "sha256": "5a6f20e04942a7d88d23cfad78bf1c92cb4c2828095f16756aabc299eb45015e"
+        }
+      }
+    },
+    "6-1e3e1fb3d9ec3f67c464": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1988/Producer1988>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-1e3e1fb3d9ec3f67c464/global.sql",
+          "sha256": "64e83851f635aa6594a0d793136d2c84912b987769ee227d616321fae60238a4"
+        },
+        "groups": {
+          "file": "6-1e3e1fb3d9ec3f67c464/groups.sql",
+          "sha256": "db96a542ed7116b18d7294bdd42f1c1c075db94506e21c3762a9adaab1641ff6"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-1e3e1fb3d9ec3f67c464/global.rq",
+          "sha256": "a4d78422e5e648e4ab4bb195d871329c0b73acddc4745d46468f1b443d41e426"
+        },
+        "groups": {
+          "file": "6-1e3e1fb3d9ec3f67c464/groups.rq",
+          "sha256": "87aac61a8cfed7b95ada4367ebcb96504001f46a1e57517379a718745615d0b6"
+        }
+      }
+    },
+    "5-3d34fe8dc871b3a46ae1": {
+      "template": 5,
+      "parameters": {
+        "ProductType": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType967>"
+      },
+      "sql": {
+        "prices": {
+          "file": "5-3d34fe8dc871b3a46ae1/prices.sql",
+          "sha256": "5171ca0aa5bca49d2be5d2be8d5f5d8d8c822e0dd5cf694f9624a88d4d07c986"
+        }
+      },
+      "jena": {
+        "groups": {
+          "file": "5-3d34fe8dc871b3a46ae1/groups.rq",
+          "sha256": "45b81eee59352250153c2e48cf8ae3f417b71d4d788332e158e40701a5e1195d"
+        }
+      }
+    },
+    "6-7d94eeda12fb69a54a94": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer3166/Producer3166>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-7d94eeda12fb69a54a94/global.sql",
+          "sha256": "a07c5a9efe75f0a92b61756bfd2b952e69047bc14e890ba4b557b3ff031a81bf"
+        },
+        "groups": {
+          "file": "6-7d94eeda12fb69a54a94/groups.sql",
+          "sha256": "7ed2b26f47d473dfe2a2cf3c7c6be2727d03a44bd987b4dbfeb2be9c23f9cc93"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-7d94eeda12fb69a54a94/global.rq",
+          "sha256": "111b64f6f4f4c4ff2d216518976a772278bae7f0a5c2e04366fe29c053bc05ef"
+        },
+        "groups": {
+          "file": "6-7d94eeda12fb69a54a94/groups.rq",
+          "sha256": "03092bd40fea7c30fdbe9b1641f23cbbffc827f2efac4cbc1e2b6867875cfa09"
+        }
+      }
+    },
+    "6-d1d35256712fceca20c4": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer5149/Producer5149>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-d1d35256712fceca20c4/global.sql",
+          "sha256": "c3be22b6aa6a803d609226dd8c38eebe9d2e10738c630d2985a8706c28edfd50"
+        },
+        "groups": {
+          "file": "6-d1d35256712fceca20c4/groups.sql",
+          "sha256": "fb5908fdac4232b92b985a65e0c1a6250fe4f19ef631e6d4310aa697ee0d1c25"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-d1d35256712fceca20c4/global.rq",
+          "sha256": "68323a3a105c2075febe465326751dc8d197e585dd7c09bd8c8809013709ab13"
+        },
+        "groups": {
+          "file": "6-d1d35256712fceca20c4/groups.rq",
+          "sha256": "5a60ad8f45e8423da61cdbf5aba8383ec069dc666f7837f6b220a8536033f926"
+        }
+      }
+    },
+    "6-bcf79e90a2e1276aedd7": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1819/Producer1819>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-bcf79e90a2e1276aedd7/global.sql",
+          "sha256": "709c0e562d08a7e44a91b390e4a298d7a3b80372d9bc62568dccd51bfe0ca12d"
+        },
+        "groups": {
+          "file": "6-bcf79e90a2e1276aedd7/groups.sql",
+          "sha256": "f6d514216ec8dead4d81e7cf311a07bfd4ab045b5bbab77b050b1ae83ad3e9b2"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-bcf79e90a2e1276aedd7/global.rq",
+          "sha256": "3022fd45a0bf9b9877209afee0d78b78df329181099b211a42453d4c86552031"
+        },
+        "groups": {
+          "file": "6-bcf79e90a2e1276aedd7/groups.rq",
+          "sha256": "c3ea22574acc6e864b8d19d4b7d3fa10020f4c8c24f9ddd99e8017814eaa7c0f"
+        }
+      }
+    },
+    "4-f7703aa60c0748408b4c": {
+      "template": 4,
+      "parameters": {
+        "ProductType": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType5>"
+      },
+      "sql": {
+        "prices": {
+          "file": "4-f7703aa60c0748408b4c/prices.sql",
+          "sha256": "b24027289df05d52aa3ee40f64da6777b4fa83b99f0dc93e46055afb5a44353a"
+        },
+        "features": {
+          "file": "4-f7703aa60c0748408b4c/features.sql",
+          "sha256": "433a8a60a9415f644d7dae4c726e7cd0a97d0d00597a7b3e9a43c715989162e3"
+        }
+      },
+      "jena": {
+        "groups": {
+          "file": "4-f7703aa60c0748408b4c/groups.rq",
+          "sha256": "8fdac033c954420d21e598c8f129d5d64d54d4525d7f2c3eda6d4ae9088c2fce"
+        }
+      }
+    },
+    "5-c31d6d49f5881854a2ba": {
+      "template": 5,
+      "parameters": {
+        "ProductType": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType6>"
+      },
+      "sql": {
+        "prices": {
+          "file": "5-c31d6d49f5881854a2ba/prices.sql",
+          "sha256": "f1ecd6b7b46c4e3fc90a38c58d4ed919c8303d7d6f86835df41a4cdf56fcd022"
+        }
+      },
+      "jena": {
+        "groups": {
+          "file": "5-c31d6d49f5881854a2ba/groups.rq",
+          "sha256": "af97f198d2e2d1f03dee445356a73d6ef20a2df8ca0f0f0c779ea80b0e806d1f"
+        }
+      }
+    },
+    "6-87e44d80399bff40e36c": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1701/Producer1701>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-87e44d80399bff40e36c/global.sql",
+          "sha256": "9c82b163811b9ab59da1295e4209ef495fa40c7b7e15f2d0c957f16340a93a05"
+        },
+        "groups": {
+          "file": "6-87e44d80399bff40e36c/groups.sql",
+          "sha256": "5c235decda4f3fe22b79183b0cb10d1615cbbd916c9d54d0ce0229f27d5a085a"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-87e44d80399bff40e36c/global.rq",
+          "sha256": "5f452c32a8d5b6d298593fe12444e6d65f58a249922a83b587263fd97a047f6e"
+        },
+        "groups": {
+          "file": "6-87e44d80399bff40e36c/groups.rq",
+          "sha256": "31b1b490f98b09c725895ac8e4f61b650b0dbe2752ab465b4a1230177ba31805"
+        }
+      }
+    },
+    "5-c1e4fe3f22491260ffa1": {
+      "template": 5,
+      "parameters": {
+        "ProductType": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType11>"
+      },
+      "sql": {
+        "prices": {
+          "file": "5-c1e4fe3f22491260ffa1/prices.sql",
+          "sha256": "9888dabd060230bab5fe1929105d8bb6a4045bbb814c2ba0e8f0d64eed238e9e"
+        }
+      },
+      "jena": {
+        "groups": {
+          "file": "5-c1e4fe3f22491260ffa1/groups.rq",
+          "sha256": "a24983e7cac85e7435b67aab59bf65476fc65beea731dff95aa94bc70e4c8775"
+        }
+      }
+    },
+    "6-4dab0f3c75721dfd1c33": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer283/Producer283>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-4dab0f3c75721dfd1c33/global.sql",
+          "sha256": "f07f56f1e056eee25b3fcbab98769faaef1b13ffe171183a2f94f4f5bc2e902e"
+        },
+        "groups": {
+          "file": "6-4dab0f3c75721dfd1c33/groups.sql",
+          "sha256": "3cf34cdaeeb01d44daef389422d324a230d5ce820afe40dad05f1bc18ef49987"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-4dab0f3c75721dfd1c33/global.rq",
+          "sha256": "0fe814fa2227c140026193d47b339d351eb0f9c92ff2ea5187e8d7b701a74748"
+        },
+        "groups": {
+          "file": "6-4dab0f3c75721dfd1c33/groups.rq",
+          "sha256": "95a02fb6311502c0f165cb96b387e2b83a313774f66575da5a479ccba9a1c4da"
+        }
+      }
+    },
+    "6-637c44afe32c44fb9856": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer5123/Producer5123>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-637c44afe32c44fb9856/global.sql",
+          "sha256": "4bfdd179663ad6d2e64bdef6cfe7c67a119b9d75606b186a2abd96138745f164"
+        },
+        "groups": {
+          "file": "6-637c44afe32c44fb9856/groups.sql",
+          "sha256": "5c1fa227bb30687b5821d5735dab8d55cce79c0dc349c38d8bd1906806fc72d2"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-637c44afe32c44fb9856/global.rq",
+          "sha256": "cfa9836458a9d589b7929a54d4dc86db90b05b0fec227f868d1a8e07a5bf1d76"
+        },
+        "groups": {
+          "file": "6-637c44afe32c44fb9856/groups.rq",
+          "sha256": "c7ebd71b4ddfc3ee33f51076bf8f3f4c0142917d4d57d0c3bab2180bf6da409d"
+        }
+      }
+    },
+    "6-b995a666c17f7f8e35f5": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer2300/Producer2300>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-b995a666c17f7f8e35f5/global.sql",
+          "sha256": "de3697770e7e3b9e45c1129c328d7a2d8ceb2b996ad510499b0ac2a5c830fc5a"
+        },
+        "groups": {
+          "file": "6-b995a666c17f7f8e35f5/groups.sql",
+          "sha256": "803e270ca4dd57d999e69c25a81fc9ee3a2f23adfa5af4a78497a299fe0353e6"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-b995a666c17f7f8e35f5/global.rq",
+          "sha256": "c942f8456a260e072ad78e8baecee0d8309ce4432df6d362e9a40015c15f643e"
+        },
+        "groups": {
+          "file": "6-b995a666c17f7f8e35f5/groups.rq",
+          "sha256": "62ced507d890a3cf806bc5162dbf0c8144a7041a148f73601606b53d6f039749"
+        }
+      }
+    },
+    "4-a4f59c040e8fd1f3df3b": {
+      "template": 4,
+      "parameters": {
+        "ProductType": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType70>"
+      },
+      "sql": {
+        "prices": {
+          "file": "4-a4f59c040e8fd1f3df3b/prices.sql",
+          "sha256": "94697fb17164df1678df06b0fea9ea437a71f77856b43f2bee4119898f1e278a"
+        },
+        "features": {
+          "file": "4-a4f59c040e8fd1f3df3b/features.sql",
+          "sha256": "bc291121909e9d53df62f0390fffc91631164dd34132bb7ed8d048b746e0803a"
+        }
+      },
+      "jena": {
+        "groups": {
+          "file": "4-a4f59c040e8fd1f3df3b/groups.rq",
+          "sha256": "ec34d4723275ec552bc2943ebfd3c3cb175d5d30f4c3b640ec8fc1c13b37d522"
+        }
+      }
+    },
+    "5-d01205a275913e63cabc": {
+      "template": 5,
+      "parameters": {
+        "ProductType": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType136>"
+      },
+      "sql": {
+        "prices": {
+          "file": "5-d01205a275913e63cabc/prices.sql",
+          "sha256": "294eb6ad7df88e8afa7a13b90df0d891e714d4fb5962d2cdbaed16f67bc8605f"
+        }
+      },
+      "jena": {
+        "groups": {
+          "file": "5-d01205a275913e63cabc/groups.rq",
+          "sha256": "0cdfe5b8020b2faf637e06017c3d85d6cb487e146266f6b85a0a94d0075bbed6"
+        }
+      }
+    },
+    "6-e871c0d67f98c1a763a0": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer282/Producer282>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-e871c0d67f98c1a763a0/global.sql",
+          "sha256": "9b01ab56f8c26e0c7a3cd635b39ff92f92eb8f1a72603d5fc63f0b1307456cf2"
+        },
+        "groups": {
+          "file": "6-e871c0d67f98c1a763a0/groups.sql",
+          "sha256": "35a53728f057808c2aae7361aa001fd6b97bb0d9b0a1e224a3f42c19189c6ec1"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-e871c0d67f98c1a763a0/global.rq",
+          "sha256": "b167abc04465d5060dcf3a545c08851ac8e5c33ac263dc6edd57677b6e62a71c"
+        },
+        "groups": {
+          "file": "6-e871c0d67f98c1a763a0/groups.rq",
+          "sha256": "b2974f06fff1c3ac2b9f18625167f1725bbe89f05d4692ab7178d6c904b47d55"
+        }
+      }
+    },
+    "6-64181ab46935936c0424": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1761/Producer1761>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-64181ab46935936c0424/global.sql",
+          "sha256": "5f1a956503c925a7c7834d5c3240552a1522ac93ba92559b0a33d4d00b2642ba"
+        },
+        "groups": {
+          "file": "6-64181ab46935936c0424/groups.sql",
+          "sha256": "632de319c28944714de251b4d12dc96535dc337b527928c4f9e8db5b073a1a02"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-64181ab46935936c0424/global.rq",
+          "sha256": "496bf4de2cf640c96b99203216df80d3a9615bee82cb31c52adae2864146bb01"
+        },
+        "groups": {
+          "file": "6-64181ab46935936c0424/groups.rq",
+          "sha256": "aab5f43848f7a775f92120228d3d4323089e63d5d3b68e737f8509cda522f50d"
+        }
+      }
+    },
+    "6-aa2e2557118cb1805bd8": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer139/Producer139>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-aa2e2557118cb1805bd8/global.sql",
+          "sha256": "93549123f6051d09b3154641428e87f9c91b27cf5c6afb348921f8b679d3f6db"
+        },
+        "groups": {
+          "file": "6-aa2e2557118cb1805bd8/groups.sql",
+          "sha256": "66d80400e76818bc214219af25fb26cbd8bdc26aafced22a48393dd3a3d3f70c"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-aa2e2557118cb1805bd8/global.rq",
+          "sha256": "2cbe8ebba83ef403ec55ea142a45566d7c59b967fa85b3439862115d9bc9eaad"
+        },
+        "groups": {
+          "file": "6-aa2e2557118cb1805bd8/groups.rq",
+          "sha256": "2a12263cbcfaf7be369b6f3e285a2053db815d115cb18fb9742f1c7ef143d661"
+        }
+      }
+    },
+    "6-75c22d415d2f363a8779": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1962/Producer1962>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-75c22d415d2f363a8779/global.sql",
+          "sha256": "3ad42d16ce8e02a7bf6c5779cfd01ec141cc30a796f72e04363307a930842ba6"
+        },
+        "groups": {
+          "file": "6-75c22d415d2f363a8779/groups.sql",
+          "sha256": "06ed8729aa86880e01c313513b9acfa86dedd6c846e3b2e577551ad7da41055a"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-75c22d415d2f363a8779/global.rq",
+          "sha256": "24b780ceb13e6181971edf741e882406e93da943da416eab9ff623ded8538cd1"
+        },
+        "groups": {
+          "file": "6-75c22d415d2f363a8779/groups.rq",
+          "sha256": "fe737f61566ab5c4ebe98bfa5dc49deaa95533285c69e658999bed3b2154724a"
+        }
+      }
+    },
+    "4-11a754976229c61e6229": {
+      "template": 4,
+      "parameters": {
+        "ProductType": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType405>"
+      },
+      "sql": {
+        "prices": {
+          "file": "4-11a754976229c61e6229/prices.sql",
+          "sha256": "dca227cd8b6805b511574f63a730c0e48485f4cef08e90b8e80f1f99dccc29dc"
+        },
+        "features": {
+          "file": "4-11a754976229c61e6229/features.sql",
+          "sha256": "1bcd85bec88cc170fed7eb28ab5ed8656efcbb6df0e12e255bb53480b6de21b7"
+        }
+      },
+      "jena": {
+        "groups": {
+          "file": "4-11a754976229c61e6229/groups.rq",
+          "sha256": "2cedb56ff03b85de6602fc71e1bbcd8aaf2187decf9dba92233c06faaab56229"
+        }
+      }
+    },
+    "5-55609a074ae8571de712": {
+      "template": 5,
+      "parameters": {
+        "ProductType": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType32>"
+      },
+      "sql": {
+        "prices": {
+          "file": "5-55609a074ae8571de712/prices.sql",
+          "sha256": "00345bbce42f277d4a2f8edbdd48f5d86c20a3bd2084bf45c6918a49901a9e14"
+        }
+      },
+      "jena": {
+        "groups": {
+          "file": "5-55609a074ae8571de712/groups.rq",
+          "sha256": "74fea9db48d777d9c1028a0a4a111e868b8e6029b5a1109383a0cd006831d83b"
+        }
+      }
+    },
+    "6-650954fb2703ae4d0194": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer2757/Producer2757>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-650954fb2703ae4d0194/global.sql",
+          "sha256": "22be681ff6be29451703ca93e07503ec9ed7f7c764175b883054e4c7f99fd413"
+        },
+        "groups": {
+          "file": "6-650954fb2703ae4d0194/groups.sql",
+          "sha256": "f497ed16a124ab61393fc4c4d4dfe9b43547bdd0a6f97bbcd1c226641145ad28"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-650954fb2703ae4d0194/global.rq",
+          "sha256": "aead1e595e2270a28d02833a24d2651bbb873adb977b187a3f950ea94d6e779b"
+        },
+        "groups": {
+          "file": "6-650954fb2703ae4d0194/groups.rq",
+          "sha256": "6468710e213cc387ab8d71800b5eb9947885ed6ec5e21faabdaa02134e663fd9"
+        }
+      }
+    },
+    "5-6a836f30c04ab2b56133": {
+      "template": 5,
+      "parameters": {
+        "ProductType": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType409>"
+      },
+      "sql": {
+        "prices": {
+          "file": "5-6a836f30c04ab2b56133/prices.sql",
+          "sha256": "8a6e38e8cb32a920a08dd0f2a2c15429ce596b972d42ffb0f82672ab3fb3c6ad"
+        }
+      },
+      "jena": {
+        "groups": {
+          "file": "5-6a836f30c04ab2b56133/groups.rq",
+          "sha256": "c477aa04bfb1b42455063d0d5bf3f65c96ded31a20ecaf20709857ab86be276f"
+        }
+      }
+    },
+    "6-1405fdb3e8d1e5dae9fe": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer2891/Producer2891>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-1405fdb3e8d1e5dae9fe/global.sql",
+          "sha256": "64ca9c05124b233a8a881e996a4d8f3d6ae331b78a49b136281a3b0a382034ab"
+        },
+        "groups": {
+          "file": "6-1405fdb3e8d1e5dae9fe/groups.sql",
+          "sha256": "b895ba1be694cbd9db708fb09a43221c4b9f17d4c8629c4b503c478380c147a7"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-1405fdb3e8d1e5dae9fe/global.rq",
+          "sha256": "bfcc2742a8cfdc8cf0450f0b4a0d68eca3d3951487304cc00ea83498a3b991f9"
+        },
+        "groups": {
+          "file": "6-1405fdb3e8d1e5dae9fe/groups.rq",
+          "sha256": "34f97a17131190f374174dd3f54795bc5968676fe6d2672b3e872824e553af06"
+        }
+      }
+    },
+    "6-de42036f434586a9aaa3": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer520/Producer520>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-de42036f434586a9aaa3/global.sql",
+          "sha256": "a751d5dcef74a4f75cfebc75d6d5572484815ae01de9de37f8f45638d62d3672"
+        },
+        "groups": {
+          "file": "6-de42036f434586a9aaa3/groups.sql",
+          "sha256": "e52821dcced9cdb120bba883706d86b5f4e980e49eb7b42edc403edc028c2b86"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-de42036f434586a9aaa3/global.rq",
+          "sha256": "3a7d747fed73eafd8b250856a0c819bc900cd7b9290ec2eb57fa6dca1ddde20d"
+        },
+        "groups": {
+          "file": "6-de42036f434586a9aaa3/groups.rq",
+          "sha256": "4bf698933650db127c3d026e4ec1f8d5c69bc460f1da849f178ad417060d812f"
+        }
+      }
+    },
+    "6-e5f81f0186f4254837d1": {
+      "template": 6,
+      "parameters": {
+        "Producer": "<http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1295/Producer1295>"
+      },
+      "sql": {
+        "global": {
+          "file": "6-e5f81f0186f4254837d1/global.sql",
+          "sha256": "6aacfb2e1784dd4b938b05c7ccf88808dba2a1f9f4f12325b72c5132a63942f6"
+        },
+        "groups": {
+          "file": "6-e5f81f0186f4254837d1/groups.sql",
+          "sha256": "7babf451ba5e158e8a9e8c5f709ea441375e521228873983e57e97ed2a448623"
+        }
+      },
+      "jena": {
+        "global": {
+          "file": "6-e5f81f0186f4254837d1/global.rq",
+          "sha256": "ef55ecadd8e12c14c367c780d66a6f2df07cb3b625f48cba66b58a4886678c5d"
+        },
+        "groups": {
+          "file": "6-e5f81f0186f4254837d1/groups.rq",
+          "sha256": "a4a6d5803ebd4b94d4286970306558dc1ca6d3d32a5c4c8198874b1dae61b189"
+        }
+      }
+    }
+  },
+  "instances": {
+    "m000_p04_q4.rq": {
+      "case": "4-b3e23972960206149d33",
+      "query_sha256": "4db63a184ec9ae4f38f91b75443cda9a12f470f1a1ef12c26676d8935bb28e04"
+    },
+    "m000_p05_q5.rq": {
+      "case": "5-1be9f400408ef3c417b5",
+      "query_sha256": "8e6f2fbbaeb80a0233418a1ba5fadf5d35e05d0a8f5f3d8ee7e990e256754725"
+    },
+    "m000_p06_q5.rq": {
+      "case": "5-64007e848123b7f021dc",
+      "query_sha256": "80dc994e0f976ad3dd2a11256daa27b153147c0eb9f42322523c06bef913638e"
+    },
+    "m000_p07_q6.rq": {
+      "case": "6-1e3e1fb3d9ec3f67c464",
+      "query_sha256": "0773eb95bd13eca6a3bca0f0aa8749de82899efd6612d2f4e51fc65b83d46b24"
+    },
+    "m000_p08_q5.rq": {
+      "case": "5-3d34fe8dc871b3a46ae1",
+      "query_sha256": "acf3a0b980afba09281b180d458cee0ceca18d0c237a6834ed2382f00af947a4"
+    },
+    "m000_p09_q6.rq": {
+      "case": "6-7d94eeda12fb69a54a94",
+      "query_sha256": "5a58182857dbf2beb28675ba01928cddd196855519f52ec3146a3dd07ac69261"
+    },
+    "m000_p10_q6.rq": {
+      "case": "6-d1d35256712fceca20c4",
+      "query_sha256": "10324d68ac05ab4a293dd11eaddca058a7713a0a1f2e5b2b4fe50c4fa5a9b36f"
+    },
+    "m000_p14_q6.rq": {
+      "case": "6-bcf79e90a2e1276aedd7",
+      "query_sha256": "5b9294b32403d1362786ff25debc5724175bcb39f8675f02dff413eaf53c85c1"
+    },
+    "m001_p04_q4.rq": {
+      "case": "4-f7703aa60c0748408b4c",
+      "query_sha256": "664472773948c82b29435f806e41dee81b2d56cd9c21e7fc9a1a4e44e6632739"
+    },
+    "m001_p05_q5.rq": {
+      "case": "5-c31d6d49f5881854a2ba",
+      "query_sha256": "10715ff4178b17de4f9019b9fcaab17dcb1bb7d544d3f52d913b0ecd6c391af3"
+    },
+    "m001_p06_q5.rq": {
+      "case": "5-c31d6d49f5881854a2ba",
+      "query_sha256": "10715ff4178b17de4f9019b9fcaab17dcb1bb7d544d3f52d913b0ecd6c391af3"
+    },
+    "m001_p07_q6.rq": {
+      "case": "6-87e44d80399bff40e36c",
+      "query_sha256": "066885b891f21935077ed3ec46eac38ef54aebafa8f97092440d22739e85aa53"
+    },
+    "m001_p08_q5.rq": {
+      "case": "5-c1e4fe3f22491260ffa1",
+      "query_sha256": "03fbfae142f8f7b9ad2cc988bb8500540fa3b3cb63cc77e4298f13a4e822b5fc"
+    },
+    "m001_p09_q6.rq": {
+      "case": "6-4dab0f3c75721dfd1c33",
+      "query_sha256": "34d7cf59b9f0ce9e5cbae72bae978dcbdb643c2b7b0be1316ba5f3bc5447cfa9"
+    },
+    "m001_p10_q6.rq": {
+      "case": "6-637c44afe32c44fb9856",
+      "query_sha256": "8264b290bc8fe5f7751baab651fb858f66987f273c5a664a2bda596130b43280"
+    },
+    "m001_p14_q6.rq": {
+      "case": "6-b995a666c17f7f8e35f5",
+      "query_sha256": "8c08a7c989d4db9452f2f4d65853e54cef1bbec4bf672fea26ba1b083de161b0"
+    },
+    "m002_p04_q4.rq": {
+      "case": "4-a4f59c040e8fd1f3df3b",
+      "query_sha256": "6de8688078415870380441fec6cec914b046fe4cdd730d05bf3982d06d814493"
+    },
+    "m002_p05_q5.rq": {
+      "case": "5-d01205a275913e63cabc",
+      "query_sha256": "ec89881eae7b1a639975e2360f6da041e229e77d0278fb6aa2fac90a6315fe91"
+    },
+    "m002_p06_q5.rq": {
+      "case": "5-64007e848123b7f021dc",
+      "query_sha256": "80dc994e0f976ad3dd2a11256daa27b153147c0eb9f42322523c06bef913638e"
+    },
+    "m002_p07_q6.rq": {
+      "case": "6-e871c0d67f98c1a763a0",
+      "query_sha256": "350c916fb4c978b3883916a94db9a5585c0932bc83cde44cf0a46d53d02c9492"
+    },
+    "m002_p08_q5.rq": {
+      "case": "5-c1e4fe3f22491260ffa1",
+      "query_sha256": "03fbfae142f8f7b9ad2cc988bb8500540fa3b3cb63cc77e4298f13a4e822b5fc"
+    },
+    "m002_p09_q6.rq": {
+      "case": "6-64181ab46935936c0424",
+      "query_sha256": "4b2590c61a13079f45cce30dce0b28e843d1b3ec85dacd51cdd0d2dfdde1dba9"
+    },
+    "m002_p10_q6.rq": {
+      "case": "6-aa2e2557118cb1805bd8",
+      "query_sha256": "187fa6b07351028f62d5b01bfe90786c1a11e42faf369cad341f17638b9ed370"
+    },
+    "m002_p14_q6.rq": {
+      "case": "6-75c22d415d2f363a8779",
+      "query_sha256": "497f1bdd037c32db8989ec85e264902bc0f8da22864cd23f4bb10f336c3f04d2"
+    },
+    "m003_p04_q4.rq": {
+      "case": "4-11a754976229c61e6229",
+      "query_sha256": "981a39f805674cbdb0d127d7e5968b0d49d22d7242531efdf3d4e4a1ebde179d"
+    },
+    "m003_p05_q5.rq": {
+      "case": "5-55609a074ae8571de712",
+      "query_sha256": "ed2cf94977377dcc4536c379c1187d7defcfdb8a0d86d0ad3959c56211148013"
+    },
+    "m003_p06_q5.rq": {
+      "case": "5-64007e848123b7f021dc",
+      "query_sha256": "80dc994e0f976ad3dd2a11256daa27b153147c0eb9f42322523c06bef913638e"
+    },
+    "m003_p07_q6.rq": {
+      "case": "6-650954fb2703ae4d0194",
+      "query_sha256": "b2fe996cdb59f3bc5d5f05e3b355918d79b3342fd07a9930f6fecd3d4f17171d"
+    },
+    "m003_p08_q5.rq": {
+      "case": "5-6a836f30c04ab2b56133",
+      "query_sha256": "80a3f71e7f8e592b7e93f854fadcc7c2bb1ddd04adf6bcc8b8aafb5c7c57b852"
+    },
+    "m003_p09_q6.rq": {
+      "case": "6-1405fdb3e8d1e5dae9fe",
+      "query_sha256": "34460398e5939edf6968717abe3cbb33e6ff09054d4ff4c2031f9ec0a9555df6"
+    },
+    "m003_p10_q6.rq": {
+      "case": "6-de42036f434586a9aaa3",
+      "query_sha256": "4287b8a44a6355309cbc1fab596e209e4d77862add63bcc9e0b9546b121b718e"
+    },
+    "m003_p14_q6.rq": {
+      "case": "6-e5f81f0186f4254837d1",
+      "query_sha256": "58fb88ec5a3328c71c2bd489babc629fa0112df62a92a57bc4fb20f5142e57f8"
+    }
+  },
+  "collector_reads_candidate_outputs": false,
+  "previously_examined_mixes": [],
+  "validator_frozen": false,
+  "unseen_output_mixes": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "warmup_mixes": [
+    0
+  ],
+  "unseen_confirmatory_mixes": [
+    1,
+    2,
+    3
+  ],
+  "cohort": "100m-input-preparation-v1",
+  "validation_state": "inputs-not-collected-or-independently-verified",
+  "preparation_source_sha256": "7fe25b1efa4e2af6fae3958aae39ff3f9cbff069846398ae16e9e68b68bc3ebb"
+}

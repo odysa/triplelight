@@ -1,0 +1,5 @@
+PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> PREFIX rev: <http://purl.org/stuff/rev#>
+SELECT ?feature ?withN ?withoutN WHERE {
+{ SELECT ?feature (COUNT(*) AS ?withN) WHERE { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType405> . ?offer bsbm:product ?product ; bsbm:price ?price . ?product bsbm:productFeature ?feature . } GROUP BY ?feature }
+{ SELECT ?feature (COUNT(*) AS ?withoutN) WHERE { { SELECT DISTINCT ?feature WHERE { ?p a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType405> ; bsbm:productFeature ?feature } } ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType405> . ?offer bsbm:product ?product ; bsbm:price ?price . FILTER NOT EXISTS { ?product bsbm:productFeature ?feature } } GROUP BY ?feature }
+}
