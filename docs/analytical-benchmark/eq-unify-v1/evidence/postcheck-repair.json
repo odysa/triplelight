@@ -1,0 +1,5 @@
+{
+  "initial_postcheck_error": "for_instance called on non-enveloped template, which is intentionally absent from numeric inputs",
+  "correction": "verify all 60 query hashes; call unchanged FrozenInputs.for_instance only for q4/q5/q6, as the actual runner does",
+  "policy_or_input_changed": false
+}
