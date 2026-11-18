@@ -1,0 +1,200 @@
+{ "head": {
+    "vars": [ "tag" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "0" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "5" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "6" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "7" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "8" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "9" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "10" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "11" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "12" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "13" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "14" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "15" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "16" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "17" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "18" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "19" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "20" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "21" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "22" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "23" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "24" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "25" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "26" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "27" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "28" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "29" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "30" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "31" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "32" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "33" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "34" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "35" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "36" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "37" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "38" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "39" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "40" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "41" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "42" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "43" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "44" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "45" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "46" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "47" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "48" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "49" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "50" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "51" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "52" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "53" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "54" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "55" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "56" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "57" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "58" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "59" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "60" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "61" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "62" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "63" }
+      }
+    ]
+  }
+}
