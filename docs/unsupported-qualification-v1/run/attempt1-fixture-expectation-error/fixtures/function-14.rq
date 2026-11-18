@@ -1,0 +1,1 @@
+SELECT (<urn:custom>(1) AS ?v) WHERE {}

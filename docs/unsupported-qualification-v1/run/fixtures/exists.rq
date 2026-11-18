@@ -1,0 +1,1 @@
+SELECT * WHERE { FILTER EXISTS { BIND(NOW() AS ?v) } }

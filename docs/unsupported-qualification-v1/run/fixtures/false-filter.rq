@@ -1,0 +1,1 @@
+SELECT * WHERE { FILTER(false && (RAND() > 0)) }
