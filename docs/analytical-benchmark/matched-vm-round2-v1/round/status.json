@@ -1,0 +1,30 @@
+{
+  "pass1-rdfdb": {
+    "client_exit": 0,
+    "complete": true,
+    "strict_pass": 60,
+    "equivalent_pass": 60,
+    "attempted": 60
+  },
+  "pass1-duckdb": {
+    "client_exit": 0,
+    "complete": true,
+    "strict_pass": 60,
+    "equivalent_pass": 60,
+    "attempted": 60
+  },
+  "pass2-duckdb": {
+    "client_exit": 0,
+    "complete": true,
+    "strict_pass": 60,
+    "equivalent_pass": 60,
+    "attempted": 60
+  },
+  "pass2-rdfdb": {
+    "client_exit": 0,
+    "complete": true,
+    "strict_pass": 60,
+    "equivalent_pass": 60,
+    "attempted": 60
+  }
+}
