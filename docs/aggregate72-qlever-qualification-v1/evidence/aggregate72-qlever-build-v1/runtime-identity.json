@@ -1,0 +1,11 @@
+{
+  "image_digest": "adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cba4e894ca1ba8117cef6727",
+  "image_id": "sha256:e5555bafa0d0ba40260309fd7773948408ec68aea6fff8133cb169b98b0136ec",
+  "architecture": "arm64",
+  "docker_vm_memory_bytes": 16808177664,
+  "container_memory_bytes": 12884901888,
+  "container_memory_swap_total_bytes": 12884901888,
+  "cpus": 4,
+  "sort_memory": "4GB",
+  "comparative_load_claim": false
+}

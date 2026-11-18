@@ -1,0 +1,163 @@
+{
+  "complete": true,
+  "comparative_load_claim": false,
+  "started_unix": 1795045274.6373708,
+  "input_before": {
+    "sha256": "f53153e24d3e4e89d89c0587671022c11855c909cdcc4bf69f282feb554d6041",
+    "bytes": 1558148905,
+    "mtime_ns": 1794499821490435219
+  },
+  "guard_exit": 0,
+  "input_after": {
+    "sha256": "f53153e24d3e4e89d89c0587671022c11855c909cdcc4bf69f282feb554d6041",
+    "bytes": 1558148905,
+    "mtime_ns": 1794499821490435219
+  },
+  "index_files": {
+    "watdiv100.index.ops": {
+      "bytes": 50376241,
+      "sha256": "868018717e0df7747c5adac0eb603b9b4dfb8113ff9bb05f84f3971da823ef36"
+    },
+    "watdiv100.index.ops.meta": {
+      "bytes": 416,
+      "sha256": "170a171f85c209c35bd671e8bf0e976a406ec6de64ad0f83c103a89d8010b200"
+    },
+    "watdiv100.index.osp": {
+      "bytes": 51615854,
+      "sha256": "ee80ebaeb980fd64b63cbb05d140221b0aa8fd620e8e94abd7ed504be8064819"
+    },
+    "watdiv100.index.osp.meta": {
+      "bytes": 416,
+      "sha256": "c371d0606d4471407a546d1b29c644012e5889fdf54be588e0ad450b36ae992b"
+    },
+    "watdiv100.index.patterns": {
+      "bytes": 1039504,
+      "sha256": "d92454c742839dac41122df6fa12638792d725325732328b668710de9e2e9646"
+    },
+    "watdiv100.index.pos": {
+      "bytes": 48015015,
+      "sha256": "fa56c4b812a158af491d391f5faff9532eb3ddbf9fbedae0585aed75363c5491"
+    },
+    "watdiv100.index.pos.meta": {
+      "bytes": 992,
+      "sha256": "e4555771409a1928e696fbb04c9e13f218de13002fbab54a40a49e526008c2a6"
+    },
+    "watdiv100.index.pso": {
+      "bytes": 47567833,
+      "sha256": "5ad5b50750efd7d2e5292b9ef0cf57fa080fc663065b2588cafa4c9a3897267d"
+    },
+    "watdiv100.index.pso.meta": {
+      "bytes": 992,
+      "sha256": "bc359bea983a9cdbe4a7e30729c5187a5e38b2e334be69c72931190259c82b26"
+    },
+    "watdiv100.index.resource-usage-log.tsv": {
+      "bytes": 1886,
+      "sha256": "80750af4d771214bfd348bc924edd971e7a5f100342cc55a62a2b867439389d7"
+    },
+    "watdiv100.index.sop": {
+      "bytes": 31187726,
+      "sha256": "b81a938c2fb7d474c0ba8f3ce5476fdbda07400b2305a0fc1f31aaa9bbfbbfb7"
+    },
+    "watdiv100.index.sop.meta": {
+      "bytes": 32,
+      "sha256": "72345d3e4997db59879d91729b1bfde8efc675f862cca24f6c12e7fb5ac0fb30"
+    },
+    "watdiv100.index.spo": {
+      "bytes": 29955623,
+      "sha256": "56d4d15b0f3e2e56a42389f592871b035d2b7573bce8abf7c916962c97fea453"
+    },
+    "watdiv100.index.spo.meta": {
+      "bytes": 32,
+      "sha256": "72345d3e4997db59879d91729b1bfde8efc675f862cca24f6c12e7fb5ac0fb30"
+    },
+    "watdiv100.internal.index.pos": {
+      "bytes": 728643,
+      "sha256": "19c351b0ce0dcd791467089a23db33614901a62637290af2468e71a38baa50b7"
+    },
+    "watdiv100.internal.index.pos.meta": {
+      "bytes": 64,
+      "sha256": "91dcb2586a1f096d91cad7bb41530b359ec983b39fcd76b9586616462964d65a"
+    },
+    "watdiv100.internal.index.pso": {
+      "bytes": 928666,
+      "sha256": "d980f2bfb7414278094b46f313351edd6d469b9eb4f6b1042b0149adfd7effe7"
+    },
+    "watdiv100.internal.index.pso.meta": {
+      "bytes": 64,
+      "sha256": "125b4bca92a62713c0cfe57eb541e6060b6062b1d9a264b3656120681df6d9ce"
+    },
+    "watdiv100.meta-data.json": {
+      "bytes": 909,
+      "sha256": "536b3b701869ca5254ffa3882c959f73f4febb695f3460d94586d73318db1808"
+    },
+    "watdiv100.vocabulary.codebooks": {
+      "bytes": 9224,
+      "sha256": "7c093a5325fcee33f567f3db146a26a1e4fd2b958628122c5c56abc73ae4368f"
+    },
+    "watdiv100.vocabulary.words.external": {
+      "bytes": 30497090,
+      "sha256": "f0497e031360aa63488f4f5edf48a3121c7fd3b4b05fd134c8297bf3d5e9a465"
+    },
+    "watdiv100.vocabulary.words.external.offsets": {
+      "bytes": 8423632,
+      "sha256": "0a6f90368b743e1b8f71eadbe9c6a2a196826ae459ad098aeb796599a50a38a4"
+    },
+    "watdiv100.vocabulary.words.internal": {
+      "bytes": 39440,
+      "sha256": "3459046100291d407585575be220ce69cb1c791ad9f903c9d22286bfd2378206"
+    },
+    "watdiv100.vocabulary.words.internal.ids": {
+      "bytes": 8464,
+      "sha256": "be596cd3b3809db56b16eff4fb1ba43342ca41e749c485e9808f9b731d43b79b"
+    }
+  },
+  "metadata": {
+    "add-has-word-triples": false,
+    "date-of-index-build": "2026-11-18T23:41:16Z",
+    "encoded-iri-prefixes": {
+      "prefixes-with-leading-angle-brackets": [
+        "<http://qlever.cs.uni-freiburg.de/builtin-functions/graph/"
+      ]
+    },
+    "geo-point-encoding": "z-order",
+    "git-hash": "18c097c",
+    "graphNameManager": {
+      "allocatedGraphs": 1,
+      "prefix": "http://qlever.cs.uni-freiburg.de/builtin-functions/graph/"
+    },
+    "has-all-permutations": true,
+    "has-icu-support": true,
+    "has-word-normalization": "lowercase",
+    "has-word-restrict-predicates": [],
+    "index-format-version": {
+      "date": "2026-09-26",
+      "pull-request-number": 3470
+    },
+    "index-rows-per-block": 31250,
+    "locale": {
+      "country": "US",
+      "ignore-punctuation": false,
+      "language": "en"
+    },
+    "num-blank-nodes-total": 0,
+    "num-objects": {
+      "internal": 0,
+      "normal": 1000845
+    },
+    "num-predicates": {
+      "internal": 1,
+      "normal": 86
+    },
+    "num-subjects": {
+      "internal": 0,
+      "normal": 521585
+    },
+    "num-triples": {
+      "internal": 521585,
+      "normal": 10914314
+    },
+    "vocabulary-type": "on-disk-compressed"
+  },
+  "container_state_before_cleanup": "{\"Status\":\"exited\",\"Running\":false,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":0,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-11-18T23:41:16.600205341Z\",\"FinishedAt\":\"2026-11-18T23:41:52.970239017Z\"}",
+  "ended_unix": 1795045316.3335612
+}

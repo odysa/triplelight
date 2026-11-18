@@ -1,0 +1,98 @@
+{
+  "lubm100.index.ops": {
+    "bytes": 24175768,
+    "sha256": "e7bddfdaaafe8bd3259497bfe436b5691baa4173ea109984889da2f64c8b7f0a"
+  },
+  "lubm100.index.ops.meta": {
+    "bytes": 800,
+    "sha256": "c448310810f12f68860e79ba20fbd40e5cc5208760fd4b1a6f40f283940e2949"
+  },
+  "lubm100.index.osp": {
+    "bytes": 24079275,
+    "sha256": "be36482a3d9a968e3e6fb1cc64cbd3376f04bbd978b4b206e27a90d34b14081c"
+  },
+  "lubm100.index.osp.meta": {
+    "bytes": 800,
+    "sha256": "ae9f395bb25a8b13d80511454b72d2808873e91eb0621e5d025cc1ee460205c1"
+  },
+  "lubm100.index.patterns": {
+    "bytes": 736,
+    "sha256": "1e8310ac7c1e7472327f55d06cc4206586e28b9bf2deaafb0277eace17d594d2"
+  },
+  "lubm100.index.pos": {
+    "bytes": 23025468,
+    "sha256": "71aec67d8b9eb7e0e69f5d153b4f3800392b108772b162ff6b8999a01ba62913"
+  },
+  "lubm100.index.pos.meta": {
+    "bytes": 544,
+    "sha256": "08c2363d0a0c481253d34a44dd3b6e61c883227dbfaf67cc7cdc3f9400d29943"
+  },
+  "lubm100.index.pso": {
+    "bytes": 24124496,
+    "sha256": "46cf0014c2040bc9d43151ece5b751c418f2a64030247e535c333e346c90904d"
+  },
+  "lubm100.index.pso.meta": {
+    "bytes": 544,
+    "sha256": "7c6f0ee65c0b2f38c42c0dd768ec2eba4cea13b7bc6bd88dedafb7ba29e5e153"
+  },
+  "lubm100.index.resource-usage-log.tsv": {
+    "bytes": 2336,
+    "sha256": "0774d820beda535b0134a09d0b9436b00002970d9f80a80ee75bf13119e00b9e"
+  },
+  "lubm100.index.sop": {
+    "bytes": 27681997,
+    "sha256": "473adc37db95a5520215ca4fcd8c5c9daab47800fe40ed49432d984cb88e122d"
+  },
+  "lubm100.index.sop.meta": {
+    "bytes": 32,
+    "sha256": "72345d3e4997db59879d91729b1bfde8efc675f862cca24f6c12e7fb5ac0fb30"
+  },
+  "lubm100.index.spo": {
+    "bytes": 29208648,
+    "sha256": "ed742ad4520f654e3e90372eddd3c925af0ffaf0f7dfcdf307ae48b961513519"
+  },
+  "lubm100.index.spo.meta": {
+    "bytes": 32,
+    "sha256": "72345d3e4997db59879d91729b1bfde8efc675f862cca24f6c12e7fb5ac0fb30"
+  },
+  "lubm100.internal.index.pos": {
+    "bytes": 2321559,
+    "sha256": "2d57917e21c56aa80105c6c05e767d3f530d001fc1c736d06bf4905cbd444d70"
+  },
+  "lubm100.internal.index.pos.meta": {
+    "bytes": 64,
+    "sha256": "4dd6e75726cbf9c04ae840cd84b609768f31aa9ddad7ea83cb11c4231b57addf"
+  },
+  "lubm100.internal.index.pso": {
+    "bytes": 2645503,
+    "sha256": "295cd7580aac9a000d46a037a80be3242851c6013ea212ecb3ea50204e0535ef"
+  },
+  "lubm100.internal.index.pso.meta": {
+    "bytes": 64,
+    "sha256": "4abac6b7d70bcad7b3cc7b142a2a958a0ff1ddfed0f8f656abde987ba11b90c5"
+  },
+  "lubm100.meta-data.json": {
+    "bytes": 911,
+    "sha256": "186d4613b9fe0ce28b3fc565006b3b1f63e199795cf3c8f6040a79a0a4a63f1a"
+  },
+  "lubm100.vocabulary.codebooks": {
+    "bytes": 18440,
+    "sha256": "ef5438e02af69ce762efb245958b3d947f0c881ab070d6fab0c177917fb792f1"
+  },
+  "lubm100.vocabulary.words.external": {
+    "bytes": 20119971,
+    "sha256": "0ab70f882e4105a9f3eee02f95fad8247fea56f8b14243584d4ed4066827063f"
+  },
+  "lubm100.vocabulary.words.external.offsets": {
+    "bytes": 26430008,
+    "sha256": "41d1cda5e45559bc0677817968abe5b04c86efd99a4e7f89163b35b70cac2c1a"
+  },
+  "lubm100.vocabulary.words.internal": {
+    "bytes": 46866,
+    "sha256": "cd1fc4d0268f7eb4a9c694fadff18dbbe6506f34b70f15dcb9bed00b0c0c1ef2"
+  },
+  "lubm100.vocabulary.words.internal.ids": {
+    "bytes": 26464,
+    "sha256": "e38c82517291009cb748a46f6fb835552254877ae297c076e031fe31d40a976a"
+  }
+}
