@@ -428,7 +428,7 @@ fn variable_equality_unification_respects_bound_inputs() {
 #[test]
 fn subquery_hash_join_matches_nested_loop() {
     let mut data = String::new();
-    for i in 0..60 { data.push_str(&format!("<urn:p{i}> a <urn:Product> .\n<urn:p{i}> <urn:f> <urn:f{}> .\n", i % 7)); if i % 3 == 0 { data.push_str(&format!("<urn:p{i}> <urn:o> \"x{i}\" .\n")) } }
+    for i in 0..60 { data.push_str(&format!("<urn:p{i}> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Product> .\n<urn:p{i}> <urn:f> <urn:f{}> .\n", i % 7)); if i % 3 == 0 { data.push_str(&format!("<urn:p{i}> <urn:o> \"x{i}\" .\n")) } }
     let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
     let rows = |q: &str| -> Vec<String> { match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.into_iter().map(|r| format!("{r:?}")).collect(); v.sort(); v } r => panic!("{r:?}") } };
     let q = "SELECT ?p ?n ?o WHERE { ?p a <urn:Product> OPTIONAL { ?p <urn:o> ?o } { SELECT ?p (COUNT(?f) AS ?n) WHERE { ?p <urn:f> ?f } GROUP BY ?p } }";
