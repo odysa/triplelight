@@ -1,0 +1,11 @@
+{
+  "original_matrix_sha256": "3a4b95bfe0c802146bb63ad3215e17811b0208eedbb13569f5ebfa10c1d75e64",
+  "retry_files": [
+    "m002_p00_q1.rq",
+    "m003_p00_q1.rq",
+    "m003_p01_q3.rq"
+  ],
+  "timeout_seconds": 600,
+  "original_failures_preserved": true,
+  "acceptance_rules_unchanged": true
+}
