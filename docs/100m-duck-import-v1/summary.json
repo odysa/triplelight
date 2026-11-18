@@ -1,0 +1,82 @@
+{
+  "duck100-import-v1": {
+    "report": {
+      "schema": "plain-triples-arrow-v1",
+      "duckdb": "2.0.0",
+      "pyarrow": "26.0.1",
+      "source": "<agent-workspace>/rdfdb/bench/tools/bsbm100.nt",
+      "database": "/private/tmp/rdf-jianlin-analytical25/duck100-import-v1/duck.db",
+      "threads": 4,
+      "memory_limit": "8GB",
+      "spill": "/private/tmp/rdf-jianlin-analytical25/duck100-import-v1/spill",
+      "max_spill": "8GB",
+      "batch_rows": 65536,
+      "parsed_triples": 60096512,
+      "source_bytes_read": 14149850675,
+      "complete": false,
+      "phase": "finished",
+      "progress_errors": [],
+      "spill_peak_sampled_bytes": 7999717376,
+      "spill_sample_seconds": 0.2,
+      "spill_sampling_errors": [],
+      "error": "OutOfMemoryException: Out of Memory Error: failed to offload data block of size 256.0 KiB (7.4 GiB/7.4 GiB used).\nThis limit was set by the 'max_temp_directory_size' setting.\nBy default, this setting utilizes the available disk space on the drive where the 'temp_directory' is located.\nYou can adjust this setting, by using (for example) PRAGMA max_temp_directory_size='10GiB'\n\nPossible solutions:\n* Reducing the number of threads (SET threads=X)\n* Disabling insertion-order preservation (SET preserve_insertion_order=false)\n* Increasing the memory limit (SET memory_limit='...GB')\n\nSee also https://duckdb.org/docs/current/guides/performance/how_to_tune_workloads",
+      "process_peak_rss_bytes": 8115257344,
+      "peak_rss_scope": "whole importer process, including Python, Arrow and DuckDB",
+      "spill_metric_scope": "sampled file lengths, not allocated blocks or guaranteed instantaneous peak",
+      "free_disk_bytes_after": 270515798016,
+      "database_bytes": 12288
+    },
+    "completion": {
+      "complete": false,
+      "start_unix": 1795011656.897472,
+      "supervisor_exit": 1,
+      "error": "RuntimeError: Importer failed; partial database is not a reference",
+      "end_unix": 1795012310.721469
+    },
+    "sample_count": 304,
+    "max_sampled_root_allocated_bytes": 15040585728,
+    "min_sampled_free_bytes": 262527442944
+  },
+  "duck100-import-v2": {
+    "report": {
+      "schema": "plain-triples-arrow-v1",
+      "duckdb": "2.0.0",
+      "pyarrow": "26.0.1",
+      "source": "<agent-workspace>/rdfdb/bench/tools/bsbm100.nt",
+      "database": "/private/tmp/rdf-jianlin-analytical25/duck100-import-v2/duck.db",
+      "threads": 4,
+      "memory_limit": "8GB",
+      "spill": "/private/tmp/rdf-jianlin-analytical25/duck100-import-v2/spill",
+      "max_spill": "24GB",
+      "batch_rows": 65536,
+      "parsed_triples": 98861444,
+      "source_bytes_read": 25965260343,
+      "complete": true,
+      "phase": "finished",
+      "progress_errors": [],
+      "spill_peak_sampled_bytes": 19008978944,
+      "spill_sample_seconds": 0.2,
+      "spill_sampling_errors": [],
+      "unique_triples": 98861444,
+      "source_sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
+      "seconds": 2126.8503652499057,
+      "process_peak_rss_bytes": 9639428096,
+      "peak_rss_scope": "whole importer process, including Python, Arrow and DuckDB",
+      "spill_metric_scope": "sampled file lengths, not allocated blocks or guaranteed instantaneous peak",
+      "free_disk_bytes_after": 264522027008,
+      "database_bytes": 5975060480
+    },
+    "completion": {
+      "complete": true,
+      "start_unix": 1795012761.065875,
+      "supervisor_exit": 0,
+      "unique_triples": 98861444,
+      "graph_count_matches_independent_jena": true,
+      "source_and_parser_identity_pass": true,
+      "end_unix": 1795014890.594292
+    },
+    "sample_count": 963,
+    "max_sampled_root_allocated_bytes": 30394691584,
+    "min_sampled_free_bytes": 247218348032
+  }
+}
