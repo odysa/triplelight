@@ -129,3 +129,5 @@ The curated aggregate translator is `aggregate_sql.py`, scoped to the 72 flat-BG
 The guarded equality rewrite at `54bee3a` separately passes all 60 frozen BI instances, with complete bags and all 36 ordered sequences matching pinned main. See `docs/analytical-benchmark/eq-unify-v1/`; the host/VM output comparison supplies no A/B speed claim.
 
 The subsequent two-engine matched-VM rerun on main `738f0cb` is in `docs/analytical-benchmark/matched-vm-round2-v1/`. All 240 requests qualify; rdfdb takes 27.23 / 28.54 seconds against DuckDB’s 55.32 / 64.52 across the measured mixes. This report explicitly limits the ranking to these two engines and preserves the older four-engine pilot separately.
+
+The latest same-session two-engine rerun, on main `20b257a`, is in `docs/analytical-benchmark/matched-vm-round3-v1/`: rdfdb 14.483 / 14.082 s versus DuckDB 113.992 / 112.898, all 240 requests qualified. The Linux lifetime regression is checked before timing. Cross-session ratio changes are not isolated component speedups; the paired table is the supported comparison.
