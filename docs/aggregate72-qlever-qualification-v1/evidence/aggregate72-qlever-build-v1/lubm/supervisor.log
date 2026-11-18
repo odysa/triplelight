@@ -1,0 +1,50 @@
+2026-11-18 23:40:24.850 - WARN: The Linux kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty may have a bug that causes random stalls, crashes, and corrupt data on arm64, unless it contains the fix https://github.com/torvalds/linux/commit/478a1c3abebfc717db0d1281a9cdd7befafee542. As a workaround, QLever doesn't return freed memory to the operating system. On a kernel with the fix, you can disable the workaround by setting the environment variable QLEVER_DISABLE_KERNEL_BUG_WORKAROUND
+2026-11-18 23:40:24.851 - INFO: [1mQLever index builder 18c097c, compiled on Sat Nov 14 19:07:21 UTC 2026 using git hash 18c097c[22m
+2026-11-18 23:40:24.857 - INFO: Locale was not specified in settings file, default is en_US
+2026-11-18 23:40:24.857 - INFO: You specified "locale = en_US" and "ignore-punctuation = 0"
+2026-11-18 23:40:24.857 - INFO: By default, integers that cannot be represented by QLever will throw an exception
+2026-11-18 23:40:24.857 - INFO: Processing triples from single input stream /input/data.nt (parallel = true) ...
+2026-11-18 23:40:24.857 - INFO: Parsing input triples and creating partial vocabularies, one per batch, using 4 threads ...
+2026-11-18 23:40:44.557 - INFO: Triples parsed: 10,043,784 [average speed 0.5 M/s]2026-11-18 23:40:57.271 - INFO: Triples parsed: 13,879,970 [average speed 0.4 M/s]
+2026-11-18 23:40:57.271 - INFO: Number of triples created (including QLever-internal ones): 13,879,970 [may contain duplicates]
+2026-11-18 23:40:57.271 - INFO: Number of partial vocabularies created: 4
+2026-11-18 23:40:57.271 - INFO: Merging partial vocabularies ...
+2026-11-18 23:40:57.301 - INFO: Merging 4 partial vocabularies (3,349,897 words in 8,173 blocks) in 12 chunks, using 4 threads, up to 16 chunks and up to 8 segments in flight ...
+2026-11-18 23:40:58.497 - INFO: Time spent by the thread behind the merge: waiting for merged blocks 1,120ms, committing the segments 52ms; building the segments 655ms
+2026-11-18 23:40:58.914 - INFO: Words merged: 3,303,746 [average speed 2.1 M/s] 
+2026-11-18 23:40:58.914 - INFO: Time spent by the stages behind the vocabulary merge: preparing 4 blocks 1,193ms, appending them 23ms, writing the ID maps 281ms; peak memory of the data behind the merge 543.1 MB (limit 2 GB)
+2026-11-18 23:40:58.937 - INFO: Finished writing compressed internal vocabulary, size = 20.1 MB [uncompressed = 202.4 MB, ratio = 9%]
+2026-11-18 23:40:58.938 - INFO: Number of words in external vocabulary: 3,303,746
+2026-11-18 23:40:58.969 - INFO: Converting triples from local IDs to global IDs ...
+2026-11-18 23:40:59.871 - INFO: Triples converted: 10,000,000 [average speed 11.5 M/s, last batch 11.1 M/s, fastest 11.1 M/s, slowest 11.1 M/s] 2026-11-18 23:40:59.913 - INFO: Triples converted: 13,879,970 [average speed 14.7 M/s, last batch 11.1 M/s, fastest 11.1 M/s, slowest 11.1 M/s] 
+2026-11-18 23:41:00.799 - INFO: Creating permutations SPO and SOP ...
+2026-11-18 23:41:01.997 - INFO: Triples sorted: 10,000,000 [average speed 8.4 M/s, last batch 8.4 M/s, fastest 8.4 M/s, slowest 8.4 M/s] 2026-11-18 23:41:02.325 - INFO: Number of inputs to `uniqueView`: 13,879,970
+2026-11-18 23:41:02.325 - INFO: Number of unique elements: 13,409,395
+2026-11-18 23:41:02.325 - INFO: Triples sorted: 13,409,395 [average speed 8.8 M/s, last batch 8.4 M/s, fastest 8.4 M/s, slowest 8.4 M/s] 
+2026-11-18 23:41:02.325 - INFO: Time spent waiting for the background tasks that write the blocks of large relations: 0.000162s
+2026-11-18 23:41:03.179 - INFO: Statistics for SPO: #relations = 2,181,773, #blocks = 287, #triples = 13,409,395
+2026-11-18 23:41:03.179 - INFO: Statistics for SOP: #relations = 2,181,773, #blocks = 287, #triples = 13,409,395
+2026-11-18 23:41:03.185 - INFO: Number of distinct patterns: 13
+2026-11-18 23:41:03.185 - INFO: Number of subjects with pattern: 2,181,773 [all]
+2026-11-18 23:41:03.185 - INFO: Total number of distinct subject-predicate pairs: 10,655,968
+2026-11-18 23:41:03.185 - INFO: Average number of predicates per subject: 4.9
+2026-11-18 23:41:03.185 - INFO: Average number of subjects per predicate: 591998
+2026-11-18 23:41:04.808 - INFO: Creating permutations OSP and OPS ...
+2026-11-18 23:41:06.706 - INFO: Triples sorted: 10,000,000 [average speed 5.3 M/s, last batch 5.3 M/s, fastest 5.3 M/s, slowest 5.3 M/s] 2026-11-18 23:41:07.203 - INFO: Triples sorted: 13,409,395 [average speed 5.6 M/s, last batch 5.3 M/s, fastest 5.3 M/s, slowest 5.3 M/s] 
+2026-11-18 23:41:07.203 - INFO: Time spent waiting for the background tasks that write the blocks of large relations: 0.392593s
+2026-11-18 23:41:07.255 - INFO: Statistics for OSP: #relations = 1,623,319, #blocks = 346, #triples = 13,409,395
+2026-11-18 23:41:07.255 - INFO: Statistics for OPS: #relations = 1,623,319, #blocks = 346, #triples = 13,409,395
+2026-11-18 23:41:07.262 - INFO: Adding 2,181,773 triples to the POS and PSO permutation for the internal `ql:has-pattern` ...
+2026-11-18 23:41:07.369 - INFO: Creating permutations PSO and POS ...
+2026-11-18 23:41:07.435 - INFO: Number of inputs to `uniqueView`: 2,181,773
+2026-11-18 23:41:07.435 - INFO: Number of unique elements: 2,181,773
+2026-11-18 23:41:07.435 - INFO: Triples sorted: 2,181,773 [average speed 33.6 M/s] 
+2026-11-18 23:41:07.708 - INFO: Time spent waiting for the background tasks that write the blocks of large relations: 0.052362s
+2026-11-18 23:41:07.712 - INFO: Statistics for PSO: #relations = 1, #blocks = 70, #triples = 2,181,773
+2026-11-18 23:41:07.712 - INFO: Statistics for POS: #relations = 1, #blocks = 70, #triples = 2,181,773
+2026-11-18 23:41:08.831 - INFO: Creating permutations PSO and POS ...
+2026-11-18 23:41:10.483 - INFO: Triples sorted: 10,000,000 [average speed 6.1 M/s, last batch 6.1 M/s, fastest 6.1 M/s, slowest 6.1 M/s] 2026-11-18 23:41:10.981 - INFO: Triples sorted: 13,409,395 [average speed 6.2 M/s, last batch 6.1 M/s, fastest 6.1 M/s, slowest 6.1 M/s] 
+2026-11-18 23:41:10.981 - INFO: Time spent waiting for the background tasks that write the blocks of large relations: 0.485384s
+2026-11-18 23:41:11.012 - INFO: Statistics for PSO: #relations = 18, #blocks = 438, #triples = 13,409,395
+2026-11-18 23:41:11.012 - INFO: Statistics for POS: #relations = 18, #blocks = 438, #triples = 13,409,395
+2026-11-18 23:41:11.019 - INFO: Index build completed

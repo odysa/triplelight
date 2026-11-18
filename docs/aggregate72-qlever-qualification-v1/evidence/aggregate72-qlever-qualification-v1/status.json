@@ -1,0 +1,527 @@
+{
+  "complete": true,
+  "datasets": {
+    "lubm": {
+      "queries": {
+        "lubm/all_q1.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "502c66dffa1d54ee6bfc5ab6b9e8fcc081ce70d3429d4533991d9e6f9c85f066"
+        },
+        "lubm/all_q10.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "e58135fba8adc921af926cd47f817e39c9f6af3efeac082e04bc3afa9354910b"
+        },
+        "lubm/all_q11.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "ccfe25399dbb22112492a4a63d4cdbe07c518d46330857eef88e3f81dfae4a6e"
+        },
+        "lubm/all_q12.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "a61b40736cb929a312fbf37408fe3136139acc2295ee8b71c5c8556f1a546933"
+        },
+        "lubm/all_q13.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "8a05fa6c3ea488649f2660fa7ec79ebb853512c75e2d5e9c61b3c954fd63cb44"
+        },
+        "lubm/all_q14.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "f0e2f4ce2f12e3fff376e19d589e8b19b204acc3be4d59f7f5b32b36161fd668"
+        },
+        "lubm/all_q2.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "68b2bde2f484fd7707bbd882de5cf431a64555f09fe2254498155136313485be"
+        },
+        "lubm/all_q3.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "162fb994b2e71d4f5eb0fa894243081f474d020489561db89b2d3566aa401241"
+        },
+        "lubm/all_q4.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "f79fe631dc80ebc6c0c9a8ea4b2c5b5ef4c28a5ca983d2aa2135057ed0c91dae"
+        },
+        "lubm/all_q5.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "ffc33cd11bd828c316d11c0f8c6dee14c61647901fbdebb1c69aebba6157e7b0"
+        },
+        "lubm/all_q6.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "980d3a2e54027a5043c6ae750320bce9c83809cb3b946b580c0b6effd1fc0cc8"
+        },
+        "lubm/all_q7.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "92085c3c6c544824731bcc7c9c68379068cab226fe65e46d54219fc03a5575aa"
+        },
+        "lubm/all_q8.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "a85a4cfddb643c51e4c010942db568774a1fcccb3e2786d2c568108b23a9c100"
+        },
+        "lubm/all_q9.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "72eb1def1c2281e13100d52f92e581fc4af3af925a82ae26f3d739f71473bc2b"
+        },
+        "lubm/distinct_q1.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "502c66dffa1d54ee6bfc5ab6b9e8fcc081ce70d3429d4533991d9e6f9c85f066"
+        },
+        "lubm/distinct_q10.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "2f2a2a22eb945b1fb7715f2658f636836637290372297f0f9aee9ddc8ebf51d4"
+        },
+        "lubm/distinct_q11.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "932dc5c9e12be54268a4dd2360efd58908ef3957fd76127ae82d6106b30f28e9"
+        },
+        "lubm/distinct_q12.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "3c9d55b48fac1443278060d4eaba2c98cef3a82370226d6b0f34b6435d2cd65d"
+        },
+        "lubm/distinct_q13.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "61898b46b868a2d249964b3374515a76c7427058350db5e86912484b6891cdbd"
+        },
+        "lubm/distinct_q14.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "40087a2ea28327b7dc969db439c034bef4a2876336b5a7a01fd20efef6d0db51"
+        },
+        "lubm/distinct_q2.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "046e2f2b3f67cd83974f18b40f78cbe178ba7beb929569718088a7a6dc295ae4"
+        },
+        "lubm/distinct_q3.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "30c8ddbda1920b73e909b3e1d23f500d3216ed0f71318f370f4f43c290b5c9be"
+        },
+        "lubm/distinct_q4.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "89bb61df69b08252b978580e0ac03287661bec0e0e6333a8ae7ebb9a28c722d3"
+        },
+        "lubm/distinct_q5.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "48e40fbdfea97a02015f6595645d12cacd836ae1c90b02b8e2ba67c2dbd9412e"
+        },
+        "lubm/distinct_q6.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "73f4ff0ef752d8e9275eade521d0e078c50e2c2f765b8d5a02dba7c9b8e7bd57"
+        },
+        "lubm/distinct_q7.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "602eff6de2c2106118d33a5f61eda7ed5ab4379b472575c9338117b00a865f7b"
+        },
+        "lubm/distinct_q8.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "1412fee22004cfdcc4f96b8207a8f875a98202ba799b6937bf2b63208d46c220"
+        },
+        "lubm/distinct_q9.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "59267fc3f674b92b7aec2913d4fe694e88410095ea48afce07616a20943a0eee"
+        },
+        "lubm/group_advisors.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 60160,
+          "output_sha256": "6bac6cc9e5be789c7ab75c86194557540f99c789effb35c818c544dcbb301b9c"
+        },
+        "lubm/group_type.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 15,
+          "output_sha256": "22a2c250d781136c4533614af2f415f31d23a926c0373e863087ce813f416210"
+        }
+      },
+      "command": [
+        "docker",
+        "run",
+        "--detach",
+        "--name",
+        "rdf-jianlin-agg72-ql-lubm-qual-v1",
+        "--cpus=4",
+        "--memory=12g",
+        "--memory-swap=12g",
+        "-p",
+        "127.0.0.1:31448:31448",
+        "--mount",
+        "type=bind,source=/private/tmp/rdf-jianlin-analytical25/aggregate72-qlever-build-v1/lubm/index,target=/index,readonly",
+        "--workdir",
+        "/index",
+        "--entrypoint",
+        "/qlever/qlever-server",
+        "adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cba4e894ca1ba8117cef6727",
+        "-i",
+        "lubm100",
+        "-p",
+        "31448",
+        "-m",
+        "11GB",
+        "-c",
+        "1MB",
+        "-e",
+        "1MB",
+        "-E",
+        "1MB",
+        "-s",
+        "600s",
+        "--set-runtime-parameter",
+        "max-num-threads-per-query=4",
+        "--no-metrics-log",
+        "--no-resource-usage-log"
+      ],
+      "container_id": "b81403fdce86dcff341e7a5aa53a185c7b229cf19206a410de2fa4931392f453",
+      "index_unchanged": true
+    },
+    "watdiv": {
+      "queries": {
+        "watdiv/all_C1.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "f4dd3ddc975df01aa656a536a84baed572082a62227b46dece24058604312f4f"
+        },
+        "watdiv/all_C2.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "c871d19156a4964679c1a016937c9bb07d249a0480dfafdee923f9325e7ab0fe"
+        },
+        "watdiv/all_C3.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "1e97c132fc92a8dfa5dbea2438ad838117abe598d99fdf79003a206e338bbbc7"
+        },
+        "watdiv/all_F1.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "ff9cf6e2eaba89ca8e570389fe7decc065f1679da1301fc0cda2756514f3d4ae"
+        },
+        "watdiv/all_F2.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "5eef0aa5dbbb628d19ae4de64f68226086608fba87d2c93624f3b9d41bf327d6"
+        },
+        "watdiv/all_F3.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "70bb1d9cafff1a0c9d783bf7b2b1818770ab55baa64e301f15f50b8006a00619"
+        },
+        "watdiv/all_F4.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "a7970463863fea82eed4eef8710bea87138ec5be5131ba88b19e28c9763d206a"
+        },
+        "watdiv/all_F5.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "596f146c3c93db94b08cd135596eb91254319f6479fb3bbb2829b3a8f7418a79"
+        },
+        "watdiv/all_L1.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "864bd200e34c8bbdc0b5531384e19d75755e20b37a7314bb8943155e66a62396"
+        },
+        "watdiv/all_L2.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "f8994c2eefb0034c28fcdd4685c6a52d40e0153b94eb5f5d5934f0d7e9e45fe2"
+        },
+        "watdiv/all_L3.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "9823e1ea2cb34568901fa51d4c563e6fe4651026fa05ec0a1f3e0a47ea99310c"
+        },
+        "watdiv/all_L4.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "146847157681466012cf796e129359765bada870649878fe000734021d8bdb11"
+        },
+        "watdiv/all_L5.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "2f5c358b371b8c282baba2afadb454792fb37d7a8c353c2436ea9ec9a47c1b1d"
+        },
+        "watdiv/all_S1.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "a7fa234cead4405e44f45db6bdda6882ca52e0068bc632da07a875576521f16d"
+        },
+        "watdiv/all_S2.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "a46ceddbc9d3b2c2b548d5445192d58bcc2806cc8a47b98d3e85c770b77b7c25"
+        },
+        "watdiv/all_S3.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "7e1b4ff47dfcc5b401a7350b718d6b6c158bc1249bdd32a44a9b9f8c39ec2827"
+        },
+        "watdiv/all_S4.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "390f7915180401f2873c329d8842d99a4871b37d5f3a26680f3750ef6a664ef8"
+        },
+        "watdiv/all_S5.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "0c87989e860b02caefddb6d159a7d8bc1ee2551b36a0b6128877274d38a2ac62"
+        },
+        "watdiv/all_S6.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "76d833412776c0fce95187760eb4ce1325aa3055825971007a9139cd8fab84a6"
+        },
+        "watdiv/all_S7.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "3db144686a72cf2b2171f89c83e8c914e6f91abafba4ca58851db065004e450e"
+        },
+        "watdiv/distinct_C1.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "aa8a52beb58bf21c1fc8f7fb260d1c852bdb3defed66765759da26e07f161d7a"
+        },
+        "watdiv/distinct_C2.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "d5dd1ed680b26690b0712b085e5f6bd98a526dfa4075cbce8c3779b46521450c"
+        },
+        "watdiv/distinct_C3.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "59b75a43ce542753f204bb8bd36a0add81fe0d1980b78398c4d8efe802bada52"
+        },
+        "watdiv/distinct_F1.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "2b12ea32c68172064dd1493ccb381c7f297fa5fece027c4848e719c75d8e2f08"
+        },
+        "watdiv/distinct_F2.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "84bc8f88076158da4613cf19e9b5332a13464338fcad25281add3100fe5efad5"
+        },
+        "watdiv/distinct_F3.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "2528a10aa35ea0de3c6bf83648367062f2f9ea4e24ae54ef34acea00e6b6d2e2"
+        },
+        "watdiv/distinct_F4.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "7989f360adfc4a216dc86314997d3e0ea7c03767d0437ddb0bb6c00a957e9d28"
+        },
+        "watdiv/distinct_F5.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "12f1cc84d23425c9c8fc0c75f6cd3d3a49a13ac2bf8f01cdae1cfc89748dadf5"
+        },
+        "watdiv/distinct_L1.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "ba70b9917476b31bb6f66e8f9efd94cd9a19bf4306f5b8a36e1d02af7e2c9c9b"
+        },
+        "watdiv/distinct_L2.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "f7ac422680956bdc90f93a93551af5ec9845c39584dee1d27a70c18fbfebf15f"
+        },
+        "watdiv/distinct_L3.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "ae95b55d6352e3450a9314ceb6c70300e12819910f1f5ed6fa75abd8470e4659"
+        },
+        "watdiv/distinct_L4.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "1d0248c056dcc51be1d0d63d2bd9466847531bcecd810347d656feaa792de3eb"
+        },
+        "watdiv/distinct_L5.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "2f5c358b371b8c282baba2afadb454792fb37d7a8c353c2436ea9ec9a47c1b1d"
+        },
+        "watdiv/distinct_S1.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "c97906bd90482942b7e26e705dc84808132f12eb559d85ac04c4370b5e7d1ae4"
+        },
+        "watdiv/distinct_S2.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "311234282df6352dae452a302fb2040576a1067b9c3b4e99be04a595ba7d963e"
+        },
+        "watdiv/distinct_S3.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "bb7f20b7c4db871853b4662ec5a53a4453a3f4455a44b9880c24ab43125a44e0"
+        },
+        "watdiv/distinct_S4.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "390f7915180401f2873c329d8842d99a4871b37d5f3a26680f3750ef6a664ef8"
+        },
+        "watdiv/distinct_S5.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "0c87989e860b02caefddb6d159a7d8bc1ee2551b36a0b6128877274d38a2ac62"
+        },
+        "watdiv/distinct_S6.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "76d833412776c0fce95187760eb4ce1325aa3055825971007a9139cd8fab84a6"
+        },
+        "watdiv/distinct_S7.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "ee6d89a0668d747b74defbe6cfc1597466209eb556d1ae252fbff9a65dc6ce00"
+        },
+        "watdiv/group_age.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 9,
+          "output_sha256": "4fa3f3fd88e140281662adb93f5e71677520b7ac86717347de22a38398ebadd6"
+        },
+        "watdiv/group_gender.rq": {
+          "primary_pass": false,
+          "count_compatible_pass": true,
+          "rows": 2,
+          "output_sha256": "1d63e71a2b9304fb0413e0540bf857743947f970abebdce7aff94ca857f2b929"
+        }
+      },
+      "command": [
+        "docker",
+        "run",
+        "--detach",
+        "--name",
+        "rdf-jianlin-agg72-ql-watdiv-qual-v1",
+        "--cpus=4",
+        "--memory=12g",
+        "--memory-swap=12g",
+        "-p",
+        "127.0.0.1:31448:31448",
+        "--mount",
+        "type=bind,source=/private/tmp/rdf-jianlin-analytical25/aggregate72-qlever-build-v1/watdiv/index,target=/index,readonly",
+        "--workdir",
+        "/index",
+        "--entrypoint",
+        "/qlever/qlever-server",
+        "adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cba4e894ca1ba8117cef6727",
+        "-i",
+        "watdiv100",
+        "-p",
+        "31448",
+        "-m",
+        "11GB",
+        "-c",
+        "1MB",
+        "-e",
+        "1MB",
+        "-E",
+        "1MB",
+        "-s",
+        "600s",
+        "--set-runtime-parameter",
+        "max-num-threads-per-query=4",
+        "--no-metrics-log",
+        "--no-resource-usage-log"
+      ],
+      "container_id": "493e1202f0b0b871719c2496ddacac407333818bdaf4c95abdeb06d5dd57a160",
+      "index_unchanged": true
+    }
+  },
+  "comparative_timing_claim": false,
+  "image": "adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cba4e894ca1ba8117cef6727",
+  "started": 1795045629.894709,
+  "ended": 1795045649.5147
+}
