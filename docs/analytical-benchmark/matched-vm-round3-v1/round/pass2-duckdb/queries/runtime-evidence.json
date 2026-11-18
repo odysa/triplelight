@@ -1,0 +1,17 @@
+{
+  "system": "duckdb",
+  "endpoint": "http://127.0.0.1:31427/sparql",
+  "source_or_image": "python@sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd",
+  "dataset_sha256": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+  "threads": 4,
+  "memory_configuration": {
+    "container_bytes": 12884901888,
+    "rdfdb_cache_mib": null,
+    "qlever_query_memory": null,
+    "duckdb_working_memory": "8GB",
+    "duckdb_spill_limit": "6GB",
+    "virtuoso_number_of_buffers": null
+  },
+  "cache_profile": "no-answer-cache",
+  "query_fields": {}
+}
