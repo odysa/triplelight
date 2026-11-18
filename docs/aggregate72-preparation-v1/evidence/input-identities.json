@@ -1,0 +1,20 @@
+{
+  "workload_manifest_sha256": "b0615b9733d083c99fd8c9d554a4fccebb873af2e49004514af7490c9108ba11",
+  "inputs": {
+    "lubm": {
+      "path": "<agent-workspace>/rdfdb/bench/tools/lubm100.nt",
+      "bytes": 2377133547,
+      "mtime_ns": 1794496148362747173,
+      "sha256": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d"
+    },
+    "watdiv": {
+      "path": "<agent-workspace>/rdfdb/bench/tools/watdiv100.nt",
+      "bytes": 1558148905,
+      "mtime_ns": 1794499821490435219,
+      "sha256": "f53153e24d3e4e89d89c0587671022c11855c909cdcc4bf69f282feb554d6041"
+    }
+  },
+  "started_unix": 1795037517.610448,
+  "new_real_query_outputs_collected": false,
+  "ended_unix": 1795037521.770868
+}

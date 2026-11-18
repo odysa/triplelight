@@ -1,0 +1,1 @@
+SELECT t0.o AS "o", COUNT(*) AS "n" FROM triples t0 WHERE t0.p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' GROUP BY t0.o
