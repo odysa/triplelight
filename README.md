@@ -134,8 +134,9 @@ Details: [docs/embedded/README.md](docs/embedded/README.md).
 - Loading: building the LUBM-1000 disk store took 1,035 s against QLever's 425 s in round 9. A parallel loader has
   been merged since, but its speedup is not established and it has not been compared at that scale.
 - Numeric range: `xsd:decimal` is exact within 96 bits and 28 fractional digits and `xsd:integer` within 64 bits;
-  results outside that range are query errors (Jena uses arbitrary precision). Non-terminating decimal quotients
-  are rounded to 28 digits.
+  results outside that range are query errors (Jena uses arbitrary precision). This includes decimal underflow,
+  which is stricter than XPath (XPath returns 0.0 on underflow, and only overflow is an error), so this is not full
+  SPARQL numeric conformance. Non-terminating decimal quotients are rounded to 28 digits.
 - SPARQL coverage: property paths, named graphs (`GRAPH`, `FROM`), `SERVICE` and some functions (hashes, `NOW`,
   `UUID`, …) are rejected as unsupported. W3C SPARQL 1.1 query suite: 281 pass, 6 fail, 44 unsupported
   ([details](bench/results/w3c-sparql11)).
