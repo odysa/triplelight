@@ -1,0 +1,1 @@
+SELECT (COUNT(DISTINCT ?o) AS ?n) WHERE {?s <urn:p> ?o}
