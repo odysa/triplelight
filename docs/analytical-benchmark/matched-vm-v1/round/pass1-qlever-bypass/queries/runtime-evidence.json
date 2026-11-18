@@ -1,0 +1,19 @@
+{
+  "system": "qlever",
+  "endpoint": "http://127.0.0.1:31430/",
+  "source_or_image": "adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cba4e894ca1ba8117cef6727",
+  "dataset_sha256": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+  "threads": 4,
+  "memory_configuration": {
+    "container_bytes": 12884901888,
+    "rdfdb_cache_mib": null,
+    "qlever_query_memory": "11 GB",
+    "duckdb_working_memory": null,
+    "duckdb_spill_limit": null,
+    "virtuoso_number_of_buffers": null
+  },
+  "cache_profile": "full-bypass",
+  "query_fields": {},
+  "cache_control_verified": true,
+  "cache_control_evidence": "vm-preflight-v1 plus live settings and initial-clear.json"
+}
