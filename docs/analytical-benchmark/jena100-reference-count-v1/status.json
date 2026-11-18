@@ -1,0 +1,15 @@
+{
+  "pid": 44367,
+  "complete": true,
+  "candidate_bi_queries_executed": false,
+  "reference_unique_triples": 98861444,
+  "diagnostic_elapsed_seconds": 42.831167249940336,
+  "nt_import_comparison_pending": true,
+  "server_exit": 143,
+  "nt_stat_unchanged": true,
+  "store_metadata_changed": [
+    "Data-0001/tdb.lock",
+    "tdb.lock"
+  ],
+  "own_lock_released": true
+}
