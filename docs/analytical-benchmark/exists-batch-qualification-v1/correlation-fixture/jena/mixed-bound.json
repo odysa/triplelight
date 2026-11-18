@@ -1,0 +1,159 @@
+{ "head": {
+    "vars": [ "x" , "tag" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "0" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "5" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "6" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "8" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "9" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "11" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "12" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "14" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "15" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "17" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "18" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "20" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "21" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "23" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "24" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "26" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "27" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "29" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "30" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "32" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "33" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "35" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "36" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "38" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "39" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "41" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "42" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "44" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "45" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "47" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "48" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "50" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "51" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "53" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "54" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "56" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "57" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "59" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "60" }
+      } ,
+      { 
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "62" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:yes" } ,
+        "tag": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "63" }
+      }
+    ]
+  }
+}
