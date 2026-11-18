@@ -28,12 +28,22 @@ This is a bounded same-session comparison of two engines, not the official BSBM 
 
 rdfdb is faster on all 8 query templates in both passes (DuckDB takes 7.9× / 8.0× as long). Timings drift between
 VM sessions: in the previous session, with rdfdb at `738f0cb`, the totals were 27.2 / 28.5 s against DuckDB's
-55.3 / 64.5 s, so compare engines only within a session. In an earlier pass of this benchmark, neither QLever nor Virtuoso had a qualified total. QLever matched
-Jena's answers on 9 of 60 requests under strict checking; every other request was rejected at a datatype check
-(computed float aggregates, and `xsd:int` instead of `xsd:integer` for COUNT, with which mapped it passes 21), so
-whether its values are otherwise correct was not established.
-Virtuoso passed 29 of 60. Its q4 and q6 failures are datatypes, but all 12 q5 instances return wrong result
-sets (for example zero rows where Jena returns 14), and its reverse-order pass hit the client timeout. Evidence: [matched-vm-round3-v1](https://github.com/odysa/rdfdb/tree/5ff7d67eeb77ccdc348e5344fb571cf262d23a04/docs/analytical-benchmark/matched-vm-round3-v1);
+55.3 / 64.5 s, so compare engines only within a session.
+
+QLever and Virtuoso were checked in an earlier session. Requests passing, out of 60, first pass / reverse-order pass:
+
+| | Strict | COUNT int = integer | Value-only (retrospective) |
+|---|---:|---:|---:|
+| QLever (default, hash, bypass profiles) | 9 / 9 | 21 / 21 | **60 / 60** |
+| Virtuoso 7 | 29 / incomplete | 29 / incomplete | 48 / incomplete |
+
+QLever's values are correct within the frozen numeric bounds; its strict failures are result datatypes (computed
+float aggregates, `xsd:int` for COUNT). Virtuoso returns wrong result sets for all 12 q5 instances (for example
+zero rows where Jena returns 14), and its reverse-order pass stopped at a client timeout. The value-only column
+is a compatibility diagnostic, not strict qualification, and QLever has not been timed against the current rdfdb
+in the same session ([value-diagnostic-v1](https://github.com/odysa/rdfdb/tree/c535ac3988f78fa16e9e1b290ed8cad84960dba5/docs/analytical-benchmark/value-diagnostic-v1)).
+
+Evidence: [matched-vm-round3-v1](https://github.com/odysa/rdfdb/tree/5ff7d67eeb77ccdc348e5344fb571cf262d23a04/docs/analytical-benchmark/matched-vm-round3-v1);
 previous session in [matched-vm-round2-v1](https://github.com/odysa/rdfdb/tree/67f1fe7da321c67924b54c62a0be0299dba06f15/docs/analytical-benchmark/matched-vm-round2-v1),
 first pass with all four engines in [matched-vm-v1](https://github.com/odysa/rdfdb/tree/67f1fe7da321c67924b54c62a0be0299dba06f15/docs/analytical-benchmark/matched-vm-v1).
 
