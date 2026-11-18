@@ -1,0 +1,8 @@
+{
+  "old60_qlever_bodies_replayed_no_http": true,
+  "original_fields_preserved": true,
+  "value60_pass": true,
+  "sum45_gate_correct": true,
+  "policy_sha256": "70ad4ab0cc3299c20a8177c64568d0698bbe8eed3b391d122214d94ebf1f0f6a",
+  "preflight_note": "Initial replay failed closed on policy schema name before any HTTP; schema corrected, no rule change."
+}
