@@ -1,0 +1,22 @@
+{
+  "complete": true,
+  "datasets": {
+    "lubm": {
+      "pid": 95049,
+      "exit_code": 0,
+      "unique_triples": 13409395,
+      "reference_count": 13409395,
+      "database_sha256": "142de4ad9d08017facacdc4cd4427d2df0f46067f4005f96763896a89ee39d3d"
+    },
+    "watdiv": {
+      "pid": 4159,
+      "exit_code": 0,
+      "unique_triples": 10914314,
+      "reference_count": 10914314,
+      "database_sha256": "ac25aa7255b6c2754df65f559fef9e6483f7dac2321d1df616474ef29b1f1b72"
+    }
+  },
+  "comparative_load_claim": false,
+  "started": 1795042753.795299,
+  "ended": 1795042945.720245
+}
