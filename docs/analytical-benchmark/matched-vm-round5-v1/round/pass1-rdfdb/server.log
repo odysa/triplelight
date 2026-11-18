@@ -1,0 +1,4 @@
+opened disk snapshot /work/rdfdb-disk in 0.16s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:31429/sparql
+statistics ready after 3.93s
