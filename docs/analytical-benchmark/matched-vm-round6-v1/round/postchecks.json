@@ -1,0 +1,80 @@
+{
+  "source_input": {
+    "sha256": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e"
+  },
+  "duckdb_readonly_store": {
+    "sha256": "f86cb05c12f8cd1dbe7d62f5b918b03ea95e945435a7148f71d1255927dba421",
+    "matches": true
+  },
+  "rdfdb5ac_binary": {
+    "sha256": "5545f33a2ded6ae9f1dce4d8fa8b98d4de18dffdf3c86116b9e77b8dd4d5e637",
+    "matches": true
+  },
+  "prior1cd_binary": {
+    "sha256": "f91a64faf85142685ca1fc59f1244f3c82d6ab9e38d5b532a55a001957c59cb4",
+    "matches": true
+  },
+  "prior20b_binary": {
+    "sha256": "b302f11c49cc2e24d6d2a23d1b7cb3c51f2c358f5f17ee49c5395d2cfa3579d4",
+    "matches": true
+  },
+  "prior738_binary": {
+    "sha256": "8277d341b2a514a3405728530c2bb0de176b3b8b48f11bcbc3f74d4c2b477d23",
+    "matches": true
+  },
+  "prior71_binary": {
+    "sha256": "4e9e3e11b7d6fb530856ec39ff41430c86123f4412803d6ed38b46fc97f26352",
+    "matches": true
+  },
+  "source_files_verified": 26,
+  "new_linux_lifetime_fixture_exact_Jena_bag": true,
+  "query_hashes_verified": 60,
+  "numeric_bindings_verified": 32,
+  "count_freeze": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790",
+  "pass1-rdfdb_state": {
+    "running": false,
+    "OOMKilled": false,
+    "exit": 137
+  },
+  "pass1-duckdb_state": {
+    "running": false,
+    "OOMKilled": false,
+    "exit": 137
+  },
+  "pass1-qlever_state": {
+    "running": false,
+    "OOMKilled": false,
+    "exit": 137
+  },
+  "pass2-qlever_state": {
+    "running": false,
+    "OOMKilled": false,
+    "exit": 137
+  },
+  "pass2-duckdb_state": {
+    "running": false,
+    "OOMKilled": false,
+    "exit": 137
+  },
+  "pass2-rdfdb_state": {
+    "running": false,
+    "OOMKilled": false,
+    "exit": 137
+  },
+  "preflight_identity_files_unchanged": true,
+  "all_owned_phase_containers_removed": true,
+  "pass1-rdfdb_host_equivalence": {
+    "exact_bags": 60,
+    "bags": 60,
+    "exact_sequences": 36,
+    "sequences": 36,
+    "scope": "Additional host/VM comparison; does not change value gate"
+  },
+  "pass2-rdfdb_host_equivalence": {
+    "exact_bags": 60,
+    "bags": 60,
+    "exact_sequences": 36,
+    "sequences": 36,
+    "scope": "Additional host/VM comparison; does not change value gate"
+  }
+}
