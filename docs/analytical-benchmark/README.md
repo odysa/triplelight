@@ -1,16 +1,26 @@
 # Analytical RDF benchmark: qualification in progress
 
+The matched 10M BI pilot is finished. Both rdfdb and the plain-triples DuckDB
+baseline qualify all 60 requests in both passes. For 45 measured requests,
+rdfdb takes 177.023 / 191.764 s versus DuckDB’s 110.617 / 142.998 s.
+Rdfdb is currently slower on this analytical cohort. QLever and Virtuoso fail
+the prescribed output checks; Virtuoso’s reverse pass also times out. There is
+no qualified four-engine BI ranking. See [matched-vm-v1/](matched-vm-v1/) for
+all responses, timings, failures, resources and controller repair receipts.
+The 100M and curated aggregate tracks remain pending.
+
 Current result: all 45 confirmatory 10M BI instances pass for Jena, DuckDB,
 both main rdfdb grouping paths and the separate wider-accumulator candidate
 under the preregistered exact-anchor rule. The candidate improves q4/q5
 accuracy; the original exploratory failures remain preserved. See
 [holdout-v1/](holdout-v1/) for complete outputs, immutable identities and
-accuracy details. This is correctness evidence; matched-VM BI performance and
-100M measurements remain pending.
+accuracy details. This host-only correctness evidence precedes the matched-VM
+pilot above; the 100M measurements remain pending.
 
 
-There is no full BI performance score yet. The corrected candidate passes the
-normal, cutoff, invalid-input and empty/unbound fixtures against Jena. Matched competitor execution and resource measurement remain ahead.
+The corrected candidate passes the normal, cutoff, invalid-input and
+empty/unbound fixtures against Jena. The retained historical sections below
+explain the earlier qualification failures and protocol development.
 
 ## Matched-VM preparation
 
@@ -33,8 +43,8 @@ outputs. Independent Jena counts agree on all 31 parameter cases and 22,381 inpu
 entity groups. Exact rational inputs cover all 32 AVG-derived instances.
 
 See [numeric-freeze-v1/](numeric-freeze-v1/) and the
-[validation rule](NUMERIC_VALIDATION_PROPOSAL.md). This enables a named future
-cohort; it does not reclassify mix 0 or supply BI speed numbers. Current
+[validation rule](NUMERIC_VALIDATION_PROPOSAL.md). This enabled the named host
+cohort without reclassifying mix 0 or itself supplying speed numbers. Current
 workload_check.py activates it only with an explicit matching input bundle and
 freeze hash; its default remains the original four-ULP checker.
 
@@ -58,7 +68,7 @@ identical complete RDF term bags on all fifteen instances. This isolates a
 validation question; it does not prove that either Jena or a candidate is wrong.
 Different accumulation orders/precision are a hypothesis requiring independent
 input and arithmetic checks. The original failed gate is retained unchanged.
-See the [future numeric-validation proposal](NUMERIC_VALIDATION_PROPOSAL.md).
+See the [subsequent numeric-validation proposal](NUMERIC_VALIDATION_PROPOSAL.md).
 
 This is only the first 15 of 60 exported queries, with no measured BI timing or
 competitor ranking. The reference process exited before candidate work;
@@ -210,6 +220,6 @@ workload inputs only, not 60 successful large-data query measurements.
 See bench/analytical/workloads/bsbm10/ and the measurement contract in
 bench/analytical/README.md.
 
-Next: qualify real parameter instances against the imported 10M graph; then run matched
-Linux/VM competitor measurements. The 100M track follows disk/memory sizing.
+Those 10M qualification and matched-VM steps have now executed; see the
+reports linked above. The 100M track follows disk/memory sizing.
 No unsupported query, timeout or failed result is removed from a full BI score.

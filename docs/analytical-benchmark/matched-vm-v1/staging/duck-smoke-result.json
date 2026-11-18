@@ -1,0 +1,24 @@
+{
+  "qualification": {
+    "all_columns_compatible": true,
+    "exact_term_bag": true,
+    "computed_float_max_ulps": 0,
+    "computed_float_allowed_ulps": 4,
+    "rows": 10
+  },
+  "order": {
+    "checked": true,
+    "keys": [
+      [
+        "reviewCount",
+        true
+      ],
+      [
+        "productType",
+        false
+      ]
+    ]
+  },
+  "query_sha256": "8239f25ea708717824344eb4c8cf7f868f14e230e5784b944d846a04f0ee2d2a",
+  "rows": 10
+}
