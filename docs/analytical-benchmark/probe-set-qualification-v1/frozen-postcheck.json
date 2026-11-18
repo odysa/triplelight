@@ -1,0 +1,17 @@
+{
+  "candidate": "1cd888103dfdb93643ed158fe6d077e90da27b4b",
+  "frozen_oracle_pass": 60,
+  "exact_term_bags_pass": 60,
+  "ordered_sequences_pass": 36,
+  "source_files_postverified": 33,
+  "body_hashes_verified": 60,
+  "baseline_and_Jena_published_hashes_verified": 60,
+  "query_hashes_verified": 60,
+  "numeric_bindings_verified": 32,
+  "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+  "validator_sources_postverified": true,
+  "candidate_binary_postverified": true,
+  "server_exit": -15,
+  "store_manifest_unchanged": true,
+  "performance_AB_claim": false
+}
