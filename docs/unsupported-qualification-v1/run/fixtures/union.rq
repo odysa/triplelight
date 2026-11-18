@@ -1,0 +1,1 @@
+SELECT ?v WHERE { { BIND(1 AS ?v) } UNION { BIND(NOW() AS ?v) } }

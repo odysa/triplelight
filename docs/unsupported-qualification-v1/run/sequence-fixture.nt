@@ -1,0 +1,4 @@
+<urn:s> <urn:p> <urn:m1> .
+<urn:s> <urn:p> <urn:m2> .
+<urn:m1> <urn:q> <urn:o> .
+<urn:m2> <urn:q> <urn:o> .
