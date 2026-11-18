@@ -263,6 +263,27 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 // Filter pushdown: conjuncts over variables the BGP binds are applied inside it, right after the
                 // join step that binds their last variable, so failing rows are never extended further.
                 if let GraphPattern::Bgp { patterns } = &**inner {
+                    // `FILTER(?a = ?b)` (or sameTerm) where neither variable can be bound to a literal: equality is term
+                    // identity, so evaluate the BGP with ?b renamed to ?a (a join instead of a cross product) and copy
+                    // ?a into ?b afterwards. Literals are excluded because `=` on literals is value equality.
+                    let all = conjuncts(expr);
+                    let unify = all.iter().enumerate().find_map(|(k, c)| self.unifiable_equality(c, patterns).map(|(a, b)| (k, a, b)))
+                        // Other conjuncts must not read ?b: it is only filled in after the renamed BGP.
+                        .filter(|(k, _, b)| all.iter().enumerate().all(|(i, c)| i == *k || !expr_vars(c).iter().any(|n| n == b.as_str())));
+                    if let Some((k, a, b)) = unify {
+                        let renamed: Vec<TriplePattern> = patterns.iter().map(|t| rename_var(t, &b, &a)).collect();
+                        let rest: Vec<&Expression> = all.iter().enumerate().filter(|(i, _)| *i != k).map(|(_, c)| *c).collect();
+                        let inner2 = GraphPattern::Bgp { patterns: renamed };
+                        let (ai, bi) = (self.var(&a), self.var(&b));
+                        let rows = match rest.split_first() {
+                            None => self.eval(&inner2, input),
+                            Some((first, more)) => {
+                                let e = more.iter().fold((*first).clone(), |acc, c| Expression::And(Box::new(acc), Box::new((*c).clone())));
+                                self.eval(&GraphPattern::Filter { expr: e, inner: Box::new(inner2) }, input)
+                            }
+                        };
+                        return rows.into_iter().map(|mut r| { r[bi] = r[ai]; r }).collect();
+                    }
                     let bgp_vars: HashSet<usize> = { let mut v = Vec::new(); walk_vars(inner, &mut v); v.iter().filter_map(|n| self.vars.get(n).copied()).collect() };
                     let (early, late): (Vec<&Expression>, Vec<&Expression>) = conjuncts(expr).into_iter().partition(|c| {
                         let vs = expr_vars(c);
@@ -500,6 +521,38 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             else { bgp.eval_greedy(&pats, flat, &mut post) }
         };
         out.chunks_exact(w).map(<[TermId]>::to_vec).collect()
+    }
+
+    /// `(?a, ?b)` if `c` is `?a = ?b` / `sameTerm(?a, ?b)` over two distinct variables of the BGP, each of which occurs
+    /// only where a literal cannot appear: subject or predicate position, or object of a constant predicate whose
+    /// stored objects are all IRIs or blank nodes (checked exactly with one index seek: no object ID at or above the
+    /// literal tag). Overlay/delta IDs sit above that tag too, so an unproven store simply keeps the general path.
+    fn unifiable_equality(&self, c: &Expression, patterns: &[TriplePattern]) -> Option<(Variable, Variable)> {
+        let (x, y) = match c {
+            Expression::Equal(x, y) | Expression::SameTerm(x, y) => (x, y),
+            _ => return None,
+        };
+        let (Expression::Variable(a), Expression::Variable(b)) = (x.as_ref(), y.as_ref()) else { return None };
+        if a == b { return None }
+        let non_literal = |v: &Variable| -> bool {
+            let mut seen = false;
+            for t in patterns {
+                if matches!(&t.subject, TermPattern::Variable(s) if s == v) { seen = true }
+                if matches!(&t.predicate, NamedNodePattern::Variable(p) if p == v) { seen = true }
+                if matches!(&t.object, TermPattern::Variable(o) if o == v) {
+                    seen = true;
+                    let NamedNodePattern::NamedNode(p) = &t.predicate else { return false };
+                    let Some(pid) = self.lookup(&p.clone().into()) else { return true }; // no triples at all
+                    let first_literal = TermId(3 << 60);
+                    match self.snap.seek(Perm::Pos, &[pid], first_literal) {
+                        Ok(None) => {}
+                        _ => return false,
+                    }
+                }
+            }
+            seen
+        };
+        (non_literal(a) && non_literal(b)).then(|| (a.clone(), b.clone()))
     }
 
     /// Applies each not-yet-applied filter whose variables are all bound, keeping rows whose filter is true.
@@ -794,4 +847,11 @@ fn has_exists(e: &Expression) -> bool {
         Expression::Coalesce(l) | Expression::FunctionCall(_, l) => l.iter().any(has_exists),
         _ => false,
     }
+}
+
+/// `t` with variable `from` replaced by `to` (subject, predicate and object positions).
+fn rename_var(t: &TriplePattern, from: &Variable, to: &Variable) -> TriplePattern {
+    let tp = |x: &TermPattern| match x { TermPattern::Variable(v) if v == from => TermPattern::Variable(to.clone()), x => x.clone() };
+    let pp = match &t.predicate { NamedNodePattern::Variable(v) if v == from => NamedNodePattern::Variable(to.clone()), p => p.clone() };
+    TriplePattern { subject: tp(&t.subject), predicate: pp, object: tp(&t.object) }
 }
