@@ -1,0 +1,1 @@
+SELECT ?x WHERE { VALUES ?x {"1"^^<http://www.w3.org/2001/XMLSchema#int>} { BIND(1 AS ?x) } }

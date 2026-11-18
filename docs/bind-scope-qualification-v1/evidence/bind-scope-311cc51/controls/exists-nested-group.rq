@@ -1,0 +1,1 @@
+SELECT ?x WHERE { VALUES ?x {1} FILTER EXISTS { VALUES ?z {0} { BIND(?x+1 AS ?y) } FILTER(?y=2) } }

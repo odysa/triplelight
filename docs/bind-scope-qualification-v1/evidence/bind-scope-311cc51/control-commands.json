@@ -1,0 +1,402 @@
+{
+  "undef-bind": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/undef-bind.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x ?y WHERE { VALUES ?x {1} { VALUES ?x {UNDEF} BIND(?x AS ?y) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "bound-bind": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/bound-bind.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x ?y WHERE { VALUES ?x {1} { VALUES ?x {1} BIND(?x AS ?y) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "undef-filter": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/undef-filter.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x WHERE { VALUES ?x {1} { VALUES ?x {UNDEF} FILTER(?x = 1) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "undef-optional": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/undef-optional.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x ?y WHERE { VALUES ?x {1} OPTIONAL { VALUES ?x {UNDEF} BIND(?x AS ?y) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "union-maybe-bound": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/union-maybe-bound.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x ?y WHERE { VALUES ?x {1} { { VALUES ?x {1} } UNION { VALUES ?z {2} } BIND(?x AS ?y) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "subquery-hidden-var": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/subquery-hidden-var.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x ?y WHERE { VALUES ?x {1} { SELECT ?y WHERE { VALUES (?x ?y) {(2 3)} } } }"
+    ],
+    "candidate_exit": 0
+  },
+  "constant-bind-conflict": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/constant-bind-conflict.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x WHERE { VALUES ?x {1} { BIND(2 AS ?x) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "bind-equal": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/bind-equal.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x WHERE { VALUES ?x {1} { BIND(1 AS ?x) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "bind-error": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/bind-error.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x WHERE { VALUES ?x {1} { BIND(1/0 AS ?x) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "bind-datatype-conflict": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/bind-datatype-conflict.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x WHERE { VALUES ?x {\"1\"^^<http://www.w3.org/2001/XMLSchema#int>} { BIND(1 AS ?x) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "bind-lexical-conflict": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/bind-lexical-conflict.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x WHERE { VALUES ?x {\"01\"^^<http://www.w3.org/2001/XMLSchema#int>} { BIND(\"1\"^^<http://www.w3.org/2001/XMLSchema#int> AS ?x) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "bind-language-case": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/bind-language-case.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x WHERE { VALUES ?x {\"a\"@EN} { BIND(\"a\"@en AS ?x) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "bind-outer-read": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/bind-outer-read.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x ?y WHERE { VALUES ?x {1} { BIND(?x+1 AS ?y) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "optional-conflict": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/optional-conflict.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x ?y WHERE { VALUES ?x {1} OPTIONAL { BIND(2 AS ?x) BIND(9 AS ?y) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "optional-error": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/optional-error.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x ?y WHERE { VALUES ?x {1} OPTIONAL { BIND(1/0 AS ?x) BIND(9 AS ?y) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "exists-direct": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/exists-direct.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x WHERE { VALUES ?x {1} FILTER EXISTS { BIND(?x+1 AS ?y) FILTER(?y=2) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "exists-nested-group": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/exists-nested-group.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x WHERE { VALUES ?x {1} FILTER EXISTS { VALUES ?z {0} { BIND(?x+1 AS ?y) } FILTER(?y=2) } }"
+    ],
+    "candidate_exit": 0
+  },
+  "subquery-limit": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/subquery-limit.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x ?y WHERE { VALUES ?x {2} { SELECT ?x ?y WHERE { VALUES (?x ?y) {(1 10)(2 20)} } ORDER BY ?x LIMIT 1 } }"
+    ],
+    "candidate_exit": 0
+  },
+  "subquery-offset": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/subquery-offset.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "SELECT ?x ?y WHERE { VALUES ?x {2} { SELECT ?x ?y WHERE { VALUES (?x ?y) {(1 10)(2 20)} } ORDER BY ?x LIMIT 1 OFFSET 1 } }"
+    ],
+    "candidate_exit": 0
+  },
+  "base-parent": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/base-parent.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "BASE <http://example.test/a/b/> SELECT (IRI(\"../c\") AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "base-root": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/base-root.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "BASE <http://example.test/a/b/> SELECT (URI(\"/root?x=1#frag\") AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "base-fragment": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/base-fragment.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "BASE <http://example.test/a/b/> SELECT (IRI(\"#frag\") AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "base-absolute-string": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/base-absolute-string.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "BASE <http://example.test/a/b/> SELECT (IRI(\"urn:already\") AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "base-named-iri": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/base-named-iri.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "BASE <http://example.test/a/b/> SELECT (IRI(<urn:already>) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "base-nonstring-error": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/controls/base-nonstring-error.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/fixture.nt",
+      "BASE <http://example.test/a/b/> SELECT (IRI(7) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  }
+}
