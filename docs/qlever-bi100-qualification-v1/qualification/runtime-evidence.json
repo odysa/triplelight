@@ -1,0 +1,28 @@
+{
+  "system": "qlever",
+  "endpoint": "http://127.0.0.1:31438/",
+  "source_or_image": "adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cba4e894ca1ba8117cef6727",
+  "dataset_sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
+  "threads": 4,
+  "memory_configuration": {
+    "container_bytes": 12884901888,
+    "query_memory": "11 GB"
+  },
+  "cache_profile": "clear-between-requests",
+  "cache_control_verified": true,
+  "cache_control_evidence": "Pinned image live settings.json and initial-clear.json; five counters zero",
+  "before_each_request": {
+    "endpoint": "http://127.0.0.1:31438/",
+    "fields": {
+      "cmd": "clear-cache"
+    },
+    "expected_json": {
+      "cache-size-pinned": 0,
+      "cache-size-unpinned": 0,
+      "num-results-pinned-named": 0,
+      "num-results-pinned-unnamed": 0,
+      "num-results-unpinned": 0
+    }
+  },
+  "mode": "native client to VM container untimed output qualification; not a matched comparison"
+}
