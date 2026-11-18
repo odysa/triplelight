@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "/private/tmp/rdf-jianlin-analytical25/duck100-import-v1/bench-source/analytical/duck_load.py", line 145, in <module>
+    load(args)
+    ~~~~^^^^^^
+  File "/private/tmp/rdf-jianlin-analytical25/duck100-import-v1/bench-source/analytical/duck_load.py", line 106, in load
+    connection.execute('CREATE TABLE triples AS SELECT DISTINCT s,p,o FROM incoming')
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_duckdb.OutOfMemoryException: Out of Memory Error: failed to offload data block of size 256.0 KiB (7.4 GiB/7.4 GiB used).
+This limit was set by the 'max_temp_directory_size' setting.
+By default, this setting utilizes the available disk space on the drive where the 'temp_directory' is located.
+You can adjust this setting, by using (for example) PRAGMA max_temp_directory_size='10GiB'
+
+Possible solutions:
+* Reducing the number of threads (SET threads=X)
+* Disabling insertion-order preservation (SET preserve_insertion_order=false)
+* Increasing the memory limit (SET memory_limit='...GB')
+
+See also https://duckdb.org/docs/current/guides/performance/how_to_tune_workloads

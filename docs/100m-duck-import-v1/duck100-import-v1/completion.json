@@ -1,0 +1,7 @@
+{
+  "complete": false,
+  "start_unix": 1795011656.897472,
+  "supervisor_exit": 1,
+  "error": "RuntimeError: Importer failed; partial database is not a reference",
+  "end_unix": 1795012310.721469
+}
