@@ -1,0 +1,67 @@
+{
+  "schema": "independent-bi-reference-retry-v1",
+  "retry_plan": {
+    "original_matrix_sha256": "3a4b95bfe0c802146bb63ad3215e17811b0208eedbb13569f5ebfa10c1d75e64",
+    "retry_files": [
+      "m002_p00_q1.rq",
+      "m003_p00_q1.rq",
+      "m003_p01_q3.rq"
+    ],
+    "timeout_seconds": 600,
+    "original_failures_preserved": true,
+    "acceptance_rules_unchanged": true
+  },
+  "queries": {
+    "m002_p00_q1.rq": {
+      "template": 1,
+      "query_sha256": "95e08aa1eb58dbed5deefe601bdcfb5fa3b9453602c6c243577d91fa9f779e02",
+      "timeout_seconds": 600,
+      "status": "fail",
+      "error": "TimeoutError: timed out"
+    },
+    "m003_p00_q1.rq": {
+      "template": 1,
+      "query_sha256": "ad46ce93b94f8a02ba783d335effe8231321b7b9da75a88ebb393d24d9130fc0",
+      "timeout_seconds": 600,
+      "status": "pass",
+      "rows": 10,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "reviewCount",
+            true
+          ],
+          [
+            "productType",
+            false
+          ]
+        ]
+      },
+      "body_sha256": "45d2bcdd245d1fcf1bd7d978a21b28b750cff36f80c4d563e5f33dae01479f80"
+    },
+    "m003_p01_q3.rq": {
+      "template": 3,
+      "query_sha256": "83bfc38de67c8ca594cb73c4e22af943aa77761532847af12212b87de064fd15",
+      "timeout_seconds": 600,
+      "status": "pass",
+      "rows": 10,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "ratio",
+            true
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      },
+      "body_sha256": "9dffbe53de0ae1e996476ef81ff49c097a75e984279a4e055e73526f3ada7c90"
+    }
+  },
+  "complete": true,
+  "all_requested_pass": false
+}
