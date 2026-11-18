@@ -1,0 +1,1 @@
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (("16777217"^^xsd:decimal = "16777216"^^xsd:float) AS ?v) WHERE {}
