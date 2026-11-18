@@ -1,0 +1,23 @@
+{
+  "system": "rdfdb",
+  "endpoint": "http://127.0.0.1:31439/sparql",
+  "source_or_image": "ef7a77814d23879a7bdf174ffe567b81a402ba9f; binary SHA256 155c1e7e3ebb6c7fd6fbdc273d82d99e20c4bc84240f73441e133e8d644d6f11",
+  "binary_sha256": "155c1e7e3ebb6c7fd6fbdc273d82d99e20c4bc84240f73441e133e8d644d6f11",
+  "dataset_sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
+  "threads": 4,
+  "memory_configuration": {
+    "index_dictionary_cache_mb": 10240,
+    "hard_process_limit": null
+  },
+  "cache_profile": "normal shared cache; statistics readiness required; no result cache override",
+  "mode": "native untimed output qualification",
+  "command": [
+    "/private/tmp/rdf-jianlin-analytical25/w3c-string-ef7a778/rdfdb-ef7a778",
+    "serve",
+    "<agent-workspace>/rdfdb/bench/tools/rdfdb-disk-bsbm100-main",
+    "31439",
+    "--disk",
+    "--cache-mb=10240"
+  ],
+  "comparative_timing_claim": false
+}
