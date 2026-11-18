@@ -1,0 +1,17 @@
+22:23:22 INFO  Fuseki          :: Apache Jena Fuseki 6.2.0
+22:23:23 INFO  Config          :: Fuseki Base = <agent-workspace>/run
+22:23:23 INFO  Config          :: Database: /ds
+22:23:23 INFO  Config          :: UI Base: fuseki-server.jar
+22:23:23 INFO  Shiro           :: Shiro configuration: file:<agent-workspace>/run/shiro.ini
+22:23:23 INFO  Server          :: Path = /ds
+22:23:23 INFO  Server          :: System
+22:23:23 INFO  Server          ::   Memory: 8.0 GiB
+22:23:23 INFO  Server          ::   PID:    44367
+22:23:24 INFO  Server          ::   Port:   http=31436
+22:23:24 INFO  Server          :: Start Fuseki
+22:23:25 INFO  Fuseki          :: [1] POST http://127.0.0.1:31436/ds/sparql
+22:23:25 INFO  Fuseki          :: [1] Query = ASK {}
+22:23:25 INFO  Fuseki          :: [1] 200 OK (129 ms)
+22:23:25 INFO  Fuseki          :: [2] POST http://127.0.0.1:31436/ds/sparql
+22:23:25 INFO  Fuseki          :: [2] Query = SELECT (COUNT(*) AS ?count) WHERE { ?s ?p ?o }
+22:24:08 INFO  Fuseki          :: [2] 200 OK (42.824 s)
