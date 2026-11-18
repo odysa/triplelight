@@ -1,0 +1,1 @@
+{"pid": 51877, "command": ["cargo", "build", "--locked", "--release", "--bin", "rdfdb", "-j1", "--target-dir", "/private/tmp/rdf-jianlin-analytical25/target"], "cwd": "/private/tmp/rdf-jianlin-analytical25/exact-decimal-09e1004/source"}
