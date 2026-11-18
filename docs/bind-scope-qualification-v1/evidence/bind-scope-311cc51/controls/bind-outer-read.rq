@@ -1,0 +1,1 @@
+SELECT ?x ?y WHERE { VALUES ?x {1} { BIND(?x+1 AS ?y) } }

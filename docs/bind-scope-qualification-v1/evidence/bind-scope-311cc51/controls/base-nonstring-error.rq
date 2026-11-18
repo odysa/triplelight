@@ -1,0 +1,1 @@
+BASE <http://example.test/a/b/> SELECT (IRI(7) AS ?v) WHERE {}

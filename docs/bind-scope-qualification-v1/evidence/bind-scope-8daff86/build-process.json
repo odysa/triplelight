@@ -1,0 +1,1 @@
+{"pid": 28708, "command": ["cargo", "build", "--locked", "--release", "--bin", "rdfdb", "-j", "1", "--target-dir", "/private/tmp/rdf-jianlin-analytical25/target"], "started_unix": 1795037842.9545841}
