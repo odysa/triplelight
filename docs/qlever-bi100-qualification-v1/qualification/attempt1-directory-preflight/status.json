@@ -1,0 +1,8 @@
+{
+  "complete": false,
+  "comparative_timing_claim": false,
+  "started_unix": 1795033164.854472,
+  "error": "FileExistsError: [Errno 17] File exists: '/private/tmp/rdf-jianlin-analytical25/bi100-qlever-qualification-v1/tmp'",
+  "index_unchanged": true,
+  "ended_unix": 1795033171.9990668
+}
