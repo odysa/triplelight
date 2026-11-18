@@ -1,0 +1,9 @@
+{
+  "commit": "186da6069cbcb36ace254ec9653fc89dbc36bbaf",
+  "locked_build": "failed: Cargo.lock needs update",
+  "detail": "Cargo.toml declares rust_decimal, but committed Cargo.lock has no rust_decimal package entry",
+  "query_runs": 0,
+  "build_pid_absent": 31298,
+  "observed_unix": 1795041593.720625,
+  "exit_code_not_captured": true
+}
