@@ -1,0 +1,368 @@
+{
+  "queries": 72,
+  "primary_pass": 72,
+  "count_compatible_pass": 72,
+  "comparative_timing_claim": false,
+  "results": {
+    "lubm/all_q1.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q10.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q11.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q12.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q13.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q14.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q2.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q3.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q4.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q5.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q6.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q7.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q8.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/all_q9.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q1.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q10.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q11.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q12.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q13.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q14.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q2.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q3.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q4.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q5.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q6.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q7.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q8.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/distinct_q9.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/group_advisors.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 60160
+    },
+    "lubm/group_type.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 15
+    },
+    "watdiv/all_C1.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_C2.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_C3.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_F1.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_F2.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_F3.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_F4.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_F5.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_L1.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_L2.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_L3.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_L4.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_L5.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_S1.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_S2.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_S3.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_S4.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_S5.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_S6.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/all_S7.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_C1.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_C2.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_C3.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_F1.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_F2.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_F3.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_F4.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_F5.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_L1.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_L2.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_L3.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_L4.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_L5.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_S1.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_S2.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_S3.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_S4.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_S5.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_S6.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/distinct_S7.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "watdiv/group_age.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 9
+    },
+    "watdiv/group_gender.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 2
+    }
+  }
+}
