@@ -7,6 +7,7 @@ mod agg;
 mod bgp;
 mod count;
 mod expr;
+mod support;
 use bgp::Slot;
 pub mod results;
 
@@ -107,6 +108,8 @@ fn run<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryRes
 }
 
 fn run_query<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
+    // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
+    if let Some(reason) = support::unsupported(q) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
     let mut ctx = Ctx::new(snap);
     ctx.wcoj = opts.wcoj;
     let stats = opts.stats;
