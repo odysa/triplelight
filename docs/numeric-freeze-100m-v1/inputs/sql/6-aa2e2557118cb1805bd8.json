@@ -1,0 +1,624 @@
+{
+  "groups": {
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite70/Reviewer35433": {
+      "n": 3,
+      "exact_sum": "21",
+      "exact_sum_magnitudes": "21"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite121/Reviewer62225": {
+      "n": 3,
+      "exact_sum": "20",
+      "exact_sum_magnitudes": "20"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite71/Reviewer35550": {
+      "n": 4,
+      "exact_sum": "32",
+      "exact_sum_magnitudes": "32"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite98/Reviewer51099": {
+      "n": 4,
+      "exact_sum": "27",
+      "exact_sum_magnitudes": "27"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite82/Reviewer41283": {
+      "n": 4,
+      "exact_sum": "24",
+      "exact_sum_magnitudes": "24"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite27/Reviewer13708": {
+      "n": 4,
+      "exact_sum": "15",
+      "exact_sum_magnitudes": "15"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite146/Reviewer75639": {
+      "n": 3,
+      "exact_sum": "23",
+      "exact_sum_magnitudes": "23"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite23/Reviewer11952": {
+      "n": 2,
+      "exact_sum": "11",
+      "exact_sum_magnitudes": "11"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite262/Reviewer132402": {
+      "n": 4,
+      "exact_sum": "10",
+      "exact_sum_magnitudes": "10"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite42/Reviewer21888": {
+      "n": 4,
+      "exact_sum": "18",
+      "exact_sum_magnitudes": "18"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite248/Reviewer124783": {
+      "n": 3,
+      "exact_sum": "14",
+      "exact_sum_magnitudes": "14"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite91/Reviewer46990": {
+      "n": 3,
+      "exact_sum": "14",
+      "exact_sum_magnitudes": "14"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite127/Reviewer65954": {
+      "n": 2,
+      "exact_sum": "16",
+      "exact_sum_magnitudes": "16"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite286/Reviewer144749": {
+      "n": 3,
+      "exact_sum": "11",
+      "exact_sum_magnitudes": "11"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite106/Reviewer54708": {
+      "n": 3,
+      "exact_sum": "23",
+      "exact_sum_magnitudes": "23"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite269/Reviewer135451": {
+      "n": 4,
+      "exact_sum": "17",
+      "exact_sum_magnitudes": "17"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite9/Reviewer4155": {
+      "n": 4,
+      "exact_sum": "26",
+      "exact_sum_magnitudes": "26"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite2/Reviewer538": {
+      "n": 4,
+      "exact_sum": "24",
+      "exact_sum_magnitudes": "24"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite209/Reviewer105194": {
+      "n": 3,
+      "exact_sum": "6",
+      "exact_sum_magnitudes": "6"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite281/Reviewer142370": {
+      "n": 3,
+      "exact_sum": "16",
+      "exact_sum_magnitudes": "16"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite127/Reviewer65907": {
+      "n": 3,
+      "exact_sum": "9",
+      "exact_sum_magnitudes": "9"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite258/Reviewer130051": {
+      "n": 4,
+      "exact_sum": "21",
+      "exact_sum_magnitudes": "21"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite31/Reviewer16324": {
+      "n": 3,
+      "exact_sum": "14",
+      "exact_sum_magnitudes": "14"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite80/Reviewer39942": {
+      "n": 4,
+      "exact_sum": "18",
+      "exact_sum_magnitudes": "18"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite109/Reviewer56085": {
+      "n": 3,
+      "exact_sum": "11",
+      "exact_sum_magnitudes": "11"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite118/Reviewer60806": {
+      "n": 3,
+      "exact_sum": "24",
+      "exact_sum_magnitudes": "24"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite255/Reviewer128280": {
+      "n": 3,
+      "exact_sum": "23",
+      "exact_sum_magnitudes": "23"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite127/Reviewer65831": {
+      "n": 4,
+      "exact_sum": "15",
+      "exact_sum_magnitudes": "15"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite76/Reviewer37846": {
+      "n": 2,
+      "exact_sum": "14",
+      "exact_sum_magnitudes": "14"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite30/Reviewer15565": {
+      "n": 3,
+      "exact_sum": "17",
+      "exact_sum_magnitudes": "17"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite218/Reviewer109670": {
+      "n": 3,
+      "exact_sum": "18",
+      "exact_sum_magnitudes": "18"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite103/Reviewer52899": {
+      "n": 2,
+      "exact_sum": "13",
+      "exact_sum_magnitudes": "13"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite121/Reviewer61987": {
+      "n": 3,
+      "exact_sum": "7",
+      "exact_sum_magnitudes": "7"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite144/Reviewer75069": {
+      "n": 2,
+      "exact_sum": "10",
+      "exact_sum_magnitudes": "10"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite212/Reviewer107109": {
+      "n": 2,
+      "exact_sum": "14",
+      "exact_sum_magnitudes": "14"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite280/Reviewer141653": {
+      "n": 4,
+      "exact_sum": "12",
+      "exact_sum_magnitudes": "12"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite178/Reviewer90702": {
+      "n": 4,
+      "exact_sum": "22",
+      "exact_sum_magnitudes": "22"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite113/Reviewer58392": {
+      "n": 2,
+      "exact_sum": "12",
+      "exact_sum_magnitudes": "12"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite41/Reviewer21083": {
+      "n": 4,
+      "exact_sum": "29",
+      "exact_sum_magnitudes": "29"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite247/Reviewer124212": {
+      "n": 2,
+      "exact_sum": "18",
+      "exact_sum_magnitudes": "18"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite110/Reviewer56568": {
+      "n": 3,
+      "exact_sum": "20",
+      "exact_sum_magnitudes": "20"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite236/Reviewer118942": {
+      "n": 4,
+      "exact_sum": "19",
+      "exact_sum_magnitudes": "19"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite180/Reviewer91749": {
+      "n": 2,
+      "exact_sum": "11",
+      "exact_sum_magnitudes": "11"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite211/Reviewer106482": {
+      "n": 3,
+      "exact_sum": "10",
+      "exact_sum_magnitudes": "10"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite204/Reviewer102948": {
+      "n": 2,
+      "exact_sum": "14",
+      "exact_sum_magnitudes": "14"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite115/Reviewer59449": {
+      "n": 4,
+      "exact_sum": "30",
+      "exact_sum_magnitudes": "30"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite141/Reviewer73734": {
+      "n": 3,
+      "exact_sum": "18",
+      "exact_sum_magnitudes": "18"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite14/Reviewer6831": {
+      "n": 3,
+      "exact_sum": "17",
+      "exact_sum_magnitudes": "17"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite278/Reviewer140424": {
+      "n": 4,
+      "exact_sum": "24",
+      "exact_sum_magnitudes": "24"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite41/Reviewer20948": {
+      "n": 2,
+      "exact_sum": "9",
+      "exact_sum_magnitudes": "9"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite80/Reviewer40527": {
+      "n": 4,
+      "exact_sum": "20",
+      "exact_sum_magnitudes": "20"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite258/Reviewer130154": {
+      "n": 4,
+      "exact_sum": "14",
+      "exact_sum_magnitudes": "14"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite157/Reviewer81716": {
+      "n": 3,
+      "exact_sum": "25",
+      "exact_sum_magnitudes": "25"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite287/Reviewer145005": {
+      "n": 4,
+      "exact_sum": "14",
+      "exact_sum_magnitudes": "14"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite269/Reviewer135347": {
+      "n": 3,
+      "exact_sum": "18",
+      "exact_sum_magnitudes": "18"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite199/Reviewer100137": {
+      "n": 3,
+      "exact_sum": "13",
+      "exact_sum_magnitudes": "13"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite183/Reviewer93216": {
+      "n": 3,
+      "exact_sum": "20",
+      "exact_sum_magnitudes": "20"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite147/Reviewer76206": {
+      "n": 3,
+      "exact_sum": "19",
+      "exact_sum_magnitudes": "19"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite199/Reviewer100076": {
+      "n": 4,
+      "exact_sum": "22",
+      "exact_sum_magnitudes": "22"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite37/Reviewer18666": {
+      "n": 3,
+      "exact_sum": "19",
+      "exact_sum_magnitudes": "19"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite102/Reviewer52520": {
+      "n": 4,
+      "exact_sum": "34",
+      "exact_sum_magnitudes": "34"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite217/Reviewer109346": {
+      "n": 4,
+      "exact_sum": "19",
+      "exact_sum_magnitudes": "19"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite115/Reviewer59395": {
+      "n": 3,
+      "exact_sum": "10",
+      "exact_sum_magnitudes": "10"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite206/Reviewer104080": {
+      "n": 2,
+      "exact_sum": "12",
+      "exact_sum_magnitudes": "12"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite3/Reviewer1189": {
+      "n": 2,
+      "exact_sum": "9",
+      "exact_sum_magnitudes": "9"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite210/Reviewer106105": {
+      "n": 3,
+      "exact_sum": "23",
+      "exact_sum_magnitudes": "23"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite83/Reviewer42003": {
+      "n": 3,
+      "exact_sum": "12",
+      "exact_sum_magnitudes": "12"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite107/Reviewer55155": {
+      "n": 3,
+      "exact_sum": "9",
+      "exact_sum_magnitudes": "9"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite85/Reviewer43209": {
+      "n": 2,
+      "exact_sum": "12",
+      "exact_sum_magnitudes": "12"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite173/Reviewer88040": {
+      "n": 2,
+      "exact_sum": "10",
+      "exact_sum_magnitudes": "10"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite278/Reviewer140492": {
+      "n": 3,
+      "exact_sum": "20",
+      "exact_sum_magnitudes": "20"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite272/Reviewer137493": {
+      "n": 4,
+      "exact_sum": "21",
+      "exact_sum_magnitudes": "21"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite172/Reviewer87446": {
+      "n": 4,
+      "exact_sum": "22",
+      "exact_sum_magnitudes": "22"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite223/Reviewer112283": {
+      "n": 4,
+      "exact_sum": "15",
+      "exact_sum_magnitudes": "15"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite227/Reviewer114799": {
+      "n": 3,
+      "exact_sum": "12",
+      "exact_sum_magnitudes": "12"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite245/Reviewer122916": {
+      "n": 4,
+      "exact_sum": "27",
+      "exact_sum_magnitudes": "27"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite227/Reviewer114630": {
+      "n": 4,
+      "exact_sum": "16",
+      "exact_sum_magnitudes": "16"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite147/Reviewer76294": {
+      "n": 3,
+      "exact_sum": "16",
+      "exact_sum_magnitudes": "16"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite152/Reviewer78996": {
+      "n": 2,
+      "exact_sum": "12",
+      "exact_sum_magnitudes": "12"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite54/Reviewer27549": {
+      "n": 2,
+      "exact_sum": "15",
+      "exact_sum_magnitudes": "15"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite223/Reviewer112570": {
+      "n": 4,
+      "exact_sum": "18",
+      "exact_sum_magnitudes": "18"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite87/Reviewer44491": {
+      "n": 4,
+      "exact_sum": "32",
+      "exact_sum_magnitudes": "32"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite19/Reviewer10220": {
+      "n": 2,
+      "exact_sum": "13",
+      "exact_sum_magnitudes": "13"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite95/Reviewer48873": {
+      "n": 3,
+      "exact_sum": "18",
+      "exact_sum_magnitudes": "18"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite102/Reviewer52374": {
+      "n": 4,
+      "exact_sum": "18",
+      "exact_sum_magnitudes": "18"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite91/Reviewer46820": {
+      "n": 3,
+      "exact_sum": "8",
+      "exact_sum_magnitudes": "8"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite279/Reviewer141317": {
+      "n": 3,
+      "exact_sum": "16",
+      "exact_sum_magnitudes": "16"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite230/Reviewer115960": {
+      "n": 4,
+      "exact_sum": "22",
+      "exact_sum_magnitudes": "22"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite203/Reviewer102548": {
+      "n": 3,
+      "exact_sum": "22",
+      "exact_sum_magnitudes": "22"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite194/Reviewer98041": {
+      "n": 2,
+      "exact_sum": "10",
+      "exact_sum_magnitudes": "10"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite152/Reviewer78889": {
+      "n": 3,
+      "exact_sum": "14",
+      "exact_sum_magnitudes": "14"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite258/Reviewer130283": {
+      "n": 3,
+      "exact_sum": "25",
+      "exact_sum_magnitudes": "25"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite215/Reviewer108527": {
+      "n": 3,
+      "exact_sum": "22",
+      "exact_sum_magnitudes": "22"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite201/Reviewer101603": {
+      "n": 2,
+      "exact_sum": "10",
+      "exact_sum_magnitudes": "10"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite82/Reviewer41305": {
+      "n": 2,
+      "exact_sum": "10",
+      "exact_sum_magnitudes": "10"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite41/Reviewer21053": {
+      "n": 3,
+      "exact_sum": "15",
+      "exact_sum_magnitudes": "15"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite154/Reviewer79844": {
+      "n": 3,
+      "exact_sum": "10",
+      "exact_sum_magnitudes": "10"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite248/Reviewer124610": {
+      "n": 1,
+      "exact_sum": "9",
+      "exact_sum_magnitudes": "9"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite110/Reviewer57023": {
+      "n": 3,
+      "exact_sum": "20",
+      "exact_sum_magnitudes": "20"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite259/Reviewer131081": {
+      "n": 3,
+      "exact_sum": "22",
+      "exact_sum_magnitudes": "22"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite190/Reviewer96886": {
+      "n": 2,
+      "exact_sum": "9",
+      "exact_sum_magnitudes": "9"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite126/Reviewer65238": {
+      "n": 2,
+      "exact_sum": "6",
+      "exact_sum_magnitudes": "6"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite273/Reviewer137930": {
+      "n": 3,
+      "exact_sum": "18",
+      "exact_sum_magnitudes": "18"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite105/Reviewer54218": {
+      "n": 3,
+      "exact_sum": "22",
+      "exact_sum_magnitudes": "22"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite16/Reviewer8467": {
+      "n": 2,
+      "exact_sum": "14",
+      "exact_sum_magnitudes": "14"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite126/Reviewer65252": {
+      "n": 3,
+      "exact_sum": "18",
+      "exact_sum_magnitudes": "18"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite189/Reviewer96075": {
+      "n": 1,
+      "exact_sum": "8",
+      "exact_sum_magnitudes": "8"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite139/Reviewer72637": {
+      "n": 3,
+      "exact_sum": "19",
+      "exact_sum_magnitudes": "19"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite240/Reviewer120564": {
+      "n": 2,
+      "exact_sum": "4",
+      "exact_sum_magnitudes": "4"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite162/Reviewer83276": {
+      "n": 3,
+      "exact_sum": "16",
+      "exact_sum_magnitudes": "16"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite98/Reviewer50881": {
+      "n": 2,
+      "exact_sum": "9",
+      "exact_sum_magnitudes": "9"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite171/Reviewer87133": {
+      "n": 1,
+      "exact_sum": "2",
+      "exact_sum_magnitudes": "2"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite96/Reviewer49768": {
+      "n": 1,
+      "exact_sum": "9",
+      "exact_sum_magnitudes": "9"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite6/Reviewer2654": {
+      "n": 1,
+      "exact_sum": "9",
+      "exact_sum_magnitudes": "9"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite276/Reviewer139532": {
+      "n": 1,
+      "exact_sum": "10",
+      "exact_sum_magnitudes": "10"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite125/Reviewer64865": {
+      "n": 2,
+      "exact_sum": "14",
+      "exact_sum_magnitudes": "14"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite186/Reviewer94663": {
+      "n": 2,
+      "exact_sum": "2",
+      "exact_sum_magnitudes": "2"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite140/Reviewer73007": {
+      "n": 1,
+      "exact_sum": "3",
+      "exact_sum_magnitudes": "3"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite78/Reviewer39397": {
+      "n": 1,
+      "exact_sum": "9",
+      "exact_sum_magnitudes": "9"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite158/Reviewer81870": {
+      "n": 1,
+      "exact_sum": "2",
+      "exact_sum_magnitudes": "2"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite212/Reviewer106739": {
+      "n": 1,
+      "exact_sum": "10",
+      "exact_sum_magnitudes": "10"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite36/Reviewer18183": {
+      "n": 1,
+      "exact_sum": "9",
+      "exact_sum_magnitudes": "9"
+    },
+    "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite193/Reviewer97683": {
+      "n": 1,
+      "exact_sum": "9",
+      "exact_sum_magnitudes": "9"
+    }
+  },
+  "global": {
+    "n": 350,
+    "exact_sum": "1936",
+    "exact_sum_magnitudes": "1936"
+  }
+}
