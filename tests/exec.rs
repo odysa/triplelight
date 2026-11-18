@@ -602,3 +602,27 @@ fn unsupported_features_are_rejected_not_misanswered() {
         assert!(query(&s, &q).is_ok(), "{q}");
     }
 }
+
+/// SPARQL evaluates groups bottom-up: a FILTER or BIND inside a group must not see variables bound only outside it
+/// (W3C bind07, bind10). Sideways passing is kept only where it cannot change the answer.
+#[test]
+fn group_scoping_is_bottom_up() {
+    let xi = "<http://www.w3.org/2001/XMLSchema#integer>";
+    let data = format!("<urn:s1> <urn:p> \"1\"^^{xi} .\n<urn:s4> <urn:p> \"4\"^^{xi} .\n");
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let rows = |q: &str| -> Vec<String> { match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.into_iter().map(|r| format!("{r:?}")).collect(); v.sort(); v } r => panic!("{r:?}") } };
+    // bind07: ?o is not in scope inside the UNION branches, so ?z is unbound in all 4 rows.
+    let r = rows("SELECT ?s ?o ?z { ?s ?p ?o . { BIND(?o+1 AS ?z) } UNION { BIND(?o+2 AS ?z) } }");
+    assert_eq!(r.len(), 4);
+    assert!(r.iter().all(|x| !x.contains("\"2\"") && !x.contains("\"3\"") && !x.contains("\"5\"") && !x.contains("\"6\"")), "{r:?}");
+    // bind10: ?z is not in scope in the inner FILTER, so it filters everything out.
+    assert!(rows("SELECT ?s ?v ?z { BIND(4 AS ?z) { ?s <urn:p> ?v . FILTER(?v = ?z) } }").is_empty());
+    // The same filter at the outer level does see ?z.
+    assert_eq!(rows("SELECT ?s ?v ?z { BIND(4 AS ?z) ?s <urn:p> ?v . FILTER(?v = ?z) }").len(), 1);
+    // OPTIONAL { P FILTER(F) } is LeftJoin(L, P, F): F sees the merged solution, so ?v > 2 matches s4 only.
+    let c = rows("SELECT (COUNT(?x) AS ?c) { ?s <urn:p> ?v OPTIONAL { ?s <urn:p> ?x FILTER(?v > 2) } }");
+    assert!(c[0].contains("\"1\""), "{c:?}");
+    // A FILTER one group deeper is not the LeftJoin condition: there ?v is out of scope, so nothing matches.
+    let c = rows("SELECT (COUNT(?x) AS ?c) { ?s <urn:p> ?v OPTIONAL { { ?s <urn:p> ?x FILTER(?v > 2) } } }");
+    assert!(c[0].contains("\"0\""), "{c:?}");
+}
