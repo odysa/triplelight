@@ -1,0 +1,147 @@
+{
+  "add": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "sum": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "avg": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "quarter": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "integer-zero": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "decimal-zero": {
+    "contract_pass": true,
+    "jena_exact_pass": null,
+    "classification": "contract error; Jena oracle exception unscored"
+  },
+  "double-zero": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "negative-round": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "ceil-floor": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "cast": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "compiled-filter": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "decimal-compare": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "precision-28": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "coefficient-overflow": {
+    "contract_pass": true,
+    "jena_exact_pass": false,
+    "classification": "declared exact-or-error boundary"
+  },
+  "scale-29": {
+    "contract_pass": true,
+    "jena_exact_pass": false,
+    "classification": "declared exact-or-error boundary"
+  },
+  "integer-overflow": {
+    "contract_pass": true,
+    "jena_exact_pass": false,
+    "classification": "declared exact-or-error boundary"
+  },
+  "repeating-division": {
+    "contract_pass": true,
+    "jena_exact_pass": false,
+    "classification": "nonterminating decimal precision"
+  },
+  "mixed-float": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "decimal-max-round": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "decimal-overflow": {
+    "contract_pass": true,
+    "jena_exact_pass": false,
+    "classification": "declared exact-or-error boundary"
+  },
+  "beyond-decimal-coefficient": {
+    "contract_pass": true,
+    "jena_exact_pass": false,
+    "classification": "declared exact-or-error boundary"
+  },
+  "sub-scale-29": {
+    "contract_pass": true,
+    "jena_exact_pass": false,
+    "classification": "declared exact-or-error boundary"
+  },
+  "float-promotion-add": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "float-promotion-compare": {
+    "contract_pass": true,
+    "jena_exact_pass": true,
+    "classification": "exact Jena term bag"
+  },
+  "mixed-double": {
+    "contract_pass": true,
+    "jena_exact_pass": false,
+    "classification": "double lexical spelling"
+  },
+  "max-add-fraction": {
+    "contract_pass": true,
+    "jena_exact_pass": false,
+    "classification": "declared exact-or-error boundary"
+  },
+  "fraction-add-max": {
+    "contract_pass": true,
+    "jena_exact_pass": false,
+    "classification": "declared exact-or-error boundary"
+  },
+  "product-coefficient-rounding": {
+    "contract_pass": true,
+    "jena_exact_pass": false,
+    "classification": "declared exact-or-error boundary"
+  },
+  "terminating-underflow": {
+    "contract_pass": true,
+    "jena_exact_pass": false,
+    "classification": "declared exact-or-error boundary"
+  }
+}
