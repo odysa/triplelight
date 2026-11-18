@@ -1,0 +1,12 @@
+{
+  "Parameters": {
+    "NumberOfBuffers": "1360000",
+    "MaxDirtyBuffers": "1000000",
+    "ThreadsPerQuery": "4",
+    "DirsAllowed": ".,/import,/usr/share/proj"
+  },
+  "SPARQL": {
+    "ResultSetMaxRows": "1000000000",
+    "MaxQueryExecutionTime": "120"
+  }
+}
