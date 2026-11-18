@@ -1,0 +1,1 @@
+SELECT t0.o AS "o", COUNT(*) AS "n" FROM triples t0 WHERE t0.p = 'http://db.uwaterloo.ca/~galuc/wsdbm/gender' GROUP BY t0.o
