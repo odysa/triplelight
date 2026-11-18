@@ -1,0 +1,30 @@
+{
+  "policy": "bi-count-int-integer-equivalence-v1",
+  "frozen_utc": "2026-11-17T23:49:32.345424+00:00",
+  "authorization": "Kaiming-He db4fa3e8 in (internal discussion)",
+  "cohort": "future QLever BI outputs unexamined at freeze",
+  "strict_rule_retained": true,
+  "count_columns": {
+    "1": [
+      "reviewCount"
+    ],
+    "2": [
+      "sameFeatures"
+    ],
+    "5": [
+      "nrOfReviews"
+    ]
+  },
+  "sources": {
+    "count_equivalence.py": "3b19b1c63e92927038db950b25c4bbd14c6d67c0523875affc9727e2087f154c",
+    "http_measure.py": "d10321a45381b511bd9fe6b0844f457f84fc7ef8ac0df164bc7937e87955c9ac",
+    "test_count_equivalence.py": "ff1cf72a06104df5fbf4c88b549b709f5a3218a5eb951de91f725983ac953008",
+    "test_http_measure.py": "55f0c0cce550bcf565200867031f735325e934adcecfe2604a7342908f19c7dc"
+  },
+  "rules": [
+    "Only xsd:int and xsd:integer in computed COUNT columns are value-normalized.",
+    "RDF literal kind and valid integer lexical grammar are required; COUNT is nonnegative; xsd:int cannot exceed 2147483647.",
+    "Normalize valid lexical form to decimal integer value and xsd:integer in a deep copy; retain raw results and strict failure.",
+    "No other literal datatypes, sourced terms, float checks, membership, bags or ordering are relaxed."
+  ]
+}
