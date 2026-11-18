@@ -1,0 +1,1162 @@
+{
+  "complete": true,
+  "queries": {
+    "lubm/all_q1.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q1.rq"
+      ],
+      "pid": 89139,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f72cad45b1cfd24c9f0ee4fce51db6ad43d5529bd1e2799b898110502212117b",
+        "reference_sha256": "a9976ceaf754d2a7f22fa0c8ab28fcef16d03a4cff0fcb8d294dc7f65b3ce9b7"
+      }
+    },
+    "lubm/all_q10.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q10.rq"
+      ],
+      "pid": 89200,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f72cad45b1cfd24c9f0ee4fce51db6ad43d5529bd1e2799b898110502212117b",
+        "reference_sha256": "a9976ceaf754d2a7f22fa0c8ab28fcef16d03a4cff0fcb8d294dc7f65b3ce9b7"
+      }
+    },
+    "lubm/all_q11.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q11.rq"
+      ],
+      "pid": 89244,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "766b90fe95b5cc61fe56ee58479d177d6ab83c92b7a045efe484f06dc25312de",
+        "reference_sha256": "44bfc813d544d50a185f189c842a43ec2caa30893284b996e825f690c2ccad63"
+      }
+    },
+    "lubm/all_q12.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q12.rq"
+      ],
+      "pid": 89287,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "1248c731e9c5674aaf38b41c390c6f765435f7bcfe5ebeb895cfe8fadc342fa2",
+        "reference_sha256": "09c48f0bd46d66a0ce747da787b4831285f69029640bdbc6e454033215339c50"
+      }
+    },
+    "lubm/all_q13.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q13.rq"
+      ],
+      "pid": 89365,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "83906527289674436b127532f049772099aabcf2af63c25f38642cdcb210cd8a",
+        "reference_sha256": "585bf2076959401782fc7f75247c4feb9e16790d3a675b467895220f129f9079"
+      }
+    },
+    "lubm/all_q14.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q14.rq"
+      ],
+      "pid": 89408,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "3f139739037cfb7fd33124284ad1f873078fc779bd96c2a284f2251bad97224e",
+        "reference_sha256": "52e2ee7d7aaf9d29b92d9dc84559fe1d92e7cf4895e5e3dc826ad6e080b5544e"
+      }
+    },
+    "lubm/all_q2.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q2.rq"
+      ],
+      "pid": 89438,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "23c466c4e8130264d7254e4db27b794f8cf3cfa6228ecd0ba7fbdb4abad5da74",
+        "reference_sha256": "c1e65b3addfbde575fa8289a04321cabddac5b41888c8f97f063cf48af6a2adc"
+      }
+    },
+    "lubm/all_q3.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q3.rq"
+      ],
+      "pid": 89561,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "9ee26f2c3791a448d3b0338fa15894a5b5602736aef329531806bc76bc72426f",
+        "reference_sha256": "c4a01923cea4fd7bc7ffdd9652ee0a06567d446292d1efc71925816b2986d28a"
+      }
+    },
+    "lubm/all_q4.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q4.rq"
+      ],
+      "pid": 89614,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "766b90fe95b5cc61fe56ee58479d177d6ab83c92b7a045efe484f06dc25312de",
+        "reference_sha256": "44bfc813d544d50a185f189c842a43ec2caa30893284b996e825f690c2ccad63"
+      }
+    },
+    "lubm/all_q5.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q5.rq"
+      ],
+      "pid": 89678,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "42ebb2dcb7496a9730949bb6fdcead90da228d741b58e3c366ba996fe85d0701",
+        "reference_sha256": "5793c298876faaa969ecb6584fa4af1cafede72775871ef4e77f1a03b6f0a100"
+      }
+    },
+    "lubm/all_q6.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q6.rq"
+      ],
+      "pid": 89725,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "3f139739037cfb7fd33124284ad1f873078fc779bd96c2a284f2251bad97224e",
+        "reference_sha256": "52e2ee7d7aaf9d29b92d9dc84559fe1d92e7cf4895e5e3dc826ad6e080b5544e"
+      }
+    },
+    "lubm/all_q7.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q7.rq"
+      ],
+      "pid": 89754,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "13dd5b04fc8d6ee05e6bc9113abc334211ddd8dc4c0c2791135631333f4887d1",
+        "reference_sha256": "c920f8dec27c38da351442a4052a2568e1e174f09b27f8c90a8d8402a2c3e5d1"
+      }
+    },
+    "lubm/all_q8.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q8.rq"
+      ],
+      "pid": 89829,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "ccf6fd9be87c98c35d8fa2631a972aeabc46be410f6c818c839a185c16d80362",
+        "reference_sha256": "463fc65f2c04afc64b59911364134c3dbcee712d29d0d576bb9bbf7a2e880ddb"
+      }
+    },
+    "lubm/all_q9.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/all_q9.rq"
+      ],
+      "pid": 89926,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "b1723da93d221b05a611a7c00fa1ae9124395d45f7cbed3140b72a6f40e13a39",
+        "reference_sha256": "c9f8ec369e20b27c912e0f9099f0923a59fa4290200537f207d17f133012ad9d"
+      }
+    },
+    "lubm/distinct_q1.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q1.rq"
+      ],
+      "pid": 90054,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f72cad45b1cfd24c9f0ee4fce51db6ad43d5529bd1e2799b898110502212117b",
+        "reference_sha256": "a9976ceaf754d2a7f22fa0c8ab28fcef16d03a4cff0fcb8d294dc7f65b3ce9b7"
+      }
+    },
+    "lubm/distinct_q10.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q10.rq"
+      ],
+      "pid": 90104,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f72cad45b1cfd24c9f0ee4fce51db6ad43d5529bd1e2799b898110502212117b",
+        "reference_sha256": "a9976ceaf754d2a7f22fa0c8ab28fcef16d03a4cff0fcb8d294dc7f65b3ce9b7"
+      }
+    },
+    "lubm/distinct_q11.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q11.rq"
+      ],
+      "pid": 90150,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "766b90fe95b5cc61fe56ee58479d177d6ab83c92b7a045efe484f06dc25312de",
+        "reference_sha256": "44bfc813d544d50a185f189c842a43ec2caa30893284b996e825f690c2ccad63"
+      }
+    },
+    "lubm/distinct_q12.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q12.rq"
+      ],
+      "pid": 90196,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "1248c731e9c5674aaf38b41c390c6f765435f7bcfe5ebeb895cfe8fadc342fa2",
+        "reference_sha256": "09c48f0bd46d66a0ce747da787b4831285f69029640bdbc6e454033215339c50"
+      }
+    },
+    "lubm/distinct_q13.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q13.rq"
+      ],
+      "pid": 90275,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "83906527289674436b127532f049772099aabcf2af63c25f38642cdcb210cd8a",
+        "reference_sha256": "585bf2076959401782fc7f75247c4feb9e16790d3a675b467895220f129f9079"
+      }
+    },
+    "lubm/distinct_q14.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q14.rq"
+      ],
+      "pid": 90323,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "3f139739037cfb7fd33124284ad1f873078fc779bd96c2a284f2251bad97224e",
+        "reference_sha256": "52e2ee7d7aaf9d29b92d9dc84559fe1d92e7cf4895e5e3dc826ad6e080b5544e"
+      }
+    },
+    "lubm/distinct_q2.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q2.rq"
+      ],
+      "pid": 90364,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "23c466c4e8130264d7254e4db27b794f8cf3cfa6228ecd0ba7fbdb4abad5da74",
+        "reference_sha256": "c1e65b3addfbde575fa8289a04321cabddac5b41888c8f97f063cf48af6a2adc"
+      }
+    },
+    "lubm/distinct_q3.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q3.rq"
+      ],
+      "pid": 90488,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "9ee26f2c3791a448d3b0338fa15894a5b5602736aef329531806bc76bc72426f",
+        "reference_sha256": "c4a01923cea4fd7bc7ffdd9652ee0a06567d446292d1efc71925816b2986d28a"
+      }
+    },
+    "lubm/distinct_q4.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q4.rq"
+      ],
+      "pid": 90537,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "766b90fe95b5cc61fe56ee58479d177d6ab83c92b7a045efe484f06dc25312de",
+        "reference_sha256": "44bfc813d544d50a185f189c842a43ec2caa30893284b996e825f690c2ccad63"
+      }
+    },
+    "lubm/distinct_q5.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q5.rq"
+      ],
+      "pid": 90612,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "42ebb2dcb7496a9730949bb6fdcead90da228d741b58e3c366ba996fe85d0701",
+        "reference_sha256": "5793c298876faaa969ecb6584fa4af1cafede72775871ef4e77f1a03b6f0a100"
+      }
+    },
+    "lubm/distinct_q6.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q6.rq"
+      ],
+      "pid": 90663,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "3f139739037cfb7fd33124284ad1f873078fc779bd96c2a284f2251bad97224e",
+        "reference_sha256": "52e2ee7d7aaf9d29b92d9dc84559fe1d92e7cf4895e5e3dc826ad6e080b5544e"
+      }
+    },
+    "lubm/distinct_q7.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q7.rq"
+      ],
+      "pid": 90703,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "24bf257d3c05530a490dd95f6282aebe2766e07bece094b5bcf56e58eaf8867e",
+        "reference_sha256": "b03522c69c41f2da9df3fc046d3ebaf73307acf9a9d51510b39c81a82ee967cd"
+      }
+    },
+    "lubm/distinct_q8.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q8.rq"
+      ],
+      "pid": 90778,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "ccf6fd9be87c98c35d8fa2631a972aeabc46be410f6c818c839a185c16d80362",
+        "reference_sha256": "463fc65f2c04afc64b59911364134c3dbcee712d29d0d576bb9bbf7a2e880ddb"
+      }
+    },
+    "lubm/distinct_q9.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/distinct_q9.rq"
+      ],
+      "pid": 90924,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "ca5b3ee6625bcc32b0625b7353820b2d8756e776751f10b5ea2ef0bd25d4f747",
+        "reference_sha256": "ab765373968644da10bef7e0c2f107bd16190e258026b5637e42f67b08aa3dc6"
+      }
+    },
+    "lubm/group_advisors.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/group_advisors.rq"
+      ],
+      "pid": 91066,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 60160,
+        "output_sha256": "117b3fdfe7f70cfe8f85fce9b3ae33c213ec2a0b92aa9066ca96f50b84d9ea77",
+        "reference_sha256": "c77702cdada270eff03eafc754977da687f98fae0a71c1fe9b28923d8f43d544"
+      }
+    },
+    "lubm/group_type.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "lubm/group_type.rq"
+      ],
+      "pid": 91206,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 15,
+        "output_sha256": "98fcf4d893c8731f872b19e23d1484b789fd38a20571e25eee395d4793c868b0",
+        "reference_sha256": "8ce5b308fc9b416b3731f44b43413da940fd3c0ef20f3f84423787b494e541ff"
+      }
+    },
+    "watdiv/all_C1.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_C1.rq"
+      ],
+      "pid": 91232,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "47433304084a0bbf6089160d864b57ba4fda5321e43e492b41c5c8ed9df8b434",
+        "reference_sha256": "847b6a78e50bd1c0841e8d86ffed267b2f2f233b05e0fc02c878b5098ca3fd5c"
+      }
+    },
+    "watdiv/all_C2.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_C2.rq"
+      ],
+      "pid": 91275,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/all_C3.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_C3.rq"
+      ],
+      "pid": 91322,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "1f9e640b2d44a888d602ef752d625d038ef34a5436973c653c6586f6a8536540",
+        "reference_sha256": "c5057a2d31780eb7221703741b1722bbec0befee69c3909084ed21890dac6fc0"
+      }
+    },
+    "watdiv/all_F1.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_F1.rq"
+      ],
+      "pid": 91428,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/all_F2.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_F2.rq"
+      ],
+      "pid": 91456,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "79a6f6375dd4684af9078fea22088ebd4d461c0f4f2b596c869e380ff4d02819",
+        "reference_sha256": "0267780fed54c5c86c9a9f9ee7fc34b0222e4fd051bb585a67247f1625d967d2"
+      }
+    },
+    "watdiv/all_F3.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_F3.rq"
+      ],
+      "pid": 91493,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "a31ef7417ce9e341d9976caa9084041cbe301503b1a7f93b75b8b2e5c177258a",
+        "reference_sha256": "bc3e7c0735f0fd4dea0c36e671b5ddbfa1666b53ae1337201bed16e29c462cac"
+      }
+    },
+    "watdiv/all_F4.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_F4.rq"
+      ],
+      "pid": 91531,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/all_F5.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_F5.rq"
+      ],
+      "pid": 91571,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "34c6b642cdd735226baab17a7ef4e91a60f16dfe4f3252c998213c85420d7b3b",
+        "reference_sha256": "f8bb485a484f660381822073b0b2bbc2b09a3e194f395c33108c1db313f1ce6b"
+      }
+    },
+    "watdiv/all_L1.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_L1.rq"
+      ],
+      "pid": 91605,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "b9ef47554eb6abdff98ae8beab8d6f2e9282b3b2dea5e2a17efff4d46c90e40c",
+        "reference_sha256": "14198ea517c4287be0a418444e28bd3edac140c7df862793ba311dc967885c41"
+      }
+    },
+    "watdiv/all_L2.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_L2.rq"
+      ],
+      "pid": 91632,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "019b70f9017051b637ba7c79869c7cf574f4f0541b1ccbc8256388236a66acaa",
+        "reference_sha256": "7b59c62793bacec7400b5a409fd6170d24856c9c28049eb334b211dbae4c679c"
+      }
+    },
+    "watdiv/all_L3.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_L3.rq"
+      ],
+      "pid": 91653,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "c55605452e4b69e75fd3207c2306b67d424ca69c073d9248c8025eb4bba3dc86",
+        "reference_sha256": "8971ac928d5ccd99c5b299ead049d9e1730cc9b7facab051fc17320375bb6252"
+      }
+    },
+    "watdiv/all_L4.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_L4.rq"
+      ],
+      "pid": 91673,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "9d639cfe0f3c419b08883eb4db5203cf4529e00741e8a2759666854250108ec0",
+        "reference_sha256": "5f8d13ecd586c2d152e2d961fab0bca3ad78690fe0ddade41614654096889391"
+      }
+    },
+    "watdiv/all_L5.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_L5.rq"
+      ],
+      "pid": 91697,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "0cc693b4114b48f6d8a267af5567a632c2aeaccee71b8f5acb8350f4aceda719",
+        "reference_sha256": "01106be39e1e2a389801ada6257cfb938390afaac9d875d11c7405ddc18455d3"
+      }
+    },
+    "watdiv/all_S1.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_S1.rq"
+      ],
+      "pid": 91719,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/all_S2.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_S2.rq"
+      ],
+      "pid": 91764,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "7e41ceb8378dfbd7432325842f37c309a3cbf6168675bbd4f179670eed97cbe8",
+        "reference_sha256": "943c1489bb45b93e194927138f81f9412f98b125fbb1a5c9423f5e8083caf88f"
+      }
+    },
+    "watdiv/all_S3.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_S3.rq"
+      ],
+      "pid": 91789,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/all_S4.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_S4.rq"
+      ],
+      "pid": 91812,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "eb40e8855143b6a56eca16c46b938a16b618e8f38bc6e16b41bf6fd33d35758b",
+        "reference_sha256": "791efc40879af4ae3802722414185de44d76e75e747813f227b9db49cea3b37a"
+      }
+    },
+    "watdiv/all_S5.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_S5.rq"
+      ],
+      "pid": 91837,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/all_S6.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_S6.rq"
+      ],
+      "pid": 91865,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "5dfb8ea4677c66dfc40fd375719d57fd7627e2a3ce401620b661eea8dcba17dc",
+        "reference_sha256": "b6e0fd2b6c3b5c6b9382ae1ee0db7ed9e4eeae88d4ab2a72eb91d89aa73e1b67"
+      }
+    },
+    "watdiv/all_S7.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/all_S7.rq"
+      ],
+      "pid": 91887,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/distinct_C1.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_C1.rq"
+      ],
+      "pid": 91905,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "8f0cd75b0bd8d16b4be1bcea33ced0122982153f8347878e14b33d4f6afa4f27",
+        "reference_sha256": "71593294af28d4fc4a90d57266ac4a6575f64a30c254b42b00297fea8e1aae32"
+      }
+    },
+    "watdiv/distinct_C2.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_C2.rq"
+      ],
+      "pid": 91945,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/distinct_C3.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_C3.rq"
+      ],
+      "pid": 91988,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "559427e21eb5c7cfa67d2c915a5fad3d4b7222eb27a2f8bd00fe73623d9b2810",
+        "reference_sha256": "a5c71550e1595856a7d57cd9191731ebbfe50404dc0f43c653ca9697d83b66ea"
+      }
+    },
+    "watdiv/distinct_F1.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_F1.rq"
+      ],
+      "pid": 92092,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/distinct_F2.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_F2.rq"
+      ],
+      "pid": 92119,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "79a6f6375dd4684af9078fea22088ebd4d461c0f4f2b596c869e380ff4d02819",
+        "reference_sha256": "0267780fed54c5c86c9a9f9ee7fc34b0222e4fd051bb585a67247f1625d967d2"
+      }
+    },
+    "watdiv/distinct_F3.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_F3.rq"
+      ],
+      "pid": 92161,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "766b90fe95b5cc61fe56ee58479d177d6ab83c92b7a045efe484f06dc25312de",
+        "reference_sha256": "44bfc813d544d50a185f189c842a43ec2caa30893284b996e825f690c2ccad63"
+      }
+    },
+    "watdiv/distinct_F4.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_F4.rq"
+      ],
+      "pid": 92194,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/distinct_F5.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_F5.rq"
+      ],
+      "pid": 92234,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "34c6b642cdd735226baab17a7ef4e91a60f16dfe4f3252c998213c85420d7b3b",
+        "reference_sha256": "f8bb485a484f660381822073b0b2bbc2b09a3e194f395c33108c1db313f1ce6b"
+      }
+    },
+    "watdiv/distinct_L1.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_L1.rq"
+      ],
+      "pid": 92273,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "eb40e8855143b6a56eca16c46b938a16b618e8f38bc6e16b41bf6fd33d35758b",
+        "reference_sha256": "791efc40879af4ae3802722414185de44d76e75e747813f227b9db49cea3b37a"
+      }
+    },
+    "watdiv/distinct_L2.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_L2.rq"
+      ],
+      "pid": 92297,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "eb40e8855143b6a56eca16c46b938a16b618e8f38bc6e16b41bf6fd33d35758b",
+        "reference_sha256": "791efc40879af4ae3802722414185de44d76e75e747813f227b9db49cea3b37a"
+      }
+    },
+    "watdiv/distinct_L3.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_L3.rq"
+      ],
+      "pid": 92319,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "23eec535ace4095b58999779eeb0c4143d5c4991eb4cda4c8a5d29a4244dc0d8",
+        "reference_sha256": "b572a2b24e703909efca6d8df7778fdf9685698e67021787315a4d8cd5f2124f"
+      }
+    },
+    "watdiv/distinct_L4.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_L4.rq"
+      ],
+      "pid": 92338,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "9d639cfe0f3c419b08883eb4db5203cf4529e00741e8a2759666854250108ec0",
+        "reference_sha256": "5f8d13ecd586c2d152e2d961fab0bca3ad78690fe0ddade41614654096889391"
+      }
+    },
+    "watdiv/distinct_L5.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_L5.rq"
+      ],
+      "pid": 92360,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "0cc693b4114b48f6d8a267af5567a632c2aeaccee71b8f5acb8350f4aceda719",
+        "reference_sha256": "01106be39e1e2a389801ada6257cfb938390afaac9d875d11c7405ddc18455d3"
+      }
+    },
+    "watdiv/distinct_S1.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_S1.rq"
+      ],
+      "pid": 92381,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/distinct_S2.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_S2.rq"
+      ],
+      "pid": 92421,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "7e41ceb8378dfbd7432325842f37c309a3cbf6168675bbd4f179670eed97cbe8",
+        "reference_sha256": "943c1489bb45b93e194927138f81f9412f98b125fbb1a5c9423f5e8083caf88f"
+      }
+    },
+    "watdiv/distinct_S3.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_S3.rq"
+      ],
+      "pid": 92451,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/distinct_S4.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_S4.rq"
+      ],
+      "pid": 92474,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "eb40e8855143b6a56eca16c46b938a16b618e8f38bc6e16b41bf6fd33d35758b",
+        "reference_sha256": "791efc40879af4ae3802722414185de44d76e75e747813f227b9db49cea3b37a"
+      }
+    },
+    "watdiv/distinct_S5.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_S5.rq"
+      ],
+      "pid": 92500,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/distinct_S6.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_S6.rq"
+      ],
+      "pid": 92531,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "5dfb8ea4677c66dfc40fd375719d57fd7627e2a3ce401620b661eea8dcba17dc",
+        "reference_sha256": "b6e0fd2b6c3b5c6b9382ae1ee0db7ed9e4eeae88d4ab2a72eb91d89aa73e1b67"
+      }
+    },
+    "watdiv/distinct_S7.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/distinct_S7.rq"
+      ],
+      "pid": 92552,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 1,
+        "output_sha256": "f2d1a2dc9994932b8b00b7e2111a47a3a476cb6493b41f1de0ecd526c0eb4d61",
+        "reference_sha256": "29d0e9365e8ff4c49964a91316babc794b16a7e680fef8af2aa87839ee4ce84c"
+      }
+    },
+    "watdiv/group_age.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/group_age.rq"
+      ],
+      "pid": 92570,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 9,
+        "output_sha256": "9d2fca71be7482c51a1bd1aefd7fec0dda951a380547216d8e5c63033df7d0b6",
+        "reference_sha256": "8c0d2e76e4e76ddb9e390c04cda34e849c39566ade81cba024dec604744e1101"
+      }
+    },
+    "watdiv/group_gender.rq": {
+      "command": [
+        "<agent-workspace>/scratch/analytical25-venv/bin/python",
+        "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-qualification-v1/one.py",
+        "watdiv/group_gender.rq"
+      ],
+      "pid": 92586,
+      "exit_code": 0,
+      "qualification": {
+        "primary_pass": true,
+        "count_compatible_pass": true,
+        "rows": 2,
+        "output_sha256": "c1ffc3f0782c71cf8c02a4ea384151784040c744c11c9bc0a35b3606b8b3b657",
+        "reference_sha256": "7cec725af17ca9979eb54bfe4f22c685488695e9d691f9f4dcc4de9149805947"
+      }
+    }
+  },
+  "comparative_timing_claim": false,
+  "started": 1795044398.356506,
+  "primary_pass": 72,
+  "count_compatible_pass": 72,
+  "ended": 1795044499.425596
+}
