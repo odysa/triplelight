@@ -1,0 +1,72 @@
+diff --git a/src/exec/bgp.rs b/src/exec/bgp.rs
+index 799ffff..313999a 100644
+--- a/src/exec/bgp.rs
++++ b/src/exec/bgp.rs
+@@ -72,6 +72,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
+     /// Index nested-loop join of `rows` with one pattern: one index range read per input row.
+     pub fn extend(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> {
+         let w = self.w;
++        if let Some(out) = self.extend_member_set(pat, rows) { return out }
+         if rows.len() / w.max(1) >= 2 * MORSEL {
+             let parts: Vec<Vec<TermId>> = rows.par_chunks(w * MORSEL).map(|c| self.extend_seq(pat, c)).collect();
+             parts.concat()
+@@ -80,6 +81,35 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
+         }
+     }
+ 
++    /// Membership filter for a pattern with two constants and one variable bound in every row (e.g.
++    /// `?reviewer bsbm:country <US>`): when the constants' range is no larger than the input, one scan builds the
++    /// set of matching values and each row is a hash lookup instead of an index probe. Keeps row order.
++    fn extend_member_set(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
++        let w = self.w;
++        if w == 0 { return None }
++        let n_rows = rows.len() / w;
++        if n_rows < 1024 { return None }
++        let vars: Vec<(usize, usize)> = pat.iter().enumerate().filter_map(|(i, s)| match s { Slot::Var(v) => Some((i, *v)), _ => None }).collect();
++        let [(pos, v)] = vars.as_slice() else { return None };
++        let mut fixed: [Option<TermId>; 3] = [None; 3];
++        for (i, s) in pat.iter().enumerate() {
++            if let Slot::Const(c) = s { fixed[i] = Some((*c)?) }
++        }
++        let (perm, prefix, n) = choose_perm(&fixed);
++        if n != 2 || perm.order()[2] != *pos { return None }
++        if rows.chunks_exact(w).any(|r| r[*v] == UNBOUND) { return None }
++        let total = self.count(perm, &prefix[..2]);
++        if total > n_rows as u64 || total > 1 << 24 { return None }
++        let mut set: HashSet<TermId> = HashSet::with_capacity(total as usize);
++        for b in self.snap.scan(perm, &prefix[..2]) {
++            let b = b.unwrap_or_else(|e| storage_failure(e));
++            set.extend(b.cols[2].iter().copied());
++        }
++        let mut out = Vec::with_capacity(rows.len());
++        for r in rows.chunks_exact(w) { if set.contains(&r[*v]) { out.extend_from_slice(r) } }
++        Some(out)
++    }
++
+     fn extend_seq(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> {
+         let w = self.w;
+         let mut out = Vec::with_capacity(rows.len());
+diff --git a/tests/exec.rs b/tests/exec.rs
+index 8199970..7d377f7 100644
+--- a/tests/exec.rs
++++ b/tests/exec.rs
+@@ -506,3 +506,19 @@ fn single_variable_filter_memo_matches_per_row() {
+     assert_eq!(n(&format!("SELECT * {{ ?r <urn:for> ?p ; <urn:date> ?d FILTER(?d >= \"2007-10-10\"^^{xd} && ?d <= \"2007-10-20\"^^{xd}) }}")), expect);
+     assert_eq!(n(&format!("SELECT * {{ ?r <urn:for> ?p ; <urn:date> ?d FILTER(!(?d >= \"2007-10-10\"^^{xd})) }}")), (0..200).filter(|i| i % 28 < 9).count());
+ }
++
++/// Fully bound probes `?x <p> <o>` over many rows use a scanned membership set; answers and multiplicities
++/// must match the per-row probe join.
++#[test]
++fn member_set_probe_matches_probe_join() {
++    let mut data = String::new();
++    for i in 0..3000 {
++        data.push_str(&format!("<urn:r{i}> <urn:by> <urn:u{}> .\n", i % 1500));
++    }
++    for u in 0..1500 { if u % 3 == 0 { data.push_str(&format!("<urn:u{u}> <urn:country> <urn:US> .\n")) } else { data.push_str(&format!("<urn:u{u}> <urn:country> <urn:AT> .\n")) } }
++    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
++    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
++    assert_eq!(n("SELECT * { ?r <urn:by> ?u . ?u <urn:country> <urn:US> }"), 1000);
++    assert_eq!(n("SELECT (COUNT(*) AS ?c) { ?r <urn:by> ?u . ?u <urn:country> <urn:US> }"), 1);
++    assert_eq!(n("SELECT * { ?r <urn:by> ?u . ?u <urn:country> <urn:XX> }"), 0);
++}
