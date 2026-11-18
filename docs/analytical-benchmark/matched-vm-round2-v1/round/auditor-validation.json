@@ -1,0 +1,11 @@
+{
+  "legacy_12_phase_summary_reproduced": true,
+  "explicit_two_engine_summary_audited": true,
+  "missing_declared_primary_profiles_rejected": true,
+  "auditor_source_sha256": "2908bc7986eca052f7530c3af1c343a966c372dbaa408257e79f25e1029cf52e",
+  "legacy_summary_sha256": "b03ff34f888a335d089d375a8ee037441e560f7ffbe55e4ab2ae65ea7a1cf7a7",
+  "new_summary_scope": [
+    "rdfdb",
+    "duckdb"
+  ]
+}
