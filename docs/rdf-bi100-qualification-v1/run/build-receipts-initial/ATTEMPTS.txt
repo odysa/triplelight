@@ -1,0 +1,7 @@
+Attempt 1 (FAILED, ~2026-11-18 18:40-19:05 EST): same script (/tmp/build100.sh), same source/binary/NT.
+  Killed mid-build when the controlling agent session ended (child processes terminated); it had reached the
+  external-sort phase (dictionary files written, no MANIFEST). The stale lock was released at 19:11 EST.
+  Its partial output directory (no MANIFEST, never openable as a store) was deleted to prevent accidental use;
+  its receipt files in this directory were overwritten by attempt 2 (only cargo_build.log/binary_sha256/
+  nt_sha256_before/source_commit had been written, from the then-current origin/main).
+Attempt 2 (SUCCEEDED): rerun detached (nohup) via /tmp/chain.sh; all receipts in this directory are from attempt 2.
