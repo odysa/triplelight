@@ -1,0 +1,11 @@
+   Compiling rdfdb v0.1.0 (/private/tmp/rdf-jianlin-analytical25/bind-scope-9f106f1/source)
+error[E0433]: cannot find module or crate `oxiri` in this scope
+   --> src/exec/expr.rs:234:56
+    |
+234 | ...   let resolved = match base { Some(b) => oxiri::Iri::parse(b.to_string()).ok()?.resolve(&x).ok()?.into_inner(), None => x };
+    |                                              ^^^^^ use of unresolved module or unlinked crate `oxiri`
+    |
+    = help: if you wanted to use a crate named `oxiri`, use `cargo add oxiri` to add it to your `Cargo.toml`
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `rdfdb` (lib) due to 1 previous error
