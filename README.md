@@ -48,6 +48,25 @@ out in its reverse pass, so it has no total. Evidence:
 QLever value diagnostic in [value-diagnostic-v1](https://github.com/odysa/rdfdb/tree/c535ac3988f78fa16e9e1b290ed8cad84960dba5/docs/analytical-benchmark/value-diagnostic-v1);
 first four-engine pass in [matched-vm-v1](https://github.com/odysa/rdfdb/tree/67f1fe7da321c67924b54c62a0be0299dba06f15/docs/analytical-benchmark/matched-vm-v1).
 
+### Analytical at 100M: BSBM Business Intelligence, 98.9M triples (three engines, one session)
+
+Same protocol as the 10M table above, on a 98,861,444-triple store, with a 600-second limit per request. rdfdb is at
+main `ef7a778`, served from its disk store with a 10 GB cache. QLever runs with 11 GB of query memory, and DuckDB has
+an 8 GB working set plus 8 GB of spill. Every container is capped at 4 CPUs and 12 GiB. The reference answers are
+Jena's: 59 come from full runs and one q1 instance had to be computed per product type, labelled as such.
+
+| | Pass 1 (s) | Pass 2 (s) | Strict | COUNT int = integer | Value-only | Peak container memory |
+|---|---:|---:|---:|---:|---:|---:|
+| **rdfdb** | **11.7** | **6.7** | 60 / 60 | 60 / 60 | 60 / 60 | 3.7 / 4.1 GiB |
+| QLever | 24.2 | 24.5 | 25 / 60 | 37 / 60 | 60 / 60 | **0.5 / 0.4 GiB** |
+| DuckDB 2.0.0 | 573.8 | 443.5 | 60 / 60 | 60 / 60 | 60 / 60 | 11.4 / 12.0 GiB |
+
+QLever is faster on q3 in both passes (2.4 / 2.5 s against rdfdb's 9.0 / 5.1 s). q3 is about 76% of rdfdb's total in
+each pass and is the clearest next target. q1 changes winner between the two passes, so neither engine has a stable
+lead there. QLever uses about a tenth of rdfdb's memory. rdfdb's timings vary a lot between passes. This is two
+passes on a shared machine, not a general state-of-the-art claim. Evidence:
+[matched-bi100-v1](https://github.com/odysa/rdfdb/tree/13123a2/docs/matched-bi100-v1).
+
 ### Large scale: LUBM-1000 (133.6M triples) and BSBM-100M (98.9M triples)
 
 Round 13, one Docker Linux VM session (arm64, 16 GB RAM, 10 CPUs). rdfdb runs from its disk store with a 10 GB
