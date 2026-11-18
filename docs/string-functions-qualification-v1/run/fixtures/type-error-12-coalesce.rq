@@ -1,0 +1,1 @@
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (COALESCE(ENCODE_FOR_URI(7),"fallback") AS ?v) WHERE {}
