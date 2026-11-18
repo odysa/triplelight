@@ -1,0 +1,33 @@
+{
+  "reports": {
+    "lubm": {
+      "source_sha256": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d",
+      "parsed_triples": 13879970,
+      "unique_triples": 13409395,
+      "database_bytes": 344993792,
+      "seconds": 105.44008608395234,
+      "process_peak_rss_bytes": 4270391296,
+      "spill_peak_sampled_bytes": 0
+    },
+    "watdiv": {
+      "source_sha256": "f53153e24d3e4e89d89c0587671022c11855c909cdcc4bf69f282feb554d6041",
+      "parsed_triples": 10997468,
+      "unique_triples": 10914314,
+      "database_bytes": 268185600,
+      "seconds": 85.061712292023,
+      "process_peak_rss_bytes": 2941403136,
+      "spill_peak_sampled_bytes": 0
+    }
+  },
+  "all_imports_and_counts_pass": true,
+  "owned_pids": [
+    95006,
+    95045,
+    95049,
+    4159
+  ],
+  "ps_stdout": "  PID COMMAND\n",
+  "sampled_max_allocated_bytes": 17860849664,
+  "sampled_min_free_bytes": 243236245504,
+  "comparative_load_claim": false
+}
