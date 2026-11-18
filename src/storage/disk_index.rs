@@ -644,6 +644,22 @@ mod tests {
         std::fs::remove_file(path).unwrap();
     }
     #[test]
+    fn uncached_stats_blocks_do_not_pollute_cache_and_check_corruption() {
+        let path = std::env::temp_dir().join(format!("rdf-stats-uncached-{}", std::process::id()));
+        let rows: Vec<_> = (1..=700).map(|i| [TermId(i), TermId(1), TermId(2)]).collect();
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.clone().into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::open(&path).unwrap();
+        assert_eq!(index.block_slice_uncached(256, 512).unwrap(), rows[256..512]);
+        assert!(index.cache.iter().all(|shard| shard.read().unwrap().entries.is_empty()));
+        let mut bad = bytes;
+        bad[index.blocks[1].offset as usize + 3] ^= 0xff;
+        std::fs::write(&path, bad).unwrap();
+        assert!(index.block_slice_uncached(256, 512).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
     fn clear_cache_invalidates_thread_memo() {
         // Warm a block on this thread, corrupt it on disk, clear caches: the next read must hit disk and fail.
         let path = std::env::temp_dir().join(format!("rdf-memo-{}", std::process::id()));
