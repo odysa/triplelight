@@ -1,0 +1,10 @@
+{
+  "comparative_timing_claim": false,
+  "complete": false,
+  "started_unix": 1795031778.716842,
+  "statistics_ready_unix": 1795031834.636071,
+  "error": "CalledProcessError: Command '['<agent-workspace>/scratch/analytical25-venv/bin/python', '/private/tmp/rdf-jianlin-analytical25/explicit-unsupported-a202b787/unsupported_http.py']' returned non-zero exit status 1.",
+  "server_exit": -15,
+  "store_unchanged": true,
+  "ended_unix": 1795031846.8395782
+}
