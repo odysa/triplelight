@@ -1,0 +1,9 @@
+{
+  "validator_sources_unchanged": {
+    "aggregate_count_policy.py": "1c017af47a22019972415e99eebb37cbbea3901784d29ca463adf3e346d4d32e",
+    "aggregate_sql.py": "d74c2c314ecc0eb884f621b676ce930207ef238c1469a720afaaa34d2ca77d50",
+    "qualify.py": "2fe4528d6dc37b4dca42c3bdea11fb1e5565f62d5ab56d81a65ef9bd29569be1"
+  },
+  "rdfdb_source_files_unchanged": true,
+  "rdfdb_commit": "9a2f49b652a73466873cacd0a9205098e27d15f6"
+}
