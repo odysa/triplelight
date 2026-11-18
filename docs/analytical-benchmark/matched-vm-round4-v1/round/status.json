@@ -1,0 +1,50 @@
+{
+  "pass1-rdfdb": {
+    "client_exit": 0,
+    "complete": true,
+    "strict_pass": 60,
+    "equivalent_pass": 60,
+    "attempted": 60,
+    "value_pass": 60
+  },
+  "pass1-duckdb": {
+    "client_exit": 0,
+    "complete": true,
+    "strict_pass": 60,
+    "equivalent_pass": 60,
+    "attempted": 60,
+    "value_pass": 60
+  },
+  "pass1-qlever": {
+    "client_exit": 0,
+    "complete": true,
+    "strict_pass": 9,
+    "equivalent_pass": 21,
+    "attempted": 60,
+    "value_pass": 60
+  },
+  "pass2-qlever": {
+    "client_exit": 0,
+    "complete": true,
+    "strict_pass": 9,
+    "equivalent_pass": 21,
+    "attempted": 60,
+    "value_pass": 60
+  },
+  "pass2-duckdb": {
+    "client_exit": 0,
+    "complete": true,
+    "strict_pass": 60,
+    "equivalent_pass": 60,
+    "attempted": 60,
+    "value_pass": 60
+  },
+  "pass2-rdfdb": {
+    "client_exit": 0,
+    "complete": true,
+    "strict_pass": 60,
+    "equivalent_pass": 60,
+    "attempted": 60,
+    "value_pass": 60
+  }
+}
