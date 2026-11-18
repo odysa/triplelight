@@ -565,3 +565,40 @@ fn hash_extend_matches_probe_join() {
     // Reverse direction: object bound, subject free.
     assert_eq!(rows("SELECT ?x ?s WHERE { ?s <urn:a> ?x . ?t <urn:a> ?x }").len(), (0..13).map(|m| { let c = (0..6000).filter(|i| i % 13 == m).count(); c * c }).sum::<usize>());
 }
+
+/// Features the evaluator does not implement must fail with `Unsupported`, never return an answer: a GRAPH pattern
+/// must not be answered from the default graph, and NOW()/RAND()/hashes/unknown functions must not silently make
+/// every FILTER false. Supported XSD casts and functions keep working.
+#[test]
+fn unsupported_features_are_rejected_not_misanswered() {
+    use rdfdb::exec::QueryErrorKind;
+    let s = MemorySnapshot::from_ntriples(&b"<urn:a> <urn:p> \"1\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n"[..]).unwrap();
+    let rejected = [
+        "SELECT * WHERE { GRAPH <urn:g> { ?s ?p ?o } }",
+        "SELECT * WHERE { GRAPH ?g { ?s ?p ?o } }",
+        "SELECT * FROM <urn:g> WHERE { ?s ?p ?o }",
+        "SELECT * FROM NAMED <urn:g> WHERE { ?s ?p ?o }",
+        "SELECT * WHERE { ?s ?p ?o FILTER(?o < NOW()) }",
+        "SELECT (RAND() AS ?r) WHERE { ?s ?p ?o }",
+        "SELECT (UUID() AS ?u) WHERE { ?s ?p ?o }",
+        "SELECT (MD5(STR(?o)) AS ?h) WHERE { ?s ?p ?o }",
+        "SELECT (SECONDS(?o) AS ?x) WHERE { ?s ?p ?o }",
+        "SELECT * WHERE { ?s ?p ?o FILTER(<urn:my:fn>(?o)) }",
+        "SELECT * WHERE { ?s <urn:p>+ ?o }",
+        "SELECT * WHERE { ?s ?p ?o FILTER EXISTS { GRAPH ?g { ?s ?p ?o } } }",
+    ];
+    for q in rejected {
+        match query(&s, q) {
+            Err(e) => assert_eq!(e.kind, QueryErrorKind::Unsupported, "{q}: {e:?}"),
+            Ok(r) => panic!("{q} should be rejected, got {r:?}"),
+        }
+    }
+    let accepted = [
+        "SELECT (xsd:double(?o) AS ?d) (STR(?o) AS ?str) WHERE { ?s ?p ?o }",
+        "SELECT * WHERE { ?s ?p ?o FILTER(xsd:integer(?o) = 1 && REGEX(STR(?o), \"1\")) }",
+    ];
+    for q in accepted {
+        let q = format!("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> {q}");
+        assert!(query(&s, &q).is_ok(), "{q}");
+    }
+}
