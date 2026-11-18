@@ -1,0 +1,10 @@
+
+{ "head": { "link": [], "vars": ["reviewer", "reviewerAvgScore"] },
+  "results": { "distinct": false, "ordered": true, "bindings": [
+    { "reviewer": { "type": "uri", "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite20/Reviewer10549" }	, "reviewerAvgScore": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#decimal", "value": "9" }},
+    { "reviewer": { "type": "uri", "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite21/Reviewer11154" }	, "reviewerAvgScore": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#decimal", "value": "9" }},
+    { "reviewer": { "type": "uri", "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite4/Reviewer1447" }	, "reviewerAvgScore": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#decimal", "value": "10" }},
+    { "reviewer": { "type": "uri", "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite17/Reviewer9281" }	, "reviewerAvgScore": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#decimal", "value": "9.5" }},
+    { "reviewer": { "type": "uri", "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite27/Reviewer13837" }	, "reviewerAvgScore": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#decimal", "value": "8.333333333333333" }},
+    { "reviewer": { "type": "uri", "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite6/Reviewer2871" }	, "reviewerAvgScore": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#decimal", "value": "8.333333333333333" }},
+    { "reviewer": { "type": "uri", "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite17/Reviewer9016" }	, "reviewerAvgScore": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#decimal", "value": "8.666666666666667" }} ] } }
