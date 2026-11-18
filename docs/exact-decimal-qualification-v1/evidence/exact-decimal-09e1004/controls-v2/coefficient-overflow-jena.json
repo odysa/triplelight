@@ -1,0 +1,11 @@
+{ "head": {
+    "vars": [ "v" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "v": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#decimal" , "value": "99999999999999999999999999999.0" }
+      }
+    ]
+  }
+}

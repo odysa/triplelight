@@ -1,0 +1,20 @@
+[package]
+name = "rdfdb"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+oxrdf = "0.3.5"
+oxttl = "0.2.5"
+oxiri = "0.2.11"
+rust_decimal = { version = "1", default-features = false, features = ["std"] }
+rayon = "1.12.0"
+regex = "1.13.1"
+spargebra = "0.4.8"
+tiny_http = "0.12.0"
+
+sha2 = "0.10"
+
+# glibc malloc costs ~20-25% on Linux (BSBM/LUBM in the VM); on macOS the system allocator is as fast, so Linux only.
+[target.'cfg(target_os = "linux")'.dependencies]
+mimalloc = { version = "0.1", default-features = false }
