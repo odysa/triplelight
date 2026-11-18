@@ -1,0 +1,38 @@
+{
+  "cases": {
+    "undef-bind": {
+      "candidate_matches_jena": false,
+      "query_sha256": "7081155a2004db6514eb2fd1821a3a8f84adacc2920637d95861fbf2c6e0cde1",
+      "baseline_matches_jena": false
+    },
+    "bound-bind": {
+      "candidate_matches_jena": true,
+      "query_sha256": "21c7179487cbdb5bee4362ce3dcf9b42e8445a371ab3035e54e2e24a5b2552ec"
+    },
+    "undef-filter": {
+      "candidate_matches_jena": false,
+      "query_sha256": "a82ec491173bae77a5200183b0b0e9b00b04a7d4b368cbec520ff06dacb46453",
+      "baseline_matches_jena": false
+    },
+    "undef-optional": {
+      "candidate_matches_jena": false,
+      "query_sha256": "3b82d610b58bcc1bda187b4f85fb95f3b604c3fbe832f2b93c4ff8ebacc4d7c7",
+      "baseline_matches_jena": false
+    },
+    "union-maybe-bound": {
+      "candidate_matches_jena": false,
+      "query_sha256": "f81d472afda62f255379cee91fc5203f1d37e2ed55a074e74a2ab4fe895ac81d",
+      "baseline_matches_jena": false
+    },
+    "subquery-hidden-var": {
+      "candidate_matches_jena": true,
+      "query_sha256": "ee95b79e3e8002d519a5796b359b489560d5433044a8ed495c704af5ebb87ec6",
+      "baseline_matches_jena": true
+    }
+  },
+  "candidate_pass": 2,
+  "total": 6,
+  "source_and_binary_unchanged": true,
+  "bi_run": false,
+  "qualification_approved": false
+}

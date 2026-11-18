@@ -1,0 +1,1 @@
+SELECT ?x WHERE { VALUES ?x {1} { VALUES ?x {UNDEF} FILTER(?x = 1) } }

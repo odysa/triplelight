@@ -1,0 +1,150 @@
+{
+  "undef-bind": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/undef-bind.rq",
+      "--results=JSON"
+    ],
+    "rdfdb_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/rdfdb-8daff86",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+      "SELECT ?x ?y WHERE { VALUES ?x {1} { VALUES ?x {UNDEF} BIND(?x AS ?y) } }"
+    ],
+    "jena_exit": 0,
+    "rdfdb_exit": 0
+  },
+  "bound-bind": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/bound-bind.rq",
+      "--results=JSON"
+    ],
+    "rdfdb_command": [
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/rdfdb-8daff86",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+      "SELECT ?x ?y WHERE { VALUES ?x {1} { VALUES ?x {1} BIND(?x AS ?y) } }"
+    ],
+    "jena_exit": 0,
+    "rdfdb_exit": 0
+  },
+  "undef-filter": {
+    "jena": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/undef-filter.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0
+    },
+    "rdfdb": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/rdfdb-8daff86",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+        "SELECT ?x WHERE { VALUES ?x {1} { VALUES ?x {UNDEF} FILTER(?x = 1) } }"
+      ],
+      "exit_code": 0
+    },
+    "baseline": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/w3c-string-ef7a778/rdfdb-ef7a778",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+        "SELECT ?x WHERE { VALUES ?x {1} { VALUES ?x {UNDEF} FILTER(?x = 1) } }"
+      ],
+      "exit_code": 0
+    }
+  },
+  "undef-optional": {
+    "jena": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/undef-optional.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0
+    },
+    "rdfdb": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/rdfdb-8daff86",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+        "SELECT ?x ?y WHERE { VALUES ?x {1} OPTIONAL { VALUES ?x {UNDEF} BIND(?x AS ?y) } }"
+      ],
+      "exit_code": 0
+    },
+    "baseline": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/w3c-string-ef7a778/rdfdb-ef7a778",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+        "SELECT ?x ?y WHERE { VALUES ?x {1} OPTIONAL { VALUES ?x {UNDEF} BIND(?x AS ?y) } }"
+      ],
+      "exit_code": 0
+    }
+  },
+  "union-maybe-bound": {
+    "jena": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/union-maybe-bound.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0
+    },
+    "rdfdb": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/rdfdb-8daff86",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+        "SELECT ?x ?y WHERE { VALUES ?x {1} { { VALUES ?x {1} } UNION { VALUES ?z {2} } BIND(?x AS ?y) } }"
+      ],
+      "exit_code": 0
+    },
+    "baseline": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/w3c-string-ef7a778/rdfdb-ef7a778",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+        "SELECT ?x ?y WHERE { VALUES ?x {1} { { VALUES ?x {1} } UNION { VALUES ?z {2} } BIND(?x AS ?y) } }"
+      ],
+      "exit_code": 0
+    }
+  },
+  "subquery-hidden-var": {
+    "jena": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/subquery-hidden-var.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0
+    },
+    "rdfdb": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/rdfdb-8daff86",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+        "SELECT ?x ?y WHERE { VALUES ?x {1} { SELECT ?y WHERE { VALUES (?x ?y) {(2 3)} } } }"
+      ],
+      "exit_code": 0
+    },
+    "baseline": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/w3c-string-ef7a778/rdfdb-ef7a778",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/bind-scope-8daff86/fixture.nt",
+        "SELECT ?x ?y WHERE { VALUES ?x {1} { SELECT ?y WHERE { VALUES (?x ?y) {(2 3)} } } }"
+      ],
+      "exit_code": 0
+    }
+  }
+}

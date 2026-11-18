@@ -1,0 +1,1 @@
+BASE <http://example.test/a/b/> SELECT (IRI("#frag") AS ?v) WHERE {}

@@ -1,0 +1,1 @@
+SELECT ?x ?y WHERE { VALUES ?x {1} { { VALUES ?x {1} } UNION { VALUES ?z {2} } BIND(?x AS ?y) } }
