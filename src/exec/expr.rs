@@ -148,6 +148,8 @@ fn like(src: &Term, s: String) -> Term {
 }
 
 fn lit(t: &Term) -> Option<&Literal> { if let Term::Literal(l) = t { Some(l) } else { None } }
+/// A string literal (simple, xsd:string or language-tagged), the argument type of SPARQL string functions.
+fn strlit(t: &Term) -> Option<&Literal> { lit(t).filter(|l| is_stringish(l)) }
 
 pub(super) fn eval<S: Snapshot + ?Sized>(ctx: &Ctx<'_, S>, e: &Expression, r: &Row) -> Option<Term> {
     let v = |e: &Expression| eval(ctx, e, r);
@@ -196,7 +198,26 @@ pub(super) fn eval<S: Snapshot + ?Sized>(ctx: &Ctx<'_, S>, e: &Expression, r: &R
 
 fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Term>) -> Option<Term> {
     let a = |i: usize| v(args.get(i)?);
-    let s = |i: usize| -> Option<String> { let t = a(i)?; Some(lit(&t)?.value().to_string()) };
+    // SPARQL string functions take string literals only (simple, xsd:string or language-tagged); anything else,
+    // including numbers and other typed literals, is a type error (§17.4.3).
+    let sl = |i: usize| -> Option<(String, Option<String>)> {
+        let t = a(i)?;
+        let l = strlit(&t)?;
+        Some((l.value().to_string(), l.language().map(str::to_string)))
+    };
+    let s = |i: usize| -> Option<String> { sl(i).map(|x| x.0) };
+    // A plain string: simple or xsd:string, no language tag (STRDT / STRLANG lexical forms).
+    let plain = |i: usize| -> Option<String> { match sl(i)? { (x, None) => Some(x), _ => None } };
+    // §17.4.3.1.1 argument compatibility: both plain, the same language tag, or a tagged first and a plain second.
+    let compat = |l1: &Option<String>, l2: &Option<String>| match (l1, l2) {
+        (_, None) => true,
+        (Some(x), Some(y)) => x.eq_ignore_ascii_case(y),
+        (None, Some(_)) => false,
+    };
+    // A result string carrying the first argument's language tag (or plain).
+    let tagged = |x: String, lang: &Option<String>| -> Term {
+        match lang { Some(l) => Literal::new_language_tagged_literal_unchecked(x, l.clone()).into(), None => simple(x) }
+    };
     match f {
         Function::Str => Some(simple(string_value(&a(0)?)?)),
         Function::Lang => Some(simple(lit(&a(0)?)?.language().unwrap_or(""))),
@@ -211,21 +232,38 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
         Function::IsLiteral => Some(bool_term(matches!(a(0)?, Term::Literal(_)))),
         Function::IsNumeric => Some(bool_term(num(&a(0)?).is_some())),
         Function::StrLen => Some(Literal::from(s(0)?.chars().count() as i64).into()),
-        Function::UCase => { let t = a(0)?; let x = lit(&t)?.value().to_uppercase(); Some(like(&t, x)) }
-        Function::LCase => { let t = a(0)?; let x = lit(&t)?.value().to_lowercase(); Some(like(&t, x)) }
-        Function::Contains => Some(bool_term(s(0)?.contains(&s(1)?))),
-        Function::StrStarts => Some(bool_term(s(0)?.starts_with(&s(1)?))),
-        Function::StrEnds => Some(bool_term(s(0)?.ends_with(&s(1)?))),
-        Function::StrBefore => { let (x, y) = (s(0)?, s(1)?); Some(simple(x.find(&y).map(|i| &x[..i]).unwrap_or(""))) }
-        Function::StrAfter => { let (x, y) = (s(0)?, s(1)?); Some(simple(x.find(&y).map(|i| &x[i + y.len()..]).unwrap_or(""))) }
+        Function::UCase => { let t = a(0)?; let x = strlit(&t)?.value().to_uppercase(); Some(like(&t, x)) }
+        Function::LCase => { let t = a(0)?; let x = strlit(&t)?.value().to_lowercase(); Some(like(&t, x)) }
+        Function::Contains | Function::StrStarts | Function::StrEnds => {
+            let ((x, lx), (y, ly)) = (sl(0)?, sl(1)?);
+            if !compat(&lx, &ly) { return None }
+            Some(bool_term(match f { Function::Contains => x.contains(&y), Function::StrStarts => x.starts_with(&y), _ => x.ends_with(&y) }))
+        }
+        // No match gives the empty simple literal; a match keeps the first argument's language tag (§17.4.3.7/8).
+        Function::StrBefore => {
+            let ((x, lx), (y, ly)) = (sl(0)?, sl(1)?);
+            if !compat(&lx, &ly) { return None }
+            Some(match x.find(&y) { Some(i) => tagged(x[..i].to_string(), &lx), None => simple("") })
+        }
+        Function::StrAfter => {
+            let ((x, lx), (y, ly)) = (sl(0)?, sl(1)?);
+            if !compat(&lx, &ly) { return None }
+            Some(match x.find(&y) { Some(i) => tagged(x[i + y.len()..].to_string(), &lx), None => simple("") })
+        }
+        // The result keeps a language tag only if every argument has that same tag (§17.4.3.12).
         Function::Concat => {
             let mut out = String::new();
-            for i in 0..args.len() { out.push_str(&s(i)?) }
-            Some(simple(out))
+            let mut lang: Option<Option<String>> = None;
+            for i in 0..args.len() {
+                let (x, l) = sl(i)?;
+                out.push_str(&x);
+                lang = Some(match lang { None => l, Some(prev) if prev.as_deref().map(str::to_lowercase) == l.as_deref().map(str::to_lowercase) => prev, Some(_) => None });
+            }
+            Some(tagged(out, &lang.flatten()))
         }
         Function::SubStr => {
             let t = a(0)?;
-            let x: Vec<char> = lit(&t)?.value().chars().collect();
+            let x: Vec<char> = strlit(&t)?.value().chars().collect();
             let start = num(&a(1)?)?.f().round() as i64;
             let len = match args.get(2) { Some(_) => num(&a(2)?)?.f().round() as i64, None => i64::MAX / 2 };
             let (lo, hi) = (start.max(1), start.saturating_add(len));
@@ -241,7 +279,7 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             let flags = if args.len() > 3 { s(3)? } else { String::new() };
             let pat = if flags.contains('i') { format!("(?i){}", s(1)?) } else { s(1)? };
             let t = a(0)?;
-            let out = regex::Regex::new(&pat).ok()?.replace_all(lit(&t)?.value(), s(2)?.as_str()).into_owned();
+            let out = regex::Regex::new(&pat).ok()?.replace_all(strlit(&t)?.value(), s(2)?.as_str()).into_owned();
             Some(like(&t, out))
         }
         Function::Abs => { let n = num(&a(0)?)?; Some(match n { Num::Int(i) => Num::Int(i.abs()), Num::Dec(d) => Num::Dec(d.abs()), Num::Flt(d) => Num::Flt(d.abs()), Num::Dbl(d) => Num::Dbl(d.abs()) }.term()) }
@@ -264,8 +302,8 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             };
             Some(Literal::from(field.parse::<i64>().ok()?).into())
         }
-        Function::StrLang => Some(Literal::new_language_tagged_literal(s(0)?, s(1)?).ok()?.into()),
-        Function::StrDt => match a(1)? { Term::NamedNode(n) => Some(Literal::new_typed_literal(s(0)?, n).into()), _ => None },
+        Function::StrLang => Some(Literal::new_language_tagged_literal(plain(0)?, plain(1)?).ok()?.into()),
+        Function::StrDt => match a(1)? { Term::NamedNode(n) => Some(Literal::new_typed_literal(plain(0)?, n).into()), _ => None },
         Function::EncodeForUri => {
             let x = s(0)?;
             Some(simple(x.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect::<String>()))
