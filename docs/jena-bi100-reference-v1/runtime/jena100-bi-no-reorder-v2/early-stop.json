@@ -1,0 +1,6 @@
+{
+  "time_unix": 1795023236.9978151,
+  "server_pid": 452,
+  "reason": "Missing q1 still timed out; remaining overlap controls cannot recover the missing reference. Stop this negative planning experiment instead of consuming more machine time.",
+  "remaining_controls_aborted": true
+}

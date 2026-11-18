@@ -1,0 +1,9 @@
+{ "head": {
+    "vars": [ "productType" , "reviewCount" ]
+  } ,
+  "results": {
+    "bindings": [
+      
+    ]
+  }
+}

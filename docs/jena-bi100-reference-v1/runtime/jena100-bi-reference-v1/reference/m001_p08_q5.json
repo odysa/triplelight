@@ -1,0 +1,13 @@
+{
+  "head": {
+    "vars": [
+      "country",
+      "product",
+      "nrOfReviews",
+      "avgPrice"
+    ]
+  },
+  "results": {
+    "bindings": []
+  }
+}

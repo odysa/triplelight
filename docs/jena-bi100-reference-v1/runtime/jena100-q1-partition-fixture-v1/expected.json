@@ -1,0 +1,62 @@
+{
+  "types": [
+    "http://fixture/type/A",
+    "http://fixture/type/B",
+    "http://fixture/type/Empty",
+    "http://fixture/type/T00",
+    "http://fixture/type/T01",
+    "http://fixture/type/T02",
+    "http://fixture/type/T03",
+    "http://fixture/type/T04",
+    "http://fixture/type/T05",
+    "http://fixture/type/T06",
+    "http://fixture/type/T07",
+    "http://fixture/type/T08",
+    "http://fixture/type/T09",
+    "http://fixture/type/T10",
+    "http://fixture/type/T11"
+  ],
+  "top10": [
+    [
+      "http://fixture/type/A",
+      7
+    ],
+    [
+      "http://fixture/type/B",
+      6
+    ],
+    [
+      "http://fixture/type/T00",
+      1
+    ],
+    [
+      "http://fixture/type/T01",
+      1
+    ],
+    [
+      "http://fixture/type/T02",
+      1
+    ],
+    [
+      "http://fixture/type/T03",
+      1
+    ],
+    [
+      "http://fixture/type/T04",
+      1
+    ],
+    [
+      "http://fixture/type/T05",
+      1
+    ],
+    [
+      "http://fixture/type/T06",
+      1
+    ],
+    [
+      "http://fixture/type/T07",
+      1
+    ]
+  ],
+  "triples": 90
+}
