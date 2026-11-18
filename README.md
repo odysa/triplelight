@@ -28,9 +28,11 @@ This is a bounded same-session comparison of two engines, not the official BSBM 
 
 rdfdb is faster on all 8 query templates in both passes (DuckDB takes 7.9× / 8.0× as long). Timings drift between
 VM sessions: in the previous session, with rdfdb at `738f0cb`, the totals were 27.2 / 28.5 s against DuckDB's
-55.3 / 64.5 s, so compare engines only within a session. In an earlier pass of this benchmark, QLever answered
-only 9 of 60 requests correctly (21 when integer subtypes are treated as equal), and Virtuoso 29 of 60, so neither
-has a qualified total. Evidence: [matched-vm-round3-v1](https://github.com/odysa/rdfdb/tree/5ff7d67eeb77ccdc348e5344fb571cf262d23a04/docs/analytical-benchmark/matched-vm-round3-v1);
+55.3 / 64.5 s, so compare engines only within a session. In an earlier pass of this benchmark, neither QLever nor Virtuoso had a qualified total. QLever matched
+Jena's answers on 9 of 60 requests under strict checking; all of its other mismatches are result datatypes
+(computed float aggregates, and `xsd:int` instead of `xsd:integer` for COUNT, with which mapped it passes 21).
+Virtuoso passed 29 of 60. Its q4 and q6 failures are datatypes, but all 12 q5 instances return wrong result
+sets (for example zero rows where Jena returns 14), and its reverse-order pass hit the client timeout. Evidence: [matched-vm-round3-v1](https://github.com/odysa/rdfdb/tree/5ff7d67eeb77ccdc348e5344fb571cf262d23a04/docs/analytical-benchmark/matched-vm-round3-v1);
 previous session in [matched-vm-round2-v1](https://github.com/odysa/rdfdb/tree/67f1fe7da321c67924b54c62a0be0299dba06f15/docs/analytical-benchmark/matched-vm-round2-v1),
 first pass with all four engines in [matched-vm-v1](https://github.com/odysa/rdfdb/tree/67f1fe7da321c67924b54c62a0be0299dba06f15/docs/analytical-benchmark/matched-vm-v1).
 
@@ -80,10 +82,11 @@ medians (ms):
 | | rdfdb (Python objects) | Ladybug, generic RDF mapping | Ladybug, LUBM-tuned schema |
 |---|---:|---:|---:|
 | LUBM-100, 14 queries | **2,835** | 14,757 | 4,484 |
-| BSBM-10M, 20 queries | **27** | 4,009 | — |
+| BSBM-10M, 20 queries | **27** | 4,009 | not built |
 
 LUBM Q6 and Q14 return 796K rows each and dominate these totals; without them rdfdb takes 86 ms and tuned Ladybug
-154 ms. Ladybug opens a store faster (30–240 ms against rdfdb's 3.1–4.3 s until statistics are ready).
+154 ms. On BSBM only Ladybug's generic mapping was measured, so the gap there reflects schema as
+well as engine. Ladybug opens a store faster (30–240 ms against rdfdb's 3.1–4.3 s until statistics are ready).
 Details: [docs/embedded/README.md](docs/embedded/README.md).
 
 ### Where rdfdb is behind
