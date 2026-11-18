@@ -111,6 +111,7 @@ fn run_query<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>) -> Result<Que
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
     if let Some(reason) = support::unsupported(q) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
     let mut ctx = Ctx::new(snap);
+    ctx.base = match q { Query::Select { base_iri, .. } | Query::Ask { base_iri, .. } | Query::Construct { base_iri, .. } | Query::Describe { base_iri, .. } => base_iri.as_ref().map(|b| b.as_str().to_string()) };
     ctx.wcoj = opts.wcoj;
     let stats = opts.stats;
     ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
@@ -186,6 +187,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// LIMIT (+OFFSET) of a Slice directly above the next ORDER BY (through at most a Project): lets ORDER BY keep
     /// only the first `k` rows (stable top-k) instead of sorting everything. Taken by that ORDER BY.
     order_limit: std::cell::Cell<Option<usize>>,
+    /// The query's BASE IRI, used by IRI()/URI() to resolve relative strings.
+    pub(crate) base: Option<String>,
     /// EXISTS / NOT EXISTS results memoized per pattern and per binding of the pattern's variables. Whether a
     /// pattern has a solution compatible with a row depends only on the row's values for the pattern's own
     /// variables, so rows that differ elsewhere (e.g. many offers of one product) share one evaluation.
@@ -202,7 +205,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
+        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), base: None, exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -267,14 +270,20 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             GraphPattern::Bgp { patterns } => self.eval_bgp(patterns, input),
             GraphPattern::Join { left, right } => {
                 let l = self.eval(left, input);
-                self.eval(right, l)
+                // Passing the left solutions into the right group (sideways) is only equivalent to SPARQL's
+                // bottom-up join when no FILTER/BIND in the right group reads a variable that group does not bind
+                // itself; otherwise evaluate the right group on its own and join the solution sets.
+                if scope_safe(right) { self.eval(right, l) } else { join_rows(l, self.eval(right, vec![self.empty_row()])) }
             }
             GraphPattern::LeftJoin { left, right, expression } => {
                 let l = self.eval(left, input);
                 let mut out = Vec::new();
+                // As for Join: the OPTIONAL group sees the left solution only if it is scope-safe. The LeftJoin's own
+                // expression is evaluated on the merged solution either way.
+                let standalone = (!scope_safe(right)).then(|| self.eval(right, vec![self.empty_row()]));
                 for row in l {
-                    let ext: Vec<Row> = self.eval(right, vec![row.clone()]).into_iter()
-                        .filter(|r| expression.as_ref().map_or(true, |e| self.ebv(e, r))).collect();
+                    let merged = match &standalone { Some(r) => join_rows(vec![row.clone()], r.clone()), None => self.eval(right, vec![row.clone()]) };
+                    let ext: Vec<Row> = merged.into_iter().filter(|r| expression.as_ref().map_or(true, |e| self.ebv(e, r))).collect();
                     if ext.is_empty() { out.push(row) } else { out.extend(ext) }
                 }
                 out
@@ -332,9 +341,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             }
             GraphPattern::Extend { inner, variable, expression } => {
                 let i = self.var(variable);
-                self.eval(inner, input).into_iter().map(|mut r| {
-                    if let Some(t) = self.value(expression, &r) { r[i] = self.intern(&t) }
-                    r
+                // If an outer solution passed in sideways already binds the target, the BIND result must be
+                // compatible with it (the group's solution is joined with the outer one): equal keeps the row, a
+                // different value drops it, an expression error leaves the outer value (W3C-style `{ BIND(2 AS ?x) }`).
+                self.eval(inner, input).into_iter().filter_map(|mut r| {
+                    if let Some(t) = self.value(expression, &r) {
+                        let id = self.intern(&t);
+                        if r[i] == UNBOUND { r[i] = id } else if r[i] != id { return None }
+                    }
+                    Some(r)
                 }).collect()
             }
             GraphPattern::Minus { left, right } => {
@@ -850,6 +865,63 @@ fn distributive(p: &GraphPattern) -> bool {
         GraphPattern::Join { left, right } => distributive(left) && distributive(right),
         GraphPattern::Filter { inner, expr } => distributive(inner) && !has_exists(expr),
         _ => false,
+    }
+}
+
+/// Whether evaluating `p` with outer solutions passed in (sideways information passing) equals evaluating it on its
+/// own and joining: true when every FILTER / BIND / OPTIONAL condition inside `p` only reads variables bound by the
+/// pattern it applies to. SPARQL evaluates groups bottom-up, so e.g. `{ BIND(?o+1 AS ?z) }` must not see an outer ?o.
+fn scope_safe(p: &GraphPattern) -> bool {
+    let bound = certainly_bound;
+    let reads_only = |e: &Expression, q: &GraphPattern| { let b = bound(q); expr_vars(e).iter().all(|n| b.contains(n)) };
+    match p {
+        GraphPattern::Bgp { .. } | GraphPattern::Path { .. } | GraphPattern::Values { .. } => true,
+        GraphPattern::Filter { expr, inner } => scope_safe(inner) && reads_only(expr, inner),
+        GraphPattern::Extend { inner, expression, .. } => scope_safe(inner) && reads_only(expression, inner),
+        GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right } => scope_safe(left) && scope_safe(right),
+        GraphPattern::LeftJoin { left, right, expression } => scope_safe(left) && scope_safe(right) && expression.as_ref().is_none_or(|e| {
+            let (bl, br) = (bound(left), bound(right));
+            expr_vars(e).iter().all(|n| bl.contains(n) || br.contains(n))
+        }),
+        // LIMIT/OFFSET picks rows from the subquery's own solutions; restricting its input first changes which rows
+        // are picked (W3C subquery11).
+        GraphPattern::Slice { .. } => false,
+        GraphPattern::OrderBy { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner }
+        | GraphPattern::Project { inner, .. } | GraphPattern::Group { inner, .. } | GraphPattern::Graph { inner, .. } | GraphPattern::Service { inner, .. } => scope_safe(inner),
+    }
+}
+
+/// Variables bound in every solution of `p` (an under-approximation): a variable that may be unbound (VALUES UNDEF,
+/// OPTIONAL, one UNION branch, a BIND whose expression can fail) is excluded, so an outer value can never leak into it.
+fn certainly_bound(p: &GraphPattern) -> HashSet<String> {
+    match p {
+        GraphPattern::Bgp { patterns } => {
+            let mut v = Vec::new();
+            walk_vars(&GraphPattern::Bgp { patterns: patterns.clone() }, &mut v);
+            v.into_iter().collect()
+        }
+        GraphPattern::Path { subject, object, .. } => [subject, object].into_iter().filter_map(|t| match t {
+            TermPattern::Variable(v) => Some(v.as_str().to_string()),
+            _ => None,
+        }).collect(),
+        GraphPattern::Values { variables, bindings } => variables.iter().enumerate()
+            .filter(|(i, _)| bindings.iter().all(|row| row.get(*i).is_some_and(Option::is_some)))
+            .map(|(_, v)| v.as_str().to_string()).collect(),
+        GraphPattern::Join { left, right } => { let mut a = certainly_bound(left); a.extend(certainly_bound(right)); a }
+        GraphPattern::Union { left, right } => { let b = certainly_bound(right); certainly_bound(left).into_iter().filter(|v| b.contains(v)).collect() }
+        GraphPattern::LeftJoin { left, .. } | GraphPattern::Minus { left, .. } => certainly_bound(left),
+        GraphPattern::Filter { inner, .. } | GraphPattern::Extend { inner, .. } | GraphPattern::OrderBy { inner, .. }
+        | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. }
+        | GraphPattern::Graph { inner, .. } | GraphPattern::Service { inner, .. } => certainly_bound(inner),
+        GraphPattern::Project { inner, variables } => { let b = certainly_bound(inner); variables.iter().map(|v| v.as_str().to_string()).filter(|v| b.contains(v)).collect() }
+        // Group keys certainly bound inside, plus the aggregate output variables: those are fresh names set by the
+        // aggregation itself, so no outer solution can supply a value for them.
+        GraphPattern::Group { inner, variables, aggregates } => {
+            let b = certainly_bound(inner);
+            let mut out: HashSet<String> = variables.iter().map(|v| v.as_str().to_string()).filter(|v| b.contains(v)).collect();
+            out.extend(aggregates.iter().map(|(v, _)| v.as_str().to_string()));
+            out
+        }
     }
 }
 
