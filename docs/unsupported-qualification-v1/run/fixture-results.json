@@ -1,0 +1,241 @@
+{
+  "cases": {
+    "function-0": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-1": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-2": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-3": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-4": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-5": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-6": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-7": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-8": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-9": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-10": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-11": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-12": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-13": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "function-14": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "graph-select": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "graph-ask": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "graph-construct": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "graph-describe": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "dataset-from": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "dataset-named": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "dataset-ask": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "path-star": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "path-alternative": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "path-optional": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "path-plus": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "service": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "service-silent": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "empty-bind": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "false-filter": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "if-dead-branch": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "coalesce-dead-branch": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "optional-empty-left": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "minus-empty-left": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "union": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "exists": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "not-exists": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "aggregate-argument": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "order-expression": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "having": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "nested-select": {
+      "expected_http": 501,
+      "actual_http": 501,
+      "pass": true
+    },
+    "accepted-select": {
+      "expected_http": 200,
+      "actual_http": 200,
+      "pass": true
+    },
+    "accepted-xsd-cast": {
+      "expected_http": 200,
+      "actual_http": 200,
+      "pass": true
+    },
+    "accepted-error-coalesce": {
+      "expected_http": 200,
+      "actual_http": 200,
+      "pass": true
+    },
+    "accepted-ask": {
+      "expected_http": 200,
+      "actual_http": 200,
+      "pass": true
+    },
+    "accepted-sequence-empty": {
+      "expected_http": 200,
+      "actual_http": 200,
+      "pass": true
+    },
+    "accepted-empty-values": {
+      "expected_http": 200,
+      "actual_http": 200,
+      "pass": true
+    }
+  },
+  "complete": true,
+  "all_pass": true
+}

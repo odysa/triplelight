@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/private/tmp/rdf-jianlin-analytical25/explicit-unsupported-a202b787/unsupported_http.py", line 64, in <module>
+    assert out['all_pass'],[(n,v) for n,v in out['cases'].items() if not v['pass']]
+           ~~~^^^^^^^^^^^^
+AssertionError: [('path-sequence', {'expected_http': 501, 'actual_http': 200, 'pass': False})]
