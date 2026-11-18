@@ -270,6 +270,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                     let unify = all.iter().enumerate().find_map(|(k, c)| self.unifiable_equality(c, patterns).map(|(a, b)| (k, a, b)))
                         // Other conjuncts must not read ?b: it is only filled in after the renamed BGP.
                         .filter(|(k, _, b)| all.iter().enumerate().all(|(i, c)| i == *k || !expr_vars(c).iter().any(|n| n == b.as_str())));
+                    // Only when no incoming row binds either variable: an outer binding of ?b (VALUES, OPTIONAL, a
+                    // nested evaluation) must still be checked, not overwritten.
+                    let unify = unify.filter(|(_, a, b)| {
+                        let (ai, bi) = (self.var(a), self.var(b));
+                        input.iter().all(|r| r[ai] == UNBOUND && r[bi] == UNBOUND)
+                    });
                     if let Some((k, a, b)) = unify {
                         let renamed: Vec<TriplePattern> = patterns.iter().map(|t| rename_var(t, &b, &a)).collect();
                         let rest: Vec<&Expression> = all.iter().enumerate().filter(|(i, _)| *i != k).map(|(_, c)| *c).collect();

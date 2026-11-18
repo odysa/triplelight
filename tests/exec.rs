@@ -407,3 +407,18 @@ fn variable_equality_unification_matches_general_filter() {
     let q2 = "SELECT ?y (COUNT(?g) AS ?n) WHERE { <urn:p1> <urn:feat> ?f . ?y <urn:feat> ?g FILTER(?f = ?g) } GROUP BY ?y";
     assert_eq!(rows(q2).len(), 2);
 }
+
+/// The equality rewrite must not drop an outer binding of either variable (Jianlin's counterexample).
+#[test]
+fn variable_equality_unification_respects_bound_inputs() {
+    let data = r#"
+<http://ex/s1> <http://ex/p> <http://ex/A> .
+<http://ex/s2> <http://ex/q> <http://ex/A> .
+<http://ex/s3> <http://ex/q> <http://ex/B> .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
+    assert_eq!(n("SELECT ?a ?b WHERE { VALUES ?b { <http://ex/B> } { ?l <http://ex/p> ?a . ?r <http://ex/q> ?b . FILTER(?a=?b) } }"), 0);
+    assert_eq!(n("SELECT ?a ?b WHERE { VALUES ?b { <http://ex/A> } { ?l <http://ex/p> ?a . ?r <http://ex/q> ?b . FILTER(?a=?b) } }"), 1);
+    assert_eq!(n("SELECT ?a ?b WHERE { ?l <http://ex/p> ?a . ?r <http://ex/q> ?b . FILTER(?a=?b) }"), 1);
+}
