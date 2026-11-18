@@ -566,7 +566,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         } else {
             let mut applied = vec![false; filters.len()];
             let mut post = |rows: &mut Vec<TermId>, bound: &HashSet<usize>| self.apply_filters(rows, w, filters, bound, &mut applied);
-            if let Some(order) = self.planned_order(&pats, &rows) { bgp.eval_order(&pats, &order, flat, &mut post) }
+            if let Some(order) = self.filter_first_order(&pats, &rows, filters) { bgp.eval_order(&pats, &order, flat, &mut post) }
+            else if let Some(order) = self.planned_order(&pats, &rows) { bgp.eval_order(&pats, &order, flat, &mut post) }
             else { bgp.eval_greedy(&pats, flat, &mut post) }
         };
         out.chunks_exact(w).map(<[TermId]>::to_vec).collect()
@@ -675,6 +676,26 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     /// Pattern order from the cost-based planner: leaves of its join tree, left to right. Used for top-level BGPs
     /// (a single all-unbound input row); nested BGPs with bound inputs keep the greedy order.
+    /// Two-pattern BGP with a pushed-down filter on a variable that only one pattern binds (e.g. `?r dc:date ?d .
+    /// ?r rev:reviewFor ?p FILTER(?d in range)`): start from that pattern, so the filter (memoized per term ID)
+    /// shrinks the rows before the join, when its range is at most twice the other pattern's. Cardinality-only
+    /// planning cannot see filter selectivity.
+    fn filter_first_order(&self, pats: &[[Slot; 3]], rows: &[Row], filters: &[(&Expression, Vec<usize>)]) -> Option<Vec<usize>> {
+        if pats.len() != 2 || filters.is_empty() || rows.len() != 1 || rows[0].iter().any(|&x| x != UNBOUND) { return None }
+        let vars_of = |p: &[Slot; 3]| -> Vec<usize> { p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect() };
+        let (a, b) = (vars_of(&pats[0]), vars_of(&pats[1]));
+        if !a.iter().any(|v| b.contains(v)) { return None }
+        let only_in = |v: usize| -> Option<usize> { match (a.contains(&v), b.contains(&v)) { (true, false) => Some(0), (false, true) => Some(1), _ => None } };
+        let first = filters.iter().find_map(|(_, vs)| match vs.as_slice() { [v] => only_in(*v), _ => None })?;
+        let count = |p: &[Slot; 3]| -> u64 {
+            let fixed: [Option<TermId>; 3] = std::array::from_fn(|i| if let Slot::Const(c) = p[i] { c } else { None });
+            let (perm, prefix, n) = bgp::choose_perm(&fixed);
+            self.count(perm, &prefix[..n])
+        };
+        let (cf, co) = (count(&pats[first]), count(&pats[1 - first]));
+        (cf <= 2 * co).then(|| vec![first, 1 - first])
+    }
+
     fn planned_order(&self, pats: &[[Slot; 3]], rows: &[Row]) -> Option<Vec<usize>> {
         let (stats, dynsnap) = self.stats?;
         if pats.len() < 2 || rows.len() != 1 || rows[0].iter().any(|&x| x != UNBOUND) { return None }

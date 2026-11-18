@@ -565,3 +565,16 @@ fn hash_extend_matches_probe_join() {
     // Reverse direction: object bound, subject free.
     assert_eq!(rows("SELECT ?x ?s WHERE { ?s <urn:a> ?x . ?t <urn:a> ?x }").len(), (0..13).map(|m| { let c = (0..6000).filter(|i| i % 13 == m).count(); c * c }).sum::<usize>());
 }
+
+/// Starting a two-pattern BGP from the filtered pattern must not change answers.
+#[test]
+fn filter_first_order_keeps_answers() {
+    let xd = "<http://www.w3.org/2001/XMLSchema#date>";
+    let mut data = String::new();
+    for i in 0..500 { data.push_str(&format!("<urn:r{i}> <urn:for> <urn:p{}> .\n<urn:r{i}> <urn:date> \"2007-10-{:02}\"^^{xd} .\n", i % 17, 1 + i % 28)) }
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
+    let expect = (0..500).filter(|i| (1 + i % 28) >= 10 && (1 + i % 28) < 20).count();
+    assert_eq!(n(&format!("SELECT * {{ ?r <urn:for> ?p . ?r <urn:date> ?d FILTER(?d >= \"2007-10-10\"^^{xd} && ?d < \"2007-10-20\"^^{xd}) }}")), expect);
+    assert_eq!(n(&format!("SELECT ?p (COUNT(?r) AS ?c) {{ ?r <urn:for> ?p . ?r <urn:date> ?d FILTER(?d >= \"2007-10-10\"^^{xd}) }} GROUP BY ?p")), 17);
+}
