@@ -1,0 +1,466 @@
+{
+  "add": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/add.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((0.1+0.2) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "sum": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/sum.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (SUM(?x) AS ?v) WHERE {VALUES ?x {1.1 10.0}}"
+    ],
+    "candidate_exit": 0
+  },
+  "avg": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/avg.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (AVG(?x) AS ?v) WHERE {VALUES ?x {1.1 10.0}}"
+    ],
+    "candidate_exit": 0
+  },
+  "quarter": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/quarter.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((1/4) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "integer-zero": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/integer-zero.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((1/0) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "decimal-zero": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/decimal-zero.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 1,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((1.0/0.0) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "double-zero": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/double-zero.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((1e0/0e0) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "negative-round": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/negative-round.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (ROUND(-1.5) AS ?v) (ROUND(-2.5) AS ?w) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "ceil-floor": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/ceil-floor.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (CEIL(9007199254740992.1) AS ?v) (FLOOR(-9007199254740992.1) AS ?w) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "cast": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/cast.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (xsd:decimal(\"9007199254740992.1\") AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "compiled-filter": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/compiled-filter.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ?x WHERE {VALUES ?x {0.3} FILTER(?x=0.1+0.2)}"
+    ],
+    "candidate_exit": 0
+  },
+  "decimal-compare": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/decimal-compare.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((9007199254740992.1 < 9007199254740992.2) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "precision-28": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/precision-28.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((0.1000000000000000000000000001+0.2) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "coefficient-overflow": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/coefficient-overflow.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((99999999999999999999999999999.0+0.0) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "scale-29": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/scale-29.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((0.00000000000000000000000000001+0.0) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "integer-overflow": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/integer-overflow.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((9223372036854775807+1) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "repeating-division": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/repeating-division.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((1/3) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "mixed-float": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/mixed-float.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((xsd:float(\"0.1\")+0.2) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "decimal-max-round": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/decimal-max-round.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (ROUND(79228162514264337593543950335.0) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "decimal-overflow": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/decimal-overflow.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((79228162514264337593543950335.0+1.0) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "beyond-decimal-coefficient": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/beyond-decimal-coefficient.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((79228162514264337593543950336.0+0.0) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "sub-scale-29": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/sub-scale-29.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((0.00000000000000000000000000001+0.0) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "float-promotion-add": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/float-promotion-add.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((\"16777217\"^^xsd:decimal + \"-16777216\"^^xsd:float) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "float-promotion-compare": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/float-promotion-compare.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((\"16777217\"^^xsd:decimal = \"16777216\"^^xsd:float) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "mixed-double": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/mixed-double.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((xsd:double(\"0.1\")+0.2) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "max-add-fraction": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/max-add-fraction.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "SELECT ((79228162514264337593543950335.0 + 0.1) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "fraction-add-max": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/fraction-add-max.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "SELECT ((0.1 + 79228162514264337593543950335.0) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "product-coefficient-rounding": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/product-coefficient-rounding.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "SELECT ((99999999999999.9 * 99999999999999.9) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  },
+  "terminating-underflow": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/controls-v2/terminating-underflow.rq",
+      "--results=JSON"
+    ],
+    "jena_exit": 0,
+    "candidate_command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/rdfdb-af856dc",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/fixture.nt",
+      "SELECT ((0.0000000000000000000000000001 / 10.0) AS ?v) WHERE {}"
+    ],
+    "candidate_exit": 0
+  }
+}
