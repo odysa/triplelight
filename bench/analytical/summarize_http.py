@@ -20,7 +20,7 @@ def resource(path):
     return result
 
 
-def summarize(run):
+def summarize(run, primary_modes=('rdfdb', 'duckdb', 'virtuoso', 'qlever')):
     schedule=json.loads((run/'schedule.json').read_text());statuses=json.loads((run/'status.json').read_text())
     names=[f'pass{index}-'+mode for index,modes in enumerate(schedule['passes'],1) for mode in modes]
     if set(statuses)!=set(names):raise ValueError('The scheduled phases have not all finished')
@@ -71,7 +71,15 @@ def summarize(run):
         entry['runtime_evidence_sha256']=matrix['runtime_evidence_sha256']
         entry['numeric_freeze_sha256']=matrix['numeric_freeze_sha256']
         entry['count_equivalence_freeze_sha256']=matrix['count_equivalence_freeze_sha256']
-    primary=[report['profiles'][f'pass{p}-'+mode] for p in (1,2) for mode in ('rdfdb','duckdb','virtuoso','qlever')]
+    if not primary_modes or len(set(primary_modes)) != len(primary_modes):
+        raise ValueError('Declare a nonempty, unique primary-profile scope')
+    if any(mode not in ('rdfdb', 'duckdb', 'virtuoso', 'qlever') for mode in primary_modes):
+        raise ValueError('Unsupported primary profile')
+    primary_names=[f'pass{p}-'+mode for p in (1,2) for mode in primary_modes]
+    if not set(primary_names) <= set(report['profiles']):
+        raise ValueError('Declared primary profiles are absent from the schedule')
+    report['primary_profile_modes']=list(primary_modes)
+    primary=[report['profiles'][name] for name in primary_names]
     report['all_primary_profiles_strictly_qualify']=all(p['strict_eligible'] for p in primary)
     report['all_primary_profiles_count_equivalent_qualify']=all(p['count_equivalent_eligible'] for p in primary)
     report['complete_cross_engine_ranking']=report['all_primary_profiles_count_equivalent_qualify']
@@ -80,8 +88,10 @@ def summarize(run):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--run',type=Path,required=True);parser.add_argument('--out',type=Path,required=True)
+    parser.add_argument('--primary-profiles', nargs='+', default=['rdfdb','duckdb','virtuoso','qlever'],
+                        help='Explicit ranking scope; every declared profile must finish both scheduled passes')
     args=parser.parse_args()
     if args.out.exists():raise FileExistsError('Preserve prior summaries')
-    report=summarize(args.run);args.out.write_text(json.dumps(report,indent=2))
+    report=summarize(args.run, args.primary_profiles);args.out.write_text(json.dumps(report,indent=2))
     for name,profile in report['profiles'].items():
         print(name,profile.get('strict_pass'),profile.get('count_equivalent_pass'),profile['measured_total_ms'],profile['count_equivalent_total_ms'])
