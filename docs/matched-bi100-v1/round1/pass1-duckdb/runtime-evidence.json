@@ -1,0 +1,13 @@
+{
+  "system": "duckdb",
+  "endpoint": "http://127.0.0.1:31442/sparql",
+  "source_or_image": "python@sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd",
+  "dataset_sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
+  "threads": 4,
+  "memory_configuration": {
+    "container_bytes": 12884901888,
+    "extra_swap_bytes": 0,
+    "engine_budget": "8GB working / 8GB spill"
+  },
+  "cache_profile": "normal engine caches, no result cache"
+}

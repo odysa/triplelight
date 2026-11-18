@@ -1,0 +1,6 @@
+{
+  "command_scope": "container cgroup memory.peak, memory.max, memory.swap.max; not process RSS",
+  "exit_code": 0,
+  "stdout": "12194824192\n12884901888\n0\n",
+  "stderr": ""
+}

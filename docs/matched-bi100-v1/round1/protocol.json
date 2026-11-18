@@ -1,0 +1,47 @@
+{
+  "schema": "matched-vm-bi100-preregistration-v1",
+  "rdfdb_commit": "ef7a77814d23879a7bdf174ffe567b81a402ba9f",
+  "dataset_sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
+  "workload_manifest_sha256": "a6d27c91ec733626fa0d132f642d5a348c62cbfc00b423809bf82074cb1a35ef",
+  "passes": [
+    [
+      "rdfdb",
+      "duckdb",
+      "qlever"
+    ],
+    [
+      "qlever",
+      "duckdb",
+      "rdfdb"
+    ]
+  ],
+  "queries_per_phase": 60,
+  "warmup_mix": 0,
+  "scored_mixes": [
+    1,
+    2,
+    3
+  ],
+  "threads": 4,
+  "cpus": 4,
+  "container_memory_bytes": 12884901888,
+  "container_total_memory_swap_bytes": 12884901888,
+  "request_timeout_seconds": 600,
+  "rdfdb_cache_mb": 10240,
+  "duck_memory": "8GB",
+  "duck_max_spill": "8GB",
+  "qlever_query_memory": "11GB",
+  "gates": {
+    "numeric_freeze": "63e127b60ac8de510a172748108639f0834e17bc3772e1d16ce226404aa58cca",
+    "count_policy": "5049fb75210fc6fc78ebf1fb2553b88baef197ae73495b70f110a203a70a4663",
+    "value_policy": "7b3f640bbab516db80ceba87549b9670802a93c5ff77181bdda66c0855fc3dfb"
+  },
+  "timing": "host HTTP request through full response body; parsing/validation outside timer",
+  "load_build_or_startup_in_query_total": false,
+  "rdfdb_statistics_ready_required": true,
+  "qlever_clear_result_cache_each_request": true,
+  "os_page_cache_clear": false,
+  "reporting": "Separate primary/COUNT/value gates. Emit a total only when its entire 60-request phase passes that gate. Retain failed latencies/bodies and missing requests. Report both passes without selecting the faster one.",
+  "scope": "Version-pinned BSBM BI100M workload, not global SPARQL conformance or a blind workload holdout",
+  "status": "Prepared before matched timing. Native output qualifications already seen; acceptance rules remain unchanged."
+}
