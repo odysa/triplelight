@@ -1,0 +1,7 @@
+{
+  "failure": "DuckDB adapter rejects unregistered generic SPARQL readiness COUNT with HTTP400",
+  "duckdb_timed_queries_started": 0,
+  "controller_v2_exit": 130,
+  "preserved_complete_phase": "pass1-rdfdb",
+  "change": "Use registered q1 HTTP readiness and separately verify native SQL triple count; HTTP400 is fatal rather than retried"
+}

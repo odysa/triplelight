@@ -1,0 +1,5 @@
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/caption> ?v2 .
+}
+
