@@ -14,38 +14,37 @@ blocks. See [DESIGN.md](DESIGN.md) and [docs/](docs/).
 All comparisons run every system on the same machine in the same session, with each system's answers checked
 against Apache Jena. Numbers are sums of per-query medians unless stated. Lower is better.
 
-### Analytical: BSBM Business Intelligence, 10M triples (two-engine rerun)
+### Analytical: BSBM Business Intelligence, 10M triples (three engines, one session)
 
 Same Linux VM (4 CPUs, 12 GiB cap per engine), two passes in reversed order. Each number is the sum of 45
-measured request times after 15 warmups. rdfdb on main `20b257a`; DuckDB 2.0.0 over one lossless triples table
-with hand-written SQL per query template. All 240 requests return complete, correct answers for both engines.
-This is a bounded same-session comparison of two engines, not the official BSBM throughput procedure.
+measured request times after 15 warmups, in seconds. rdfdb at main `20b257a`; QLever with its result cache cleared
+before every request; DuckDB 2.0.0 over one lossless triples table with hand-written SQL per query template.
 
-| | Pass 1 (s) | Pass 2 (s) |
-|---|---:|---:|
-| **rdfdb** | **14.5** | **14.1** |
-| DuckDB 2.0.0 | 114.0 | 112.9 |
+| | Pass 1 (s) | Pass 2 (s) | Strict answer check | Value-only check |
+|---|---:|---:|---:|---:|
+| **rdfdb** | **12.6** | **13.0** | 60 / 60 | 60 / 60 |
+| QLever | 17.8 | 16.2 | 9 / 60 | 60 / 60 |
+| DuckDB 2.0.0 | 113.1 | 107.2 | 60 / 60 | 60 / 60 |
 
-rdfdb is faster on all 8 query templates in both passes (DuckDB takes 7.9× / 8.0× as long). Timings drift between
-VM sessions: in the previous session, with rdfdb at `738f0cb`, the totals were 27.2 / 28.5 s against DuckDB's
-55.3 / 64.5 s, so compare engines only within a session.
+All 360 requests pass a value-only check frozen before the run: numeric values within fixed bounds, datatype
+ignored. QLever fails the strict check only on result datatypes (computed float aggregates, and `xsd:int` instead of
+`xsd:integer` for COUNT), so its ranking holds only under the value-only rule.
 
-QLever and Virtuoso were checked in an earlier session. Requests passing, out of 60, first pass / reverse-order pass:
+Per query template (seconds summed over that template's requests, pass 1 / pass 2):
 
-| | Strict | COUNT int = integer | Value-only (retrospective) |
-|---|---:|---:|---:|
-| QLever (default, hash, bypass profiles) | 9 / 9 | 21 / 21 | **60 / 60** |
-| Virtuoso 7 | 29 / incomplete | 29 / incomplete | 48 / incomplete |
+| Template | q1 | q2 | q3 | q4 | q5 | q6 | q7 | q8 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| rdfdb | 0.59 / 0.56 | **0.17 / 0.23** | 2.96 / 2.91 | **6.26 / 6.59** | **1.46 / 1.52** | **0.21 / 0.20** | 0.83 / 0.89 | **0.09 / 0.09** |
+| QLever | **0.25 / 0.24** | 2.03 / 1.92 | **0.42 / 0.39** | 10.50 / 9.50 | 1.86 / 1.59 | 1.82 / 1.65 | **0.51 / 0.48** | 0.41 / 0.40 |
+| DuckDB | 9.26 / 8.92 | 6.73 / 6.42 | 5.98 / 5.66 | 12.28 / 11.72 | 22.98 / 21.97 | 32.33 / 30.61 | 11.17 / 10.50 | 12.37 / 11.44 |
 
-QLever's values are correct within the frozen numeric bounds; its strict failures are result datatypes (computed
-float aggregates, `xsd:int` for COUNT). Virtuoso returns wrong result sets for all 12 q5 instances (for example
-zero rows where Jena returns 14), and its reverse-order pass stopped at a client timeout. The value-only column
-is a compatibility diagnostic, not strict qualification, and QLever has not been timed against the current rdfdb
-in the same session ([value-diagnostic-v1](https://github.com/odysa/rdfdb/tree/c535ac3988f78fa16e9e1b290ed8cad84960dba5/docs/analytical-benchmark/value-diagnostic-v1)).
-
-Evidence: [matched-vm-round3-v1](https://github.com/odysa/rdfdb/tree/5ff7d67eeb77ccdc348e5344fb571cf262d23a04/docs/analytical-benchmark/matched-vm-round3-v1);
-previous session in [matched-vm-round2-v1](https://github.com/odysa/rdfdb/tree/67f1fe7da321c67924b54c62a0be0299dba06f15/docs/analytical-benchmark/matched-vm-round2-v1),
-first pass with all four engines in [matched-vm-v1](https://github.com/odysa/rdfdb/tree/67f1fe7da321c67924b54c62a0be0299dba06f15/docs/analytical-benchmark/matched-vm-v1).
+QLever is faster on q1, q3 and q7, and uses much less memory: about 0.35 GiB peak server memory against rdfdb's
+1.37–1.38 GiB. Two passes are a bounded observation, not a significance test. Virtuoso, checked in an earlier
+session, returns wrong result sets for all 12 q5 instances (for example zero rows where Jena returns 14) and timed
+out in its reverse pass, so it has no total. Evidence:
+[matched-vm-round4-v1](https://github.com/odysa/rdfdb/tree/1daaea906c6804134ac558f0eec245211adb11bc/docs/analytical-benchmark/matched-vm-round4-v1);
+QLever value diagnostic in [value-diagnostic-v1](https://github.com/odysa/rdfdb/tree/c535ac3988f78fa16e9e1b290ed8cad84960dba5/docs/analytical-benchmark/value-diagnostic-v1);
+first four-engine pass in [matched-vm-v1](https://github.com/odysa/rdfdb/tree/67f1fe7da321c67924b54c62a0be0299dba06f15/docs/analytical-benchmark/matched-vm-v1).
 
 ### Large scale: LUBM-1000 (133.6M triples) and BSBM-100M (98.9M triples)
 
@@ -102,6 +101,7 @@ Details: [docs/embedded/README.md](docs/embedded/README.md).
 
 ### Where rdfdb is behind
 
+- BI q1, q3 and q7 against QLever, and server memory on BI (about 4× QLever's), above.
 - Loading: building the LUBM-1000 disk store took 1,035 s against QLever's 425 s in round 9; the parallel loader
   merged since then is about 30% faster but has not been re-measured at that scale.
 - Store open: statistics take several seconds to become ready after opening a large store.
