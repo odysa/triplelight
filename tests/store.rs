@@ -265,3 +265,23 @@ fn overlay_scan_propagates_base_errors() {
     assert!(err.to_string().contains("planted read failure"));
     assert!(!dest.join("MANIFEST").exists());
 }
+
+#[test]
+fn stats_scan_preserves_overlay_adds_deletes_and_order() {
+    use rdfdb::storage::Snapshot;
+    use rdfdb::model::Perm;
+    let dir = tmp("stats-overlay");
+    std::fs::create_dir_all(&dir).unwrap();
+    let init = dir.join("init.nt");
+    std::fs::write(&init, format!("{} .\n{} .\n", t(1, 0, 2), t(3, 0, 4))).unwrap();
+    let store = Store::open(dir.join("db"), Some(&init), 1).unwrap();
+    store.commit(&[(Change::Delete, t(1, 0, 2)), (Change::Insert, t(5, 0, 6))]).unwrap();
+    let snapshot = store.snapshot();
+    let flatten = |batches: Box<dyn Iterator<Item = Result<rdfdb::model::TripleBatch, std::io::Error>> + '_>| {
+        batches.flat_map(|b| {
+            let b = b.unwrap();
+            (0..b.cols[0].len()).map(|i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]).collect::<Vec<_>>()
+        }).collect::<Vec<_>>()
+    };
+    assert_eq!(flatten(snapshot.scan_for_stats()), flatten(snapshot.scan(Perm::Spo, &[])));
+}
