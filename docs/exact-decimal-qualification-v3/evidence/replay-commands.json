@@ -1,0 +1,263 @@
+{
+  "add": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((0.1+0.2) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "sum": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (SUM(?x) AS ?v) WHERE {VALUES ?x {1.1 10.0}}"
+    ],
+    "exit": 0
+  },
+  "avg": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (AVG(?x) AS ?v) WHERE {VALUES ?x {1.1 10.0}}"
+    ],
+    "exit": 0
+  },
+  "quarter": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((1/4) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "integer-zero": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((1/0) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "decimal-zero": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((1.0/0.0) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "double-zero": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((1e0/0e0) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "negative-round": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (ROUND(-1.5) AS ?v) (ROUND(-2.5) AS ?w) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "ceil-floor": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (CEIL(9007199254740992.1) AS ?v) (FLOOR(-9007199254740992.1) AS ?w) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "cast": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (xsd:decimal(\"9007199254740992.1\") AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "compiled-filter": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ?x WHERE {VALUES ?x {0.3} FILTER(?x=0.1+0.2)}"
+    ],
+    "exit": 0
+  },
+  "decimal-compare": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((9007199254740992.1 < 9007199254740992.2) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "precision-28": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((0.1000000000000000000000000001+0.2) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "coefficient-overflow": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((99999999999999999999999999999.0+0.0) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "scale-29": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((0.00000000000000000000000000001+0.0) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "integer-overflow": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((9223372036854775807+1) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "repeating-division": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((1/3) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "mixed-float": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((xsd:float(\"0.1\")+0.2) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "decimal-max-round": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (ROUND(79228162514264337593543950335.0) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "decimal-overflow": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((79228162514264337593543950335.0+1.0) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "beyond-decimal-coefficient": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((79228162514264337593543950336.0+0.0) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "sub-scale-29": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((0.00000000000000000000000000001+0.0) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "float-promotion-add": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((\"16777217\"^^xsd:decimal + \"-16777216\"^^xsd:float) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "float-promotion-compare": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((\"16777217\"^^xsd:decimal = \"16777216\"^^xsd:float) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "mixed-double": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ((xsd:double(\"0.1\")+0.2) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "max-add-fraction": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "SELECT ((79228162514264337593543950335.0 + 0.1) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "fraction-add-max": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "SELECT ((0.1 + 79228162514264337593543950335.0) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "product-coefficient-rounding": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "SELECT ((99999999999999.9 * 99999999999999.9) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  },
+  "terminating-underflow": {
+    "command": [
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/rdfdb-9a2f49b",
+      "query",
+      "/private/tmp/rdf-jianlin-analytical25/exact-decimal-9a2f49b/fixture.nt",
+      "SELECT ((0.0000000000000000000000000001 / 10.0) AS ?v) WHERE {}"
+    ],
+    "exit": 0
+  }
+}
