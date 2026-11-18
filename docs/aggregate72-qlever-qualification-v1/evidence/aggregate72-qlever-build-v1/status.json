@@ -1,0 +1,16 @@
+{
+  "complete": true,
+  "datasets": {
+    "lubm": {
+      "pid": 41803,
+      "exit_code": 0
+    },
+    "watdiv": {
+      "pid": 43832,
+      "exit_code": 0
+    }
+  },
+  "comparative_load_claim": false,
+  "started": 1795045221.837481,
+  "ended": 1795045316.343002
+}
