@@ -1,0 +1,1 @@
+SELECT (COUNT(*) AS ?n) WHERE {?s <urn:p> ?o . ?o <urn:q> ?x}

@@ -1,0 +1,13 @@
+{
+  "scope": "seven tiny-graph translator checks, not real-workload qualification or speed",
+  "source_sha256": {
+    "aggregate_sql.py": "d74c2c314ecc0eb884f621b676ce930207ef238c1469a720afaaa34d2ca77d50",
+    "test_aggregate_sql.py": "ac24d9862e36b28f0cfafe5f375311fdf678a6200628f7f8195d1ed7d1de22db"
+  },
+  "unit_tests": 7,
+  "unit_tests_pass": true,
+  "curated_queries_parsed": 72,
+  "jena_fixture_cases": 7,
+  "all_exact_term_bags_match": true,
+  "constant_subject_predicate_scan_filters": "scalar lexical equality; semantic fixture repeated after refinement"
+}

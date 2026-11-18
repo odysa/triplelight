@@ -1,0 +1,1 @@
+PREFIX u: <urn:> SELECT ?o (COUNT(*) AS ?n) WHERE {?s u:p ?o} GROUP BY ?o
