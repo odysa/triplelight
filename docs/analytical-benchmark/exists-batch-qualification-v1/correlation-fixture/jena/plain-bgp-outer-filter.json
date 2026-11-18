@@ -1,0 +1,28 @@
+{ "head": {
+    "vars": [ "r" , "x" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "r": { "type": "uri" , "value": "urn:r10" } ,
+        "x": { "type": "uri" , "value": "urn:yes" }
+      } ,
+      { 
+        "r": { "type": "uri" , "value": "urn:r12" } ,
+        "x": { "type": "uri" , "value": "urn:yes" }
+      } ,
+      { 
+        "r": { "type": "uri" , "value": "urn:r14" } ,
+        "x": { "type": "uri" , "value": "urn:yes" }
+      } ,
+      { 
+        "r": { "type": "uri" , "value": "urn:r16" } ,
+        "x": { "type": "uri" , "value": "urn:yes" }
+      } ,
+      { 
+        "r": { "type": "uri" , "value": "urn:r18" } ,
+        "x": { "type": "uri" , "value": "urn:yes" }
+      }
+    ]
+  }
+}
