@@ -1,0 +1,9 @@
+{
+  "source_binary_unchanged": true,
+  "requests": 29,
+  "exact_pass": 16,
+  "exact_differences": 12,
+  "reference_errors": 1,
+  "bi_queries_run": 0,
+  "ended": 1795043277.622157
+}

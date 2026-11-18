@@ -1,0 +1,22 @@
+   Compiling rdfdb v0.1.0 (/private/tmp/rdf-jianlin-analytical25/exact-decimal-af856dc/source)
+warning: unused import: `std::str::FromStr`
+ --> src/exec/expr.rs:8:5
+  |
+8 | use std::str::FromStr;
+  |     ^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: associated function `of_rank` is never used
+  --> src/exec/expr.rs:27:19
+   |
+24 | impl Num {
+   | -------- associated function in this implementation
+...
+27 |     pub(super) fn of_rank(rank: u8, v: f64) -> Num {
+   |                   ^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `rdfdb` (lib) generated 2 warnings (run `cargo fix --lib -p rdfdb` to apply 1 suggestion)
+    Finished `release` profile [optimized] target(s) in 1m 05s
