@@ -651,3 +651,23 @@ fn inner_bind_joins_with_outer_binding() {
     assert_eq!(n("SELECT ?x WHERE { VALUES ?x {2} { BIND(2 AS ?x) } }"), 1);
     assert_eq!(n("SELECT ?x WHERE { VALUES ?x {1} { BIND(1/0 AS ?x) } }"), 1);
 }
+
+/// xsd:decimal arithmetic is exact (W3C agg-sum-01): sums, comparisons and division of decimals do not go through
+/// binary floating point. Float/double keep IEEE semantics.
+#[test]
+fn decimal_arithmetic_is_exact() {
+    let xd = "<http://www.w3.org/2001/XMLSchema#decimal>";
+    let data = format!("<urn:a> <urn:v> \"1.1\"^^{xd} .\n<urn:b> <urn:v> \"10.0\"^^{xd} .\n<urn:c> <urn:w> \"0.1\"^^{xd} .\n<urn:c> <urn:x> \"0.2\"^^{xd} .\n");
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let one = |q: &str| -> String { match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => format!("{:?}", rows), r => panic!("{r:?}") } };
+    assert!(one("SELECT (SUM(?v) AS ?s) { ?x <urn:v> ?v }").contains("\"11.1\""), "{}", one("SELECT (SUM(?v) AS ?s) { ?x <urn:v> ?v }"));
+    // 0.1 + 0.2 = 0.3 exactly for decimals (false in binary floating point).
+    assert!(one("SELECT ?c { ?c <urn:w> ?w ; <urn:x> ?y FILTER(?w + ?y = 0.3) }").contains("urn:c"));
+    assert!(one("SELECT ?c { ?c <urn:w> ?w ; <urn:x> ?y FILTER(?w + ?y > 0.3) }") == "[]");
+    // Integer division is decimal, AVG is exact.
+    assert!(one("SELECT ((1 / 4) AS ?q) {}").contains("\"0.25\""));
+    assert!(one("SELECT (AVG(?v) AS ?a) { ?x <urn:v> ?v }").contains("\"5.55\""));
+    // Division by zero is an error for decimals; doubles give INF.
+    assert!(!one("SELECT ((1.0 / 0) AS ?q) {}").contains("Some"));
+    assert!(one("SELECT ((1.0e0 / 0) AS ?q) {}").contains("INF"));
+}
