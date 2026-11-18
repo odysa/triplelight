@@ -72,12 +72,69 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// Index nested-loop join of `rows` with one pattern: one index range read per input row.
     pub fn extend(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> {
         let w = self.w;
+        if let Some(out) = self.extend_merge(pat, rows) { return out }
         if rows.len() / w.max(1) >= 2 * MORSEL {
             let parts: Vec<Vec<TermId>> = rows.par_chunks(w * MORSEL).map(|c| self.extend_seq(pat, c)).collect();
             parts.concat()
         } else {
             self.extend_seq(pat, rows)
         }
+    }
+
+    /// Merge join for `(const, bound var, free var)` patterns when the input is sorted on the bound variable and
+    /// covers a large part of the constant's range: one sequential scan of `perm` under the constant instead of
+    /// one index seek per row (e.g. `?review dc:date ?date` for every review in subject order).
+    fn extend_merge(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
+        let w = self.w;
+        if w == 0 { return None }
+        let n_rows = rows.len() / w;
+        if n_rows < 4096 { return None }
+        let first = &rows[..w];
+        let fixed: [Option<TermId>; 3] = std::array::from_fn(|i| match pat[i] {
+            Slot::Const(c) => c,
+            Slot::Var(v) => (first[v] != UNBOUND).then_some(first[v]),
+        });
+        let (perm, prefix, n) = choose_perm(&fixed);
+        if n != 2 { return None }
+        let order = perm.order();
+        // Key layout: [constant, bound key variable, free variable].
+        let Slot::Const(_) = pat[order[0]] else { return None };
+        let Slot::Var(kv) = pat[order[1]] else { return None };
+        let Slot::Var(fv) = pat[order[2]] else { return None };
+        if fv == kv { return None }
+        // Every row must bind the key, leave the free variable as `first` does, and be sorted on the key.
+        let free_bound = first[fv] != UNBOUND;
+        let mut prev = TermId(0);
+        for r in rows.chunks_exact(w) {
+            let k = r[kv];
+            if k == UNBOUND || k < prev || (r[fv] != UNBOUND) != free_bound { return None }
+            prev = k;
+        }
+        let total = self.count(perm, &prefix[..1]);
+        if total > 4 * n_rows as u64 { return None }
+        let mut out = Vec::with_capacity(rows.len());
+        let mut scan = self.snap.scan(perm, &prefix[..1]).flat_map(|b| {
+            let b = b.unwrap_or_else(|e| storage_failure(e));
+            (0..b.len()).map(move |i| (b.cols[1][i], b.cols[2][i])).collect::<Vec<_>>()
+        }).peekable();
+        let mut group: Vec<TermId> = Vec::new();
+        let mut group_key: Option<TermId> = None;
+        for r in rows.chunks_exact(w) {
+            let k = r[kv];
+            if group_key != Some(k) {
+                group.clear();
+                while scan.peek().is_some_and(|&(a, _)| a < k) { scan.next(); }
+                while let Some(&(a, b)) = scan.peek() { if a != k { break } group.push(b); scan.next(); }
+                group_key = Some(k);
+            }
+            for &val in &group {
+                if free_bound && r[fv] != val { continue }
+                out.extend_from_slice(r);
+                let start = out.len() - w;
+                out[start + fv] = val;
+            }
+        }
+        Some(out)
     }
 
     fn extend_seq(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> {

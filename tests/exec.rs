@@ -506,3 +506,26 @@ fn single_variable_filter_memo_matches_per_row() {
     assert_eq!(n(&format!("SELECT * {{ ?r <urn:for> ?p ; <urn:date> ?d FILTER(?d >= \"2007-10-10\"^^{xd} && ?d <= \"2007-10-20\"^^{xd}) }}")), expect);
     assert_eq!(n(&format!("SELECT * {{ ?r <urn:for> ?p ; <urn:date> ?d FILTER(!(?d >= \"2007-10-10\"^^{xd})) }}")), (0..200).filter(|i| i % 28 < 9).count());
 }
+
+/// The sorted-input merge join for `(const, bound, free)` patterns must give the same bag as per-row probes,
+/// including subjects with no match and with several matches.
+#[test]
+fn merge_extend_matches_probe_join() {
+    let mut data = String::new();
+    let mut expect = 0usize;
+    for i in 0..6000 {
+        data.push_str(&format!("<urn:s{i}> <urn:a> <urn:x{}> .\n", i % 13));
+        let k = i % 4; // 0..3 values of <urn:b>
+        for j in 0..k { data.push_str(&format!("<urn:s{i}> <urn:b> \"v{j}\" .\n")) }
+        expect += k;
+    }
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let rows = |q: &str| -> Vec<String> { match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.into_iter().map(|r| format!("{r:?}")).collect(); v.sort(); v } r => panic!("{r:?}") } };
+    let joined = rows("SELECT ?s ?x ?y WHERE { ?s <urn:a> ?x . ?s <urn:b> ?y }");
+    assert_eq!(joined.len(), expect);
+    // Same answers through a path that cannot use the merge (a VALUES-driven, unsorted input is not required:
+    // compare against per-subject evaluation of a sample).
+    let one = rows("SELECT ?s ?x ?y WHERE { VALUES ?s { <urn:s7> <urn:s4> <urn:s3> } ?s <urn:a> ?x . ?s <urn:b> ?y }");
+    assert_eq!(one.len(), 3 + 0 + 3);
+    for r in &one { assert!(joined.contains(r), "{r}") }
+}
