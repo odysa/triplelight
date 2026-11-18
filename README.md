@@ -20,11 +20,11 @@ Same Linux VM (4 CPUs, 12 GiB cap per engine), two passes in reversed order. Eac
 measured request times after 15 warmups, in seconds. rdfdb at main `5ac99cc`; QLever with its result cache cleared
 before every request; DuckDB 2.0.0 over one lossless triples table with hand-written SQL per query template.
 
-| | Pass 1 (s) | Pass 2 (s) | Strict answer check | Value-only check |
-|---|---:|---:|---:|---:|
-| **rdfdb** | **10.8** | **7.3** | 60 / 60 | 60 / 60 |
-| QLever | 18.3 | 18.7 | 9 / 60 | 60 / 60 |
-| DuckDB 2.0.0 | 170.7 | 113.4 | 60 / 60 | 60 / 60 |
+| | Pass 1 (s) | Pass 2 (s) | Strict answer check | COUNT int = integer | Value-only check |
+|---|---:|---:|---:|---:|---:|
+| **rdfdb** | **10.8** | **7.3** | 60 / 60 | 60 / 60 | 60 / 60 |
+| QLever | 18.3 | 18.7 | 9 / 60 | 21 / 60 | 60 / 60 |
+| DuckDB 2.0.0 | 170.7 | 113.4 | 60 / 60 | 60 / 60 | 60 / 60 |
 
 All 360 requests pass a value-only check frozen before the run: numeric values within fixed bounds, datatype
 ignored. QLever fails the strict check only on result datatypes (computed float aggregates, and `xsd:int` instead of
@@ -35,8 +35,8 @@ Per query template (seconds summed over that template's requests, pass 1 / pass 
 | Template | q1 | q2 | q3 | q4 | q5 | q6 | q7 | q8 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | rdfdb | 0.48 / 0.31 | **0.17 / 0.11** | 1.30 / 0.97 | **5.71 / 4.06** | 2.07 / **1.20** | **0.36 / 0.21** | **0.53 / 0.32** | **0.17 / 0.10** |
-| QLever | **0.26 / 0.28** | 2.06 / 2.17 | **0.42 / 0.44** | 10.90 / 11.01 | **1.78** / 1.90 | 1.88 / 1.91 | 0.54 / 0.54 | 0.44 / 0.42 |
-| DuckDB | 15.82 / 9.78 | 10.45 / 6.75 | 10.32 / 6.12 | 18.30 / 12.36 | 35.62 / 23.14 | 55.07 / 32.21 | 12.57 / 11.06 | 12.56 / 11.99 |
+| QLever | **0.26 / 0.28** | 2.06 / 2.17 | **0.42 / 0.44** | 10.89 / 11.01 | **1.78** / 1.90 | 1.88 / 1.91 | 0.54 / 0.54 | 0.44 / 0.42 |
+| DuckDB | 15.82 / 9.78 | 10.45 / 6.75 | 10.32 / 6.12 | 18.30 / 12.36 | 35.62 / 23.14 | 55.07 / 32.20 | 12.57 / 11.06 | 12.56 / 11.99 |
 
 QLever is still faster on q1 and q3, and uses much less memory: about 0.35 GiB peak server memory against rdfdb's
 1.41–1.53 GiB. q7 is tied in pass 1 and lower for rdfdb in pass 2, which is not yet a stable win. rdfdb's and DuckDB's
