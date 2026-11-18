@@ -1,0 +1,2442 @@
+2026-11-18 20:59:39.874 - WARN: The Linux kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty may have a bug that causes random stalls, crashes, and corrupt data on arm64, unless it contains the fix https://github.com/torvalds/linux/commit/478a1c3abebfc717db0d1281a9cdd7befafee542. As a workaround, QLever doesn't return freed memory to the operating system. On a kernel with the fix, you can disable the workaround by setting the environment variable QLEVER_DISABLE_KERNEL_BUG_WORKAROUND
+2026-11-18 20:59:39.874 - INFO: [1mQLever server 18c097c, compiled on Sat Nov 14 19:07:21 UTC 2026 using git hash 18c097c[22m
+2026-11-18 20:59:39.874 - INFO: Runtime parameter set from the command line: max-num-threads-per-query=4
+2026-11-18 20:59:39.875 - INFO: Cleanup of previous index directories after each rebuild enabled (--rebuild-keep-previous-index-dirs original-and-most-recent)
+2026-11-18 20:59:39.882 - INFO: The git hash used to build this index was "18c097c"
+2026-11-18 20:59:39.883 - INFO: Reading vocabulary from file bsbm100.vocabulary.words ...
+2026-11-18 20:59:39.889 - WARN: io_uring is compiled in but unavailable at runtime (io_uring_queue_init failed in IoUringManager. In file "/qlever/src/util/IoUringManager.cpp" at line 69); falling back to synchronous pread for vocabulary lookups
+2026-11-18 20:59:39.889 - INFO: Done, number of words: 23,497,400
+2026-11-18 20:59:39.889 - INFO: Number of words in internal vocabulary (these are also part of the external vocabulary): 23,518
+2026-11-18 20:59:39.893 - INFO: Registered PSO permutation: #relations = 10, #blocks = 478, #triples = 14,730,628
+2026-11-18 20:59:39.895 - INFO: Registered PSO permutation: #relations = 40, #blocks = 3,189, #triples = 98,861,444
+2026-11-18 20:59:39.896 - INFO: Registered POS permutation: #relations = 10, #blocks = 478, #triples = 14,730,628
+2026-11-18 20:59:39.899 - INFO: Registered POS permutation: #relations = 40, #blocks = 3,189, #triples = 98,861,444
+2026-11-18 20:59:39.901 - INFO: Registered OPS permutation: #relations = 14,957,718, #blocks = 2,898, #triples = 98,861,444
+2026-11-18 20:59:39.903 - INFO: Registered OSP permutation: #relations = 14,957,718, #blocks = 2,898, #triples = 98,861,444
+2026-11-18 20:59:39.905 - INFO: Registered SPO permutation: #relations = 9,034,108, #blocks = 2,110, #triples = 98,861,444
+2026-11-18 20:59:39.907 - INFO: Registered SOP permutation: #relations = 9,034,108, #blocks = 2,110, #triples = 98,861,444
+2026-11-18 20:59:39.907 - INFO: Reading patterns from file bsbm100.index.patterns ...
+2026-11-18 20:59:39.908 - INFO: Initializing server ...
+2026-11-18 20:59:39.908 - INFO: Access token for restricted API calls is ""
+2026-11-18 20:59:39.908 - INFO: The server is ready, listening for requests on port 31443 ...
+2026-11-18 20:59:39.951 - INFO: 
+2026-11-18 20:59:39.951 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:39.953 - INFO: Processing the following SPARQL query:
+ASK {}
+2026-11-18 20:59:39.953 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:39.954 - INFO: Query planning done in 2 ms
+2026-11-18 20:59:39.955 - INFO: Done processing query and sending result, total time was 3 ms
+2026-11-18 20:59:39.956 - INFO: 
+2026-11-18 20:59:39.956 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:39.956 - INFO: Processing command "get-settings": get server settings
+2026-11-18 20:59:39.959 - INFO: 
+2026-11-18 20:59:39.959 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:39.959 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:40.398 - INFO: 
+2026-11-18 20:59:40.398 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:40.398 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:40.401 - INFO: 
+2026-11-18 20:59:40.401 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:40.404 - INFO: Processing the following SPARQL query:
+prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+prefix rev: <http://purl.org/stuff/rev#>
+
+Select ?productType ?reviewCount
+{
+ { Select ?productType (count(?review) As ?reviewCount)
+  {
+   ?productType a bsbm:ProductType .
+   ?product a ?productType .
+   ?product bsbm:producer ?producer .
+   ?producer bsbm:country <http://downlode.org/rdf/iso-3166/countries#AT> .
+   ?review bsbm:reviewFor ?product .
+   ?review rev:reviewer ?reviewer .
+   ?reviewer bsbm:country <http://downlode.org/rdf/iso-3166/countries#US> .
+  }
+  Group By ?productType
+ }
+}
+Order By desc(?reviewCount) ?productType
+Limit 10
+
+2026-11-18 20:59:40.404 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:40.412 - INFO: Query planning done in 11 ms
+2026-11-18 20:59:40.587 - INFO: Result has size 1,267 x 2
+2026-11-18 20:59:40.588 - INFO: Done processing query and sending result, total time was 187 ms
+2026-11-18 20:59:40.592 - INFO: 
+2026-11-18 20:59:40.592 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:40.592 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:40.594 - INFO: 
+2026-11-18 20:59:40.594 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:40.596 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix dc: <http://purl.org/dc/elements/1.1/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product (xsd:float(?monthCount)/?monthBeforeCount As ?ratio)
+  {
+    { Select ?product (count(?review) As ?monthCount)
+      {
+        ?review bsbm:reviewFor ?product .
+        ?review dc:date ?date .
+        Filter(?date >= "2007-10-10"^^<http://www.w3.org/2001/XMLSchema#date> && ?date < "2007-11-07"^^<http://www.w3.org/2001/XMLSchema#date>) 
+      }
+      Group By ?product
+    }  {
+      Select ?product (count(?review) As ?monthBeforeCount)
+      {
+        ?review bsbm:reviewFor ?product .
+        ?review dc:date ?date .
+        Filter(?date >= "2007-09-12"^^<http://www.w3.org/2001/XMLSchema#date> && ?date < "2007-10-10"^^<http://www.w3.org/2001/XMLSchema#date>) #
+      }
+      Group By ?product
+      Having (count(?review)>0)
+    }
+  }
+  Order By desc(xsd:float(?monthCount) / ?monthBeforeCount) ?product
+  Limit 10
+
+2026-11-18 20:59:40.596 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:40.598 - INFO: Query planning done in 4 ms
+2026-11-18 20:59:40.856 - INFO: Result has size 18,821 x 5
+2026-11-18 20:59:40.860 - INFO: Done processing query and sending result, total time was 266 ms
+2026-11-18 20:59:40.866 - INFO: 
+2026-11-18 20:59:40.866 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:40.866 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:40.869 - INFO: 
+2026-11-18 20:59:40.869 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:40.870 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+
+  SELECT ?otherProduct ?sameFeatures
+  {
+    ?otherProduct a bsbm:Product .
+    FILTER(?otherProduct != <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer486/Product23902>)
+    {
+      SELECT ?otherProduct (count(?otherFeature) As ?sameFeatures)
+      {
+        <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer486/Product23902> bsbm:productFeature ?feature .
+        ?otherProduct bsbm:productFeature ?otherFeature .
+        FILTER(?feature=?otherFeature)
+      }
+      Group By ?otherProduct
+    }
+  }
+  Order By desc(?sameFeatures) ?otherProduct
+  Limit 10
+
+2026-11-18 20:59:40.870 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:40.871 - INFO: Query planning done in 2 ms
+2026-11-18 20:59:42.800 - INFO: Result has size 3,749 x 2
+2026-11-18 20:59:42.803 - INFO: Done processing query and sending result, total time was 1,934 ms
+2026-11-18 20:59:42.806 - INFO: 
+2026-11-18 20:59:42.806 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:42.806 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:42.808 - INFO: 
+2026-11-18 20:59:42.808 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:42.808 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+
+  SELECT ?otherProduct ?sameFeatures
+  {
+    ?otherProduct a bsbm:Product .
+    FILTER(?otherProduct != <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer2515/Product127209>)
+    {
+      SELECT ?otherProduct (count(?otherFeature) As ?sameFeatures)
+      {
+        <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer2515/Product127209> bsbm:productFeature ?feature .
+        ?otherProduct bsbm:productFeature ?otherFeature .
+        FILTER(?feature=?otherFeature)
+      }
+      Group By ?otherProduct
+    }
+  }
+  Order By desc(?sameFeatures) ?otherProduct
+  Limit 10
+
+2026-11-18 20:59:42.808 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:42.809 - INFO: Query planning done in 1 ms
+2026-11-18 20:59:45.832 - INFO: Result has size 26,342 x 2
+2026-11-18 20:59:45.835 - INFO: Done processing query and sending result, total time was 3,027 ms
+2026-11-18 20:59:45.842 - INFO: 
+2026-11-18 20:59:45.842 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:45.842 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:45.846 - INFO: 
+2026-11-18 20:59:45.846 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:45.847 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?feature (?withFeaturePrice/?withoutFeaturePrice As ?priceRatio)
+  {
+    { Select ?feature (avg(xsd:float(xsd:string(?price))) As ?withFeaturePrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1300> ;
+                 bsbm:productFeature ?feature .
+        ?offer bsbm:product ?product ;
+               bsbm:price ?price .
+      }
+      Group By ?feature
+    }
+    { Select ?feature (avg(xsd:float(xsd:string(?price))) As ?withoutFeaturePrice)
+      {
+        { Select distinct ?feature { 
+          ?p a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1300> ;
+             bsbm:productFeature ?feature .
+        } }
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1300> .
+        ?offer bsbm:product ?product ;
+               bsbm:price ?price .
+        FILTER NOT EXISTS { ?product bsbm:productFeature ?feature }
+      }
+      Group By ?feature
+    }
+  }
+  Order By desc(?withFeaturePrice/?withoutFeaturePrice) ?feature
+  Limit 10
+
+2026-11-18 20:59:45.848 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:45.850 - INFO: Query planning done in 3 ms
+2026-11-18 20:59:47.413 - INFO: Result has size 85 x 5
+2026-11-18 20:59:47.415 - INFO: Done processing query and sending result, total time was 1,569 ms
+2026-11-18 20:59:47.433 - INFO: 
+2026-11-18 20:59:47.433 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:47.433 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:47.436 - INFO: 
+2026-11-18 20:59:47.436 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:47.437 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?country ?product ?nrOfReviews ?avgPrice
+  {
+    { Select ?country (max(?nrOfReviews) As ?maxReviews)
+      {
+        { Select ?country ?product (count(?review) As ?nrOfReviews)
+          {
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType83> .
+            ?review bsbm:reviewFor ?product ;
+                    rev:reviewer ?reviewer .
+            ?reviewer bsbm:country ?country .
+          }
+          Group By ?country ?product
+        }
+      }
+      Group By ?country
+    }
+    { Select ?country ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType83> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:price ?price .
+      }
+      Group By ?country ?product
+    }
+    { Select ?country ?product (count(?review) As ?nrOfReviews)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType83> .
+        ?review bsbm:reviewFor ?product .
+        ?review rev:reviewer ?reviewer .
+        ?reviewer bsbm:country ?country .
+      }
+      Group By ?country ?product
+    }
+    FILTER(?nrOfReviews=?maxReviews)
+  }
+  Order By desc(?nrOfReviews) ?country ?product
+
+2026-11-18 20:59:47.437 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:47.439 - INFO: Query planning done in 3 ms
+2026-11-18 20:59:47.475 - INFO: Result has size 0 x 5
+2026-11-18 20:59:47.476 - INFO: Done processing query and sending result, total time was 40 ms
+2026-11-18 20:59:47.480 - INFO: 
+2026-11-18 20:59:47.480 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:47.480 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:47.484 - INFO: 
+2026-11-18 20:59:47.484 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:47.485 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?country ?product ?nrOfReviews ?avgPrice
+  {
+    { Select ?country (max(?nrOfReviews) As ?maxReviews)
+      {
+        { Select ?country ?product (count(?review) As ?nrOfReviews)
+          {
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType7> .
+            ?review bsbm:reviewFor ?product ;
+                    rev:reviewer ?reviewer .
+            ?reviewer bsbm:country ?country .
+          }
+          Group By ?country ?product
+        }
+      }
+      Group By ?country
+    }
+    { Select ?country ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType7> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:price ?price .
+      }
+      Group By ?country ?product
+    }
+    { Select ?country ?product (count(?review) As ?nrOfReviews)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType7> .
+        ?review bsbm:reviewFor ?product .
+        ?review rev:reviewer ?reviewer .
+        ?reviewer bsbm:country ?country .
+      }
+      Group By ?country ?product
+    }
+    FILTER(?nrOfReviews=?maxReviews)
+  }
+  Order By desc(?nrOfReviews) ?country ?product
+
+2026-11-18 20:59:47.485 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:47.487 - INFO: Query planning done in 3 ms
+2026-11-18 20:59:47.519 - INFO: Result has size 0 x 5
+2026-11-18 20:59:47.519 - INFO: Done processing query and sending result, total time was 35 ms
+2026-11-18 20:59:47.525 - INFO: 
+2026-11-18 20:59:47.525 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:47.526 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:47.528 - INFO: 
+2026-11-18 20:59:47.528 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:47.529 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1988/Producer1988> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1988/Producer1988> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 20:59:47.529 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:47.537 - INFO: Query planning done in 8 ms
+2026-11-18 20:59:47.834 - INFO: Result has size 60 x 3
+2026-11-18 20:59:47.853 - INFO: Done processing query and sending result, total time was 324 ms
+2026-11-18 20:59:47.878 - INFO: 
+2026-11-18 20:59:47.879 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:47.879 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:47.881 - INFO: 
+2026-11-18 20:59:47.881 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:47.882 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?country ?product ?nrOfReviews ?avgPrice
+  {
+    { Select ?country (max(?nrOfReviews) As ?maxReviews)
+      {
+        { Select ?country ?product (count(?review) As ?nrOfReviews)
+          {
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType967> .
+            ?review bsbm:reviewFor ?product ;
+                    rev:reviewer ?reviewer .
+            ?reviewer bsbm:country ?country .
+          }
+          Group By ?country ?product
+        }
+      }
+      Group By ?country
+    }
+    { Select ?country ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType967> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:price ?price .
+      }
+      Group By ?country ?product
+    }
+    { Select ?country ?product (count(?review) As ?nrOfReviews)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType967> .
+        ?review bsbm:reviewFor ?product .
+        ?review rev:reviewer ?reviewer .
+        ?reviewer bsbm:country ?country .
+      }
+      Group By ?country ?product
+    }
+    FILTER(?nrOfReviews=?maxReviews)
+  }
+  Order By desc(?nrOfReviews) ?country ?product
+
+2026-11-18 20:59:47.882 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:47.886 - INFO: Query planning done in 4 ms
+2026-11-18 20:59:48.192 - INFO: Result has size 25 x 5
+2026-11-18 20:59:48.199 - INFO: Done processing query and sending result, total time was 317 ms
+2026-11-18 20:59:48.214 - INFO: 
+2026-11-18 20:59:48.214 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:48.214 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:48.216 - INFO: 
+2026-11-18 20:59:48.216 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:48.217 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer3166/Producer3166> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer3166/Producer3166> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 20:59:48.217 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:48.226 - INFO: Query planning done in 9 ms
+2026-11-18 20:59:48.577 - INFO: Result has size 32 x 3
+2026-11-18 20:59:48.587 - INFO: Done processing query and sending result, total time was 370 ms
+2026-11-18 20:59:48.606 - INFO: 
+2026-11-18 20:59:48.606 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:48.606 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:48.609 - INFO: 
+2026-11-18 20:59:48.609 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:48.610 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer5149/Producer5149> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer5149/Producer5149> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 20:59:48.610 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:48.619 - INFO: Query planning done in 10 ms
+2026-11-18 20:59:48.957 - INFO: Result has size 23 x 3
+2026-11-18 20:59:48.965 - INFO: Done processing query and sending result, total time was 355 ms
+2026-11-18 20:59:48.981 - INFO: 
+2026-11-18 20:59:48.981 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:48.981 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:48.984 - INFO: 
+2026-11-18 20:59:48.984 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:48.985 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product
+  {
+    { Select ?product
+      { 
+        { Select ?product (count(?offer) As ?offerCount)
+          { 
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1> .
+            ?offer bsbm:product ?product .
+          }
+          Group By ?product
+        }
+      }
+      Order By desc(?offerCount)
+      Limit 1000
+    }
+    FILTER NOT EXISTS
+    {
+      ?offer bsbm:product ?product .
+      ?offer bsbm:vendor ?vendor .
+      ?vendor bsbm:country ?country .
+      FILTER(?country=<http://downlode.org/rdf/iso-3166/countries#US>)
+    }
+  }
+
+2026-11-18 20:59:48.985 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:48.986 - INFO: Query planning done in 2 ms
+2026-11-18 20:59:49.400 - INFO: Result has size 0 x 2
+2026-11-18 20:59:49.400 - INFO: Done processing query and sending result, total time was 416 ms
+2026-11-18 20:59:49.404 - INFO: 
+2026-11-18 20:59:49.404 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:49.404 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:49.406 - INFO: 
+2026-11-18 20:59:49.406 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:49.407 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?vendor (xsd:float(?belowAvg)/?offerCount As ?cheapExpensiveRatio)
+  {
+    { Select ?vendor (count(?offer) As ?belowAvg)
+      {
+        { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1> .
+          ?offer bsbm:product ?product .
+          ?offer bsbm:vendor ?vendor .
+          ?offer bsbm:price ?price .
+          { Select ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+            {
+              ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1> .
+              ?offer bsbm:product ?product .
+              ?offer bsbm:vendor ?vendor .
+              ?offer bsbm:price ?price .
+            }
+            Group By ?product
+          }
+        } .
+        FILTER (xsd:float(xsd:string(?price)) < ?avgPrice)
+      }
+      Group By ?vendor
+    }
+    { Select ?vendor (count(?offer) As ?offerCount)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:vendor ?vendor .
+      }
+      Group By ?vendor
+    }
+  }
+  Order by desc(xsd:float(?belowAvg)/?offerCount) ?vendor
+  limit 10
+
+2026-11-18 20:59:49.407 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:49.412 - INFO: Query planning done in 6 ms
+2026-11-18 20:59:49.457 - INFO: Result has size 0 x 5
+2026-11-18 20:59:49.457 - INFO: Done processing query and sending result, total time was 51 ms
+2026-11-18 20:59:49.460 - INFO: 
+2026-11-18 20:59:49.460 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:49.460 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:49.463 - INFO: 
+2026-11-18 20:59:49.463 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:49.464 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product
+  {
+    { Select ?product
+      { 
+        { Select ?product (count(?offer) As ?offerCount)
+          { 
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1164> .
+            ?offer bsbm:product ?product .
+          }
+          Group By ?product
+        }
+      }
+      Order By desc(?offerCount)
+      Limit 1000
+    }
+    FILTER NOT EXISTS
+    {
+      ?offer bsbm:product ?product .
+      ?offer bsbm:vendor ?vendor .
+      ?vendor bsbm:country ?country .
+      FILTER(?country=<http://downlode.org/rdf/iso-3166/countries#US>)
+    }
+  }
+
+2026-11-18 20:59:49.464 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:49.465 - INFO: Query planning done in 2 ms
+2026-11-18 20:59:50.121 - INFO: Result has size 6 x 2
+2026-11-18 20:59:50.124 - INFO: Done processing query and sending result, total time was 661 ms
+2026-11-18 20:59:50.134 - INFO: 
+2026-11-18 20:59:50.134 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:50.134 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:50.138 - INFO: 
+2026-11-18 20:59:50.138 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:50.140 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1819/Producer1819> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1819/Producer1819> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 20:59:50.140 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:50.164 - INFO: Query planning done in 25 ms
+2026-11-18 20:59:50.578 - INFO: Result has size 52 x 3
+2026-11-18 20:59:50.593 - INFO: Done processing query and sending result, total time was 455 ms
+2026-11-18 20:59:50.619 - INFO: 
+2026-11-18 20:59:50.619 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:50.619 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:50.623 - INFO: 
+2026-11-18 20:59:50.623 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:50.624 - INFO: Processing the following SPARQL query:
+prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+prefix rev: <http://purl.org/stuff/rev#>
+
+Select ?productType ?reviewCount
+{
+ { Select ?productType (count(?review) As ?reviewCount)
+  {
+   ?productType a bsbm:ProductType .
+   ?product a ?productType .
+   ?product bsbm:producer ?producer .
+   ?producer bsbm:country <http://downlode.org/rdf/iso-3166/countries#JP> .
+   ?review bsbm:reviewFor ?product .
+   ?review rev:reviewer ?reviewer .
+   ?reviewer bsbm:country <http://downlode.org/rdf/iso-3166/countries#JP> .
+  }
+  Group By ?productType
+ }
+}
+Order By desc(?reviewCount) ?productType
+Limit 10
+
+2026-11-18 20:59:50.624 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:50.634 - INFO: Query planning done in 11 ms
+2026-11-18 20:59:50.894 - INFO: Result has size 1,277 x 2
+2026-11-18 20:59:50.895 - INFO: Done processing query and sending result, total time was 272 ms
+2026-11-18 20:59:50.901 - INFO: 
+2026-11-18 20:59:50.901 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:50.901 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:50.904 - INFO: 
+2026-11-18 20:59:50.904 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:50.905 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix dc: <http://purl.org/dc/elements/1.1/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product (xsd:float(?monthCount)/?monthBeforeCount As ?ratio)
+  {
+    { Select ?product (count(?review) As ?monthCount)
+      {
+        ?review bsbm:reviewFor ?product .
+        ?review dc:date ?date .
+        Filter(?date >= "2008-02-29"^^<http://www.w3.org/2001/XMLSchema#date> && ?date < "2008-03-28"^^<http://www.w3.org/2001/XMLSchema#date>) 
+      }
+      Group By ?product
+    }  {
+      Select ?product (count(?review) As ?monthBeforeCount)
+      {
+        ?review bsbm:reviewFor ?product .
+        ?review dc:date ?date .
+        Filter(?date >= "2008-02-01"^^<http://www.w3.org/2001/XMLSchema#date> && ?date < "2008-02-29"^^<http://www.w3.org/2001/XMLSchema#date>) #
+      }
+      Group By ?product
+      Having (count(?review)>0)
+    }
+  }
+  Order By desc(xsd:float(?monthCount) / ?monthBeforeCount) ?product
+  Limit 10
+
+2026-11-18 20:59:50.906 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:50.908 - INFO: Query planning done in 3 ms
+2026-11-18 20:59:51.363 - INFO: Result has size 98,306 x 5
+2026-11-18 20:59:51.366 - INFO: Done processing query and sending result, total time was 461 ms
+2026-11-18 20:59:51.371 - INFO: 
+2026-11-18 20:59:51.371 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:51.371 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:51.374 - INFO: 
+2026-11-18 20:59:51.374 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:51.374 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+
+  SELECT ?otherProduct ?sameFeatures
+  {
+    ?otherProduct a bsbm:Product .
+    FILTER(?otherProduct != <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1831/Product91858>)
+    {
+      SELECT ?otherProduct (count(?otherFeature) As ?sameFeatures)
+      {
+        <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1831/Product91858> bsbm:productFeature ?feature .
+        ?otherProduct bsbm:productFeature ?otherFeature .
+        FILTER(?feature=?otherFeature)
+      }
+      Group By ?otherProduct
+    }
+  }
+  Order By desc(?sameFeatures) ?otherProduct
+  Limit 10
+
+2026-11-18 20:59:51.375 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:51.376 - INFO: Query planning done in 1 ms
+2026-11-18 20:59:53.783 - INFO: Result has size 12,044 x 2
+2026-11-18 20:59:53.786 - INFO: Done processing query and sending result, total time was 2,412 ms
+2026-11-18 20:59:53.789 - INFO: 
+2026-11-18 20:59:53.789 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:53.789 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:53.791 - INFO: 
+2026-11-18 20:59:53.791 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:53.792 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+
+  SELECT ?otherProduct ?sameFeatures
+  {
+    ?otherProduct a bsbm:Product .
+    FILTER(?otherProduct != <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer5134/Product260042>)
+    {
+      SELECT ?otherProduct (count(?otherFeature) As ?sameFeatures)
+      {
+        <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer5134/Product260042> bsbm:productFeature ?feature .
+        ?otherProduct bsbm:productFeature ?otherFeature .
+        FILTER(?feature=?otherFeature)
+      }
+      Group By ?otherProduct
+    }
+  }
+  Order By desc(?sameFeatures) ?otherProduct
+  Limit 10
+
+2026-11-18 20:59:53.792 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:53.793 - INFO: Query planning done in 1 ms
+2026-11-18 20:59:56.166 - INFO: Result has size 29,266 x 2
+2026-11-18 20:59:56.169 - INFO: Done processing query and sending result, total time was 2,378 ms
+2026-11-18 20:59:56.172 - INFO: 
+2026-11-18 20:59:56.172 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:56.172 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:56.174 - INFO: 
+2026-11-18 20:59:56.174 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:56.175 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?feature (?withFeaturePrice/?withoutFeaturePrice As ?priceRatio)
+  {
+    { Select ?feature (avg(xsd:float(xsd:string(?price))) As ?withFeaturePrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType5> ;
+                 bsbm:productFeature ?feature .
+        ?offer bsbm:product ?product ;
+               bsbm:price ?price .
+      }
+      Group By ?feature
+    }
+    { Select ?feature (avg(xsd:float(xsd:string(?price))) As ?withoutFeaturePrice)
+      {
+        { Select distinct ?feature { 
+          ?p a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType5> ;
+             bsbm:productFeature ?feature .
+        } }
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType5> .
+        ?offer bsbm:product ?product ;
+               bsbm:price ?price .
+        FILTER NOT EXISTS { ?product bsbm:productFeature ?feature }
+      }
+      Group By ?feature
+    }
+  }
+  Order By desc(?withFeaturePrice/?withoutFeaturePrice) ?feature
+  Limit 10
+
+2026-11-18 20:59:56.175 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:56.177 - INFO: Query planning done in 3 ms
+2026-11-18 20:59:56.198 - INFO: Result has size 0 x 5
+2026-11-18 20:59:56.199 - INFO: Done processing query and sending result, total time was 24 ms
+2026-11-18 20:59:56.202 - INFO: 
+2026-11-18 20:59:56.202 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:56.202 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:56.204 - INFO: 
+2026-11-18 20:59:56.204 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:56.205 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?country ?product ?nrOfReviews ?avgPrice
+  {
+    { Select ?country (max(?nrOfReviews) As ?maxReviews)
+      {
+        { Select ?country ?product (count(?review) As ?nrOfReviews)
+          {
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType6> .
+            ?review bsbm:reviewFor ?product ;
+                    rev:reviewer ?reviewer .
+            ?reviewer bsbm:country ?country .
+          }
+          Group By ?country ?product
+        }
+      }
+      Group By ?country
+    }
+    { Select ?country ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType6> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:price ?price .
+      }
+      Group By ?country ?product
+    }
+    { Select ?country ?product (count(?review) As ?nrOfReviews)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType6> .
+        ?review bsbm:reviewFor ?product .
+        ?review rev:reviewer ?reviewer .
+        ?reviewer bsbm:country ?country .
+      }
+      Group By ?country ?product
+    }
+    FILTER(?nrOfReviews=?maxReviews)
+  }
+  Order By desc(?nrOfReviews) ?country ?product
+
+2026-11-18 20:59:56.206 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:56.209 - INFO: Query planning done in 4 ms
+2026-11-18 20:59:56.250 - INFO: Result has size 0 x 5
+2026-11-18 20:59:56.251 - INFO: Done processing query and sending result, total time was 46 ms
+2026-11-18 20:59:56.254 - INFO: 
+2026-11-18 20:59:56.254 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:56.254 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:56.256 - INFO: 
+2026-11-18 20:59:56.256 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:56.257 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?country ?product ?nrOfReviews ?avgPrice
+  {
+    { Select ?country (max(?nrOfReviews) As ?maxReviews)
+      {
+        { Select ?country ?product (count(?review) As ?nrOfReviews)
+          {
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType6> .
+            ?review bsbm:reviewFor ?product ;
+                    rev:reviewer ?reviewer .
+            ?reviewer bsbm:country ?country .
+          }
+          Group By ?country ?product
+        }
+      }
+      Group By ?country
+    }
+    { Select ?country ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType6> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:price ?price .
+      }
+      Group By ?country ?product
+    }
+    { Select ?country ?product (count(?review) As ?nrOfReviews)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType6> .
+        ?review bsbm:reviewFor ?product .
+        ?review rev:reviewer ?reviewer .
+        ?reviewer bsbm:country ?country .
+      }
+      Group By ?country ?product
+    }
+    FILTER(?nrOfReviews=?maxReviews)
+  }
+  Order By desc(?nrOfReviews) ?country ?product
+
+2026-11-18 20:59:56.257 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:56.260 - INFO: Query planning done in 4 ms
+2026-11-18 20:59:56.298 - INFO: Result has size 0 x 5
+2026-11-18 20:59:56.298 - INFO: Done processing query and sending result, total time was 42 ms
+2026-11-18 20:59:56.301 - INFO: 
+2026-11-18 20:59:56.301 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:56.301 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:56.303 - INFO: 
+2026-11-18 20:59:56.303 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:56.304 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1701/Producer1701> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1701/Producer1701> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 20:59:56.304 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:56.313 - INFO: Query planning done in 10 ms
+2026-11-18 20:59:56.649 - INFO: Result has size 41 x 3
+2026-11-18 20:59:56.659 - INFO: Done processing query and sending result, total time was 355 ms
+2026-11-18 20:59:56.680 - INFO: 
+2026-11-18 20:59:56.680 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:56.680 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:56.683 - INFO: 
+2026-11-18 20:59:56.683 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:56.684 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?country ?product ?nrOfReviews ?avgPrice
+  {
+    { Select ?country (max(?nrOfReviews) As ?maxReviews)
+      {
+        { Select ?country ?product (count(?review) As ?nrOfReviews)
+          {
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType11> .
+            ?review bsbm:reviewFor ?product ;
+                    rev:reviewer ?reviewer .
+            ?reviewer bsbm:country ?country .
+          }
+          Group By ?country ?product
+        }
+      }
+      Group By ?country
+    }
+    { Select ?country ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType11> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:price ?price .
+      }
+      Group By ?country ?product
+    }
+    { Select ?country ?product (count(?review) As ?nrOfReviews)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType11> .
+        ?review bsbm:reviewFor ?product .
+        ?review rev:reviewer ?reviewer .
+        ?reviewer bsbm:country ?country .
+      }
+      Group By ?country ?product
+    }
+    FILTER(?nrOfReviews=?maxReviews)
+  }
+  Order By desc(?nrOfReviews) ?country ?product
+
+2026-11-18 20:59:56.684 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:56.687 - INFO: Query planning done in 4 ms
+2026-11-18 20:59:56.729 - INFO: Result has size 0 x 5
+2026-11-18 20:59:56.730 - INFO: Done processing query and sending result, total time was 47 ms
+2026-11-18 20:59:56.735 - INFO: 
+2026-11-18 20:59:56.735 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:56.736 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:56.739 - INFO: 
+2026-11-18 20:59:56.739 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:56.740 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer283/Producer283> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer283/Producer283> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 20:59:56.740 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:56.749 - INFO: Query planning done in 10 ms
+2026-11-18 20:59:57.047 - INFO: Result has size 10 x 3
+2026-11-18 20:59:57.050 - INFO: Done processing query and sending result, total time was 311 ms
+2026-11-18 20:59:57.059 - INFO: 
+2026-11-18 20:59:57.059 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:57.059 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:57.061 - INFO: 
+2026-11-18 20:59:57.061 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:57.062 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer5123/Producer5123> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer5123/Producer5123> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 20:59:57.062 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:57.071 - INFO: Query planning done in 10 ms
+2026-11-18 20:59:57.434 - INFO: Result has size 22 x 3
+2026-11-18 20:59:57.439 - INFO: Done processing query and sending result, total time was 378 ms
+2026-11-18 20:59:57.455 - INFO: 
+2026-11-18 20:59:57.455 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:57.455 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:57.458 - INFO: 
+2026-11-18 20:59:57.458 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:57.459 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product
+  {
+    { Select ?product
+      { 
+        { Select ?product (count(?offer) As ?offerCount)
+          { 
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType248> .
+            ?offer bsbm:product ?product .
+          }
+          Group By ?product
+        }
+      }
+      Order By desc(?offerCount)
+      Limit 1000
+    }
+    FILTER NOT EXISTS
+    {
+      ?offer bsbm:product ?product .
+      ?offer bsbm:vendor ?vendor .
+      ?vendor bsbm:country ?country .
+      FILTER(?country=<http://downlode.org/rdf/iso-3166/countries#JP>)
+    }
+  }
+
+2026-11-18 20:59:57.459 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:57.461 - INFO: Query planning done in 2 ms
+2026-11-18 20:59:57.674 - INFO: Result has size 0 x 2
+2026-11-18 20:59:57.675 - INFO: Done processing query and sending result, total time was 216 ms
+2026-11-18 20:59:57.681 - INFO: 
+2026-11-18 20:59:57.681 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:57.681 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:57.684 - INFO: 
+2026-11-18 20:59:57.684 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:57.685 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?vendor (xsd:float(?belowAvg)/?offerCount As ?cheapExpensiveRatio)
+  {
+    { Select ?vendor (count(?offer) As ?belowAvg)
+      {
+        { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1> .
+          ?offer bsbm:product ?product .
+          ?offer bsbm:vendor ?vendor .
+          ?offer bsbm:price ?price .
+          { Select ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+            {
+              ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1> .
+              ?offer bsbm:product ?product .
+              ?offer bsbm:vendor ?vendor .
+              ?offer bsbm:price ?price .
+            }
+            Group By ?product
+          }
+        } .
+        FILTER (xsd:float(xsd:string(?price)) < ?avgPrice)
+      }
+      Group By ?vendor
+    }
+    { Select ?vendor (count(?offer) As ?offerCount)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:vendor ?vendor .
+      }
+      Group By ?vendor
+    }
+  }
+  Order by desc(xsd:float(?belowAvg)/?offerCount) ?vendor
+  limit 10
+
+2026-11-18 20:59:57.686 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:57.691 - INFO: Query planning done in 7 ms
+2026-11-18 20:59:57.744 - INFO: Result has size 0 x 5
+2026-11-18 20:59:57.745 - INFO: Done processing query and sending result, total time was 61 ms
+2026-11-18 20:59:57.752 - INFO: 
+2026-11-18 20:59:57.752 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:57.752 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:57.754 - INFO: 
+2026-11-18 20:59:57.754 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:57.755 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product
+  {
+    { Select ?product
+      { 
+        { Select ?product (count(?offer) As ?offerCount)
+          { 
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1> .
+            ?offer bsbm:product ?product .
+          }
+          Group By ?product
+        }
+      }
+      Order By desc(?offerCount)
+      Limit 1000
+    }
+    FILTER NOT EXISTS
+    {
+      ?offer bsbm:product ?product .
+      ?offer bsbm:vendor ?vendor .
+      ?vendor bsbm:country ?country .
+      FILTER(?country=<http://downlode.org/rdf/iso-3166/countries#US>)
+    }
+  }
+
+2026-11-18 20:59:57.755 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:57.756 - INFO: Query planning done in 2 ms
+2026-11-18 20:59:58.137 - INFO: Result has size 0 x 2
+2026-11-18 20:59:58.137 - INFO: Done processing query and sending result, total time was 383 ms
+2026-11-18 20:59:58.142 - INFO: 
+2026-11-18 20:59:58.142 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:58.142 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:58.144 - INFO: 
+2026-11-18 20:59:58.144 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:58.145 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer2300/Producer2300> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer2300/Producer2300> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 20:59:58.145 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:58.154 - INFO: Query planning done in 10 ms
+2026-11-18 20:59:58.520 - INFO: Result has size 61 x 3
+2026-11-18 20:59:58.531 - INFO: Done processing query and sending result, total time was 386 ms
+2026-11-18 20:59:58.549 - INFO: 
+2026-11-18 20:59:58.549 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:58.549 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:58.552 - INFO: 
+2026-11-18 20:59:58.552 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:58.553 - INFO: Processing the following SPARQL query:
+prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+prefix rev: <http://purl.org/stuff/rev#>
+
+Select ?productType ?reviewCount
+{
+ { Select ?productType (count(?review) As ?reviewCount)
+  {
+   ?productType a bsbm:ProductType .
+   ?product a ?productType .
+   ?product bsbm:producer ?producer .
+   ?producer bsbm:country <http://downlode.org/rdf/iso-3166/countries#US> .
+   ?review bsbm:reviewFor ?product .
+   ?review rev:reviewer ?reviewer .
+   ?reviewer bsbm:country <http://downlode.org/rdf/iso-3166/countries#US> .
+  }
+  Group By ?productType
+ }
+}
+Order By desc(?reviewCount) ?productType
+Limit 10
+
+2026-11-18 20:59:58.553 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:58.560 - INFO: Query planning done in 8 ms
+2026-11-18 20:59:59.056 - INFO: Result has size 1,280 x 2
+2026-11-18 20:59:59.057 - INFO: Done processing query and sending result, total time was 504 ms
+2026-11-18 20:59:59.064 - INFO: 
+2026-11-18 20:59:59.064 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:59.064 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 20:59:59.067 - INFO: 
+2026-11-18 20:59:59.067 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 20:59:59.069 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix dc: <http://purl.org/dc/elements/1.1/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product (xsd:float(?monthCount)/?monthBeforeCount As ?ratio)
+  {
+    { Select ?product (count(?review) As ?monthCount)
+      {
+        ?review bsbm:reviewFor ?product .
+        ?review dc:date ?date .
+        Filter(?date >= "2008-04-26"^^<http://www.w3.org/2001/XMLSchema#date> && ?date < "2008-05-24"^^<http://www.w3.org/2001/XMLSchema#date>) 
+      }
+      Group By ?product
+    }  {
+      Select ?product (count(?review) As ?monthBeforeCount)
+      {
+        ?review bsbm:reviewFor ?product .
+        ?review dc:date ?date .
+        Filter(?date >= "2008-03-29"^^<http://www.w3.org/2001/XMLSchema#date> && ?date < "2008-04-26"^^<http://www.w3.org/2001/XMLSchema#date>) #
+      }
+      Group By ?product
+      Having (count(?review)>0)
+    }
+  }
+  Order By desc(xsd:float(?monthCount) / ?monthBeforeCount) ?product
+  Limit 10
+
+2026-11-18 20:59:59.069 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 20:59:59.070 - INFO: Query planning done in 2 ms
+2026-11-18 21:00:00.239 - INFO: Result has size 153,112 x 5
+2026-11-18 21:00:00.242 - INFO: Done processing query and sending result, total time was 1,174 ms
+2026-11-18 21:00:00.253 - INFO: 
+2026-11-18 21:00:00.253 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:00.254 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:00.259 - INFO: 
+2026-11-18 21:00:00.259 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:00.259 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+
+  SELECT ?otherProduct ?sameFeatures
+  {
+    ?otherProduct a bsbm:Product .
+    FILTER(?otherProduct != <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer3037/Product153627>)
+    {
+      SELECT ?otherProduct (count(?otherFeature) As ?sameFeatures)
+      {
+        <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer3037/Product153627> bsbm:productFeature ?feature .
+        ?otherProduct bsbm:productFeature ?otherFeature .
+        FILTER(?feature=?otherFeature)
+      }
+      Group By ?otherProduct
+    }
+  }
+  Order By desc(?sameFeatures) ?otherProduct
+  Limit 10
+
+2026-11-18 21:00:00.260 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:00.261 - INFO: Query planning done in 1 ms
+2026-11-18 21:00:02.063 - INFO: Result has size 12,418 x 2
+2026-11-18 21:00:02.066 - INFO: Done processing query and sending result, total time was 1,807 ms
+2026-11-18 21:00:02.077 - INFO: 
+2026-11-18 21:00:02.077 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:02.077 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:02.079 - INFO: 
+2026-11-18 21:00:02.079 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:02.080 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+
+  SELECT ?otherProduct ?sameFeatures
+  {
+    ?otherProduct a bsbm:Product .
+    FILTER(?otherProduct != <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer3703/Product186928>)
+    {
+      SELECT ?otherProduct (count(?otherFeature) As ?sameFeatures)
+      {
+        <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer3703/Product186928> bsbm:productFeature ?feature .
+        ?otherProduct bsbm:productFeature ?otherFeature .
+        FILTER(?feature=?otherFeature)
+      }
+      Group By ?otherProduct
+    }
+  }
+  Order By desc(?sameFeatures) ?otherProduct
+  Limit 10
+
+2026-11-18 21:00:02.080 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:02.081 - INFO: Query planning done in 1 ms
+2026-11-18 21:00:03.863 - INFO: Result has size 21,386 x 2
+2026-11-18 21:00:03.865 - INFO: Done processing query and sending result, total time was 1,786 ms
+2026-11-18 21:00:03.870 - INFO: 
+2026-11-18 21:00:03.870 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:03.870 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:03.873 - INFO: 
+2026-11-18 21:00:03.873 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:03.874 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?feature (?withFeaturePrice/?withoutFeaturePrice As ?priceRatio)
+  {
+    { Select ?feature (avg(xsd:float(xsd:string(?price))) As ?withFeaturePrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType70> ;
+                 bsbm:productFeature ?feature .
+        ?offer bsbm:product ?product ;
+               bsbm:price ?price .
+      }
+      Group By ?feature
+    }
+    { Select ?feature (avg(xsd:float(xsd:string(?price))) As ?withoutFeaturePrice)
+      {
+        { Select distinct ?feature { 
+          ?p a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType70> ;
+             bsbm:productFeature ?feature .
+        } }
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType70> .
+        ?offer bsbm:product ?product ;
+               bsbm:price ?price .
+        FILTER NOT EXISTS { ?product bsbm:productFeature ?feature }
+      }
+      Group By ?feature
+    }
+  }
+  Order By desc(?withFeaturePrice/?withoutFeaturePrice) ?feature
+  Limit 10
+
+2026-11-18 21:00:03.874 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:03.876 - INFO: Query planning done in 2 ms
+2026-11-18 21:00:03.895 - INFO: Result has size 0 x 5
+2026-11-18 21:00:03.895 - INFO: Done processing query and sending result, total time was 21 ms
+2026-11-18 21:00:03.902 - INFO: 
+2026-11-18 21:00:03.902 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:03.902 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:03.904 - INFO: 
+2026-11-18 21:00:03.904 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:03.905 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?country ?product ?nrOfReviews ?avgPrice
+  {
+    { Select ?country (max(?nrOfReviews) As ?maxReviews)
+      {
+        { Select ?country ?product (count(?review) As ?nrOfReviews)
+          {
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType136> .
+            ?review bsbm:reviewFor ?product ;
+                    rev:reviewer ?reviewer .
+            ?reviewer bsbm:country ?country .
+          }
+          Group By ?country ?product
+        }
+      }
+      Group By ?country
+    }
+    { Select ?country ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType136> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:price ?price .
+      }
+      Group By ?country ?product
+    }
+    { Select ?country ?product (count(?review) As ?nrOfReviews)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType136> .
+        ?review bsbm:reviewFor ?product .
+        ?review rev:reviewer ?reviewer .
+        ?reviewer bsbm:country ?country .
+      }
+      Group By ?country ?product
+    }
+    FILTER(?nrOfReviews=?maxReviews)
+  }
+  Order By desc(?nrOfReviews) ?country ?product
+
+2026-11-18 21:00:03.905 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:03.908 - INFO: Query planning done in 3 ms
+2026-11-18 21:00:03.944 - INFO: Result has size 0 x 5
+2026-11-18 21:00:03.944 - INFO: Done processing query and sending result, total time was 40 ms
+2026-11-18 21:00:03.952 - INFO: 
+2026-11-18 21:00:03.952 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:03.952 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:03.955 - INFO: 
+2026-11-18 21:00:03.955 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:03.956 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?country ?product ?nrOfReviews ?avgPrice
+  {
+    { Select ?country (max(?nrOfReviews) As ?maxReviews)
+      {
+        { Select ?country ?product (count(?review) As ?nrOfReviews)
+          {
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType7> .
+            ?review bsbm:reviewFor ?product ;
+                    rev:reviewer ?reviewer .
+            ?reviewer bsbm:country ?country .
+          }
+          Group By ?country ?product
+        }
+      }
+      Group By ?country
+    }
+    { Select ?country ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType7> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:price ?price .
+      }
+      Group By ?country ?product
+    }
+    { Select ?country ?product (count(?review) As ?nrOfReviews)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType7> .
+        ?review bsbm:reviewFor ?product .
+        ?review rev:reviewer ?reviewer .
+        ?reviewer bsbm:country ?country .
+      }
+      Group By ?country ?product
+    }
+    FILTER(?nrOfReviews=?maxReviews)
+  }
+  Order By desc(?nrOfReviews) ?country ?product
+
+2026-11-18 21:00:03.956 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:03.959 - INFO: Query planning done in 3 ms
+2026-11-18 21:00:03.995 - INFO: Result has size 0 x 5
+2026-11-18 21:00:03.996 - INFO: Done processing query and sending result, total time was 40 ms
+2026-11-18 21:00:04.003 - INFO: 
+2026-11-18 21:00:04.003 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:04.003 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:04.005 - INFO: 
+2026-11-18 21:00:04.005 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:04.006 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer282/Producer282> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer282/Producer282> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 21:00:04.006 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:04.014 - INFO: Query planning done in 8 ms
+2026-11-18 21:00:04.226 - INFO: Result has size 3 x 3
+2026-11-18 21:00:04.228 - INFO: Done processing query and sending result, total time was 222 ms
+2026-11-18 21:00:04.233 - INFO: 
+2026-11-18 21:00:04.233 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:04.233 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:04.236 - INFO: 
+2026-11-18 21:00:04.236 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:04.237 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?country ?product ?nrOfReviews ?avgPrice
+  {
+    { Select ?country (max(?nrOfReviews) As ?maxReviews)
+      {
+        { Select ?country ?product (count(?review) As ?nrOfReviews)
+          {
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType11> .
+            ?review bsbm:reviewFor ?product ;
+                    rev:reviewer ?reviewer .
+            ?reviewer bsbm:country ?country .
+          }
+          Group By ?country ?product
+        }
+      }
+      Group By ?country
+    }
+    { Select ?country ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType11> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:price ?price .
+      }
+      Group By ?country ?product
+    }
+    { Select ?country ?product (count(?review) As ?nrOfReviews)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType11> .
+        ?review bsbm:reviewFor ?product .
+        ?review rev:reviewer ?reviewer .
+        ?reviewer bsbm:country ?country .
+      }
+      Group By ?country ?product
+    }
+    FILTER(?nrOfReviews=?maxReviews)
+  }
+  Order By desc(?nrOfReviews) ?country ?product
+
+2026-11-18 21:00:04.237 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:04.240 - INFO: Query planning done in 4 ms
+2026-11-18 21:00:04.280 - INFO: Result has size 0 x 5
+2026-11-18 21:00:04.280 - INFO: Done processing query and sending result, total time was 44 ms
+2026-11-18 21:00:04.285 - INFO: 
+2026-11-18 21:00:04.285 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:04.285 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:04.287 - INFO: 
+2026-11-18 21:00:04.287 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:04.289 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1761/Producer1761> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1761/Producer1761> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 21:00:04.289 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:04.297 - INFO: Query planning done in 9 ms
+2026-11-18 21:00:04.628 - INFO: Result has size 51 x 3
+2026-11-18 21:00:04.634 - INFO: Done processing query and sending result, total time was 346 ms
+2026-11-18 21:00:04.650 - INFO: 
+2026-11-18 21:00:04.650 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:04.650 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:04.653 - INFO: 
+2026-11-18 21:00:04.653 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:04.654 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer139/Producer139> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer139/Producer139> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 21:00:04.654 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:04.664 - INFO: Query planning done in 10 ms
+2026-11-18 21:00:04.978 - INFO: Result has size 12 x 3
+2026-11-18 21:00:04.981 - INFO: Done processing query and sending result, total time was 328 ms
+2026-11-18 21:00:04.988 - INFO: 
+2026-11-18 21:00:04.988 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:04.988 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:04.991 - INFO: 
+2026-11-18 21:00:04.991 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:04.992 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product
+  {
+    { Select ?product
+      { 
+        { Select ?product (count(?offer) As ?offerCount)
+          { 
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType9> .
+            ?offer bsbm:product ?product .
+          }
+          Group By ?product
+        }
+      }
+      Order By desc(?offerCount)
+      Limit 1000
+    }
+    FILTER NOT EXISTS
+    {
+      ?offer bsbm:product ?product .
+      ?offer bsbm:vendor ?vendor .
+      ?vendor bsbm:country ?country .
+      FILTER(?country=<http://downlode.org/rdf/iso-3166/countries#CN>)
+    }
+  }
+
+2026-11-18 21:00:04.992 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:04.993 - INFO: Query planning done in 2 ms
+2026-11-18 21:00:05.179 - INFO: Result has size 0 x 2
+2026-11-18 21:00:05.179 - INFO: Done processing query and sending result, total time was 188 ms
+2026-11-18 21:00:05.183 - INFO: 
+2026-11-18 21:00:05.183 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:05.183 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:05.186 - INFO: 
+2026-11-18 21:00:05.186 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:05.188 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?vendor (xsd:float(?belowAvg)/?offerCount As ?cheapExpensiveRatio)
+  {
+    { Select ?vendor (count(?offer) As ?belowAvg)
+      {
+        { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1950> .
+          ?offer bsbm:product ?product .
+          ?offer bsbm:vendor ?vendor .
+          ?offer bsbm:price ?price .
+          { Select ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+            {
+              ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1950> .
+              ?offer bsbm:product ?product .
+              ?offer bsbm:vendor ?vendor .
+              ?offer bsbm:price ?price .
+            }
+            Group By ?product
+          }
+        } .
+        FILTER (xsd:float(xsd:string(?price)) < ?avgPrice)
+      }
+      Group By ?vendor
+    }
+    { Select ?vendor (count(?offer) As ?offerCount)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1950> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:vendor ?vendor .
+      }
+      Group By ?vendor
+    }
+  }
+  Order by desc(xsd:float(?belowAvg)/?offerCount) ?vendor
+  limit 10
+
+2026-11-18 21:00:05.188 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:05.194 - INFO: Query planning done in 7 ms
+2026-11-18 21:00:05.690 - INFO: Result has size 426 x 5
+2026-11-18 21:00:05.695 - INFO: Done processing query and sending result, total time was 508 ms
+2026-11-18 21:00:05.702 - INFO: 
+2026-11-18 21:00:05.702 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:05.702 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:05.705 - INFO: 
+2026-11-18 21:00:05.705 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:05.706 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product
+  {
+    { Select ?product
+      { 
+        { Select ?product (count(?offer) As ?offerCount)
+          { 
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1282> .
+            ?offer bsbm:product ?product .
+          }
+          Group By ?product
+        }
+      }
+      Order By desc(?offerCount)
+      Limit 1000
+    }
+    FILTER NOT EXISTS
+    {
+      ?offer bsbm:product ?product .
+      ?offer bsbm:vendor ?vendor .
+      ?vendor bsbm:country ?country .
+      FILTER(?country=<http://downlode.org/rdf/iso-3166/countries#GB>)
+    }
+  }
+
+2026-11-18 21:00:05.706 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:05.707 - INFO: Query planning done in 2 ms
+2026-11-18 21:00:05.983 - INFO: Result has size 51 x 2
+2026-11-18 21:00:05.990 - INFO: Done processing query and sending result, total time was 284 ms
+2026-11-18 21:00:06.002 - INFO: 
+2026-11-18 21:00:06.002 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:06.002 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:06.005 - INFO: 
+2026-11-18 21:00:06.005 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:06.007 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1962/Producer1962> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1962/Producer1962> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 21:00:06.007 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:06.016 - INFO: Query planning done in 10 ms
+2026-11-18 21:00:06.336 - INFO: Result has size 8 x 3
+2026-11-18 21:00:06.338 - INFO: Done processing query and sending result, total time was 332 ms
+2026-11-18 21:00:06.344 - INFO: 
+2026-11-18 21:00:06.344 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:06.344 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:06.347 - INFO: 
+2026-11-18 21:00:06.347 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:06.347 - INFO: Processing the following SPARQL query:
+prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+prefix rev: <http://purl.org/stuff/rev#>
+
+Select ?productType ?reviewCount
+{
+ { Select ?productType (count(?review) As ?reviewCount)
+  {
+   ?productType a bsbm:ProductType .
+   ?product a ?productType .
+   ?product bsbm:producer ?producer .
+   ?producer bsbm:country <http://downlode.org/rdf/iso-3166/countries#JP> .
+   ?review bsbm:reviewFor ?product .
+   ?review rev:reviewer ?reviewer .
+   ?reviewer bsbm:country <http://downlode.org/rdf/iso-3166/countries#GB> .
+  }
+  Group By ?productType
+ }
+}
+Order By desc(?reviewCount) ?productType
+Limit 10
+
+2026-11-18 21:00:06.347 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:06.353 - INFO: Query planning done in 6 ms
+2026-11-18 21:00:06.580 - INFO: Result has size 1,275 x 2
+2026-11-18 21:00:06.581 - INFO: Done processing query and sending result, total time was 234 ms
+2026-11-18 21:00:06.587 - INFO: 
+2026-11-18 21:00:06.587 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:06.587 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:06.591 - INFO: 
+2026-11-18 21:00:06.591 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:06.592 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix dc: <http://purl.org/dc/elements/1.1/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product (xsd:float(?monthCount)/?monthBeforeCount As ?ratio)
+  {
+    { Select ?product (count(?review) As ?monthCount)
+      {
+        ?review bsbm:reviewFor ?product .
+        ?review dc:date ?date .
+        Filter(?date >= "2008-03-23"^^<http://www.w3.org/2001/XMLSchema#date> && ?date < "2008-04-20"^^<http://www.w3.org/2001/XMLSchema#date>) 
+      }
+      Group By ?product
+    }  {
+      Select ?product (count(?review) As ?monthBeforeCount)
+      {
+        ?review bsbm:reviewFor ?product .
+        ?review dc:date ?date .
+        Filter(?date >= "2008-02-24"^^<http://www.w3.org/2001/XMLSchema#date> && ?date < "2008-03-23"^^<http://www.w3.org/2001/XMLSchema#date>) #
+      }
+      Group By ?product
+      Having (count(?review)>0)
+    }
+  }
+  Order By desc(xsd:float(?monthCount) / ?monthBeforeCount) ?product
+  Limit 10
+
+2026-11-18 21:00:06.592 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:06.593 - INFO: Query planning done in 2 ms
+2026-11-18 21:00:07.359 - INFO: Result has size 118,154 x 5
+2026-11-18 21:00:07.360 - INFO: Done processing query and sending result, total time was 769 ms
+2026-11-18 21:00:07.364 - INFO: 
+2026-11-18 21:00:07.364 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:07.364 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:07.366 - INFO: 
+2026-11-18 21:00:07.366 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:07.367 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+
+  SELECT ?otherProduct ?sameFeatures
+  {
+    ?otherProduct a bsbm:Product .
+    FILTER(?otherProduct != <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer4895/Product247682>)
+    {
+      SELECT ?otherProduct (count(?otherFeature) As ?sameFeatures)
+      {
+        <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer4895/Product247682> bsbm:productFeature ?feature .
+        ?otherProduct bsbm:productFeature ?otherFeature .
+        FILTER(?feature=?otherFeature)
+      }
+      Group By ?otherProduct
+    }
+  }
+  Order By desc(?sameFeatures) ?otherProduct
+  Limit 10
+
+2026-11-18 21:00:07.367 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:07.368 - INFO: Query planning done in 1 ms
+2026-11-18 21:00:09.621 - INFO: Result has size 28,956 x 2
+2026-11-18 21:00:09.623 - INFO: Done processing query and sending result, total time was 2,256 ms
+2026-11-18 21:00:09.627 - INFO: 
+2026-11-18 21:00:09.627 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:09.627 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:09.629 - INFO: 
+2026-11-18 21:00:09.629 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:09.630 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+
+  SELECT ?otherProduct ?sameFeatures
+  {
+    ?otherProduct a bsbm:Product .
+    FILTER(?otherProduct != <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer3921/Product198242>)
+    {
+      SELECT ?otherProduct (count(?otherFeature) As ?sameFeatures)
+      {
+        <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer3921/Product198242> bsbm:productFeature ?feature .
+        ?otherProduct bsbm:productFeature ?otherFeature .
+        FILTER(?feature=?otherFeature)
+      }
+      Group By ?otherProduct
+    }
+  }
+  Order By desc(?sameFeatures) ?otherProduct
+  Limit 10
+
+2026-11-18 21:00:09.630 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:09.631 - INFO: Query planning done in 1 ms
+2026-11-18 21:00:12.784 - INFO: Result has size 16,149 x 2
+2026-11-18 21:00:12.785 - INFO: Done processing query and sending result, total time was 3,156 ms
+2026-11-18 21:00:12.793 - INFO: 
+2026-11-18 21:00:12.793 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:12.794 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:12.797 - INFO: 
+2026-11-18 21:00:12.797 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:12.798 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?feature (?withFeaturePrice/?withoutFeaturePrice As ?priceRatio)
+  {
+    { Select ?feature (avg(xsd:float(xsd:string(?price))) As ?withFeaturePrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType405> ;
+                 bsbm:productFeature ?feature .
+        ?offer bsbm:product ?product ;
+               bsbm:price ?price .
+      }
+      Group By ?feature
+    }
+    { Select ?feature (avg(xsd:float(xsd:string(?price))) As ?withoutFeaturePrice)
+      {
+        { Select distinct ?feature { 
+          ?p a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType405> ;
+             bsbm:productFeature ?feature .
+        } }
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType405> .
+        ?offer bsbm:product ?product ;
+               bsbm:price ?price .
+        FILTER NOT EXISTS { ?product bsbm:productFeature ?feature }
+      }
+      Group By ?feature
+    }
+  }
+  Order By desc(?withFeaturePrice/?withoutFeaturePrice) ?feature
+  Limit 10
+
+2026-11-18 21:00:12.798 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:12.800 - INFO: Query planning done in 3 ms
+2026-11-18 21:00:12.818 - INFO: Result has size 0 x 5
+2026-11-18 21:00:12.819 - INFO: Done processing query and sending result, total time was 22 ms
+2026-11-18 21:00:12.827 - INFO: 
+2026-11-18 21:00:12.827 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:12.827 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:12.830 - INFO: 
+2026-11-18 21:00:12.830 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:12.831 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?country ?product ?nrOfReviews ?avgPrice
+  {
+    { Select ?country (max(?nrOfReviews) As ?maxReviews)
+      {
+        { Select ?country ?product (count(?review) As ?nrOfReviews)
+          {
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType32> .
+            ?review bsbm:reviewFor ?product ;
+                    rev:reviewer ?reviewer .
+            ?reviewer bsbm:country ?country .
+          }
+          Group By ?country ?product
+        }
+      }
+      Group By ?country
+    }
+    { Select ?country ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType32> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:price ?price .
+      }
+      Group By ?country ?product
+    }
+    { Select ?country ?product (count(?review) As ?nrOfReviews)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType32> .
+        ?review bsbm:reviewFor ?product .
+        ?review rev:reviewer ?reviewer .
+        ?reviewer bsbm:country ?country .
+      }
+      Group By ?country ?product
+    }
+    FILTER(?nrOfReviews=?maxReviews)
+  }
+  Order By desc(?nrOfReviews) ?country ?product
+
+2026-11-18 21:00:12.831 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:12.834 - INFO: Query planning done in 3 ms
+2026-11-18 21:00:12.870 - INFO: Result has size 0 x 5
+2026-11-18 21:00:12.871 - INFO: Done processing query and sending result, total time was 40 ms
+2026-11-18 21:00:12.878 - INFO: 
+2026-11-18 21:00:12.878 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:12.878 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:12.882 - INFO: 
+2026-11-18 21:00:12.882 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:12.883 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?country ?product ?nrOfReviews ?avgPrice
+  {
+    { Select ?country (max(?nrOfReviews) As ?maxReviews)
+      {
+        { Select ?country ?product (count(?review) As ?nrOfReviews)
+          {
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType7> .
+            ?review bsbm:reviewFor ?product ;
+                    rev:reviewer ?reviewer .
+            ?reviewer bsbm:country ?country .
+          }
+          Group By ?country ?product
+        }
+      }
+      Group By ?country
+    }
+    { Select ?country ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType7> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:price ?price .
+      }
+      Group By ?country ?product
+    }
+    { Select ?country ?product (count(?review) As ?nrOfReviews)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType7> .
+        ?review bsbm:reviewFor ?product .
+        ?review rev:reviewer ?reviewer .
+        ?reviewer bsbm:country ?country .
+      }
+      Group By ?country ?product
+    }
+    FILTER(?nrOfReviews=?maxReviews)
+  }
+  Order By desc(?nrOfReviews) ?country ?product
+
+2026-11-18 21:00:12.883 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:12.885 - INFO: Query planning done in 3 ms
+2026-11-18 21:00:12.920 - INFO: Result has size 0 x 5
+2026-11-18 21:00:12.920 - INFO: Done processing query and sending result, total time was 38 ms
+2026-11-18 21:00:12.925 - INFO: 
+2026-11-18 21:00:12.925 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:12.925 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:12.928 - INFO: 
+2026-11-18 21:00:12.928 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:12.929 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer2757/Producer2757> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer2757/Producer2757> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 21:00:12.929 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:12.936 - INFO: Query planning done in 7 ms
+2026-11-18 21:00:13.236 - INFO: Result has size 96 x 3
+2026-11-18 21:00:13.248 - INFO: Done processing query and sending result, total time was 320 ms
+2026-11-18 21:00:13.280 - INFO: 
+2026-11-18 21:00:13.280 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:13.280 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:13.282 - INFO: 
+2026-11-18 21:00:13.282 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:13.283 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?country ?product ?nrOfReviews ?avgPrice
+  {
+    { Select ?country (max(?nrOfReviews) As ?maxReviews)
+      {
+        { Select ?country ?product (count(?review) As ?nrOfReviews)
+          {
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType409> .
+            ?review bsbm:reviewFor ?product ;
+                    rev:reviewer ?reviewer .
+            ?reviewer bsbm:country ?country .
+          }
+          Group By ?country ?product
+        }
+      }
+      Group By ?country
+    }
+    { Select ?country ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType409> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:price ?price .
+      }
+      Group By ?country ?product
+    }
+    { Select ?country ?product (count(?review) As ?nrOfReviews)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType409> .
+        ?review bsbm:reviewFor ?product .
+        ?review rev:reviewer ?reviewer .
+        ?reviewer bsbm:country ?country .
+      }
+      Group By ?country ?product
+    }
+    FILTER(?nrOfReviews=?maxReviews)
+  }
+  Order By desc(?nrOfReviews) ?country ?product
+
+2026-11-18 21:00:13.284 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:13.287 - INFO: Query planning done in 4 ms
+2026-11-18 21:00:13.329 - INFO: Result has size 0 x 5
+2026-11-18 21:00:13.330 - INFO: Done processing query and sending result, total time was 47 ms
+2026-11-18 21:00:13.337 - INFO: 
+2026-11-18 21:00:13.337 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:13.337 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:13.340 - INFO: 
+2026-11-18 21:00:13.340 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:13.341 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer2891/Producer2891> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer2891/Producer2891> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 21:00:13.342 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:13.350 - INFO: Query planning done in 9 ms
+2026-11-18 21:00:13.700 - INFO: Result has size 40 x 3
+2026-11-18 21:00:13.704 - INFO: Done processing query and sending result, total time was 364 ms
+2026-11-18 21:00:13.720 - INFO: 
+2026-11-18 21:00:13.721 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:13.721 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:13.724 - INFO: 
+2026-11-18 21:00:13.724 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:13.725 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer520/Producer520> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer520/Producer520> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 21:00:13.726 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:13.737 - INFO: Query planning done in 12 ms
+2026-11-18 21:00:14.099 - INFO: Result has size 15 x 3
+2026-11-18 21:00:14.102 - INFO: Done processing query and sending result, total time was 377 ms
+2026-11-18 21:00:14.110 - INFO: 
+2026-11-18 21:00:14.110 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:14.110 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:14.113 - INFO: 
+2026-11-18 21:00:14.113 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:14.114 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product
+  {
+    { Select ?product
+      { 
+        { Select ?product (count(?offer) As ?offerCount)
+          { 
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType8> .
+            ?offer bsbm:product ?product .
+          }
+          Group By ?product
+        }
+      }
+      Order By desc(?offerCount)
+      Limit 1000
+    }
+    FILTER NOT EXISTS
+    {
+      ?offer bsbm:product ?product .
+      ?offer bsbm:vendor ?vendor .
+      ?vendor bsbm:country ?country .
+      FILTER(?country=<http://downlode.org/rdf/iso-3166/countries#US>)
+    }
+  }
+
+2026-11-18 21:00:14.114 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:14.116 - INFO: Query planning done in 2 ms
+2026-11-18 21:00:14.560 - INFO: Result has size 0 x 2
+2026-11-18 21:00:14.560 - INFO: Done processing query and sending result, total time was 447 ms
+2026-11-18 21:00:14.573 - INFO: 
+2026-11-18 21:00:14.573 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:14.573 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:14.577 - INFO: 
+2026-11-18 21:00:14.577 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:14.579 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?vendor (xsd:float(?belowAvg)/?offerCount As ?cheapExpensiveRatio)
+  {
+    { Select ?vendor (count(?offer) As ?belowAvg)
+      {
+        { ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1> .
+          ?offer bsbm:product ?product .
+          ?offer bsbm:vendor ?vendor .
+          ?offer bsbm:price ?price .
+          { Select ?product (avg(xsd:float(xsd:string(?price))) As ?avgPrice)
+            {
+              ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1> .
+              ?offer bsbm:product ?product .
+              ?offer bsbm:vendor ?vendor .
+              ?offer bsbm:price ?price .
+            }
+            Group By ?product
+          }
+        } .
+        FILTER (xsd:float(xsd:string(?price)) < ?avgPrice)
+      }
+      Group By ?vendor
+    }
+    { Select ?vendor (count(?offer) As ?offerCount)
+      {
+        ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1> .
+        ?offer bsbm:product ?product .
+        ?offer bsbm:vendor ?vendor .
+      }
+      Group By ?vendor
+    }
+  }
+  Order by desc(xsd:float(?belowAvg)/?offerCount) ?vendor
+  limit 10
+
+2026-11-18 21:00:14.579 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:14.584 - INFO: Query planning done in 6 ms
+2026-11-18 21:00:14.628 - INFO: Result has size 0 x 5
+2026-11-18 21:00:14.629 - INFO: Done processing query and sending result, total time was 51 ms
+2026-11-18 21:00:14.636 - INFO: 
+2026-11-18 21:00:14.636 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:14.636 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:14.639 - INFO: 
+2026-11-18 21:00:14.639 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:14.639 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product
+  {
+    { Select ?product
+      { 
+        { Select ?product (count(?offer) As ?offerCount)
+          { 
+            ?product a <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType57> .
+            ?offer bsbm:product ?product .
+          }
+          Group By ?product
+        }
+      }
+      Order By desc(?offerCount)
+      Limit 1000
+    }
+    FILTER NOT EXISTS
+    {
+      ?offer bsbm:product ?product .
+      ?offer bsbm:vendor ?vendor .
+      ?vendor bsbm:country ?country .
+      FILTER(?country=<http://downlode.org/rdf/iso-3166/countries#JP>)
+    }
+  }
+
+2026-11-18 21:00:14.639 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:14.641 - INFO: Query planning done in 2 ms
+2026-11-18 21:00:14.794 - INFO: Result has size 0 x 2
+2026-11-18 21:00:14.794 - INFO: Done processing query and sending result, total time was 155 ms
+2026-11-18 21:00:14.802 - INFO: 
+2026-11-18 21:00:14.802 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:14.802 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 21:00:14.805 - INFO: 
+2026-11-18 21:00:14.805 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 21:00:14.806 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?reviewer (avg(xsd:float(?score)) As ?reviewerAvgScore)
+  {
+    { Select (avg(xsd:float(?score)) As ?avgScore)
+      {
+        ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1295/Producer1295> .
+        ?review bsbm:reviewFor ?product .
+        { ?review bsbm:rating1 ?score . } UNION
+        { ?review bsbm:rating2 ?score . } UNION
+        { ?review bsbm:rating3 ?score . } UNION
+        { ?review bsbm:rating4 ?score . }
+      }
+    }
+    ?product bsbm:producer <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1295/Producer1295> .
+    ?review bsbm:reviewFor ?product .
+    ?review rev:reviewer ?reviewer .
+    { ?review bsbm:rating1 ?score . } UNION
+    { ?review bsbm:rating2 ?score . } UNION
+    { ?review bsbm:rating3 ?score . } UNION
+    { ?review bsbm:rating4 ?score . }
+  }
+  Group By ?reviewer
+  Having (avg(xsd:float(?score)) > min(?avgScore) * 1.5)
+
+2026-11-18 21:00:14.807 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 21:00:14.815 - INFO: Query planning done in 10 ms
+2026-11-18 21:00:15.189 - INFO: Result has size 39 x 3
+2026-11-18 21:00:15.195 - INFO: Done processing query and sending result, total time was 390 ms
