@@ -1,0 +1,156 @@
+{
+  "schema": "retrospective-value-diagnostic-summary-v1",
+  "policy_sha256": "055468a36e0dfb191fdaf5a8994cea54e7ada2c2bd6925867efa5c20b1c90863",
+  "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+  "profiles": {
+    "pass1-rdfdb": {
+      "scheduled": 60,
+      "strict_pass": 60,
+      "count_pass": 60,
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_bag_pass": 60,
+      "failures": []
+    },
+    "pass2-rdfdb": {
+      "scheduled": 60,
+      "strict_pass": 60,
+      "count_pass": 60,
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_bag_pass": 60,
+      "failures": []
+    },
+    "pass1-duckdb": {
+      "scheduled": 60,
+      "strict_pass": 60,
+      "count_pass": 60,
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_bag_pass": 60,
+      "failures": []
+    },
+    "pass2-duckdb": {
+      "scheduled": 60,
+      "strict_pass": 60,
+      "count_pass": 60,
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_bag_pass": 60,
+      "failures": []
+    },
+    "pass1-qlever": {
+      "scheduled": 60,
+      "strict_pass": 9,
+      "count_pass": 21,
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_bag_pass": 60,
+      "failures": []
+    },
+    "pass2-qlever": {
+      "scheduled": 60,
+      "strict_pass": 9,
+      "count_pass": 21,
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_bag_pass": 60,
+      "failures": []
+    },
+    "pass1-qlever-hash": {
+      "scheduled": 60,
+      "strict_pass": 9,
+      "count_pass": 21,
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_bag_pass": 60,
+      "failures": []
+    },
+    "pass2-qlever-hash": {
+      "scheduled": 60,
+      "strict_pass": 9,
+      "count_pass": 21,
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_bag_pass": 60,
+      "failures": []
+    },
+    "pass1-qlever-bypass": {
+      "scheduled": 60,
+      "strict_pass": 9,
+      "count_pass": 21,
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_bag_pass": 60,
+      "failures": []
+    },
+    "pass2-qlever-bypass": {
+      "scheduled": 60,
+      "strict_pass": 9,
+      "count_pass": 21,
+      "value_status_counts": {
+        "pass": 60
+      },
+      "value_bag_pass": 60,
+      "failures": []
+    },
+    "pass1-virtuoso": {
+      "scheduled": 60,
+      "strict_pass": 29,
+      "count_pass": 29,
+      "value_status_counts": {
+        "pass": 48,
+        "fail": 12
+      },
+      "value_bag_pass": 48,
+      "failures": [
+        {
+          "template": 5,
+          "error": "ValueError: Entity/count result bags differ",
+          "instances": 12
+        }
+      ]
+    },
+    "pass2-virtuoso": {
+      "scheduled": 60,
+      "strict_pass": 4,
+      "count_pass": 4,
+      "value_status_counts": {
+        "pass": 4,
+        "transport_failure": 1,
+        "not_run": 55
+      },
+      "value_bag_pass": 4,
+      "failures": [
+        {
+          "template": 4,
+          "error": "RuntimeError: TimeoutError: timed out",
+          "instances": 1
+        }
+      ]
+    }
+  },
+  "timing_ranking_created": false,
+  "retrospective": true,
+  "virtuoso_q5_example": {
+    "query": "m000_p05_q5.rq",
+    "query_sha256": "35a2fc791f57aca1cbf7d84ddcd136a57849c619f73d1d3bfb3912734e6d33b0",
+    "actual_rows": 0,
+    "reference_rows": 14,
+    "files": {
+      "query.rq": "35a2fc791f57aca1cbf7d84ddcd136a57849c619f73d1d3bfb3912734e6d33b0",
+      "actual.json": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "reference.json": "fb5377d31c1cd99bae0e55ab9a9a829a4313869ac870d800c3303a3c8d0ba77b",
+      "graph-count.json": "066033e932146d0faf2ac3bd8df8fb0f7a84e87e1191d83b523a6a60d140ffcc"
+    }
+  }
+}
