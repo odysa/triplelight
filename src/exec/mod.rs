@@ -7,6 +7,8 @@ mod agg;
 mod bgp;
 mod count;
 mod expr;
+mod stream;
+pub use stream::{set_batch_rows, set_batching};
 use bgp::Slot;
 pub mod results;
 
@@ -436,8 +438,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     fn eval_group(&self, inner: &GraphPattern, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], input: Vec<Row>) -> Vec<Row> {
         if let Some(rows) = self.try_count_group(inner, keys, aggs, &input) { return rows; }
-        let rows = self.eval(inner, input);
         let kidx: Vec<usize> = keys.iter().map(|v| self.var(v)).collect();
+        // Inputs that `eval_into` can deliver in batches are folded batch by batch instead of materialized.
+        if stream::batched(inner) { return self.group_batched(inner, &kidx, aggs, input) }
+        let rows = self.eval(inner, input);
         if std::env::var_os("RDFDB_LEGACY_GROUP").is_none() {
             if let Some(out) = self.try_fast_group(&rows, &kidx, aggs) { return out; }
         }
@@ -459,6 +463,32 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }).collect()
     }
 
+    /// Memo slot for an aggregate argument: `(column of its single variable, verified slot id)`, or `None` when the
+    /// expression has several variables or EXISTS (evaluated per row without memo).
+    /// Expressions are deterministic (NOW/RAND/UUID/BNODE are unsupported); EXISTS reads other variables.
+    pub(super) fn agg_arg_slot(&self, expr: &Expression) -> Option<(usize, usize)> {
+        let vi = match expr_vars(expr).as_slice() { [v] if !has_exists(expr) => self.vars.get(v).copied()?, _ => return None };
+        let addr = expr as *const Expression as usize;
+        let mut m = self.agg_arg_slots.borrow_mut();
+        let slot = match m.get(&addr) {
+            Some((q, slot)) if q == expr => *slot,
+            _ => { let slot = self.memo_slots.get(); self.memo_slots.set(slot + 1); m.insert(addr, (expr.clone(), slot)); slot }
+        };
+        Some((vi, slot))
+    }
+
+    /// The aggregate argument's value for one row (`None` = evaluation error), memoized per term ID of its variable.
+    pub(super) fn agg_arg_value(&self, expr: &Expression, slot: Option<(usize, usize)>, r: &Row) -> Option<Term> {
+        const MEMO_CAP: usize = 1 << 20;
+        let Some((vi, eid)) = slot else { return self.value(expr, r) };
+        let key = (eid, r[vi]);
+        if let Some(v) = self.agg_arg_memo.borrow().get(&key) { return v.clone() }
+        let v = self.value(expr, r);
+        let mut m = self.agg_arg_memo.borrow_mut();
+        if m.len() < MEMO_CAP { m.insert(key, v.clone()); }
+        v
+    }
+
     fn aggregate(&self, agg: &AggregateExpression, rows: &[Row]) -> Option<Term> {
         match agg {
             AggregateExpression::CountSolutions { distinct } => {
@@ -470,30 +500,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 // variable) makes SUM/AVG/MIN/MAX/GROUP_CONCAT an error (unbound result). COUNT counts the non-error
                 // values; SAMPLE returns a non-error value. (Matches Jena.)
                 // Expressions are deterministic (NOW/RAND/UUID/BNODE are unsupported); EXISTS reads other variables.
-                let single = match expr_vars(expr).as_slice() { [v] if !has_exists(expr) => self.vars.get(v).copied(), _ => None };
-                let evaluated: Vec<Option<Term>> = match single {
-                    Some(vi) => {
-                        const MEMO_CAP: usize = 1 << 20;
-                        let e: &Expression = expr;
-                        let addr = e as *const Expression as usize;
-                        let eid = {
-                            let mut m = self.agg_arg_slots.borrow_mut();
-                            match m.get(&addr) {
-                                Some((q, slot)) if q == e => *slot,
-                                _ => { let slot = self.memo_slots.get(); self.memo_slots.set(slot + 1); m.insert(addr, (e.clone(), slot)); slot }
-                            }
-                        };
-                        rows.iter().map(|r| {
-                            let key = (eid, r[vi]);
-                            if let Some(v) = self.agg_arg_memo.borrow().get(&key) { return v.clone() }
-                            let v = self.value(expr, r);
-                            let mut m = self.agg_arg_memo.borrow_mut();
-                            if m.len() < MEMO_CAP { m.insert(key, v.clone()); }
-                            v
-                        }).collect()
-                    }
-                    None => rows.iter().map(|r| self.value(expr, r)).collect(),
-                };
+                let slot = self.agg_arg_slot(expr);
+                let evaluated: Vec<Option<Term>> = rows.iter().map(|r| self.agg_arg_value(expr, slot, r)).collect();
                 let has_error = evaluated.iter().any(Option::is_none);
                 let mut vals: Vec<Term> = evaluated.into_iter().flatten().collect();
                 if *distinct { let mut s = HashSet::new(); vals.retain(|v| s.insert(v.clone())); }
@@ -558,6 +566,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }
         let bgp = bgp::Bgp { snap: self.snap, w };
         let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
+        if unbound_start && std::env::var_os("RDFDB_VALUE_INDEX").is_some() {
+            if let Some(out) = self.value_index_probe(&pats, filters, &bgp, w) { return out.chunks_exact(w).map(<[TermId]>::to_vec).collect() }
+        }
         let flat: Vec<TermId> = rows.concat();
         let out = if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(bgp::no_repeated_var) && bgp::cyclic(&pats) {
             let mut out = bgp.leapfrog(&pats, &flat, self.variable_order(&pats));
@@ -570,6 +581,94 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             else { bgp.eval_greedy(&pats, flat, &mut post) }
         };
         out.chunks_exact(w).map(<[TermId]>::to_vec).collect()
+    }
+
+    /// EXPERIMENT (RDFDB_VALUE_INDEX=1, read-only base stores only): an in-memory per-(predicate, datatype) sorted
+    /// lexical index for date/dateTime/time range filters, to measure the payoff before building a persistent,
+    /// generation-bound sidecar. Candidates match `expr::compare` (same datatype, lexical order); the FILTER still
+    /// rechecks every row. Not for merge.
+    fn value_index_probe(&self, pats: &[[Slot; 3]], filters: &[(&Expression, Vec<usize>)], bgp: &bgp::Bgp<'_, S>, w: usize) -> Option<Vec<TermId>> {
+        use std::sync::{Arc, Mutex, OnceLock};
+        type Key = (usize, TermId, String);
+        static CACHE: OnceLock<Mutex<HashMap<Key, Arc<Vec<(String, TermId)>>>>> = OnceLock::new();
+        let single: Vec<usize> = filters.iter().filter_map(|(_, vs)| match vs.as_slice() { [v] => Some(*v), _ => None }).collect();
+        for v in &single {
+            // Range: comparisons between ?v and typed literals of one temporal datatype, accumulated over every
+            // pushed-down conjunct on ?v (pushdown splits `a && b` into separate filters). Unparseable conjuncts are
+            // ignored here: candidates stay a superset and every filter still rechecks each row.
+            let mut dt: Option<String> = None;
+            let (mut lo, mut hi): (Option<(String, bool)>, Option<(String, bool)>) = (None, None);
+            let mut ok = true;
+            let mut stack: Vec<&Expression> = filters.iter().filter(|(_, vs)| vs.as_slice() == [*v]).map(|(e, _)| *e).collect();
+            while let Some(x) = stack.pop() {
+                match x {
+                    Expression::And(a, b) => { stack.push(a); stack.push(b) }
+                    Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b) => {
+                        let (var_left, lit) = match (a.as_ref(), b.as_ref()) {
+                            (Expression::Variable(x), Expression::Literal(l)) if self.vars.get(x.as_str()) == Some(v) => (true, l),
+                            (Expression::Literal(l), Expression::Variable(x)) if self.vars.get(x.as_str()) == Some(v) => (false, l),
+                            _ => continue,
+                        };
+                        if !matches!(expr::xsd_local(lit), Some("date" | "dateTime" | "time")) { continue }
+                        let d = lit.datatype().as_str().to_string();
+                        if dt.get_or_insert(d.clone()) != &d { ok = false; break }
+                        let greater = matches!(x, Expression::Greater(..) | Expression::GreaterOrEqual(..)) == var_left;
+                        let incl = matches!(x, Expression::GreaterOrEqual(..) | Expression::LessOrEqual(..));
+                        let b = (lit.value().to_string(), incl);
+                        if greater { if lo.as_ref().is_none_or(|c| b.0 > c.0 || (b.0 == c.0 && !b.1)) { lo = Some(b) } }
+                        else if hi.as_ref().is_none_or(|c| b.0 < c.0 || (b.0 == c.0 && !b.1)) { hi = Some(b) }
+                    }
+                    _ => continue,
+                }
+            }
+            let (true, Some(dt)) = (ok, dt) else { continue };
+            // The one pattern binding ?v: (?s, <p>, ?v), ?v nowhere else.
+            let occurs = pats.iter().flat_map(|p| p.iter()).filter(|s| matches!(s, Slot::Var(x) if x == v)).count();
+            if occurs != 1 { continue }
+            let Some(pi) = pats.iter().position(|p| matches!(p[2], Slot::Var(x) if x == *v)) else { continue };
+            let (Slot::Var(sv), Slot::Const(Some(pred))) = (pats[pi][0], pats[pi][1]) else { continue };
+            let key = (self.snap as *const S as *const u8 as usize, pred, dt.clone());
+            let index = {
+                let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+                let hit = cache.lock().unwrap().get(&key).cloned();
+                match hit {
+                    Some(i) => i,
+                    None => {
+                        let mut objs: Vec<TermId> = Vec::new();
+                        for b in self.snap.scan(Perm::Pos, &[pred]) {
+                            let b = b.unwrap_or_else(|e| storage_failure(e));
+                            for &o in &b.cols[1] { if objs.last() != Some(&o) { objs.push(o) } }
+                        }
+                        let mut entries: Vec<(String, TermId)> = Vec::new();
+                        for o in objs {
+                            if let Term::Literal(l) = self.resolve(o) { if l.datatype().as_str() == dt { entries.push((l.value().to_string(), o)) } }
+                        }
+                        entries.sort();
+                        let i = Arc::new(entries);
+                        cache.lock().unwrap().insert(key, Arc::clone(&i));
+                        i
+                    }
+                }
+            };
+            let start = match &lo { None => 0, Some((c, incl)) => index.partition_point(|(x, _)| if *incl { x < c } else { x <= c }) };
+            let end = match &hi { None => index.len(), Some((c, incl)) => index.partition_point(|(x, _)| if *incl { x <= c } else { x < c }) };
+            let mut rows: Vec<TermId> = Vec::new();
+            for (_, o) in &index[start..end.max(start)] {
+                for b in self.snap.scan(Perm::Pos, &[pred, *o]) {
+                    let b = b.unwrap_or_else(|e| storage_failure(e));
+                    for &subj in &b.cols[2] { let at = rows.len(); rows.extend(std::iter::repeat_n(UNBOUND, w)); rows[at + sv] = subj; rows[at + *v] = *o; }
+                }
+            }
+            if std::env::var_os("RDFDB_VALUE_INDEX_TRACE").is_some() { eprintln!("value_index hit pred={pred:?} dt={dt} index={} range={}..{} rows={}", index.len(), start, end, rows.len() / w); }
+            let mut applied = vec![false; filters.len()];
+            let mut bound: HashSet<usize> = HashSet::new(); bound.insert(sv); bound.insert(*v);
+            self.apply_filters(&mut rows, w, filters, &bound, &mut applied);
+            let rest: Vec<[Slot; 3]> = pats.iter().enumerate().filter(|(i, _)| *i != pi).map(|(_, p)| *p).collect();
+            if rest.is_empty() { return Some(rows) }
+            let mut post = |r: &mut Vec<TermId>, b: &HashSet<usize>| self.apply_filters(r, w, filters, b, &mut applied);
+            return Some(bgp.eval_greedy(&rest, rows, &mut post));
+        }
+        None
     }
 
     /// `(?a, ?b)` if `c` is `?a = ?b` / `sameTerm(?a, ?b)` over two distinct variables of the BGP, each of which occurs

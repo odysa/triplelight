@@ -32,6 +32,12 @@ enum State {
 impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     /// Fast GROUP BY over already evaluated rows; `None` if some aggregate isn't supported here.
     pub(super) fn try_fast_group(&self, rows: &[Row], kidx: &[usize], aggs: &[(Variable, AggregateExpression)]) -> Option<Vec<Row>> {
+        self.fast_group_with(kidx, aggs, &mut |push| push(rows))
+    }
+
+    /// `try_fast_group` fed by `produce`, which passes consecutive batches of the input rows (in input order) to the
+    /// callback it receives. Returns `None` without calling `produce` if an aggregate isn't supported here.
+    pub(super) fn fast_group_with(&self, kidx: &[usize], aggs: &[(Variable, AggregateExpression)], produce: &mut dyn FnMut(&mut dyn FnMut(&[Row]))) -> Option<Vec<Row>> {
         let mut specs = Vec::with_capacity(aggs.len());
         for (v, a) in aggs {
             let out = self.var(v);
@@ -76,7 +82,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let mut key: Vec<TermId> = Vec::with_capacity(kidx.len());
         // MIN/MAX per (group, aggregate) that met an error.
         let mut poisoned: Vec<bool> = Vec::new();
-        for r in rows {
+        let mut consume = |rows: &[Row]| for r in rows {
             key.clear();
             key.extend(kidx.iter().map(|&i| r[i]));
             let g = match pos.get(key.as_slice()) {
@@ -118,7 +124,9 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                     _ => {}
                 }
             }
-        }
+        };
+        produce(&mut consume);
+        drop(consume);
         if groups.is_empty() && kidx.is_empty() {
             groups.push((vec![], fresh(), specs.iter().map(|_| None).collect()));
             poisoned.extend(std::iter::repeat_n(false, specs.len()));

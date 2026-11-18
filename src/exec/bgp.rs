@@ -45,6 +45,42 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         rows
     }
 
+    /// `eval_greedy` stopped before its final join step: returns the rows so far, the pattern the final step would
+    /// extend with (`None` if there is no step left or no rows), and the variables bound so far. Extending these rows
+    /// with that pattern, in any split into consecutive chunks, gives exactly `eval_greedy`'s output rows and order.
+    pub fn eval_greedy_split(&self, pats: &[[Slot; 3]], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>)) -> (Vec<TermId>, Option<usize>, HashSet<usize>) {
+        let w = self.w;
+        let mut remaining: Vec<usize> = (0..pats.len()).collect();
+        let mut bound: HashSet<usize> = (0..w).filter(|&i| rows.chunks(w).all(|r| r[i] != UNBOUND)).collect();
+        if rows.is_empty() { return (rows, None, bound) }
+        while remaining.len() > 1 && !rows.is_empty() {
+            let sample = rows[..w].to_vec();
+            let (k, _) = remaining.iter().enumerate().map(|(k, &pi)| (k, self.estimate(&pats[pi], &bound, &sample)))
+                .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap()).unwrap();
+            let pi = remaining.remove(k);
+            rows = self.extend(&pats[pi], &rows);
+            for s in &pats[pi] { if let Slot::Var(v) = s { bound.insert(*v); } }
+            post(&mut rows, &bound);
+        }
+        let last = if rows.is_empty() { None } else { remaining.first().copied() };
+        (rows, last, bound)
+    }
+
+    /// `eval_order` stopped before its final step (see `eval_greedy_split`).
+    pub fn eval_order_split(&self, pats: &[[Slot; 3]], order: &[usize], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>)) -> (Vec<TermId>, Option<usize>, HashSet<usize>) {
+        let w = self.w;
+        let mut bound: HashSet<usize> = if rows.is_empty() { HashSet::new() } else { (0..w).filter(|&i| rows.chunks(w).all(|r| r[i] != UNBOUND)).collect() };
+        let Some((&last, init)) = order.split_last() else { return (rows, None, bound) };
+        for &pi in init {
+            if rows.is_empty() { break }
+            rows = self.extend(&pats[pi], &rows);
+            for s in &pats[pi] { if let Slot::Var(v) = s { bound.insert(*v); } }
+            post(&mut rows, &bound);
+        }
+        let last = (!rows.is_empty()).then_some(last);
+        (rows, last, bound)
+    }
+
     pub fn eval_order(&self, pats: &[[Slot; 3]], order: &[usize], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>)) -> Vec<TermId> {
         let w = self.w;
         let mut bound: HashSet<usize> = if rows.is_empty() { HashSet::new() } else { (0..w).filter(|&i| rows.chunks(w).all(|r| r[i] != UNBOUND)).collect() };

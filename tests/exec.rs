@@ -565,3 +565,54 @@ fn hash_extend_matches_probe_join() {
     // Reverse direction: object bound, subject free.
     assert_eq!(rows("SELECT ?x ?s WHERE { ?s <urn:a> ?x . ?t <urn:a> ?x }").len(), (0..13).map(|m| { let c = (0..6000).filter(|i| i % 13 == m).count(); c * c }).sum::<usize>());
 }
+
+/// Batched GROUP BY (stage 1 of pipelined execution) must equal the materialized path exactly: same groups in the
+/// same order, same aggregate values (order-sensitive float sums, MIN/MAX ties, GROUP_CONCAT order, DISTINCT,
+/// errors), for any batch size, including FILTER, NOT EXISTS over a join, and pushed-down filters.
+#[test]
+fn batched_group_matches_materialized() {
+    let xd = "<http://www.w3.org/2001/XMLSchema#double>";
+    let xi = "<http://www.w3.org/2001/XMLSchema#integer>";
+    let xdate = "<http://www.w3.org/2001/XMLSchema#date>";
+    let mut data = String::new();
+    for i in 0..400 {
+        let g = i % 7;
+        data.push_str(&format!("<urn:o{i}> <urn:g> <urn:g{g}> .\n"));
+        // Order-sensitive double sums: large and small magnitudes interleaved.
+        let v = match i % 4 { 0 => "1e16".to_string(), 1 => "1".to_string(), 2 => "-1e16".to_string(), _ => format!("{}.5", i % 3) };
+        data.push_str(&format!("<urn:o{i}> <urn:v> \"{v}\"^^{xd} .\n"));
+        // Ties for MIN/MAX: equal values, different lexical forms.
+        data.push_str(&format!("<urn:o{i}> <urn:t> \"{}\"^^{xi} .\n", if i % 2 == 0 { "1".to_string() } else { format!("0{}", 1) }));
+        data.push_str(&format!("<urn:o{i}> <urn:s> \"s{}\" .\n", i % 5));
+        data.push_str(&format!("<urn:o{i}> <urn:d> \"2007-10-{:02}\"^^{xdate} .\n", 1 + i % 28));
+        if i % 9 == 0 { data.push_str(&format!("<urn:o{i}> <urn:bad> \"x\" .\n")) } else { data.push_str(&format!("<urn:o{i}> <urn:bad> \"{i}\"^^{xi} .\n")) }
+        if i % 3 == 0 { data.push_str(&format!("<urn:g{g}> <urn:feat> <urn:o{i}> .\n")) }
+    }
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let queries = [
+        "SELECT ?g (COUNT(*) AS ?n) (SUM(?v) AS ?s) (AVG(?v) AS ?a) (MIN(?t) AS ?mi) (MAX(?t) AS ?ma) (SAMPLE(?t) AS ?sa) WHERE { ?o <urn:g> ?g ; <urn:v> ?v ; <urn:t> ?t } GROUP BY ?g",
+        "SELECT ?g (SUM(?v * 2) AS ?s) (AVG(xsd:float(str(?v))) AS ?a) (GROUP_CONCAT(?w; separator=\"|\") AS ?c) (COUNT(DISTINCT ?w) AS ?dn) WHERE { ?o <urn:g> ?g ; <urn:v> ?v ; <urn:s> ?w } GROUP BY ?g",
+        "SELECT ?g (SUM(?b) AS ?s) (COUNT(?b) AS ?n) (MAX(?b) AS ?m) WHERE { ?o <urn:g> ?g ; <urn:bad> ?b } GROUP BY ?g",
+        "SELECT ?g (COUNT(?o) AS ?n) WHERE { ?o <urn:g> ?g ; <urn:d> ?d FILTER(?d >= \"2007-10-10\"^^xsd:date && ?d < \"2007-10-20\"^^xsd:date) } GROUP BY ?g",
+        "SELECT ?g (COUNT(?o) AS ?n) (SUM(?v) AS ?s) WHERE { { SELECT DISTINCT ?g { ?x <urn:g> ?g } } ?o <urn:g> ?g ; <urn:v> ?v FILTER NOT EXISTS { ?g <urn:feat> ?o } } GROUP BY ?g",
+        "SELECT (COUNT(*) AS ?n) (SUM(?v) AS ?s) WHERE { ?o <urn:g> <urn:none> ; <urn:v> ?v }",
+        "SELECT (SUM(?v) AS ?s) (COUNT(DISTINCT ?g) AS ?dg) WHERE { ?o <urn:g> ?g ; <urn:v> ?v }",
+        // Equality-unification rewrite (temporary patterns): kept on the materialized path, must still agree.
+        "SELECT ?g (COUNT(*) AS ?n) WHERE { ?o <urn:g> ?g . ?x <urn:feat> ?y FILTER(?o = ?y) } GROUP BY ?g",
+    ];
+    let run = |q: &str| -> Vec<String> {
+        let q = format!("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> {q}");
+        match query(&s, &q).unwrap() { QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| format!("{r:?}")).collect(), r => panic!("{r:?}") }
+    };
+    // Reference: the materialized path.
+    rdfdb::exec::set_batching(false);
+    let reference: Vec<Vec<String>> = queries.iter().map(|q| run(q)).collect();
+    rdfdb::exec::set_batching(true);
+    for batch in [1, 7, 65536] {
+        rdfdb::exec::set_batch_rows(batch);
+        for (q, want) in queries.iter().zip(&reference) {
+            assert_eq!(&run(q), want, "batch={batch} query={q}");
+        }
+    }
+    rdfdb::exec::set_batch_rows(65536);
+}

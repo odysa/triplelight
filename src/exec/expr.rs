@@ -11,7 +11,7 @@ const NUMERIC: [&str; 16] = [
     "positiveInteger", "negativeInteger", "nonPositiveInteger", "unsignedInt", "unsignedLong", "unsignedShort", "unsignedByte",
 ];
 
-fn xsd_local(l: &Literal) -> Option<&str> { l.datatype().as_str().strip_prefix("http://www.w3.org/2001/XMLSchema#") }
+pub(super) fn xsd_local(l: &Literal) -> Option<&str> { l.datatype().as_str().strip_prefix("http://www.w3.org/2001/XMLSchema#") }
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 /// SPARQL numeric value. Promotion order integer < decimal < float < double (XPath op:numeric-*). `Flt` holds an
