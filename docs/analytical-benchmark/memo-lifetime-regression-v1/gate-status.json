@@ -1,0 +1,13 @@
+{
+  "source_commit": "1e862e39e08acc9074b9d8460a3a34c21ae0e41f",
+  "binary_sha256": "f81e8f9dbfe2995bdc36701fc54c2f8869ceadb3bad625ec3b32a4e09d6ff7a6",
+  "source_files_postchecked": 33,
+  "merge_gate_cleared": false,
+  "full_60_instance_BI_run_started": false,
+  "reason": "Independent tiny-graph correctness regression found before BI run",
+  "main738_rows": 6,
+  "jena_rows": 6,
+  "candidate_rows": 11,
+  "candidate_qualification_error": "Computed numeric values or multiplicities differ",
+  "all_owned_processes_exited": true
+}
