@@ -1,0 +1,1 @@
+SELECT (BNODE("label") AS ?v) WHERE {}
