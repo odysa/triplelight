@@ -1,0 +1,21 @@
+diff --git a/src/exec/mod.rs b/src/exec/mod.rs
+index 6ff642e..53ee18e 100644
+--- a/src/exec/mod.rs
++++ b/src/exec/mod.rs
+@@ -218,9 +218,14 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
+     fn lookup(&self, t: &Term) -> Option<TermId> { self.snap.lookup(t).unwrap_or_else(|e| storage_failure(e)) }
+     /// ID for any term: the store's ID if present, else a stable scratch ID.
+     pub(crate) fn intern(&self, t: &Term) -> TermId {
+-        if let Some(id) = self.lookup(t) { return id; }
++        // `scratch.0` caches every interned term, stored or not: computed values (e.g. COUNT results, one per
++        // group) repeat, and a stored-ID lookup is a dictionary search on disk.
++        if let Some(&id) = self.scratch.borrow().0.get(t) { return id; }
++        if let Some(id) = self.lookup(t) {
++            if self.scratch.borrow().0.len() < 1 << 20 { self.scratch.borrow_mut().0.insert(t.clone(), id); }
++            return id;
++        }
+         let mut s = self.scratch.borrow_mut();
+-        if let Some(&id) = s.0.get(t) { return id; }
+         let id = TermId(SCRATCH | s.1.len() as u64);
+         s.0.insert(t.clone(), id);
+         s.1.push(t.clone());
