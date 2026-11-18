@@ -20,15 +20,17 @@ Same Linux VM (4 CPUs, 12 GiB cap per engine), two passes in reversed order. Eac
 measured request times after 15 warmups, in seconds. rdfdb at main `5ac99cc`; QLever with its result cache cleared
 before every request; DuckDB 2.0.0 over one lossless triples table with hand-written SQL per query template.
 
-| | Pass 1 (s) | Pass 2 (s) | Strict answer check | COUNT int = integer | Value-only check |
+| | Pass 1 (s) | Pass 2 (s) | Primary answer check | COUNT int = integer | Value-only check |
 |---|---:|---:|---:|---:|---:|
 | **rdfdb** | **10.8** | **7.3** | 60 / 60 | 60 / 60 | 60 / 60 |
 | QLever | 18.3 | 18.7 | 9 / 60 | 21 / 60 | 60 / 60 |
 | DuckDB 2.0.0 | 170.7 | 113.4 | 60 / 60 | 60 / 60 | 60 / 60 |
 
-All 360 requests pass a value-only check frozen before the run: numeric values within fixed bounds, datatype
-ignored. QLever fails the strict check only on result datatypes (computed float aggregates, and `xsd:int` instead of
-`xsd:integer` for COUNT), so its ranking holds only under the value-only rule.
+All 360 requests pass a value-only check frozen before the run: numeric values within registered rounding bounds,
+datatype ignored. The primary check also allows those numeric bounds but requires the expected datatypes, so it is
+not exact term equality. QLever fails the primary check on result datatypes (computed float aggregates, and `xsd:int`
+instead of `xsd:integer` for COUNT), and its passing values may differ within the rounding bounds. Its ranking
+therefore holds only under the value-only rule.
 
 Per query template (seconds summed over that template's requests, pass 1 / pass 2):
 
@@ -55,13 +57,15 @@ main `ef7a778`, served from its disk store with a 10 GB cache. QLever runs with 
 an 8 GB working set plus 8 GB of spill. Every container is capped at 4 CPUs and 12 GiB. The reference answers are
 Jena's: 59 come from full runs and one q1 instance had to be computed per product type, labelled as such.
 
-| | Pass 1 (s) | Pass 2 (s) | Strict | COUNT int = integer | Value-only | Peak container memory |
+| | Pass 1 (s) | Pass 2 (s) | Primary | COUNT int = integer | Value-only | Peak cgroup memory |
 |---|---:|---:|---:|---:|---:|---:|
 | **rdfdb** | **11.7** | **6.7** | 60 / 60 | 60 / 60 | 60 / 60 | 3.7 / 4.1 GiB |
 | QLever | 24.2 | 24.5 | 25 / 60 | 37 / 60 | 60 / 60 | **0.5 / 0.4 GiB** |
 | DuckDB 2.0.0 | 573.8 | 443.5 | 60 / 60 | 60 / 60 | 60 / 60 | 11.4 / 12.0 GiB |
 
-QLever is faster on q3 in both passes (2.4 / 2.5 s against rdfdb's 9.0 / 5.1 s). q3 is about 76% of rdfdb's total in
+The primary check allows registered numeric error bounds; exact RDF-term equality of the full result sets holds for
+58 / 42 / 25 of 60 requests (rdfdb / DuckDB / QLever). The memory column is the container's cgroup `memory.peak`,
+which includes charged page cache and kernel memory, not process RSS or total RAM use. QLever is faster on q3 in both passes (2.4 / 2.5 s against rdfdb's 9.0 / 5.1 s). q3 is about 76% of rdfdb's total in
 each pass and is the clearest next target. q1 changes winner between the two passes, so neither engine has a stable
 lead there. QLever uses about a tenth of rdfdb's memory. rdfdb's timings vary a lot between passes. This is two
 passes on a shared machine, not a general state-of-the-art claim. Evidence:
@@ -124,10 +128,12 @@ Details: [docs/embedded/README.md](docs/embedded/README.md).
 
 ### Where rdfdb is behind
 
-- BI q1 and q3 against QLever, and server memory on BI (about 4× QLever's), above.
-- Loading: building the LUBM-1000 disk store took 1,035 s against QLever's 425 s in round 9; the parallel loader
-  merged since then is about 30% faster but has not been re-measured at that scale.
-- Store open: statistics take several seconds to become ready after opening a large store.
+- BI q3 against QLever, at 10M and at 100M. q1 is also slower at 10M; at 100M its winner changes between passes.
+- Memory, measured two ways: on the 10M BI run, peak server memory (process) is about 4× QLever's; on the 100M BI
+  run, peak cgroup memory (which includes page cache) is 3.7–4.1 GiB against QLever's 0.4–0.5 GiB.
+- Loading: building the LUBM-1000 disk store took 1,035 s against QLever's 425 s in round 9. A parallel loader has
+  been merged since, but its speedup is not established and it has not been compared at that scale.
+- Store open: statistics take seconds to become ready after opening a store (42.8 s for the 100M BSBM store).
 
 Full method and earlier rounds (8–12, so some totals differ from the later rounds above):
 [docs/report/evaluation.md](docs/report/evaluation.md) and
