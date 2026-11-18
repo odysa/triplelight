@@ -1,0 +1,127 @@
+{
+  "undef-bind": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "bound-bind": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "undef-filter": {
+    "pass": true,
+    "actual_rows": 0,
+    "reference_rows": 0
+  },
+  "undef-optional": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "union-maybe-bound": {
+    "pass": true,
+    "actual_rows": 2,
+    "reference_rows": 2
+  },
+  "subquery-hidden-var": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "constant-bind-conflict": {
+    "pass": true,
+    "actual_rows": 0,
+    "reference_rows": 0
+  },
+  "bind-equal": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "bind-error": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "bind-datatype-conflict": {
+    "pass": true,
+    "actual_rows": 0,
+    "reference_rows": 0
+  },
+  "bind-lexical-conflict": {
+    "pass": true,
+    "actual_rows": 0,
+    "reference_rows": 0
+  },
+  "bind-language-case": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "bind-outer-read": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "optional-conflict": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "optional-error": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "exists-direct": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "exists-nested-group": {
+    "pass": true,
+    "actual_rows": 0,
+    "reference_rows": 0
+  },
+  "subquery-limit": {
+    "pass": true,
+    "actual_rows": 0,
+    "reference_rows": 0
+  },
+  "subquery-offset": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "base-parent": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "base-root": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "base-fragment": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "base-absolute-string": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "base-named-iri": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "base-nonstring-error": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  }
+}

@@ -1,0 +1,1 @@
+SELECT ?x ?y WHERE { VALUES ?x {2} { SELECT ?x ?y WHERE { VALUES (?x ?y) {(1 10)(2 20)} } ORDER BY ?x LIMIT 1 OFFSET 1 } }

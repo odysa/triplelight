@@ -1,0 +1,20 @@
+{
+  "undef-bind": {
+    "pass": true
+  },
+  "bound-bind": {
+    "pass": true
+  },
+  "undef-filter": {
+    "pass": true
+  },
+  "undef-optional": {
+    "pass": true
+  },
+  "union-maybe-bound": {
+    "pass": true
+  },
+  "subquery-hidden-var": {
+    "pass": true
+  }
+}

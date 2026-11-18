@@ -1,0 +1,1 @@
+{"pid": 11202, "command": ["/private/tmp/rdf-jianlin-analytical25/bind-scope-311cc51/rdfdb-311cc51", "serve", "<agent-workspace>/rdfdb/bench/tools/rdfdb-disk-bsbm100-main", "31444", "--disk", "--cache-mb=10240"]}

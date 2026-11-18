@@ -1,0 +1,12 @@
+{ "head": {
+    "vars": [ "x" , "y" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "x": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" } ,
+        "y": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "9" }
+      }
+    ]
+  }
+}
