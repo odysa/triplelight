@@ -111,6 +111,7 @@ fn run_query<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>) -> Result<Que
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
     if let Some(reason) = support::unsupported(q) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
     let mut ctx = Ctx::new(snap);
+    ctx.base = match q { Query::Select { base_iri, .. } | Query::Ask { base_iri, .. } | Query::Construct { base_iri, .. } | Query::Describe { base_iri, .. } => base_iri.as_ref().map(|b| b.as_str().to_string()) };
     ctx.wcoj = opts.wcoj;
     let stats = opts.stats;
     ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
@@ -186,6 +187,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// LIMIT (+OFFSET) of a Slice directly above the next ORDER BY (through at most a Project): lets ORDER BY keep
     /// only the first `k` rows (stable top-k) instead of sorting everything. Taken by that ORDER BY.
     order_limit: std::cell::Cell<Option<usize>>,
+    /// The query's BASE IRI, used by IRI()/URI() to resolve relative strings.
+    pub(crate) base: Option<String>,
     /// EXISTS / NOT EXISTS results memoized per pattern and per binding of the pattern's variables. Whether a
     /// pattern has a solution compatible with a row depends only on the row's values for the pattern's own
     /// variables, so rows that differ elsewhere (e.g. many offers of one product) share one evaluation.
@@ -202,7 +205,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
+        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), base: None, exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -874,7 +877,10 @@ fn scope_safe(p: &GraphPattern) -> bool {
             let (bl, br) = (bound(left), bound(right));
             expr_vars(e).iter().all(|n| bl.contains(n) || br.contains(n))
         }),
-        GraphPattern::OrderBy { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. }
+        // LIMIT/OFFSET picks rows from the subquery's own solutions; restricting its input first changes which rows
+        // are picked (W3C subquery11).
+        GraphPattern::Slice { .. } => false,
+        GraphPattern::OrderBy { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner }
         | GraphPattern::Project { inner, .. } | GraphPattern::Group { inner, .. } | GraphPattern::Graph { inner, .. } | GraphPattern::Service { inner, .. } => scope_safe(inner),
     }
 }

@@ -192,11 +192,11 @@ pub(super) fn eval<S: Snapshot + ?Sized>(ctx: &Ctx<'_, S>, e: &Expression, r: &R
         Expression::Exists(p) => Some(bool_term(ctx.exists(p, r))),
         Expression::If(c, a, b) => if ebv(&v(c)?)? { v(a) } else { v(b) },
         Expression::Coalesce(l) => l.iter().find_map(v),
-        Expression::FunctionCall(f, args) => call(f, args, &|e| v(e)),
+        Expression::FunctionCall(f, args) => call(f, args, &|e| v(e), ctx.base.as_deref()),
     }
 }
 
-fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Term>) -> Option<Term> {
+fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Term>, base: Option<&str>) -> Option<Term> {
     let a = |i: usize| v(args.get(i)?);
     // SPARQL string functions take string literals only (simple, xsd:string or language-tagged); anything else,
     // including numbers and other typed literals, is a type error (§17.4.3).
@@ -226,7 +226,15 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             Some(bool_term(if range == "*" { !tag.is_empty() } else { tag == range || tag.starts_with(&format!("{range}-")) }))
         }
         Function::Datatype => Some(lit(&a(0)?)?.datatype().into_owned().into()),
-        Function::Iri => match a(0)? { Term::NamedNode(n) => Some(n.into()), t => NamedNode::new(lit(&t)?.value()).ok().map(Into::into) },
+        // IRI()/URI(): an IRI argument is returned as is; a simple string is resolved against the query's BASE.
+        Function::Iri => match a(0)? {
+            Term::NamedNode(n) => Some(n.into()),
+            t => {
+                let x = plain(0).or_else(|| strlit(&t).filter(|l| l.language().is_none()).map(|l| l.value().to_string()))?;
+                let resolved = match base { Some(b) => oxiri::Iri::parse(b.to_string()).ok()?.resolve(&x).ok()?.into_inner(), None => x };
+                NamedNode::new(resolved).ok().map(Into::into)
+            }
+        },
         Function::IsIri => Some(bool_term(matches!(a(0)?, Term::NamedNode(_)))),
         Function::IsBlank => Some(bool_term(matches!(a(0)?, Term::BlankNode(_)))),
         Function::IsLiteral => Some(bool_term(matches!(a(0)?, Term::Literal(_)))),
