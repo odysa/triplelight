@@ -1,0 +1,22 @@
+{
+  "rdfdb": {
+    "image": "rust@sha256:0b0ea86881537b3f645aace7e8e39556289f8787db057317c8d4978548213b9e",
+    "explicit_entrypoint": true,
+    "temp_environment_precedes_image": true
+  },
+  "duckdb": {
+    "image": "python@sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd",
+    "explicit_entrypoint": true,
+    "temp_environment_precedes_image": true
+  },
+  "virtuoso": {
+    "image": "openlink/virtuoso-opensource-7@sha256:0dbe1ab4fa0cb7bbafc1f6c0c2b0a5d6f22d918dbd17672f2ddb24580aa6756a",
+    "explicit_entrypoint": false,
+    "temp_environment_precedes_image": true
+  },
+  "qlever": {
+    "image": "adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cba4e894ca1ba8117cef6727",
+    "explicit_entrypoint": true,
+    "temp_environment_precedes_image": true
+  }
+}
