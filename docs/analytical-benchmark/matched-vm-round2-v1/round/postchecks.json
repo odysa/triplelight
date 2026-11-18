@@ -1,0 +1,28 @@
+{
+  "input": {
+    "sha256": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+    "matches": true
+  },
+  "duckdb_readonly_store": {
+    "sha256": "f86cb05c12f8cd1dbe7d62f5b918b03ea95e945435a7148f71d1255927dba421",
+    "matches": true
+  },
+  "rdfdb_738_binary": {
+    "sha256": "8277d341b2a514a3405728530c2bb0de176b3b8b48f11bcbc3f74d4c2b477d23",
+    "matches": true
+  },
+  "prior_71_binary_preserved": {
+    "sha256": "4e9e3e11b7d6fb530856ec39ff41430c86123f4412803d6ed38b46fc97f26352",
+    "matches": true
+  },
+  "source_files_verified": 26,
+  "query_hashes_verified": 60,
+  "numeric_bindings_verified": 32,
+  "pass1-rdfdb_exit": 137,
+  "pass1-duckdb_exit": 137,
+  "pass2-duckdb_exit": 137,
+  "pass2-rdfdb_exit": 137,
+  "owned_phase_containers_running": false,
+  "count_policy_postcheck": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790",
+  "duckdb_native_module_sha256_same_as_prior_pilot": "4cc47e49dd4bc2817b01645c652d4ba192f863d3e4df2f5b274f530a1adbb7c1"
+}
