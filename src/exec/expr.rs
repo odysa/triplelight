@@ -55,19 +55,61 @@ fn num_cmp(x: Num, y: Num) -> Option<Ordering> {
     x.f().partial_cmp(&y.f())
 }
 
-/// Exact decimal operations: a result that `Decimal` cannot represent exactly (overflow, or more than 28 fractional
-/// digits) is a SPARQL error rather than a silently rounded value. Division by a non-terminating divisor is rounded to
-/// 28 digits, as XPath allows for decimal division.
+/// Exact decimal operations: the exact result is computed on integer mantissas (arbitrary precision) and accepted only
+/// if it fits `Decimal` (mantissa below 2^96, at most 28 fractional digits once trailing zeros are removed); otherwise it
+/// is a SPARQL error, never a rounded value. Only a non-terminating quotient (e.g. 1/3) is rounded to 28 digits, as
+/// XPath allows for decimal division.
 fn dec_exact(op: char, a: Decimal, b: Decimal) -> Option<Decimal> {
+    use num_bigint::BigInt;
+    let (ma, sa, mb, sb) = (BigInt::from(a.mantissa()), a.scale(), BigInt::from(b.mantissa()), b.scale());
+    let p10 = |k: u32| BigInt::from(10u8).pow(k);
     match op {
         '+' | '-' => {
-            let r = if op == '+' { a.checked_add(b)? } else { a.checked_sub(b)? };
-            let back = if op == '+' { r.checked_sub(b)? } else { r.checked_add(b)? };
-            (back == a).then_some(r)
+            let s = sa.max(sb);
+            let (x, y) = (ma * p10(s - sa), mb * p10(s - sb));
+            fit_decimal(if op == '+' { x + y } else { x - y }, s)
         }
-        '*' => { if a.scale() + b.scale() > 28 { return None } a.checked_mul(b) }
-        _ => { if b.is_zero() { None } else { a.checked_div(b) } }
+        '*' => fit_decimal(ma * mb, sa + sb),
+        _ => {
+            if b.is_zero() { return None }
+            // a / b = (ma * 10^sb) / (mb * 10^sa), reduced to lowest terms.
+            let (mut num, mut den) = (ma * p10(sb), mb * p10(sa));
+            if den < BigInt::from(0) { num = -num; den = -den; }
+            let g = num_gcd(num.clone(), den.clone());
+            let (num, den) = (num / &g, den / &g);
+            // It terminates iff the reduced denominator has no prime factors other than 2 and 5.
+            let (mut d, mut twos, mut fives) = (den.clone(), 0u32, 0u32);
+            let (two, five, zero) = (BigInt::from(2u8), BigInt::from(5u8), BigInt::from(0u8));
+            while &d % &two == zero { d /= &two; twos += 1 }
+            while &d % &five == zero { d /= &five; fives += 1 }
+            if d == BigInt::from(1u8) {
+                let k = twos.max(fives);
+                fit_decimal(num * p10(k) / den, k)
+            } else {
+                a.checked_div(b)
+            }
+        }
     }
+}
+
+fn num_gcd(mut a: num_bigint::BigInt, mut b: num_bigint::BigInt) -> num_bigint::BigInt {
+    use num_bigint::Sign;
+    if a.sign() == Sign::Minus { a = -a }
+    if b.sign() == Sign::Minus { b = -b }
+    while b != num_bigint::BigInt::from(0u8) { let r = &a % &b; a = b; b = r; }
+    a
+}
+
+/// `m * 10^-s` as a Decimal if it is exactly representable.
+fn fit_decimal(mut m: num_bigint::BigInt, mut s: u32) -> Option<Decimal> {
+    use num_bigint::BigInt;
+    let (ten, zero) = (BigInt::from(10u8), BigInt::from(0u8));
+    while s > 0 && &m % &ten == zero { m /= &ten; s -= 1 }
+    if s > 28 { return None }
+    let limit = BigInt::from(1u8) << 96;
+    if m >= limit || m <= -limit { return None }
+    let m: i128 = m.try_into().ok()?;
+    Decimal::try_from_i128_with_scale(m, s).ok()
 }
 
 /// XPath op:numeric-add/subtract/multiply/divide with type promotion. Integer arithmetic is checked; integer and

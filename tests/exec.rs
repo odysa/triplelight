@@ -687,3 +687,20 @@ fn decimal_edge_cases_and_float_promotion() {
     assert!(one(&format!("{x} SELECT ((16777217.0 + xsd:float(\"-16777216\")) AS ?r) {{}}")).contains("\"0.0\"") || one(&format!("{x} SELECT ((16777217.0 + xsd:float(\"-16777216\")) AS ?r) {{}}")).contains("\"0\""));
     assert!(one(&format!("{x} SELECT ?ok {{ BIND(16777217.0 = xsd:float(\"16777216\") AS ?ok) }}")).contains("true"));
 }
+
+/// Jianlin's boundary controls: results beyond exact Decimal range are errors, in either operand order; exact results
+/// inside the range are exact (including terminating quotients).
+#[test]
+fn decimal_boundaries_are_exact_or_error() {
+    let s = MemorySnapshot::from_ntriples(&b""[..]).unwrap();
+    let v = |q: &str| -> String { match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => format!("{rows:?}"), r => panic!("{r:?}") } };
+    let max = "79228162514264337593543950335";
+    for q in [format!("SELECT (({max} + 0.1) AS ?r) {{}}"), format!("SELECT ((0.1 + {max}) AS ?r) {{}}"),
+              "SELECT ((99999999999999.9 * 99999999999999.9) AS ?r) {}".to_string(),
+              "SELECT ((0.0000000000000000000000000001 / 10.0) AS ?r) {}".to_string()] {
+        assert!(!v(&q).contains("Some"), "{q} must be an error: {}", v(&q));
+    }
+    assert!(v("SELECT ((9999999.9 * 9999999.9) AS ?r) {}").contains("99999998000000.01"));
+    assert!(v("SELECT ((1.0 / 8) AS ?r) {}").contains("0.125"));
+    assert!(v("SELECT ((1.0 / 3) AS ?r) {}").contains("0.333333"));
+}
