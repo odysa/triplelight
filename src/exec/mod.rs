@@ -186,16 +186,20 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// EXISTS / NOT EXISTS results memoized per pattern and per binding of the pattern's variables. Whether a
     /// pattern has a solution compatible with a row depends only on the row's values for the pattern's own
     /// variables, so rows that differ elsewhere (e.g. many offers of one product) share one evaluation.
+    /// Keys use a slot id, not the pattern's address: rewrites evaluate temporary patterns whose addresses are
+    /// reused, so a slot is only reused when the pattern at that address is structurally the same.
     exists_memo: RefCell<HashMap<(usize, Vec<TermId>), bool>>,
-    exists_vars: RefCell<HashMap<usize, Option<Vec<usize>>>>,
+    exists_vars: RefCell<HashMap<usize, (GraphPattern, usize, Option<Vec<usize>>)>>,
+    memo_slots: std::cell::Cell<usize>,
     /// Aggregate argument values memoized per expression and per ID of its single variable: the same term (e.g.
     /// one offer's price) recurs in many groups, and evaluating it means a dictionary decode each time.
     agg_arg_memo: RefCell<HashMap<(usize, TermId), Option<Term>>>,
+    agg_arg_slots: RefCell<HashMap<usize, (Expression, usize)>>,
 }
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()) }
+        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -463,7 +467,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 let evaluated: Vec<Option<Term>> = match single {
                     Some(vi) => {
                         const MEMO_CAP: usize = 1 << 20;
-                        let e: &Expression = expr; let eid = e as *const Expression as usize;
+                        let e: &Expression = expr;
+                        let addr = e as *const Expression as usize;
+                        let eid = {
+                            let mut m = self.agg_arg_slots.borrow_mut();
+                            match m.get(&addr) {
+                                Some((q, slot)) if q == e => *slot,
+                                _ => { let slot = self.memo_slots.get(); self.memo_slots.set(slot + 1); m.insert(addr, (e.clone(), slot)); slot }
+                            }
+                        };
                         rows.iter().map(|r| {
                             let key = (eid, r[vi]);
                             if let Some(v) = self.agg_arg_memo.borrow().get(&key) { return v.clone() }
@@ -714,16 +726,26 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
     pub(crate) fn exists(&self, p: &GraphPattern, r: &Row) -> bool {
         const MEMO_CAP: usize = 1 << 20;
-        let pid = p as *const GraphPattern as usize;
-        let idx = self.exists_vars.borrow_mut().entry(pid).or_insert_with(|| {
-            // GRAPH/SERVICE names are not visited by `walk_vars`; never memoize those patterns.
-            if !memo_safe(p) { return None }
-            let mut v = Vec::new();
-            walk_vars(p, &mut v);
-            Some(v.iter().filter_map(|n| self.vars.get(n).copied()).filter(|&i| i < r.len()).collect())
-        }).clone();
+        let addr = p as *const GraphPattern as usize;
+        let (slot, idx) = {
+            let mut m = self.exists_vars.borrow_mut();
+            match m.get(&addr) {
+                Some((q, slot, idx)) if q == p => (*slot, idx.clone()),
+                _ => {
+                    // GRAPH/SERVICE names are not visited by `walk_vars`; never memoize those patterns.
+                    let idx = memo_safe(p).then(|| {
+                        let mut v = Vec::new();
+                        walk_vars(p, &mut v);
+                        v.iter().filter_map(|n| self.vars.get(n).copied()).filter(|&i| i < r.len()).collect::<Vec<_>>()
+                    });
+                    let slot = self.memo_slots.get(); self.memo_slots.set(slot + 1);
+                    m.insert(addr, (p.clone(), slot, idx.clone()));
+                    (slot, idx)
+                }
+            }
+        };
         let Some(idx) = idx else { return !self.eval(p, vec![r.clone()]).is_empty() };
-        let key = (pid, idx.iter().map(|&i| r[i]).collect::<Vec<_>>());
+        let key = (slot, idx.iter().map(|&i| r[i]).collect::<Vec<_>>());
         if let Some(&b) = self.exists_memo.borrow().get(&key) { return b }
         let b = !self.eval(p, vec![r.clone()]).is_empty();
         let mut m = self.exists_memo.borrow_mut();

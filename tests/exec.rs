@@ -475,3 +475,15 @@ fn aggregate_argument_memo_is_per_value() {
     // ?x * 10 is an error for "x": SUM is unbound for <urn:c>, GROUP_CONCAT still has both values.
     assert!(!txt[2].contains("\"20\"") && (txt[2].contains("x,2") || txt[2].contains("2,x")), "{txt:?}");
 }
+
+/// Regression (found by Jianlin): the equality rewrite evaluates temporary cloned filters, so pattern addresses
+/// are reused within one query. The EXISTS memo must not return a result cached for a different pattern.
+#[test]
+fn exists_memo_survives_reused_temporary_patterns() {
+    let e = "http://example.org/long/";
+    let data = format!("<{e}s> <{e}p> <{e}A> .\n<{e}t> <{e}q> <{e}A> .\n<{e}A> <{e}yes> <{e}Z> .\n");
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let branch = |p: &str| format!("{{ ?s <{e}p> ?a . ?t <{e}q> ?b . FILTER(?a=?b && EXISTS {{ ?a <{e}{p}> ?z }}) }}");
+    let q = format!("SELECT ?a ?b WHERE {{ {} }}", (0..12).map(|i| branch(if i % 2 == 0 { "yes" } else { "no" })).collect::<Vec<_>>().join(" UNION "));
+    match query(&s, &q).unwrap() { QueryResult::Solutions { rows, .. } => assert_eq!(rows.len(), 6), r => panic!("{r:?}") }
+}
