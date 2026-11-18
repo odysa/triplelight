@@ -134,6 +134,9 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         let (Slot::Const(Some(c)), Slot::Var(kv), Slot::Var(fv)) = (pat[cpos], pat[kpos], pat[fpos]) else { return None };
         if kv == fv { return None }
         if rows.chunks_exact(w).any(|r| r[kv] == UNBOUND || r[fv] != UNBOUND) { return None }
+        // Input already sorted on the key: per-row probes walk the index in order and stay in cached blocks,
+        // which measured faster than building the map (BI q3); keep the probe join there.
+        if rows.chunks_exact(w).zip(rows.chunks_exact(w).skip(1)).all(|(a, b)| a[kv] <= b[kv]) { return None }
         let perm = [Perm::Spo, Perm::Sop, Perm::Pso, Perm::Pos, Perm::Osp, Perm::Ops].into_iter().find(|p| p.order() == [cpos, kpos, fpos])?;
         let total = self.count(perm, &[c]);
         if total > 2 * n_rows as u64 || total > 1 << 24 { return None }
