@@ -377,3 +377,33 @@ fn order_by_limit_top_k_matches_full_sort() {
         assert_eq!(topk, full.into_iter().skip(off).take(n).collect::<Vec<_>>(), "{order} {lim}");
     }
 }
+
+/// `FILTER(?a = ?b)` between separate patterns is evaluated as a join when neither side can be a literal, with the
+/// same answers as the general filter; literal-valued variables keep value equality ("1"^^int = "01"^^int).
+#[test]
+fn variable_equality_unification_matches_general_filter() {
+    let data = r#"
+<urn:p1> <urn:feat> <urn:f1> .
+<urn:p1> <urn:feat> <urn:f2> .
+<urn:p2> <urn:feat> <urn:f1> .
+<urn:p2> <urn:feat> <urn:f3> .
+<urn:p3> <urn:feat> _:b .
+<urn:p4> <urn:feat> _:b .
+<urn:p1> <urn:num> "1"^^<http://www.w3.org/2001/XMLSchema#int> .
+<urn:p2> <urn:num> "01"^^<http://www.w3.org/2001/XMLSchema#int> .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let rows = |q: &str| -> Vec<String> {
+        match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.into_iter().map(|r| format!("{r:?}")).collect(); v.sort(); v } r => panic!("{r:?}") }
+    };
+    for (p, cmp) in [("<urn:feat>", "?f = ?g"), ("<urn:feat>", "sameTerm(?f, ?g)"), ("<urn:num>", "?f = ?g")] {
+        let fast = rows(&format!("SELECT ?x ?y ?f ?g WHERE {{ ?x {p} ?f . ?y {p} ?g FILTER({cmp}) }}"));
+        let general = rows(&format!("SELECT ?x ?y ?f ?g WHERE {{ ?x {p} ?f . ?y {p} ?g FILTER({cmp} || false) }}"));
+        assert_eq!(fast, general, "{p} {cmp}");
+    }
+    // The literal case keeps value equality: p1 and p2 match each other through "1" = "01".
+    assert_eq!(rows("SELECT ?x ?y WHERE { ?x <urn:num> ?f . ?y <urn:num> ?g FILTER(?f = ?g) }").len(), 4);
+    // Grouped count over the unified join (the BSBM-BI q2 shape).
+    let q2 = "SELECT ?y (COUNT(?g) AS ?n) WHERE { <urn:p1> <urn:feat> ?f . ?y <urn:feat> ?g FILTER(?f = ?g) } GROUP BY ?y";
+    assert_eq!(rows(q2).len(), 2);
+}
