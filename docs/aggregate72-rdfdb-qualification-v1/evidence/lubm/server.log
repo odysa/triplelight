@@ -1,0 +1,4 @@
+loaded <agent-workspace>/rdfdb/bench/tools/lubm100.nt in 24.07s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:31447/sparql
+statistics ready after 4.00s
