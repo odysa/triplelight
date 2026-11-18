@@ -1,0 +1,7 @@
+{
+  "nine_unit_tests_pass": true,
+  "final_policy_sources_match": true,
+  "initial_and_final_scores_identical": true,
+  "development_note": "Removed duplicate bag-count check and added a COUNT multiplicity test and language-tag rejection after initial descriptive re-score; no tolerance or result changed. Both scratch runs retained.",
+  "no_servers_or_new_timings": true
+}
