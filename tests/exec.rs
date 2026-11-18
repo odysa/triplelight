@@ -522,3 +522,23 @@ fn member_set_probe_matches_probe_join() {
     assert_eq!(n("SELECT (COUNT(*) AS ?c) { ?r <urn:by> ?u . ?u <urn:country> <urn:US> }"), 1);
     assert_eq!(n("SELECT * { ?r <urn:by> ?u . ?u <urn:country> <urn:XX> }"), 0);
 }
+
+/// `FILTER [NOT] EXISTS` over a non-BGP input (here a subquery) is evaluated as one batched semi/anti-join; it must
+/// keep per-row semantics, including an inner FILTER that reads an outer variable.
+#[test]
+fn exists_batch_matches_per_row_semantics() {
+    let mut data = String::new();
+    for i in 0..40 {
+        if i % 4 == 0 { data.push_str(&format!("<urn:p{i}> <urn:feat> <urn:f> .\n")) }
+        for j in 0..5 { data.push_str(&format!("<urn:o{i}_{j}> <urn:product> <urn:p{i}> .\n<urn:o{i}_{j}> <urn:price> \"{}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n", i * 10 + j)) }
+    }
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
+    let sub = "{ SELECT ?o ?p ?x { ?o <urn:product> ?p ; <urn:price> ?x } }";
+    // 200 offers; products 0,4,..,36 (10 products x 5 offers) have the feature.
+    assert_eq!(n(&format!("SELECT * {{ {sub} FILTER NOT EXISTS {{ ?p <urn:feat> ?f }} }}")), 150);
+    assert_eq!(n(&format!("SELECT * {{ {sub} FILTER EXISTS {{ ?p <urn:feat> ?f }} }}")), 50);
+    // Inner filter on an outer variable: featured products with price > 200 -> products 24,28,32,36 (20 offers;
+    // product 20 has prices 200..204 of which 4 are > 200).
+    assert_eq!(n(&format!("SELECT * {{ {sub} FILTER EXISTS {{ ?p <urn:feat> ?f FILTER(?x > 200) }} }}")), 24);
+}
