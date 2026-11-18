@@ -1,0 +1,1 @@
+{"pid": 62249, "command": ["/tmp/rdfdb-main100/release/rdfdb", "serve", "<agent-workspace>/rdfdb/bench/tools/rdfdb-disk-bsbm100-main", "31435", "--disk", "--cache-mb=10240"]}
