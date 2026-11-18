@@ -438,3 +438,52 @@ fn subquery_hash_join_matches_nested_loop() {
     let flat = rows("SELECT ?p ?n ?o WHERE { ?p a <urn:Product> OPTIONAL { ?p <urn:o> ?o } ?p <urn:f> ?f BIND(1 AS ?n) }");
     assert_eq!(r.iter().map(|x| x.replace("\"1\"^^<http://www.w3.org/2001/XMLSchema#integer>", "N")).collect::<Vec<_>>(), flat.iter().map(|x| x.replace("\"1\"^^<http://www.w3.org/2001/XMLSchema#integer>", "N")).collect::<Vec<_>>());
 }
+
+/// NOT EXISTS / EXISTS results are memoized per binding of the pattern's variables; rows that share those
+/// bindings but differ elsewhere must still get the right answer.
+#[test]
+fn exists_memo_matches_per_row_semantics() {
+    let mut data = String::new();
+    let ty = "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>";
+    for i in 0..30 {
+        data.push_str(&format!("<urn:p{i}> {ty} <urn:T> .\n"));
+        if i % 4 == 0 { data.push_str(&format!("<urn:p{i}> <urn:feat> <urn:f{}> .\n", i % 3)) }
+        for j in 0..5 { data.push_str(&format!("<urn:o{i}_{j}> <urn:product> <urn:p{i}> .\n<urn:o{i}_{j}> <urn:price> \"{}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n", i * 10 + j)) }
+    }
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
+    let feats = "VALUES ?f { <urn:f0> <urn:f1> <urn:f2> }";
+    // 30 products x 5 offers x 3 features = 450 rows; products 0,4,..,28 (8 products) each have exactly one feature.
+    assert_eq!(n(&format!("SELECT * {{ {feats} ?p a <urn:T> . ?o <urn:product> ?p ; <urn:price> ?x . FILTER NOT EXISTS {{ ?p <urn:feat> ?f }} }}")), 450 - 8 * 5);
+    assert_eq!(n(&format!("SELECT * {{ {feats} ?p a <urn:T> . ?o <urn:product> ?p ; <urn:price> ?x . FILTER EXISTS {{ ?p <urn:feat> ?f }} }}")), 8 * 5);
+    // An EXISTS filter that depends on a non-key row variable through its own FILTER.
+    assert_eq!(n("SELECT * { ?o <urn:product> ?p ; <urn:price> ?x . FILTER EXISTS { ?p a <urn:T> FILTER(?x > 100) } }"), 99);
+}
+
+/// Aggregate arguments over one variable are memoized per term ID across groups; every group must still see
+/// its own values (and an error value must still poison the aggregate).
+#[test]
+fn aggregate_argument_memo_is_per_value() {
+    let xi = "<http://www.w3.org/2001/XMLSchema#integer>";
+    let data = format!("<urn:a> <urn:v> \"1\"^^{xi} .\n<urn:a> <urn:v> \"2\"^^{xi} .\n<urn:b> <urn:v> \"2\"^^{xi} .\n<urn:b> <urn:v> \"3\"^^{xi} .\n<urn:c> <urn:v> \"x\" .\n<urn:c> <urn:v> \"2\"^^{xi} .\n");
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let q = "SELECT ?g (SUM(?x * 10) AS ?s) (GROUP_CONCAT(STR(?x); separator=\",\") AS ?c) WHERE { ?g <urn:v> ?x } GROUP BY ?g ORDER BY ?g";
+    let rows = match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows, r => panic!("{r:?}") };
+    let txt: Vec<String> = rows.iter().map(|r| format!("{r:?}")).collect();
+    assert_eq!(rows.len(), 3);
+    assert!(txt[0].contains("\"30\"") && txt[1].contains("\"50\""), "{txt:?}");
+    // ?x * 10 is an error for "x": SUM is unbound for <urn:c>, GROUP_CONCAT still has both values.
+    assert!(!txt[2].contains("\"20\"") && (txt[2].contains("x,2") || txt[2].contains("2,x")), "{txt:?}");
+}
+
+/// Regression (found by Jianlin): the equality rewrite evaluates temporary cloned filters, so pattern addresses
+/// are reused within one query. The EXISTS memo must not return a result cached for a different pattern.
+#[test]
+fn exists_memo_survives_reused_temporary_patterns() {
+    let e = "http://example.org/long/";
+    let data = format!("<{e}s> <{e}p> <{e}A> .\n<{e}t> <{e}q> <{e}A> .\n<{e}A> <{e}yes> <{e}Z> .\n");
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let branch = |p: &str| format!("{{ ?s <{e}p> ?a . ?t <{e}q> ?b . FILTER(?a=?b && EXISTS {{ ?a <{e}{p}> ?z }}) }}");
+    let q = format!("SELECT ?a ?b WHERE {{ {} }}", (0..12).map(|i| branch(if i % 2 == 0 { "yes" } else { "no" })).collect::<Vec<_>>().join(" UNION "));
+    match query(&s, &q).unwrap() { QueryResult::Solutions { rows, .. } => assert_eq!(rows.len(), 6), r => panic!("{r:?}") }
+}
