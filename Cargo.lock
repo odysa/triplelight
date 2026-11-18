@@ -332,6 +332,7 @@ name = "rdfdb"
 version = "0.1.0"
 dependencies = [
  "mimalloc",
+ "oxiri",
  "oxrdf",
  "oxttl",
  "rayon",
