@@ -1,0 +1,102 @@
+2026-11-18 00:12:23.191 - WARN: The Linux kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty may have a bug that causes random stalls, crashes, and corrupt data on arm64, unless it contains the fix https://github.com/torvalds/linux/commit/478a1c3abebfc717db0d1281a9cdd7befafee542. As a workaround, QLever doesn't return freed memory to the operating system. On a kernel with the fix, you can disable the workaround by setting the environment variable QLEVER_DISABLE_KERNEL_BUG_WORKAROUND
+2026-11-18 00:12:23.192 - INFO: [1mQLever server 18c097c, compiled on Sat Nov 14 19:07:21 UTC 2026 using git hash 18c097c[22m
+2026-11-18 00:12:23.192 - INFO: Runtime parameter set from the command line: max-num-threads-per-query=4
+2026-11-18 00:12:23.192 - INFO: Cleanup of previous index directories after each rebuild enabled (--rebuild-keep-previous-index-dirs original-and-most-recent)
+2026-11-18 00:12:23.198 - INFO: The git hash used to build this index was "18c097c"
+2026-11-18 00:12:23.198 - INFO: Reading vocabulary from file bsbm10.vocabulary.words ...
+2026-11-18 00:12:23.199 - WARN: io_uring is compiled in but unavailable at runtime (io_uring_queue_init failed in IoUringManager. In file "/qlever/src/util/IoUringManager.cpp" at line 69); falling back to synchronous pread for vocabulary lookups
+2026-11-18 00:12:23.199 - INFO: Done, number of words: 2,739,673
+2026-11-18 00:12:23.200 - INFO: Number of words in internal vocabulary (these are also part of the external vocabulary): 2,761
+2026-11-18 00:12:23.201 - INFO: Registered PSO permutation: #relations = 10, #blocks = 50, #triples = 1,488,547
+2026-11-18 00:12:23.201 - INFO: Registered PSO permutation: #relations = 40, #blocks = 340, #triples = 10,102,032
+2026-11-18 00:12:23.201 - INFO: Registered POS permutation: #relations = 10, #blocks = 50, #triples = 1,488,547
+2026-11-18 00:12:23.202 - INFO: Registered POS permutation: #relations = 40, #blocks = 340, #triples = 10,102,032
+2026-11-18 00:12:23.202 - INFO: Registered OPS permutation: #relations = 1,889,790, #blocks = 255, #triples = 10,102,032
+2026-11-18 00:12:23.203 - INFO: Registered OSP permutation: #relations = 1,889,790, #blocks = 255, #triples = 10,102,032
+2026-11-18 00:12:23.203 - INFO: Registered SPO permutation: #relations = 918,547, #blocks = 216, #triples = 10,102,032
+2026-11-18 00:12:23.203 - INFO: Registered SOP permutation: #relations = 918,547, #blocks = 216, #triples = 10,102,032
+2026-11-18 00:12:23.203 - INFO: Reading patterns from file bsbm10.index.patterns ...
+2026-11-18 00:12:23.204 - INFO: Initializing server ...
+2026-11-18 00:12:23.204 - INFO: Access token for restricted API calls is ""
+2026-11-18 00:12:23.204 - INFO: The server is ready, listening for requests on port 31430 ...
+2026-11-18 00:12:23.230 - INFO: 
+2026-11-18 00:12:23.230 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 00:12:23.230 - INFO: Processing command "get-settings": get server settings
+2026-11-18 00:12:23.233 - INFO: 
+2026-11-18 00:12:23.233 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 00:12:23.235 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count) WHERE { ?s ?p ?o }
+2026-11-18 00:12:23.236 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 00:12:23.236 - INFO: Query planning done in 3 ms
+2026-11-18 00:12:23.413 - INFO: Result has size 1 x 1
+2026-11-18 00:12:23.413 - INFO: Done processing query and sending result, total time was 180 ms
+2026-11-18 00:12:23.416 - INFO: 
+2026-11-18 00:12:23.416 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 00:12:23.416 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 00:12:23.418 - INFO: 
+2026-11-18 00:12:23.418 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 00:12:23.422 - INFO: Processing the following SPARQL query:
+prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+prefix rev: <http://purl.org/stuff/rev#>
+
+Select ?productType ?reviewCount
+{
+ { Select ?productType (count(?review) As ?reviewCount)
+  {
+   ?productType a bsbm:ProductType .
+   ?product a ?productType .
+   ?product bsbm:producer ?producer .
+   ?producer bsbm:country <http://downlode.org/rdf/iso-3166/countries#AT> .
+   ?review bsbm:reviewFor ?product .
+   ?review rev:reviewer ?reviewer .
+   ?reviewer bsbm:country <http://downlode.org/rdf/iso-3166/countries#US> .
+  }
+  Group By ?productType
+ }
+}
+Order By desc(?reviewCount) ?productType
+Limit 10
+
+2026-11-18 00:12:23.422 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 00:12:23.429 - INFO: Query planning done in 10 ms
+2026-11-18 00:12:23.557 - INFO: Result has size 514 x 2
+2026-11-18 00:12:23.557 - INFO: Done processing query and sending result, total time was 139 ms
+2026-11-18 00:12:23.562 - INFO: 
+2026-11-18 00:12:23.562 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 00:12:23.562 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-18 00:12:23.566 - INFO: 
+2026-11-18 00:12:23.566 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-18 00:12:23.568 - INFO: Processing the following SPARQL query:
+  prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+  prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>
+  prefix rev: <http://purl.org/stuff/rev#>
+  prefix dc: <http://purl.org/dc/elements/1.1/>
+  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+
+  Select ?product (xsd:float(?monthCount)/?monthBeforeCount As ?ratio)
+  {
+    { Select ?product (count(?review) As ?monthCount)
+      {
+        ?review bsbm:reviewFor ?product .
+        ?review dc:date ?date .
+        Filter(?date >= "2007-10-10"^^<http://www.w3.org/2001/XMLSchema#date> && ?date < "2007-11-07"^^<http://www.w3.org/2001/XMLSchema#date>) 
+      }
+      Group By ?product
+    }  {
+      Select ?product (count(?review) As ?monthBeforeCount)
+      {
+        ?review bsbm:reviewFor ?product .
+        ?review dc:date ?date .
+        Filter(?date >= "2007-09-12"^^<http://www.w3.org/2001/XMLSchema#date> && ?date < "2007-10-10"^^<http://www.w3.org/2001/XMLSchema#date>) #
+      }
+      Group By ?product
+      Having (count(?review)>0)
+    }
+  }
+  Order By desc(xsd:float(?monthCount) / ?monthBeforeCount) ?product
+  Limit 10
+
+2026-11-18 00:12:23.569 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-18 00:12:23.570 - INFO: Query planning done in 4 ms
+2026-11-18 00:12:23.626 - INFO: Result has size 1,904 x 5
+2026-11-18 00:12:23.627 - INFO: Done processing query and sending result, total time was 61 ms

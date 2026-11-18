@@ -1,0 +1,2046 @@
+{
+  "schema": "http-bi-measurement-v1",
+  "complete": true,
+  "runtime_evidence_sha256": "ea31ec6ceb032a13b27002d2c8ca17ad27942d35742abd8b72fe6ca1f4d96063",
+  "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+  "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790",
+  "timer": "HTTP request through complete body read; excludes JSON parsing and qualification",
+  "queries": {
+    "m000_p00_q1.rq": {
+      "mix": 0,
+      "template": 1,
+      "scored": false,
+      "status": "pass",
+      "elapsed_ns": 277022750,
+      "http_status": 200,
+      "bytes": 2482,
+      "transport_error": null,
+      "body_sha256": "e27e2853cab66e3f3f8979b08c88c056b37e15fcea96f73c8ba1a18871b7eeb9",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "reviewCount",
+            true
+          ],
+          [
+            "productType",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "reviewCount",
+              true
+            ],
+            [
+              "productType",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m000_p01_q3.rq": {
+      "mix": 0,
+      "template": 3,
+      "scored": false,
+      "status": "pass",
+      "elapsed_ns": 287296167,
+      "http_status": 200,
+      "bytes": 2541,
+      "transport_error": null,
+      "body_sha256": "78ae3abb7d8c14926bf4f6c4fdec728dbde8e15a2df7cccd5fdb7e410a86de1c",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "ratio",
+            true
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "ratio",
+              true
+            ],
+            [
+              "product",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m000_p02_q2.rq": {
+      "mix": 0,
+      "template": 2,
+      "scored": false,
+      "status": "pass",
+      "elapsed_ns": 154916333,
+      "http_status": 200,
+      "bytes": 2670,
+      "transport_error": null,
+      "body_sha256": "e8a7c9c1c793c716e0a2719c10d20a59e4f6607d952bc424c65fa84490aa5127",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m000_p03_q2.rq": {
+      "mix": 0,
+      "template": 2,
+      "scored": false,
+      "status": "pass",
+      "elapsed_ns": 24279875,
+      "http_status": 200,
+      "bytes": 2674,
+      "transport_error": null,
+      "body_sha256": "7e06113d44a8b245f7647fe8027e9f366e1722765cfb5dd6ebab40df32ae44ae",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m000_p04_q4.rq": {
+      "mix": 0,
+      "template": 4,
+      "scored": false,
+      "status": "fail",
+      "elapsed_ns": 70981608833,
+      "http_status": 200,
+      "bytes": 2631,
+      "transport_error": null,
+      "body_sha256": "f09f9175bfaf904bcd0de3db59d8fef1a36de3afc43b0be10d3b388f53abf515",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p05_q5.rq": {
+      "mix": 0,
+      "template": 5,
+      "scored": false,
+      "status": "fail",
+      "elapsed_ns": 11488750,
+      "http_status": 200,
+      "bytes": 156,
+      "transport_error": null,
+      "body_sha256": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "error": "ValueError: Entity/count result bags differ",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    },
+    "m000_p06_q5.rq": {
+      "mix": 0,
+      "template": 5,
+      "scored": false,
+      "status": "fail",
+      "elapsed_ns": 6647500,
+      "http_status": 200,
+      "bytes": 156,
+      "transport_error": null,
+      "body_sha256": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "error": "ValueError: Entity/count result bags differ",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    },
+    "m000_p07_q6.rq": {
+      "mix": 0,
+      "template": 6,
+      "scored": false,
+      "status": "fail",
+      "elapsed_ns": 154427209,
+      "http_status": 200,
+      "bytes": 3779,
+      "transport_error": null,
+      "body_sha256": "c80b45c587de0c96ab43e028a7c2c0da487a86948d1eaaba48c8127e71fa7284",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p08_q5.rq": {
+      "mix": 0,
+      "template": 5,
+      "scored": false,
+      "status": "fail",
+      "elapsed_ns": 6678875,
+      "http_status": 200,
+      "bytes": 156,
+      "transport_error": null,
+      "body_sha256": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "error": "ValueError: Entity/count result bags differ",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    },
+    "m000_p09_q6.rq": {
+      "mix": 0,
+      "template": 6,
+      "scored": false,
+      "status": "fail",
+      "elapsed_ns": 26137334,
+      "http_status": 200,
+      "bytes": 12903,
+      "transport_error": null,
+      "body_sha256": "0496202862c22417276a943fccfc6a0c69662219df9bfb0bd2d3ed9230a1f23e",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p10_q6.rq": {
+      "mix": 0,
+      "template": 6,
+      "scored": false,
+      "status": "fail",
+      "elapsed_ns": 18608167,
+      "http_status": 200,
+      "bytes": 8452,
+      "transport_error": null,
+      "body_sha256": "cb17ac4b7cac349b3089ef3234582fe2929ae137ba03eff0105a1c7b048f1ed8",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m000_p11_q7.rq": {
+      "mix": 0,
+      "template": 7,
+      "scored": false,
+      "status": "pass",
+      "elapsed_ns": 59599333,
+      "http_status": 200,
+      "bytes": 118,
+      "transport_error": null,
+      "body_sha256": "34d17b215a6143113da67a24ec158fde1b530f9f4b34e7ac6937a3fd1853689c",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": true,
+          "cutoff_offer_count": 39,
+          "boundary_slots": 196,
+          "boundary_products": 308,
+          "allowed_optional_rows": [
+            0,
+            0
+          ],
+          "rows": 0
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 0,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": true,
+            "cutoff_offer_count": 39,
+            "boundary_slots": 196,
+            "boundary_products": 308,
+            "allowed_optional_rows": [
+              0,
+              0
+            ],
+            "rows": 0
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 0
+      }
+    },
+    "m000_p12_q8.rq": {
+      "mix": 0,
+      "template": 8,
+      "scored": false,
+      "status": "pass",
+      "elapsed_ns": 533433958,
+      "http_status": 200,
+      "bytes": 2822,
+      "transport_error": null,
+      "body_sha256": "ca78ac655e19618df3f3625f85dd75304ca71c4655a766e85f95d47197fbb10e",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": false,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "cheapExpensiveRatio",
+            true
+          ],
+          [
+            "vendor",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": false,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "cheapExpensiveRatio",
+              true
+            ],
+            [
+              "vendor",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m000_p13_q7.rq": {
+      "mix": 0,
+      "template": 7,
+      "scored": false,
+      "status": "pass",
+      "elapsed_ns": 5925917,
+      "http_status": 200,
+      "bytes": 388,
+      "transport_error": null,
+      "body_sha256": "55ea5bf50f262622797a015946ada05b1fa6d6447b7a415423766f066c349f37",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": false,
+          "rows": 2
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 2,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": false,
+            "rows": 2
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 2
+      }
+    },
+    "m000_p14_q6.rq": {
+      "mix": 0,
+      "template": 6,
+      "scored": false,
+      "status": "fail",
+      "elapsed_ns": 26365084,
+      "http_status": 200,
+      "bytes": 13931,
+      "transport_error": null,
+      "body_sha256": "0624a340087a09a7d71df0ed4b74d6394d51414739a0e12865591173644613b5",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p00_q1.rq": {
+      "mix": 1,
+      "template": 1,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 38519375,
+      "http_status": 200,
+      "bytes": 2477,
+      "transport_error": null,
+      "body_sha256": "75da65e40c402a12e6958646ae5e424030521a6f5b8b52e10b2954101d663ed7",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "reviewCount",
+            true
+          ],
+          [
+            "productType",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "reviewCount",
+              true
+            ],
+            [
+              "productType",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m001_p01_q3.rq": {
+      "mix": 1,
+      "template": 3,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 107767958,
+      "http_status": 200,
+      "bytes": 2546,
+      "transport_error": null,
+      "body_sha256": "c431f1ecef6fef30e45edc7ad13f84d56d6e5c1e2d46cd8fe2c6a950eb18f6e4",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "ratio",
+            true
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "ratio",
+              true
+            ],
+            [
+              "product",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m001_p02_q2.rq": {
+      "mix": 1,
+      "template": 2,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 8090125,
+      "http_status": 200,
+      "bytes": 2682,
+      "transport_error": null,
+      "body_sha256": "a3f90010e59b234a230d3f0c55d17648dc2caad0a7f59c4181cf775bdd18daa5",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m001_p03_q2.rq": {
+      "mix": 1,
+      "template": 2,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 15476209,
+      "http_status": 200,
+      "bytes": 2677,
+      "transport_error": null,
+      "body_sha256": "f335fa45540346c78d8b3414ed157dd9691a115d9a802fd0ab4fb6bcb7063291",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m001_p04_q4.rq": {
+      "mix": 1,
+      "template": 4,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 12534904250,
+      "http_status": 200,
+      "bytes": 2606,
+      "transport_error": null,
+      "body_sha256": "971a6990cd1230640045cd21cf3bf5fdcb253ffa5ea11a0fd14bb45d1d62bdfe",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p05_q5.rq": {
+      "mix": 1,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 7026333,
+      "http_status": 200,
+      "bytes": 156,
+      "transport_error": null,
+      "body_sha256": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "error": "ValueError: Entity/count result bags differ",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    },
+    "m001_p06_q5.rq": {
+      "mix": 1,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 6225208,
+      "http_status": 200,
+      "bytes": 156,
+      "transport_error": null,
+      "body_sha256": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "error": "ValueError: Entity/count result bags differ",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    },
+    "m001_p07_q6.rq": {
+      "mix": 1,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 25866500,
+      "http_status": 200,
+      "bytes": 5292,
+      "transport_error": null,
+      "body_sha256": "93f2da99b3f598dd99642e7c263cccfa26e139650967e69b5b7641cf409f446f",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p08_q5.rq": {
+      "mix": 1,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 6589500,
+      "http_status": 200,
+      "bytes": 156,
+      "transport_error": null,
+      "body_sha256": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "error": "ValueError: Entity/count result bags differ",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    },
+    "m001_p09_q6.rq": {
+      "mix": 1,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 25523542,
+      "http_status": 200,
+      "bytes": 19847,
+      "transport_error": null,
+      "body_sha256": "0bd0da4daa33719e18450cc03246fa057a251bdf8156b55b7ad268c031ebe70b",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p10_q6.rq": {
+      "mix": 1,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 25711792,
+      "http_status": 200,
+      "bytes": 14648,
+      "transport_error": null,
+      "body_sha256": "836adb8d8b53447fac6e2b4ce8c779096ce4e65eca438777120e244278a55acb",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m001_p11_q7.rq": {
+      "mix": 1,
+      "template": 7,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 15046625,
+      "http_status": 200,
+      "bytes": 10235,
+      "transport_error": null,
+      "body_sha256": "6c02d34ca0a8bafee18caf0fc8a0088dd542d06e37850f922c7490019974dd08",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": true,
+          "cutoff_offer_count": 15,
+          "boundary_slots": 20,
+          "boundary_products": 36,
+          "allowed_optional_rows": [
+            0,
+            7
+          ],
+          "rows": 73
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 73,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": true,
+            "cutoff_offer_count": 15,
+            "boundary_slots": 20,
+            "boundary_products": 36,
+            "allowed_optional_rows": [
+              0,
+              7
+            ],
+            "rows": 73
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 73
+      }
+    },
+    "m001_p12_q8.rq": {
+      "mix": 1,
+      "template": 8,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 101597500,
+      "http_status": 200,
+      "bytes": 2779,
+      "transport_error": null,
+      "body_sha256": "27f9b008cc98fcb963ba9e3831115f1359db6f0efb1fb356dfa96146efc7aca1",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": false,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "cheapExpensiveRatio",
+            true
+          ],
+          [
+            "vendor",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": false,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "cheapExpensiveRatio",
+              true
+            ],
+            [
+              "vendor",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m001_p13_q7.rq": {
+      "mix": 1,
+      "template": 7,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 5112833,
+      "http_status": 200,
+      "bytes": 118,
+      "transport_error": null,
+      "body_sha256": "34d17b215a6143113da67a24ec158fde1b530f9f4b34e7ac6937a3fd1853689c",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": false,
+          "rows": 0
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 0,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": false,
+            "rows": 0
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 0
+      }
+    },
+    "m001_p14_q6.rq": {
+      "mix": 1,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 20478375,
+      "http_status": 200,
+      "bytes": 5135,
+      "transport_error": null,
+      "body_sha256": "13a85f62432c1bec405cd67ae8fdc15162fec461eef212eb09b35851d1f59932",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p00_q1.rq": {
+      "mix": 2,
+      "template": 1,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 140831625,
+      "http_status": 200,
+      "bytes": 2488,
+      "transport_error": null,
+      "body_sha256": "635870ca0b66e45761b23f16b092cb404ae939695444b7ef5317c62a2aa0fb77",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "reviewCount",
+            true
+          ],
+          [
+            "productType",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "reviewCount",
+              true
+            ],
+            [
+              "productType",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m002_p01_q3.rq": {
+      "mix": 2,
+      "template": 3,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 158221834,
+      "http_status": 200,
+      "bytes": 2546,
+      "transport_error": null,
+      "body_sha256": "1c3bb25cc8f52ef2e9fb2bf37db533f96259f390a0ac8541bbc6fb87c7f5a30d",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "ratio",
+            true
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "ratio",
+              true
+            ],
+            [
+              "product",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m002_p02_q2.rq": {
+      "mix": 2,
+      "template": 2,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 8510333,
+      "http_status": 200,
+      "bytes": 2673,
+      "transport_error": null,
+      "body_sha256": "e493814ab0c0e765e78bb5801bdfa371f7b31d3c451f7a88058323ea732b63c2",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m002_p03_q2.rq": {
+      "mix": 2,
+      "template": 2,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 16741667,
+      "http_status": 200,
+      "bytes": 2680,
+      "transport_error": null,
+      "body_sha256": "f642c05d15e8a468d62733e7984811262fcde897595300d77a9aeda0346b490a",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m002_p04_q4.rq": {
+      "mix": 2,
+      "template": 4,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 66341353000,
+      "http_status": 200,
+      "bytes": 2629,
+      "transport_error": null,
+      "body_sha256": "2e5255723ffcdae6d8bf08b9105ffede87df1090129d70076bd49c8fcdf3bd11",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p05_q5.rq": {
+      "mix": 2,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 5261459,
+      "http_status": 200,
+      "bytes": 156,
+      "transport_error": null,
+      "body_sha256": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "error": "ValueError: Entity/count result bags differ",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    },
+    "m002_p06_q5.rq": {
+      "mix": 2,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 9084916,
+      "http_status": 200,
+      "bytes": 156,
+      "transport_error": null,
+      "body_sha256": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "error": "ValueError: Entity/count result bags differ",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    },
+    "m002_p07_q6.rq": {
+      "mix": 2,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 22550166,
+      "http_status": 200,
+      "bytes": 14403,
+      "transport_error": null,
+      "body_sha256": "5865953150c536900027bf04f8f9a8e45896f92f0a741be55d20b53adfc2524f",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p08_q5.rq": {
+      "mix": 2,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 5811916,
+      "http_status": 200,
+      "bytes": 156,
+      "transport_error": null,
+      "body_sha256": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "error": "ValueError: Entity/count result bags differ",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    },
+    "m002_p09_q6.rq": {
+      "mix": 2,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 30052291,
+      "http_status": 200,
+      "bytes": 3529,
+      "transport_error": null,
+      "body_sha256": "8da4be368f98b3385ebd1fec49009647bf34d0416cf0ff59ea2717293933f9c5",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p10_q6.rq": {
+      "mix": 2,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 18683250,
+      "http_status": 200,
+      "bytes": 5367,
+      "transport_error": null,
+      "body_sha256": "102dc70e201abf840486b1aa29bb9699501345e08aef52fb496aa8e3f9247160",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m002_p11_q7.rq": {
+      "mix": 2,
+      "template": 7,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 21019333,
+      "http_status": 200,
+      "bytes": 15959,
+      "transport_error": null,
+      "body_sha256": "88f077dd7f913503930c9360b00adc45ad8e5976dbebba38c8c6dfa12e0c0c02",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": true,
+          "cutoff_offer_count": 31,
+          "boundary_slots": 110,
+          "boundary_products": 159,
+          "allowed_optional_rows": [
+            0,
+            19
+          ],
+          "rows": 114
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 114,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": true,
+            "cutoff_offer_count": 31,
+            "boundary_slots": 110,
+            "boundary_products": 159,
+            "allowed_optional_rows": [
+              0,
+              19
+            ],
+            "rows": 114
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 114
+      }
+    },
+    "m002_p12_q8.rq": {
+      "mix": 2,
+      "template": 8,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 37462709,
+      "http_status": 200,
+      "bytes": 2637,
+      "transport_error": null,
+      "body_sha256": "d9fab442be61048ff6ec4294a5bc88cd9c965663232a9eeb0583acbe01748894",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "cheapExpensiveRatio",
+            true
+          ],
+          [
+            "vendor",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "cheapExpensiveRatio",
+              true
+            ],
+            [
+              "vendor",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m002_p13_q7.rq": {
+      "mix": 2,
+      "template": 7,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 4742000,
+      "http_status": 200,
+      "bytes": 2046,
+      "transport_error": null,
+      "body_sha256": "f3d577f53130551a719216fc7a32ea2df82fc9f830dd77df2e1fa98e39609272",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": false,
+          "rows": 14
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 14,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": false,
+            "rows": 14
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 14
+      }
+    },
+    "m002_p14_q6.rq": {
+      "mix": 2,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 13877292,
+      "http_status": 200,
+      "bytes": 1975,
+      "transport_error": null,
+      "body_sha256": "c727dbe262b16e4980827c5196d5ee681423e2f7074806a8054e2891d17dda5d",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p00_q1.rq": {
+      "mix": 3,
+      "template": 1,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 35599750,
+      "http_status": 200,
+      "bytes": 2478,
+      "transport_error": null,
+      "body_sha256": "6e3a1ee7bff0e9c48ae2cf108d92607dc1b479e2bd2770fcf27a2ea6456cd881",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "reviewCount",
+            true
+          ],
+          [
+            "productType",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "reviewCount",
+              true
+            ],
+            [
+              "productType",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m003_p01_q3.rq": {
+      "mix": 3,
+      "template": 3,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 117779708,
+      "http_status": 200,
+      "bytes": 2543,
+      "transport_error": null,
+      "body_sha256": "476f0cf243ae0773546fb2528e9c3de39728f8c03a8c74f95d4eccb828a36bd2",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "ratio",
+            true
+          ],
+          [
+            "product",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "ratio",
+              true
+            ],
+            [
+              "product",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m003_p02_q2.rq": {
+      "mix": 3,
+      "template": 2,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 10970833,
+      "http_status": 200,
+      "bytes": 2675,
+      "transport_error": null,
+      "body_sha256": "956be3c21adbf358d063e5815fee66a18ab695fbd292192179386b6917b66667",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m003_p03_q2.rq": {
+      "mix": 3,
+      "template": 2,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 10668125,
+      "http_status": 200,
+      "bytes": 2671,
+      "transport_error": null,
+      "body_sha256": "ef312d44bc7619397abf03f994c6d54b371d55a87a4575e08ca373e9937386ca",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "sameFeatures",
+            true
+          ],
+          [
+            "otherProduct",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "sameFeatures",
+              true
+            ],
+            [
+              "otherProduct",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m003_p04_q4.rq": {
+      "mix": 3,
+      "template": 4,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 81345150541,
+      "http_status": 200,
+      "bytes": 2620,
+      "transport_error": null,
+      "body_sha256": "189e62ceaa69f60d0cae6dcf987a679697a7e077215cb036038fcbe80ac7f867",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p05_q5.rq": {
+      "mix": 3,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 9185833,
+      "http_status": 200,
+      "bytes": 156,
+      "transport_error": null,
+      "body_sha256": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "error": "ValueError: Entity/count result bags differ",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    },
+    "m003_p06_q5.rq": {
+      "mix": 3,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 8719250,
+      "http_status": 200,
+      "bytes": 156,
+      "transport_error": null,
+      "body_sha256": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "error": "ValueError: Entity/count result bags differ",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    },
+    "m003_p07_q6.rq": {
+      "mix": 3,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 27748042,
+      "http_status": 200,
+      "bytes": 5387,
+      "transport_error": null,
+      "body_sha256": "9910a91ebefb6dd6326bd792179137dc0a7b3543a8cf4b5ca01f38809dab5bdc",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p08_q5.rq": {
+      "mix": 3,
+      "template": 5,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 8886292,
+      "http_status": 200,
+      "bytes": 156,
+      "transport_error": null,
+      "body_sha256": "912bb8532711c62b029ce4149e2058b43198fa1e18f7f3eb03a6e8b32a4f0757",
+      "error": "ValueError: Entity/count result bags differ",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Entity/count result bags differ"
+      }
+    },
+    "m003_p09_q6.rq": {
+      "mix": 3,
+      "template": 6,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 19481083,
+      "http_status": 200,
+      "bytes": 139,
+      "transport_error": null,
+      "body_sha256": "f594bd710c1a5dec22d775d966aade0cd7ec0c6eabf467457b2944262746e793",
+      "qualification": {
+        "all_columns_compatible": true,
+        "numeric_policy": "exact-anchor-binary32-v1",
+        "reference_and_candidate_inside_envelopes": true,
+        "exact_term_bag": true,
+        "max_binary32_ulps_vs_reference": 0,
+        "rows": 0,
+        "numeric_details": {}
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 0,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "numeric_policy": "exact-anchor-binary32-v1",
+          "reference_and_candidate_inside_envelopes": true,
+          "exact_term_bag": true,
+          "max_binary32_ulps_vs_reference": 0,
+          "rows": 0,
+          "numeric_details": {}
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 0
+      }
+    },
+    "m003_p10_q6.rq": {
+      "mix": 3,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 39846209,
+      "http_status": 200,
+      "bytes": 18881,
+      "transport_error": null,
+      "body_sha256": "7d6d968bd53953e1d6271cccfbe8edee6be1fedecbb5e71148401c610241e42b",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    },
+    "m003_p11_q7.rq": {
+      "mix": 3,
+      "template": 7,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 62176208,
+      "http_status": 200,
+      "bytes": 118,
+      "transport_error": null,
+      "body_sha256": "34d17b215a6143113da67a24ec158fde1b530f9f4b34e7ac6937a3fd1853689c",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": true,
+          "cutoff_offer_count": 39,
+          "boundary_slots": 196,
+          "boundary_products": 308,
+          "allowed_optional_rows": [
+            0,
+            0
+          ],
+          "rows": 0
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 0,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": true,
+            "cutoff_offer_count": 39,
+            "boundary_slots": 196,
+            "boundary_products": 308,
+            "allowed_optional_rows": [
+              0,
+              0
+            ],
+            "rows": 0
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 0
+      }
+    },
+    "m003_p12_q8.rq": {
+      "mix": 3,
+      "template": 8,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 58591000,
+      "http_status": 200,
+      "bytes": 2639,
+      "transport_error": null,
+      "body_sha256": "6c306c8c46d96b8a958cd1e52ae361b1023c9d953ed3f7123fa86106f76f5e1d",
+      "qualification": {
+        "all_columns_compatible": true,
+        "exact_term_bag": true,
+        "computed_float_max_ulps": 0,
+        "computed_float_allowed_ulps": 4,
+        "rows": 10
+      },
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "cheapExpensiveRatio",
+            true
+          ],
+          [
+            "vendor",
+            false
+          ]
+        ]
+      },
+      "rows": 10,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "all_columns_compatible": true,
+          "exact_term_bag": true,
+          "computed_float_max_ulps": 0,
+          "computed_float_allowed_ulps": 4,
+          "rows": 10
+        },
+        "order": {
+          "checked": true,
+          "keys": [
+            [
+              "cheapExpensiveRatio",
+              true
+            ],
+            [
+              "vendor",
+              false
+            ]
+          ]
+        },
+        "rows": 10
+      }
+    },
+    "m003_p13_q7.rq": {
+      "mix": 3,
+      "template": 7,
+      "scored": true,
+      "status": "pass",
+      "elapsed_ns": 28038292,
+      "http_status": 200,
+      "bytes": 7339,
+      "transport_error": null,
+      "body_sha256": "76d2739db83827a108fbff1608bed68b8b3aad4fff3da1dab92b959ad0faf520",
+      "qualification": {
+        "q7_cutoff": {
+          "tie_aware": true,
+          "ambiguous_boundary": true,
+          "cutoff_offer_count": 26,
+          "boundary_slots": 47,
+          "boundary_products": 92,
+          "allowed_optional_rows": [
+            0,
+            8
+          ],
+          "rows": 52
+        }
+      },
+      "order": {
+        "checked": false,
+        "reason": "no outer ORDER BY"
+      },
+      "rows": 52,
+      "count_equivalence": {
+        "status": "pass",
+        "qualification": {
+          "q7_cutoff": {
+            "tie_aware": true,
+            "ambiguous_boundary": true,
+            "cutoff_offer_count": 26,
+            "boundary_slots": 47,
+            "boundary_products": 92,
+            "allowed_optional_rows": [
+              0,
+              8
+            ],
+            "rows": 52
+          }
+        },
+        "order": {
+          "checked": false,
+          "reason": "no outer ORDER BY"
+        },
+        "rows": 52
+      }
+    },
+    "m003_p14_q6.rq": {
+      "mix": 3,
+      "template": 6,
+      "scored": true,
+      "status": "fail",
+      "elapsed_ns": 39595958,
+      "http_status": 200,
+      "bytes": 6384,
+      "transport_error": null,
+      "body_sha256": "fb0ad83b27c9c3b1cb094bd83b3e2173dbf366c8af474d24a73ac8decf1fb23a",
+      "error": "ValueError: Computed float output must have xsd:float datatype",
+      "count_equivalence": {
+        "status": "fail",
+        "error": "ValueError: Computed float output must have xsd:float datatype"
+      }
+    }
+  },
+  "ranking_eligible": false,
+  "measured_total_ns": null,
+  "integer_value_equivalent_eligible": false,
+  "integer_value_equivalent_total_ns": null
+}
