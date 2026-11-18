@@ -1,0 +1,1 @@
+{"pid": 96058, "complete": false, "candidate_bi_queries_executed": false, "independent_reference_bi_queries": true, "error": "RuntimeError: Jena exited before readiness; inspect log, do not clear shared lock file", "server_exit": 1, "nt_stat_unchanged": true, "store_metadata_changed": [], "only_expected_lock_metadata_changed": true, "own_lock_released": true}

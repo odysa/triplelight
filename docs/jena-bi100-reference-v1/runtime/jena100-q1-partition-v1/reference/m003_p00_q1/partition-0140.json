@@ -1,0 +1,78 @@
+{
+  "head": {
+    "vars": [
+      "productType",
+      "reviewCount"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "productType": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType2007"
+        },
+        "reviewCount": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+          "value": "15"
+        }
+      },
+      {
+        "productType": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType2011"
+        },
+        "reviewCount": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+          "value": "14"
+        }
+      },
+      {
+        "productType": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType2008"
+        },
+        "reviewCount": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+          "value": "10"
+        }
+      },
+      {
+        "productType": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType2010"
+        },
+        "reviewCount": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+          "value": "10"
+        }
+      },
+      {
+        "productType": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType2006"
+        },
+        "reviewCount": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+          "value": "7"
+        }
+      },
+      {
+        "productType": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType2009"
+        },
+        "reviewCount": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+          "value": "4"
+        }
+      }
+    ]
+  }
+}

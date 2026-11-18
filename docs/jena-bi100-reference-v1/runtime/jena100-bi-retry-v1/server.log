@@ -1,0 +1,25 @@
+11:58:16 INFO  Fuseki          :: Apache Jena Fuseki 6.2.0
+11:58:16 INFO  Config          :: Fuseki Base = <agent-workspace>/run
+11:58:16 INFO  Config          :: Database: /ds
+11:58:16 INFO  Config          :: UI Base: fuseki-server.jar
+11:58:16 INFO  Shiro           :: Shiro configuration: file:<agent-workspace>/run/shiro.ini
+11:58:17 INFO  Server          :: Path = /ds
+11:58:17 INFO  Server          :: System
+11:58:17 INFO  Server          ::   Memory: 8.0 GiB
+11:58:17 INFO  Server          ::   PID:    40068
+11:58:17 INFO  Server          ::   Port:   http=31436
+11:58:17 INFO  Server          :: Start Fuseki
+11:58:17 INFO  Fuseki          :: [1] POST http://127.0.0.1:31436/ds/sparql
+11:58:17 INFO  Fuseki          :: [1] Query = ASK {}
+11:58:17 INFO  Fuseki          :: [1] 200 OK (95 ms)
+11:58:17 INFO  Fuseki          :: [2] POST http://127.0.0.1:31436/ds/sparql
+11:58:17 INFO  Fuseki          :: [2] Query = SELECT (COUNT(*) AS ?count) WHERE { ?s ?p ?o }
+11:59:03 INFO  Fuseki          :: [2] 200 OK (46.030 s)
+11:59:03 INFO  Fuseki          :: [3] POST http://127.0.0.1:31436/ds/sparql
+11:59:03 INFO  Fuseki          :: [3] Query = prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> prefix rev: <http://purl.org/stuff/rev#>  Select ?productType ?reviewCount {  { Select ?productType (count(?review) As ?reviewCount)   {    ?productType a bsbm:ProductType .    ?product a ?productType .    ?product bsbm:producer ?producer .    ?producer bsbm:country <http://downlode.org/rdf/iso-3166/countries#US> .    ?review bsbm:reviewFor ?product .    ?review rev:reviewer ?reviewer .    ?reviewer bsbm:country <http://downlode.org/rdf/iso-3166/countries#US> .   }   Group By ?productType  } } Order By desc(?reviewCount) ?productType Limit 10 
+12:09:03 INFO  Fuseki          :: [4] POST http://127.0.0.1:31436/ds/sparql
+12:09:03 INFO  Fuseki          :: [4] Query = prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> prefix rev: <http://purl.org/stuff/rev#>  Select ?productType ?reviewCount {  { Select ?productType (count(?review) As ?reviewCount)   {    ?productType a bsbm:ProductType .    ?product a ?productType .    ?product bsbm:producer ?producer .    ?producer bsbm:country <http://downlode.org/rdf/iso-3166/countries#JP> .    ?review bsbm:reviewFor ?product .    ?review rev:reviewer ?reviewer .    ?reviewer bsbm:country <http://downlode.org/rdf/iso-3166/countries#GB> .   }   Group By ?productType  } } Order By desc(?reviewCount) ?productType Limit 10 
+12:12:21 INFO  Fuseki          :: [4] 200 OK (197.835 s)
+12:12:21 INFO  Fuseki          :: [5] POST http://127.0.0.1:31436/ds/sparql
+12:12:21 INFO  Fuseki          :: [5] Query =   prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>   prefix bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>   prefix rev: <http://purl.org/stuff/rev#>   prefix dc: <http://purl.org/dc/elements/1.1/>   prefix xsd: <http://www.w3.org/2001/XMLSchema#>    Select ?product (xsd:float(?monthCount)/?monthBeforeCount As ?ratio)   {     { Select ?product (count(?review) As ?monthCount)       {         ?review bsbm:reviewFor ?product .         ?review dc:date ?date .         Filter(?date >= "2008-03-23"^^<http://www.w3.org/2001/XMLSchema#date> && ?date < "2008-04-20"^^<http://www.w3.org/2001/XMLSchema#date>)        }       Group By ?product     }  {       Select ?product (count(?review) As ?monthBeforeCount)       {         ?review bsbm:reviewFor ?product .         ?review dc:date ?date .         Filter(?date >= "2008-02-24"^^<http://www.w3.org/2001/XMLSchema#date> && ?date < "2008-03-23"^^<http://www.w3.org/2001/XMLSchema#date>) #       }       Group By ?product       Having (count(?review)>0)     }   }   Order By desc(xsd:float(?monthCount) / ?monthBeforeCount) ?product   Limit 10 
+12:14:34 INFO  Fuseki          :: [5] 200 OK (132.333 s)

@@ -1,0 +1,265 @@
+{
+  "head": {
+    "vars": [
+      "reviewer",
+      "reviewerAvgScore"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite280/Reviewer141644"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "9.0"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite234/Reviewer117994"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "9.0"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite248/Reviewer124608"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "8.666667"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite242/Reviewer121260"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "8.25"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite201/Reviewer101442"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "10.0"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite277/Reviewer139735"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "8.333333"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite201/Reviewer101578"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "8.666667"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite49/Reviewer24806"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "9.0"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite231/Reviewer116830"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "10.0"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite151/Reviewer78280"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "9.0"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite91/Reviewer46911"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "9.0"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite123/Reviewer63427"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "10.0"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite96/Reviewer49466"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "8.333333"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite32/Reviewer16824"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "8.666667"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite136/Reviewer70943"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "9.666667"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite152/Reviewer78793"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "8.5"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite110/Reviewer56852"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "10.0"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite25/Reviewer12686"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "10.0"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite82/Reviewer41523"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "10.0"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite121/Reviewer62586"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "9.5"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite195/Reviewer98443"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "8.25"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite109/Reviewer56502"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "8.333333"
+        }
+      },
+      {
+        "reviewer": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite117/Reviewer60269"
+        },
+        "reviewerAvgScore": {
+          "type": "literal",
+          "datatype": "http://www.w3.org/2001/XMLSchema#float",
+          "value": "9.0"
+        }
+      }
+    ]
+  }
+}

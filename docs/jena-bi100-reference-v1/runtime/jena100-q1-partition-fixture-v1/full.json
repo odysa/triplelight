@@ -1,0 +1,48 @@
+{ "head": {
+    "vars": [ "productType" , "reviewCount" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/A" } ,
+        "reviewCount": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "7" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/B" } ,
+        "reviewCount": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "6" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T00" } ,
+        "reviewCount": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T01" } ,
+        "reviewCount": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T02" } ,
+        "reviewCount": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T03" } ,
+        "reviewCount": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T04" } ,
+        "reviewCount": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T05" } ,
+        "reviewCount": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T06" } ,
+        "reviewCount": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "productType": { "type": "uri" , "value": "http://fixture/type/T07" } ,
+        "reviewCount": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      }
+    ]
+  }
+}
