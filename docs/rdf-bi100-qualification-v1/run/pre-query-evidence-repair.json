@@ -1,0 +1,6 @@
+{
+  "unix": 1795031424.452554,
+  "reason": "Added required HTTP adapter identity fields before requests; no policy changes",
+  "client_started": false,
+  "server_log_at_repair": "opened disk snapshot <agent-workspace>/rdfdb/bench/tools/rdfdb-disk-bsbm100-main in 1.37s\noptimizer statistics: building in background\nserving SPARQL at http://127.0.0.1:31435/sparql\n"
+}
