@@ -9,3 +9,5 @@ This is not the numeric validator freeze. The 100M exact-input anchors and indep
 The window used the shared-host lock and released it after hash/export verification. No larger import has started. The approved 48 GiB total owned-scratch cap and 40 GB host free-space floor apply to the next evaluation stage.
 
 The new `prepare_numeric100.py` wrapper prepares 28 distinct diagnostic cases for 32 numerical query instances. It records all four 100M mixes as unseen, rather than inheriting the old 10M collector's mix-0 history. Two preparation tests pass, including rejection of the old 10M workload. Generated SQL/Jena input queries are retained under `numeric-plan/`; their execution and count agreement are still pending. The protected 10M collector/validator files remain unchanged.
+
+A later query-only check pins the existing Jena reference store at 98,861,444 triples; see the [reference count report](../jena100-reference-count-v1/). Comparison against the NT-derived import and the independent numerical group counts is still pending.
