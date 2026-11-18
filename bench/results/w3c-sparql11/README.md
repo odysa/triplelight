@@ -1,4 +1,20 @@
-# W3C SPARQL 1.1 query test suite — rdfdb main `f7cb4ef`
+# W3C SPARQL 1.1 query test suite
+
+## Latest: main `ef7a778` (string-function semantics fixed)
+
+| Outcome | Tests |
+|---|---:|
+| pass | 276 (97 syntax, 179 evaluation) |
+| fail | 11 |
+| unsupported (explicit error) | 44 (24 property paths, 20 functions) |
+| skipped: named graphs / harness | 19 / 3 |
+
+Remaining failures: 3 are lexical form only (`ceil01`, `floor01`, `round01`: rdfdb writes integral decimals as
+`"2.0"`, like Jena; the suite expects `"2"`); 8 are real bugs — `agg-sum-01` (decimal SUM uses f64), `iri01`
+(IRI() ignores BASE), `cast-decimal`, `cast-string`, `bind07`, `bind10`, `subquery11`, and
+`values-construct-group-by` (valid query rejected by the parser). Details: `ef7a778.json`.
+
+## Earlier: main `f7cb4ef`
 
 Suite: w3c/rdf-tests `main` (sparql/sparql11, `manifest-sparql11-query.ttl`), run with `bench/w3c_sparql11.py`
 through the `rdfdb query` CLI on 2026-11-18.

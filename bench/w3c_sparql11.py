@@ -142,6 +142,9 @@ def main():
                 except Exception as e:
                     ok = False; rec["detail"] = f"compare error: {e}"[:200]
                 rec["outcome"] = "pass" if ok else "fail"
+                if not ok:
+                    rec["actual"] = out[:2000]
+                    rec["expected_file"] = str(resfile)
                 results.append(rec)
     json.dump(results, open(out_path, "w"), indent=1)
     by = collections.defaultdict(collections.Counter)

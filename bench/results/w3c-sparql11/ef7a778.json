@@ -1,0 +1,2294 @@
+[
+ {
+  "suite": "aggregates",
+  "test": "agg01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg03",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg04",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg05",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg06",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg07",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg08",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpwe_avckf.nt in 0.00s\nerror: error at 7:1: expected one of \"$\", \"(\", \":\", \"<\", \"?\", BNODE, BOUND, COUNT, ENCODE_FOR_URI, FLOOR, HOURS, LCASE, "
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg08b",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg09",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpdayxklx8.nt in 0.00s\nerror: error at 6:1: expected one of \"$\", \"(\", \":\", \"<\", \"?\", ABS, AVG, DAY, IRI, MAX, MD5, MIN, NOT, NOW, STR, SUM, The"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg10",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpxj9uf34p.nt in 0.00s\nerror: error at 6:1: expected one of The SELECT contains a variable that is unbound, [_]"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg11",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpw46pcoib.nt in 0.00s\nerror: error at 6:1: expected one of \"$\", \"(\", \":\", \"<\", \"?\", AS, BNODE, BOUND, COUNT, FLOOR, HOURS, IN, LCASE, MONTH, R"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg12",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmptn545wd4.nt in 0.00s\nerror: error at 6:1: expected one of \"$\", \"(\", \":\", \"<\", \"?\", AS, GROUP_CONCAT, IN, The SELECT contains a variable that "
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-groupconcat-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-groupconcat-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-groupconcat-03",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-groupconcat-04",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-groupconcat-05",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-groupconcat-06",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-sum-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "fail",
+  "actual": "{\"head\":{\"vars\":[\"sum\"]},\"results\":{\"bindings\":[{\"sum\":{\"type\":\"literal\",\"value\":\"11.100000000000001\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}}]}}\n",
+  "expected_file": "file:///tmp/w3c-dl/rdf-tests-main/sparql/sparql11/aggregates/agg-sum-01.srx"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-sum-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-avg-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-avg-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-avg-03",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-min-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-min-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-max-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-max-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-sample-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-err-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-err-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-empty-group-max-1",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-empty-group-max-2",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-empty-group-count-1",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-empty-group-count-2",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-empty-group-count-graph",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-multiple-having",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-group-fn",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-group-builtin",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-avg-distinct",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-count-distinct",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-count-rows-distinct",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-groupconcat-distinct",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-max-distinct",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-min-distinct",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-sample-distinct",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "aggregates",
+  "test": "agg-sum-distinct",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bind",
+  "test": "bind01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bind",
+  "test": "bind02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bind",
+  "test": "bind03",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bind",
+  "test": "bind04",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bind",
+  "test": "bind05",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bind",
+  "test": "bind06",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bind",
+  "test": "bind07",
+  "type": "QueryEvaluationTest",
+  "outcome": "fail",
+  "actual": "{\"head\":{\"vars\":[\"s\",\"p\",\"o\",\"z\"]},\"results\":{\"bindings\":[{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/s3\"},\"p\":{\"type\":\"uri\",\"value\":\"http://example.org/p\"},\"o\":{\"type\":\"literal\",\"value\":\"3\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"z\":{\"type\":\"literal\",\"value\":\"4\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/s4\"},\"p\":{\"type\":\"uri\",\"value\":\"http://example.org/p\"},\"o\":{\"type\":\"literal\",\"value\":\"4\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"z\":{\"type\":\"literal\",\"value\":\"5\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/s1\"},\"p\":{\"type\":\"uri\",\"value\":\"http://example.org/p\"},\"o\":{\"type\":\"literal\",\"value\":\"1\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"z\":{\"type\":\"literal\",\"value\":\"2\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/s2\"},\"p\":{\"type\":\"uri\",\"value\":\"http://example.org/p\"},\"o\":{\"type\":\"literal\",\"value\":\"2\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"z\":{\"type\":\"literal\",\"value\":\"3\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/s3\"},\"p\":{\"type\":\"uri\",\"value\":\"http://example.org/p\"},\"o\":{\"type\":\"literal\",\"value\":\"3\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"z\":{\"type\":\"literal\",\"value\":\"5\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/s4\"},\"p\":{\"type\":\"uri\",\"value\":\"http://example.org/p\"},\"o\":{\"type\":\"literal\",\"value\":\"4\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"z\":{\"type\":\"literal\",\"value\":\"6\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/s1\"},\"p\":{\"type\":\"uri\",\"value\":\"http://example.org/p\"},\"o\":{\"type\":\"literal\",\"value\":\"1\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"z\":{\"type\":\"literal\",\"value\":\"3\",\"datatype\":\"http://www.w3.org/2",
+  "expected_file": "file:///tmp/w3c-dl/rdf-tests-main/sparql/sparql11/bind/bind07.srx"
+ },
+ {
+  "suite": "bind",
+  "test": "bind08",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bind",
+  "test": "bind10",
+  "type": "QueryEvaluationTest",
+  "outcome": "fail",
+  "actual": "{\"head\":{\"vars\":[\"s\",\"v\",\"z\"]},\"results\":{\"bindings\":[{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/s4\"},\"v\":{\"type\":\"literal\",\"value\":\"4\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"z\":{\"type\":\"literal\",\"value\":\"4\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}}]}}\n",
+  "expected_file": "file:///tmp/w3c-dl/rdf-tests-main/sparql/sparql11/bind/bind10.srx"
+ },
+ {
+  "suite": "bind",
+  "test": "bind11",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values1",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values2",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values3",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values4",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values5",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values6",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values7",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values8",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "inline1",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "inline2",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "graph",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "bindings",
+  "test": "graph-no-var",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "bindings",
+  "test": "graph-from-named-1",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-harness",
+  "detail": "data parse: at line 3 of <>:\nBad syntax (expected directive or statement) at ^ in:\n\"b'PREFIX : <http://example.org/>\\n\\n'^b'GRAPH :g1 { :s :p :o . }\\nGRAPH :g2 { :s :p :o . }\\n'\""
+ },
+ {
+  "suite": "bindings",
+  "test": "graph-from-named-2",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-harness",
+  "detail": "data parse: at line 3 of <>:\nBad syntax (expected directive or statement) at ^ in:\n\"b'PREFIX : <http://example.org/>\\n\\n'^b'GRAPH :g1 { :s :p :o . }\\nGRAPH :g2 { :s :p :o . }\\n'\""
+ },
+ {
+  "suite": "bindings",
+  "test": "graph-from-named-3",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-harness",
+  "detail": "data parse: at line 3 of <>:\nBad syntax (expected directive or statement) at ^ in:\n\"b'PREFIX : <http://example.org/>\\n\\n'^b'GRAPH :g1 { :s :p :o . }\\nGRAPH :g2 { :s :p :o . }\\n'\""
+ },
+ {
+  "suite": "bindings",
+  "test": "values-order-by",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-offset-limit",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-distinct",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-group-order-by",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-select-star",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-no-vars-no-rows",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-no-vars-two-rows",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-subquery-offset-limit",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-ask",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-construct",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-construct-group-by",
+  "type": "QueryEvaluationTest",
+  "outcome": "fail",
+  "detail": "loaded <tmpdir>/T/tmpytsqlg1j.nt in 0.00s\nerror: error at 9:1: expected [_]"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-construct-limit",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-group-by-projection",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-group-by-select-expression",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "bindings",
+  "test": "values-group-by-join",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "cast",
+  "test": "cast-bool",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "cast",
+  "test": "cast-int",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "cast",
+  "test": "cast-float",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "cast",
+  "test": "cast-double",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "cast",
+  "test": "cast-decimal",
+  "type": "QueryEvaluationTest",
+  "outcome": "fail",
+  "actual": "{\"head\":{\"vars\":[\"a\",\"v\",\"decimal\"]},\"results\":{\"bindings\":[{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/b02\"},\"v\":{\"type\":\"literal\",\"value\":\"false\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#boolean\"},\"decimal\":{\"type\":\"literal\",\"value\":\"0.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n14\"},\"v\":{\"type\":\"literal\",\"value\":\"-2.5\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"decimal\":{\"type\":\"literal\",\"value\":\"-2.5\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n11\"},\"v\":{\"type\":\"literal\",\"value\":\"1.25\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#float\"},\"decimal\":{\"type\":\"literal\",\"value\":\"1.25\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/s03\"},\"v\":{\"type\":\"literal\",\"value\":\"-10.2E3\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n05\"},\"v\":{\"type\":\"literal\",\"value\":\"1.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"decimal\":{\"type\":\"literal\",\"value\":\"1.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/b03\"},\"v\":{\"type\":\"literal\",\"value\":\"false\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#boolean\"},\"decimal\":{\"type\":\"literal\",\"value\":\"0.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n08\"},\"v\":{\"type\":\"literal\",\"value\":\"1.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#double\"},\"decimal\":{\"type\":\"literal\",\"value\":\"1.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n12\"},\"v\":{\"type\":\"literal\",\"value\":\"-7.875\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#float\"},\"decimal\":{\"type\":\"literal\",\"value\":\"-7.875\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n06\"},\"v\":{\"type\":\"literal\",\"value\":\"-1.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal",
+  "expected_file": "file:///tmp/w3c-dl/rdf-tests-main/sparql/sparql11/cast/cast-decimal.srx"
+ },
+ {
+  "suite": "cast",
+  "test": "cast-string",
+  "type": "QueryEvaluationTest",
+  "outcome": "fail",
+  "actual": "{\"head\":{\"vars\":[\"a\",\"v\",\"string\"]},\"results\":{\"bindings\":[{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/b02\"},\"v\":{\"type\":\"literal\",\"value\":\"false\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#boolean\"},\"string\":{\"type\":\"literal\",\"value\":\"false\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n14\"},\"v\":{\"type\":\"literal\",\"value\":\"-2.5\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"string\":{\"type\":\"literal\",\"value\":\"-2.5\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n11\"},\"v\":{\"type\":\"literal\",\"value\":\"1.25\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#float\"},\"string\":{\"type\":\"literal\",\"value\":\"1.25\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/s03\"},\"v\":{\"type\":\"literal\",\"value\":\"-10.2E3\"},\"string\":{\"type\":\"literal\",\"value\":\"-10.2E3\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n05\"},\"v\":{\"type\":\"literal\",\"value\":\"1.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"string\":{\"type\":\"literal\",\"value\":\"1.0\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/b03\"},\"v\":{\"type\":\"literal\",\"value\":\"false\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#boolean\"},\"string\":{\"type\":\"literal\",\"value\":\"false\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n08\"},\"v\":{\"type\":\"literal\",\"value\":\"1.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#double\"},\"string\":{\"type\":\"literal\",\"value\":\"1.0\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n12\"},\"v\":{\"type\":\"literal\",\"value\":\"-7.875\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#float\"},\"string\":{\"type\":\"literal\",\"value\":\"-7.875\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n06\"},\"v\":{\"type\":\"literal\",\"value\":\"-1.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"string\":{\"type\":\"literal\",\"value\":\"-1.0\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n03\"},\"v\":{\"type\":\"literal\",\"value\":\"-1\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"string\":{\"type\":\"literal\",\"value\":\"-1\"}},{\"a\":{\"type\":\"uri\",\"value\":\"http://example.org/n13\"},\"v\":{\"type\":\"literal\",\"value\":\"2.5\",\"datatype\":\"htt",
+  "expected_file": "file:///tmp/w3c-dl/rdf-tests-main/sparql/sparql11/cast/cast-string.srx"
+ },
+ {
+  "suite": "construct",
+  "test": "constructwhere01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "construct",
+  "test": "constructwhere02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "construct",
+  "test": "constructwhere03",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "construct",
+  "test": "constructwhere04",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "construct",
+  "test": "constructwhere05",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpvan68j8p.nt in 0.00s\nerror: error at 5:18: expected one of \",\", \".\", \";\", \"{|\", \"}\", \"~\""
+ },
+ {
+  "suite": "construct",
+  "test": "constructwhere06",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp26f7zczi.nt in 0.00s\nerror: error at 3:14: expected one of \".\", \":\", ['-' | '0' ..= '9' | '\\u{00B7}' | '\\u{0300}'..='\\u{036F}' |\n'\\u{203F}'.."
+ },
+ {
+  "suite": "construct",
+  "test": "constructlist",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "exists",
+  "test": "exists01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "exists",
+  "test": "exists02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "exists",
+  "test": "exists03",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "exists",
+  "test": "exists04",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "exists",
+  "test": "exists05",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "exists",
+  "test": "exists-graph-variable",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "functions",
+  "test": "strdt01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "strdt02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "strdt03-rdf11",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "strlang01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "strlang02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "strlang03-rdf11",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "strlang04",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "isnumeric01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "abs01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "ceil01",
+  "type": "QueryEvaluationTest",
+  "outcome": "fail",
+  "actual": "{\"head\":{\"vars\":[\"s\",\"num\",\"ceil\"]},\"results\":{\"bindings\":[{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n1\"},\"num\":{\"type\":\"literal\",\"value\":\"-1\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"ceil\":{\"type\":\"literal\",\"value\":\"-1\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n2\"},\"num\":{\"type\":\"literal\",\"value\":\"-1.6\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"ceil\":{\"type\":\"literal\",\"value\":\"-1.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n4\"},\"num\":{\"type\":\"literal\",\"value\":\"-2\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"ceil\":{\"type\":\"literal\",\"value\":\"-2\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n5\"},\"num\":{\"type\":\"literal\",\"value\":\"2.5\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"ceil\":{\"type\":\"literal\",\"value\":\"3.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n3\"},\"num\":{\"type\":\"literal\",\"value\":\"1.1\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"ceil\":{\"type\":\"literal\",\"value\":\"2.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}}]}}\n",
+  "expected_file": "file:///tmp/w3c-dl/rdf-tests-main/sparql/sparql11/functions/ceil01.srx"
+ },
+ {
+  "suite": "functions",
+  "test": "floor01",
+  "type": "QueryEvaluationTest",
+  "outcome": "fail",
+  "actual": "{\"head\":{\"vars\":[\"s\",\"num\",\"floor\"]},\"results\":{\"bindings\":[{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n1\"},\"num\":{\"type\":\"literal\",\"value\":\"-1\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"floor\":{\"type\":\"literal\",\"value\":\"-1\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n2\"},\"num\":{\"type\":\"literal\",\"value\":\"-1.6\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"floor\":{\"type\":\"literal\",\"value\":\"-2.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n4\"},\"num\":{\"type\":\"literal\",\"value\":\"-2\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"floor\":{\"type\":\"literal\",\"value\":\"-2\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n5\"},\"num\":{\"type\":\"literal\",\"value\":\"2.5\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"floor\":{\"type\":\"literal\",\"value\":\"2.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n3\"},\"num\":{\"type\":\"literal\",\"value\":\"1.1\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"floor\":{\"type\":\"literal\",\"value\":\"1.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}}]}}\n",
+  "expected_file": "file:///tmp/w3c-dl/rdf-tests-main/sparql/sparql11/functions/floor01.srx"
+ },
+ {
+  "suite": "functions",
+  "test": "round01",
+  "type": "QueryEvaluationTest",
+  "outcome": "fail",
+  "actual": "{\"head\":{\"vars\":[\"s\",\"num\",\"round\"]},\"results\":{\"bindings\":[{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n1\"},\"num\":{\"type\":\"literal\",\"value\":\"-1\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"round\":{\"type\":\"literal\",\"value\":\"-1\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n2\"},\"num\":{\"type\":\"literal\",\"value\":\"-1.6\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"round\":{\"type\":\"literal\",\"value\":\"-2.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n4\"},\"num\":{\"type\":\"literal\",\"value\":\"-2\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"},\"round\":{\"type\":\"literal\",\"value\":\"-2\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n5\"},\"num\":{\"type\":\"literal\",\"value\":\"2.5\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"round\":{\"type\":\"literal\",\"value\":\"3.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}},{\"s\":{\"type\":\"uri\",\"value\":\"http://example.org/n3\"},\"num\":{\"type\":\"literal\",\"value\":\"1.1\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"},\"round\":{\"type\":\"literal\",\"value\":\"1.0\",\"datatype\":\"http://www.w3.org/2001/XMLSchema#decimal\"}}]}}\n",
+  "expected_file": "file:///tmp/w3c-dl/rdf-tests-main/sparql/sparql11/functions/round01.srx"
+ },
+ {
+  "suite": "functions",
+  "test": "concat01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "concat02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "concat-empty",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "concat-single",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "substring01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "substring01-non-bmp",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "substring02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "substring02-non-bmp",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "length01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "length01-non-bmp",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "ucase01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "ucase01-non-bmp",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "lcase01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "lcase01-non-bmp",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "encode01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "encode01-non-bmp",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "contains01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "starts01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "ends01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "plus-1-corrected",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "plus-2-corrected",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "md5-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpe44o0tun.nt in 0.00s\nerror: function MD5 is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "md5-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpo2e9xxgf.nt in 0.00s\nerror: function MD5 is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "sha1-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpvnmjwy3t.nt in 0.00s\nerror: function SHA1 is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "sha1-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpzpou2v3y.nt in 0.00s\nerror: function SHA1 is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "sha256-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpbgi5u71j.nt in 0.00s\nerror: function SHA256 is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "sha256-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmp5quxv940.nt in 0.00s\nerror: function SHA256 is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "sha384-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpn9m3a32f.nt in 0.00s\nerror: function SHA384 is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "sha384-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpmp9q8sdl.nt in 0.00s\nerror: function SHA384 is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "sha512-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpbh_o0iu2.nt in 0.00s\nerror: function SHA512 is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "sha512-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpp9byb3s7.nt in 0.00s\nerror: function SHA512 is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "minutes",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "seconds",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpiii6exav.nt in 0.00s\nerror: function SECONDS is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "hours",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "month",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "year",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "day",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "timezone",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpogruvnk0.nt in 0.00s\nerror: function TIMEZONE is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "tz",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpnewrrgf4.nt in 0.00s\nerror: function TZ is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "bnode01",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpi6gef054.nt in 0.00s\nerror: function BNODE is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "bnode02",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpspdd2u8t.nt in 0.00s\nerror: function BNODE is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "in01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "in02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "notin01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "notin02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "now01",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpehy0epqb.nt in 0.00s\nerror: function NOW is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "rand01",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmp62kjhqv5.nt in 0.00s\nerror: function RAND is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "iri01",
+  "type": "QueryEvaluationTest",
+  "outcome": "fail",
+  "actual": "{\"head\":{\"vars\":[\"uri\",\"iri\"]},\"results\":{\"bindings\":[{}]}}\n",
+  "expected_file": "file:///tmp/w3c-dl/rdf-tests-main/sparql/sparql11/functions/iri01.srx"
+ },
+ {
+  "suite": "functions",
+  "test": "iri02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "if01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "if02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "coalesce01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "coalesce-empty",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "strbefore01a",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "strbefore02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "strafter01a",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "strafter02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "replace01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "replace02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "replace03",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "replace-case-insensitive",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "functions",
+  "test": "uuid01",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpvsc6wt4z.nt in 0.00s\nerror: function UUID is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "uuid02",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpvh8ve6ir.nt in 0.00s\nerror: function UUID is not supported"
+ },
+ {
+  "suite": "functions",
+  "test": "struuid01",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpyu2zbzfm.nt in 0.00s\nerror: function STRUUID is not supported"
+ },
+ {
+  "suite": "grouping",
+  "test": "group01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "grouping",
+  "test": "group03",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "grouping",
+  "test": "group04",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "grouping",
+  "test": "group05",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "grouping",
+  "test": "group06",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpfo6fjrph.nt in 0.00s\nerror: error at 9:1: expected one of \"$\", \"(\", \":\", \"<\", \"?\", ABS, AVG, DAY, IRI, MAX, MD5, MIN, NOT, NOW, STR, SUM, The"
+ },
+ {
+  "suite": "grouping",
+  "test": "group07",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpthbhrwzj.nt in 0.00s\nerror: error at 19:1: expected one of \"$\", \"(\", \":\", \"<\", \"?\", LANGDIR, MINUTES, REPLACE, SECONDS, STRENDS, STRLANG, STR"
+ },
+ {
+  "suite": "negation",
+  "test": "subset-by-exclusion-nex-1",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "negation",
+  "test": "subset-by-exclusion-minus-1",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "negation",
+  "test": "temporal-proximity-by-exclusion-nex-1",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "negation",
+  "test": "subset-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "negation",
+  "test": "subset-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "negation",
+  "test": "set-equals-1",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "negation",
+  "test": "subset-03",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "negation",
+  "test": "exists-01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "negation",
+  "test": "exists-02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "negation",
+  "test": "full-minuend",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "negation",
+  "test": "partial-minuend",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "negation",
+  "test": "graph-minus",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "project-expression",
+  "test": "projexp01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "project-expression",
+  "test": "projexp02",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "project-expression",
+  "test": "projexp03",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "project-expression",
+  "test": "projexp04",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "project-expression",
+  "test": "projexp05",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "project-expression",
+  "test": "projexp06",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "project-expression",
+  "test": "projexp07",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp01",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp02",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmph5afsrbb.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp03",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp06",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp07",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp08",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp09",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp10",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpv6eotbrh.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp11",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp12",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmp_b0kqykr.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp14",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpzddkjvxv.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp16",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmp9a19lrk2.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp21",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmp914kizn9.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp23",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpm4ie57sw.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp25",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmph0d7fkaq.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp28a",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpquo1jwk3.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp30",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpvd5k5npl.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp31",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpvwa6hbsr.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp32",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpvplfd0af.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp33",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpmh37jqr_.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp34",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp35",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp36",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmp830r28b8.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "pp37",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmp0iktyuzb.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "values_and_path",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpn26ppwsa.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "nps_inverse",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpngnszt86.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "nps_direct_and_inverse",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmp04abghw0.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "nps_a",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpswz4plgm.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "nps_a_inverse",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmp_g0ebrj_.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "zero_or_more_set_start",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpscaazlus.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "zero_or_more_set_end",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpkd_9zgqs.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "zero_or_one_set_start",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmpcuwlog8p.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "property-path",
+  "test": "zero_or_one_set_end",
+  "type": "QueryEvaluationTest",
+  "outcome": "unsupported",
+  "detail": "loaded <tmpdir>/T/tmp6aphqq_1.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery01",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery02",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery03",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery04",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery05",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery06",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery07",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery08",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery09",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery10",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery11",
+  "type": "QueryEvaluationTest",
+  "outcome": "fail",
+  "actual": "{\"head\":{\"vars\":[\"L\"]},\"results\":{\"bindings\":[{\"L\":{\"type\":\"literal\",\"value\":\"Pasta\"}},{\"L\":{\"type\":\"literal\",\"value\":\"Soft Drink\"}}]}}\n",
+  "expected_file": "file:///tmp/w3c-dl/rdf-tests-main/sparql/sparql11/subquery/sq11.srx"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery12",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery13",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery14",
+  "type": "QueryEvaluationTest",
+  "outcome": "pass"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery15",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "subquery",
+  "test": "subquery16",
+  "type": "QueryEvaluationTest",
+  "outcome": "skip-named"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_1",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpfpdouy_x.nt in 0.00s\nquery 0.445 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_2",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpmq5xwpey.nt in 0.00s\nquery 0.363 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_3",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpvnkm9de9.nt in 0.00s\nquery 0.370 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_4",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpvesp4pmk.nt in 0.00s\nerror: function <http://example/function> is not supported"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_5",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpzlpmjb7k.nt in 0.00s\nquery 0.379 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_6",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpkxnb182h.nt in 0.00s\nquery 0.391 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_7",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp57z93lrz.nt in 0.00s\nquery 0.400 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_8",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpx2pdp_un.nt in 0.00s\nquery 0.362 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_9",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpm4ed38pm.nt in 0.00s\nquery 0.354 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_10",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmplmqouaf5.nt in 0.00s\nquery 0.362 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_11",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpwu9ijx9a.nt in 0.00s\nquery 0.380 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_12",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp_0wrl496.nt in 0.00s\nquery 0.368 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_13",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp536gnkbr.nt in 0.00s\nquery 0.369 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_14",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp0pol1qjg.nt in 0.00s\nquery 0.412 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_15",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmptmd8l9n8.nt in 0.00s\nquery 0.378 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_16",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp4lptwwqg.nt in 0.00s\nquery 0.392 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_17",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpgtdvifif.nt in 0.00s\nquery 0.391 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_18",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpdkrde9en.nt in 0.00s\nquery 0.380 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_19",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpcjlbplx4.nt in 0.00s\nquery 0.347 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_20",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp3l5zy_uh.nt in 0.00s\nquery 0.404 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_21",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpy8x9_c0a.nt in 0.00s\nquery 0.346 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_22",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp7s3eyoi8.nt in 0.00s\nquery 0.361 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_23",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpp5au4xm5.nt in 0.00s\nquery 0.374 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_24",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp5mcmia5s.nt in 0.00s\nquery 0.351 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_25",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpwby4_xtx.nt in 0.00s\nquery 0.381 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_26",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpm2hzzjye.nt in 0.00s\nquery 0.397 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_27",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpakyx6lhq.nt in 0.00s\nquery 0.434 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_28",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpqvft3yjy.nt in 0.00s\nquery 0.369 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_29",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp7hz0z1xz.nt in 0.00s\nquery 0.362 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_30",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp3sg31l1k.nt in 0.00s\nquery 0.439 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_31",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpo9s69j8g.nt in 0.00s\nquery 0.361 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_32",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpu33oilcq.nt in 0.00s\nquery 0.373 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_33",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpgintvzn8.nt in 0.00s\nquery 0.359 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_34",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpjek8xs22.nt in 0.00s\nquery 0.340 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_35a",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpi4fmzk8n.nt in 0.00s\nquery 0.303 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_36a",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmprqn_64qd.nt in 0.00s\nquery 0.279 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_38a",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp87ys6xyd.nt in 0.00s\nquery 0.346 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_40",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpy_26xput.nt in 0.00s\nquery 0.360 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_41",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpgt0xz_5m.nt in 0.00s\nquery 0.145 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_42",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpkj86wbrk.nt in 0.00s\nerror: FROM / FROM NAMED datasets are not supported (only the default graph)"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_43",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp6usbovup.nt in 0.00s\nerror: error at 4:1: expected one of \"$\", \"(\", \":\", \"<\", \"?\", ABS, AVG, DAY, IRI, MAX, MD5, MIN, NOT, NOW, SELECT * is n"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_44",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp7lzohene.nt in 0.00s\nerror: error at 4:1: expected one of \"$\", \"(\", \":\", \"<\", \"?\", ABS, AVG, DAY, IRI, MAX, MD5, MIN, NOT, NOW, STR, SUM, The"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_45",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpcm5tjboh.nt in 0.00s\nerror: error at 3:1: expected one of Duplicated variable name in SELECT, [_]"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_46",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp0cyidtuu.nt in 0.00s\nerror: error at 2:18: expected NOT"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_47",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmplrnkrljz.nt in 0.00s\nerror: error at 2:16: expected DISTINCT"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_48",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmps_d7iqm5.nt in 0.00s\nerror: error at 2:23: expected ENCODE_FOR_URI"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_49",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpyf7nzm7y.nt in 0.00s\nerror: error at 2:23: expected OPTIONAL"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_50",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpwkht62am.nt in 0.00s\nerror: error at 2:29: expected OPTIONAL"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_51",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp8pr4aj1m.nt in 0.00s\nerror: error at 2:20: expected one of HAVING, OFFSET, OPTIONAL, VALUES"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_53",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpxi5i82qy.nt in 0.00s\nquery 0.337 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_54",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp0n7nz_51.nt in 0.00s\nquery 0.328 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_55",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmppadz9iyl.nt in 0.00s\nquery 0.381 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_56",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpihvxv_k7.nt in 0.00s\nquery 0.395 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_57",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp90zk3xbe.nt in 0.00s\nquery 0.394 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_58",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp2rxck_8t.nt in 0.00s\nquery 0.468 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_59",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpd4bqk07p.nt in 0.00s\nquery 0.373 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_60",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpyp8rv5e5.nt in 0.00s\nerror: error at 9:1: expected one of BIND, [_]"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_61a",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpic0tq_4b.nt in 0.00s\nerror: error at 11:1: expected one of BIND, [_]"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_62a",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmppno_nhgs.nt in 0.00s\nerror: error at 12:1: expected [_]"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_63",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpkqlwqdy8.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_64",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp8rx4gd7a.nt in 0.00s\nquery 0.385 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_65",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp143r9tqc.nt in 0.00s\nerror: error at 6:1: expected one of LATERAL, SERVICE, The SELECT overrides an existing variable using an expression, [_"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_66",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpyhe2n9u5.nt in 0.00s\nquery 0.386 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_01",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmppekkvyt7.nt in 0.00s\nquery 0.120 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_02",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmplwpeq525.nt in 0.00s\nquery 0.150 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_03",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp3ih6pqx4.nt in 0.00s\nquery 0.363 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_04",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpe04s81dy.nt in 0.00s\nquery 0.359 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_05",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpf2pehnla.nt in 0.00s\nquery 0.335 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_06",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpd9at_yu2.nt in 0.00s\nquery 0.327 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_07",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpz9ntjf1a.nt in 0.00s\nquery 0.382 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_08",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpf5q7sv9t.nt in 0.00s\nquery 0.340 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_09",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpkhhpjy0n.nt in 0.00s\nquery 0.358 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_01",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp25jd4zi4.nt in 0.00s\nerror: error at 3:11: expected \"<\""
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_02",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmphrp_f807.nt in 0.00s\nerror: error at 3:11: expected \"<\""
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_03",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpo7v9rlm5.nt in 0.00s\nerror: error at 3:10: expected CONSTRUCT"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_04",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmprv01msia.nt in 0.00s\nerror: error at 3:10: expected CONSTRUCT"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_05",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpi81uv7ol.nt in 0.00s\nerror: error at 2:10: expected CONSTRUCT"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_06",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmppqu7fro7.nt in 0.00s\nerror: error at 7:1: expected OPTIONAL"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_07",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp6tj8g46g.nt in 0.00s\nerror: error at 2:10: expected CONSTRUCT"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_08",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp4u5nstbs.nt in 0.00s\nerror: error at 5:11: expected OPTIONAL"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_09",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpebs9952_.nt in 0.00s\nerror: error at 5:11: expected one of \"!\", \"$\", \"(\", \":\", \"<\", \"?\", \"^\", \"a\", OPTIONAL, ['A' ..= 'Z' | 'a' ..= 'z' | '\\u"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_10",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp7ohh1baa.nt in 0.00s\nerror: error at 7:1: expected one of LATERAL, SERVICE, [_]"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_11",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp2n3e_65e.nt in 0.00s\nerror: error at 7:1: expected one of LATERAL, SERVICE, [_]"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_12",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpgspurvrz.nt in 0.00s\nerror: error at 7:1: expected one of LATERAL, SERVICE, [_]"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pn_bad_13",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpv3q7l61w.nt in 0.00s\nerror: error at 5:11: expected OPTIONAL"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_pp_coll",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpgfeqwqhp.nt in 0.00s\nerror: property paths are not supported"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_codepoint_escape_01",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpmvcp8i4n.nt in 0.00s\nquery 0.406 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_codepoint_escape_bad_02",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp1qjamew4.nt in 0.00s\nerror: error at 3:13: expected OPTIONAL"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_codepoint_escape_bad_03",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpa0kngw3z.nt in 0.00s\nerror: error at 3:13: expected OPTIONAL"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_codepoint_boundaries_04",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp91a46bhr.nt in 0.00s\nquery 0.381 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_codepoint_boundaries_escaped_05",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp4x0oiyb8.nt in 0.00s\nquery 0.378 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_codepoint_invalid_escaped_bad_06",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp5guv2a8r.nt in 0.00s\nerror: error at 3:35: expected \\u escape sequence should be followed by hexadecimal digits"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_bad_values_too_few",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpp2xcx93q.nt in 0.00s\nerror: error at 2:42: expected UNDEF"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_bad_values_too_many",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmputfp1t4a.nt in 0.00s\nerror: error at 2:46: expected UNDEF"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_group_by_values_scope_01",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmpepqo6vnm.nt in 0.00s\nquery 0.415 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_group_by_values_scope_02",
+  "type": "PositiveSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmphjl87qhu.nt in 0.00s\nquery 0.442 ms"
+ },
+ {
+  "suite": "syntax-query",
+  "test": "test_group_by_values_scope_03",
+  "type": "NegativeSyntaxTest11",
+  "outcome": "pass",
+  "detail": "loaded <tmpdir>/T/tmp3kemr84a.nt in 0.00s\nerror: error at 12:1: expected [_]"
+ }
+]
