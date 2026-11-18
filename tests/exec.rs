@@ -422,3 +422,19 @@ fn variable_equality_unification_respects_bound_inputs() {
     assert_eq!(n("SELECT ?a ?b WHERE { VALUES ?b { <http://ex/A> } { ?l <http://ex/p> ?a . ?r <http://ex/q> ?b . FILTER(?a=?b) } }"), 1);
     assert_eq!(n("SELECT ?a ?b WHERE { ?l <http://ex/p> ?a . ?r <http://ex/q> ?b . FILTER(?a=?b) }"), 1);
 }
+
+/// Subquery join (hash path when a column is bound on both sides) keeps the nested-loop join's answers, including
+/// partially bound mappings from OPTIONAL.
+#[test]
+fn subquery_hash_join_matches_nested_loop() {
+    let mut data = String::new();
+    for i in 0..60 { data.push_str(&format!("<urn:p{i}> a <urn:Product> .\n<urn:p{i}> <urn:f> <urn:f{}> .\n", i % 7)); if i % 3 == 0 { data.push_str(&format!("<urn:p{i}> <urn:o> \"x{i}\" .\n")) } }
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let rows = |q: &str| -> Vec<String> { match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.into_iter().map(|r| format!("{r:?}")).collect(); v.sort(); v } r => panic!("{r:?}") } };
+    let q = "SELECT ?p ?n ?o WHERE { ?p a <urn:Product> OPTIONAL { ?p <urn:o> ?o } { SELECT ?p (COUNT(?f) AS ?n) WHERE { ?p <urn:f> ?f } GROUP BY ?p } }";
+    let r = rows(q);
+    assert_eq!(r.len(), 60);
+    // Same answers as an equivalent query without the subquery.
+    let flat = rows("SELECT ?p ?n ?o WHERE { ?p a <urn:Product> OPTIONAL { ?p <urn:o> ?o } ?p <urn:f> ?f BIND(1 AS ?n) }");
+    assert_eq!(r.iter().map(|x| x.replace("\"1\"^^<http://www.w3.org/2001/XMLSchema#integer>", "N")).collect::<Vec<_>>(), flat.iter().map(|x| x.replace("\"1\"^^<http://www.w3.org/2001/XMLSchema#integer>", "N")).collect::<Vec<_>>());
+}
