@@ -1,0 +1,10 @@
+{
+  "failure": "Controller assumed explicit --entrypoint; Virtuoso uses image default entrypoint",
+  "virtuoso_timed_queries_started": 0,
+  "controller_v3_exit": 1,
+  "preserved_complete_phases": [
+    "pass1-rdfdb",
+    "pass1-duckdb"
+  ],
+  "change": "Insert temp environment/mount before pinned image when entrypoint is implicit; identify image by pinned digest"
+}
