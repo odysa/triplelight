@@ -1,0 +1,872 @@
+{
+  "allow_floating_count": false,
+  "count_compatible": "Only declared computed COUNT columns normalize exact nonnegative integer values; full group-term identities, binding state and bag multiplicity remain unchanged.",
+  "count_datatypes": {
+    "http://www.w3.org/2001/XMLSchema#int": [
+      -2147483648,
+      2147483647
+    ],
+    "http://www.w3.org/2001/XMLSchema#integer": [
+      null,
+      null
+    ],
+    "http://www.w3.org/2001/XMLSchema#long": [
+      -9223372036854775808,
+      9223372036854775807
+    ]
+  },
+  "eligibility": "Every requested query must pass the selected gate for a full dataset/engine total; retain failures and unsupported grammar. Primary and COUNT-compatible outcomes reported separately.",
+  "exposure": "Curated rewrites from prior count-pushdown work and small fixtures, not a blind workload. No new real-query response collection has started in this preparation stage.",
+  "inputs": {
+    "lubm": {
+      "bytes": 2377133547,
+      "mtime_ns": 1794496148362747173,
+      "path": "<agent-workspace>/rdfdb/bench/tools/lubm100.nt",
+      "sha256": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d"
+    },
+    "watdiv": {
+      "bytes": 1558148905,
+      "mtime_ns": 1794499821490435219,
+      "path": "<agent-workspace>/rdfdb/bench/tools/watdiv100.nt",
+      "sha256": "f53153e24d3e4e89d89c0587671022c11855c909cdcc4bf69f282feb554d6041"
+    }
+  },
+  "lexical": "XML whitespace stripping; ASCII [+-]?[0-9]+ only; exact arbitrary-precision integer parsing; declared int/long ranges enforced.",
+  "loader_sources": {
+    "duck_load.py": "700241be6c450a58611572715a23f353058c2addf2c3daeba1aaf8edd9699bf1",
+    "native.py": "0d6adb78dd4020bd7754553f0916f28261538d511ea6e89d881f9d23e3981810"
+  },
+  "numeric_tolerance": null,
+  "primary": "Exact RDF-term bags; legacy typed-literal JSON spelling and xsd:string/simple literal representation canonicalized as in qualify.exact_term.",
+  "queries": {
+    "lubm/all_q1.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "e2021deb52c3ce33fec92d733a0e5123a17e3c1115335c9b3e50bdc94ebbc71f",
+      "sql_sha256": "0a516f3a68b8f4aeb5d2d479e2cb81134a422985b37fb15886bd9edc856261e5"
+    },
+    "lubm/all_q10.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "e2021deb52c3ce33fec92d733a0e5123a17e3c1115335c9b3e50bdc94ebbc71f",
+      "sql_sha256": "0a516f3a68b8f4aeb5d2d479e2cb81134a422985b37fb15886bd9edc856261e5"
+    },
+    "lubm/all_q11.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "784c39bd61f2aa9910e46d18ba774b12057321cd0aeab9740b76b0605b05541b",
+      "sql_sha256": "9a91f50d89f4a82a7403385b6d779b52404dd24dc4115c093a88d8f5271c3e79"
+    },
+    "lubm/all_q12.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "16078a4f7a3ab7e8e96e384b21bdb495530901bfb207e211a6250cc6e4989356",
+      "sql_sha256": "813c4946839898857363f1c81691d82c96458799d612855bec62c22f54793cbc"
+    },
+    "lubm/all_q13.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "df8e9579b6d1362a3292ae1ecfeffddd20ee5a4972e2d4400a9e8add1b287d22",
+      "sql_sha256": "22a039135932d59d8244df171efc441dbf91412dfa2d832bb1664037f512ad5a"
+    },
+    "lubm/all_q14.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "a63cc484463f97b3b2b4d0394b4cfe00579e7fb36b8f586a01c3791985d33c32",
+      "sql_sha256": "5ce940f33f70e5823cbf80e6b220c5327fb2f3ae63f3ed7a75fbb7a566401f90"
+    },
+    "lubm/all_q2.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "36b3d70830a9bb19c1cdca7c303d8a4faa8be728f25957987bf381021434ccf0",
+      "sql_sha256": "55df154a768b535b728183b0cd0ae74ec533ce5b31bc0126e2adcc2991789569"
+    },
+    "lubm/all_q3.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "df2b9bee310e91bd461acf336b1bf263d9a64d23a2231b3718505c362b69625c",
+      "sql_sha256": "c337ea7bde56866699dff7538536a6bf7792e5e78e37e730adfa542764ce0014"
+    },
+    "lubm/all_q4.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "b26a3c521553486ecdfd3312bdad4d2cb6add7776e1c220cf0cb02ab802f28cd",
+      "sql_sha256": "524bccb61db953102fa5106c4f10b689fb7fcea68b91bd4715fadede7aafeb08"
+    },
+    "lubm/all_q5.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "f0bb6e9f984093a6cba464e98f6c19078fd071e8adc16d6f953b915303e09952",
+      "sql_sha256": "b8fd4fa3eae28e93ec5f84f7eae3193c60cf91f75853282b5605c350952d1a78"
+    },
+    "lubm/all_q6.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "a63cc484463f97b3b2b4d0394b4cfe00579e7fb36b8f586a01c3791985d33c32",
+      "sql_sha256": "5ce940f33f70e5823cbf80e6b220c5327fb2f3ae63f3ed7a75fbb7a566401f90"
+    },
+    "lubm/all_q7.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "3ecdf1fab7614d274761308d888c243ceab81f9e88419de8575e1a8af9b7d2e0",
+      "sql_sha256": "9f329fea106bbaf6242edebc9b70e8bc3901cd8cd0269c479d658f89928eeb0c"
+    },
+    "lubm/all_q8.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "8b2d591973fe29e8f0df816cd8eafd45a34c6fd02742bcb63efa57e1cea60240",
+      "sql_sha256": "933d43a61b427e07cec83791210d3ee3b88c814af5e4fb22230114e80e646ca9"
+    },
+    "lubm/all_q9.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "10c3fc29adc42ad122b06e237b26bf8f99dcebce30468dbd4695735167241a87",
+      "sql_sha256": "c358dcc87811f0bc484aa0bc5a9fd2496dfd488aff9bfe1fd5a44f117d83d6ae"
+    },
+    "lubm/distinct_q1.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "1596245303aa0af7376689eab55cf204d3d11bd30329d35cee830254081e08a9",
+      "sql_sha256": "f25e46458fc05edd4051c0412d23b77d19bc37a23122c56d1abce42f1e755970"
+    },
+    "lubm/distinct_q10.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "1596245303aa0af7376689eab55cf204d3d11bd30329d35cee830254081e08a9",
+      "sql_sha256": "f25e46458fc05edd4051c0412d23b77d19bc37a23122c56d1abce42f1e755970"
+    },
+    "lubm/distinct_q11.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "beffab2858645b1c3e1d3f537985320509863f81042b249059c97070c631044e",
+      "sql_sha256": "648f8caa9cde59dfc8a8d31946e11111efdec0f13c689ad9eccc00f221b7c786"
+    },
+    "lubm/distinct_q12.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "a6801761b91c54dff59078dc420ebe7d9992b573219a042c62d61acff4012336",
+      "sql_sha256": "044637d0b3ffc13117954c0148e3cae353cd859122ceac9f2a7e401c2ff690b5"
+    },
+    "lubm/distinct_q13.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "e7ca2e0b6b81e8ed2d1d9525b71a5ccdbe4309a1fe6db1044db4d7f25d9d5618",
+      "sql_sha256": "c3258d88dee00fa4def58031f9ace2de688068bf75230416679d9d1686174fa6"
+    },
+    "lubm/distinct_q14.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "8dd0af6621a6eff0c4bc44f58762d8b646c5f334d50cded4e027271419fe508e",
+      "sql_sha256": "c07e0a3e5ee33f2ffa8b0d1c509a3739f84a3ed0b2fcb55dd8e1f8d05ada3a25"
+    },
+    "lubm/distinct_q2.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "fc1149c06abf4844cf5f05e8fd4cb245c2f5283ce91e825f2ace2cd45828ef79",
+      "sql_sha256": "6536171e83c326d0637e20ad386d256e9db543d8f9b692cbd9a9a55e28ab877a"
+    },
+    "lubm/distinct_q3.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "7941c09fa4906559342b6a7279024718f7a062f13eb134573d0d86be7f2c82a4",
+      "sql_sha256": "024fb0c2dd883fe4f864bc2129458f40cddf5c8fa07e142e531cf62b90cee084"
+    },
+    "lubm/distinct_q4.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "75cd853d15f796c797d74e0614742edb3146d29cc94b7a196e6ba713230b6fd5",
+      "sql_sha256": "97314efe715a721731021ecde061ed982f9677a3c323f71ac20d69174611f2e2"
+    },
+    "lubm/distinct_q5.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "5b3a5ae0d17c51aec3240614fcdf6423f7e1cd7ade89669c2da65f10b44ceffb",
+      "sql_sha256": "221bba43c04e42a6df021276682b31e601f8da980851cc4c40fa1a828c526f01"
+    },
+    "lubm/distinct_q6.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "8dd0af6621a6eff0c4bc44f58762d8b646c5f334d50cded4e027271419fe508e",
+      "sql_sha256": "c07e0a3e5ee33f2ffa8b0d1c509a3739f84a3ed0b2fcb55dd8e1f8d05ada3a25"
+    },
+    "lubm/distinct_q7.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "784027561102d2e26db5a345b4c287f9e81a874513408b55d8aa08ce7cc7a6d4",
+      "sql_sha256": "bc204cb6bd98fe88945e937779ca48bcb2cfd88909d4ba8c90774ea3034bba90"
+    },
+    "lubm/distinct_q8.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "2fb0c129ca6cc6540ea97b1954da7816397c0f2f9df28eff064b740ac566ca07",
+      "sql_sha256": "d1d9ee883c412b4d685f7faf62f3adfd77e9b9ffd3e156b8c704abddeaa5ef8c"
+    },
+    "lubm/distinct_q9.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "fbf9aeb9f2f206a90272f78b1e81360305cd2ae27d363f0b3a541fc5c720ca00",
+      "sql_sha256": "27fd194f64ddca1859c66297547463c88a8c53b48d06ffb7e53778f70fe08f39"
+    },
+    "lubm/group_advisors.rq": {
+      "columns": [
+        [
+          "o",
+          "term"
+        ],
+        [
+          "n",
+          "count"
+        ],
+        [
+          "d",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "4a69f8d7faab74aa58371dd1a9826ee33204e095cc77ab3cfc22064184c81f2c",
+      "sql_sha256": "bff65bd00bb4f9e1e76e9137591f049287ca3aa7496c725097cd412dcc1847fb"
+    },
+    "lubm/group_type.rq": {
+      "columns": [
+        [
+          "o",
+          "term"
+        ],
+        [
+          "n",
+          "count"
+        ]
+      ],
+      "dataset": "lubm",
+      "query_sha256": "10930cc79af80c3e03d179fb8be83c6bca8159ae077032ee5577a0285930cdcc",
+      "sql_sha256": "c19fe3239e4b77d39c9901d3b4b883c371452821ae9eb2da24fc9b479aa0987d"
+    },
+    "watdiv/all_C1.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "143f34d370a7c071a5963e4eb2b0b76d6f3e7fd9a8535d3038dfb3bddf714866",
+      "sql_sha256": "eddb1c06c2914d188b0de175d98c2d56e020a236680b6a02c4a7e8705792d5b0"
+    },
+    "watdiv/all_C2.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "c503a6e1a139c859674d84701bf1fed3dcb0051c2a6bbff5fe78df73fff59666",
+      "sql_sha256": "fdac23760214fe28269977642442ede6226451b81a23903e3941867ca8a3c11e"
+    },
+    "watdiv/all_C3.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "2016e48195b2447bb1e4a77f7147615afb9b368fb49537a41dd3d86cd6247d6c",
+      "sql_sha256": "c526776bd44511a4dd9e1909087d4072523ea9fd3a47b09b02fc2a8249a0d04a"
+    },
+    "watdiv/all_F1.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "8abc40c85dd0f0f171917bebf02e97047ea018aeac4540686248463772bac093",
+      "sql_sha256": "03bb18e6c7e48d20a3da365ac1d3ddbdde39fc15539ff4dac9b77f67763beb7d"
+    },
+    "watdiv/all_F2.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "97bfc742462032ed51dd2a857f32d3807266e863172d0c50a794bd953e34d821",
+      "sql_sha256": "bfbd4e9d4374e91b14b1c5557e77bdacdb025e3577540b9c62bebce748cf5558"
+    },
+    "watdiv/all_F3.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "6df77cfeeb5f478d60fc47f4450bd65ed5cd319b5b2ebdd01a324f1d86fdab98",
+      "sql_sha256": "8918338d481dc81593af6e7a4f01f8300117469751df9d41424f67430c418a86"
+    },
+    "watdiv/all_F4.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "9332d8e4ff4ed465241d2da78ef6219afd3b56c4356e719ea81b41ddd65a2c5a",
+      "sql_sha256": "2a82b0b0a2c064c98291bc7522af5c84f5e9bd864d73cdb68cc068eeada2bd3b"
+    },
+    "watdiv/all_F5.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "3b7d55f54e10e3010062f8807059487fd6f2056cd1ad7b7ac7774c74c28de815",
+      "sql_sha256": "c5cc5108cd9dd99f6c52d9202fbfaf923501458574fafb49a966b1116abeafbc"
+    },
+    "watdiv/all_L1.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "71f241e7b5c1ec62db06e787b9acde313ae7b6f00941d77eabdfc964b2c57028",
+      "sql_sha256": "2e71ad968481dcc266e21cda0d24a579cea5e761b0c5d3d37fd5c8330f7dd007"
+    },
+    "watdiv/all_L2.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "962dd9eb34ec06b56b98627b8b88780a0c6a35920c0c859ba211d93f5338cb48",
+      "sql_sha256": "8b9102714595381a95a2c0dea2c4d590f3c9c509ece3d3494b35f2fb7220215c"
+    },
+    "watdiv/all_L3.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "aadfd374b6f271fb9011990724becad63cd6dff72e25280f01f6d90f48016a23",
+      "sql_sha256": "dcde033639e11b01ef722cbd9bc8c3df44b6763fc3565c3dea3293f2f97ca60e"
+    },
+    "watdiv/all_L4.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "69a0d30f81ad963b33538b212ec8088d34b9f18dcccfa2fe3a8186b98f2980e4",
+      "sql_sha256": "fcc6c4dd2972d29ca3fe0cf0547c7d3d39bd94739d3831e09f829a469760dd72"
+    },
+    "watdiv/all_L5.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "487697bf678179303032af2da007d632488dea3d5f4c6ecda986573ceb9e6578",
+      "sql_sha256": "bf8302a17d04fa37578d1c457acad7757429d17340712f87bf03b419f1595592"
+    },
+    "watdiv/all_S1.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "70317dfed611480040d25517d2afcd3d4715eae3927610097be2ee3414265202",
+      "sql_sha256": "956915bac377fff8085915561432e9efbb8db834206d1f66b75f724f21a2e17f"
+    },
+    "watdiv/all_S2.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "98dd25a83d2dec1160f3fe3914a2330cfbbdeddac9ff8570a2f60a9392e82306",
+      "sql_sha256": "676a82a772449b5976d004fcb52a415ce33e6f66d307096599720c12a3724c50"
+    },
+    "watdiv/all_S3.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "88d37315831156385300c4e74401aa68bda3c27f4662552413b9a31519e33591",
+      "sql_sha256": "9718f513afb69656f523b48ebb59c16fae2319c5c0014d13249cf6d4ef4a38b1"
+    },
+    "watdiv/all_S4.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "edbb5080e9140f12805dde704adff70fab93c3504b7416db788e4e4018b476e1",
+      "sql_sha256": "687ad26a938292160b3e5677310256d955c67c1f383d9c07796e06ec8c1813a5"
+    },
+    "watdiv/all_S5.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "012319103abd539f70ee5c0a97e6a169a2d65d31b2c9ff09bcf61ca7341e5574",
+      "sql_sha256": "411053b7a1ff4735e3da03070c7e47fbab0b5bdb4abea8ffa652877388aa664d"
+    },
+    "watdiv/all_S6.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "51afd20cb145f6400f8db77ed899717470040920b96d180de918016b03ada560",
+      "sql_sha256": "b29c2df32f801ef0094db85c4c0afe7cdf5bf761e43409fd64a3d77a7593df76"
+    },
+    "watdiv/all_S7.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "3a3b8be844eb957d61b60fa9cbca6e304fc7c13ab191900bc8f424ef9df1dfd4",
+      "sql_sha256": "be70af83e2c547ec9970e1092d8b31cb3d05dc5bfb78840af944631144b17cc8"
+    },
+    "watdiv/distinct_C1.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "defe54f969a02e62824fa79cc0b1b0400941e073ebfb17c4844dacc86a7b2432",
+      "sql_sha256": "237e2ccd3732fb26fbca51ec0f6114755e67edd9ca031b0e937dd1cb752974ff"
+    },
+    "watdiv/distinct_C2.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "2bc3ffd2704a2f0da702eb467b93a594cbebc5d441cfe9e7b75009aa9cb8ff35",
+      "sql_sha256": "5816f8c1b18734a1aaf1063e77d0209c71dd718d147db113f76ceb2642d04b33"
+    },
+    "watdiv/distinct_C3.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "987c812c23678326f257fc48a3df0732bd131d7c8b8c5bfb5ed6efaec4be58f8",
+      "sql_sha256": "1340f608b55cac7b8caf3b96deed51638603963dccb6c6568b959adc64f02f75"
+    },
+    "watdiv/distinct_F1.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "7d002398214035646a4dbe3b6aa42808878cc7d37e34b88d710dff50c4a557ec",
+      "sql_sha256": "4b600d9b7f7cfbff4bb1191a509c64b43471dd0a93a290a4cf7237267d48ce6d"
+    },
+    "watdiv/distinct_F2.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "a904e5692dc4b1ae696abde1a0b4d94013d9fcd7871c8733d8c3fbf7520fcbc8",
+      "sql_sha256": "e0d913bb4753e195600ba154bdcad8c0b4325e98f99bccceaa6084df370c52cb"
+    },
+    "watdiv/distinct_F3.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "ed8cc93b05081809e113a1dbeeeeda597efb08ea90ff043da2625fd43f27c873",
+      "sql_sha256": "fe7a028a791d36249d55c8300acc6e880a4b7d4a8bd7013b49f250cf81027582"
+    },
+    "watdiv/distinct_F4.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "30c4ca05deed2f1d067088f34c22f11413da680ace661078a35e800764add20f",
+      "sql_sha256": "a76cadf884eba3256328debbd00ee5ebc4ea5b78ef466ad77a05b32335fa1bb9"
+    },
+    "watdiv/distinct_F5.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "235ed0df443436b4c675ded2211a26955af80086c64c2c16e3b8fe3c17d0a143",
+      "sql_sha256": "0cbaa9fb74e1d6b8bb0ae54211a53107c85d1f708916b16a39f583dae56c6afc"
+    },
+    "watdiv/distinct_L1.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "916a16900805780cd193c87ada7bf3bd6b9e5a5f609dfaf897d4cb065563e27d",
+      "sql_sha256": "669485aa174c67ce6fab40b870da772c4a8679a99bedbb5decce43bcdec1a6e9"
+    },
+    "watdiv/distinct_L2.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "de0e4b67812aedffa05a828168c3c2dbb31f2926a397c8a5093d1b6c5dbc121a",
+      "sql_sha256": "5f67ba90cdb00e588485d9f21390b04ca8eda08da34c3cf7dea64057a19d63f6"
+    },
+    "watdiv/distinct_L3.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "7990b8d026372ace385ac9966fa5378c23ff4707039ac131fcddd6954fb5f801",
+      "sql_sha256": "962bf6c3d3aaa6422b87641ff4e0a5733d99a9786b23d190d2d84fa07937dee7"
+    },
+    "watdiv/distinct_L4.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "30a3351e6e53c41a2f63f5d3513697e7bda4c4ede0a5d4782c7dad9a5c37e99c",
+      "sql_sha256": "d3535b0d370489a8634fbd76446bc312202f9084f2220613423b79d7aa41e23e"
+    },
+    "watdiv/distinct_L5.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "e2743c45b18244a0dfb0049d2a3fef00e918f228ae2517def443fdd1fb3af11c",
+      "sql_sha256": "c189bbbb83eca63957b6baf1820b409f8fa0210456d1420f24688496a21e7a2c"
+    },
+    "watdiv/distinct_S1.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "0b236b682603d5c7973f78be1532210c17751d6cc138e0325d177a98b7b242b3",
+      "sql_sha256": "f51e278fc9d507bc17351acdbdc8da6651711f01bfe2c7e57e9bfae77850f46d"
+    },
+    "watdiv/distinct_S2.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "16be0aa61515476b8b2d35b556e94b882804b3584ae33d7799fe5af3725ad33f",
+      "sql_sha256": "07d155ab13bb27d2f8cb06039eedafca3447e80cf7536390b6f45e007f13a433"
+    },
+    "watdiv/distinct_S3.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "72d8947dc3e3daaef075b9ed16a373e940c63a7c1726cdc923820500a5b197e3",
+      "sql_sha256": "51e0dd380f9a559814c642861791ea1ecd328c3bb43b1f621a2f1980bf59802e"
+    },
+    "watdiv/distinct_S4.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "cff7a0f80fa6ae8c92f399f0ee4a816f3f11370c13c6058a8f82bf04679fb7fa",
+      "sql_sha256": "1081c162f0a2c59081c266fa09d640adc62410d43041291525c6a62df0411cdb"
+    },
+    "watdiv/distinct_S5.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "51fd7905b3a9a6b9f1c19c714ecb55bd632ead5884cb05e6a846260aaac2adcc",
+      "sql_sha256": "d47068052456a263540021a26f7cb7dcdea03b78f34b9748a9cb344ec0e4cb7e"
+    },
+    "watdiv/distinct_S6.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "28d5fda35f22dca7a50d4e958100996ace0f3fa39d9db90f5e83bbef9db9b524",
+      "sql_sha256": "3e4a31ade3846002faf8faac1d5dbaf75408da4e1c741985787f195274344528"
+    },
+    "watdiv/distinct_S7.rq": {
+      "columns": [
+        [
+          "count_result",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "ca8ad7aaf2f618315fd7b5f8e1054ae9bdda53f032a5f2236373527f5b32a31d",
+      "sql_sha256": "8603eedfb2d2feaff22cb075bf95f95c9bedfe013c5431b88f7d1ef7821e99ef"
+    },
+    "watdiv/group_age.rq": {
+      "columns": [
+        [
+          "o",
+          "term"
+        ],
+        [
+          "n",
+          "count"
+        ],
+        [
+          "d",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "3dcb4307de359b08a6d4fab5f70cd6116d4c0291ae8e1c93082dbfc325952529",
+      "sql_sha256": "c89eb478103887e312697de6436bc77ee27838c82ba5d257e648f97a5a9b9d32"
+    },
+    "watdiv/group_gender.rq": {
+      "columns": [
+        [
+          "o",
+          "term"
+        ],
+        [
+          "n",
+          "count"
+        ]
+      ],
+      "dataset": "watdiv",
+      "query_sha256": "9cd1937744f195226b5b8514fef854f0bad8dcc07e793241efc4630ccd2f8e84",
+      "sql_sha256": "a3c5519b2a3b87527b6a700923fb0740170b1c9e923b9e6436afa4f77f355908"
+    }
+  },
+  "reference_binding": "Separate future reference-hash binding; no rule changes after new responses. No execution-time protocol registered by this rules file.",
+  "reference_count_datatype": "http://www.w3.org/2001/XMLSchema#integer",
+  "registered_unix": 1795039292.900095,
+  "schema": "curated-aggregate-integer-count-policy-v1",
+  "test_sources": {
+    "test_aggregate_count_policy.py": "41ee07d70169926d57751c6daaf098103b6d3fbbdba9c4ce3867499e545ba2ee"
+  },
+  "validator_sources": {
+    "aggregate_count_policy.py": "1c017af47a22019972415e99eebb37cbbea3901784d29ca463adf3e346d4d32e",
+    "aggregate_sql.py": "d74c2c314ecc0eb884f621b676ce930207ef238c1469a720afaaa34d2ca77d50",
+    "qualify.py": "2fe4528d6dc37b4dca42c3bdea11fb1e5565f62d5ab56d81a65ef9bd29569be1"
+  },
+  "workload_manifest_sha256": "b0615b9733d083c99fd8c9d554a4fccebb873af2e49004514af7490c9108ba11"
+}
