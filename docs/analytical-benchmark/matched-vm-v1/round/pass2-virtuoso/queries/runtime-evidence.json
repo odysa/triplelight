@@ -1,0 +1,20 @@
+{
+  "system": "virtuoso",
+  "endpoint": "http://127.0.0.1:31428/sparql",
+  "source_or_image": "openlink/virtuoso-opensource-7@sha256:0dbe1ab4fa0cb7bbafc1f6c0c2b0a5d6f22d918dbd17672f2ddb24580aa6756a",
+  "dataset_sha256": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+  "threads": 4,
+  "memory_configuration": {
+    "container_bytes": 12884901888,
+    "rdfdb_cache_mib": null,
+    "qlever_query_memory": null,
+    "duckdb_working_memory": null,
+    "duckdb_spill_limit": null,
+    "virtuoso_number_of_buffers": 1360000
+  },
+  "cache_profile": "no-answer-cache",
+  "query_fields": {
+    "default-graph-uri": "http://bench/bsbm10",
+    "format": "application/sparql-results+json"
+  }
+}
