@@ -1,0 +1,5 @@
+{
+  "reason": "Repeated COUNT readiness after 2-second client timeout leaves overlapping server requests; no accepted aggregate results",
+  "time": 1795040666.673855,
+  "supervisor_pid": 75774
+}
