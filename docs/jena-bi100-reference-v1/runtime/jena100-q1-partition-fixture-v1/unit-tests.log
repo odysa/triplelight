@@ -1,0 +1,8 @@
+test_missing_domain_and_duplicate_rows (test_q1_partition_reference.PartitionTests.test_missing_domain_and_duplicate_rows) ... ok
+test_top_ten_and_empty_partition (test_q1_partition_reference.PartitionTests.test_top_ten_and_empty_partition) ... ok
+test_values_and_domain_limit (test_q1_partition_reference.PartitionTests.test_values_and_domain_limit) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+OK

@@ -1,0 +1,67 @@
+{
+  "schema": "independent-q1-no-reorder-v1",
+  "queries": {
+    "m002_p00_q1.rq": {
+      "query_sha256": "95e08aa1eb58dbed5deefe601bdcfb5fa3b9453602c6c243577d91fa9f779e02",
+      "timeout_seconds": 300,
+      "status": "fail",
+      "error": "TimeoutError: timed out"
+    },
+    "m000_p00_q1.rq": {
+      "query_sha256": "8239f25ea708717824344eb4c8cf7f868f14e230e5784b944d846a04f0ee2d2a",
+      "timeout_seconds": 300,
+      "status": "pass",
+      "rows": 10,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "reviewCount",
+            true
+          ],
+          [
+            "productType",
+            false
+          ]
+        ]
+      },
+      "body_sha256": "2f9cf1956ce728ec55751c08604d65184d67b192e9bcda035dbbd3cbdbc7c05c",
+      "exact_overlap_sequence_pass": true,
+      "overlap_reference_sha256": "2f9cf1956ce728ec55751c08604d65184d67b192e9bcda035dbbd3cbdbc7c05c"
+    },
+    "m001_p00_q1.rq": {
+      "query_sha256": "65a56fc4f3107ea86c484f38f2bc7d470c9324ac721cf6903ba44cdc4c18f206",
+      "timeout_seconds": 300,
+      "status": "pass",
+      "rows": 10,
+      "order": {
+        "checked": true,
+        "keys": [
+          [
+            "reviewCount",
+            true
+          ],
+          [
+            "productType",
+            false
+          ]
+        ]
+      },
+      "body_sha256": "bc207482aa1b622e047890fd77b8c62aa1a753b69a305d23f78be7a727aa12d2",
+      "exact_overlap_sequence_pass": true,
+      "overlap_reference_sha256": "bc207482aa1b622e047890fd77b8c62aa1a753b69a305d23f78be7a727aa12d2"
+    },
+    "m003_p00_q1.rq": {
+      "query_sha256": "ad46ce93b94f8a02ba783d335effe8231321b7b9da75a88ebb393d24d9130fc0",
+      "timeout_seconds": 300,
+      "status": "fail",
+      "error": "RemoteDisconnected: Remote end closed connection without response"
+    }
+  },
+  "complete": true,
+  "query_texts_unchanged": true,
+  "context": {
+    "arq:optReorderBGP": false
+  },
+  "all_requested_pass": false
+}

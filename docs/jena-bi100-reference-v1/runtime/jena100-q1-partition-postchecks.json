@@ -1,0 +1,29 @@
+{
+  "complete": true,
+  "domain_size": 2011,
+  "queries": {
+    "m000_p00_q1.rq": {
+      "query_and_all_partition_sources_pass": true,
+      "reassembled_exactly": true,
+      "partitions": 252
+    },
+    "m001_p00_q1.rq": {
+      "query_and_all_partition_sources_pass": true,
+      "reassembled_exactly": true,
+      "partitions": 252
+    },
+    "m003_p00_q1.rq": {
+      "query_and_all_partition_sources_pass": true,
+      "reassembled_exactly": true,
+      "partitions": 252
+    },
+    "m002_p00_q1.rq": {
+      "query_and_all_partition_sources_pass": true,
+      "reassembled_exactly": true,
+      "partitions": 252
+    }
+  },
+  "partition_queries_verified": 1008,
+  "initial_shared_store_data_metadata_unchanged": true,
+  "no_competitor_outputs_used": true
+}
