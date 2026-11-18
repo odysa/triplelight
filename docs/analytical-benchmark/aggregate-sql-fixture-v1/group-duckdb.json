@@ -1,0 +1,47 @@
+{
+  "head": {
+    "vars": [
+      "o",
+      "n"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "o": {
+          "type": "literal",
+          "value": "01",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "n": {
+          "type": "literal",
+          "value": "1",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      },
+      {
+        "o": {
+          "type": "uri",
+          "value": "urn:a"
+        },
+        "n": {
+          "type": "literal",
+          "value": "1",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      },
+      {
+        "o": {
+          "type": "literal",
+          "value": "1",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        },
+        "n": {
+          "type": "literal",
+          "value": "1",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      }
+    ]
+  }
+}
