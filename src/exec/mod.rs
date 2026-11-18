@@ -622,10 +622,17 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             let fast = expr::NumFilter::compile(e, &self.vars);
             let mut memo: HashMap<TermId, Option<expr::Num>> = HashMap::new();
             let mut val = |id: TermId| *memo.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
+            // A filter over one variable (and no EXISTS) depends only on that column's term: memoize its result per
+            // term ID, so e.g. a date range over many reviews decodes each distinct date once.
+            let single = match vs.as_slice() { [c] if !has_exists(e) => Some(*c), _ => None };
+            let mut by_id: HashMap<TermId, bool> = HashMap::new();
             for r in rows.chunks_exact(w) {
                 let keep = match fast.as_ref().map(|f| f.eval(r, &mut val)) {
                     Some(Ok(b)) => b == Some(true),
-                    _ => { row.copy_from_slice(r); self.ebv(e, &row) }
+                    _ => match single {
+                        Some(c) => *by_id.entry(r[c]).or_insert_with(|| { row.copy_from_slice(r); self.ebv(e, &row) }),
+                        None => { row.copy_from_slice(r); self.ebv(e, &row) }
+                    },
                 };
                 if keep { kept.extend_from_slice(r) }
             }

@@ -487,3 +487,22 @@ fn exists_memo_survives_reused_temporary_patterns() {
     let q = format!("SELECT ?a ?b WHERE {{ {} }}", (0..12).map(|i| branch(if i % 2 == 0 { "yes" } else { "no" })).collect::<Vec<_>>().join(" UNION "));
     match query(&s, &q).unwrap() { QueryResult::Solutions { rows, .. } => assert_eq!(rows.len(), 6), r => panic!("{r:?}") }
 }
+
+/// Single-variable filters are memoized per term ID inside a BGP; results must equal per-row evaluation,
+/// including for non-numeric (date) comparisons and unbound/erroring values.
+#[test]
+fn single_variable_filter_memo_matches_per_row() {
+    let xd = "<http://www.w3.org/2001/XMLSchema#date>";
+    let mut data = String::new();
+    for i in 0..200 {
+        let d = format!("2007-10-{:02}", 1 + i % 28);
+        data.push_str(&format!("<urn:r{i}> <urn:for> <urn:p{}> .\n<urn:r{i}> <urn:date> \"{d}\"^^{xd} .\n", i % 9));
+    }
+    data.push_str("<urn:rx> <urn:for> <urn:p0> .\n<urn:rx> <urn:date> \"not a date\" .\n");
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
+    // Days 10..=20 inclusive of 1..=28: i % 28 in 9..=19 -> 11 of every 28 values.
+    let expect = (0..200).filter(|i| (9..=19).contains(&(i % 28))).count();
+    assert_eq!(n(&format!("SELECT * {{ ?r <urn:for> ?p ; <urn:date> ?d FILTER(?d >= \"2007-10-10\"^^{xd} && ?d <= \"2007-10-20\"^^{xd}) }}")), expect);
+    assert_eq!(n(&format!("SELECT * {{ ?r <urn:for> ?p ; <urn:date> ?d FILTER(!(?d >= \"2007-10-10\"^^{xd})) }}")), (0..200).filter(|i| i % 28 < 9).count());
+}
