@@ -1,0 +1,11 @@
+# Fixed query-local memo: correctness qualification
+
+Candidate `40ce56e10c3bdcbe65fe622229d7f59270eca8ef` passes the original temporary-AST lifetime fixture: **6 rows**, with the complete result bag identical to the independently recorded Jena oracle. It also passes all **60** unchanged frozen BI checks, complete RDF-term bags against pinned main on all 60 outputs, and full ordered sequences on all **36** outputs with outer ORDER BY. This clears the requested finite-workload correctness gate, not an arbitrary-query equivalence proof.
+
+The earlier `1e862e3` candidate returned 11 rows on that same six-row fixture and was rejected before its BI run. That failure remains unchanged in ../memo-lifetime-regression-v1/. The fix assigns memo slots whose structural identity is checked against owned pattern/expression clones, preventing a reused temporary AST address from retrieving another pattern's result. The EXISTS and aggregate-argument memos both receive that guard.
+
+This candidate includes query-local EXISTS/NOT EXISTS and single-variable aggregate-argument caches. The previous timing table is not replaced by this correctness check: the candidate runs on the Mac host and the control outputs came from the earlier pinned-main VM cohort. **These elapsed values are not a host/VM A/B speed comparison.** Kaiming reported the full Rust suite passing, including the lifetime regression test; this report does not claim a second full Rust-suite run.
+
+The isolated build uses one Cargo job with the pinned lockfile. Candidate ELF SHA-256 is `6176945ab1c6faf67d95f69b631f77ac632746640172a33ae746857f1334a7a9`. Source/binary postchecks, store manifest identity, all 60 query hashes and 32 numerical input bindings verify. The oracle, datatype/numeric bounds, COUNT rules and old outcomes were not edited. The server and runner exit before the owned benchmark lock is released.
+
+Raw fixture inputs/reference/candidate output, all BI responses, matrices, complete bag/sequence comparisons, source/build metadata and postchecks are retained. `file-manifest.json` records raw/stored hashes; larger JSON/body files use lossless gzip. Native binaries and database contents are excluded. The last qualified same-session VM timing table remains the `738f0cb` round until a new performance cohort is run.
