@@ -372,6 +372,23 @@ impl Snapshot for DiskSnapshot {
             }
         }
     }
+    fn scan_for_stats(&self) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + '_> {
+        let index = self.index(Perm::Spo);
+        let mut pos = 0;
+        Box::new(std::iter::from_fn(move || {
+            if pos >= index.len() { return None; }
+            let end = pos.saturating_add(4096).min(index.len());
+            match index.block_slice_uncached(pos, end) {
+                Ok(rows) => {
+                    pos += rows.len() as u64;
+                    let mut batch = TripleBatch::default();
+                    for row in rows { for (col, value) in batch.cols.iter_mut().zip(row) { col.push(value); } }
+                    Some(Ok(batch))
+                }
+                Err(e) => { pos = index.len(); Some(Err(e)) }
+            }
+        }))
+    }
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
         let r = self.index(perm).range(prefix)?;
         Ok(r.end - r.start)

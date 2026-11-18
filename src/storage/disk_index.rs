@@ -532,6 +532,15 @@ impl DiskIndex {
         let count = (end - start).min(BLOCK_ROWS - start % BLOCK_ROWS) as usize;
         Ok(rows[from..from + count].to_vec())
     }
+    /// Read a full-scan block without populating the shared query cache.
+    pub fn block_slice_uncached(&self, start: u64, end: u64) -> io::Result<Vec<[TermId; 3]>> {
+        if start >= end || end > self.rows { return Err(invalid("invalid block slice")); }
+        let rows = self.read_block(start / BLOCK_ROWS)?;
+        let from = (start % BLOCK_ROWS) as usize;
+        let count = (end - start).min(BLOCK_ROWS - start % BLOCK_ROWS) as usize;
+        Ok(rows[from..from + count].to_vec())
+    }
+
     pub fn seek_value(&self, prefix: &[TermId], target: TermId) -> io::Result<Option<TermId>> {
         if prefix.len() >= 3 {
             return Ok(None);
