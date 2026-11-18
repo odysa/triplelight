@@ -63,9 +63,11 @@ transfer of JSON results. Total ms / geometric mean ms per query:
 \* Virtuoso's HTTP endpoint stops at 1,048,576 rows, so its Q6 and Q14 answers (7.9M rows each) are incomplete.
 
 On LUBM-1000 rdfdb is the fastest system on 9 of 14 queries in round 13. In round 14, after the hash aggregation
-change, it beat QLever on all 12 queries QLever completed (for example Q2 42.6 vs 84.0 ms, Q9 497 vs 2,561 ms;
-QLever's Q6 and Q14 responses failed). On BSBM-100M rdfdb and Virtuoso are close: rdfdb is fastest on 15 of 20
-queries, Virtuoso has the lower total. Raw results: [bench/results/r13-lubm1000](bench/results/r13-lubm1000),
+change, rdfdb was faster than QLever on the other 12 queries (for example Q2 42.6 vs 84.0 ms, Q9 497 vs 2,561 ms).
+QLever's Q6 and Q14 are not compared there: our harness could not parse their 7.9M-row JSON responses, which is a
+harness limitation, not a QLever failure. Many LUBM and BSBM queries return under 30 rows, so their 5–10 ms times are
+close to the HTTP request floor and say more about request overhead than about the engine. On BSBM-100M rdfdb and
+Virtuoso are close: rdfdb is fastest on 15 of 20 queries, Virtuoso has the lower total. Raw results: [bench/results/r13-lubm1000](bench/results/r13-lubm1000),
 [r13-bsbm100](bench/results/r13-bsbm100), [r14-lubm1000](bench/results/r14-lubm1000).
 
 ### 10–15M triples, all systems
@@ -108,7 +110,8 @@ Details: [docs/embedded/README.md](docs/embedded/README.md).
   merged since then is about 30% faster but has not been re-measured at that scale.
 - Store open: statistics take several seconds to become ready after opening a large store.
 
-Full method and more results: [docs/report/evaluation.md](docs/report/evaluation.md) and
+Full method and earlier rounds (8–12, so some totals differ from the later rounds above):
+[docs/report/evaluation.md](docs/report/evaluation.md) and
 [bench/README.md](bench/README.md).
 
 ## Usage
