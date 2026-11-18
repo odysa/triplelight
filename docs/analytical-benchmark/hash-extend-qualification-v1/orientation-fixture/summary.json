@@ -1,0 +1,161 @@
+{
+  "all9_pass": true,
+  "cases": {
+    "mixed-free-fallback": {
+      "expected_rows": 5324,
+      "jena_rows": 5324,
+      "main": {
+        "rows": 5324,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      },
+      "candidate": {
+        "rows": 5324,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      }
+    },
+    "mixed-key-fallback": {
+      "expected_rows": 12287,
+      "jena_rows": 12287,
+      "main": {
+        "rows": 12287,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": false
+      },
+      "candidate": {
+        "rows": 12287,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": false
+      }
+    },
+    "orientation-012": {
+      "expected_rows": 6144,
+      "jena_rows": 6144,
+      "main": {
+        "rows": 6144,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      },
+      "candidate": {
+        "rows": 6144,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      }
+    },
+    "orientation-021": {
+      "expected_rows": 6144,
+      "jena_rows": 6144,
+      "main": {
+        "rows": 6144,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      },
+      "candidate": {
+        "rows": 6144,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      }
+    },
+    "orientation-102": {
+      "expected_rows": 6144,
+      "jena_rows": 6144,
+      "main": {
+        "rows": 6144,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      },
+      "candidate": {
+        "rows": 6144,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      }
+    },
+    "orientation-120": {
+      "expected_rows": 6144,
+      "jena_rows": 6144,
+      "main": {
+        "rows": 6144,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      },
+      "candidate": {
+        "rows": 6144,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      }
+    },
+    "orientation-201": {
+      "expected_rows": 6144,
+      "jena_rows": 6144,
+      "main": {
+        "rows": 6144,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      },
+      "candidate": {
+        "rows": 6144,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      }
+    },
+    "orientation-210": {
+      "expected_rows": 6144,
+      "jena_rows": 6144,
+      "main": {
+        "rows": 6144,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      },
+      "candidate": {
+        "rows": 6144,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      }
+    },
+    "repeated-variable": {
+      "expected_rows": 2048,
+      "jena_rows": 2048,
+      "main": {
+        "rows": 2048,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      },
+      "candidate": {
+        "rows": 2048,
+        "exact_Jena_bag": true,
+        "exact_main_sequence": true,
+        "Jena_sequence_observation_only": true
+      }
+    }
+  },
+  "owned_servers": {
+    "main": {
+      "pid": 88256,
+      "exit": -15
+    },
+    "candidate": {
+      "pid": 88283,
+      "exit": -15
+    }
+  },
+  "input_hashes_unchanged": true,
+  "scope": "Serial main/candidate/Jena correctness fixtures; no timing comparison"
+}

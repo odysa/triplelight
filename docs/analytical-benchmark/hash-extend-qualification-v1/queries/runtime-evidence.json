@@ -1,0 +1,30 @@
+{
+  "system": "rdfdb",
+  "endpoint": "http://127.0.0.1:31435/sparql",
+  "source_or_image": "5ac99ccbe1a008a381923300920f426fcc766e2a",
+  "dataset_sha256": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+  "threads": 4,
+  "memory_configuration": {
+    "cache_mib": 10240,
+    "host_no_container_cap": true
+  },
+  "cache_profile": "no-answer-cache",
+  "binary": {
+    "sha256": "73694951ae31723dc8ca4c4b6c7b5807f3892569dd389ec5cdb4950561ed2e56",
+    "bytes": 5863696,
+    "commit": "5ac99ccbe1a008a381923300920f426fcc766e2a"
+  },
+  "server_command": [
+    "/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/rdfdb",
+    "serve-store",
+    "/private/tmp/rdf-jianlin-analytical25/bsbm10-parameter-check/rdfdb-store",
+    "31435",
+    "--disk",
+    "--cache-mb=10240"
+  ],
+  "store_manifest_hashes": {
+    "CURRENT": "c36f5a9f26ed4ae7181f6c7b81fbbce579587d0f243e1786347a5017a9081781",
+    "base-0/MANIFEST": "cf1a008449468fa5404216568ee259ade98220c945b90e39944364c03efaae24"
+  },
+  "scope": "host candidate correctness only; historical VM output comparison is not an A/B timing"
+}
