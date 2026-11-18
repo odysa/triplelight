@@ -1,0 +1,1 @@
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (ROUND(-1.5) AS ?v) (ROUND(-2.5) AS ?w) WHERE {}
