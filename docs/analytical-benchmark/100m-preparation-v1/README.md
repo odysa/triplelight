@@ -7,3 +7,5 @@ The official BSBM parameter exporter produced 60 query instances from the existi
 This is not the numeric validator freeze. The 100M exact-input anchors and independent Jena group counts have not been collected; a separately versioned input/policy bundle must be verified before qualification. The old 10M freezes remain unchanged and cannot certify this new graph. Likewise, this bounded cohort is not the official BSBM 50/500-mix throughput procedure.
 
 The window used the shared-host lock and released it after hash/export verification. No larger import has started. The approved 48 GiB total owned-scratch cap and 40 GB host free-space floor apply to the next evaluation stage.
+
+The new `prepare_numeric100.py` wrapper prepares 28 distinct diagnostic cases for 32 numerical query instances. It records all four 100M mixes as unseen, rather than inheriting the old 10M collector's mix-0 history. Two preparation tests pass, including rejection of the old 10M workload. Generated SQL/Jena input queries are retained under `numeric-plan/`; their execution and count agreement are still pending. The protected 10M collector/validator files remain unchanged.
