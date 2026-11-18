@@ -1,0 +1,240 @@
+{
+  "schema": "matched-bi-http-summary-v1",
+  "schedule": {
+    "passes": [
+      [
+        "rdfdb",
+        "duckdb"
+      ],
+      [
+        "duckdb",
+        "rdfdb"
+      ]
+    ],
+    "per_phase_queries": 60,
+    "query_warmup_mix": 0,
+    "scored_mixes": [
+      1,
+      2,
+      3
+    ],
+    "quality": "strict and count-equivalence separately; failed cohorts have no total",
+    "request_timeout_seconds": 120,
+    "phase_timeout_seconds": 1200,
+    "mode": "HTTP full body consumption; two-engine same-session rerun; totals only for qualified complete cohorts"
+  },
+  "profiles": {
+    "pass1-rdfdb": {
+      "controller": {
+        "client_exit": 0,
+        "complete": true,
+        "strict_pass": 60,
+        "equivalent_pass": 60,
+        "attempted": 60
+      },
+      "complete": true,
+      "requested": 60,
+      "attempted": 60,
+      "strict_pass": 60,
+      "count_equivalent_pass": 60,
+      "failures": {
+        "strict": [],
+        "count_equivalent": []
+      },
+      "strict_eligible": true,
+      "count_equivalent_eligible": true,
+      "measured_requests": 45,
+      "measured_total_ms": 27231.247415,
+      "count_equivalent_total_ms": 27231.247415,
+      "qualified_template_totals_ms": {
+        "1": 466.708209,
+        "2": 150.507958,
+        "3": 2410.458333,
+        "4": 21811.301916,
+        "5": 1324.237707,
+        "6": 202.245124,
+        "7": 792.340043,
+        "8": 73.448125
+      },
+      "resource": {
+        "scope": "whole server lifetime, including startup/readiness/warmup and measured queries",
+        "VmHWM_bytes": 1492889600,
+        "VmRSS_bytes": 717160448,
+        "VmPeak_bytes": 3061121024,
+        "cgroup_memory_peak_bytes": 1625776128,
+        "cgroup_memory_limit_bytes": 12884901888
+      },
+      "named_temp_observation": {
+        "peak_sampled_named_temp_bytes": 0,
+        "sample_seconds": 0.2,
+        "abort_threshold_bytes": 5368709120,
+        "metric_scope": "named files under configured TMPDIR and DuckDB spill; excludes unlinked/other locations",
+        "errors": []
+      },
+      "runtime_evidence_sha256": "e6d84ac14bc5754f3dc478e1704d6580787802f010b0098dfb415cab8e28d08e",
+      "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+      "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790"
+    },
+    "pass1-duckdb": {
+      "controller": {
+        "client_exit": 0,
+        "complete": true,
+        "strict_pass": 60,
+        "equivalent_pass": 60,
+        "attempted": 60
+      },
+      "complete": true,
+      "requested": 60,
+      "attempted": 60,
+      "strict_pass": 60,
+      "count_equivalent_pass": 60,
+      "failures": {
+        "strict": [],
+        "count_equivalent": []
+      },
+      "strict_eligible": true,
+      "count_equivalent_eligible": true,
+      "measured_requests": 45,
+      "measured_total_ms": 55318.953295,
+      "count_equivalent_total_ms": 55318.953295,
+      "qualified_template_totals_ms": {
+        "1": 4624.723875,
+        "2": 3223.827083,
+        "3": 2919.580042,
+        "4": 5905.314167,
+        "5": 11164.324792,
+        "6": 16103.18842,
+        "7": 5348.4815,
+        "8": 6029.513416
+      },
+      "resource": {
+        "scope": "whole server lifetime, including startup/readiness/warmup and measured queries",
+        "VmHWM_bytes": 1582878720,
+        "VmRSS_bytes": 949952512,
+        "VmPeak_bytes": 3359010816,
+        "cgroup_memory_peak_bytes": 2163163136,
+        "cgroup_memory_limit_bytes": 12884901888
+      },
+      "named_temp_observation": {
+        "peak_sampled_named_temp_bytes": 0,
+        "sample_seconds": 0.2,
+        "abort_threshold_bytes": 5368709120,
+        "metric_scope": "named files under configured TMPDIR and DuckDB spill; excludes unlinked/other locations",
+        "errors": []
+      },
+      "runtime_evidence_sha256": "422b3fcd834aaa4556c34be5761cee4b172c0d764f69e344d4f7d964ad1b4344",
+      "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+      "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790"
+    },
+    "pass2-duckdb": {
+      "controller": {
+        "client_exit": 0,
+        "complete": true,
+        "strict_pass": 60,
+        "equivalent_pass": 60,
+        "attempted": 60
+      },
+      "complete": true,
+      "requested": 60,
+      "attempted": 60,
+      "strict_pass": 60,
+      "count_equivalent_pass": 60,
+      "failures": {
+        "strict": [],
+        "count_equivalent": []
+      },
+      "strict_eligible": true,
+      "count_equivalent_eligible": true,
+      "measured_requests": 45,
+      "measured_total_ms": 64522.974376,
+      "count_equivalent_total_ms": 64522.974376,
+      "qualified_template_totals_ms": {
+        "1": 5192.445667,
+        "2": 4187.335417,
+        "3": 3690.91625,
+        "4": 7560.40425,
+        "5": 14448.778752,
+        "6": 17021.753707,
+        "7": 5997.8675,
+        "8": 6423.472833
+      },
+      "resource": {
+        "scope": "whole server lifetime, including startup/readiness/warmup and measured queries",
+        "VmHWM_bytes": 1562664960,
+        "VmRSS_bytes": 951508992,
+        "VmPeak_bytes": 3358834688,
+        "cgroup_memory_peak_bytes": 2169962496,
+        "cgroup_memory_limit_bytes": 12884901888
+      },
+      "named_temp_observation": {
+        "peak_sampled_named_temp_bytes": 0,
+        "sample_seconds": 0.2,
+        "abort_threshold_bytes": 5368709120,
+        "metric_scope": "named files under configured TMPDIR and DuckDB spill; excludes unlinked/other locations",
+        "errors": []
+      },
+      "runtime_evidence_sha256": "422b3fcd834aaa4556c34be5761cee4b172c0d764f69e344d4f7d964ad1b4344",
+      "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+      "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790"
+    },
+    "pass2-rdfdb": {
+      "controller": {
+        "client_exit": 0,
+        "complete": true,
+        "strict_pass": 60,
+        "equivalent_pass": 60,
+        "attempted": 60
+      },
+      "complete": true,
+      "requested": 60,
+      "attempted": 60,
+      "strict_pass": 60,
+      "count_equivalent_pass": 60,
+      "failures": {
+        "strict": [],
+        "count_equivalent": []
+      },
+      "strict_eligible": true,
+      "count_equivalent_eligible": true,
+      "measured_requests": 45,
+      "measured_total_ms": 28539.754163,
+      "count_equivalent_total_ms": 28539.754163,
+      "qualified_template_totals_ms": {
+        "1": 579.259668,
+        "2": 168.03575,
+        "3": 3071.677958,
+        "4": 22236.331333,
+        "5": 1421.970956,
+        "6": 202.18708,
+        "7": 770.350376,
+        "8": 89.941042
+      },
+      "resource": {
+        "scope": "whole server lifetime, including startup/readiness/warmup and measured queries",
+        "VmHWM_bytes": 1470795776,
+        "VmRSS_bytes": 790089728,
+        "VmPeak_bytes": 3061055488,
+        "cgroup_memory_peak_bytes": 1803198464,
+        "cgroup_memory_limit_bytes": 12884901888
+      },
+      "named_temp_observation": {
+        "peak_sampled_named_temp_bytes": 0,
+        "sample_seconds": 0.2,
+        "abort_threshold_bytes": 5368709120,
+        "metric_scope": "named files under configured TMPDIR and DuckDB spill; excludes unlinked/other locations",
+        "errors": []
+      },
+      "runtime_evidence_sha256": "e6d84ac14bc5754f3dc478e1704d6580787802f010b0098dfb415cab8e28d08e",
+      "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+      "count_equivalence_freeze_sha256": "ffa49a6ce10c19c02d6185a3431383157c590e1e1beb9c9d37b7b83e03bf5790"
+    }
+  },
+  "official_bsbm_throughput_score": false,
+  "complete_cross_engine_ranking": true,
+  "primary_profile_modes": [
+    "rdfdb",
+    "duckdb"
+  ],
+  "all_primary_profiles_strictly_qualify": true,
+  "all_primary_profiles_count_equivalent_qualify": true
+}
