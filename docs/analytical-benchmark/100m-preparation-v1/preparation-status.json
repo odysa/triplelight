@@ -1,0 +1,24 @@
+{
+  "input_identity_pinned": true,
+  "workload_manifest_sha256": "a6d27c91ec733626fa0d132f642d5a348c62cbfc00b423809bf82074cb1a35ef",
+  "query_hashes_verified": 60,
+  "candidate_outputs_read": false,
+  "all_mix_outputs_unseen": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "measured_mixes": [
+    1,
+    2,
+    3
+  ],
+  "warmup_mixes": [
+    0
+  ],
+  "numeric_input_anchors_collected": false,
+  "independent_count_verification_complete": false,
+  "numeric_validator_frozen": false,
+  "scope": "Input identity and deterministic parameter preparation only, not query qualification or performance"
+}
