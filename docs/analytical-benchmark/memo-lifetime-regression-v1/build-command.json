@@ -1,0 +1,18 @@
+{
+  "command": [
+    "cargo",
+    "build",
+    "--locked",
+    "--release",
+    "--bin",
+    "rdfdb",
+    "--manifest-path",
+    "/private/tmp/rdf-jianlin-analytical25/exists-memo-1e862e3/source/Cargo.toml"
+  ],
+  "env": {
+    "CARGO_BUILD_JOBS": "1",
+    "CARGO_TARGET_DIR": "/private/tmp/rdf-jianlin-analytical25/target"
+  },
+  "rustc": "rustc 1.95.0 (59807616e 2026-04-14)\nbinary: rustc\ncommit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860\ncommit-date: 2026-04-14\nhost: aarch64-apple-darwin\nrelease: 1.95.0\nLLVM version: 22.1.2\n",
+  "host": "Darwin arm64\n"
+}
