@@ -1,0 +1,15 @@
+Profiling during the successful build (this directory's receipts):
+- Intended: three 20 s /usr/bin/sample attachments to build-disk (via /tmp/buildprof.sh).
+- Actual: ONE sample (build_sample_1.txt), taken ~2 min after build start. The watcher then exited early:
+  its `pgrep -f` matched both the /usr/bin/time wrapper and the rdfdb child, so its `kill -0 $pid` liveness check
+  failed on the two-line PID string after the first sample. No further samples were taken.
+- No allocator or env profiling flags (no MallocStackLogging; default macOS allocator).
+- Wall time (1291.75 s) and peak RSS/footprint in build.time are PROFILED OBSERVATIONS (one 20 s sample),
+  not unprofiled load-time or memory results; this was a preparation build, not a load-speed comparison.
+
+ATTEMPTS.txt records the earlier failed attempt.
+
+CORRECTION: build_sample_1.txt sampled the /usr/bin/time wrapper process (all samples in __sigsuspend), not the
+rdfdb build-disk process, because the same PID-matching bug picked the wrapper's PID. It contains no information
+about the build. Since sampling a waiting wrapper does not perturb rdfdb, the build timing is effectively
+unprofiled, but it is still a single preparation build, not a load-speed comparison.
