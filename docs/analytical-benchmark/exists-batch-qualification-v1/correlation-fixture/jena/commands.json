@@ -1,0 +1,122 @@
+[
+  {
+    "query": "all-unbound.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/all-unbound.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "bound-exists.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/bound-exists.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "bound-notexists.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/bound-notexists.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "empty-body.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/empty-body.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "empty-key-exists.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/empty-key-exists.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "empty-key-notexists.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/empty-key-notexists.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "filter-only-outer.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/filter-only-outer.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "join-body.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/join-body.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "mixed-bound.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/mixed-bound.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "optional-fallback.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/optional-fallback.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "plain-bgp-outer-filter.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/plain-bgp-outer-filter.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  {
+    "query": "plain-bgp.rq",
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/exists-batch-6e14248/correlation-fixture/plain-bgp.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  }
+]
