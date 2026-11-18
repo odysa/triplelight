@@ -506,3 +506,19 @@ fn single_variable_filter_memo_matches_per_row() {
     assert_eq!(n(&format!("SELECT * {{ ?r <urn:for> ?p ; <urn:date> ?d FILTER(?d >= \"2007-10-10\"^^{xd} && ?d <= \"2007-10-20\"^^{xd}) }}")), expect);
     assert_eq!(n(&format!("SELECT * {{ ?r <urn:for> ?p ; <urn:date> ?d FILTER(!(?d >= \"2007-10-10\"^^{xd})) }}")), (0..200).filter(|i| i % 28 < 9).count());
 }
+
+/// Fully bound probes `?x <p> <o>` over many rows use a scanned membership set; answers and multiplicities
+/// must match the per-row probe join.
+#[test]
+fn member_set_probe_matches_probe_join() {
+    let mut data = String::new();
+    for i in 0..3000 {
+        data.push_str(&format!("<urn:r{i}> <urn:by> <urn:u{}> .\n", i % 1500));
+    }
+    for u in 0..1500 { if u % 3 == 0 { data.push_str(&format!("<urn:u{u}> <urn:country> <urn:US> .\n")) } else { data.push_str(&format!("<urn:u{u}> <urn:country> <urn:AT> .\n")) } }
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
+    assert_eq!(n("SELECT * { ?r <urn:by> ?u . ?u <urn:country> <urn:US> }"), 1000);
+    assert_eq!(n("SELECT (COUNT(*) AS ?c) { ?r <urn:by> ?u . ?u <urn:country> <urn:US> }"), 1);
+    assert_eq!(n("SELECT * { ?r <urn:by> ?u . ?u <urn:country> <urn:XX> }"), 0);
+}
