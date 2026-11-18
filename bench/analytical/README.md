@@ -127,3 +127,5 @@ Offline checks: `python -m unittest discover -s bench/analytical -v`.
 The curated aggregate translator is `aggregate_sql.py`, scoped to the 72 flat-BGP COUNT queries. Seven tiny-graph unit checks and seven independent Jena fixture comparisons pass; see `docs/analytical-benchmark/aggregate-sql-fixture-v1/`. This is not yet a real-data aggregate performance comparison.
 
 The guarded equality rewrite at `54bee3a` separately passes all 60 frozen BI instances, with complete bags and all 36 ordered sequences matching pinned main. See `docs/analytical-benchmark/eq-unify-v1/`; the host/VM output comparison supplies no A/B speed claim.
+
+The subsequent two-engine matched-VM rerun on main `738f0cb` is in `docs/analytical-benchmark/matched-vm-round2-v1/`. All 240 requests qualify; rdfdb takes 27.23 / 28.54 seconds against DuckDB’s 55.32 / 64.52 across the measured mixes. This report explicitly limits the ranking to these two engines and preserves the older four-engine pilot separately.
