@@ -1,0 +1,108 @@
+[2026-11-18 17:24:56] Fuseki     INFO  Apache Jena Fuseki 6.2.0
+[2026-11-18 17:24:56] Server     INFO  Dataset: in-memory: load file: <agent-workspace>/rdfdb/bench/tools/lubm100.nt
+[2026-11-18 17:26:48] Config     INFO  Fuseki Base = /private/tmp/rdf-jianlin-analytical25/aggregate72-reference-v2/lubm/run
+[2026-11-18 17:26:48] Config     INFO  Database: /ds
+[2026-11-18 17:26:48] Config     INFO  UI Base: fuseki-server.jar
+[2026-11-18 17:26:48] Shiro      INFO  Shiro configuration: file:/private/tmp/rdf-jianlin-analytical25/aggregate72-reference-v2/lubm/run/shiro.ini
+[2026-11-18 17:26:48] Server     INFO  Path = /ds
+[2026-11-18 17:26:48] Server     INFO  System
+[2026-11-18 17:26:48] Server     INFO    Memory: 8.0 GiB
+[2026-11-18 17:26:48] Server     INFO    PID:    92011
+[2026-11-18 17:26:49] Server     INFO    Port:   http=31446
+[2026-11-18 17:26:49] Server     INFO  Start Fuseki
+[2026-11-18 17:26:49] Fuseki     INFO  [1] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:26:49] Fuseki     INFO  [1] Query = ASK {}
+[2026-11-18 17:26:49] Fuseki     INFO  [1] 200 OK (98 ms)
+[2026-11-18 17:26:49] Fuseki     INFO  [2] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:26:49] Fuseki     INFO  [2] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:27:10] Fuseki     INFO  [2] 200 OK (20.726 s)
+[2026-11-18 17:27:10] Fuseki     INFO  [3] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:10] Fuseki     INFO  [3] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> } 
+[2026-11-18 17:27:10] Fuseki     INFO  [3] 200 OK (13 ms)
+[2026-11-18 17:27:10] Fuseki     INFO  [4] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:10] Fuseki     INFO  [4] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> } 
+[2026-11-18 17:27:10] Fuseki     INFO  [4] 200 OK (8 ms)
+[2026-11-18 17:27:10] Fuseki     INFO  [5] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:10] Fuseki     INFO  [5] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:ResearchGroup . ?X ub:subOrganizationOf <http://www.Department0.University0.edu> } 
+[2026-11-18 17:27:10] Fuseki     INFO  [5] 200 OK (10 ms)
+[2026-11-18 17:27:10] Fuseki     INFO  [6] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:10] Fuseki     INFO  [6] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:FullProfessor . ?Y rdf:type ub:Department . ?X ub:worksFor ?Y . ?Y ub:subOrganizationOf <http://www.University0.edu> } 
+[2026-11-18 17:27:10] Fuseki     INFO  [6] 200 OK (31 ms)
+[2026-11-18 17:27:10] Fuseki     INFO  [7] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:10] Fuseki     INFO  [7] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:undergraduateDegreeFrom <http://www.University0.edu> } 
+[2026-11-18 17:27:10] Fuseki     INFO  [7] 200 OK (22 ms)
+[2026-11-18 17:27:10] Fuseki     INFO  [8] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:10] Fuseki     INFO  [8] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent } 
+[2026-11-18 17:27:10] Fuseki     INFO  [8] 200 OK (702 ms)
+[2026-11-18 17:27:10] Fuseki     INFO  [9] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:10] Fuseki     INFO  [9] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?Y rdf:type ub:University . ?Z rdf:type ub:Department . ?X ub:memberOf ?Z . ?Z ub:subOrganizationOf ?Y . ?X ub:undergraduateDegreeFrom ?Y } 
+[2026-11-18 17:27:13] Fuseki     INFO  [9] 200 OK (2.960 s)
+[2026-11-18 17:27:13] Fuseki     INFO  [10] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:13] Fuseki     INFO  [10] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:Publication . ?X ub:publicationAuthor <http://www.Department0.University0.edu/AssistantProfessor0> } 
+[2026-11-18 17:27:13] Fuseki     INFO  [10] 200 OK (6 ms)
+[2026-11-18 17:27:13] Fuseki     INFO  [11] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:13] Fuseki     INFO  [11] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:FullProfessor . ?X ub:worksFor <http://www.Department0.University0.edu> . ?X ub:name ?Y1 . ?X ub:emailAddress ?Y2 . ?X ub:telephone ?Y3 } 
+[2026-11-18 17:27:13] Fuseki     INFO  [11] 200 OK (6 ms)
+[2026-11-18 17:27:13] Fuseki     INFO  [12] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:13] Fuseki     INFO  [12] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?X ub:memberOf <http://www.Department0.University0.edu> } 
+[2026-11-18 17:27:13] Fuseki     INFO  [12] 200 OK (8 ms)
+[2026-11-18 17:27:14] Fuseki     INFO  [13] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:14] Fuseki     INFO  [13] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent } 
+[2026-11-18 17:27:14] Fuseki     INFO  [13] 200 OK (483 ms)
+[2026-11-18 17:27:14] Fuseki     INFO  [14] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:14] Fuseki     INFO  [14] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:Course . ?X ub:takesCourse ?Y . <http://www.Department0.University0.edu/AssociateProfessor0> ub:teacherOf ?Y } 
+[2026-11-18 17:27:14] Fuseki     INFO  [14] 200 OK (6 ms)
+[2026-11-18 17:27:14] Fuseki     INFO  [15] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:14] Fuseki     INFO  [15] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:Department . ?X ub:memberOf ?Y . ?Y ub:subOrganizationOf <http://www.University0.edu> . ?X ub:emailAddress ?Z } 
+[2026-11-18 17:27:14] Fuseki     INFO  [15] 200 OK (41 ms)
+[2026-11-18 17:27:14] Fuseki     INFO  [16] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:14] Fuseki     INFO  [16] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:FullProfessor . ?Z rdf:type ub:Course . ?X ub:advisor ?Y . ?Y ub:teacherOf ?Z . ?X ub:takesCourse ?Z } 
+[2026-11-18 17:27:16] Fuseki     INFO  [16] 200 OK (2.369 s)
+[2026-11-18 17:27:16] Fuseki     INFO  [17] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:16] Fuseki     INFO  [17] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> } 
+[2026-11-18 17:27:16] Fuseki     INFO  [17] 200 OK (9 ms)
+[2026-11-18 17:27:16] Fuseki     INFO  [18] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:16] Fuseki     INFO  [18] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> } 
+[2026-11-18 17:27:16] Fuseki     INFO  [18] 200 OK (4 ms)
+[2026-11-18 17:27:16] Fuseki     INFO  [19] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:16] Fuseki     INFO  [19] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:ResearchGroup . ?X ub:subOrganizationOf <http://www.Department0.University0.edu> } 
+[2026-11-18 17:27:16] Fuseki     INFO  [19] 200 OK (5 ms)
+[2026-11-18 17:27:16] Fuseki     INFO  [20] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:16] Fuseki     INFO  [20] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:FullProfessor . ?Y rdf:type ub:Department . ?X ub:worksFor ?Y . ?Y ub:subOrganizationOf <http://www.University0.edu> } 
+[2026-11-18 17:27:16] Fuseki     INFO  [20] 200 OK (11 ms)
+[2026-11-18 17:27:16] Fuseki     INFO  [21] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:16] Fuseki     INFO  [21] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:undergraduateDegreeFrom <http://www.University0.edu> } 
+[2026-11-18 17:27:16] Fuseki     INFO  [21] 200 OK (15 ms)
+[2026-11-18 17:27:16] Fuseki     INFO  [22] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:16] Fuseki     INFO  [22] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent } 
+[2026-11-18 17:27:18] Fuseki     INFO  [22] 200 OK (1.912 s)
+[2026-11-18 17:27:18] Fuseki     INFO  [23] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:18] Fuseki     INFO  [23] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?Y rdf:type ub:University . ?Z rdf:type ub:Department . ?X ub:memberOf ?Z . ?Z ub:subOrganizationOf ?Y . ?X ub:undergraduateDegreeFrom ?Y } 
+[2026-11-18 17:27:21] Fuseki     INFO  [23] 200 OK (2.524 s)
+[2026-11-18 17:27:21] Fuseki     INFO  [24] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:21] Fuseki     INFO  [24] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:Publication . ?X ub:publicationAuthor <http://www.Department0.University0.edu/AssistantProfessor0> } 
+[2026-11-18 17:27:21] Fuseki     INFO  [24] 200 OK (4 ms)
+[2026-11-18 17:27:21] Fuseki     INFO  [25] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:21] Fuseki     INFO  [25] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:FullProfessor . ?X ub:worksFor <http://www.Department0.University0.edu> . ?X ub:name ?Y1 . ?X ub:emailAddress ?Y2 . ?X ub:telephone ?Y3 } 
+[2026-11-18 17:27:21] Fuseki     INFO  [25] 200 OK (5 ms)
+[2026-11-18 17:27:21] Fuseki     INFO  [26] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:21] Fuseki     INFO  [26] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?X ub:memberOf <http://www.Department0.University0.edu> } 
+[2026-11-18 17:27:21] Fuseki     INFO  [26] 200 OK (14 ms)
+[2026-11-18 17:27:21] Fuseki     INFO  [27] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:21] Fuseki     INFO  [27] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent } 
+[2026-11-18 17:27:22] Fuseki     INFO  [27] 200 OK (1.333 s)
+[2026-11-18 17:27:22] Fuseki     INFO  [28] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:22] Fuseki     INFO  [28] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:Course . ?X ub:takesCourse ?Y . <http://www.Department0.University0.edu/AssociateProfessor0> ub:teacherOf ?Y } 
+[2026-11-18 17:27:22] Fuseki     INFO  [28] 200 OK (4 ms)
+[2026-11-18 17:27:22] Fuseki     INFO  [29] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:22] Fuseki     INFO  [29] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:Department . ?X ub:memberOf ?Y . ?Y ub:subOrganizationOf <http://www.University0.edu> . ?X ub:emailAddress ?Z } 
+[2026-11-18 17:27:23] Fuseki     INFO  [29] 200 OK (285 ms)
+[2026-11-18 17:27:23] Fuseki     INFO  [30] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:23] Fuseki     INFO  [30] Query = PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:FullProfessor . ?Z rdf:type ub:Course . ?X ub:advisor ?Y . ?Y ub:teacherOf ?Z . ?X ub:takesCourse ?Z } 
+[2026-11-18 17:27:25] Fuseki     INFO  [30] 200 OK (2.800 s)
+[2026-11-18 17:27:25] Fuseki     INFO  [31] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:25] Fuseki     INFO  [31] Query = SELECT ?o (COUNT(*) AS ?n) (COUNT(DISTINCT ?s) AS ?d) WHERE {?s <http://swat.cse.lehigh.edu/onto/univ-bench.owl#advisor> ?o} GROUP BY ?o 
+[2026-11-18 17:27:29] Fuseki     INFO  [31] 200 OK (3.140 s)
+[2026-11-18 17:27:29] Fuseki     INFO  [32] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:27:29] Fuseki     INFO  [32] Query = SELECT ?o (COUNT(*) AS ?n) WHERE {?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?o} GROUP BY ?o 
+[2026-11-18 17:27:31] Fuseki     INFO  [32] 200 OK (2.175 s)

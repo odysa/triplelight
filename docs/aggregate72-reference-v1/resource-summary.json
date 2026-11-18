@@ -1,0 +1,8 @@
+{
+  "sampled_max_allocated_bytes": 17236832256,
+  "sampled_min_free_bytes": 244534616064,
+  "reference_queries": 72,
+  "lubm_queries": 30,
+  "watdiv_queries": 42,
+  "comparative_timing_claim": false
+}
