@@ -1,0 +1,93 @@
+diff --git a/src/exec/mod.rs b/src/exec/mod.rs
+index 53ee18e..732be55 100644
+--- a/src/exec/mod.rs
++++ b/src/exec/mod.rs
+@@ -318,7 +318,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
+                         return rows.into_iter().filter(|r| late.iter().all(|c| self.ebv(c, r))).collect();
+                     }
+                 }
+-                self.eval(inner, input).into_iter().filter(|r| self.ebv(expr, r)).collect()
++                let rows = self.eval(inner, input);
++                if let Some(out) = self.exists_batch(expr, &rows) { return out }
++                rows.into_iter().filter(|r| self.ebv(expr, r)).collect()
+             }
+             GraphPattern::Union { left, right } => {
+                 let mut l = self.eval(left, input.clone());
+@@ -736,6 +738,33 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
+         let id = *r.get(*self.vars.get(v.as_str())?)?;
+         (id != UNBOUND).then(|| self.resolve(id))
+     }
++    /// `FILTER [NOT] EXISTS { P }` over many rows as one batched evaluation (a semi-/anti-join): P is evaluated
++    /// once with one input row per distinct binding of P's variables, and each row is kept by set membership.
++    /// Only for P built from BGPs, joins and EXISTS-free filters, whose evaluation distributes over input rows.
++    fn exists_batch(&self, expr: &Expression, rows: &[Row]) -> Option<Vec<Row>> {
++        let (neg, p) = match expr {
++            Expression::Exists(p) => (false, &**p),
++            Expression::Not(e) => match &**e { Expression::Exists(p) => (true, &**p), _ => return None },
++            _ => return None,
++        };
++        if rows.len() < 64 || !distributive(p) { return None }
++        let mut names = Vec::new();
++        walk_vars(p, &mut names);
++        let w = rows[0].len();
++        let idx: Vec<usize> = names.iter().filter_map(|n| self.vars.get(n).copied()).filter(|&i| i < w).collect();
++        let key: Vec<usize> = idx.iter().copied().filter(|&i| rows[0][i] != UNBOUND).collect();
++        // Every row must bind exactly the same P variables (so one key layout describes all of them).
++        if rows.iter().any(|r| idx.iter().any(|&i| (r[i] != UNBOUND) != key.contains(&i))) { return None }
++        let mut reps: Vec<Row> = Vec::new();
++        let mut seen: HashSet<Vec<TermId>> = HashSet::new();
++        for r in rows {
++            let k: Vec<TermId> = key.iter().map(|&i| r[i]).collect();
++            if seen.insert(k) { let mut x = self.empty_row(); for &i in &key { x[i] = r[i] } reps.push(x) }
++        }
++        let hits: HashSet<Vec<TermId>> = self.eval(p, reps).iter().map(|r| key.iter().map(|&i| r[i]).collect()).collect();
++        Some(rows.iter().filter(|r| hits.contains(&key.iter().map(|&i| r[i]).collect::<Vec<_>>()) != neg).cloned().collect())
++    }
++
+     pub(crate) fn exists(&self, p: &GraphPattern, r: &Row) -> bool {
+         const MEMO_CAP: usize = 1 << 20;
+         let addr = p as *const GraphPattern as usize;
+@@ -812,6 +841,15 @@ fn join_rows(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
+     out
+ }
+ 
++fn distributive(p: &GraphPattern) -> bool {
++    match p {
++        GraphPattern::Bgp { .. } => true,
++        GraphPattern::Join { left, right } => distributive(left) && distributive(right),
++        GraphPattern::Filter { inner, expr } => distributive(inner) && !has_exists(expr),
++        _ => false,
++    }
++}
++
+ fn memo_safe(p: &GraphPattern) -> bool {
+     match p {
+         GraphPattern::Bgp { .. } | GraphPattern::Path { .. } | GraphPattern::Values { .. } => true,
+diff --git a/tests/exec.rs b/tests/exec.rs
+index 7d377f7..1f1c9d4 100644
+--- a/tests/exec.rs
++++ b/tests/exec.rs
+@@ -522,3 +522,23 @@ fn member_set_probe_matches_probe_join() {
+     assert_eq!(n("SELECT (COUNT(*) AS ?c) { ?r <urn:by> ?u . ?u <urn:country> <urn:US> }"), 1);
+     assert_eq!(n("SELECT * { ?r <urn:by> ?u . ?u <urn:country> <urn:XX> }"), 0);
+ }
++
++/// `FILTER [NOT] EXISTS` over a non-BGP input (here a subquery) is evaluated as one batched semi/anti-join; it must
++/// keep per-row semantics, including an inner FILTER that reads an outer variable.
++#[test]
++fn exists_batch_matches_per_row_semantics() {
++    let mut data = String::new();
++    for i in 0..40 {
++        if i % 4 == 0 { data.push_str(&format!("<urn:p{i}> <urn:feat> <urn:f> .\n")) }
++        for j in 0..5 { data.push_str(&format!("<urn:o{i}_{j}> <urn:product> <urn:p{i}> .\n<urn:o{i}_{j}> <urn:price> \"{}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n", i * 10 + j)) }
++    }
++    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
++    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
++    let sub = "{ SELECT ?o ?p ?x { ?o <urn:product> ?p ; <urn:price> ?x } }";
++    // 200 offers; products 0,4,..,36 (10 products x 5 offers) have the feature.
++    assert_eq!(n(&format!("SELECT * {{ {sub} FILTER NOT EXISTS {{ ?p <urn:feat> ?f }} }}")), 150);
++    assert_eq!(n(&format!("SELECT * {{ {sub} FILTER EXISTS {{ ?p <urn:feat> ?f }} }}")), 50);
++    // Inner filter on an outer variable: featured products with price > 200 -> products 24,28,32,36 (20 offers;
++    // product 20 has prices 200..204 of which 4 are > 200).
++    assert_eq!(n(&format!("SELECT * {{ {sub} FILTER EXISTS {{ ?p <urn:feat> ?f FILTER(?x > 200) }} }}")), 24);
++}
