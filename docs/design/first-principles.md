@@ -43,9 +43,10 @@ intermediate rows alive at once`. Three levers follow, and they are the only one
 - **Hold fewer rows**: stream through operators and materialize only where an algorithm must (hash-join build side,
   sort, aggregation state).
 
-Measured on BSBM-BI 10M this week, rdfdb's remaining losses map exactly onto these levers:
-range filters scan everything (q3: rdfdb 0.97–1.30 s vs QLever 0.42–0.44 s, round 6), and peak memory is dominated
-by resident blocks and materialized intermediates (q4 peak 1.51 GB; of 807 MB live mid-query, 269 MB are index blocks
+Measured on BSBM-BI 10M this week, rdfdb's remaining losses touch these levers. What is measured: rdfdb evaluates a
+date range by scanning and testing every dated review (q3: rdfdb 0.97–1.30 s vs QLever 0.42–0.44 s, round 6), and
+rdfdb's peak memory is dominated by resident blocks and materialized intermediates. **[hypothesis]** That QLever's
+q1/q3 advantage comes from its value encoding is not established; we have only measured our own side (q4 peak 1.51 GB; of 807 MB live mid-query, 269 MB are index blocks
 the statistics builder left in cache and ~300 MB are q4's join intermediates; `ab35`, `ab37`).
 
 ## 3. Terms and IDs: encode values, not just names
@@ -58,7 +59,7 @@ must decode every candidate (memoized per distinct ID), and no index range can a
 
 Design:
 
-- **Inline, order-preserving value IDs** for the types analytical queries compare: `xsd:integer` and its subtypes
+- **[hypothesis]** **Inline, order-preserving value IDs** for the types analytical queries compare: `xsd:integer` and its subtypes
   within 60 bits, `xsd:boolean`, `xsd:date`/`xsd:dateTime` without timezone, and `xsd:decimal`/`xsd:double` in an
   order-preserving encoding. Within one kind, ID order = value order, so `?x < c` is an index range on the POS
   permutation, and SUM/MIN/MAX read values straight out of IDs.
@@ -66,12 +67,13 @@ Design:
   date stays a dictionary term, because RDF distinguishes them as terms even when values are equal. Range scans
   therefore cover the inline range **plus** the (small, enumerable) set of non-canonical literals of that predicate,
   and the original FILTER still runs on every candidate row. Candidates are a superset by construction.
-- **Order-preserving string IDs at bulk load** (sort the vocabulary, assign IDs in order; a separate local vocabulary
+- **[hypothesis]** **Order-preserving string IDs at bulk load** (sort the vocabulary, assign IDs in order; a separate local vocabulary
   for terms added later). Then ORDER BY and string ranges also work on IDs, and the sorted vocabulary compresses with
   front coding (today the two dictionary files are 0.96 GB of a 1.2 GB 10M store).
 
 This is a store-format change (new version; old snapshots and WALs must stay readable, and an existing dictionary term keeps its old ID: interning checks the old dictionary before assigning an inline ID, so equal terms never get two IDs), so it is a phase of
-its own with Alex's durability rules: versioned format, no silent mixing of encodings, exact recheck for anything the
+its own with Alex's durability rules, and it must first prove: RDF identity across lexical forms and datatypes,
+mixed numeric promotion, the order of the dictionary versus the delta vocabulary, and old-snapshot compatibility: versioned format, no silent mixing of encodings, exact recheck for anything the
 encoding does not cover. The date/time comparison semantics fix (#26) must land first, because the encoding has to
 agree with the evaluator.
 
@@ -146,5 +148,5 @@ Non-goals for now: distribution across machines, OWL reasoning, full-text search
 - Exact answers on the frozen sets; QLever fails strict datatype checks on 51/60 BI requests.
 - Embedded Rust/Python API with WAL, overlay and compaction.
 
-The plan above targets exactly the two measured gaps — range filters and memory — without giving up the first or
-the fourth principle.
+The plan targets rdfdb's two measured weaknesses, range-filter scans and materialized memory, without giving up the
+first or the fourth principle. Whether it closes the gap to QLever is a hypothesis each phase must test.
