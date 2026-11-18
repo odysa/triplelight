@@ -866,7 +866,7 @@ fn distributive(p: &GraphPattern) -> bool {
 /// own and joining: true when every FILTER / BIND / OPTIONAL condition inside `p` only reads variables bound by the
 /// pattern it applies to. SPARQL evaluates groups bottom-up, so e.g. `{ BIND(?o+1 AS ?z) }` must not see an outer ?o.
 fn scope_safe(p: &GraphPattern) -> bool {
-    let bound = |q: &GraphPattern| -> HashSet<String> { let mut v = Vec::new(); walk_vars(q, &mut v); v.into_iter().collect() };
+    let bound = certainly_bound;
     let reads_only = |e: &Expression, q: &GraphPattern| { let b = bound(q); expr_vars(e).iter().all(|n| b.contains(n)) };
     match p {
         GraphPattern::Bgp { .. } | GraphPattern::Path { .. } | GraphPattern::Values { .. } => true,
@@ -882,6 +882,40 @@ fn scope_safe(p: &GraphPattern) -> bool {
         GraphPattern::Slice { .. } => false,
         GraphPattern::OrderBy { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner }
         | GraphPattern::Project { inner, .. } | GraphPattern::Group { inner, .. } | GraphPattern::Graph { inner, .. } | GraphPattern::Service { inner, .. } => scope_safe(inner),
+    }
+}
+
+/// Variables bound in every solution of `p` (an under-approximation): a variable that may be unbound (VALUES UNDEF,
+/// OPTIONAL, one UNION branch, a BIND whose expression can fail) is excluded, so an outer value can never leak into it.
+fn certainly_bound(p: &GraphPattern) -> HashSet<String> {
+    match p {
+        GraphPattern::Bgp { patterns } => {
+            let mut v = Vec::new();
+            walk_vars(&GraphPattern::Bgp { patterns: patterns.clone() }, &mut v);
+            v.into_iter().collect()
+        }
+        GraphPattern::Path { subject, object, .. } => [subject, object].into_iter().filter_map(|t| match t {
+            TermPattern::Variable(v) => Some(v.as_str().to_string()),
+            _ => None,
+        }).collect(),
+        GraphPattern::Values { variables, bindings } => variables.iter().enumerate()
+            .filter(|(i, _)| bindings.iter().all(|row| row.get(*i).is_some_and(Option::is_some)))
+            .map(|(_, v)| v.as_str().to_string()).collect(),
+        GraphPattern::Join { left, right } => { let mut a = certainly_bound(left); a.extend(certainly_bound(right)); a }
+        GraphPattern::Union { left, right } => { let b = certainly_bound(right); certainly_bound(left).into_iter().filter(|v| b.contains(v)).collect() }
+        GraphPattern::LeftJoin { left, .. } | GraphPattern::Minus { left, .. } => certainly_bound(left),
+        GraphPattern::Filter { inner, .. } | GraphPattern::Extend { inner, .. } | GraphPattern::OrderBy { inner, .. }
+        | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. }
+        | GraphPattern::Graph { inner, .. } | GraphPattern::Service { inner, .. } => certainly_bound(inner),
+        GraphPattern::Project { inner, variables } => { let b = certainly_bound(inner); variables.iter().map(|v| v.as_str().to_string()).filter(|v| b.contains(v)).collect() }
+        // Group keys certainly bound inside, plus the aggregate output variables: those are fresh names set by the
+        // aggregation itself, so no outer solution can supply a value for them.
+        GraphPattern::Group { inner, variables, aggregates } => {
+            let b = certainly_bound(inner);
+            let mut out: HashSet<String> = variables.iter().map(|v| v.as_str().to_string()).filter(|v| b.contains(v)).collect();
+            out.extend(aggregates.iter().map(|(v, _)| v.as_str().to_string()));
+            out
+        }
     }
 }
 

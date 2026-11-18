@@ -626,3 +626,17 @@ fn group_scoping_is_bottom_up() {
     let c = rows("SELECT (COUNT(?x) AS ?c) { ?s <urn:p> ?v OPTIONAL { { ?s <urn:p> ?x FILTER(?v > 2) } } }");
     assert!(c[0].contains("\"0\""), "{c:?}");
 }
+
+/// A VALUES variable whose value is UNDEF is not bound: an outer binding of the same name must not leak into an inner
+/// BIND (Jianlin's counterexample to the first scoping fix; agrees with Jena).
+#[test]
+fn values_undef_does_not_leak_outer_binding() {
+    let s = MemorySnapshot::from_ntriples(&b""[..]).unwrap();
+    let rows = |q: &str| -> Vec<String> { match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| format!("{r:?}")).collect(), r => panic!("{r:?}") } };
+    let r = rows("SELECT ?x ?y WHERE { VALUES ?x { 1 } { VALUES ?x { UNDEF } BIND(?x AS ?y) } }");
+    assert_eq!(r.len(), 1);
+    assert_eq!(r[0].matches("Some(").count(), 1, "y must be unbound: {r:?}");
+    // Control: an inner bound value is visible to BIND.
+    let r = rows("SELECT ?x ?y WHERE { VALUES ?x { 1 } { VALUES ?x { 1 } BIND(?x AS ?y) } }");
+    assert_eq!(r[0].matches("Some(").count(), 2, "{r:?}");
+}
