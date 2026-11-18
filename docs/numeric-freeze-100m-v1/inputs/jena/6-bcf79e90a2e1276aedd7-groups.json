@@ -1,0 +1,2592 @@
+{ "head": {
+    "vars": [ "reviewer" , "n" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite5/Reviewer2038" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite56/Reviewer28367" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite160/Reviewer82577" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite48/Reviewer24386" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite177/Reviewer90293" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite174/Reviewer88576" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite82/Reviewer41699" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite36/Reviewer18369" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite215/Reviewer107848" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite264/Reviewer133205" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite242/Reviewer121243" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite171/Reviewer87233" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite68/Reviewer34117" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite82/Reviewer41571" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite165/Reviewer84120" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite58/Reviewer29766" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite68/Reviewer34232" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite189/Reviewer95612" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite249/Reviewer125159" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite65/Reviewer32515" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite280/Reviewer141769" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite145/Reviewer75163" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite23/Reviewer12114" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite133/Reviewer69697" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite169/Reviewer85877" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite53/Reviewer27055" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite247/Reviewer124147" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite37/Reviewer18587" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite132/Reviewer69121" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite44/Reviewer22439" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite56/Reviewer28497" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite193/Reviewer97537" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite247/Reviewer124265" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite36/Reviewer18134" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite72/Reviewer35982" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite127/Reviewer65987" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite247/Reviewer124021" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite105/Reviewer54087" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite214/Reviewer107593" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite86/Reviewer43936" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite74/Reviewer37252" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite66/Reviewer33094" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite195/Reviewer98638" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite189/Reviewer95621" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite84/Reviewer42300" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite106/Reviewer54449" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite3/Reviewer1204" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite47/Reviewer24059" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite280/Reviewer141673" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite42/Reviewer22009" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite120/Reviewer61859" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite138/Reviewer72155" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite266/Reviewer133878" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite153/Reviewer79685" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite277/Reviewer140029" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite153/Reviewer79686" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite219/Reviewer110807" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite175/Reviewer88663" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite108/Reviewer55983" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite49/Reviewer25250" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite21/Reviewer11073" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite103/Reviewer52941" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite178/Reviewer90493" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite79/Reviewer39744" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite167/Reviewer84593" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite242/Reviewer121372" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite287/Reviewer145115" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite16/Reviewer8651" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite215/Reviewer107994" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite222/Reviewer112071" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite214/Reviewer107497" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite44/Reviewer22452" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite204/Reviewer102631" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite210/Reviewer106021" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite258/Reviewer129805" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite267/Reviewer134632" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite7/Reviewer3178" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite204/Reviewer102754" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite85/Reviewer42974" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite175/Reviewer88677" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite183/Reviewer92961" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite49/Reviewer25487" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite225/Reviewer113259" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite106/Reviewer54305" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite49/Reviewer25482" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite101/Reviewer51870" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite25/Reviewer12834" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite214/Reviewer107797" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite282/Reviewer142635" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite288/Reviewer145482" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite49/Reviewer25115" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite138/Reviewer72137" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite24/Reviewer12519" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite51/Reviewer25623" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite28/Reviewer14066" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite42/Reviewer22104" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite166/Reviewer84344" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite119/Reviewer61274" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite79/Reviewer39912" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite130/Reviewer68196" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite3/Reviewer1216" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite41/Reviewer21286" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite266/Reviewer133789" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite266/Reviewer133786" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite55/Reviewer28249" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite271/Reviewer136828" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite179/Reviewer91254" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite16/Reviewer8592" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite253/Reviewer126597" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite242/Reviewer121311" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite16/Reviewer8593" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite150/Reviewer78056" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite122/Reviewer62711" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite69/Reviewer34493" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite149/Reviewer76927" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite271/Reviewer136830" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite75/Reviewer37389" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite51/Reviewer25974" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite141/Reviewer73823" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite148/Reviewer76713" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite51/Reviewer25971" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite243/Reviewer121771" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite125/Reviewer65003" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite15/Reviewer7332" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite15/Reviewer7334" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite134/Reviewer69822" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite133/Reviewer69687" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite252/Reviewer126389" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite211/Reviewer106277" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite71/Reviewer35840" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite255/Reviewer127968" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite37/Reviewer18459" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite30/Reviewer15208" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite9/Reviewer4356" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite108/Reviewer55669" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite7/Reviewer3144" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite29/Reviewer15006" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite268/Reviewer134808" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite267/Reviewer134600" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite133/Reviewer69558" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite152/Reviewer78562" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite76/Reviewer38110" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite94/Reviewer48181" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite185/Reviewer94387" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite282/Reviewer142842" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite16/Reviewer8215" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite226/Reviewer114517" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite264/Reviewer133016" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite225/Reviewer113331" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite278/Reviewer140543" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite122/Reviewer62732" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite36/Reviewer18112" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite37/Reviewer18688" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite268/Reviewer134817" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite195/Reviewer98815" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite237/Reviewer119475" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite108/Reviewer55893" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite25/Reviewer12982" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite134/Reviewer69963" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite54/Reviewer27094" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite98/Reviewer50840" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite105/Reviewer53963" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite88/Reviewer45168" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite89/Reviewer46121" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite239/Reviewer120276" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite260/Reviewer131441" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite274/Reviewer138275" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite40/Reviewer20572" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite18/Reviewer9729" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite188/Reviewer95273" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite122/Reviewer63039" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite85/Reviewer42804" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite97/Reviewer50522" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite189/Reviewer96301" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite188/Reviewer95267" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite248/Reviewer124586" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite200/Reviewer100803" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite134/Reviewer69891" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite237/Reviewer119527" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite57/Reviewer29256" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite226/Reviewer114217" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite274/Reviewer138384" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite260/Reviewer131551" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite154/Reviewer80001" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite84/Reviewer42705" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite87/Reviewer44152" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite64/Reviewer32152" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite120/Reviewer61805" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite20/Reviewer10501" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite51/Reviewer25935" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite211/Reviewer106703" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite126/Reviewer65418" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite28/Reviewer14491" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite98/Reviewer50869" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite252/Reviewer126054" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite58/Reviewer29593" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite226/Reviewer114453" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite95/Reviewer49250" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite280/Reviewer141814" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite57/Reviewer29026" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite280/Reviewer141815" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite61/Reviewer31198" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite67/Reviewer33458" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite95/Reviewer49330" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite59/Reviewer30004" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite66/Reviewer33107" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite11/Reviewer5073" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite179/Reviewer91065" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite180/Reviewer91941" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite53/Reviewer26911" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite195/Reviewer98475" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite20/Reviewer10710" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite208/Reviewer105079" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite245/Reviewer122845" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite122/Reviewer63187" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite283/Reviewer143423" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite67/Reviewer33692" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite83/Reviewer41951" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite83/Reviewer41830" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite126/Reviewer65683" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite18/Reviewer9638" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite5/Reviewer2098" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite226/Reviewer114543" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite203/Reviewer102540" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite42/Reviewer21546" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite95/Reviewer49109" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite258/Reviewer130514" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite208/Reviewer105093" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite147/Reviewer76290" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite180/Reviewer91813" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite28/Reviewer14118" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite254/Reviewer126914" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite124/Reviewer64123" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite37/Reviewer18529" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite21/Reviewer10935" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite22/Reviewer11911" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite57/Reviewer29162" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite274/Reviewer138247" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite66/Reviewer33350" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite67/Reviewer33563" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite131/Reviewer68550" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite89/Reviewer46044" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite110/Reviewer56727" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite276/Reviewer139292" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite70/Reviewer35232" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite108/Reviewer55808" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite73/Reviewer36387" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite152/Reviewer79151" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite285/Reviewer144266" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite108/Reviewer55925" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite76/Reviewer37763" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite125/Reviewer64789" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite108/Reviewer55800" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite59/Reviewer30184" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite16/Reviewer8517" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite97/Reviewer50209" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite277/Reviewer140046" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite212/Reviewer106784" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite126/Reviewer65741" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite70/Reviewer35369" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite266/Reviewer133701" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite262/Reviewer132118" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite286/Reviewer144347" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite207/Reviewer104485" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite207/Reviewer104364" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite23/Reviewer12390" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite28/Reviewer14578" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite96/Reviewer49497" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite177/Reviewer89952" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite78/Reviewer38903" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite130/Reviewer68345" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite46/Reviewer23506" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite76/Reviewer37754" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite248/Reviewer124555" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite226/Reviewer114376" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite38/Reviewer19209" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite101/Reviewer52102" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite57/Reviewer29104" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite239/Reviewer120453" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite92/Reviewer47394" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite127/Reviewer66323" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite81/Reviewer40677" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite105/Reviewer53944" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite95/Reviewer49017" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite219/Reviewer110167" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite203/Reviewer102453" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite248/Reviewer124769" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite239/Reviewer120450" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite61/Reviewer30910" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite177/Reviewer89926" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite222/Reviewer111972" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite210/Reviewer105946" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite136/Reviewer70994" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite136/Reviewer70996" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite11/Reviewer5026" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite8/Reviewer3743" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite285/Reviewer144047" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite57/Reviewer29351" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite194/Reviewer98159" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite75/Reviewer37557" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite147/Reviewer76014" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite17/Reviewer8789" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite173/Reviewer87949" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite58/Reviewer29580" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite254/Reviewer126825" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite131/Reviewer68880" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite144/Reviewer74800" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite94/Reviewer48444" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite64/Reviewer32214" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite131/Reviewer68883" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite238/Reviewer120006" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite63/Reviewer32129" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite215/Reviewer108489" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite68/Reviewer34221" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite285/Reviewer144277" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite37/Reviewer18846" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite18/Reviewer9660" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite53/Reviewer26707" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite33/Reviewer17276" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite45/Reviewer22782" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite141/Reviewer73647" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite70/Reviewer35350" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite117/Reviewer60378" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite34/Reviewer17561" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite7/Reviewer3095" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite173/Reviewer87834" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite106/Reviewer54622" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite92/Reviewer47256" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite283/Reviewer143634" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite264/Reviewer133095" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite128/Reviewer66496" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite273/Reviewer137626" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite42/Reviewer21737" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite224/Reviewer112939" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite130/Reviewer67979" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite38/Reviewer19110" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite97/Reviewer50482" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite233/Reviewer117521" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite61/Reviewer30813" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite156/Reviewer80892" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite177/Reviewer89985" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite137/Reviewer71615" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite63/Reviewer31800" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite12/Reviewer5601" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite199/Reviewer100064" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite150/Reviewer77829" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite80/Reviewer40333" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite131/Reviewer68742" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite61/Reviewer30946" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite258/Reviewer130334" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite258/Reviewer130573" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite219/Reviewer109980" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite118/Reviewer60568" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite148/Reviewer76352" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite52/Reviewer26555" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite226/Reviewer114292" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite167/Reviewer84927" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite117/Reviewer60114" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite272/Reviewer137264" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite47/Reviewer23873" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite266/Reviewer134150" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite14/Reviewer6604" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite261/Reviewer131890" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite219/Reviewer110128" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite156/Reviewer80994" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite286/Reviewer144456" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite144/Reviewer74972" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite203/Reviewer102497" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite129/Reviewer67313" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite210/Reviewer105869" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite196/Reviewer99038" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite20/Reviewer10317" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite222/Reviewer111776" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite121/Reviewer62379" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite121/Reviewer62380" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite261/Reviewer131987" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite243/Reviewer122159" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite229/Reviewer115685" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite217/Reviewer109530" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite232/Reviewer117021" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite263/Reviewer132682" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite144/Reviewer74845" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite80/Reviewer40591" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite53/Reviewer26740" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite183/Reviewer93145" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite282/Reviewer143339" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite38/Reviewer19347" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite97/Reviewer50390" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite286/Reviewer144441" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite230/Reviewer115925" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite112/Reviewer57649" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite163/Reviewer83500" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite68/Reviewer33975" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite227/Reviewer115027" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite20/Reviewer10448" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite235/Reviewer118318" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite231/Reviewer116356" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite179/Reviewer90826" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite40/Reviewer20525" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite221/Reviewer111280" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite258/Reviewer129893" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite219/Reviewer110788" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite190/Reviewer96437" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite63/Reviewer32095" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite6/Reviewer2915" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite79/Reviewer39599" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite266/Reviewer134068" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite190/Reviewer96675" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite286/Reviewer144518" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite80/Reviewer40420" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite104/Reviewer53656" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite27/Reviewer13786" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite34/Reviewer17616" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite49/Reviewer24948" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite87/Reviewer44404" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite230/Reviewer116060" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite257/Reviewer129573" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite125/Reviewer64940" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite88/Reviewer44958" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite48/Reviewer24501" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite17/Reviewer8803" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite74/Reviewer36779" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite208/Reviewer104965" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite149/Reviewer77220" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite169/Reviewer86140" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite142/Reviewer74214" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite98/Reviewer51111" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite59/Reviewer30115" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite152/Reviewer78900" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite217/Reviewer109350" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite275/Reviewer138716" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite122/Reviewer63244" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite256/Reviewer129235" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite104/Reviewer53427" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite19/Reviewer10126" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite181/Reviewer92176" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite258/Reviewer130651" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite68/Reviewer33995" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite45/Reviewer23012" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite263/Reviewer132616" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite61/Reviewer30981" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite283/Reviewer143370" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite211/Reviewer106507" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite251/Reviewer125870" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite109/Reviewer56492" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite127/Reviewer66085" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite208/Reviewer104977" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite52/Reviewer26113" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite25/Reviewer13011" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite18/Reviewer9800" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite260/Reviewer131100" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite198/Reviewer99973" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite104/Reviewer53439" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite247/Reviewer123980" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite54/Reviewer27752" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite86/Reviewer43582" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite269/Reviewer135789" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite171/Reviewer86762" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite245/Reviewer123330" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite148/Reviewer76372" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite267/Reviewer134284" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite22/Reviewer11821" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite170/Reviewer86642" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite200/Reviewer100620" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite170/Reviewer86644" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite245/Reviewer123219" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite131/Reviewer68923" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite60/Reviewer30400" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite240/Reviewer120802" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite219/Reviewer110329" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite157/Reviewer81521" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite143/Reviewer74426" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite2/Reviewer669" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite154/Reviewer80069" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite190/Reviewer96564" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite122/Reviewer63268" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite195/Reviewer98266" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite261/Reviewer131794" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite27/Reviewer13530" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite178/Reviewer90618" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite283/Reviewer143354" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite245/Reviewer123326" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite204/Reviewer103000" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite272/Reviewer137249" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite206/Reviewer103826" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite209/Reviewer105333" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite150/Reviewer77674" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite82/Reviewer41299" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite272/Reviewer137097" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite209/Reviewer105572" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite31/Reviewer15898" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite168/Reviewer85377" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite122/Reviewer62980" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite78/Reviewer39003" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite27/Reviewer13500" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite54/Reviewer27418" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite275/Reviewer138764" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite125/Reviewer64909" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite251/Reviewer125700" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite255/Reviewer128111" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite153/Reviewer79620" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite257/Reviewer129375" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite149/Reviewer76972" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite107/Reviewer55216" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite48/Reviewer24306" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite78/Reviewer39353" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite37/Reviewer19031" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite79/Reviewer39680" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite245/Reviewer123381" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite261/Reviewer131805" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite87/Reviewer44831" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite224/Reviewer113057" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite12/Reviewer5799" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite220/Reviewer110881" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite229/Reviewer115713" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite152/Reviewer78674" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite240/Reviewer120514" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite49/Reviewer25420" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite240/Reviewer120995" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite251/Reviewer125713" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite186/Reviewer94609" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite247/Reviewer124071" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite137/Reviewer71593" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite37/Reviewer19065" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite168/Reviewer85399" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite138/Reviewer72430" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite146/Reviewer75520" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite4/Reviewer1408" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite284/Reviewer143905" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite111/Reviewer57394" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite148/Reviewer76843" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite212/Reviewer107019" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite219/Reviewer110528" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite110/Reviewer57045" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite212/Reviewer107014" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite234/Reviewer118101" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite218/Reviewer109741" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite13/Reviewer6333" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite213/Reviewer107287" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite52/Reviewer26381" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite103/Reviewer53078" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite270/Reviewer136075" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite186/Reviewer94738" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite27/Reviewer13978" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite226/Reviewer113906" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite211/Reviewer106362" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite17/Reviewer9048" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite182/Reviewer92245" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite129/Reviewer67288" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite86/Reviewer43792" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite279/Reviewer141010" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite77/Reviewer38279" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite82/Reviewer41262" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite173/Reviewer88050" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite39/Reviewer20021" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite258/Reviewer130077" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite269/Reviewer135077" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite284/Reviewer143916" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite123/Reviewer63745" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite258/Reviewer130196" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite124/Reviewer63950" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite60/Reviewer30432" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite48/Reviewer24316" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite175/Reviewer89124" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite226/Reviewer113955" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite150/Reviewer77478" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite25/Reviewer12676" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite67/Reviewer33837" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite37/Reviewer19003" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite173/Reviewer88261" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite62/Reviewer31533" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite187/Reviewer94972" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite140/Reviewer73114" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite72/Reviewer36188" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite245/Reviewer123194" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite238/Reviewer119726" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite90/Reviewer46215" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite217/Reviewer109519" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite212/Reviewer107076" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite162/Reviewer83099" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite259/Reviewer130809" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite107/Reviewer55255" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite267/Reviewer134466" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite182/Reviewer92405" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite63/Reviewer31849" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite48/Reviewer24345" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite96/Reviewer49828" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite5/Reviewer2624" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite6/Reviewer2886" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite272/Reviewer137185" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite245/Reviewer123181" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite209/Reviewer105761" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite54/Reviewer27342" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite142/Reviewer74171" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite273/Reviewer137950" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite238/Reviewer119957" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite129/Reviewer67186" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite231/Reviewer116575" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite22/Reviewer11777" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite10/Reviewer4622" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite269/Reviewer135178" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite210/Reviewer106120" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite32/Reviewer16998" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite52/Reviewer26074" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite47/Reviewer24007" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite83/Reviewer42133" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite142/Reviewer74042" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite56/Reviewer28824" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite197/Reviewer99189" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite54/Reviewer27232" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite132/Reviewer69296" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite86/Reviewer43621" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite178/Reviewer90588" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite118/Reviewer60814" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite15/Reviewer7295" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite22/Reviewer11785" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite82/Reviewer41195" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite288/Reviewer145628" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite12/Reviewer5862" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite259/Reviewer130902" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite152/Reviewer78840" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite249/Reviewer125095" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite32/Reviewer16401" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite14/Reviewer6799" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite77/Reviewer38595" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite47/Reviewer24145" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite138/Reviewer72520" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite190/Reviewer96720" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite252/Reviewer126311" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite37/Reviewer19012" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite177/Reviewer90120" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite284/Reviewer143843" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite244/Reviewer122331" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite231/Reviewer116673" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "1" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite186/Reviewer94653" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite200/Reviewer100595" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite123/Reviewer63822" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite263/Reviewer132914" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite62/Reviewer31308" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite111/Reviewer57243" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite60/Reviewer30596" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite32/Reviewer16659" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "2" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite1/Reviewer278" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite57/Reviewer28952" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "4" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite249/Reviewer125085" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      } ,
+      { 
+        "reviewer": { "type": "uri" , "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite206/Reviewer103876" } ,
+        "n": { "type": "literal" , "datatype": "http://www.w3.org/2001/XMLSchema#integer" , "value": "3" }
+      }
+    ]
+  }
+}
