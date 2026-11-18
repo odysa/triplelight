@@ -1,0 +1,1 @@
+SELECT ?r ?x WHERE { ?r <urn:outer> ?x FILTER EXISTS { ?x <urn:p> ?v } } ORDER BY ?r
