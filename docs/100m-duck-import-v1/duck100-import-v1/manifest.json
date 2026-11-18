@@ -1,0 +1,23 @@
+{
+  "input": {
+    "source": "<agent-workspace>/rdfdb/bench/tools/bsbm100.nt",
+    "bytes": 25965260343,
+    "sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
+    "stat_unchanged_during_hash": true,
+    "mtime_ns": 1794884566689423931,
+    "operation": "read-only hash, no import or query execution",
+    "hash_elapsed_seconds": 28.69657462486066
+  },
+  "source_hashes": {
+    "bench-source/ladybug/native.py": "0d6adb78dd4020bd7754553f0916f28261538d511ea6e89d881f9d23e3981810",
+    "bench-source/analytical/duck_load.py": "cfaf6632da65ced11c38cb694e57cbc2112a8ce20ce96fb412a96b5bfea1169e",
+    "bench-source/analytical/supervise_import.py": "70253e919c66f6a456ad9ead645c4c5af86b6aff916f0e045016a5ec5a0ef0e8"
+  },
+  "expected_graph_count": 98861444,
+  "started_unix": 1795011628.672661,
+  "source_stat": {
+    "size": 25965260343,
+    "mtime_ns": 1794884566689423931
+  },
+  "scope": "graph reference preparation, not comparative load timing; parsed status is not resumable"
+}
