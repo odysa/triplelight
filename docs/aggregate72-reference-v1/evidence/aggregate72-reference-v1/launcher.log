@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/private/tmp/rdf-jianlin-analytical25/aggregate72-preparation-v1/source/supervise_import.py", line 93, in <module>
+    supervise(args)
+    ~~~~~~~~~^^^^^^
+  File "/private/tmp/rdf-jianlin-analytical25/aggregate72-preparation-v1/source/supervise_import.py", line 70, in supervise
+    time.sleep(2)
+    ~~~~~~~~~~^^^
+  File "/private/tmp/rdf-jianlin-analytical25/aggregate72-preparation-v1/source/supervise_import.py", line 91, in interrupted
+    raise KeyboardInterrupt('Supervisor received signal '+str(signum))
+KeyboardInterrupt: Supervisor received signal 15
+Reply sent to (internal discussion). Message ID: 4f11be94-5634-481a-98f4-a35e190806b8

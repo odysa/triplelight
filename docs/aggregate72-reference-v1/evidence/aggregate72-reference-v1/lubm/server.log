@@ -1,0 +1,525 @@
+[2026-11-18 17:13:47] Fuseki     INFO  Apache Jena Fuseki 6.2.0
+[2026-11-18 17:13:47] Server     INFO  Dataset: in-memory: load file: <agent-workspace>/rdfdb/bench/tools/lubm100.nt
+[2026-11-18 17:16:35] Config     INFO  Fuseki Base = /private/tmp/rdf-jianlin-analytical25/aggregate72-reference-v1/lubm/run
+[2026-11-18 17:16:35] Config     INFO  Database: /ds
+[2026-11-18 17:16:36] Config     INFO  UI Base: fuseki-server.jar
+[2026-11-18 17:16:36] Shiro      INFO  Shiro configuration: file:/private/tmp/rdf-jianlin-analytical25/aggregate72-reference-v1/lubm/run/shiro.ini
+[2026-11-18 17:16:37] Server     INFO  Path = /ds
+[2026-11-18 17:16:37] Server     INFO  System
+[2026-11-18 17:16:37] Server     INFO    Memory: 8.0 GiB
+[2026-11-18 17:16:37] Server     INFO    PID:    75995
+[2026-11-18 17:16:38] Server     INFO    Port:   http=31446
+[2026-11-18 17:16:38] Server     INFO  Start Fuseki
+[2026-11-18 17:16:38] Fuseki     INFO  [1] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:16:38] Fuseki     INFO  [1] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:16:40] Fuseki     INFO  [2] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:16:40] Fuseki     INFO  [2] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:16:43] Fuseki     INFO  [3] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:16:43] Fuseki     INFO  [3] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:16:47] Fuseki     INFO  [4] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:16:47] Fuseki     INFO  [4] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:16:58] Fuseki     INFO  [5] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:16:58] Fuseki     INFO  [5] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:16:58] Fuseki     INFO  [6] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:16:58] Fuseki     INFO  [6] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:16:58] Fuseki     INFO  [7] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:16:58] Fuseki     INFO  [7] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:16:59] Fuseki     INFO  [8] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:16:59] Fuseki     INFO  [8] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:17:02] Fuseki     INFO  [9] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:17:02] Fuseki     INFO  [9] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:17:05] Fuseki     INFO  [10] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:17:05] Fuseki     INFO  [10] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:17:08] Fuseki     INFO  [11] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:17:08] Fuseki     INFO  [11] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:17:11] Fuseki     INFO  [12] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:17:11] Fuseki     INFO  [12] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:17:14] Fuseki     INFO  [13] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:17:14] Fuseki     INFO  [13] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:17:18] Fuseki     INFO  [14] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:17:18] Fuseki     INFO  [14] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:17:21] Fuseki     INFO  [15] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:17:21] Fuseki     INFO  [15] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:17:24] Fuseki     INFO  [16] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:17:24] Fuseki     INFO  [16] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:17:27] Fuseki     INFO  [17] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:17:27] Fuseki     INFO  [17] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:17:38] Fuseki     INFO  [1] 200 OK (59.720 s)
+[2026-11-18 17:17:38] Fuseki     INFO  [2] 200 OK (57.141 s)
+[2026-11-18 17:17:38] Fuseki     INFO  [18] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:17:38] Fuseki     INFO  [18] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:17:38] Fuseki     INFO  [19] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:17:38] Fuseki     INFO  [19] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:17:38] Fuseki     INFO  [3] 200 OK (54.662 s)
+[2026-11-18 17:17:44] Fuseki     INFO  [4] 200 OK (57.552 s)
+[2026-11-18 17:17:44] Fuseki     INFO  [20] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:17:44] Fuseki     INFO  [20] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:00] Fuseki     WARN  [7] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:18:00] Fuseki     INFO  [7] 500 Server Error (62.098 s)
+[2026-11-18 17:18:00] Fuseki     INFO  [21] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:00] Fuseki     INFO  [21] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:00] Fuseki     INFO  [22] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:00] Fuseki     INFO  [22] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:00] Fuseki     WARN  [6] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:18:00] Fuseki     INFO  [6] 500 Server Error (62.721 s)
+[2026-11-18 17:18:01] Fuseki     WARN  [5] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:18:01] Fuseki     INFO  [5] 500 Server Error (63.153 s)
+[2026-11-18 17:18:01] Fuseki     INFO  [23] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:01] Fuseki     INFO  [23] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:01] Fuseki     INFO  [8] 200 OK (61.548 s)
+[2026-11-18 17:18:01] Fuseki     INFO  [24] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:01] Fuseki     INFO  [24] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:03] Fuseki     INFO  [9] 200 OK (60.695 s)
+[2026-11-18 17:18:03] Fuseki     INFO  [25] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:03] Fuseki     INFO  [25] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:05] Fuseki     INFO  [10] 200 OK (59.164 s)
+[2026-11-18 17:18:05] Fuseki     INFO  [26] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:05] Fuseki     INFO  [26] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:07] Fuseki     INFO  [11] 200 OK (58.128 s)
+[2026-11-18 17:18:07] Fuseki     INFO  [27] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:07] Fuseki     INFO  [27] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:09] Fuseki     INFO  [12] 200 OK (57.396 s)
+[2026-11-18 17:18:09] Fuseki     INFO  [28] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:09] Fuseki     INFO  [28] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:11] Fuseki     INFO  [13] 200 OK (56.985 s)
+[2026-11-18 17:18:11] Fuseki     INFO  [29] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:11] Fuseki     INFO  [29] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:11] Fuseki     INFO  [30] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:11] Fuseki     INFO  [30] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:17] Fuseki     INFO  [14] 200 OK (59.009 s)
+[2026-11-18 17:18:19] Fuseki     INFO  [15] 200 OK (57.849 s)
+[2026-11-18 17:18:19] Fuseki     INFO  [31] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:19] Fuseki     INFO  [31] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:20] Fuseki     INFO  [16] 200 OK (56.275 s)
+[2026-11-18 17:18:20] Fuseki     INFO  [32] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:20] Fuseki     INFO  [32] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:20] Fuseki     INFO  [33] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:20] Fuseki     INFO  [33] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:25] Fuseki     INFO  [17] 200 OK (58.244 s)
+[2026-11-18 17:18:25] Fuseki     INFO  [34] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:25] Fuseki     INFO  [34] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:33] Fuseki     WARN  [19] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:18:33] Fuseki     INFO  [19] 500 Server Error (54.922 s)
+[2026-11-18 17:18:33] Fuseki     INFO  [35] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:33] Fuseki     INFO  [35] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:33] Fuseki     INFO  [36] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:33] Fuseki     INFO  [36] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:35] Fuseki     INFO  [18] 200 OK (57.084 s)
+[2026-11-18 17:18:42] Fuseki     WARN  [20] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:18:42] Fuseki     INFO  [20] 500 Server Error (57.446 s)
+[2026-11-18 17:18:42] Fuseki     INFO  [37] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:42] Fuseki     INFO  [37] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:59] Fuseki     WARN  [21] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:18:59] Fuseki     INFO  [21] 500 Server Error (58.737 s)
+[2026-11-18 17:18:59] Fuseki     WARN  [22] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:18:59] Fuseki     INFO  [22] 500 Server Error (59.047 s)
+[2026-11-18 17:18:59] Fuseki     INFO  [38] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:59] Fuseki     INFO  [38] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:59] Fuseki     WARN  [23] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:18:59] Fuseki     INFO  [23] 500 Server Error (58.601 s)
+[2026-11-18 17:18:59] Fuseki     INFO  [39] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:59] Fuseki     INFO  [39] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:59] Fuseki     INFO  [40] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:59] Fuseki     INFO  [40] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:18:59] Fuseki     INFO  [41] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:18:59] Fuseki     INFO  [41] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:00] Fuseki     WARN  [24] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:00] Fuseki     INFO  [24] 500 Server Error (58.717 s)
+[2026-11-18 17:19:00] Fuseki     INFO  [42] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:00] Fuseki     INFO  [42] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:01] Fuseki     WARN  [25] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:01] Fuseki     INFO  [25] 500 Server Error (57.498 s)
+[2026-11-18 17:19:01] Fuseki     INFO  [43] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:01] Fuseki     INFO  [43] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:02] Fuseki     WARN  [26] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:02] Fuseki     INFO  [26] 500 Server Error (57.733 s)
+[2026-11-18 17:19:02] Fuseki     INFO  [44] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:02] Fuseki     INFO  [44] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:06] Fuseki     WARN  [27] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:06] Fuseki     INFO  [27] 500 Server Error (59.612 s)
+[2026-11-18 17:19:07] Fuseki     WARN  [28] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:07] Fuseki     INFO  [28] 500 Server Error (58.511 s)
+[2026-11-18 17:19:07] Fuseki     INFO  [45] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:07] Fuseki     INFO  [45] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:11] Fuseki     WARN  [29] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:11] Fuseki     INFO  [29] 500 Server Error (59.524 s)
+[2026-11-18 17:19:11] Fuseki     WARN  [30] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:11] Fuseki     INFO  [30] 500 Server Error (59.576 s)
+[2026-11-18 17:19:11] Fuseki     INFO  [46] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:11] Fuseki     INFO  [46] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:16] Fuseki     WARN  [31] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:16] Fuseki     INFO  [31] 500 Server Error (57.865 s)
+[2026-11-18 17:19:16] Fuseki     INFO  [47] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:16] Fuseki     INFO  [47] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:17] Fuseki     INFO  [32] 200 OK (56.747 s)
+[2026-11-18 17:19:17] Fuseki     INFO  [48] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:17] Fuseki     INFO  [49] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:17] Fuseki     INFO  [48] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:17] Fuseki     INFO  [49] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:18] Fuseki     WARN  [33] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:18] Fuseki     INFO  [33] 500 Server Error (57.769 s)
+[2026-11-18 17:19:22] Fuseki     WARN  [34] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:22] Fuseki     INFO  [34] 500 Server Error (56.630 s)
+[2026-11-18 17:19:22] Fuseki     INFO  [50] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:22] Fuseki     INFO  [50] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:30] Fuseki     WARN  [36] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:30] Fuseki     INFO  [36] 500 Server Error (56.994 s)
+[2026-11-18 17:19:30] Fuseki     INFO  [51] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:30] Fuseki     INFO  [51] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:30] Fuseki     WARN  [35] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:30] Fuseki     INFO  [35] 500 Server Error (57.357 s)
+[2026-11-18 17:19:30] Fuseki     INFO  [52] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:30] Fuseki     INFO  [52] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:38] Fuseki     WARN  [37] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:38] Fuseki     INFO  [37] 500 Server Error (56.054 s)
+[2026-11-18 17:19:38] Fuseki     INFO  [53] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:38] Fuseki     INFO  [53] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:52] Fuseki     WARN  [38] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:52] Fuseki     INFO  [38] 500 Server Error (53.005 s)
+[2026-11-18 17:19:52] Fuseki     INFO  [54] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:52] Fuseki     INFO  [55] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:52] Fuseki     INFO  [54] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:52] Fuseki     INFO  [55] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:52] Fuseki     WARN  [39] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:52] Fuseki     INFO  [39] 500 Server Error (52.469 s)
+[2026-11-18 17:19:52] Fuseki     WARN  [41] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:52] Fuseki     INFO  [41] 500 Server Error (52.487 s)
+[2026-11-18 17:19:52] Fuseki     INFO  [56] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:52] Fuseki     INFO  [56] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:52] Fuseki     WARN  [40] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:52] Fuseki     INFO  [40] 500 Server Error (52.557 s)
+[2026-11-18 17:19:52] Fuseki     INFO  [57] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:52] Fuseki     INFO  [57] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:52] Fuseki     INFO  [42] 200 OK (52.504 s)
+[2026-11-18 17:19:52] Fuseki     INFO  [58] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:52] Fuseki     INFO  [58] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:53] Fuseki     WARN  [43] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:53] Fuseki     INFO  [43] 500 Server Error (52.572 s)
+[2026-11-18 17:19:53] Fuseki     INFO  [59] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:53] Fuseki     INFO  [59] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:54] Fuseki     WARN  [44] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:54] Fuseki     INFO  [44] 500 Server Error (51.815 s)
+[2026-11-18 17:19:54] Fuseki     INFO  [60] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:54] Fuseki     INFO  [60] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:19:58] Fuseki     WARN  [45] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:19:58] Fuseki     INFO  [45] 500 Server Error (50.424 s)
+[2026-11-18 17:19:58] Fuseki     INFO  [61] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:19:58] Fuseki     INFO  [61] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:01] Fuseki     WARN  [46] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:01] Fuseki     INFO  [46] 500 Server Error (49.673 s)
+[2026-11-18 17:20:01] Fuseki     INFO  [62] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:01] Fuseki     INFO  [62] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:04] Fuseki     INFO  [48] 200 OK (47.726 s)
+[2026-11-18 17:20:04] Fuseki     INFO  [63] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:04] Fuseki     INFO  [63] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:05] Fuseki     WARN  [47] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:05] Fuseki     INFO  [47] 500 Server Error (48.075 s)
+[2026-11-18 17:20:05] Fuseki     INFO  [64] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:05] Fuseki     INFO  [64] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:05] Fuseki     INFO  [49] 200 OK (48.310 s)
+[2026-11-18 17:20:05] Fuseki     INFO  [65] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:05] Fuseki     INFO  [65] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:08] Fuseki     WARN  [50] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:08] Fuseki     INFO  [50] 500 Server Error (46.633 s)
+[2026-11-18 17:20:08] Fuseki     INFO  [66] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:08] Fuseki     INFO  [66] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:08] Fuseki     INFO  [67] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:08] Fuseki     INFO  [67] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:15] Fuseki     WARN  [51] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:15] Fuseki     INFO  [51] 500 Server Error (45.010 s)
+[2026-11-18 17:20:15] Fuseki     INFO  [68] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:15] Fuseki     INFO  [68] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:15] Fuseki     INFO  [52] 200 OK (45.126 s)
+[2026-11-18 17:20:22] Fuseki     WARN  [53] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:22] Fuseki     INFO  [53] 500 Server Error (44.409 s)
+[2026-11-18 17:20:22] Fuseki     INFO  [69] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:22] Fuseki     INFO  [69] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:39] Fuseki     WARN  [58] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:39] Fuseki     INFO  [58] 500 Server Error (47.255 s)
+[2026-11-18 17:20:39] Fuseki     INFO  [70] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:39] Fuseki     INFO  [71] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:39] Fuseki     INFO  [71] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:39] Fuseki     INFO  [70] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:39] Fuseki     WARN  [54] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:39] Fuseki     INFO  [54] 500 Server Error (47.566 s)
+[2026-11-18 17:20:40] Fuseki     WARN  [57] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:40] Fuseki     INFO  [57] 500 Server Error (47.536 s)
+[2026-11-18 17:20:40] Fuseki     INFO  [72] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:40] Fuseki     INFO  [72] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:40] Fuseki     INFO  [56] 200 OK (47.686 s)
+[2026-11-18 17:20:40] Fuseki     INFO  [73] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:40] Fuseki     INFO  [73] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:40] Fuseki     WARN  [55] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:40] Fuseki     INFO  [55] 500 Server Error (47.799 s)
+[2026-11-18 17:20:40] Fuseki     INFO  [74] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:40] Fuseki     INFO  [74] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:41] Fuseki     WARN  [59] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:41] Fuseki     INFO  [59] 500 Server Error (47.909 s)
+[2026-11-18 17:20:41] Fuseki     INFO  [75] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:41] Fuseki     INFO  [75] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:43] Fuseki     WARN  [60] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:43] Fuseki     INFO  [60] 500 Server Error (49.290 s)
+[2026-11-18 17:20:44] Fuseki     INFO  [76] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:44] Fuseki     INFO  [76] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:47] Fuseki     WARN  [61] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:47] Fuseki     INFO  [61] 500 Server Error (49.290 s)
+[2026-11-18 17:20:47] Fuseki     INFO  [77] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:47] Fuseki     INFO  [77] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:52] Fuseki     WARN  [62] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:52] Fuseki     INFO  [62] 500 Server Error (51.224 s)
+[2026-11-18 17:20:52] Fuseki     INFO  [78] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:52] Fuseki     INFO  [78] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:57] Fuseki     WARN  [64] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:57] Fuseki     INFO  [64] 500 Server Error (52.251 s)
+[2026-11-18 17:20:57] Fuseki     INFO  [79] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:57] Fuseki     INFO  [79] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:57] Fuseki     WARN  [63] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:57] Fuseki     INFO  [63] 500 Server Error (52.515 s)
+[2026-11-18 17:20:57] Fuseki     INFO  [80] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:57] Fuseki     INFO  [80] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:57] Fuseki     INFO  [81] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:57] Fuseki     INFO  [81] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:20:57] Fuseki     WARN  [65] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:20:57] Fuseki     INFO  [65] 500 Server Error (52.095 s)
+[2026-11-18 17:20:57] Fuseki     INFO  [82] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:20:57] Fuseki     INFO  [82] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:01] Fuseki     INFO  [66] 200 OK (53.147 s)
+[2026-11-18 17:21:02] Fuseki     INFO  [67] 200 OK (53.247 s)
+[2026-11-18 17:21:02] Fuseki     INFO  [83] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:02] Fuseki     INFO  [83] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:10] Fuseki     WARN  [68] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:10] Fuseki     INFO  [68] 500 Server Error (55.366 s)
+[2026-11-18 17:21:10] Fuseki     INFO  [84] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:10] Fuseki     INFO  [84] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:19] Fuseki     WARN  [69] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:19] Fuseki     INFO  [69] 500 Server Error (57.347 s)
+[2026-11-18 17:21:19] Fuseki     INFO  [85] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:19] Fuseki     INFO  [85] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:35] Fuseki     INFO  [72] 200 OK (55.343 s)
+[2026-11-18 17:21:35] Fuseki     INFO  [86] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:35] Fuseki     INFO  [87] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:35] Fuseki     INFO  [86] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:35] Fuseki     INFO  [87] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:35] Fuseki     WARN  [70] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:35] Fuseki     INFO  [70] 500 Server Error (55.564 s)
+[2026-11-18 17:21:35] Fuseki     INFO  [71] 200 OK (55.768 s)
+[2026-11-18 17:21:35] Fuseki     INFO  [88] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:35] Fuseki     INFO  [88] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:36] Fuseki     WARN  [74] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:36] Fuseki     INFO  [74] 500 Server Error (55.971 s)
+[2026-11-18 17:21:36] Fuseki     INFO  [89] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:36] Fuseki     INFO  [89] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:36] Fuseki     WARN  [73] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:36] Fuseki     INFO  [73] 500 Server Error (56.327 s)
+[2026-11-18 17:21:36] Fuseki     INFO  [90] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:36] Fuseki     INFO  [90] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:36] Fuseki     WARN  [75] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:36] Fuseki     INFO  [75] 500 Server Error (55.049 s)
+[2026-11-18 17:21:36] Fuseki     INFO  [91] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:36] Fuseki     INFO  [91] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:39] Fuseki     WARN  [76] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:39] Fuseki     INFO  [76] 500 Server Error (55.449 s)
+[2026-11-18 17:21:39] Fuseki     INFO  [92] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:39] Fuseki     INFO  [92] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:41] Fuseki     WARN  [77] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:41] Fuseki     INFO  [77] 500 Server Error (53.809 s)
+[2026-11-18 17:21:41] Fuseki     INFO  [93] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:41] Fuseki     INFO  [93] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:46] Fuseki     WARN  [78] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:46] Fuseki     INFO  [78] 500 Server Error (53.461 s)
+[2026-11-18 17:21:46] Fuseki     INFO  [94] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:46] Fuseki     INFO  [94] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:49] Fuseki     WARN  [81] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:49] Fuseki     INFO  [81] 500 Server Error (51.728 s)
+[2026-11-18 17:21:49] Fuseki     INFO  [95] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:49] Fuseki     INFO  [95] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:49] Fuseki     WARN  [80] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:49] Fuseki     INFO  [80] 500 Server Error (51.897 s)
+[2026-11-18 17:21:49] Fuseki     INFO  [96] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:49] Fuseki     INFO  [96] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:49] Fuseki     INFO  [82] 200 OK (52.028 s)
+[2026-11-18 17:21:49] Fuseki     INFO  [97] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:49] Fuseki     INFO  [97] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:49] Fuseki     WARN  [79] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:49] Fuseki     INFO  [79] 500 Server Error (52.573 s)
+[2026-11-18 17:21:49] Fuseki     INFO  [98] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:49] Fuseki     INFO  [98] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:53] Fuseki     WARN  [83] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:53] Fuseki     INFO  [83] 500 Server Error (51.159 s)
+[2026-11-18 17:21:53] Fuseki     INFO  [99] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:53] Fuseki     INFO  [99] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:53] Fuseki     INFO  [100] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:53] Fuseki     INFO  [100] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:53] Fuseki     INFO  [101] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:53] Fuseki     INFO  [101] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:21:59] Fuseki     WARN  [84] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:21:59] Fuseki     INFO  [84] 500 Server Error (49.165 s)
+[2026-11-18 17:21:59] Fuseki     INFO  [102] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:21:59] Fuseki     INFO  [102] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:09] Fuseki     WARN  [85] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:09] Fuseki     INFO  [85] 500 Server Error (49.538 s)
+[2026-11-18 17:22:24] Fuseki     WARN  [87] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:24] Fuseki     INFO  [87] 500 Server Error (49.114 s)
+[2026-11-18 17:22:24] Fuseki     INFO  [86] 200 OK (49.572 s)
+[2026-11-18 17:22:24] Fuseki     INFO  [103] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:24] Fuseki     INFO  [103] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:24] Fuseki     INFO  [104] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:24] Fuseki     INFO  [104] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:25] Fuseki     WARN  [88] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:25] Fuseki     INFO  [88] 500 Server Error (50.049 s)
+[2026-11-18 17:22:25] Fuseki     INFO  [105] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:25] Fuseki     INFO  [105] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:26] Fuseki     WARN  [89] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:26] Fuseki     INFO  [89] 500 Server Error (49.879 s)
+[2026-11-18 17:22:26] Fuseki     INFO  [90] 200 OK (49.981 s)
+[2026-11-18 17:22:26] Fuseki     INFO  [106] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:26] Fuseki     INFO  [106] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:27] Fuseki     INFO  [91] 200 OK (50.326 s)
+[2026-11-18 17:22:27] Fuseki     INFO  [107] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:27] Fuseki     INFO  [107] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:30] Fuseki     WARN  [92] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:30] Fuseki     INFO  [92] 500 Server Error (50.765 s)
+[2026-11-18 17:22:30] Fuseki     INFO  [108] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:30] Fuseki     INFO  [108] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:32] Fuseki     INFO  [93] 200 OK (51.290 s)
+[2026-11-18 17:22:32] Fuseki     INFO  [109] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:32] Fuseki     INFO  [109] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:38] Fuseki     WARN  [94] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:38] Fuseki     INFO  [94] 500 Server Error (52.170 s)
+[2026-11-18 17:22:38] Fuseki     INFO  [110] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:38] Fuseki     INFO  [110] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:41] Fuseki     WARN  [95] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:41] Fuseki     INFO  [95] 500 Server Error (52.194 s)
+[2026-11-18 17:22:41] Fuseki     INFO  [111] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:41] Fuseki     INFO  [111] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:41] Fuseki     WARN  [96] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:41] Fuseki     INFO  [96] 500 Server Error (52.439 s)
+[2026-11-18 17:22:41] Fuseki     INFO  [112] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:41] Fuseki     INFO  [112] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:42] Fuseki     WARN  [97] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:42] Fuseki     INFO  [97] 500 Server Error (52.925 s)
+[2026-11-18 17:22:42] Fuseki     INFO  [113] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:42] Fuseki     INFO  [114] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:42] Fuseki     INFO  [113] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:42] Fuseki     INFO  [114] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:42] Fuseki     WARN  [98] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:42] Fuseki     INFO  [98] 500 Server Error (52.904 s)
+[2026-11-18 17:22:42] Fuseki     INFO  [115] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:42] Fuseki     INFO  [115] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:46] Fuseki     INFO  [101] 200 OK (53.622 s)
+[2026-11-18 17:22:47] Fuseki     WARN  [100] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:47] Fuseki     INFO  [100] 500 Server Error (54.064 s)
+[2026-11-18 17:22:47] Fuseki     INFO  [116] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:47] Fuseki     INFO  [116] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:47] Fuseki     WARN  [99] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:47] Fuseki     INFO  [99] 500 Server Error (54.282 s)
+[2026-11-18 17:22:47] Fuseki     INFO  [117] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:47] Fuseki     INFO  [117] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:22:54] Fuseki     WARN  [102] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:22:54] Fuseki     INFO  [102] 500 Server Error (55.236 s)
+[2026-11-18 17:22:54] Fuseki     INFO  [118] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:22:54] Fuseki     INFO  [118] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:19] Fuseki     WARN  [104] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:23:19] Fuseki     INFO  [104] 500 Server Error (54.671 s)
+[2026-11-18 17:23:19] Fuseki     INFO  [119] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:19] Fuseki     INFO  [120] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:19] Fuseki     INFO  [119] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:19] Fuseki     INFO  [120] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:19] Fuseki     INFO  [121] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:19] Fuseki     INFO  [121] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:19] Fuseki     WARN  [103] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:23:19] Fuseki     INFO  [103] 500 Server Error (54.765 s)
+[2026-11-18 17:23:20] Fuseki     INFO  [105] 200 OK (54.602 s)
+[2026-11-18 17:23:20] Fuseki     INFO  [122] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:20] Fuseki     INFO  [122] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:20] Fuseki     WARN  [106] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:23:20] Fuseki     INFO  [106] 500 Server Error (54.528 s)
+[2026-11-18 17:23:21] Fuseki     WARN  [107] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:23:21] Fuseki     INFO  [107] 500 Server Error (54.602 s)
+[2026-11-18 17:23:21] Fuseki     INFO  [123] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:21] Fuseki     INFO  [123] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:25] Fuseki     WARN  [108] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:23:25] Fuseki     INFO  [108] 500 Server Error (55.004 s)
+[2026-11-18 17:23:25] Fuseki     INFO  [124] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:25] Fuseki     INFO  [124] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:27] Fuseki     WARN  [109] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:23:27] Fuseki     INFO  [109] 500 Server Error (54.623 s)
+[2026-11-18 17:23:27] Fuseki     INFO  [125] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:27] Fuseki     INFO  [125] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:31] Fuseki     WARN  [110] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:23:31] Fuseki     INFO  [110] 500 Server Error (53.707 s)
+[2026-11-18 17:23:31] Fuseki     INFO  [126] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:31] Fuseki     INFO  [126] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:34] Fuseki     WARN  [112] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:23:34] Fuseki     INFO  [112] 500 Server Error (53.016 s)
+[2026-11-18 17:23:34] Fuseki     INFO  [127] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:34] Fuseki     INFO  [127] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:35] Fuseki     WARN  [111] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:23:35] Fuseki     INFO  [111] 500 Server Error (53.836 s)
+[2026-11-18 17:23:35] Fuseki     INFO  [128] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:35] Fuseki     INFO  [129] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:35] Fuseki     INFO  [129] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:35] Fuseki     INFO  [128] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:35] Fuseki     INFO  [114] 200 OK (53.128 s)
+[2026-11-18 17:23:36] Fuseki     WARN  [113] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:23:36] Fuseki     INFO  [113] 500 Server Error (53.790 s)
+[2026-11-18 17:23:36] Fuseki     INFO  [130] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:36] Fuseki     INFO  [130] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:36] Fuseki     INFO  [115] 200 OK (53.888 s)
+[2026-11-18 17:23:36] Fuseki     INFO  [131] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:36] Fuseki     INFO  [131] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:39] Fuseki     INFO  [116] 200 OK (52.109 s)
+[2026-11-18 17:23:39] Fuseki     INFO  [132] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:39] Fuseki     INFO  [133] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:39] Fuseki     INFO  [133] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:39] Fuseki     INFO  [132] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:40] Fuseki     WARN  [117] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:23:40] Fuseki     INFO  [117] 500 Server Error (52.946 s)
+[2026-11-18 17:23:40] Fuseki     INFO  [134] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:23:40] Fuseki     INFO  [134] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:23:46] Fuseki     WARN  [118] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:23:46] Fuseki     INFO  [118] 500 Server Error (51.840 s)
+[2026-11-18 17:24:07] Fuseki     WARN  [120] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:24:07] Fuseki     INFO  [120] 500 Server Error (48.318 s)
+[2026-11-18 17:24:07] Fuseki     INFO  [135] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:24:07] Fuseki     INFO  [135] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:24:08] Fuseki     WARN  [119] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:24:08] Fuseki     INFO  [119] 500 Server Error (48.803 s)
+[2026-11-18 17:24:08] Fuseki     INFO  [136] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:24:08] Fuseki     INFO  [136] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:24:08] Fuseki     WARN  [121] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:24:08] Fuseki     INFO  [121] 500 Server Error (49.187 s)
+[2026-11-18 17:24:08] Fuseki     INFO  [137] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:24:08] Fuseki     INFO  [137] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:24:09] Fuseki     WARN  [122] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:24:09] Fuseki     INFO  [122] 500 Server Error (49.554 s)
+[2026-11-18 17:24:09] Fuseki     INFO  [138] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:24:09] Fuseki     INFO  [139] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:24:09] Fuseki     INFO  [138] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:24:09] Fuseki     INFO  [139] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:24:10] Fuseki     WARN  [123] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:24:10] Fuseki     INFO  [123] 500 Server Error (48.747 s)
+[2026-11-18 17:24:10] Fuseki     INFO  [140] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:24:10] Fuseki     INFO  [140] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:24:13] Fuseki     WARN  [124] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:24:13] Fuseki     INFO  [124] 500 Server Error (48.664 s)
+[2026-11-18 17:24:16] Fuseki     WARN  [125] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:24:16] Fuseki     INFO  [125] 500 Server Error (48.962 s)
+[2026-11-18 17:24:16] Fuseki     INFO  [141] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:24:16] Fuseki     INFO  [141] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:24:22] Fuseki     WARN  [126] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:24:22] Fuseki     INFO  [126] 500 Server Error (50.338 s)
+[2026-11-18 17:24:22] Fuseki     INFO  [142] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:24:22] Fuseki     INFO  [142] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:24:24] Fuseki     WARN  [129] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:24:24] Fuseki     INFO  [129] 500 Server Error (49.130 s)
+[2026-11-18 17:24:24] Fuseki     INFO  [143] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:24:24] Fuseki     INFO  [143] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:24:24] Fuseki     WARN  [128] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:24:24] Fuseki     INFO  [128] 500 Server Error (49.895 s)
+[2026-11-18 17:24:24] Fuseki     INFO  [144] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:24:24] Fuseki     INFO  [144] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:24:25] Fuseki     WARN  [127] Runtime IO Exception (client left?) RC = 500 : org.eclipse.jetty.io.EofException: Broken pipe
+[2026-11-18 17:24:25] Fuseki     INFO  [127] 500 Server Error (50.526 s)
+[2026-11-18 17:24:25] Fuseki     INFO  [145] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:24:25] Fuseki     INFO  [145] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
