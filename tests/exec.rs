@@ -640,3 +640,14 @@ fn values_undef_does_not_leak_outer_binding() {
     let r = rows("SELECT ?x ?y WHERE { VALUES ?x { 1 } { VALUES ?x { 1 } BIND(?x AS ?y) } }");
     assert_eq!(r[0].matches("Some(").count(), 2, "{r:?}");
 }
+
+/// An inner group's BIND produces its own solution, which is then joined with the outer one: `{ BIND(2 AS ?x) }`
+/// is incompatible with an outer x=1 (no rows), compatible with x=2, and an erroring BIND leaves the outer value.
+#[test]
+fn inner_bind_joins_with_outer_binding() {
+    let s = MemorySnapshot::from_ntriples(&b""[..]).unwrap();
+    let n = |q: &str| match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.len(), r => panic!("{r:?}") };
+    assert_eq!(n("SELECT ?x WHERE { VALUES ?x {1} { BIND(2 AS ?x) } }"), 0);
+    assert_eq!(n("SELECT ?x WHERE { VALUES ?x {2} { BIND(2 AS ?x) } }"), 1);
+    assert_eq!(n("SELECT ?x WHERE { VALUES ?x {1} { BIND(1/0 AS ?x) } }"), 1);
+}

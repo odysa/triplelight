@@ -341,9 +341,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             }
             GraphPattern::Extend { inner, variable, expression } => {
                 let i = self.var(variable);
-                self.eval(inner, input).into_iter().map(|mut r| {
-                    if let Some(t) = self.value(expression, &r) { r[i] = self.intern(&t) }
-                    r
+                // If an outer solution passed in sideways already binds the target, the BIND result must be
+                // compatible with it (the group's solution is joined with the outer one): equal keeps the row, a
+                // different value drops it, an expression error leaves the outer value (W3C-style `{ BIND(2 AS ?x) }`).
+                self.eval(inner, input).into_iter().filter_map(|mut r| {
+                    if let Some(t) = self.value(expression, &r) {
+                        let id = self.intern(&t);
+                        if r[i] == UNBOUND { r[i] = id } else if r[i] != id { return None }
+                    }
+                    Some(r)
                 }).collect()
             }
             GraphPattern::Minus { left, right } => {
