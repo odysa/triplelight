@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/rdfdb",
+    "serve",
+    "/private/tmp/rdf-jianlin-analytical25/hash-extend-5ac99cc/orientation-fixture/data.nt",
+    "31439",
+    "--no-stats",
+    "--parallel-load=1"
+  ],
+  "binary_sha256": "73694951ae31723dc8ca4c4b6c7b5807f3892569dd389ec5cdb4950561ed2e56",
+  "env": {
+    "RAYON_NUM_THREADS": "1"
+  }
+}
