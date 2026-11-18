@@ -1,0 +1,25 @@
+{
+  "complete": true,
+  "comparative_timing_claim": false,
+  "started_unix": 1795033225.123918,
+  "client_exit": 0,
+  "queries": 60,
+  "primary_pass": 25,
+  "count_pass": 37,
+  "value_pass": 60,
+  "container_state_before_cleanup": {
+    "Status": "running",
+    "Running": true,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 364491,
+    "ExitCode": 0,
+    "Error": "",
+    "StartedAt": "2026-11-18T20:20:27.42730713Z",
+    "FinishedAt": "0001-01-01T00:00:00Z"
+  },
+  "index_unchanged": true,
+  "ended_unix": 1795033266.693623
+}
