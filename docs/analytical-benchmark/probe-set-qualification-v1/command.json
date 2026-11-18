@@ -1,0 +1,20 @@
+[
+  "<agent-workspace>/scratch/analytical25-venv/bin/python",
+  "<agent-workspace>/rdfdb/bench/analytical/http_measure.py",
+  "--workload",
+  "<agent-workspace>/rdfdb/bench/analytical/workloads/bsbm10",
+  "--reference",
+  "/private/tmp/rdf-jianlin-analytical25/bsbm10-holdout-v1/jena",
+  "--out",
+  "/private/tmp/rdf-jianlin-analytical25/probe-set-1cd8881/queries",
+  "--runtime-evidence",
+  "/private/tmp/rdf-jianlin-analytical25/probe-set-1cd8881/runtime.json",
+  "--numeric-inputs",
+  "/private/tmp/rdf-jianlin-analytical25/numeric-diagnostics-10m",
+  "--numeric-freeze-sha256",
+  "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+  "--lock-owner",
+  "Jianlin-Su task25 probe-set1cd8881 qualification",
+  "--timeout",
+  "120"
+]
