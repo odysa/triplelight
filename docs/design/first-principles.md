@@ -119,9 +119,68 @@ has most of the operators, but not the batch representation or the pipelining.
 
 ## 6. Storage, durability, workflows and product — Alex
 
-*(Alex's sections: user workflows; immutable sorted base + WAL + overlay + compaction; which permutations to keep and
-how to compress them; snapshot generations and versioned formats; memory budgets; interfaces (Rust, Python, Arrow,
-optional SPARQL server); assumptions that need user evidence.)*
+### 6.1 The job and the product boundary
+
+The target workflow is: install a library, open or create a local database, bulk-load RDF, apply updates, run SPARQL
+analyses, and consume results in the host process. A second connection or server must not be required for the basic
+workflow. A server is an optional compatibility adapter. Make database lifetime, cancellation, resource limits,
+errors and snapshot semantics explicit in Rust and Python APIs. Supply lossless RDF terms first; Arrow batches and
+Parquet/CSV are analytical interchange, not a reason to erase lexical form, language, datatype or unbound values.
+Native numeric columns must be opt-in where coercion loses term identity. Python's current API materializes results;
+the Arrow branch remains a prototype, not a streaming API or a zero-copy-from-storage claim.
+
+**[Hypothesis]** Local graph analysis across heterogeneous files, incremental knowledge graphs, and dataframe
+integration are useful first workflows. Interview users and test whole workflows before treating embedded RDF,
+update support or any benchmark win as an exclusive advantage or defensible moat.
+
+### 6.2 Storage and updates
+
+Keep stable RDF term identity separate from value comparison: equal values need not be the same RDF term. Store an
+immutable indexed base plus an ordered, durable WAL and a visible update overlay. Readers pin a consistent generation;
+a committed update is visible atomically to later snapshots, and recovery replays acknowledged commits. Compaction
+builds a new generation, validates it, and publishes it atomically; retain old generation files while readers need
+them. Specify fsync, manifest publication, torn WAL, recovery and crash points as observable contracts, then test
+them with process kills. Single-writer enforcement and multi-process limitations must be explicit; do not claim
+concurrency beyond what is tested.
+
+Six sorted permutations offer useful access paths, but each adds storage and ingestion work: compare six, reduced
+sets and alternate layouts on actual workloads, including writes, scans, peak build scratch and first-query time.
+Use block compression, checksums and lazy decoding with storage failures propagated; never turn a read failure into
+an empty match. Dictionary IDs, delta IDs and inline IDs must not collide or split an existing term's identity.
+Formats and WAL need explicit versions, backward-open tests, and a documented migration/rebuild path; unknown or
+corrupt data must not be silently treated as an empty database. Ordered string IDs alone are not SPARQL term order:
+types, language, collation and later inserts require semantic comparison or a proven compatible representation.
+
+### 6.3 Resource and lifecycle contract
+
+Treat cache, execution state, result buffers, active snapshots, background statistics, temporary files and concurrent
+queries as parts of a single observable resource envelope, not just a cache-size flag. A configured limit should say
+whether it is hard or advisory, per query or per process, and what happens at exhaustion. Bound build and compaction
+scratch; support spill or return a controlled error for operators that cannot fit. Background work must not consume
+unbounded cache or delay a foreground query invisibly. The uncached statistics-scan prototype is under evaluation;
+its observed cache footprint is not yet a measured reduction in whole-process peak or startup latency.
+
+Benchmark cold open/first query and warm steady state separately; report input, index size, import, updates,
+compaction, process peak RSS, spill and full result consumption, as well as query time. Match cache policy and
+resources for each competitor and distinguish RDF-term identity from value-compatible diagnostics. Include
+larger-than-memory data and long-lived snapshots; record confidence and regressions, not only winners.
+
+### 6.4 DuckDB lessons and unresolved decisions
+
+DuckDB's [vectorized execution format](https://duckdb.org/docs/current/internals/vector) and [streaming and spill
+model](https://duckdb.org/2024/07/09/memory-management) show why execution batches and resource management must be
+designed together. This is a direction, not proof that a particular batch size or implementation will win here:
+our first batched GROUP BY reduced full-BI peak about 10% while slowing it 25–33% (`ab36`). Fallbacks and hash/group
+state can still materialize; cancellation, spill, snapshot isolation and error propagation need end-to-end tests.
+
+Open decisions: which user workflows warrant optional SPARQL server support; semantic scope and named graphs; a
+single resource manager versus independently budgeted caches; build/update/scan tradeoffs of index permutations;
+when to add an optional value sidecar versus changing on-disk IDs; and how to expose Arrow without materializing all
+IDs first. A persistent sidecar is deferred pending a workload-wide cost case. No change of IDs or query rewrite may
+omit dictionary values, overlays or mixed numeric types that compare equal; a final FILTER cannot recover rows that
+an incomplete index range discarded. Prove such candidate supersets with differential tests, including old snapshots,
+WAL replay, updates and temporal boundaries.
+
 
 ## 7. Phased plan
 
