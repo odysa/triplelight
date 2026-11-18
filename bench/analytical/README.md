@@ -123,3 +123,7 @@ pilot determines disk requirements before requesting any scratch allocation
 above the shared-host limit for 100M.
 
 Offline checks: `python -m unittest discover -s bench/analytical -v`.
+
+The curated aggregate translator is `aggregate_sql.py`, scoped to the 72 flat-BGP COUNT queries. Seven tiny-graph unit checks and seven independent Jena fixture comparisons pass; see `docs/analytical-benchmark/aggregate-sql-fixture-v1/`. This is not yet a real-data aggregate performance comparison.
+
+The guarded equality rewrite at `54bee3a` separately passes all 60 frozen BI instances, with complete bags and all 36 ordered sequences matching pinned main. See `docs/analytical-benchmark/eq-unify-v1/`; the host/VM output comparison supplies no A/B speed claim.
