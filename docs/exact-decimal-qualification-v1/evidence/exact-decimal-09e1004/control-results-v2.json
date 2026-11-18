@@ -1,0 +1,127 @@
+{
+  "add": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "sum": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "avg": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "quarter": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "integer-zero": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "decimal-zero": {
+    "pass": null,
+    "reference_error": true,
+    "actual_rows": 1
+  },
+  "double-zero": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "negative-round": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "ceil-floor": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "cast": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "compiled-filter": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "decimal-compare": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "precision-28": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "coefficient-overflow": {
+    "pass": false,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "scale-29": {
+    "pass": false,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "integer-overflow": {
+    "pass": false,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "repeating-division": {
+    "pass": false,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "mixed-float": {
+    "pass": true,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "decimal-max-round": {
+    "pass": false,
+    "candidate_exit": 101,
+    "error": "Candidate process failed; raw stderr retained"
+  },
+  "decimal-overflow": {
+    "pass": false,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "beyond-decimal-coefficient": {
+    "pass": false,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "sub-scale-29": {
+    "pass": false,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "float-promotion-add": {
+    "pass": false,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "float-promotion-compare": {
+    "pass": false,
+    "actual_rows": 1,
+    "reference_rows": 1
+  },
+  "mixed-double": {
+    "pass": false,
+    "actual_rows": 1,
+    "reference_rows": 1
+  }
+}
