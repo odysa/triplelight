@@ -16,21 +16,23 @@ against Apache Jena. Numbers are sums of per-query medians unless stated. Lower 
 
 ### Analytical: BSBM Business Intelligence, 10M triples (two-engine rerun)
 
-Same Linux VM (4 CPUs, 12 GiB cap per engine), two passes in reversed order, 45 measured requests per pass after
-15 warmups. rdfdb on main `738f0cb`; DuckDB 2.0.0 over one lossless triples table with hand-written SQL per
-query template. All 240 requests return complete, correct answers for both engines. This is a bounded
-same-session comparison of two engines, not the official BSBM throughput procedure.
+Same Linux VM (4 CPUs, 12 GiB cap per engine), two passes in reversed order. Each number is the sum of 45
+measured request times after 15 warmups. rdfdb on main `20b257a`; DuckDB 2.0.0 over one lossless triples table
+with hand-written SQL per query template. All 240 requests return complete, correct answers for both engines.
+This is a bounded same-session comparison of two engines, not the official BSBM throughput procedure.
 
 | | Pass 1 (s) | Pass 2 (s) |
 |---|---:|---:|
-| **rdfdb** | **27.2** | **28.5** |
-| DuckDB 2.0.0 | 55.3 | 64.5 |
+| **rdfdb** | **14.5** | **14.1** |
+| DuckDB 2.0.0 | 114.0 | 112.9 |
 
-rdfdb is faster on 7 of the 8 query templates. The exception is q4, where it takes 21.8 s against DuckDB's 5.9 s;
-that query is being worked on. In the earlier pass of this benchmark, QLever answered only 9 of 60 requests
-correctly (21 when integer subtypes are treated as equal), and Virtuoso 29 of 60, so neither has a qualified
-total. Evidence: [matched-vm-round2-v1](https://github.com/odysa/rdfdb/tree/67f1fe7da321c67924b54c62a0be0299dba06f15/docs/analytical-benchmark/matched-vm-round2-v1),
-earlier pass in [matched-vm-v1](https://github.com/odysa/rdfdb/tree/67f1fe7da321c67924b54c62a0be0299dba06f15/docs/analytical-benchmark/matched-vm-v1).
+rdfdb is faster on all 8 query templates in both passes (DuckDB takes 7.9× / 8.0× as long). Timings drift between
+VM sessions: in the previous session, with rdfdb at `738f0cb`, the totals were 27.2 / 28.5 s against DuckDB's
+55.3 / 64.5 s, so compare engines only within a session. In an earlier pass of this benchmark, QLever answered
+only 9 of 60 requests correctly (21 when integer subtypes are treated as equal), and Virtuoso 29 of 60, so neither
+has a qualified total. Evidence: [matched-vm-round3-v1](https://github.com/odysa/rdfdb/tree/5ff7d67eeb77ccdc348e5344fb571cf262d23a04/docs/analytical-benchmark/matched-vm-round3-v1);
+previous session in [matched-vm-round2-v1](https://github.com/odysa/rdfdb/tree/67f1fe7da321c67924b54c62a0be0299dba06f15/docs/analytical-benchmark/matched-vm-round2-v1),
+first pass with all four engines in [matched-vm-v1](https://github.com/odysa/rdfdb/tree/67f1fe7da321c67924b54c62a0be0299dba06f15/docs/analytical-benchmark/matched-vm-v1).
 
 ### Large scale: LUBM-1000 (133.6M triples) and BSBM-100M (98.9M triples)
 
@@ -86,7 +88,6 @@ Details: [docs/embedded/README.md](docs/embedded/README.md).
 
 ### Where rdfdb is behind
 
-- BI q4 against DuckDB (above).
 - Loading: building the LUBM-1000 disk store took 1,035 s against QLever's 425 s in round 9; the parallel loader
   merged since then is about 30% faster but has not been re-measured at that scale.
 - Store open: statistics take several seconds to become ready after opening a large store.
