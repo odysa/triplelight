@@ -1,0 +1,1 @@
+SELECT (COUNT(*) AS ?n) (COUNT(DISTINCT ?s) AS ?d) WHERE {?s <urn:p> ?o . ?x <urn:p> ?y}
