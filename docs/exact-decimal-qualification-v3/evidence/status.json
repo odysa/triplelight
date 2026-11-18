@@ -1,0 +1,14 @@
+{
+  "comparative_timing_claim": false,
+  "complete": true,
+  "started_unix": 1795043967.844636,
+  "statistics_ready_unix": 1795044022.695194,
+  "client_exit": 0,
+  "queries": 60,
+  "strict_pass": 60,
+  "count_pass": 60,
+  "value_pass": 60,
+  "server_exit": -15,
+  "store_unchanged": true,
+  "ended_unix": 1795044058.810394
+}
