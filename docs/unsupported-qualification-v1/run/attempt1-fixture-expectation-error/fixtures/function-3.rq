@@ -1,0 +1,1 @@
+SELECT (STRUUID() AS ?v) WHERE {}

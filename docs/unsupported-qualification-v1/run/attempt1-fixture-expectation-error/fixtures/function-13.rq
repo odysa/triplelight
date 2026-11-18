@@ -1,0 +1,1 @@
+SELECT (TZ("2000-01-01T01:02:03Z"^^<http://www.w3.org/2001/XMLSchema#dateTime>) AS ?v) WHERE {}
