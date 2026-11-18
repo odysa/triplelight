@@ -72,12 +72,42 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// Index nested-loop join of `rows` with one pattern: one index range read per input row.
     pub fn extend(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> {
         let w = self.w;
+        if let Some(out) = self.extend_member_set(pat, rows) { return out }
         if rows.len() / w.max(1) >= 2 * MORSEL {
             let parts: Vec<Vec<TermId>> = rows.par_chunks(w * MORSEL).map(|c| self.extend_seq(pat, c)).collect();
             parts.concat()
         } else {
             self.extend_seq(pat, rows)
         }
+    }
+
+    /// Membership filter for a pattern with two constants and one variable bound in every row (e.g.
+    /// `?reviewer bsbm:country <US>`): when the constants' range is no larger than the input, one scan builds the
+    /// set of matching values and each row is a hash lookup instead of an index probe. Keeps row order.
+    fn extend_member_set(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
+        let w = self.w;
+        if w == 0 { return None }
+        let n_rows = rows.len() / w;
+        if n_rows < 1024 { return None }
+        let vars: Vec<(usize, usize)> = pat.iter().enumerate().filter_map(|(i, s)| match s { Slot::Var(v) => Some((i, *v)), _ => None }).collect();
+        let [(pos, v)] = vars.as_slice() else { return None };
+        let mut fixed: [Option<TermId>; 3] = [None; 3];
+        for (i, s) in pat.iter().enumerate() {
+            if let Slot::Const(c) = s { fixed[i] = Some((*c)?) }
+        }
+        let (perm, prefix, n) = choose_perm(&fixed);
+        if n != 2 || perm.order()[2] != *pos { return None }
+        if rows.chunks_exact(w).any(|r| r[*v] == UNBOUND) { return None }
+        let total = self.count(perm, &prefix[..2]);
+        if total > n_rows as u64 || total > 1 << 24 { return None }
+        let mut set: HashSet<TermId> = HashSet::with_capacity(total as usize);
+        for b in self.snap.scan(perm, &prefix[..2]) {
+            let b = b.unwrap_or_else(|e| storage_failure(e));
+            set.extend(b.cols[2].iter().copied());
+        }
+        let mut out = Vec::with_capacity(rows.len());
+        for r in rows.chunks_exact(w) { if set.contains(&r[*v]) { out.extend_from_slice(r) } }
+        Some(out)
     }
 
     fn extend_seq(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> {
