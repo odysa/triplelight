@@ -1,0 +1,1 @@
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT (ENCODE_FOR_URI("a b") AS ?v) WHERE {}
