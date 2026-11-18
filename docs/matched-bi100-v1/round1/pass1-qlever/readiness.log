@@ -1,0 +1,21 @@
+2026-11-18 20:59:39.874 - WARN: The Linux kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty may have a bug that causes random stalls, crashes, and corrupt data on arm64, unless it contains the fix https://github.com/torvalds/linux/commit/478a1c3abebfc717db0d1281a9cdd7befafee542. As a workaround, QLever doesn't return freed memory to the operating system. On a kernel with the fix, you can disable the workaround by setting the environment variable QLEVER_DISABLE_KERNEL_BUG_WORKAROUND
+2026-11-18 20:59:39.874 - INFO: [1mQLever server 18c097c, compiled on Sat Nov 14 19:07:21 UTC 2026 using git hash 18c097c[22m
+2026-11-18 20:59:39.874 - INFO: Runtime parameter set from the command line: max-num-threads-per-query=4
+2026-11-18 20:59:39.875 - INFO: Cleanup of previous index directories after each rebuild enabled (--rebuild-keep-previous-index-dirs original-and-most-recent)
+2026-11-18 20:59:39.882 - INFO: The git hash used to build this index was "18c097c"
+2026-11-18 20:59:39.883 - INFO: Reading vocabulary from file bsbm100.vocabulary.words ...
+2026-11-18 20:59:39.889 - WARN: io_uring is compiled in but unavailable at runtime (io_uring_queue_init failed in IoUringManager. In file "/qlever/src/util/IoUringManager.cpp" at line 69); falling back to synchronous pread for vocabulary lookups
+2026-11-18 20:59:39.889 - INFO: Done, number of words: 23,497,400
+2026-11-18 20:59:39.889 - INFO: Number of words in internal vocabulary (these are also part of the external vocabulary): 23,518
+2026-11-18 20:59:39.893 - INFO: Registered PSO permutation: #relations = 10, #blocks = 478, #triples = 14,730,628
+2026-11-18 20:59:39.895 - INFO: Registered PSO permutation: #relations = 40, #blocks = 3,189, #triples = 98,861,444
+2026-11-18 20:59:39.896 - INFO: Registered POS permutation: #relations = 10, #blocks = 478, #triples = 14,730,628
+2026-11-18 20:59:39.899 - INFO: Registered POS permutation: #relations = 40, #blocks = 3,189, #triples = 98,861,444
+2026-11-18 20:59:39.901 - INFO: Registered OPS permutation: #relations = 14,957,718, #blocks = 2,898, #triples = 98,861,444
+2026-11-18 20:59:39.903 - INFO: Registered OSP permutation: #relations = 14,957,718, #blocks = 2,898, #triples = 98,861,444
+2026-11-18 20:59:39.905 - INFO: Registered SPO permutation: #relations = 9,034,108, #blocks = 2,110, #triples = 98,861,444
+2026-11-18 20:59:39.907 - INFO: Registered SOP permutation: #relations = 9,034,108, #blocks = 2,110, #triples = 98,861,444
+2026-11-18 20:59:39.907 - INFO: Reading patterns from file bsbm100.index.patterns ...
+2026-11-18 20:59:39.908 - INFO: Initializing server ...
+2026-11-18 20:59:39.908 - INFO: Access token for restricted API calls is ""
+2026-11-18 20:59:39.908 - INFO: The server is ready, listening for requests on port 31443 ...
