@@ -1,0 +1,31 @@
+{
+  "source_commit": "71ab35cc9e0e512e469b16ad23a56f46d9ee308e",
+  "rdfdb_binary": {
+    "source_commit": "71ab35cc9e0e512e469b16ad23a56f46d9ee308e",
+    "sha256": "4e9e3e11b7d6fb530856ec39ff41430c86123f4412803d6ed38b46fc97f26352",
+    "bytes": 7033584
+  },
+  "duck_copy": {
+    "source": "/private/tmp/rdf-jianlin-analytical25/bsbm10-duckdb/duck.db",
+    "bytes": 619196416,
+    "sha256": "f86cb05c12f8cd1dbe7d62f5b918b03ea95e945435a7148f71d1255927dba421",
+    "mode": "copied host-built DuckDB2.0 plain triples store; read-only Linux query"
+  },
+  "input": {
+    "source": "<agent-workspace>/rdfdb/bench/tools/bsbm10.nt",
+    "sha256": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+    "bytes": 2621082809
+  },
+  "qlever_setup": {
+    "exit_code": 0,
+    "setup_wall_seconds": 16.722120458027348,
+    "scope": "setup only, not controlled import comparison"
+  },
+  "rdfdb_setup": {
+    "exit_code": 0,
+    "scope": "setup only, not controlled import comparison"
+  },
+  "duck_package_install": {
+    "exit_code": 0
+  }
+}

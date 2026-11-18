@@ -1,7 +1,9 @@
 # Planned matched-VM BI measurement
 
-Status: plan; no BI timings have been collected. The running host cohort is
-correctness preparation, separate from this Linux/VM performance comparison.
+Status: the bounded 10M pilot has executed; see
+`docs/analytical-benchmark/matched-vm-v1/` for the actual configuration, controller
+repairs, complete/partial profiles and qualified timings. The design below is
+retained as planning context; executed runtime evidence takes precedence.
 The numeric acceptance source and inputs remain fixed by freeze
 `a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244`.
 
