@@ -1,0 +1,122 @@
+{
+  "head": {
+    "vars": [
+      "otherProduct",
+      "sameFeatures"
+    ]
+  },
+  "results": {
+    "bindings": [
+      {
+        "otherProduct": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer3711/Product187328"
+        },
+        "sameFeatures": {
+          "type": "literal",
+          "value": "10",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      },
+      {
+        "otherProduct": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer4671/Product236445"
+        },
+        "sameFeatures": {
+          "type": "literal",
+          "value": "10",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      },
+      {
+        "otherProduct": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1241/Product61873"
+        },
+        "sameFeatures": {
+          "type": "literal",
+          "value": "9",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      },
+      {
+        "otherProduct": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1823/Product91388"
+        },
+        "sameFeatures": {
+          "type": "literal",
+          "value": "9",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      },
+      {
+        "otherProduct": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1095/Product54124"
+        },
+        "sameFeatures": {
+          "type": "literal",
+          "value": "8",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      },
+      {
+        "otherProduct": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1164/Product57701"
+        },
+        "sameFeatures": {
+          "type": "literal",
+          "value": "8",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      },
+      {
+        "otherProduct": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1200/Product59653"
+        },
+        "sameFeatures": {
+          "type": "literal",
+          "value": "8",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      },
+      {
+        "otherProduct": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1730/Product86663"
+        },
+        "sameFeatures": {
+          "type": "literal",
+          "value": "8",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      },
+      {
+        "otherProduct": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1997/Product100449"
+        },
+        "sameFeatures": {
+          "type": "literal",
+          "value": "8",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      },
+      {
+        "otherProduct": {
+          "type": "uri",
+          "value": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer2434/Product122966"
+        },
+        "sameFeatures": {
+          "type": "literal",
+          "value": "8",
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+        }
+      }
+    ]
+  }
+}
