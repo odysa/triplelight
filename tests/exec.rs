@@ -542,3 +542,26 @@ fn exists_batch_matches_per_row_semantics() {
     // product 20 has prices 200..204 of which 4 are > 200).
     assert_eq!(n(&format!("SELECT * {{ {sub} FILTER EXISTS {{ ?p <urn:feat> ?f FILTER(?x > 200) }} }}")), 24);
 }
+
+/// Hash join for `(const, bound, free)` patterns over many rows must give the same rows, multiplicities and
+/// per-row value order as per-row probes, including keys with zero or several matches.
+#[test]
+fn hash_extend_matches_probe_join() {
+    let mut data = String::new();
+    let mut expect = 0usize;
+    for i in 0..6000 {
+        data.push_str(&format!("<urn:s{i}> <urn:a> <urn:x{}> .\n", i % 13));
+        let k = i % 4;
+        for j in 0..k { data.push_str(&format!("<urn:s{i}> <urn:b> \"v{j}\" .\n")) }
+        expect += k;
+    }
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let rows = |q: &str| -> Vec<String> { match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| format!("{r:?}")).collect(), r => panic!("{r:?}") } };
+    let joined = rows("SELECT ?s ?x ?y WHERE { ?s <urn:a> ?x . ?s <urn:b> ?y }");
+    assert_eq!(joined.len(), expect);
+    let few = rows("SELECT ?s ?x ?y WHERE { VALUES ?s { <urn:s7> <urn:s4> <urn:s3> } ?s <urn:a> ?x . ?s <urn:b> ?y }");
+    assert_eq!(few.len(), 6);
+    for r in &few { assert!(joined.contains(r), "{r}") }
+    // Reverse direction: object bound, subject free.
+    assert_eq!(rows("SELECT ?x ?s WHERE { ?s <urn:a> ?x . ?t <urn:a> ?x }").len(), (0..13).map(|m| { let c = (0..6000).filter(|i| i % 13 == m).count(); c * c }).sum::<usize>());
+}

@@ -73,6 +73,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     pub fn extend(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> {
         let w = self.w;
         if let Some(out) = self.extend_member_set(pat, rows) { return out }
+        if let Some(out) = self.extend_hash(pat, rows) { return out }
         if rows.len() / w.max(1) >= 2 * MORSEL {
             let parts: Vec<Vec<TermId>> = rows.par_chunks(w * MORSEL).map(|c| self.extend_seq(pat, c)).collect();
             parts.concat()
@@ -107,6 +108,56 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         }
         let mut out = Vec::with_capacity(rows.len());
         for r in rows.chunks_exact(w) { if set.contains(&r[*v]) { out.extend_from_slice(r) } }
+        Some(out)
+    }
+
+    /// Hash join for a pattern with one constant, one variable bound in every row and one free variable (e.g.
+    /// `?review rev:reviewer ?reviewer` for many reviews): when the constant's range is at most twice the input,
+    /// one scan of the permutation `(constant, key, free)` builds key -> values, and each row is a lookup instead
+    /// of an index probe. Per row, values come in the same (index) order as the probe join's range scan.
+    fn extend_hash(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
+        let w = self.w;
+        if w == 0 { return None }
+        let n_rows = rows.len() / w;
+        if n_rows < 1024 { return None }
+        let first = &rows[..w];
+        let (mut cpos, mut kpos, mut fpos) = (None, None, None);
+        for (i, s) in pat.iter().enumerate() {
+            match s {
+                Slot::Const(Some(_)) => { if cpos.is_some() { return None } cpos = Some(i) }
+                Slot::Const(None) => return None,
+                Slot::Var(v) if first[*v] != UNBOUND => { if kpos.is_some() { return None } kpos = Some(i) }
+                Slot::Var(_) => { if fpos.is_some() { return None } fpos = Some(i) }
+            }
+        }
+        let (cpos, kpos, fpos) = (cpos?, kpos?, fpos?);
+        let (Slot::Const(Some(c)), Slot::Var(kv), Slot::Var(fv)) = (pat[cpos], pat[kpos], pat[fpos]) else { return None };
+        if kv == fv { return None }
+        if rows.chunks_exact(w).any(|r| r[kv] == UNBOUND || r[fv] != UNBOUND) { return None }
+        let perm = [Perm::Spo, Perm::Sop, Perm::Pso, Perm::Pos, Perm::Osp, Perm::Ops].into_iter().find(|p| p.order() == [cpos, kpos, fpos])?;
+        let total = self.count(perm, &[c]);
+        if total > 2 * n_rows as u64 || total > 1 << 24 { return None }
+        let mut vals: Vec<TermId> = Vec::with_capacity(total as usize);
+        let mut index: HashMap<TermId, (u32, u32)> = HashMap::new();
+        for b in self.snap.scan(perm, &[c]) {
+            let b = b.unwrap_or_else(|e| storage_failure(e));
+            for i in 0..b.len() {
+                let (k, f) = (b.cols[1][i], b.cols[2][i]);
+                let e = index.entry(k).or_insert((vals.len() as u32, 0));
+                e.1 += 1;
+                vals.push(f);
+            }
+        }
+        let mut out = Vec::with_capacity(rows.len());
+        for r in rows.chunks_exact(w) {
+            if let Some(&(start, len)) = index.get(&r[kv]) {
+                for &f in &vals[start as usize..(start + len) as usize] {
+                    out.extend_from_slice(r);
+                    let at = out.len() - w;
+                    out[at + fv] = f;
+                }
+            }
+        }
         Some(out)
     }
 
