@@ -1,0 +1,1 @@
+SELECT COUNT(*) AS "count_result" FROM triples t0 WHERE t0.p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' AND t0.o = struct_pack(kind := 0::UTINYINT, value := 'http://swat.cse.lehigh.edu/onto/univ-bench.owl#UndergraduateStudent', datatype := NULL::VARCHAR, lang := NULL::VARCHAR)
