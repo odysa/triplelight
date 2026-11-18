@@ -1,0 +1,43 @@
+{
+  "schema": "owned-import-supervisor-v1",
+  "command": [
+    "<agent-workspace>/scratch/analytical25-venv/bin/python",
+    "/private/tmp/rdf-jianlin-analytical25/duck100-import-v2/bench-source/analytical/duck_load.py",
+    "--source",
+    "<agent-workspace>/rdfdb/bench/tools/bsbm100.nt",
+    "--database",
+    "/private/tmp/rdf-jianlin-analytical25/duck100-import-v2/duck.db",
+    "--spill",
+    "/private/tmp/rdf-jianlin-analytical25/duck100-import-v2/spill",
+    "--report",
+    "/private/tmp/rdf-jianlin-analytical25/duck100-import-v2/report.json",
+    "--progress",
+    "/private/tmp/rdf-jianlin-analytical25/duck100-import-v2/progress.json",
+    "--threads",
+    "4",
+    "--memory-limit",
+    "8GB",
+    "--max-spill",
+    "24GB",
+    "--lock-owner",
+    "Jianlin-Su task25 guarded 100M DuckDB reference import",
+    "--expected-sha256",
+    "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d"
+  ],
+  "root": "/private/tmp/rdf-jianlin-analytical25",
+  "owner": "Jianlin-Su task25 guarded 100M DuckDB reference import",
+  "start": {
+    "time_unix": 1795012761.552494,
+    "allocated_bytes": 7052480512,
+    "free_bytes": 270519746560,
+    "abort": null
+  },
+  "complete": true,
+  "approved_cap_bytes": 51539607552,
+  "free_floor_bytes": 42949672960,
+  "sample_seconds": 2,
+  "guards_are_sampled": true,
+  "pid": 15970,
+  "exit_code": 0,
+  "end_unix": 1795014890.5806148
+}
