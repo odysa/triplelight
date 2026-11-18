@@ -1,0 +1,21 @@
+prefix bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>
+prefix rev: <http://purl.org/stuff/rev#>
+
+Select ?productType ?reviewCount
+{
+ { Select ?productType (count(?review) As ?reviewCount)
+  {
+   ?productType a bsbm:ProductType .
+ VALUES ?productType { <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1762> <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1763> <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1764> <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1765> <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1766> <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1767> <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1768> <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType1769> }
+   ?product a ?productType .
+   ?product bsbm:producer ?producer .
+   ?producer bsbm:country <http://downlode.org/rdf/iso-3166/countries#US> .
+   ?review bsbm:reviewFor ?product .
+   ?review rev:reviewer ?reviewer .
+   ?reviewer bsbm:country <http://downlode.org/rdf/iso-3166/countries#US> .
+  }
+  Group By ?productType
+ }
+}
+Order By desc(?reviewCount) ?productType
+Limit 10

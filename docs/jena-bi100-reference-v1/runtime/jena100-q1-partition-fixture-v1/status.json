@@ -1,0 +1,26 @@
+{
+  "complete": true,
+  "batch_sizes": {
+    "1": {
+      "exact_bag_and_sequence_pass": true
+    },
+    "7": {
+      "exact_bag_and_sequence_pass": true
+    },
+    "8": {
+      "exact_bag_and_sequence_pass": true
+    }
+  },
+  "data_sha256": "c4bef4940e3edf4f72a70ac488a32078cbb2fd9abef73e46ea263faa74edcfe8",
+  "source_sha256": {
+    "test_q1_partition_reference.py": "90ab7420f7e76cebe74a0785deef076927f4d39dc758469507c51c427343e8c6",
+    "q1_partition_reference.py": "3076b46499bc9999f0360a8a247188e84e0f32c9cfcf49167bd6c9e55ea84ce4"
+  },
+  "jena_identity": {
+    "arq_script_sha256": "25e4dbe82a90a4e00decd2ed6a00407bd5bb9910cab27b17841e1445b34cd6ab",
+    "jars": {
+      "jena-arq-6.2.0.jar": "154ec73b3a5a2b1e1a664d563b39d1674855c79553dd0da1a030de8128ee118e",
+      "jena-core-6.2.0.jar": "697bd31b75b4c95bbfa3f73103fc54aea7452de69da099c50124f202f447b1aa"
+    }
+  }
+}
