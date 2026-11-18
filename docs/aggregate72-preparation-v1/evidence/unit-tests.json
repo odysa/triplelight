@@ -1,0 +1,17 @@
+{
+  "command": [
+    "python",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "bench/analytical",
+    "-p",
+    "test_aggregate_count_policy.py",
+    "-v"
+  ],
+  "exit_code": 0,
+  "tests": 12,
+  "scope": "Tool-observed unit checks, no real-data engine answers",
+  "validator_sha256": "1c017af47a22019972415e99eebb37cbbea3901784d29ca463adf3e346d4d32e"
+}

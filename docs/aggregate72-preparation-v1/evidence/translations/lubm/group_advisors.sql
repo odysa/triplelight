@@ -1,0 +1,1 @@
+SELECT t0.o AS "o", COUNT(*) AS "n", COUNT(DISTINCT struct_pack(kind := 0::UTINYINT, value := t0.s, datatype := NULL::VARCHAR, lang := NULL::VARCHAR)) AS "d" FROM triples t0 WHERE t0.p = 'http://swat.cse.lehigh.edu/onto/univ-bench.owl#advisor' GROUP BY t0.o
