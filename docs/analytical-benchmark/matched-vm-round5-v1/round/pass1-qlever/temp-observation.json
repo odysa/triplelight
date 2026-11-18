@@ -1,0 +1,7 @@
+{
+  "peak_sampled_named_temp_bytes": 0,
+  "sample_seconds": 0.2,
+  "abort_threshold_bytes": 5368709120,
+  "metric_scope": "named files under configured TMPDIR and DuckDB spill; excludes unlinked/other locations",
+  "errors": []
+}
