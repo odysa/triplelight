@@ -1,0 +1,9 @@
+{
+  "source": "<agent-workspace>/rdfdb/bench/tools/bsbm100.nt",
+  "bytes": 25965260343,
+  "sha256": "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
+  "stat_unchanged_during_hash": true,
+  "mtime_ns": 1794884566689423931,
+  "operation": "read-only hash, no import or query execution",
+  "hash_elapsed_seconds": 28.69657462486066
+}
