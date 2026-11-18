@@ -165,7 +165,7 @@ impl Stats {
     }
     pub fn from_snapshot(snapshot: &dyn Snapshot) -> Result<Self, StatsError> {
         let mut builder = Builder::default();
-        for batch in snapshot.scan(Perm::Spo, &[]) {
+        for batch in snapshot.scan_for_stats() {
             let batch = batch?;
             let n = batch.cols[0].len();
             if batch.cols[1].len() != n || batch.cols[2].len() != n {

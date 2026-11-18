@@ -105,6 +105,12 @@ impl Snapshot for Overlay {
         Box::new(MergeScan { base: self.base.scan(perm, prefix), cur: None, at: 0, adds, ai: 0, dels, done: false })
     }
 
+    fn scan_for_stats(&self) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + '_> {
+        if self.delta.is_empty() { return self.base.scan_for_stats(); }
+        let (adds, dels) = (range(&self.delta.adds[slot(Perm::Spo)], &[]), range(&self.delta.dels[slot(Perm::Spo)], &[]));
+        Box::new(MergeScan { base: self.base.scan_for_stats(), cur: None, at: 0, adds, ai: 0, dels, done: false })
+    }
+
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
         let base = self.base.count(perm, prefix)?;
         if self.delta.is_empty() { return Ok(base) }
