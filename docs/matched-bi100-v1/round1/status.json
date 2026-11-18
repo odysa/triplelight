@@ -1,0 +1,75 @@
+{
+  "complete": true,
+  "phases": {
+    "pass1-rdfdb": {
+      "complete": true,
+      "started_unix": 1795034687.598927,
+      "client_pid": 74211,
+      "client_exit": 0,
+      "attempted": 60,
+      "primary_pass": 60,
+      "count_pass": 60,
+      "value_pass": 60,
+      "ended_unix": 1795034775.993058
+    },
+    "pass1-duckdb": {
+      "complete": true,
+      "started_unix": 1795034776.182912,
+      "client_pid": 76860,
+      "client_exit": 0,
+      "attempted": 60,
+      "primary_pass": 60,
+      "count_pass": 60,
+      "value_pass": 60,
+      "ended_unix": 1795035579.4274418
+    },
+    "pass1-qlever": {
+      "complete": true,
+      "started_unix": 1795035579.609397,
+      "client_pid": 99540,
+      "client_exit": 0,
+      "attempted": 60,
+      "primary_pass": 25,
+      "count_pass": 37,
+      "value_pass": 60,
+      "ended_unix": 1795035633.182698
+    },
+    "pass2-qlever": {
+      "complete": true,
+      "started_unix": 1795035633.36483,
+      "client_pid": 3041,
+      "client_exit": 0,
+      "attempted": 60,
+      "primary_pass": 25,
+      "count_pass": 37,
+      "value_pass": 60,
+      "ended_unix": 1795035687.730273
+    },
+    "pass2-duckdb": {
+      "complete": true,
+      "started_unix": 1795035688.056295,
+      "client_pid": 6494,
+      "client_exit": 0,
+      "attempted": 60,
+      "primary_pass": 60,
+      "count_pass": 60,
+      "value_pass": 60,
+      "ended_unix": 1795036355.9793339
+    },
+    "pass2-rdfdb": {
+      "complete": true,
+      "started_unix": 1795036356.1577091,
+      "client_pid": 36117,
+      "client_exit": 0,
+      "attempted": 60,
+      "primary_pass": 60,
+      "count_pass": 60,
+      "value_pass": 60,
+      "ended_unix": 1795036415.6040902
+    }
+  },
+  "started_unix": 1795034663.719176,
+  "protocol_sha256": "de7f1a84d4343494d4e149e3245caa423f024a9530d63532539383fabfeb5ff9",
+  "inputs_and_modules_unchanged": true,
+  "ended_unix": 1795036429.239688
+}
