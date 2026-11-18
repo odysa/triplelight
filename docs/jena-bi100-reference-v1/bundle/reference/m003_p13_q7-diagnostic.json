@@ -1,0 +1,12 @@
+{
+  "head": {
+    "vars": [
+      "product",
+      "offerCount",
+      "blocked"
+    ]
+  },
+  "results": {
+    "bindings": []
+  }
+}

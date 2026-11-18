@@ -1,0 +1,222 @@
+[
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/full.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "95e08aa1eb58dbed5deefe601bdcfb5fa3b9453602c6c243577d91fa9f779e02"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/types.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "c6d7417470867bffa9c2a4febeb2390930db789aaca7eda35470fe9bbcf4218e"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p0.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "4f8b2db41b1ce2cd0090800dcacc710dbf432ab614e0ed68d26075daafdb7004"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p1.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "f96e5d63026ea475a6f3111b3a485dfbcba98aa1b6819e193750c628d38e1714"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p2.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "daf1ff79decb35270bb912fc1318ecdc37fd7cd3b54acafec5685c7eaf33ef7d"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p3.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "aba24849c083a36deb55778fabca5dbe5e85427b3a279f4ac13591f93e24df34"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p4.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "4c245836c40bcf42ab7aff8000be251c79c66419c1b6357fa019249e18c5e2dd"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p5.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "940abf7b4eab632bbd3a3489ae4004c65e4485309a352b2166bb959e313b9622"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p6.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "98b15171605070dd9c452447edd137a37abedf8f8341f8fd3c0084bc1380435c"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p7.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "1a87e1df44149e80e99398320e5e6fd1bf9ff01f25a785bef33eded172d70574"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p8.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "3f3060a1630a9ba116263750c0b13d3c5c908694e732fa3543fcce28645e8a56"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p9.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "97c72a0094cd8c1d3db9d94a49a724d4d1ce075391c3312addfbc5deefeb1fe0"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p10.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "24cf57de75561c8cfd367ca5fa18a55372cd05b98870f0331b836fd0680e0c18"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p11.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "7e32e29ce7a7a748a054a0e576ffcd4523a9e34be2ed53d590a8bc166d24098f"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p12.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "5b77a3e8d54d6dc69525de23c279491c8c6acb6bc90b44317b0062994abdb1b9"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p13.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "f947b65c32a3079a055858927bd7a37ff3f86ea899a7f63aebdeb2f586ede99b"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b1-p14.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "23283f03c18e82d626300081d03f7b6ca8412756f3b115d9f2d68e3e3d3d7932"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b7-p0.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "f985190e42df9b924941c4ffc01b164ab65cfa6e6f14d96c9558f42a3ba84070"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b7-p7.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "75d2dcb53ef8435e0162a67a682fbc86c4f7194acc86bc15d8d01673402f288f"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b7-p14.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "23283f03c18e82d626300081d03f7b6ca8412756f3b115d9f2d68e3e3d3d7932"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b8-p0.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "3d44b6ab138c5124719bd2b380721afdb5631f6bf29055074ec8bee24e034317"
+  },
+  {
+    "command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/data.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/jena100-q1-partition-fixture-v1/b8-p8.rq",
+      "--results=JSON"
+    ],
+    "exit_code": 0,
+    "query_sha256": "3b1edd7f23bd0e415398e6d8be2f4afcb0eaffb0976e9af9bea20ad70a749a97"
+  }
+]
