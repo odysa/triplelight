@@ -1,0 +1,144 @@
+[2026-11-18 17:27:37] Fuseki     INFO  Apache Jena Fuseki 6.2.0
+[2026-11-18 17:27:37] Server     INFO  Dataset: in-memory: load file: <agent-workspace>/rdfdb/bench/tools/watdiv100.nt
+[2026-11-18 17:29:11] Config     INFO  Fuseki Base = /private/tmp/rdf-jianlin-analytical25/aggregate72-reference-v2/watdiv/run
+[2026-11-18 17:29:11] Config     INFO  Database: /ds
+[2026-11-18 17:29:11] Config     INFO  UI Base: fuseki-server.jar
+[2026-11-18 17:29:11] Shiro      INFO  Shiro configuration: file:/private/tmp/rdf-jianlin-analytical25/aggregate72-reference-v2/watdiv/run/shiro.ini
+[2026-11-18 17:29:11] Server     INFO  Path = /ds
+[2026-11-18 17:29:11] Server     INFO  System
+[2026-11-18 17:29:11] Server     INFO    Memory: 8.0 GiB
+[2026-11-18 17:29:11] Server     INFO    PID:    99438
+[2026-11-18 17:29:12] Server     INFO    Port:   http=31446
+[2026-11-18 17:29:12] Server     INFO  Start Fuseki
+[2026-11-18 17:29:12] Fuseki     INFO  [1] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:12] Fuseki     INFO  [1] Query = ASK {}
+[2026-11-18 17:29:12] Fuseki     INFO  [1] 200 OK (88 ms)
+[2026-11-18 17:29:12] Fuseki     INFO  [2] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:12] Fuseki     INFO  [2] Query = SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+[2026-11-18 17:29:22] Fuseki     INFO  [2] 200 OK (10.161 s)
+[2026-11-18 17:29:22] Fuseki     INFO  [3] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:22] Fuseki     INFO  [3] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://schema.org/caption> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	?v0 <http://schema.org/contentRating> ?v3 . 	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 . 	?v4 <http://purl.org/stuff/rev#title> ?v5 . 	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 . 	?v7 <http://schema.org/actor> ?v6 . 	?v7 <http://schema.org/language> ?v8 . }  
+[2026-11-18 17:29:22] Fuseki     INFO  [3] 200 OK (111 ms)
+[2026-11-18 17:29:22] Fuseki     INFO  [4] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:22] Fuseki     INFO  [4] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://schema.org/legalName> ?v1 . 	?v0 <http://purl.org/goodrelations/offers> ?v2 . 	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> . 	?v2 <http://purl.org/goodrelations/includes> ?v3 . 	?v4 <http://schema.org/jobTitle> ?v5 . 	?v4 <http://xmlns.com/foaf/homepage> ?v6 . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 . 	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 . 	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 . }  
+[2026-11-18 17:29:23] Fuseki     INFO  [4] 200 OK (350 ms)
+[2026-11-18 17:29:23] Fuseki     INFO  [5] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:23] Fuseki     INFO  [5] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 . 	?v0 <http://purl.org/dc/terms/Location> ?v3 . 	?v0 <http://xmlns.com/foaf/age> ?v4 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 . 	?v0 <http://xmlns.com/foaf/givenName> ?v6 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [5] 200 OK (10.923 s)
+[2026-11-18 17:29:34] Fuseki     INFO  [6] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [6] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v3 <http://schema.org/trailer> ?v4 . 	?v3 <http://schema.org/keywords> ?v5 . 	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 . 	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [6] 200 OK (10 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [7] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [7] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v0 <http://ogp.me/ns#title> ?v2 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 . 	?v0 <http://schema.org/caption> ?v4 . 	?v0 <http://schema.org/description> ?v5 . 	?v1 <http://schema.org/url> ?v6 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [7] 200 OK (13 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [8] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [8] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://schema.org/contentRating> ?v1 . 	?v0 <http://schema.org/contentSize> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [8] 200 OK (13 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [9] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [9] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v2 <http://purl.org/goodrelations/includes> ?v0 . 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/description> ?v4 . 	?v0 <http://schema.org/contentSize> ?v8 . 	?v1 <http://schema.org/url> ?v5 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 . 	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [9] 200 OK (9 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [10] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [10] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v4 . 	?v1 <http://ogp.me/ns#title> ?v5 . 	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [10] 200 OK (6 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [11] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [11] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . 	?v2 <http://schema.org/caption> ?v3 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [11] 200 OK (4 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [12] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [12] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 . 	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> . 	?v2 <http://schema.org/nationality> ?v1 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [12] 200 OK (13 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [13] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [13] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [13] 200 OK (4 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [14] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [14] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/caption> ?v2 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [14] 200 OK (5 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [15] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [15] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://schema.org/jobTitle> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 . 	?v0 <http://schema.org/nationality> ?v3 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [15] 200 OK (13 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [16] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [16] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 . 	?v0 <http://purl.org/goodrelations/validFrom> ?v5 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v6 . 	?v0 <http://schema.org/eligibleQuantity> ?v7 . 	?v0 <http://schema.org/eligibleRegion> ?v8 . 	?v0 <http://schema.org/priceValidUntil> ?v9 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [16] 200 OK (7 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [17] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [17] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://purl.org/dc/terms/Location> ?v1 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [17] 200 OK (6 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [18] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [18] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/caption> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 . 	?v0 <http://schema.org/publisher> ?v4 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [18] 200 OK (9 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [19] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [19] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> . 	?v0 <http://xmlns.com/foaf/familyName> ?v2 . 	?v3 <http://purl.org/ontology/mo/artist> ?v0 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [19] 200 OK (25 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [20] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [20] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/description> ?v2 . 	?v0 <http://schema.org/keywords> ?v3 . 	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [20] 200 OK (7 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [21] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [21] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://purl.org/ontology/mo/conductor> ?v1 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [21] 200 OK (7 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [22] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [22] Query = SELECT (COUNT(*) AS ?count_result) WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [22] 200 OK (4 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [23] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [23] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://schema.org/caption> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	?v0 <http://schema.org/contentRating> ?v3 . 	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 . 	?v4 <http://purl.org/stuff/rev#title> ?v5 . 	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 . 	?v7 <http://schema.org/actor> ?v6 . 	?v7 <http://schema.org/language> ?v8 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [23] 200 OK (23 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [24] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [24] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://schema.org/legalName> ?v1 . 	?v0 <http://purl.org/goodrelations/offers> ?v2 . 	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> . 	?v2 <http://purl.org/goodrelations/includes> ?v3 . 	?v4 <http://schema.org/jobTitle> ?v5 . 	?v4 <http://xmlns.com/foaf/homepage> ?v6 . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 . 	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 . 	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 . }  
+[2026-11-18 17:29:34] Fuseki     INFO  [24] 200 OK (128 ms)
+[2026-11-18 17:29:34] Fuseki     INFO  [25] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:34] Fuseki     INFO  [25] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 . 	?v0 <http://purl.org/dc/terms/Location> ?v3 . 	?v0 <http://xmlns.com/foaf/age> ?v4 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 . 	?v0 <http://xmlns.com/foaf/givenName> ?v6 . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [25] 200 OK (8.909 s)
+[2026-11-18 17:29:43] Fuseki     INFO  [26] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [26] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v3 <http://schema.org/trailer> ?v4 . 	?v3 <http://schema.org/keywords> ?v5 . 	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 . 	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [26] 200 OK (6 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [27] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [27] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v0 <http://ogp.me/ns#title> ?v2 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 . 	?v0 <http://schema.org/caption> ?v4 . 	?v0 <http://schema.org/description> ?v5 . 	?v1 <http://schema.org/url> ?v6 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [27] 200 OK (7 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [28] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [28] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://schema.org/contentRating> ?v1 . 	?v0 <http://schema.org/contentSize> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . 	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 . 	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [28] 200 OK (10 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [29] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [29] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://xmlns.com/foaf/homepage> ?v1 . 	?v2 <http://purl.org/goodrelations/includes> ?v0 . 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/description> ?v4 . 	?v0 <http://schema.org/contentSize> ?v8 . 	?v1 <http://schema.org/url> ?v5 . 	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 . 	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . 	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [29] 200 OK (9 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [30] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [30] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v4 . 	?v1 <http://ogp.me/ns#title> ?v5 . 	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [30] 200 OK (8 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [31] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [31] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . 	?v2 <http://schema.org/caption> ?v3 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [31] 200 OK (8 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [32] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [32] Query = SELECT (COUNT(DISTINCT ?v1) AS ?count_result) WHERE { 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 . 	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> . 	?v2 <http://schema.org/nationality> ?v1 . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [32] 200 OK (16 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [33] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [33] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [33] 200 OK (7 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [34] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [34] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> . 	?v0 <http://schema.org/caption> ?v2 . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [34] 200 OK (6 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [35] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [35] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://schema.org/jobTitle> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 . 	?v0 <http://schema.org/nationality> ?v3 . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [35] 200 OK (18 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [36] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [36] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://purl.org/goodrelations/includes> ?v1 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 . 	?v0 <http://purl.org/goodrelations/price> ?v3 . 	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 . 	?v0 <http://purl.org/goodrelations/validFrom> ?v5 . 	?v0 <http://purl.org/goodrelations/validThrough> ?v6 . 	?v0 <http://schema.org/eligibleQuantity> ?v7 . 	?v0 <http://schema.org/eligibleRegion> ?v8 . 	?v0 <http://schema.org/priceValidUntil> ?v9 . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [36] 200 OK (7 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [37] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [37] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://purl.org/dc/terms/Location> ?v1 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [37] 200 OK (7 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [38] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [38] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/caption> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 . 	?v0 <http://schema.org/publisher> ?v4 . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [38] 200 OK (12 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [39] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [39] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> . 	?v0 <http://xmlns.com/foaf/familyName> ?v2 . 	?v3 <http://purl.org/ontology/mo/artist> ?v0 . 	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [39] 200 OK (43 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [40] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [40] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> . 	?v0 <http://schema.org/description> ?v2 . 	?v0 <http://schema.org/keywords> ?v3 . 	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [40] 200 OK (7 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [41] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [41] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://purl.org/ontology/mo/conductor> ?v1 . 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 . 	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [41] 200 OK (7 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [42] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [42] Query = SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE { 	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 . 	?v0 <http://schema.org/text> ?v2 . 	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 . }  
+[2026-11-18 17:29:43] Fuseki     INFO  [42] 200 OK (15 ms)
+[2026-11-18 17:29:43] Fuseki     INFO  [43] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:43] Fuseki     INFO  [43] Query = SELECT ?o (COUNT(*) AS ?n) (COUNT(DISTINCT ?s) AS ?d) WHERE {?s <http://xmlns.com/foaf/age> ?o} GROUP BY ?o 
+[2026-11-18 17:29:44] Fuseki     INFO  [43] 200 OK (370 ms)
+[2026-11-18 17:29:44] Fuseki     INFO  [44] POST http://127.0.0.1:31446/ds/query
+[2026-11-18 17:29:44] Fuseki     INFO  [44] Query = SELECT ?o (COUNT(*) AS ?n) WHERE {?s <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?o} GROUP BY ?o 
+[2026-11-18 17:29:44] Fuseki     INFO  [44] 200 OK (59 ms)
