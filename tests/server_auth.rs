@@ -6,12 +6,17 @@ use std::net::{TcpListener, TcpStream};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
-struct Server(Child, u16, std::path::PathBuf);
+/// Each test picks a free port, releases it and starts a server on it; tests in this file run one at a time so a
+/// parallel test cannot take that port in between (which would send requests to the wrong server).
+static SERIAL: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+struct Server(Child, u16, std::path::PathBuf, #[allow(dead_code)] std::sync::MutexGuard<'static, ()>);
 impl Drop for Server {
     fn drop(&mut self) { let _ = self.0.kill(); let _ = self.0.wait(); let _ = std::fs::remove_dir_all(&self.2); }
 }
 
 fn start(name: &str, flags: &[&str], token: Option<&str>) -> Server {
+    let guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let dir = std::env::temp_dir().join(format!("tl-auth-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let port = { let l = TcpListener::bind("127.0.0.1:0").unwrap(); l.local_addr().unwrap().port() };
@@ -19,7 +24,7 @@ fn start(name: &str, flags: &[&str], token: Option<&str>) -> Server {
     cmd.arg("serve-store").arg(&dir).arg(port.to_string()).args(flags).stdout(Stdio::null()).stderr(Stdio::null())
         .env_remove("TRIPLELIGHT_UPDATE_TOKEN").env_remove("TRIPLELIGHT_HOST");
     if let Some(t) = token { cmd.env("TRIPLELIGHT_UPDATE_TOKEN", t); }
-    let server = Server(cmd.spawn().unwrap(), port, dir);
+    let server = Server(cmd.spawn().unwrap(), port, dir, guard);
     let deadline = Instant::now() + Duration::from_secs(10);
     while TcpStream::connect(("127.0.0.1", port)).is_err() {
         assert!(Instant::now() < deadline, "server did not start");
@@ -123,4 +128,23 @@ fn a_client_withholding_its_body_does_not_block_other_requests() {
     // A legitimate query on another connection completes while the slow one is still open.
     assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
     drop(slow);
+}
+
+#[test]
+fn an_unauthorized_update_with_a_full_body_is_not_applied() {
+    let s = start("unauth-full", &[], Some("s3cret"));
+    // Complete, valid update without credentials. The server may answer 401 or, because it rejects without
+    // reading the body, the connection may be reset; either way nothing may be inserted.
+    let mut c = TcpStream::connect(("127.0.0.1", s.1)).unwrap();
+    c.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+    write!(c, "POST /update HTTP/1.0\r\nHost: localhost\r\nContent-Type: application/sparql-update\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{UPDATE}", UPDATE.len()).unwrap();
+    let mut r = String::new();
+    match c.read_to_string(&mut r) {
+        Ok(_) => assert!(r.contains(" 401 "), "{r}"),
+        Err(e) => assert_eq!(e.kind(), std::io::ErrorKind::ConnectionReset, "{e}"),
+    }
+    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
+    // The same update with the token is applied (so the check above is not vacuous).
+    assert!(post(s.1, "/update", "application/sparql-update", UPDATE, Some("Bearer s3cret")).contains(" 200 "));
+    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("true"));
 }
