@@ -382,6 +382,7 @@ pub(super) fn from_snapshot(dir: &Path, source: &dyn Snapshot) -> io::Result<()>
         if batch.cols.iter().any(|c| c.len() != batch.len()) {
             return Err(bad("inconsistent source batch"));
         }
+        #[allow(clippy::needless_range_loop)] // columnar batch: index all three columns by row
         for i in 0..batch.len() {
             let mut terms = [String::new(), String::new(), String::new()];
             for (c, term) in terms.iter_mut().enumerate() {

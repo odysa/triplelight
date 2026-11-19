@@ -288,7 +288,7 @@ impl Store {
         let wal_path = dir.join("wal.log");
         let (records, valid_len) = read_wal(&wal_path)?;
         for rec in records { overlay = apply(&overlay, &rec)?; }
-        let mut wal = OpenOptions::new().create(true).read(true).write(true).open(&wal_path)?;
+        let mut wal = OpenOptions::new().create(true).truncate(false).read(true).write(true).open(&wal_path)?;
         wal.set_len(valid_len)?; // drop a torn tail
         wal.sync_all()?;
         use std::io::Seek;

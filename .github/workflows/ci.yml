@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  rust:
+    name: Rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain (from rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --locked --workspace --all-targets
+      - name: Build with the HTTP server feature
+        run: cargo build --locked --features server
+      - name: Clippy
+        run: cargo clippy --locked --workspace --all-targets --features server -- -D warnings
+      - name: Test
+        run: cargo test --locked --workspace --features server
+
+  w3c:
+    name: W3C SPARQL 1.1 query suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain (from rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build CLI
+        run: cargo build --locked --release
+      - name: Fetch pinned w3c/rdf-tests
+        run: |
+          git init -q rdf-tests
+          git -C rdf-tests fetch -q --depth 1 https://github.com/w3c/rdf-tests.git 56076c0efec4c353efcae2971be8f6005294ac64
+          git -C rdf-tests checkout -q FETCH_HEAD
+      - name: Run suite
+        run: |
+          pip install -q rdflib==7.1.4
+          python bench/w3c_sparql11.py rdf-tests/sparql/sparql11 target/release/triplelight w3c.json
+      - name: Check against the floor
+        run: python ci/w3c_floor.py w3c.json ci/w3c_floor.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: w3c-results
+          path: w3c.json
+
+  python:
+    name: Python binding
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain (from rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: bindings/python
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build and test
+        working-directory: bindings/python
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -q "maturin>=1.7,<2" pytest
+          maturin develop --release --locked
+          pytest -q tests
+
+  node:
+    name: Node.js binding
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain (from rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: bindings/node
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Build and test
+        working-directory: bindings/node
+        run: |
+          cargo build --release --locked
+          node scripts/copy-native.js release
+          npm test
+
+  wasm:
+    name: WebAssembly build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain (from bindings/wasm/rust-toolchain.toml)
+        working-directory: bindings/wasm
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: bindings/wasm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install wasm-bindgen CLI
+        run: cargo install --locked wasm-bindgen-cli --version 0.2.100
+      - name: Build and test
+        working-directory: bindings/wasm
+        run: |
+          cargo build --release --locked --target wasm32-unknown-unknown
+          node scripts/bindgen.js
+          npm test

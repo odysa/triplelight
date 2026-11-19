@@ -1,0 +1,5 @@
+# Pinned to the latest stable Rust. CI uses this toolchain; bump it together with any new lint fixes.
+[toolchain]
+channel = "1.100.0"
+components = ["clippy", "rustfmt"]
+targets = ["wasm32-unknown-unknown"]

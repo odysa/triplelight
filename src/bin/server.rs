@@ -95,7 +95,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
             let url = req.url().to_string();
             let path = url.split('?').next().unwrap_or("");
             // Authorize before reading the body, so an unauthorized client cannot make the server buffer it.
-            if path == "/update" { if let Err(denied) = auth.check(&req) { let _ = req.respond(denied); continue } }
+            if path == "/update" && let Err(denied) = auth.check(&req) { let _ = req.respond(denied); continue }
             let limit = if path == "/update" { u64::MAX } else { MAX_QUERY_BYTES };
             let mut body = String::new();
             if req.as_reader().take(limit.saturating_add(1)).read_to_string(&mut body).is_err() {
@@ -208,7 +208,7 @@ pub(crate) fn run(cmd: &str, args: &[String]) {
 
 /// `triplelight serve <data> [port]`: load a file into memory and answer queries (no updates).
 fn serve_memory(args: &[String]) {
-            let snap = load(&args[2], &args);
+            let snap = load(&args[2], args);
             let port = args.get(3).map(String::as_str).unwrap_or("7878");
             // Optimizer statistics (on by default, --no-stats disables) are built on a background thread so the
             // server answers immediately: until they are ready, joins use the greedy order. Join and leapfrog orders

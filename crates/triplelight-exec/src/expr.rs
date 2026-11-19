@@ -29,9 +29,6 @@ pub(super) enum Num { Int(i64), Dec(Decimal), Flt(f64), Dbl(f64) }
 impl Num {
     /// The value at a promoted type rank (1 decimal, 2 float, 3 double); a float result is rounded to binary32, as
     /// every XPath float operation is.
-    pub(super) fn of_rank(rank: u8, v: f64) -> Num {
-        match rank { 0 | 1 => Num::Dec(Decimal::from_f64(v).unwrap_or_default()), 2 => Num::Flt(v as f32 as f64), _ => Num::Dbl(v) }
-    }
     pub(super) fn f(self) -> f64 { match self { Num::Int(i) => i as f64, Num::Dec(d) => d.to_f64().unwrap_or(f64::NAN), Num::Flt(d) | Num::Dbl(d) => d } }
     /// The exact decimal value of an integer or decimal (`None` for float/double).
     fn dec(self) -> Option<Decimal> { match self { Num::Int(i) => Some(Decimal::from(i)), Num::Dec(d) => Some(d), _ => None } }
