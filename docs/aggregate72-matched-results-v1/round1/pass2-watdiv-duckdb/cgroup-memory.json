@@ -1,0 +1,6 @@
+{
+  "metric": "container cgroup memory.peak, not process RSS; includes startup and warmup",
+  "exit_code": 0,
+  "stdout": "3604578304\n12884901888\n0\n",
+  "stderr": ""
+}

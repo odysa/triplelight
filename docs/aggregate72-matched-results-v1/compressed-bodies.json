@@ -1,0 +1,82 @@
+{
+  "round1/pass1-lubm-duckdb/measured/group_advisors.json": {
+    "published": "round1/pass1-lubm-duckdb/measured/group_advisors.json.gz",
+    "bytes": 16147244,
+    "sha256": "0095d988b692177ebec0b2a532a2ad14f8d19e7406ebf73b26645289a783592b"
+  },
+  "round1/pass1-lubm-duckdb/warmup/group_advisors.json": {
+    "published": "round1/pass1-lubm-duckdb/warmup/group_advisors.json.gz",
+    "bytes": 16147244,
+    "sha256": "9c80cf13cbb7e89e9cfcf6564b4c3966e9626bf1123bcee1735bca7304ec5795"
+  },
+  "round1/pass1-lubm-qlever/measured/group_advisors.json": {
+    "published": "round1/pass1-lubm-qlever/measured/group_advisors.json.gz",
+    "bytes": 15666033,
+    "sha256": "77721aba80d0d80f55b08e144cc17a4eec88a057a279721d60b6acdb5d168bd4"
+  },
+  "round1/pass1-lubm-qlever/warmup/group_advisors.json": {
+    "published": "round1/pass1-lubm-qlever/warmup/group_advisors.json.gz",
+    "bytes": 15666033,
+    "sha256": "37de48f52c51903e1f6953f6495df351ecbff929e94c5769204ba9d1bc04ca80"
+  },
+  "round1/pass1-lubm-rdfdb/measured/group_advisors.json": {
+    "published": "round1/pass1-lubm-rdfdb/measured/group_advisors.json.gz",
+    "bytes": 16147244,
+    "sha256": "5cd638eeff26b72f41b40a21b06a4c9fcbcda47451b8a94624e3cce34a46e60f"
+  },
+  "round1/pass1-lubm-rdfdb/warmup/group_advisors.json": {
+    "published": "round1/pass1-lubm-rdfdb/warmup/group_advisors.json.gz",
+    "bytes": 16147244,
+    "sha256": "5cd638eeff26b72f41b40a21b06a4c9fcbcda47451b8a94624e3cce34a46e60f"
+  },
+  "round1/pass1-lubm-virtuoso/measured/group_advisors.json": {
+    "published": "round1/pass1-lubm-virtuoso/measured/group_advisors.json.gz",
+    "bytes": 18072429,
+    "sha256": "00e8674661bfc99b1dd939dbf747a39cbcc12c9bebe6a0cb95733b08e3735245"
+  },
+  "round1/pass1-lubm-virtuoso/warmup/group_advisors.json": {
+    "published": "round1/pass1-lubm-virtuoso/warmup/group_advisors.json.gz",
+    "bytes": 18072429,
+    "sha256": "00e8674661bfc99b1dd939dbf747a39cbcc12c9bebe6a0cb95733b08e3735245"
+  },
+  "round1/pass2-lubm-duckdb/measured/group_advisors.json": {
+    "published": "round1/pass2-lubm-duckdb/measured/group_advisors.json.gz",
+    "bytes": 16147244,
+    "sha256": "56b6a70e1979f8f86258d5047227658c5abaa161bd1e6eaaca52d48fff2bbaca"
+  },
+  "round1/pass2-lubm-duckdb/warmup/group_advisors.json": {
+    "published": "round1/pass2-lubm-duckdb/warmup/group_advisors.json.gz",
+    "bytes": 16147244,
+    "sha256": "57a02e7282e5406a435c12b117290dcb25346527c1c94c9f6090c07e32ac550c"
+  },
+  "round1/pass2-lubm-qlever/measured/group_advisors.json": {
+    "published": "round1/pass2-lubm-qlever/measured/group_advisors.json.gz",
+    "bytes": 15666033,
+    "sha256": "2191fcd9b91ea71e7d62caaf1e01c19605d27a1d3d36bfb277f4d24ad29dde13"
+  },
+  "round1/pass2-lubm-qlever/warmup/group_advisors.json": {
+    "published": "round1/pass2-lubm-qlever/warmup/group_advisors.json.gz",
+    "bytes": 15666033,
+    "sha256": "8c6eb72af5de26950636248dde4db0f929b6ccdad80438e0e0bba30a6d03a4b2"
+  },
+  "round1/pass2-lubm-rdfdb/measured/group_advisors.json": {
+    "published": "round1/pass2-lubm-rdfdb/measured/group_advisors.json.gz",
+    "bytes": 16147244,
+    "sha256": "5cd638eeff26b72f41b40a21b06a4c9fcbcda47451b8a94624e3cce34a46e60f"
+  },
+  "round1/pass2-lubm-rdfdb/warmup/group_advisors.json": {
+    "published": "round1/pass2-lubm-rdfdb/warmup/group_advisors.json.gz",
+    "bytes": 16147244,
+    "sha256": "5cd638eeff26b72f41b40a21b06a4c9fcbcda47451b8a94624e3cce34a46e60f"
+  },
+  "round1/pass2-lubm-virtuoso/measured/group_advisors.json": {
+    "published": "round1/pass2-lubm-virtuoso/measured/group_advisors.json.gz",
+    "bytes": 18072429,
+    "sha256": "00e8674661bfc99b1dd939dbf747a39cbcc12c9bebe6a0cb95733b08e3735245"
+  },
+  "round1/pass2-lubm-virtuoso/warmup/group_advisors.json": {
+    "published": "round1/pass2-lubm-virtuoso/warmup/group_advisors.json.gz",
+    "bytes": 18072429,
+    "sha256": "00e8674661bfc99b1dd939dbf747a39cbcc12c9bebe6a0cb95733b08e3735245"
+  }
+}

@@ -1,0 +1,569 @@
+{
+  "adapter_preflight_results_sha256": "6caa74da48f6978c59da0442cd99954cfca99ff50ccf5ff45fbf2b1228fa5366",
+  "budgets": {
+    "container_cpu_quota": 4,
+    "container_execution": "One engine container at a time in same existing Linux VM; all stores disk-backed; startup excluded",
+    "container_memory_bytes": 12884901888,
+    "container_memory_swap_total_bytes": 12884901888,
+    "cpu_affinity_pinned": false,
+    "duckdb_memory_literal": "8GB",
+    "duckdb_spill_literal": "8GB",
+    "extra_swap_bytes": 0,
+    "qlever_cache_caps": [
+      "1MB",
+      "1MB",
+      "1MB"
+    ],
+    "qlever_query_memory_literal": "11GB",
+    "rdfdb_cache_literal": "10240 MiB shared cache",
+    "virtuoso_buffers": 1360000,
+    "virtuoso_max_dirty_buffers": 1000000,
+    "virtuoso_query_threads": 4
+  },
+  "cache_profile": {
+    "all_requests": "Accept-Encoding:identity and Cache-Control:no-cache",
+    "duckdb": "No adapter result memoization; translation and fetch/encoding occur inside each HTTP request; normal engine defaults",
+    "os_page_cache": "Not cleared; shared host, fresh engine processes, complete workload warmup",
+    "qlever": "Default group-by-hash-map=false, disable-caching=false, verified five zero counters from clear-cache before every warmup and measured workload request",
+    "rdfdb": "Default engine caches, statistics readiness required, no harness result memoization",
+    "virtuoso": "Engine defaults on existing owned store; no external harness result cache; HTTP Cache-Control:no-cache"
+  },
+  "dataset_orders": [
+    [
+      "lubm",
+      "watdiv"
+    ],
+    [
+      "watdiv",
+      "lubm"
+    ]
+  ],
+  "datasets": {
+    "lubm": {
+      "distinct_query_hashes": 26,
+      "duckdb_sha256": "142de4ad9d08017facacdc4cd4427d2df0f46067f4005f96763896a89ee39d3d",
+      "duckdb_store": "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-import-v1/lubm/duck.db",
+      "graph_count": 13409395,
+      "qlever_files": {
+        "lubm100.index.ops": {
+          "bytes": 24175768,
+          "sha256": "e7bddfdaaafe8bd3259497bfe436b5691baa4173ea109984889da2f64c8b7f0a"
+        },
+        "lubm100.index.ops.meta": {
+          "bytes": 800,
+          "sha256": "c448310810f12f68860e79ba20fbd40e5cc5208760fd4b1a6f40f283940e2949"
+        },
+        "lubm100.index.osp": {
+          "bytes": 24079275,
+          "sha256": "be36482a3d9a968e3e6fb1cc64cbd3376f04bbd978b4b206e27a90d34b14081c"
+        },
+        "lubm100.index.osp.meta": {
+          "bytes": 800,
+          "sha256": "ae9f395bb25a8b13d80511454b72d2808873e91eb0621e5d025cc1ee460205c1"
+        },
+        "lubm100.index.patterns": {
+          "bytes": 736,
+          "sha256": "1e8310ac7c1e7472327f55d06cc4206586e28b9bf2deaafb0277eace17d594d2"
+        },
+        "lubm100.index.pos": {
+          "bytes": 23025468,
+          "sha256": "71aec67d8b9eb7e0e69f5d153b4f3800392b108772b162ff6b8999a01ba62913"
+        },
+        "lubm100.index.pos.meta": {
+          "bytes": 544,
+          "sha256": "08c2363d0a0c481253d34a44dd3b6e61c883227dbfaf67cc7cdc3f9400d29943"
+        },
+        "lubm100.index.pso": {
+          "bytes": 24124496,
+          "sha256": "46cf0014c2040bc9d43151ece5b751c418f2a64030247e535c333e346c90904d"
+        },
+        "lubm100.index.pso.meta": {
+          "bytes": 544,
+          "sha256": "7c6f0ee65c0b2f38c42c0dd768ec2eba4cea13b7bc6bd88dedafb7ba29e5e153"
+        },
+        "lubm100.index.resource-usage-log.tsv": {
+          "bytes": 2336,
+          "sha256": "0774d820beda535b0134a09d0b9436b00002970d9f80a80ee75bf13119e00b9e"
+        },
+        "lubm100.index.sop": {
+          "bytes": 27681997,
+          "sha256": "473adc37db95a5520215ca4fcd8c5c9daab47800fe40ed49432d984cb88e122d"
+        },
+        "lubm100.index.sop.meta": {
+          "bytes": 32,
+          "sha256": "72345d3e4997db59879d91729b1bfde8efc675f862cca24f6c12e7fb5ac0fb30"
+        },
+        "lubm100.index.spo": {
+          "bytes": 29208648,
+          "sha256": "ed742ad4520f654e3e90372eddd3c925af0ffaf0f7dfcdf307ae48b961513519"
+        },
+        "lubm100.index.spo.meta": {
+          "bytes": 32,
+          "sha256": "72345d3e4997db59879d91729b1bfde8efc675f862cca24f6c12e7fb5ac0fb30"
+        },
+        "lubm100.internal.index.pos": {
+          "bytes": 2321559,
+          "sha256": "2d57917e21c56aa80105c6c05e767d3f530d001fc1c736d06bf4905cbd444d70"
+        },
+        "lubm100.internal.index.pos.meta": {
+          "bytes": 64,
+          "sha256": "4dd6e75726cbf9c04ae840cd84b609768f31aa9ddad7ea83cb11c4231b57addf"
+        },
+        "lubm100.internal.index.pso": {
+          "bytes": 2645503,
+          "sha256": "295cd7580aac9a000d46a037a80be3242851c6013ea212ecb3ea50204e0535ef"
+        },
+        "lubm100.internal.index.pso.meta": {
+          "bytes": 64,
+          "sha256": "4abac6b7d70bcad7b3cc7b142a2a958a0ff1ddfed0f8f656abde987ba11b90c5"
+        },
+        "lubm100.meta-data.json": {
+          "bytes": 911,
+          "sha256": "186d4613b9fe0ce28b3fc565006b3b1f63e199795cf3c8f6040a79a0a4a63f1a"
+        },
+        "lubm100.vocabulary.codebooks": {
+          "bytes": 18440,
+          "sha256": "ef5438e02af69ce762efb245958b3d947f0c881ab070d6fab0c177917fb792f1"
+        },
+        "lubm100.vocabulary.words.external": {
+          "bytes": 20119971,
+          "sha256": "0ab70f882e4105a9f3eee02f95fad8247fea56f8b14243584d4ed4066827063f"
+        },
+        "lubm100.vocabulary.words.external.offsets": {
+          "bytes": 26430008,
+          "sha256": "41d1cda5e45559bc0677817968abe5b04c86efd99a4e7f89163b35b70cac2c1a"
+        },
+        "lubm100.vocabulary.words.internal": {
+          "bytes": 46866,
+          "sha256": "cd1fc4d0268f7eb4a9c694fadff18dbbe6506f34b70f15dcb9bed00b0c0c1ef2"
+        },
+        "lubm100.vocabulary.words.internal.ids": {
+          "bytes": 26464,
+          "sha256": "e38c82517291009cb748a46f6fb835552254877ae297c076e031fe31d40a976a"
+        }
+      },
+      "qlever_store": "/private/tmp/rdf-jianlin-analytical25/aggregate72-qlever-build-v1/lubm/index",
+      "query_labels": [
+        "lubm/all_q1.rq",
+        "lubm/all_q10.rq",
+        "lubm/all_q11.rq",
+        "lubm/all_q12.rq",
+        "lubm/all_q13.rq",
+        "lubm/all_q14.rq",
+        "lubm/all_q2.rq",
+        "lubm/all_q3.rq",
+        "lubm/all_q4.rq",
+        "lubm/all_q5.rq",
+        "lubm/all_q6.rq",
+        "lubm/all_q7.rq",
+        "lubm/all_q8.rq",
+        "lubm/all_q9.rq",
+        "lubm/distinct_q1.rq",
+        "lubm/distinct_q10.rq",
+        "lubm/distinct_q11.rq",
+        "lubm/distinct_q12.rq",
+        "lubm/distinct_q13.rq",
+        "lubm/distinct_q14.rq",
+        "lubm/distinct_q2.rq",
+        "lubm/distinct_q3.rq",
+        "lubm/distinct_q4.rq",
+        "lubm/distinct_q5.rq",
+        "lubm/distinct_q6.rq",
+        "lubm/distinct_q7.rq",
+        "lubm/distinct_q8.rq",
+        "lubm/distinct_q9.rq",
+        "lubm/group_advisors.rq",
+        "lubm/group_type.rq"
+      ],
+      "rdfdb_files": {
+        "MANIFEST": {
+          "bytes": 264,
+          "sha256": "7731de215c9ac57680f600e9417664cf836b310fcc500bdee41ec64ed6904755"
+        },
+        "dictionary.id": {
+          "bytes": 98382666,
+          "sha256": "d77e03502c347a377eb172a313d5d43446d021c6d63f6d69662a468e5076a5fc"
+        },
+        "dictionary.term": {
+          "bytes": 67506271,
+          "sha256": "f8620df028ac22fa8533ed368381ce89a9b2eb7e7122e018ab4dc791f23d9af1"
+        },
+        "ops": {
+          "bytes": 37270026,
+          "sha256": "c74fd7d10372add140f4fb16f656aa4eeea22b9e36fa3b60d0e09000e8e83300"
+        },
+        "osp": {
+          "bytes": 37209354,
+          "sha256": "c2d0c0e906af92bc1c7f974ec10078a54ef7af56cd2aac9078af196adee4cd23"
+        },
+        "pos": {
+          "bytes": 32694301,
+          "sha256": "43f05bf131f8227c687eddf817ac0ad5c753d04fd4a1022a02ba300435c6b7c8"
+        },
+        "pso": {
+          "bytes": 38909245,
+          "sha256": "51193c898ea9bdc5e6ec00c334b7f2d6b00369e2933a9fa81d9b4801d1f7d02e"
+        },
+        "sop": {
+          "bytes": 128871135,
+          "sha256": "c6d128b7e76347d047af340cbc123405abdea4ce3b1dcd4e2af9c702d2acb130"
+        },
+        "spo": {
+          "bytes": 128869247,
+          "sha256": "d8132f198e8c5452015055bf9c7f91ac6fdab6aaf69f886a620417b66bb4551a"
+        }
+      },
+      "rdfdb_store": "/private/tmp/rdf-jianlin-analytical25/aggregate72-rdfdb-disk-qualification-v1/lubm/store",
+      "source_bytes": 2377133547,
+      "source_path": "<agent-workspace>/rdfdb/bench/tools/lubm100.nt",
+      "source_sha256": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d",
+      "virtuoso_graph": "http://bench/aggregate72/lubm",
+      "virtuoso_immutable_bytes": false,
+      "virtuoso_store": "/private/tmp/rdf-jianlin-analytical25/aggregate72-virtuoso-qualification-v1/lubm/database"
+    },
+    "watdiv": {
+      "distinct_query_hashes": 42,
+      "duckdb_sha256": "ac25aa7255b6c2754df65f559fef9e6483f7dac2321d1df616474ef29b1f1b72",
+      "duckdb_store": "/private/tmp/rdf-jianlin-analytical25/aggregate72-duck-import-v1/watdiv/duck.db",
+      "graph_count": 10914314,
+      "qlever_files": {
+        "watdiv100.index.ops": {
+          "bytes": 50376241,
+          "sha256": "868018717e0df7747c5adac0eb603b9b4dfb8113ff9bb05f84f3971da823ef36"
+        },
+        "watdiv100.index.ops.meta": {
+          "bytes": 416,
+          "sha256": "170a171f85c209c35bd671e8bf0e976a406ec6de64ad0f83c103a89d8010b200"
+        },
+        "watdiv100.index.osp": {
+          "bytes": 51615854,
+          "sha256": "ee80ebaeb980fd64b63cbb05d140221b0aa8fd620e8e94abd7ed504be8064819"
+        },
+        "watdiv100.index.osp.meta": {
+          "bytes": 416,
+          "sha256": "c371d0606d4471407a546d1b29c644012e5889fdf54be588e0ad450b36ae992b"
+        },
+        "watdiv100.index.patterns": {
+          "bytes": 1039504,
+          "sha256": "d92454c742839dac41122df6fa12638792d725325732328b668710de9e2e9646"
+        },
+        "watdiv100.index.pos": {
+          "bytes": 48015015,
+          "sha256": "fa56c4b812a158af491d391f5faff9532eb3ddbf9fbedae0585aed75363c5491"
+        },
+        "watdiv100.index.pos.meta": {
+          "bytes": 992,
+          "sha256": "e4555771409a1928e696fbb04c9e13f218de13002fbab54a40a49e526008c2a6"
+        },
+        "watdiv100.index.pso": {
+          "bytes": 47567833,
+          "sha256": "5ad5b50750efd7d2e5292b9ef0cf57fa080fc663065b2588cafa4c9a3897267d"
+        },
+        "watdiv100.index.pso.meta": {
+          "bytes": 992,
+          "sha256": "bc359bea983a9cdbe4a7e30729c5187a5e38b2e334be69c72931190259c82b26"
+        },
+        "watdiv100.index.resource-usage-log.tsv": {
+          "bytes": 1886,
+          "sha256": "80750af4d771214bfd348bc924edd971e7a5f100342cc55a62a2b867439389d7"
+        },
+        "watdiv100.index.sop": {
+          "bytes": 31187726,
+          "sha256": "b81a938c2fb7d474c0ba8f3ce5476fdbda07400b2305a0fc1f31aaa9bbfbbfb7"
+        },
+        "watdiv100.index.sop.meta": {
+          "bytes": 32,
+          "sha256": "72345d3e4997db59879d91729b1bfde8efc675f862cca24f6c12e7fb5ac0fb30"
+        },
+        "watdiv100.index.spo": {
+          "bytes": 29955623,
+          "sha256": "56d4d15b0f3e2e56a42389f592871b035d2b7573bce8abf7c916962c97fea453"
+        },
+        "watdiv100.index.spo.meta": {
+          "bytes": 32,
+          "sha256": "72345d3e4997db59879d91729b1bfde8efc675f862cca24f6c12e7fb5ac0fb30"
+        },
+        "watdiv100.internal.index.pos": {
+          "bytes": 728643,
+          "sha256": "19c351b0ce0dcd791467089a23db33614901a62637290af2468e71a38baa50b7"
+        },
+        "watdiv100.internal.index.pos.meta": {
+          "bytes": 64,
+          "sha256": "91dcb2586a1f096d91cad7bb41530b359ec983b39fcd76b9586616462964d65a"
+        },
+        "watdiv100.internal.index.pso": {
+          "bytes": 928666,
+          "sha256": "d980f2bfb7414278094b46f313351edd6d469b9eb4f6b1042b0149adfd7effe7"
+        },
+        "watdiv100.internal.index.pso.meta": {
+          "bytes": 64,
+          "sha256": "125b4bca92a62713c0cfe57eb541e6060b6062b1d9a264b3656120681df6d9ce"
+        },
+        "watdiv100.meta-data.json": {
+          "bytes": 909,
+          "sha256": "536b3b701869ca5254ffa3882c959f73f4febb695f3460d94586d73318db1808"
+        },
+        "watdiv100.vocabulary.codebooks": {
+          "bytes": 9224,
+          "sha256": "7c093a5325fcee33f567f3db146a26a1e4fd2b958628122c5c56abc73ae4368f"
+        },
+        "watdiv100.vocabulary.words.external": {
+          "bytes": 30497090,
+          "sha256": "f0497e031360aa63488f4f5edf48a3121c7fd3b4b05fd134c8297bf3d5e9a465"
+        },
+        "watdiv100.vocabulary.words.external.offsets": {
+          "bytes": 8423632,
+          "sha256": "0a6f90368b743e1b8f71eadbe9c6a2a196826ae459ad098aeb796599a50a38a4"
+        },
+        "watdiv100.vocabulary.words.internal": {
+          "bytes": 39440,
+          "sha256": "3459046100291d407585575be220ce69cb1c791ad9f903c9d22286bfd2378206"
+        },
+        "watdiv100.vocabulary.words.internal.ids": {
+          "bytes": 8464,
+          "sha256": "be596cd3b3809db56b16eff4fb1ba43342ca41e749c485e9808f9b731d43b79b"
+        }
+      },
+      "qlever_store": "/private/tmp/rdf-jianlin-analytical25/aggregate72-qlever-build-v1/watdiv/index",
+      "query_labels": [
+        "watdiv/all_C1.rq",
+        "watdiv/all_C2.rq",
+        "watdiv/all_C3.rq",
+        "watdiv/all_F1.rq",
+        "watdiv/all_F2.rq",
+        "watdiv/all_F3.rq",
+        "watdiv/all_F4.rq",
+        "watdiv/all_F5.rq",
+        "watdiv/all_L1.rq",
+        "watdiv/all_L2.rq",
+        "watdiv/all_L3.rq",
+        "watdiv/all_L4.rq",
+        "watdiv/all_L5.rq",
+        "watdiv/all_S1.rq",
+        "watdiv/all_S2.rq",
+        "watdiv/all_S3.rq",
+        "watdiv/all_S4.rq",
+        "watdiv/all_S5.rq",
+        "watdiv/all_S6.rq",
+        "watdiv/all_S7.rq",
+        "watdiv/distinct_C1.rq",
+        "watdiv/distinct_C2.rq",
+        "watdiv/distinct_C3.rq",
+        "watdiv/distinct_F1.rq",
+        "watdiv/distinct_F2.rq",
+        "watdiv/distinct_F3.rq",
+        "watdiv/distinct_F4.rq",
+        "watdiv/distinct_F5.rq",
+        "watdiv/distinct_L1.rq",
+        "watdiv/distinct_L2.rq",
+        "watdiv/distinct_L3.rq",
+        "watdiv/distinct_L4.rq",
+        "watdiv/distinct_L5.rq",
+        "watdiv/distinct_S1.rq",
+        "watdiv/distinct_S2.rq",
+        "watdiv/distinct_S3.rq",
+        "watdiv/distinct_S4.rq",
+        "watdiv/distinct_S5.rq",
+        "watdiv/distinct_S6.rq",
+        "watdiv/distinct_S7.rq",
+        "watdiv/group_age.rq",
+        "watdiv/group_gender.rq"
+      ],
+      "rdfdb_files": {
+        "MANIFEST": {
+          "bytes": 264,
+          "sha256": "dc53f607f83d8c3c0f84f2588c9574addaa6e9b103fcacafac805ada260be665"
+        },
+        "dictionary.id": {
+          "bytes": 63355818,
+          "sha256": "8d330b7230c168609c4d8b5fbabd062138c20ad982655150359e8e6c64362906"
+        },
+        "dictionary.term": {
+          "bytes": 60018110,
+          "sha256": "1f2373a58805a999c23119379a6c5862bb4e3f8ac6d1f914722cadf49859a7ea"
+        },
+        "ops": {
+          "bytes": 49347752,
+          "sha256": "d343204c9745b0c63f01375fbb332517615d6f53c2cf110c8de8751321f9b1c0"
+        },
+        "osp": {
+          "bytes": 50043880,
+          "sha256": "81a4de0a9b0ea49a97abd7040ff507e8ffdd7a1e3a3f8bb96fb211cb34b270e6"
+        },
+        "pos": {
+          "bytes": 38249186,
+          "sha256": "fdc21e07a57a66438b63880d2b5b4a1bb6aac6d88a4a7157fdaa4541a47ef71f"
+        },
+        "pso": {
+          "bytes": 43158401,
+          "sha256": "657315071716e4e7ad8174576bb126efc0db04c88e956088969691d6dc3daf81"
+        },
+        "sop": {
+          "bytes": 122786252,
+          "sha256": "7b61ee453d5245c45e9ca1c52186eff1166b2407a89797a30ff9370e1a57ca52"
+        },
+        "spo": {
+          "bytes": 122769484,
+          "sha256": "f72d907150ca00a1e5bf6440b108af0dee6cf6554eaca96ed9c7ffab904158a2"
+        }
+      },
+      "rdfdb_store": "/private/tmp/rdf-jianlin-analytical25/aggregate72-rdfdb-disk-qualification-v1/watdiv/store",
+      "source_bytes": 1558148905,
+      "source_path": "<agent-workspace>/rdfdb/bench/tools/watdiv100.nt",
+      "source_sha256": "f53153e24d3e4e89d89c0587671022c11855c909cdcc4bf69f282feb554d6041",
+      "virtuoso_graph": "http://bench/aggregate72/watdiv",
+      "virtuoso_immutable_bytes": false,
+      "virtuoso_store": "/private/tmp/rdf-jianlin-analytical25/aggregate72-virtuoso-qualification-v1/watdiv/database"
+    }
+  },
+  "duck_module_files": {
+    "_duckdb-stubs/__init__.pyi": "e7407738688da4b25bbad07927c716d9d934f163595c455023f7a231cfdb29a6",
+    "_duckdb-stubs/_enums.pyi": "af7e1f596a2b88f587a26dac6a33ceb3343ab08a424f3fad653150aaa091d62e",
+    "_duckdb-stubs/_func.pyi": "223f3d865fbb0e28ed76d3e2643f90d7e9f3042585028b6e726b8631541d0355",
+    "_duckdb-stubs/_sqltypes.pyi": "bda4d8aefd59c5dadedcf846967505e77f72d33e66f9eeb36ee873fd43bc8ae5",
+    "_duckdb-stubs/_typing.pyi": "11706da5385d1a7066ba765c33c17754f4657f7dcc40f1740cb34b04d95891d8",
+    "_duckdb.cpython-311-aarch64-linux-gnu.so": "4cc47e49dd4bc2817b01645c652d4ba192f863d3e4df2f5b274f530a1adbb7c1",
+    "adbc_driver_duckdb/__init__.py": "96d53c934790fe1cd5901cfa5b0a12ddabb92eaba98f47dd5a0ca22f272a56d1",
+    "adbc_driver_duckdb/dbapi.py": "ce3febfacb48dca2631f5a7d0c11cdd82f77bf2cd90e7684397363df83665935",
+    "duckdb-2.0.0.dist-info/INSTALLER": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508",
+    "duckdb-2.0.0.dist-info/METADATA": "d52a3ae8a9492d2a1a063800d72e2243fbfdd2f47380bcc3d1532284b1645e0b",
+    "duckdb-2.0.0.dist-info/RECORD": "e3c3b6127782fe7bca3b018aeb0f643ddbbd4fb6f8bb4f627d54790105f78296",
+    "duckdb-2.0.0.dist-info/REQUESTED": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "duckdb-2.0.0.dist-info/WHEEL": "92f000ca2e74234375468a2efc5d9c1aafc22d8fe39a64585fd9bff31a662bdd",
+    "duckdb-2.0.0.dist-info/licenses/LICENSE": "075c33400ffcb0c586dd106a029d3e733e9da3693f8fcb9cebfc651c8a2f14e3",
+    "duckdb/__init__.py": "85ce0baebdb7a81409c005056ef962270947aff974df00fb79d84642f11ac0e7",
+    "duckdb/_build_info.py": "1417ab01888e8fdf47da78417e35b15015305c231f31644ac0e3a0ecff67a9ce",
+    "duckdb/_dbapi_type_object.py": "8035a9e56820d6265c5dc5c0562a81aac7d32325b8593f2d2e9c4c8dc0dfd2cd",
+    "duckdb/_expression.py": "85f613c81693f1dc6690d353cd7abe41e16087b7796f3473624de5cc9cb910ca",
+    "duckdb/_expression_aggregates.py": "20eef39f081ef7cfcf440bc2c471816332330492f246a0f4919ba116cfb72b5b",
+    "duckdb/_expression_namespaces.py": "6bbda6011a59a6825efbd7dd8bcfd6999448f6af57713058bee796244825374d",
+    "duckdb/_relation.py": "0ae64fe5a7ea7f083dd0584b4d582a12db176188756d0ebe4d9380c054caba0d",
+    "duckdb/_seam.py": "84aee249f5aa478dff443ab58d1e3abb009206a1727fe06f0727a6d62c2a2a0a",
+    "duckdb/_sources/__init__.py": "33b12c0cefde457d3069d4c7379357c7c08a52c8d721f59deae4f78ecb651f4e",
+    "duckdb/_sources/arrow.py": "c38f09972eec82de56537f82503ca625b3a017687c1954905b8d0893ae06ab21",
+    "duckdb/_sources/nodes.py": "71783c7fe46c9d1a1486a0741389689543f5ed226f0150d76afe6939f7f65d30",
+    "duckdb/_sources/polars.py": "15f8ec9a0f1406d4594f33b51891b3034d2e2adea4778cf7bf6bab3320b9b094",
+    "duckdb/_sources/pyarrow.py": "65cb4ef535f654e77f524ae59ae1f56af35929de8c732e3c26455b6d4c103c0d",
+    "duckdb/_sources/to_arrow.py": "39c365e3f945daec6cd800bf361c3bd1673e83c3395fe0838dd80643a1c4e61e",
+    "duckdb/_sources/to_polars.py": "5698e8f91d62766c9d15ce7931f0c2759b7c482d39ff3b0e6b1fc80b15859be0",
+    "duckdb/_sql_keywords.py": "b12cedde3c96453620e5ed80379c91df8f2bc59cb86c8d18c3cbf2cd915bb2fb",
+    "duckdb/_version.py": "aa2abcf9c83b9124e380cf18a0e7fd2b2df68b2224ec6ef189576a48b1be920c",
+    "duckdb/bytes_io_wrapper.py": "807e585b8ddf99be4d4670d238c042996ca364135fc3cdaea403e46ac3bb9d1d",
+    "duckdb/experimental/__init__.py": "42e84870dc8a9da9212423d343fcba88ee4c2ac5ea327caab04ee93e9bb924a4",
+    "duckdb/experimental/spark/LICENSE": "ff5aa49c52e9830627582e9854fa76827d19c3b040b856162d172d72a9e95067",
+    "duckdb/experimental/spark/__init__.py": "9fcf20ed45ae92c8449eac61a98288c6ea9ea8104820f252abfd0b300ab792f0",
+    "duckdb/experimental/spark/_globals.py": "54e39dedc7704beef71c03ebfd2af4ccea567ec230a82616b7a51524de6a1c36",
+    "duckdb/experimental/spark/_typing.py": "718be9abbfeae05ce4ccd32f6660bbd6be4ca74edae905a51272b6626fe86db8",
+    "duckdb/experimental/spark/conf.py": "6824b8c8e6b6c996501419f544c780564df734e1187c126a60eb931a2ba165b2",
+    "duckdb/experimental/spark/context.py": "be5cea860ed163a4b4514c16f8dd0af4c5e76ea7056b3a678ae95ad9bcca5e77",
+    "duckdb/experimental/spark/errors/__init__.py": "6d9b877a67a94569465974ec312fa1d47fc82381a734b417d34161c726f1245f",
+    "duckdb/experimental/spark/errors/error_classes.py": "30d7c8853e622640abdc47d321aae74f024b253894cdbfa2258b5c6275a862b2",
+    "duckdb/experimental/spark/errors/exceptions/__init__.py": "a6d474a901ac0b7035c6a80d0e3e3300c69d70d1c20aabae933415d32b5ecbdc",
+    "duckdb/experimental/spark/errors/exceptions/base.py": "2cb3f5139722e5331627f397e734b1097c2ef83409509e4912be0df2d4ac2c4a",
+    "duckdb/experimental/spark/errors/utils.py": "b5191cb98e22bb8bed3ea83f87f4b01d2a764e0a3e49f1dc700d42b23573ad6c",
+    "duckdb/experimental/spark/exception.py": "d4acdac2257ad83864e2f51d882fa3380c9759e695824ffd476e279252be6170",
+    "duckdb/experimental/spark/sql/__init__.py": "17765100326fba3eb0d5c8512941d9459cf9a4c42037a695ee13c7c7552c6fea",
+    "duckdb/experimental/spark/sql/_typing.py": "7c1fcf9a5d764f9bfce931277a2f89a377c8d9f30d647cbec983428c26a9f8f6",
+    "duckdb/experimental/spark/sql/catalog.py": "1575ad274f505de8708010893c13b88e0d2c87745a95418a6679aad5f2cd6d28",
+    "duckdb/experimental/spark/sql/column.py": "ae8cdd3031da4004e2baaa24044d1a86f736398bc38fa3699fb4bf0cd8efd7b0",
+    "duckdb/experimental/spark/sql/conf.py": "736dc275f0c5f0b5938add69cb61e12f1c88d30fbfec658902b714e54e3a82b7",
+    "duckdb/experimental/spark/sql/dataframe.py": "517e8e18370ca36fce84fb6aafc08ff786fbf438e247fe19906e5b9bd0f97954",
+    "duckdb/experimental/spark/sql/functions.py": "09550e3f45797e37a6c52a421bea2d0b703cb3b55e049d223e12b4da685f8180",
+    "duckdb/experimental/spark/sql/group.py": "3eabb52749502d2b87bc2579b2a41a885b8338548c429281d78ff0ea869e98ac",
+    "duckdb/experimental/spark/sql/readwriter.py": "b825493936bcdf5f03ed2e2eaa1fa4fba7ee20c44b0842be4eab1e7b0450edc7",
+    "duckdb/experimental/spark/sql/session.py": "27fa0f7020a499ca874696ddbb334e12e88aa3a8ff04b5588811d4e56b1567d5",
+    "duckdb/experimental/spark/sql/streaming.py": "9399f8f8960adcfe0d2bc4772820c0cb7bbccdd50006b3176a5e028445e40bc6",
+    "duckdb/experimental/spark/sql/type_utils.py": "854246bba64808ad7b29166799c5917a896bb2893bdd3b30164462394e8e91bb",
+    "duckdb/experimental/spark/sql/types.py": "43b0e201d80b0b3a0103bcb9576a5e7587282488aa852e3b9a229c4afee7ff33",
+    "duckdb/experimental/spark/sql/udf.py": "9d687b55cffb63bfb1957a050b66048cb6c6de9f4c78ccc719f37259636aa324",
+    "duckdb/filesystem.py": "1a3297f24359ac64d5b59911aeeea93ceebe039a163f50ddf108bcf49eb64ea0",
+    "duckdb/func/__init__.py": "a22b176a70e92988c11beb52d4030656da1d0c6a8a66ca586c22d7e5895b58b4",
+    "duckdb/polars_io.py": "99049bd0cdba7f7b979fcad19ed28bf0b428a75085b947a9a68ebfba3bb4cfa2",
+    "duckdb/py.typed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "duckdb/query_graph/__init__.py": "5ee16f3a6c7a1f3d5ace378e32c1cf868fdbb291cf6c27a76724d983270e6db4",
+    "duckdb/query_graph/__main__.py": "e39e8414b970566ff6e57348bf626cc4446767cb0d0da4b83eb155df11f4d65b",
+    "duckdb/sqltypes/__init__.py": "1611e373fb639582d236317dfd4d69bc8dc53ae0d1c1cccf376a0c8c1c068093",
+    "duckdb/udf.py": "274b8d4f99c0cb17acb915bf3853a926822e7032234586e66a8821e0af39d7d2",
+    "duckdb/value/__init__.py": "d1e5457d57766995d364715770b667164f0c7ed208e1c321441058b771e6dcb2",
+    "duckdb/value/constant/__init__.py": "7362b2184b5884a89c8ee0f5d6d21abcf2236f5b11957ffb826abff109d1b082"
+  },
+  "duck_modules": "/private/tmp/rdf-jianlin-analytical25/matched-vm-10m/duck-linux",
+  "eligibility": "All requested warmup and measured results must pass the unchanged COUNT-compatible gate and all source/count/identity checks; no total for incomplete/unqualified engine dataset. Primary exact-term outcomes reported separately.",
+  "engine_orders": [
+    [
+      "rdfdb",
+      "duckdb",
+      "virtuoso",
+      "qlever"
+    ],
+    [
+      "qlever",
+      "virtuoso",
+      "duckdb",
+      "rdfdb"
+    ]
+  ],
+  "expected_phases": 16,
+  "expected_scored_requests": 576,
+  "expected_warmup_requests": 576,
+  "exposure": "Curated count-pushdown workload and earlier correctness outputs/preparation timings were inspected; not a blind workload. No scored requests under this timing protocol have run.",
+  "failure_policy": "Retain all attempts and failed outputs. Stop on first frozen count-gate failure or infrastructure error; remaining requests explicitly unattempted; no sample deletion or automatic rerun.",
+  "host_interference": "Existing host swap use and before/after VM/host resource observations retained. No samples discarded based on load; limitations and order variation reported.",
+  "image_architectures": {
+    "duckdb": "arm64",
+    "qlever": "arm64",
+    "rdfdb": "arm64",
+    "virtuoso": "arm64"
+  },
+  "image_ids": {
+    "duckdb": "sha256:5bc33246ad7c3481addfaf44161555fb8858612cc08e7e92a55668b7e17d74ff",
+    "qlever": "sha256:e5555bafa0d0ba40260309fd7773948408ec68aea6fff8133cb169b98b0136ec",
+    "rdfdb": "sha256:65630931ba8c125ada0ab8cdfc8ee3f62f9636b139b2445c09e0c8f3840a8731",
+    "virtuoso": "sha256:a1dcc3231b97071dee537e180a7b18f4cef0d8257a77a30265d2237a87f0d3dd"
+  },
+  "images": {
+    "duckdb": "python@sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd",
+    "qlever": "adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cba4e894ca1ba8117cef6727",
+    "rdfdb": "rust@sha256:0b0ea86881537b3f645aace7e8e39556289f8787db057317c8d4978548213b9e",
+    "virtuoso": "openlink/virtuoso-opensource-7@sha256:0dbe1ab4fa0cb7bbafc1f6c0c2b0a5d6f22d918dbd17672f2ddb24580aa6756a"
+  },
+  "latency_scope": "Client monotonic clock immediately before HTTP submission until complete response body is read; query/SQL translation, planning, execution, result construction, serialization and transport are included. Validation, cache clearing and log writes are outside the clock.",
+  "measurement": "One complete dataset query-label pass per engine/dataset/order, after its full warmup",
+  "memory_metric": "Container cgroup memory.peak; includes startup, full warmup, scored queries, count/control probes and charged file/kernel pages; not process RSS or per-query execution-only memory",
+  "native_qualification_scope": "Earlier native memory/disk correctness passes are separate; all Linux warmups must pass before scored requests for their phase",
+  "query_order": "Registered rules-file order within each dataset, identical for warmup and measurement in both passes",
+  "rdfdb_binary_sha256": "4194d984202d1ee20d57e0a51f4a29928a908a55963808dbd50c5ccbb6c33a68",
+  "rdfdb_commit": "9a2f49b652a73466873cacd0a9205098e27d15f6",
+  "reference_binding_sha256": "bb4e8d802c3ed4ecbf6bb917e469ff89e48a95606056084c3f506307f035d372",
+  "registered_unix": 1795048455.650296,
+  "resource_guards": "Sample whole approved root every 2 seconds; abort conservatively at 40 GiB allocated or 48 GiB free; approved cap 48 GiB total, host floor 40 GiB; sampling not an instantaneous quota",
+  "rules_sha256": "5cf92a76e599d1e8a1db1f56a3f5215c3b05fea989665754c02ce3f76bb7f365",
+  "schema": "curated-aggregate72-matched-vm-disk-v1",
+  "source_files": {
+    "bench-source/aggregate_count_policy.py": "1c017af47a22019972415e99eebb37cbbea3901784d29ca463adf3e346d4d32e",
+    "bench-source/aggregate_sql.py": "d74c2c314ecc0eb884f621b676ce930207ef238c1469a720afaaa34d2ca77d50",
+    "bench-source/duck_http.py": "4b0e7281ba768d841a2115430d5f0bf040f9d17e40ecbf212f9c34111a3aadc6",
+    "bench-source/qualify.py": "2fe4528d6dc37b4dca42c3bdea11fb1e5565f62d5ab56d81a65ef9bd29569be1",
+    "launch.py": "bd4580a538a8044322ed7d3250fbe605603cfe7bb66dcc4f236e19fa7f3f129e",
+    "run.py": "0ba282e5bd24e51d68067c0c2d84d6e7c1bb31c8c3cf542bbc042efaa326ac20"
+  },
+  "summary_metrics": {
+    "duplicate_robust_view": "For each exact query SHA group within one phase, mean its duplicate-label latencies, then sum those means across distinct hashes; report this prespecified secondary view separately",
+    "labeled_workload": "Sum all registered query-label latencies per dataset, report geomean and per-label rows",
+    "per_pass": "Keep both order-pass totals and per-query rows separately; do not pool or claim significance from two passes",
+    "scope": "Curated aggregate cohort and these physical layouts only; typed-triples SQL baseline has no added indexes/property tables; not a universal engine ranking or official BI mixture"
+  },
+  "timeout_seconds": {
+    "duck_sql_interrupt": 600,
+    "engine_qlever": 600,
+    "engine_virtuoso": 600,
+    "http_client": 610,
+    "rdfdb_client_only": 610,
+    "startup": 600
+  },
+  "virtuoso_publication_boundary": "No credentials supplied for reopening existing stores. Database directories/private keys excluded; administrative database writes allowed while graph counts and all responses remain checked.",
+  "vm_cpu_count": 10,
+  "vm_memory_bytes": 16808177664,
+  "warmup": "One complete dataset query-label pass per fresh engine process; excluded from scored totals, all outputs must qualify",
+  "workload_manifest_sha256": "b0615b9733d083c99fd8c9d554a4fccebb873af2e49004514af7490c9108ba11"
+}
