@@ -12,7 +12,10 @@
  * Output pointers: a required `out` argument is checked before any work is done (a NULL `out` fails with
  * TL_ERR_INVALID_ARGUMENT without opening files or running the query). On success `*out` (and any count output) is
  * written and `*err` is left untouched; on failure `*out` and count outputs are left untouched and `*err` receives an
- * owned tl_error when `err` is non-NULL. Callers can therefore initialize `*out`/`*err` to NULL once and reuse them.
+ * owned tl_error when `err` is non-NULL. Read `*out`, counts and `*err` only as the returned status says: after
+ * TL_OK, `*err` still holds whatever it held before the call; after a failure, `*out` does. Free any owned value
+ * (tl_result_free, tl_error_free, tl_close) before passing the same variable to another call, and reset it to NULL
+ * if you will inspect it again, so a stale or freed pointer is never mistaken for a new result or error.
  *
  * Ownership: tl_result and tl_error are independent of the database and stay valid after tl_close until freed with
  * tl_result_free / tl_error_free. All four free/close functions ignore NULL.
