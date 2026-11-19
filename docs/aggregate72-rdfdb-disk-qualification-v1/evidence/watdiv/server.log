@@ -1,0 +1,4 @@
+opened disk snapshot /private/tmp/rdf-jianlin-analytical25/aggregate72-rdfdb-disk-qualification-v1/watdiv/store in 0.10s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:31447/sparql
+statistics ready after 4.65s
