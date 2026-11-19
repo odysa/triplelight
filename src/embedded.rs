@@ -140,11 +140,32 @@ impl Database {
     pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> { self.read().query_json(sparql) }
 
     /// Atomically imports an N-Triples (.nt) or Turtle (.ttl) file into this database.
-    /// The input is parsed in full before committing; memory grows with input size.
+    /// Parsing and indexing complete before committing; failures leave the graph unchanged.
     pub fn load(&self, path: impl AsRef<Path>) -> Result<usize, DatabaseError> {
         let path = path.as_ref();
-        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
         let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
+        if let Backend::Memory(store) = &self.store {
+            let writer = store.writer.lock().unwrap();
+            let current = store.current.read().unwrap().clone();
+            if current.count(Perm::Spo, &[])? == 0 {
+                let reader = std::io::BufReader::new(std::fs::File::open(path)?);
+                let mut scope = BlankScope::default();
+                let built = match ext {
+                    "nt" => MemorySnapshot::try_from_triples(oxttl::NTriplesParser::new().for_reader(reader).map(|t| t.map(|t| scope.rewrite(t)))),
+                    "ttl" => MemorySnapshot::try_from_triples(oxttl::TurtleParser::new().for_reader(reader).map(|t| t.map(|t| scope.rewrite(t)))),
+                    _ => return Err(DatabaseError::Unsupported("load requires an .nt or .ttl file".into())),
+                }.map_err(|e| match e {
+                    oxttl::TurtleParseError::Io(e) => DatabaseError::Storage(e),
+                    oxttl::TurtleParseError::Syntax(e) => DatabaseError::Syntax(e.to_string()),
+                })?;
+                let count = built.count(Perm::Spo, &[])?;
+                *store.current.write().unwrap() = Arc::new(Overlay::from_base(Arc::new(built)));
+                drop(writer);
+                self.refresh_stats();
+                return Ok(count as usize);
+            }
+        }
+        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
         let triples = match ext {
             "nt" => oxttl::NTriplesParser::new().for_reader(reader).collect::<Result<Vec<_>, _>>(),
             "ttl" => oxttl::TurtleParser::new().for_reader(reader).collect::<Result<Vec<_>, _>>(),
@@ -207,16 +228,20 @@ impl Database {
 }
 
 // Blank node labels are local to each imported document.
-fn scope_blank_nodes(triples: Vec<crate::rdf::Triple>) -> Vec<crate::rdf::Triple> {
-    use crate::rdf::{BlankNode, NamedOrBlankNode, Term, Triple};
-    use std::collections::HashMap;
-    let mut nodes = HashMap::<BlankNode, BlankNode>::new();
-    let mut fresh = |b: &BlankNode| nodes.entry(b.clone()).or_default().clone();
-    triples.into_iter().map(|t| {
+#[derive(Default)]
+struct BlankScope(std::collections::HashMap<crate::rdf::BlankNode, crate::rdf::BlankNode>);
+impl BlankScope {
+    fn rewrite(&mut self, t: crate::rdf::Triple) -> crate::rdf::Triple {
+        use crate::rdf::{NamedOrBlankNode, Term, Triple};
+        let mut fresh = |b: &crate::rdf::BlankNode| self.0.entry(b.clone()).or_default().clone();
         let subject = match t.subject { NamedOrBlankNode::BlankNode(b) => NamedOrBlankNode::BlankNode(fresh(&b)), s => s };
         let object = match t.object { Term::BlankNode(b) => Term::BlankNode(fresh(&b)), o => o };
         Triple::new(subject, t.predicate, object)
-    }).collect()
+    }
+}
+fn scope_blank_nodes(triples: Vec<crate::rdf::Triple>) -> Vec<crate::rdf::Triple> {
+    let mut scope = BlankScope::default();
+    triples.into_iter().map(|t| scope.rewrite(t)).collect()
 }
 
 /// An immutable view of the database at the instant `Database::read` was called.
