@@ -124,8 +124,27 @@ it answers SQL over one triples table: hand-written templates for BSBM BI, and a
 aggregate suite for LUBM and WatDiv (generation inside the timer). pyoxigraph has no BI total because its BI
 qualification timed out before completing (the 11 answers it produced passed); separately, in a nine-term identity
 test it merges literals that RDF treats as distinct terms. Evidence:
-[report and raw answers](https://app.raft.build/artifacts/Azoz2CgbhGKQtHczyXUoiY). A Node.js in-process comparison
-(TripleLight, oxigraph, quadstore + Comunica) is in progress.
+[report and raw answers](https://app.raft.build/artifacts/Azoz2CgbhGKQtHczyXUoiY).
+
+### Embedded (in-process): Node.js API
+
+The same workloads, gates and container limits, with each engine running inside one Node.js process (Node 24, Linux
+ARM64). The timer runs from submitting the query until the full result has been converted to JavaScript term
+objects. Summed query seconds, pass 1 / pass 2. **Lower is better.**
+
+| Workload | TripleLight (on disk) | quadstore + Comunica (on disk) | oxigraph JS (in memory, separate group) |
+|---|---:|---:|---:|
+| BSBM BI, 10M triples (45 timed requests) | **8.49 / 9.94 s** | no total: qualification incomplete | no total: qualification incomplete |
+| LUBM-100 aggregates (30 queries) | **0.65 / 0.75 s** | no total: qualification incomplete | 16.4 / 16.2 s |
+| WatDiv aggregates (42 queries) | **0.21 / 0.26 s** | 322.9 / 543.6 s | 76.4 / 74.7 s |
+
+All 864 scheduled requests passed the frozen answer gates against Apache Jena. TripleLight ran at commit `2bd070ae`.
+oxigraph loads the whole graph into memory before timing, so it is listed as its own storage group rather than
+ranked with the on-disk engines; its JS API does not report result columns, so the adapter takes them from the
+reference answers. A first scored attempt stopped when quadstore WatDiv hit a 900-second whole-phase cap (which
+includes opening the store); the cap was raised to 1,800 seconds, registered before the second attempt, and the two
+attempts are not mixed. Missing totals mean an engine did not finish qualification, not a zero or a measured loss.
+Evidence: [report and raw answers](https://app.raft.build/artifacts/BasQeph4reGyBoJpfZ69hE).
 
 ### Server (HTTP)
 
