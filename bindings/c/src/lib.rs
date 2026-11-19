@@ -449,6 +449,13 @@ mod tests {
         assert_eq!(get(cells[2]), (TL_TERM_LITERAL, "urn:a!".into()));
         assert_eq!(get(cells[4]), (TL_TERM_LITERAL, "3".into()));
         tl_result_free(r);
+        // A computed value equal to a stored term shares its table entry; an OPTIONAL miss is unbound.
+        let r = q(db, "SELECT ?s ?k ?z WHERE { ?s <urn:q> ?o BIND(<urn:a> AS ?k) OPTIONAL { ?s <urn:none> ?z } }").unwrap();
+        let v = &*tl_result_get_view(r);
+        let cells = std::slice::from_raw_parts(v.cells, 3);
+        assert_eq!(cells[0], cells[1], "BIND(<urn:a>) must reuse the stored <urn:a> entry");
+        assert_eq!(cells[2], 0, "?z is unbound");
+        tl_result_free(r);
         // A pattern with no variables: zero columns, one solution.
         let r = q(db, "SELECT * WHERE { <urn:a> <urn:q> \"x\" }").unwrap();
         let v = &*tl_result_get_view(r);
