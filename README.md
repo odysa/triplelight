@@ -160,6 +160,24 @@ includes opening the store); the cap was raised to 1,800 seconds, registered bef
 attempts are not mixed. Missing totals mean an engine did not finish qualification, not a zero or a measured loss.
 Evidence: [report and raw answers](https://app.raft.build/artifacts/BasQeph4reGyBoJpfZ69hE).
 
+### Embedded in-memory (Node.js API)
+
+Both engines load the N-Triples file into a fresh in-memory store inside each container (TripleLight through
+`Database.inMemory()` and its native Node binding, oxigraph JS through its WASM package), then run the same frozen
+workloads and answer checks. Summed query seconds, pass 1 / pass 2. **Lower is better.**
+
+| Workload | TripleLight in-memory | oxigraph JS (WASM) |
+|---|---:|---:|
+| LUBM-100 aggregates (30 queries) | **0.69 / 0.50 s** | 14.1 / 14.7 s |
+| WatDiv aggregates (42 queries) | **0.19 / 0.29 s** | 83.6 / 77.9 s |
+| BSBM BI, 10M triples (45 timed requests) | 14.3 / 13.3 s (standalone) | no total: qualification incomplete |
+
+All 696 scheduled requests passed the frozen answer gates against Apache Jena. Loading is outside the query timer.
+The trade-off is memory: TripleLight's whole-phase peak reached 8.1 / 9.4 GiB on LUBM against oxigraph's 4.1 / 4.0 GiB.
+This group is separate from the on-disk Node table above: different storage, source commit (`fd204cec`) and session,
+so it does not measure in-memory against on-disk TripleLight. Evidence:
+[report and raw answers](https://app.raft.build/artifacts/HtwKaT16usNuL5hiV2kMH8).
+
 ### Server (HTTP)
 
 Two analytical workloads, each measured in its own session on one Linux VM, with every engine capped at 4 CPUs and
