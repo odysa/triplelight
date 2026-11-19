@@ -195,6 +195,7 @@ macro_rules! out { ($p:expr, $v:expr) => {{ if $p.is_null() { return Err(invalid
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tl_open(path: *const c_char, path_len: usize, out: *mut *mut TlDb, err: *mut *mut TlError) -> i32 {
     unsafe { guard(err, || {
+        if out.is_null() { return Err(invalid("null output pointer")) }
         let p = text(path, path_len)?;
         let d = Database::open(p).map_err(db_error)?;
         out!(out, Box::into_raw(Box::new(TlDb(d))));
@@ -205,7 +206,11 @@ pub unsafe extern "C" fn tl_open(path: *const c_char, path_len: usize, out: *mut
 /// Creates an isolated, non-durable in-memory database.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tl_open_in_memory(out: *mut *mut TlDb, err: *mut *mut TlError) -> i32 {
-    unsafe { guard(err, || { out!(out, Box::into_raw(Box::new(TlDb(Database::in_memory())))); Ok(()) }) }
+    unsafe { guard(err, || {
+        if out.is_null() { return Err(invalid("null output pointer")) }
+        *out = Box::into_raw(Box::new(TlDb(Database::in_memory())));
+        Ok(())
+    }) }
 }
 
 /// Closes a database handle. Null is ignored.
@@ -218,6 +223,7 @@ pub unsafe extern "C" fn tl_close(db: *mut TlDb) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tl_query(db: *const TlDb, sparql: *const c_char, len: usize, out: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
     unsafe { guard(err, || {
+        if out.is_null() { return Err(invalid("null output pointer")) }
         let (d, q) = (handle(db)?, text(sparql, len)?);
         let r = build(d.query(q).map_err(db_error)?)?;
         out!(out, Box::into_raw(r));
@@ -366,6 +372,12 @@ mod tests {
         let mut r = std::ptr::null_mut();
         assert_eq!(tl_query(db, bad.as_ptr() as _, 2, &mut r, std::ptr::null_mut()), TL_ERR_INVALID_ARGUMENT);
         assert_eq!(tl_query(std::ptr::null(), "ASK{}".as_ptr() as _, 5, &mut r, std::ptr::null_mut()), TL_ERR_INVALID_ARGUMENT);
+        assert_eq!(tl_query(db, "ASK{}".as_ptr() as _, 5, std::ptr::null_mut(), std::ptr::null_mut()), TL_ERR_INVALID_ARGUMENT);
+        let dir = std::env::temp_dir().join(format!("tl-c-nullout-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let p = dir.to_str().unwrap();
+        assert_eq!(tl_open(p.as_ptr() as _, p.len(), std::ptr::null_mut(), std::ptr::null_mut()), TL_ERR_INVALID_ARGUMENT);
+        assert!(!dir.exists(), "a rejected open must not create the directory");
         let mut e = std::ptr::null_mut();
         let missing = "/nonexistent/missing.nt";
         assert_eq!(tl_load(db, missing.as_ptr() as _, missing.len(), std::ptr::null_mut(), &mut e), TL_ERR_STORAGE);
