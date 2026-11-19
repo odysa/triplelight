@@ -1,10 +1,11 @@
-//! Node.js binding for the embedded TripleLight database. Query work runs on libuv's worker threads (napi
-//! `AsyncTask`), so `query`, `update`, `load` and `compact` return Promises and never block the JS event loop.
-//! Terms are returned in the RDF/JS data model (`termType`, `value`, `language`, `datatype`).
+//! Node.js binding for the embedded TripleLight database. Query evaluation, updates, loading, compaction and
+//! `Database.open` run on libuv's worker threads (napi `AsyncTask`); turning a result into JS objects happens on the
+//! event loop when the Promise resolves. Terms are plain objects shaped like the RDF/JS data model (`termType`,
+//! `value`, `language`, `datatype`), without RDF/JS `equals` methods.
 use std::sync::Arc;
 
 use napi::bindgen_prelude::*;
-use napi::{Env, JsObject, JsUnknown, Task};
+use napi::{Env, JsObject, Task};
 use napi_derive::napi;
 use oxrdf::{Literal, Term};
 use triplelight::embedded::{Database as Db, DatabaseError, DatabaseOptions, ReadSnapshot};
@@ -24,15 +25,17 @@ fn err(e: DatabaseError) -> Error {
 
 fn closed() -> Error { Error::new(Status::GenericFailure, "StorageError: the database is closed".to_string()) }
 
+/// A snapshot keeps its database (and so the directory lock) alive: closing the `Database` handle while a snapshot
+/// or a query on it is in flight must not let another process open and change the directory under it.
 #[derive(Clone)]
-enum Source { Db(Arc<Db>), Snap(Arc<ReadSnapshot>) }
+enum Source { Db(Arc<Db>), Snap(Arc<Db>, Arc<ReadSnapshot>) }
 
 impl Source {
     fn query(&self, q: &str) -> std::result::Result<QueryResult, DatabaseError> {
-        match self { Source::Db(d) => d.query(q), Source::Snap(s) => s.query(q) }
+        match self { Source::Db(d) => d.query(q), Source::Snap(_, s) => s.query(q) }
     }
     fn query_json(&self, q: &str) -> std::result::Result<String, DatabaseError> {
-        match self { Source::Db(d) => d.query_json(q), Source::Snap(s) => s.query_json(q) }
+        match self { Source::Db(d) => d.query_json(q), Source::Snap(_, s) => s.query_json(q) }
     }
 }
 
@@ -69,8 +72,16 @@ fn term(env: &Env, t: &Term) -> Result<JsObject> {
     }
 }
 
+/// An object without a prototype, so a SPARQL variable named `__proto__` (or `constructor`, ...) is stored as an own
+/// property instead of reaching `Object.prototype`.
+fn bare_object(env: &Env, create: &napi::JsFunction) -> Result<JsObject> {
+    create.call(None, &[env.get_null()?])?.coerce_to_object()
+}
+
 /// `{ type: "bindings", variables, bindings }`, `{ type: "boolean", boolean }` or `{ type: "triples", triples }`.
 fn convert(env: &Env, r: QueryResult) -> Result<JsObject> {
+    let object: JsObject = env.get_global()?.get_named_property_unchecked("Object")?;
+    let create: napi::JsFunction = object.get_named_property("create")?;
     let mut out = env.create_object()?;
     match r {
         QueryResult::Solutions { vars, rows } => {
@@ -80,7 +91,7 @@ fn convert(env: &Env, r: QueryResult) -> Result<JsObject> {
             out.set_named_property("variables", names)?;
             let mut list = env.create_array_with_length(rows.len())?;
             for (i, row) in rows.iter().enumerate() {
-                let mut b = env.create_object()?;
+                let mut b = bare_object(env, &create)?;
                 for (v, t) in vars.iter().zip(row) {
                     if let Some(t) = t { b.set_named_property(v.as_str(), term(env, t)?)?; }
                 }
@@ -127,6 +138,18 @@ impl Task for JsonTask {
     fn resolve(&mut self, _: Env, out: Self::Output) -> Result<Self::JsValue> { Ok(out) }
 }
 
+pub struct OpenTask { path: String, initial: Option<String> }
+impl Task for OpenTask {
+    type Output = Db;
+    type JsValue = Database;
+    fn compute(&mut self) -> Result<Self::Output> {
+        let mut opts = DatabaseOptions::default();
+        opts.initial = self.initial.take().map(Into::into);
+        Db::open_with(&self.path, opts).map_err(err)
+    }
+    fn resolve(&mut self, _: Env, out: Self::Output) -> Result<Self::JsValue> { Ok(Database { db: Some(Arc::new(out)) }) }
+}
+
 pub enum Write { Update(String), Load(String), Compact }
 pub struct WriteTask { db: Arc<Db>, op: Write }
 impl Task for WriteTask {
@@ -156,6 +179,11 @@ impl Database {
         let mut opts = DatabaseOptions::default();
         opts.initial = initial.map(Into::into);
         Ok(Database { db: Some(Arc::new(Db::open_with(&path, opts).map_err(err)?)) })
+    }
+    /// Opens the database on a worker thread (recovery and the initial load can take a while).
+    #[napi(ts_return_type = "Promise<Database>")]
+    pub fn open(path: String, initial: Option<String>) -> AsyncTask<OpenTask> {
+        AsyncTask::new(OpenTask { path, initial })
     }
     fn db(&self) -> Result<Arc<Db>> { self.db.clone().ok_or_else(closed) }
 
@@ -196,7 +224,7 @@ impl Database {
     pub fn stats_ready(&self) -> Result<bool> { Ok(self.db()?.stats_ready()) }
     /// A consistent, immutable view for several queries; later updates do not change it.
     #[napi]
-    pub fn read(&self) -> Result<Snapshot> { Ok(Snapshot { snap: Arc::new(self.db()?.read()) }) }
+    pub fn read(&self) -> Result<Snapshot> { let db = self.db()?; Ok(Snapshot { snap: Arc::new(db.read()), db }) }
     /// Releases this handle. The directory lock is released once no snapshot or pending operation uses it.
     #[napi]
     pub fn close(&mut self) { self.db = None; }
@@ -204,13 +232,13 @@ impl Database {
 
 /// An immutable view of the database, unaffected by later updates.
 #[napi]
-pub struct Snapshot { snap: Arc<ReadSnapshot> }
+pub struct Snapshot { db: Arc<Db>, snap: Arc<ReadSnapshot> }
 
 #[napi]
 impl Snapshot {
     #[napi(ts_return_type = "Promise<QueryResult>")]
     pub fn query(&self, sparql: String) -> AsyncTask<QueryTask> {
-        AsyncTask::new(QueryTask { src: Source::Snap(Arc::clone(&self.snap)), sparql })
+        AsyncTask::new(QueryTask { src: Source::Snap(Arc::clone(&self.db), Arc::clone(&self.snap)), sparql })
     }
     #[napi(ts_return_type = "QueryResult")]
     pub fn query_sync(&self, env: Env, sparql: String) -> Result<JsObject> {
@@ -219,9 +247,6 @@ impl Snapshot {
     }
     #[napi(ts_return_type = "Promise<string>")]
     pub fn query_json(&self, sparql: String) -> AsyncTask<JsonTask> {
-        AsyncTask::new(JsonTask { src: Source::Snap(Arc::clone(&self.snap)), sparql })
+        AsyncTask::new(JsonTask { src: Source::Snap(Arc::clone(&self.db), Arc::clone(&self.snap)), sparql })
     }
 }
-
-#[allow(dead_code)]
-fn _assert_unknown(_: JsUnknown) {}

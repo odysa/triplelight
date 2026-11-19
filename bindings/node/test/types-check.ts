@@ -2,7 +2,8 @@
 import { Database, QueryResult, Term, UnsupportedError } from "..";
 
 async function example(): Promise<string[]> {
-  const db = new Database("./db", { initial: "data.nt" });
+  const db = await Database.open("./db", { initial: "data.nt" });
+  new Database("./db2").close();
   const n: number = await db.update("INSERT DATA { <urn:a> <urn:p> 1 }");
   const r: QueryResult = await db.query("SELECT ?o WHERE { <urn:a> <urn:p> ?o }");
   const out: string[] = [String(n)];

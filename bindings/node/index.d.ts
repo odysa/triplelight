@@ -1,11 +1,12 @@
-// TripleLight for Node.js. Terms follow the RDF/JS data model (https://rdf.js.org/data-model-spec/).
+// TripleLight for Node.js. Terms are plain objects shaped like the RDF/JS data model
+// (https://rdf.js.org/data-model-spec/): termType, value, language, datatype. They have no equals() method.
 
 export interface NamedNode { termType: "NamedNode"; value: string }
 export interface BlankNode { termType: "BlankNode"; value: string }
 export interface Literal { termType: "Literal"; value: string; language: string; datatype: NamedNode }
 export type Term = NamedNode | BlankNode | Literal;
 
-/** SELECT: one object per solution; unbound variables are absent from it. */
+/** SELECT: one object per solution (with a null prototype); unbound variables are absent from it. */
 export interface BindingsResult { type: "bindings"; variables: string[]; bindings: Array<Record<string, Term>> }
 /** ASK. */
 export interface BooleanResult { type: "boolean"; boolean: boolean }
@@ -23,8 +24,12 @@ export interface OpenOptions {
 
 /** A persistent RDF database in a local directory (created if missing). One process may open a directory at a time. */
 export class Database {
+  /** Opens on the calling thread; prefer `Database.open` in servers. */
   constructor(path: string, options?: OpenOptions);
-  /** Runs a SPARQL query on the current state, off the event loop. */
+  /** Opens on a worker thread (recovery and the initial load can take a while). */
+  static open(path: string, options?: OpenOptions): Promise<Database>;
+  /** Runs a SPARQL query on the current state. Evaluation runs on a worker thread; converting the result to JS
+   * objects happens on the event loop when the Promise resolves (use `queryJson` for very large results). */
   query(sparql: string): Promise<QueryResult>;
   /** Like `query`, but blocks the calling thread. */
   querySync(sparql: string): QueryResult;
@@ -40,7 +45,7 @@ export class Database {
   statsReady(): boolean;
   /** A consistent view for several queries; later updates do not change it. */
   read(): Snapshot;
-  /** Releases this handle; the directory lock is released once no snapshot or pending operation uses it. */
+  /** Releases this handle. The directory lock is held until every snapshot and pending operation is gone. */
   close(): void;
 }
 

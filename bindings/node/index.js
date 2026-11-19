@@ -30,7 +30,14 @@ class Snapshot {
 }
 
 class Database {
-  constructor(path, options = {}) { this._raw = sync(() => new native.Database(String(path), options.initial ?? null)); }
+  constructor(path, options = {}) {
+    // `Database.open` passes an already-opened native handle.
+    this._raw = path instanceof native.Database ? path : sync(() => new native.Database(String(path), options.initial ?? null));
+  }
+  /** Opens the database on a worker thread instead of the calling thread. */
+  static open(path, options = {}) {
+    return async_(() => native.Database.open(String(path), options.initial ?? null)).then((raw) => new Database(raw));
+  }
   query(sparql) { return async_(() => this._raw.query(sparql)); }
   querySync(sparql) { return sync(() => this._raw.querySync(sparql)); }
   queryJson(sparql) { return async_(() => this._raw.queryJson(sparql)); }

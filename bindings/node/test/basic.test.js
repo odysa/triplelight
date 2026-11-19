@@ -69,3 +69,26 @@ test("load an N-Triples file", async () => {
   assert.strictEqual((await db.query("SELECT * WHERE { ?s ?p ?o }")).bindings.length, 2);
   db.close();
 });
+
+test("a snapshot keeps the directory locked after close, including an in-flight query", async () => {
+  const dir = path.join(tmp(), "db");
+  const db = await tl.Database.open(dir);
+  await db.update("INSERT DATA { <urn:a> <urn:p> 1 }");
+  const snap = db.read();
+  const pending = snap.query("SELECT ?o WHERE { <urn:a> <urn:p> ?o }");
+  db.close();
+  assert.throws(() => new tl.Database(dir), tl.LockedError);
+  assert.strictEqual((await pending).bindings.length, 1);
+  assert.strictEqual(snap.querySync("ASK { <urn:a> <urn:p> 1 }").boolean, true);
+});
+
+test("variables named like Object.prototype members are ordinary bindings", async () => {
+  const db = await tl.Database.open(path.join(tmp(), "db"));
+  const r = await db.query('SELECT ("x" AS ?__proto__) ("y" AS ?constructor) WHERE {}');
+  const b = r.bindings[0];
+  assert.strictEqual(Object.getPrototypeOf(b), null);
+  assert.deepStrictEqual(Object.keys(b).sort(), ["__proto__", "constructor"]);
+  assert.strictEqual(b["__proto__"].value, "x");
+  assert.strictEqual(b.constructor.value, "y");
+  db.close();
+});

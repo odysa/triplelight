@@ -1,12 +1,15 @@
 # TripleLight for Node.js
 
 The embedded TripleLight RDF database in a Node.js process: SPARQL 1.1 queries and updates on a local directory, no
-server. Queries run on worker threads and return Promises; terms follow the [RDF/JS data model](https://rdf.js.org/data-model-spec/).
+server. Query evaluation, updates and `Database.open` run on worker threads and return Promises; converting a result
+to JS objects happens on the event loop. Terms are plain objects shaped like the
+[RDF/JS data model](https://rdf.js.org/data-model-spec/) (`termType`, `value`, `language`, `datatype`), without
+`equals()` methods.
 
 ```js
 const { Database } = require("triplelight");
 
-const db = new Database("./my.db");
+const db = await Database.open("./my.db");
 await db.update('INSERT DATA { <urn:alice> <urn:age> 30 }');
 const r = await db.query("SELECT ?who ?age WHERE { ?who <urn:age> ?age }");
 for (const b of r.bindings) console.log(b.who.value, b.age.value); // urn:alice 30
