@@ -15,6 +15,10 @@ instead of returning a partial result.
 > **Status: early (0.1).** There are no published releases yet; build from source. The on-disk format and APIs may still
 > change. Unix only (Linux, macOS), Rust 1.89+.
 
+## In-memory databases
+
+For short-lived embedded workloads, `Database::in_memory()` (Rust), `Database.in_memory()` (Python), and `Database.inMemory()` (Node.js) create an isolated database without a database directory or a write-ahead log. Data disappears when the last handle is dropped. `load` imports N-Triples or Turtle; importing into an empty in-memory database builds its indexes in bulk. Updates and read snapshots are supported. In-memory compaction is currently unavailable; it returns an unsupported-operation error. Import and query results can consume substantial RAM.
+
 ## Quickstart
 
 ### Command line

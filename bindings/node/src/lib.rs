@@ -180,6 +180,9 @@ impl Database {
         opts.initial = initial.map(Into::into);
         Ok(Database { db: Some(Arc::new(Db::open_with(&path, opts).map_err(err)?)) })
     }
+    /// Creates a non-durable in-memory database.
+    #[napi(factory)]
+    pub fn in_memory() -> Self { Database { db: Some(Arc::new(Db::in_memory())) } }
     /// Opens the database on a worker thread (recovery and the initial load can take a while).
     #[napi(ts_return_type = "Promise<Database>")]
     pub fn open(path: String, initial: Option<String>) -> AsyncTask<OpenTask> {

@@ -138,3 +138,44 @@ fn concurrent_load_and_delete_have_serializable_outcomes() {
     }
     drop(db); std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn memory_database_snapshot_update_and_bulk_load() {
+    use triplelight::embedded::Database;
+    let db = Database::in_memory();
+    let old = db.read();
+    assert_eq!(db.update("INSERT DATA { <urn:a> <urn:p> <urn:b> }").unwrap(), 1);
+    assert!(old.query_json("ASK { <urn:a> <urn:p> <urn:b> }").unwrap().contains("false"));
+    assert!(db.query_json("ASK { <urn:a> <urn:p> <urn:b> }").unwrap().contains("true"));
+    assert_eq!(db.update("INSERT DATA { <urn:a> <urn:p> <urn:b> }").unwrap(), 0);
+    let copy = db.clone();
+    copy.update("DELETE DATA { <urn:a> <urn:p> <urn:b> }").unwrap();
+    assert!(db.query_json("ASK { <urn:a> <urn:p> <urn:b> }").unwrap().contains("false"));
+}
+
+#[test]
+fn memory_bulk_import_and_blank_node_scope() {
+    let path = temp("memory-import").with_extension("nt");
+    std::fs::write(&path, "_:a <urn:p> _:a .\n_:a <urn:p> _:a .\n").unwrap();
+    let db = Database::in_memory();
+    assert_eq!(db.load(&path).unwrap(), 1);
+    let before = db.read();
+    assert_eq!(db.load(&path).unwrap(), 1);
+    let result = db.query_json("SELECT (COUNT(*) AS ?n) WHERE { ?s <urn:p> ?s }").unwrap();
+    assert!(result.contains("\"2\""), "{result}");
+    let result = before.query_json("SELECT (COUNT(*) AS ?n) WHERE { ?s <urn:p> ?s }").unwrap();
+    assert!(result.contains("\"1\""), "{result}");
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn memory_concurrent_updates_are_serializable() {
+    let db = Database::in_memory();
+    let threads: Vec<_> = (0..8).map(|i| {
+        let db = db.clone();
+        std::thread::spawn(move || db.update(&format!("INSERT DATA {{ <urn:s{i}> <urn:p> <urn:o> }}")).unwrap())
+    }).collect();
+    for thread in threads { assert_eq!(thread.join().unwrap(), 1); }
+    let result = db.query_json("SELECT (COUNT(*) AS ?n) WHERE { ?s <urn:p> <urn:o> }").unwrap();
+    assert!(result.contains("\"8\""), "{result}");
+}
