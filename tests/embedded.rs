@@ -211,3 +211,16 @@ fn disk_import_scopes_blank_nodes_per_document() {
     std::fs::remove_file(path).unwrap();
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn memory_streamed_import_is_atomic_on_late_parse_error() {
+    let path = temp("memory-late-error").with_extension("nt");
+    std::fs::write(&path, "<urn:a> <urn:p> <urn:b> .\nnot a triple\n").unwrap();
+    let db = Database::in_memory();
+    assert!(db.load(&path).is_err());
+    assert!(!ask(&db, "ASK { <urn:a> <urn:p> <urn:b> }"));
+    std::fs::write(&path, "<urn:a> <urn:p> <urn:b> .\n").unwrap();
+    assert_eq!(db.load(&path).unwrap(), 1);
+    assert!(ask(&db, "ASK { <urn:a> <urn:p> <urn:b> }"));
+    std::fs::remove_file(path).unwrap();
+}

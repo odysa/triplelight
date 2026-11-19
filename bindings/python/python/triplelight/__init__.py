@@ -120,7 +120,7 @@ class Database:
         return self._db.query_json(sparql)
 
     def load(self, path) -> int:
-        """Atomically import an N-Triples (.nt) or Turtle (.ttl) file. Parses the whole file in memory."""
+        """Atomically import an N-Triples (.nt) or Turtle (.ttl) file. An empty in-memory store is indexed incrementally."""
         return self._db.load(str(path))
 
     def stats_ready(self) -> bool:
