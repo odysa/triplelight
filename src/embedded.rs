@@ -4,11 +4,12 @@
 //! held by the application to share it among threads. The directory lock is
 //! advisory: older programs that do not honor it must not open the same store.
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use crate::opt::stats::Stats;
 use crate::exec::{self, QueryError, QueryResult};
 use crate::store::{Change, Overlay, Store, StoreUpdate};
-use crate::storage::DiskBase;
+use crate::storage::{Dictionary, DiskBase, MemorySnapshot, Snapshot};
+use crate::model::Perm;
 
 /// Errors returned by embedded operations.
 #[derive(Debug)]
@@ -46,10 +47,14 @@ impl Default for DatabaseOptions {
     }
 }
 
-/// A persistent local RDF database. Each operation observes a consistent snapshot.
-/// Updates are acknowledged after the write-ahead log is synchronized.
+/// An embedded RDF database. Each operation observes a consistent snapshot.
+/// Persistent updates are acknowledged after the write-ahead log is synchronized; in-memory updates are not durable.
 #[derive(Clone)]
-pub struct Database { store: Arc<Store>, stats: Arc<RwLock<Option<(Arc<Overlay>, Arc<Stats>)>>> }
+pub struct Database { store: Backend, stats: Arc<RwLock<Option<(Arc<Overlay>, Arc<Stats>)>>> }
+
+#[derive(Clone)]
+enum Backend { Disk(Arc<Store>), Memory(Arc<MemoryStore>) }
+struct MemoryStore { current: RwLock<Arc<Overlay>>, writer: Mutex<()> }
 
 impl Database {
     /// Opens an existing database, or creates an empty database at `dir`.
@@ -66,23 +71,45 @@ impl Database {
         }
         let format = DiskBase { workers: options.import_workers };
         let store = Arc::new(Store::open_with(dir, options.initial.as_deref(), Box::new(format))?);
-        let db = Self { store, stats: Arc::new(RwLock::new(None)) };
+        let db = Self { store: Backend::Disk(store), stats: Arc::new(RwLock::new(None)) };
         db.refresh_stats();
         Ok(db)
     }
 
+    /// Creates an isolated, non-durable in-memory database. Clones share the same state.
+    pub fn in_memory() -> Self {
+        let base = MemorySnapshot::from_triples(Vec::new());
+        let current = Arc::new(Overlay::from_base(Arc::new(base)));
+        let db = Self { store: Backend::Memory(Arc::new(MemoryStore { current: RwLock::new(current), writer: Mutex::new(()) })), stats: Arc::new(RwLock::new(None)) };
+        db.refresh_stats();
+        db
+    }
+
+    fn snapshot(&self) -> Arc<Overlay> {
+        match &self.store { Backend::Disk(s) => s.snapshot(), Backend::Memory(s) => s.current.read().unwrap().clone() }
+    }
+
     fn refresh_stats(&self) {
-        let snap = self.store.snapshot();
+        let snap = self.snapshot();
         let target = Arc::clone(&self.stats);
+        let memory = match &self.store { Backend::Memory(store) => Some(Arc::clone(store)), Backend::Disk(_) => None };
         std::thread::spawn(move || {
             if let Ok(st) = Stats::from_snapshot(snap.base()) {
-                *target.write().unwrap() = Some((snap, Arc::new(st)));
+                match &memory {
+                    Some(store) => {
+                        let current = store.current.read().unwrap();
+                        if current.base_id() == snap.base_id() {
+                            *target.write().unwrap() = Some((snap, Arc::new(st)));
+                        }
+                    }
+                    None => *target.write().unwrap() = Some((snap, Arc::new(st))),
+                }
             }
         });
     }
     /// Whether statistics for the currently visible unmodified base are ready.
     pub fn stats_ready(&self) -> bool {
-        let snap = self.store.snapshot();
+        let snap = self.snapshot();
         self.stats.read().unwrap().as_ref().is_some_and(|(base, _)| snap.delta_len() == 0 && base.base_id() == snap.base_id())
     }
 
@@ -92,10 +119,22 @@ impl Database {
     }
 
     /// Returns a stable read view that is unaffected by subsequent updates.
-    pub fn read(&self) -> ReadSnapshot { ReadSnapshot { snapshot: self.store.snapshot(), stats: Arc::clone(&self.stats) } }
+    pub fn read(&self) -> ReadSnapshot { ReadSnapshot { snapshot: self.snapshot(), stats: Arc::clone(&self.stats) } }
 
-    /// Applies a supported SPARQL Update atomically and durably.
-    pub fn update(&self, sparql: &str) -> Result<usize, DatabaseError> { Ok(self.store.update(sparql)?) }
+    /// Applies a supported SPARQL Update atomically. Persistent updates are durable; in-memory updates are not.
+    pub fn update(&self, sparql: &str) -> Result<usize, DatabaseError> {
+        match &self.store {
+            Backend::Disk(store) => Ok(store.update(sparql)?),
+            Backend::Memory(store) => {
+                let _writer = store.writer.lock().unwrap();
+                let current = store.current.read().unwrap().clone();
+                let changes = exec::update_changes(&*current, sparql)?;
+                let (next, count) = current.with_changes(&changes)?;
+                *store.current.write().unwrap() = Arc::new(next);
+                Ok(count)
+            }
+        }
+    }
 
     /// Serializes SELECT or ASK as SPARQL Results JSON with batched term decoding.
     pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> { self.read().query_json(sparql) }
@@ -114,12 +153,70 @@ impl Database {
             oxttl::TurtleParseError::Io(e) => DatabaseError::Storage(e),
             oxttl::TurtleParseError::Syntax(e) => DatabaseError::Syntax(e.to_string()),
         })?;
-        let changes: Vec<_> = triples.into_iter().map(|t| (Change::Insert, t)).collect();
-        Ok(self.store.commit(&changes)?)
+        let triples = scope_blank_nodes(triples);
+        match &self.store {
+            Backend::Disk(store) => {
+                let changes: Vec<_> = triples.into_iter().map(|t| (Change::Insert, t)).collect();
+                Ok(store.commit(&changes)?)
+            }
+            Backend::Memory(store) => {
+                let _writer = store.writer.lock().unwrap();
+                let current = store.current.read().unwrap().clone();
+                if current.count(Perm::Spo, &[])? == 0 {
+                    let base = MemorySnapshot::from_triples(triples);
+                    let count = base.count(Perm::Spo, &[])?;
+                    *store.current.write().unwrap() = Arc::new(Overlay::from_base(Arc::new(base)));
+                    drop(_writer);
+                    self.refresh_stats();
+                    Ok(count as usize)
+                } else {
+                    let changes: Vec<_> = triples.into_iter().map(|t| (Change::Insert, t)).collect();
+                    let (next, count) = current.with_changes(&changes)?;
+                    *store.current.write().unwrap() = Arc::new(next);
+                    Ok(count)
+                }
+            }
+        }
     }
 
     /// Writes the current state into a new immutable base; existing readers retain their snapshot.
-    pub fn compact(&self) -> Result<(), DatabaseError> { self.store.compact()?; self.refresh_stats(); Ok(()) }
+    pub fn compact(&self) -> Result<(), DatabaseError> {
+        match &self.store {
+            Backend::Disk(store) => store.compact()?,
+            Backend::Memory(store) => {
+                let _writer = store.writer.lock().unwrap();
+                let current = store.current.read().unwrap().clone();
+                let mut triples = Vec::new();
+                for batch in current.scan(Perm::Spo, &[]) {
+                    let batch = batch?;
+                    for i in 0..batch.len() {
+                        let subject: crate::rdf::NamedOrBlankNode = current.resolve(batch.cols[0][i])?.try_into()
+                            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid RDF subject"))?;
+                        let predicate: crate::rdf::NamedNode = current.resolve(batch.cols[1][i])?.try_into()
+                            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid RDF predicate"))?;
+                        let object = current.resolve(batch.cols[2][i])?;
+                        triples.push(crate::rdf::Triple::new(subject, predicate, object));
+                    }
+                }
+                let base = MemorySnapshot::from_triples(triples);
+                *store.current.write().unwrap() = Arc::new(Overlay::from_base(Arc::new(base)));
+            }
+        }
+        self.refresh_stats(); Ok(())
+    }
+}
+
+// Blank node labels are local to each imported document.
+fn scope_blank_nodes(triples: Vec<crate::rdf::Triple>) -> Vec<crate::rdf::Triple> {
+    use crate::rdf::{BlankNode, NamedOrBlankNode, Term, Triple};
+    use std::collections::HashMap;
+    let mut nodes = HashMap::<BlankNode, BlankNode>::new();
+    let mut fresh = |b: &BlankNode| nodes.entry(b.clone()).or_default().clone();
+    triples.into_iter().map(|t| {
+        let subject = match t.subject { NamedOrBlankNode::BlankNode(b) => NamedOrBlankNode::BlankNode(fresh(&b)), s => s };
+        let object = match t.object { Term::BlankNode(b) => Term::BlankNode(fresh(&b)), o => o };
+        Triple::new(subject, t.predicate, object)
+    }).collect()
 }
 
 /// An immutable view of the database at the instant `Database::read` was called.
@@ -152,5 +249,23 @@ impl ReadSnapshot {
             QueryResult::Boolean(_) | QueryResult::Solutions { .. } => Ok(exec::results::serialize(&result).1),
             QueryResult::Graph(_) => Err(DatabaseError::Unsupported("query_json supports SELECT and ASK only".into())),
         }
+    }
+}
+
+#[cfg(test)]
+mod memory_tests {
+    use super::*;
+    #[test]
+    fn reader_does_not_wait_for_writer() {
+        let db = Database::in_memory();
+        let Backend::Memory(store) = &db.store else { unreachable!() };
+        let _writer = store.writer.lock().unwrap();
+        let copy = db.clone();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let thread = std::thread::spawn(move || { tx.send(copy.read()).unwrap(); });
+        let result = rx.recv_timeout(std::time::Duration::from_secs(2));
+        drop(_writer);
+        thread.join().unwrap();
+        assert!(result.is_ok(), "reader blocked behind writer mutex");
     }
 }

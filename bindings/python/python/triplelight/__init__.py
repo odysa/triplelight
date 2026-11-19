@@ -104,6 +104,13 @@ class Database:
     def __init__(self, path, initial=None):
         self._db = _triplelight.Database(str(path), None if initial is None else str(initial))
 
+    @classmethod
+    def in_memory(cls):
+        """Create an isolated database that does not persist after its last handle is released."""
+        db = cls.__new__(cls)
+        db._db = _triplelight.Database.in_memory()
+        return db
+
     def query(self, sparql: str) -> Result:
         """Run a SPARQL SELECT / ASK / CONSTRUCT query on the current state."""
         return Result(self._db.query(sparql))
@@ -121,7 +128,7 @@ class Database:
         return self._db.stats_ready()
 
     def update(self, sparql: str) -> int:
-        """Apply a SPARQL Update atomically and durably (fsync before return). Returns changed triples."""
+        """Apply a SPARQL Update atomically. Persistent databases fsync before return. Returns changed triples."""
         return self._db.update(sparql)
 
     def read(self) -> Snapshot:
