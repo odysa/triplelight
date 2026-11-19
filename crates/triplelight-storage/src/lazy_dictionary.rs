@@ -159,10 +159,8 @@ impl LazyIndex {
                 .filter(|v| *v <= raw.len())
                 .ok_or_else(|| bad("truncated dictionary checksum"))?;
             if offset != next
-                || length < 2
-                || length > LIMIT
-                || keylen == 0
-                || keylen > LIMIT
+                || !(2..=LIMIT).contains(&length)
+                || !(1..=LIMIT).contains(&keylen)
                 || (matches!(order, Order::Id) && keylen != 8)
             {
                 return Err(bad("invalid dictionary block metadata"));
@@ -423,72 +421,6 @@ pub(super) fn write_index(
     out.get_ref().sync_all()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use oxrdf::{Literal, NamedNode};
-    #[test]
-    fn dual_indexes_roundtrip_cross_blocks_and_report_corruption() {
-        let dir = std::env::temp_dir().join(format!("rdf-lazy-dict-{}", std::process::id()));
-        std::fs::create_dir(&dir).unwrap();
-        let mut entries: Vec<(TermId, Term)> = (0..600)
-            .map(|i| {
-                (
-                    TermId(1 + i),
-                    NamedNode::new(format!("urn:t{i:04}")).unwrap().into(),
-                )
-            })
-            .collect();
-        entries.push((
-            TermId(u64::MAX),
-            Literal::new_simple_literal("short").into(),
-        ));
-        let id_path = dir.join("id");
-        let term_path = dir.join("term");
-        entries.sort_unstable_by_key(|(id, _)| id.0);
-        write_index(&id_path, Order::Id, entries.clone().into_iter().map(Ok)).unwrap();
-        entries.sort_unstable_by_key(|(_, t)| t.to_string());
-        write_index(&term_path, Order::Term, entries.clone().into_iter().map(Ok)).unwrap();
-        let shared = DictionaryCache::new();
-        let ids = LazyIndex::open_shared(&id_path, Order::Id, Arc::clone(&shared)).unwrap();
-        let terms = LazyIndex::open_shared(&term_path, Order::Term, shared).unwrap();
-        for (id, term) in &entries {
-            assert_eq!(
-                terms.find(term.to_string().as_bytes()).unwrap(),
-                Some((*id, term.clone()))
-            );
-            ids.with_id(*id, &mut |t| assert_eq!(t.into_owned(), *term))
-                .unwrap();
-        }
-        let batch = [TermId(u64::MAX), TermId(1), TermId(599), TermId(1)];
-        let mut found = vec![None; batch.len()];
-        ids.with_ids(&batch, &mut |i, t| found[i] = Some(t.into_owned()))
-            .unwrap();
-        for (position, id) in batch.iter().enumerate() {
-            assert_eq!(
-                found[position],
-                entries
-                    .iter()
-                    .find(|(candidate, _)| candidate == id)
-                    .map(|(_, t)| t.clone())
-            );
-        }
-        let mut called = false;
-        assert!(ids.with_id(TermId(0), &mut |_| called = true).is_err());
-        assert!(!called);
-        assert!(terms.find(b"<urn:missing>").unwrap().is_none());
-        drop(ids);
-        drop(terms);
-        let mut bytes = std::fs::read(&term_path).unwrap();
-        bytes[8] ^= 1;
-        std::fs::write(&term_path, &bytes).unwrap();
-        let terms = LazyIndex::open(&term_path, Order::Term).unwrap();
-        assert!(terms.find(entries[0].1.to_string().as_bytes()).is_err());
-        drop(terms);
-        std::fs::remove_dir_all(dir).unwrap();
-    }
-}
-
 /// Convert a freshly written legacy dictionary into two immutable indexes.
 /// Caller owns manifest publication and scratch directory durability.
 pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
@@ -631,4 +563,70 @@ pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
     drop(by_id);
     std::fs::remove_file(dir.join("dictionary"))?;
     Ok(identities)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use oxrdf::{Literal, NamedNode};
+    #[test]
+    fn dual_indexes_roundtrip_cross_blocks_and_report_corruption() {
+        let dir = std::env::temp_dir().join(format!("rdf-lazy-dict-{}", std::process::id()));
+        std::fs::create_dir(&dir).unwrap();
+        let mut entries: Vec<(TermId, Term)> = (0..600)
+            .map(|i| {
+                (
+                    TermId(1 + i),
+                    NamedNode::new(format!("urn:t{i:04}")).unwrap().into(),
+                )
+            })
+            .collect();
+        entries.push((
+            TermId(u64::MAX),
+            Literal::new_simple_literal("short").into(),
+        ));
+        let id_path = dir.join("id");
+        let term_path = dir.join("term");
+        entries.sort_unstable_by_key(|(id, _)| id.0);
+        write_index(&id_path, Order::Id, entries.clone().into_iter().map(Ok)).unwrap();
+        entries.sort_unstable_by_key(|(_, t)| t.to_string());
+        write_index(&term_path, Order::Term, entries.clone().into_iter().map(Ok)).unwrap();
+        let shared = DictionaryCache::new();
+        let ids = LazyIndex::open_shared(&id_path, Order::Id, Arc::clone(&shared)).unwrap();
+        let terms = LazyIndex::open_shared(&term_path, Order::Term, shared).unwrap();
+        for (id, term) in &entries {
+            assert_eq!(
+                terms.find(term.to_string().as_bytes()).unwrap(),
+                Some((*id, term.clone()))
+            );
+            ids.with_id(*id, &mut |t| assert_eq!(t.into_owned(), *term))
+                .unwrap();
+        }
+        let batch = [TermId(u64::MAX), TermId(1), TermId(599), TermId(1)];
+        let mut found = vec![None; batch.len()];
+        ids.with_ids(&batch, &mut |i, t| found[i] = Some(t.into_owned()))
+            .unwrap();
+        for (position, id) in batch.iter().enumerate() {
+            assert_eq!(
+                found[position],
+                entries
+                    .iter()
+                    .find(|(candidate, _)| candidate == id)
+                    .map(|(_, t)| t.clone())
+            );
+        }
+        let mut called = false;
+        assert!(ids.with_id(TermId(0), &mut |_| called = true).is_err());
+        assert!(!called);
+        assert!(terms.find(b"<urn:missing>").unwrap().is_none());
+        drop(ids);
+        drop(terms);
+        let mut bytes = std::fs::read(&term_path).unwrap();
+        bytes[8] ^= 1;
+        std::fs::write(&term_path, &bytes).unwrap();
+        let terms = LazyIndex::open(&term_path, Order::Term).unwrap();
+        assert!(terms.find(entries[0].1.to_string().as_bytes()).is_err());
+        drop(terms);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 }

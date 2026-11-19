@@ -403,9 +403,7 @@ impl<'a> Parser<'a> {
         let mut having = Vec::new();
         self.aggregates = Some(std::mem::take(&mut aggregates));
         if self.eat_kw("HAVING") {
-            loop {
-                match self.try_constraint()? { Some(e) => having.push(e), None => break }
-            }
+            while let Some(e) = self.try_constraint()? { having.push(e) }
             if having.is_empty() { return self.err("expected a HAVING condition") }
         }
         // ORDER BY (aggregates allowed)
@@ -485,14 +483,13 @@ impl<'a> Parser<'a> {
                     }
                     Some(vars)
                 }
-            }.map(|vars| {
+            }.inspect(|vars| {
                 let p2 = std::mem::replace(&mut p, GraphPattern::Bgp { patterns: vec![] });
                 p = if order.is_empty() { p2 } else { GraphPattern::OrderBy { inner: Box::new(p2), expression: std::mem::take(&mut order) } };
                 let distinct = sel.modifier;
                 let mut q = GraphPattern::Project { inner: Box::new(std::mem::replace(&mut p, GraphPattern::Bgp { patterns: vec![] })), variables: vars.clone() };
                 if distinct == 1 { q = GraphPattern::Distinct { inner: Box::new(q) } } else if distinct == 2 { q = GraphPattern::Reduced { inner: Box::new(q) } }
                 p = q;
-                vars
             }),
             Form::Describe(items) => {
                 let mut vars = Vec::new();
@@ -892,7 +889,7 @@ impl<'a> Parser<'a> {
     }
 
     fn try_call_expression(&mut self) -> R<Option<Expression>> {
-        if let Tok::Name(_) = self.peek() { if let Some(e) = self.try_builtin()? { return Ok(Some(e)) } }
+        if let Tok::Name(_) = self.peek() && let Some(e) = self.try_builtin()? { return Ok(Some(e)) }
         if matches!(self.peek(), Tok::Iri(_) | Tok::PName(..)) {
             let iri = self.iri()?;
             return Ok(Some(self.function_call(iri)?));

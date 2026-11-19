@@ -3,6 +3,10 @@ name = "triplelight-plan"
 description = "TripleLight query planning: statistics and cost-based join ordering"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 triplelight-core.workspace = true
+
+[lints]
+workspace = true

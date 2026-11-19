@@ -3,7 +3,11 @@ name = "triplelight-sparql"
 description = "TripleLight's SPARQL 1.1 parser and algebra"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 triplelight-core.workspace = true
 oxiri.workspace = true
+
+[lints]
+workspace = true

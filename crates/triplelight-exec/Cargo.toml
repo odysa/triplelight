@@ -3,6 +3,7 @@ name = "triplelight-exec"
 description = "TripleLight SPARQL evaluator over term IDs"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 triplelight-core.workspace = true
@@ -20,3 +21,6 @@ md5.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-time.workspace = true
+
+[lints]
+workspace = true

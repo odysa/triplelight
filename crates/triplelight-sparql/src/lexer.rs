@@ -273,8 +273,7 @@ impl<'a> Lexer<'a> {
         let first = |c: char| is_pn_chars_u(c) || c == ':' || c.is_ascii_digit();
         let mid = |c: char| is_pn_chars(c) || c == ':';
         let mut started = false;
-        loop {
-            let Some(c) = self.peek() else { break };
+        while let Some(c) = self.peek() {
             if c == '%' {
                 let hex = |x: Option<char>| x.is_some_and(|c| c.is_ascii_hexdigit());
                 if !(hex(self.peek_at(1)) && hex(self.peek_at(2))) { return self.err("invalid %-escape in local name") }

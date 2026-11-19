@@ -194,6 +194,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             // Which key columns bind new variables, and which must equal an already-bound value (repeated variable).
             for batch in self.snap.scan(perm, &prefix[..n]) {
                 let batch = batch.unwrap_or_else(|e| storage_failure(e));
+                #[allow(clippy::needless_range_loop)] // columnar batch: one row across several columns
                 'rows: for i in 0..batch.len() {
                     let start = out.len();
                     out.extend_from_slice(row);
@@ -305,8 +306,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         while let Some(first) = remaining.pop() {
             let mut group = vec![first];
             let mut variables: HashSet<usize> = pats[first].iter().filter_map(|s| if let Slot::Var(v)=s {Some(*v)} else {None}).collect();
-            loop {
-                let Some(k) = remaining.iter().position(|&i| pats[i].iter().any(|s| matches!(s, Slot::Var(v) if variables.contains(v)))) else { break; };
+            while let Some(k) = remaining.iter().position(|&i| pats[i].iter().any(|s| matches!(s, Slot::Var(v) if variables.contains(v)))) {
                 let i = remaining.remove(k); group.push(i);
                 variables.extend(pats[i].iter().filter_map(|s| if let Slot::Var(v)=s {Some(*v)} else {None}));
             }

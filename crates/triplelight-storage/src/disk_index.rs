@@ -316,7 +316,7 @@ impl DiskIndex {
             } else {
                 (rows - (i as u64) * BLOCK_ROWS).min(BLOCK_ROWS) * ROW
             };
-            if compressed && (len < 27 || len > 27 + BLOCK_ROWS * ROW) {
+            if compressed && !(27..=27 + BLOCK_ROWS * ROW).contains(&len) {
                 return Err(invalid("invalid compressed block length"));
             }
             let next = data_pos
@@ -411,20 +411,16 @@ impl DiskIndex {
         let generation = {
             let cache = shard.read().map_err(|_| poisoned())?;
             if let Some((value, referenced)) = cache.entries.get(&id) {
-                if cache_trace_enabled() {
-                    if let Some(i) = self.trace_slot {
-                        HITS[i].fetch_add(1, Ordering::Relaxed);
-                    }
+                if cache_trace_enabled() && let Some(i) = self.trace_slot {
+                    HITS[i].fetch_add(1, Ordering::Relaxed);
                 }
                 referenced.store(true, Ordering::Relaxed);
                 return Ok(Arc::clone(value));
             }
             cache.generation
         };
-        if cache_trace_enabled() {
-            if let Some(i) = self.trace_slot {
-                MISSES[i].fetch_add(1, Ordering::Relaxed);
-            }
+        if cache_trace_enabled() && let Some(i) = self.trace_slot {
+            MISSES[i].fetch_add(1, Ordering::Relaxed);
         }
         // Miss: read, verify and decode without holding the lock. Concurrent misses on one block may each read and
         // decode it (first insert wins), so decoded blocks can transiently exceed the nominal cache budget.
@@ -447,10 +443,8 @@ impl DiskIndex {
                 cache.clock.push_back(old);
             } else {
                 cache.entries.remove(&old);
-                if cache_trace_enabled() {
-                    if let Some(i) = self.trace_slot {
-                        EVICTIONS[i].fetch_add(1, Ordering::Relaxed);
-                    }
+                if cache_trace_enabled() && let Some(i) = self.trace_slot {
+                    EVICTIONS[i].fetch_add(1, Ordering::Relaxed);
                 }
             }
         }
@@ -479,7 +473,7 @@ impl DiskIndex {
         let rows: Vec<_> = if self.compressed {
             super::block_codec::decode(&bytes, n)?
         } else {
-            bytes.chunks_exact(24).map(decode_row).collect()
+            bytes.as_chunks::<24>().0.iter().map(|r| decode_row(r)).collect()
         };
         if rows.iter().any(|r| r.iter().any(|id| id.0 == 0))
             || rows.windows(2).any(|w| w[0] >= w[1])
@@ -575,18 +569,14 @@ fn read_exact_at_traced(
     slot: Option<usize>,
 ) -> io::Result<()> {
     while !buf.is_empty() {
-        if cache_trace_enabled() {
-            if let Some(i) = slot {
-                READS[i].fetch_add(1, Ordering::Relaxed);
-            }
+        if cache_trace_enabled() && let Some(i) = slot {
+            READS[i].fetch_add(1, Ordering::Relaxed);
         }
         match file.read_at(buf, offset) {
             Ok(0) => return Err(io::Error::new(ErrorKind::UnexpectedEof, "short index read")),
             Ok(n) => {
-                if cache_trace_enabled() {
-                    if let Some(i) = slot {
-                        BYTES[i].fetch_add(n as u64, Ordering::Relaxed);
-                    }
+                if cache_trace_enabled() && let Some(i) = slot {
+                    BYTES[i].fetch_add(n as u64, Ordering::Relaxed);
                 }
                 offset += n as u64;
                 buf = &mut buf[n..];
@@ -597,6 +587,38 @@ fn read_exact_at_traced(
     }
     Ok(())
 }
+/// Physical memory in bytes (macOS: sysctl hw.memsize; Linux: /proc/meminfo MemTotal), if it can be determined.
+pub fn physical_memory_bytes() -> Option<u64> {
+    #[cfg(target_os = "macos")]
+    {
+        let out = std::process::Command::new("/usr/sbin/sysctl")
+            .args(["-n", "hw.memsize"])
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        return String::from_utf8_lossy(&out.stdout)
+            .trim()
+            .parse::<u64>()
+            .ok();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let info = std::fs::read_to_string("/proc/meminfo").ok()?;
+        let kb: u64 = info
+            .lines()
+            .find(|l| l.starts_with("MemTotal:"))?
+            .split_whitespace()
+            .nth(1)?
+            .parse()
+            .ok()?;
+        return Some(kb * 1024);
+    }
+    #[allow(unreachable_code)]
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -619,7 +641,7 @@ mod tests {
         std::fs::write(&path, &bytes).unwrap();
         let index = DiskIndex::open(&path).unwrap();
         for n in [1, 255, 256, 257, 512, 513, 700, 701] {
-            let start = ((n - 1) as u64).min(700);
+            let start = (n - 1).min(700);
             assert_eq!(
                 index.range(&[TermId(n)]).unwrap(),
                 start..(start + u64::from(n <= 700))
@@ -729,34 +751,3 @@ mod tests {
     }
 }
 
-/// Physical memory in bytes (macOS: sysctl hw.memsize; Linux: /proc/meminfo MemTotal), if it can be determined.
-pub fn physical_memory_bytes() -> Option<u64> {
-    #[cfg(target_os = "macos")]
-    {
-        let out = std::process::Command::new("/usr/sbin/sysctl")
-            .args(["-n", "hw.memsize"])
-            .output()
-            .ok()?;
-        if !out.status.success() {
-            return None;
-        }
-        return String::from_utf8_lossy(&out.stdout)
-            .trim()
-            .parse::<u64>()
-            .ok();
-    }
-    #[cfg(target_os = "linux")]
-    {
-        let info = std::fs::read_to_string("/proc/meminfo").ok()?;
-        let kb: u64 = info
-            .lines()
-            .find(|l| l.starts_with("MemTotal:"))?
-            .split_whitespace()
-            .nth(1)?
-            .parse()
-            .ok()?;
-        return Some(kb * 1024);
-    }
-    #[allow(unreachable_code)]
-    None
-}
