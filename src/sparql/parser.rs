@@ -63,6 +63,8 @@ struct Parser<'a> {
     toks: Vec<Spanned>,
     i: usize,
     base: Option<String>,
+    /// `base`, parsed once (resolving many relative IRIs against it is the common case).
+    base_parsed: Option<oxiri::Iri<String>>,
     prefixes: HashMap<String, String>,
     /// Salt for generated blank nodes and variables, so they cannot collide with names written in the query.
     salt: String,
@@ -92,9 +94,12 @@ impl<'a> Parser<'a> {
         let mut h = std::collections::hash_map::RandomState::new().build_hasher();
         h.write_usize(src.len());
         let salt = format!("{:012x}", h.finish() & 0xffff_ffff_ffff);
-        if let Some(b) = base { if oxiri::Iri::parse(b.to_string()).is_err() { return Err(Self::error_at(src, 0, format!("invalid base IRI {b}"))) } }
+        let base_parsed = match base {
+            Some(b) => Some(oxiri::Iri::parse(b.to_string()).map_err(|_| Self::error_at(src, 0, format!("invalid base IRI {b}")))?),
+            None => None,
+        };
         Ok(Parser {
-            src, toks, i: 0, base: base.map(str::to_string), prefixes: HashMap::new(), salt, counter: 0,
+            src, toks, i: 0, base: base.map(str::to_string), base_parsed, prefixes: HashMap::new(), salt, counter: 0,
             bnode_block: HashMap::new(), block: 0, data_bnodes: HashSet::new(), template: false, last_group_filtered: false, aggregates: None, in_aggregate: false,
         })
     }
@@ -110,7 +115,14 @@ impl<'a> Parser<'a> {
     fn err<T>(&self, message: impl Into<String>) -> R<T> { Err(Self::error_at(self.src, self.toks[self.i].pos, message)) }
     fn peek(&self) -> &Tok { &self.toks[self.i].tok }
     fn peek_n(&self, n: usize) -> &Tok { &self.toks[(self.i + n).min(self.toks.len() - 1)].tok }
-    fn next(&mut self) -> Tok { let t = self.toks[self.i].tok.clone(); if self.i + 1 < self.toks.len() { self.i += 1 } t }
+    /// Takes the current token (tokens are consumed once; the final `Eof` is never taken).
+    fn next(&mut self) -> Tok {
+        if self.i + 1 < self.toks.len() {
+            let t = std::mem::replace(&mut self.toks[self.i].tok, Tok::Eof);
+            self.i += 1;
+            t
+        } else { Tok::Eof }
+    }
     fn at_eof(&self) -> bool { matches!(self.peek(), Tok::Eof) }
     fn expect_eof(&self) -> R<()> { if self.at_eof() { Ok(()) } else { self.err(format!("unexpected {}", self.peek())) } }
     fn is_punct(&self, p: &str) -> bool { matches!(self.peek(), Tok::Punct(x) if *x == p) }
@@ -136,6 +148,7 @@ impl<'a> Parser<'a> {
             if self.eat_kw("BASE") {
                 let Tok::Iri(i) = self.next() else { return self.err("expected an IRI after BASE") };
                 let iri = self.resolve(&i)?;
+                self.base_parsed = Some(oxiri::Iri::parse_unchecked(iri.as_str().to_string()));
                 self.base = Some(iri.into_string());
             } else if self.eat_kw("PREFIX") {
                 let Tok::PName(p, l) = self.next() else { return self.err("expected a prefix name after PREFIX") };
@@ -148,8 +161,8 @@ impl<'a> Parser<'a> {
     }
 
     fn resolve(&self, iri: &str) -> R<NamedNode> {
-        let full = match &self.base {
-            Some(b) => match oxiri::Iri::parse(b.as_str()).and_then(|b| b.resolve(iri)) {
+        let full = match &self.base_parsed {
+            Some(b) => match b.resolve(iri) {
                 Ok(r) => r.into_inner(),
                 Err(e) => return self.err(format!("invalid IRI <{iri}>: {e}")),
             },
@@ -168,9 +181,9 @@ impl<'a> Parser<'a> {
     }
 
     fn try_iri(&mut self) -> R<Option<NamedNode>> {
-        match self.peek().clone() {
-            Tok::Iri(i) => { self.next(); Ok(Some(self.resolve(&i)?)) }
-            Tok::PName(p, l) => { self.next(); Ok(Some(self.pname(&p, &l)?)) }
+        match self.peek() {
+            Tok::Iri(_) => { let Tok::Iri(i) = self.next() else { unreachable!() }; Ok(Some(self.resolve(&i)?)) }
+            Tok::PName(..) => { let Tok::PName(p, l) = self.next() else { unreachable!() }; Ok(Some(self.pname(&p, &l)?)) }
             _ => Ok(None),
         }
     }
@@ -181,22 +194,26 @@ impl<'a> Parser<'a> {
     // ---------- literals ----------
 
     fn try_literal(&mut self) -> R<Option<Literal>> {
-        let lit = match self.peek().clone() {
-            Tok::Str(s) => {
-                self.next();
-                match self.peek().clone() {
-                    Tok::LangTag(t) => {
-                        self.next();
+        let lit = match self.peek() {
+            Tok::Str(_) => {
+                let Tok::Str(s) = self.next() else { unreachable!() };
+                match self.peek() {
+                    Tok::LangTag(_) => {
+                        let Tok::LangTag(t) = self.next() else { unreachable!() };
                         match Literal::new_language_tagged_literal(s, t.clone()) { Ok(l) => l, Err(_) => return self.err(format!("invalid language tag @{t}")) }
                     }
                     Tok::Punct("^^") => { self.next(); let dt = self.iri()?; Literal::new_typed_literal(s, dt) }
                     _ => Literal::new_simple_literal(s),
                 }
             }
-            Tok::Integer(n) => { self.next(); Literal::new_typed_literal(n, xsd("integer")) }
-            Tok::Decimal(n) => { self.next(); Literal::new_typed_literal(n, xsd("decimal")) }
-            Tok::Double(n) => { self.next(); Literal::new_typed_literal(n, xsd("double")) }
+            Tok::Integer(_) | Tok::Decimal(_) | Tok::Double(_) => match self.next() {
+                Tok::Integer(n) => Literal::new_typed_literal(n, xsd("integer")),
+                Tok::Decimal(n) => Literal::new_typed_literal(n, xsd("decimal")),
+                Tok::Double(n) => Literal::new_typed_literal(n, xsd("double")),
+                _ => unreachable!(),
+            },
             Tok::Punct(sign @ ("+" | "-")) if matches!(self.peek_n(1), Tok::Integer(_) | Tok::Decimal(_) | Tok::Double(_)) => {
+                let sign = *sign;
                 self.next();
                 let (lex, dt) = match self.next() {
                     Tok::Integer(n) => (n, "integer"), Tok::Decimal(n) => (n, "decimal"), Tok::Double(n) => (n, "double"),
@@ -204,7 +221,7 @@ impl<'a> Parser<'a> {
                 };
                 Literal::new_typed_literal(format!("{sign}{lex}"), xsd(dt))
             }
-            Tok::Name(n) if n == "true" || n == "false" => { self.next(); Literal::new_typed_literal(n, xsd("boolean")) }
+            Tok::Name(n) if n == "true" || n == "false" => { let Tok::Name(n) = self.next() else { unreachable!() }; Literal::new_typed_literal(n, xsd("boolean")) }
             _ => return Ok(None),
         };
         Ok(Some(lit))
@@ -644,9 +661,9 @@ impl<'a> Parser<'a> {
 
     /// VarOrTerm (§19.8 [106]) as a pattern term; `[]`, `[...]` and collections are handled by the callers.
     fn try_var_or_term(&mut self) -> R<Option<TermPattern>> {
-        match self.peek().clone() {
-            Tok::Var(v) => { self.next(); Ok(Some(TermPattern::Variable(Variable::new_unchecked(v)))) }
-            Tok::BNode(b) => { self.next(); self.note_bnode(&b)?; Ok(Some(TermPattern::BlankNode(BlankNode::new_unchecked(b)))) }
+        match self.peek() {
+            Tok::Var(_) => { let Tok::Var(v) = self.next() else { unreachable!() }; Ok(Some(TermPattern::Variable(Variable::new_unchecked(v)))) }
+            Tok::BNode(_) => { let Tok::BNode(b) = self.next() else { unreachable!() }; self.note_bnode(&b)?; Ok(Some(TermPattern::BlankNode(BlankNode::new_unchecked(b)))) }
             Tok::Anon => { self.next(); Ok(Some(TermPattern::BlankNode(self.fresh_bnode()))) }
             Tok::Nil => { self.next(); Ok(Some(TermPattern::NamedNode(rdf("nil")))) }
             _ => {
