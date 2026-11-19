@@ -1,6 +1,6 @@
 # Evaluation
 
-This section compares rdfdb with six RDF stores on three standard benchmarks at two scales. Every number below
+This section compares TripleLight with six RDF stores on three standard benchmarks at two scales. Every number below
 comes from a result file in `bench/results/`; the round and directory are given with each table.
 
 ## Setup
@@ -10,19 +10,19 @@ the BSBM test driver, seed 808080, captured once through a logging proxy so ever
 query text). Two scales: about 13–15M triples (LUBM-100, WatDiv-100, BSBM-10M) and about 100–140M triples
 (LUBM-1000: 133.6M unique triples, BSBM-100M: 98.9M).
 
-**Systems.** rdfdb in memory and on its persistent disk store; Apache Jena TDB2 / Fuseki 6.2.0; Eclipse RDF4J
+**Systems.** TripleLight in memory and on its persistent disk store; Apache Jena TDB2 / Fuseki 6.2.0; Eclipse RDF4J
 5.3.2 (native and memory stores, behind a small HTTP wrapper); Oxigraph 0.5.13; QLever (Docker image
 `adfreiburg/qlever`, result cache disabled with `-c 1MB -e 1MB -E 1MB`); OpenLink Virtuoso 7 open source
 (Docker image `openlink/virtuoso-opensource-7`, `NumberOfBuffers = 1,360,000` ≈ 10.6 GB, `MaxDirtyBuffers =
 1,000,000`, `ThreadsPerQuery = 10`, `ResultSetMaxRows = 10^9`, `MaxQueryExecutionTime = 0`).
 
 **Machine.** Apple M-series laptop, 64 GB RAM, macOS. QLever and Virtuoso only ship Linux builds, so they run in
-the Docker Linux VM (arm64, 16 GB RAM, 10 CPUs). For a fair comparison rdfdb is run in the same VM from a Linux
-build (`bench/build-linux.sh`); at 10× scale rdfdb's in-memory mode does not fit in 16 GB, so the VM
+the Docker Linux VM (arm64, 16 GB RAM, 10 CPUs). For a fair comparison TripleLight is run in the same VM from a Linux
+build (`bench/build-linux.sh`); at 10× scale TripleLight's in-memory mode does not fit in 16 GB, so the VM
 comparison uses its disk store with `--cache-mb 10240`, matching Virtuoso's buffer pool.
 
 **Method.** `bench/suite.sh` runs one system at a time under a machine-wide lock: start the server, wait until
-it answers (and, for rdfdb, until background optimizer statistics are built), run every query once to warm up
+it answers (and, for TripleLight, until background optimizer statistics are built), run every query once to warm up
 and five more times, report the median, stop the server. Queries go over the SPARQL 1.1 protocol (HTTP POST,
 JSON results), so times include serialization and transfer. Each answer is reduced to a canonical multiset
 (sorted rows; blank-node labels erased; `typed-literal` and `xsd:string` normalized) and hashed with SHA-1;
@@ -31,10 +31,10 @@ systems measured in the same session are compared with each other.
 
 ## Results at 10–15M triples
 
-Round 8 (`bench/results/round8-vm-*`), one VM session, rdfdb at `334e70d`. Total of query medians (ms) /
+Round 8 (`bench/results/round8-vm-*`), one VM session, TripleLight at `334e70d`. Total of query medians (ms) /
 geometric mean per query (ms):
 
-| | rdfdb memory | rdfdb disk | Virtuoso 7 | QLever |
+| | TripleLight memory | TripleLight disk | Virtuoso 7 | QLever |
 |---|---|---|---|---|
 | LUBM-100 | **289 / 6.8** | 378 / 8.0 | 9,441 / 23.1 | 2,103 / 15.2 |
 | WatDiv-100 | **151 / 4.1** | 179 / 5.0 | 1,727 / 6.3 | 1,157 / 16.0 |
@@ -43,20 +43,20 @@ geometric mean per query (ms):
 Round 5 (`bench/results/{lubm100,watdiv100,bsbm10}`), one session on the macOS host, the stores that run
 natively:
 
-| | rdfdb memory | rdfdb disk | RDF4J memory | RDF4J native | Jena TDB2 | Oxigraph |
+| | TripleLight memory | TripleLight disk | RDF4J memory | RDF4J native | Jena TDB2 | Oxigraph |
 |---|---|---|---|---|---|---|
 | LUBM-100 | **310 / 1.7** | 420 / 2.2 | 1,014 / 7.2 | 3,632 / 13.4 | 7,798 / 25.9 | 71,521 / 55.6 |
 | WatDiv-100 | **119 / 0.8** | 141 / 1.3 | 301 / 2.8 | 879 / 5.4 | 10,198 / 9.0 | 161,338 / 57.2 |
 | BSBM-10M | **27 / 0.6** | 47 / 0.9 | 113 / 2.8 | 203 / 3.1 | 1,998 / 7.7 | 1,040 / 4.3 |
 
-At this scale rdfdb is the fastest system on all three benchmarks, in memory and on disk.
+At this scale TripleLight is the fastest system on all three benchmarks, in memory and on disk.
 
 ## Results at 100–140M triples
 
 Round 11 (LUBM-1000) and round 12 (BSBM-100M), each one VM session, every system with about 10 GB of cache;
 `bench/results/r11-*`, `r12-*`.
 
-| | rdfdb disk | Virtuoso 7 | QLever |
+| | TripleLight disk | Virtuoso 7 | QLever |
 |---|---|---|---|
 | LUBM-1000 total / geomean (ms) | **6,397 / 26.6** | 18,183* / 56.7 | 30,495 / 43.4 |
 | LUBM-1000 without Q6, Q14 | **938 / 12.3** | 5,164 / 25.7 | 1,677 / 16.6 |
@@ -68,16 +68,16 @@ Round 11 (LUBM-1000) and round 12 (BSBM-100M), each one VM session, every system
 \* Virtuoso's HTTP endpoint stops at 1,048,576 rows despite `ResultSetMaxRows = 10^9`, so its Q6 and Q14 answers
 (7,924,765 rows each) are incomplete and its total is understated; the second row excludes those two queries.
 
-On the macOS host (round 9, `bench/results/r9-*`), rdfdb in memory answers LUBM-1000 in 3.6 s and BSBM-100M in
+On the macOS host (round 9, `bench/results/r9-*`), TripleLight in memory answers LUBM-1000 in 3.6 s and BSBM-100M in
 82 ms in total.
 
 ## Answer agreement
 
-All rdfdb answers match Jena on every query, at both scales. QLever's BSBM answers differ from Jena on 13 of 20
+All TripleLight answers match Jena on every query, at both scales. QLever's BSBM answers differ from Jena on 13 of 20
 queries only because it returns values typed `xsd:integer` in the data as `xsd:int`; with that mapped, the
 answers are identical. Virtuoso matches except for the two truncated LUBM-1000 results above.
 
-## Where rdfdb is behind
+## Where TripleLight is behind
 
 - BSBM-100M q010 and q013 (numeric range filters): 100 and 38 ms against Virtuoso's 70 and 24 ms.
 - Load time. Building the disk store takes 1,035 s for LUBM-1000 and 1,028–1,436 s for BSBM-100M, against
