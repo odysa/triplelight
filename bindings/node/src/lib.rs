@@ -1,0 +1,227 @@
+//! Node.js binding for the embedded TripleLight database. Query work runs on libuv's worker threads (napi
+//! `AsyncTask`), so `query`, `update`, `load` and `compact` return Promises and never block the JS event loop.
+//! Terms are returned in the RDF/JS data model (`termType`, `value`, `language`, `datatype`).
+use std::sync::Arc;
+
+use napi::bindgen_prelude::*;
+use napi::{Env, JsObject, JsUnknown, Task};
+use napi_derive::napi;
+use oxrdf::{Literal, Term};
+use triplelight::embedded::{Database as Db, DatabaseError, DatabaseOptions, ReadSnapshot};
+use triplelight::exec::QueryResult;
+
+/// Errors cross into JS as `Error` objects whose message starts with the error kind; `index.js` turns them into
+/// `TripleLightError` subclasses with a `kind` property.
+fn err(e: DatabaseError) -> Error {
+    let kind = match &e {
+        DatabaseError::Syntax(_) => "SyntaxError",
+        DatabaseError::Unsupported(_) => "UnsupportedError",
+        DatabaseError::Storage(_) => "StorageError",
+        DatabaseError::Locked => "LockedError",
+    };
+    Error::new(Status::GenericFailure, format!("{kind}: {e}"))
+}
+
+fn closed() -> Error { Error::new(Status::GenericFailure, "StorageError: the database is closed".to_string()) }
+
+#[derive(Clone)]
+enum Source { Db(Arc<Db>), Snap(Arc<ReadSnapshot>) }
+
+impl Source {
+    fn query(&self, q: &str) -> std::result::Result<QueryResult, DatabaseError> {
+        match self { Source::Db(d) => d.query(q), Source::Snap(s) => s.query(q) }
+    }
+    fn query_json(&self, q: &str) -> std::result::Result<String, DatabaseError> {
+        match self { Source::Db(d) => d.query_json(q), Source::Snap(s) => s.query_json(q) }
+    }
+}
+
+// ---------- term and result conversion ----------
+
+fn named(env: &Env, iri: &str) -> Result<JsObject> {
+    let mut o = env.create_object()?;
+    o.set_named_property("termType", env.create_string("NamedNode")?)?;
+    o.set_named_property("value", env.create_string(iri)?)?;
+    Ok(o)
+}
+
+fn literal(env: &Env, l: &Literal) -> Result<JsObject> {
+    let mut o = env.create_object()?;
+    o.set_named_property("termType", env.create_string("Literal")?)?;
+    o.set_named_property("value", env.create_string(l.value())?)?;
+    o.set_named_property("language", env.create_string(l.language().unwrap_or(""))?)?;
+    o.set_named_property("datatype", named(env, l.datatype().as_str())?)?;
+    Ok(o)
+}
+
+fn term(env: &Env, t: &Term) -> Result<JsObject> {
+    match t {
+        Term::NamedNode(n) => named(env, n.as_str()),
+        Term::BlankNode(b) => {
+            let mut o = env.create_object()?;
+            o.set_named_property("termType", env.create_string("BlankNode")?)?;
+            o.set_named_property("value", env.create_string(b.as_str())?)?;
+            Ok(o)
+        }
+        Term::Literal(l) => literal(env, l),
+        #[allow(unreachable_patterns)]
+        _ => Err(Error::new(Status::GenericFailure, "UnsupportedError: RDF-star terms are not supported".to_string())),
+    }
+}
+
+/// `{ type: "bindings", variables, bindings }`, `{ type: "boolean", boolean }` or `{ type: "triples", triples }`.
+fn convert(env: &Env, r: QueryResult) -> Result<JsObject> {
+    let mut out = env.create_object()?;
+    match r {
+        QueryResult::Solutions { vars, rows } => {
+            out.set_named_property("type", env.create_string("bindings")?)?;
+            let mut names = env.create_array_with_length(vars.len())?;
+            for (i, v) in vars.iter().enumerate() { names.set_element(i as u32, env.create_string(v.as_str())?)?; }
+            out.set_named_property("variables", names)?;
+            let mut list = env.create_array_with_length(rows.len())?;
+            for (i, row) in rows.iter().enumerate() {
+                let mut b = env.create_object()?;
+                for (v, t) in vars.iter().zip(row) {
+                    if let Some(t) = t { b.set_named_property(v.as_str(), term(env, t)?)?; }
+                }
+                list.set_element(i as u32, b)?;
+            }
+            out.set_named_property("bindings", list)?;
+        }
+        QueryResult::Boolean(x) => {
+            out.set_named_property("type", env.create_string("boolean")?)?;
+            out.set_named_property("boolean", env.get_boolean(x)?)?;
+        }
+        QueryResult::Graph(triples) => {
+            out.set_named_property("type", env.create_string("triples")?)?;
+            let mut list = env.create_array_with_length(triples.len())?;
+            for (i, t) in triples.iter().enumerate() {
+                let mut o = env.create_object()?;
+                o.set_named_property("subject", term(env, &t.subject.clone().into())?)?;
+                o.set_named_property("predicate", named(env, t.predicate.as_str())?)?;
+                o.set_named_property("object", term(env, &t.object)?)?;
+                list.set_element(i as u32, o)?;
+            }
+            out.set_named_property("triples", list)?;
+        }
+        QueryResult::Ids(_) => return Err(Error::new(Status::GenericFailure, "StorageError: internal: undecoded result".to_string())),
+    }
+    Ok(out)
+}
+
+// ---------- background tasks ----------
+
+pub struct QueryTask { src: Source, sparql: String }
+impl Task for QueryTask {
+    type Output = QueryResult;
+    type JsValue = JsObject;
+    fn compute(&mut self) -> Result<Self::Output> { self.src.query(&self.sparql).map_err(err) }
+    fn resolve(&mut self, env: Env, out: Self::Output) -> Result<Self::JsValue> { convert(&env, out) }
+}
+
+pub struct JsonTask { src: Source, sparql: String }
+impl Task for JsonTask {
+    type Output = String;
+    type JsValue = String;
+    fn compute(&mut self) -> Result<Self::Output> { self.src.query_json(&self.sparql).map_err(err) }
+    fn resolve(&mut self, _: Env, out: Self::Output) -> Result<Self::JsValue> { Ok(out) }
+}
+
+pub enum Write { Update(String), Load(String), Compact }
+pub struct WriteTask { db: Arc<Db>, op: Write }
+impl Task for WriteTask {
+    type Output = usize;
+    type JsValue = f64;
+    fn compute(&mut self) -> Result<Self::Output> {
+        match &self.op {
+            Write::Update(q) => self.db.update(q).map_err(err),
+            Write::Load(p) => self.db.load(p).map_err(err),
+            Write::Compact => self.db.compact().map(|_| 0).map_err(err),
+        }
+    }
+    fn resolve(&mut self, _: Env, out: Self::Output) -> Result<Self::JsValue> { Ok(out as f64) }
+}
+
+// ---------- classes ----------
+
+/// A persistent RDF database in a local directory (created if missing). One process may open a directory at a time.
+#[napi]
+pub struct Database { db: Option<Arc<Db>> }
+
+#[napi]
+impl Database {
+    /// Opens (or creates) the database at `path`. `initial` is an N-Triples file loaded only into a new database.
+    #[napi(constructor)]
+    pub fn new(path: String, initial: Option<String>) -> Result<Self> {
+        let mut opts = DatabaseOptions::default();
+        opts.initial = initial.map(Into::into);
+        Ok(Database { db: Some(Arc::new(Db::open_with(&path, opts).map_err(err)?)) })
+    }
+    fn db(&self) -> Result<Arc<Db>> { self.db.clone().ok_or_else(closed) }
+
+    /// Runs a SPARQL SELECT / ASK / CONSTRUCT / DESCRIBE query on the current state.
+    #[napi(ts_return_type = "Promise<QueryResult>")]
+    pub fn query(&self, sparql: String) -> Result<AsyncTask<QueryTask>> {
+        Ok(AsyncTask::new(QueryTask { src: Source::Db(self.db()?), sparql }))
+    }
+    /// Like `query`, but blocks the calling thread (for scripts and tests).
+    #[napi(ts_return_type = "QueryResult")]
+    pub fn query_sync(&self, env: Env, sparql: String) -> Result<JsObject> {
+        let r = self.db()?.query(&sparql).map_err(err)?;
+        convert(&env, r)
+    }
+    /// SPARQL 1.1 Query Results JSON as a string: the fastest path for large results.
+    #[napi(ts_return_type = "Promise<string>")]
+    pub fn query_json(&self, sparql: String) -> Result<AsyncTask<JsonTask>> {
+        Ok(AsyncTask::new(JsonTask { src: Source::Db(self.db()?), sparql }))
+    }
+    /// Applies a SPARQL Update atomically and durably (fsync before the Promise resolves). Resolves to the number of
+    /// triples changed.
+    #[napi(ts_return_type = "Promise<number>")]
+    pub fn update(&self, sparql: String) -> Result<AsyncTask<WriteTask>> {
+        Ok(AsyncTask::new(WriteTask { db: self.db()?, op: Write::Update(sparql) }))
+    }
+    /// Atomically imports an N-Triples (.nt) or Turtle (.ttl) file. Resolves to the number of triples added.
+    #[napi(ts_return_type = "Promise<number>")]
+    pub fn load(&self, path: String) -> Result<AsyncTask<WriteTask>> {
+        Ok(AsyncTask::new(WriteTask { db: self.db()?, op: Write::Load(path) }))
+    }
+    /// Merges updates into a new immutable base; open snapshots keep their view.
+    #[napi(ts_return_type = "Promise<void>")]
+    pub fn compact(&self) -> Result<AsyncTask<WriteTask>> {
+        Ok(AsyncTask::new(WriteTask { db: self.db()?, op: Write::Compact }))
+    }
+    /// True once background optimizer statistics are built (queries work before that, with simpler plans).
+    #[napi]
+    pub fn stats_ready(&self) -> Result<bool> { Ok(self.db()?.stats_ready()) }
+    /// A consistent, immutable view for several queries; later updates do not change it.
+    #[napi]
+    pub fn read(&self) -> Result<Snapshot> { Ok(Snapshot { snap: Arc::new(self.db()?.read()) }) }
+    /// Releases this handle. The directory lock is released once no snapshot or pending operation uses it.
+    #[napi]
+    pub fn close(&mut self) { self.db = None; }
+}
+
+/// An immutable view of the database, unaffected by later updates.
+#[napi]
+pub struct Snapshot { snap: Arc<ReadSnapshot> }
+
+#[napi]
+impl Snapshot {
+    #[napi(ts_return_type = "Promise<QueryResult>")]
+    pub fn query(&self, sparql: String) -> AsyncTask<QueryTask> {
+        AsyncTask::new(QueryTask { src: Source::Snap(Arc::clone(&self.snap)), sparql })
+    }
+    #[napi(ts_return_type = "QueryResult")]
+    pub fn query_sync(&self, env: Env, sparql: String) -> Result<JsObject> {
+        let r = self.snap.query(&sparql).map_err(err)?;
+        convert(&env, r)
+    }
+    #[napi(ts_return_type = "Promise<string>")]
+    pub fn query_json(&self, sparql: String) -> AsyncTask<JsonTask> {
+        AsyncTask::new(JsonTask { src: Source::Snap(Arc::clone(&self.snap)), sparql })
+    }
+}
+
+#[allow(dead_code)]
+fn _assert_unknown(_: JsUnknown) {}

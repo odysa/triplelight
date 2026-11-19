@@ -1,0 +1,15 @@
+{
+  "name": "triplelight",
+  "version": "0.1.0",
+  "description": "Embedded analytical RDF database with SPARQL 1.1 (Rust core, Node.js binding)",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": ["index.js", "index.d.ts", "triplelight.node"],
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "cargo build --release && node scripts/copy-native.js release",
+    "build:debug": "cargo build && node scripts/copy-native.js debug",
+    "test": "node --test test/"
+  },
+  "license": "UNLICENSED"
+}
