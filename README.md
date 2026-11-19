@@ -44,7 +44,9 @@ QLever is still faster on q1 and q3, and uses much less memory: about 0.35 GiB p
 1.41–1.53 GiB. q7 is tied in pass 1 and lower for rdfdb in pass 2, which is not yet a stable win. rdfdb's and DuckDB's
 timings varied a lot within this session (DuckDB 171 vs 113 s), while QLever's were steady. Two passes are a bounded observation, not a significance test. Virtuoso, checked in an earlier
 session, returns wrong result sets for all 12 q5 instances (for example zero rows where Jena returns 14) and timed
-out in its reverse pass, so it has no total. Evidence:
+out in its reverse pass, so it has no total. The q5 failure reproduces with small VALUES-only queries: a subquery
+that projects an always-unbound join variable returns no rows in Virtuoso
+([diagnostic](https://github.com/odysa/rdfdb/tree/0c9ad2b41a8bef068626ba2c6305bc6ad34c614b/docs/virtuoso-bi-unbound-diagnostic-v1)). Evidence:
 [matched-vm-round6-v1](https://github.com/odysa/rdfdb/tree/ff1810232104acbde2e0885b3e4972c1189bf2c6/docs/analytical-benchmark/matched-vm-round6-v1)
 (previous session: [round 5](https://github.com/odysa/rdfdb/tree/7a4f7645dc7cb839ce20e8a3c253b05adf0698d8/docs/analytical-benchmark/matched-vm-round5-v1) on `1cd8881`, rdfdb 9.4 / 10.6 s, QLever 19.4 / 17.1 s, DuckDB 118.2 / 118.3 s);
 QLever value diagnostic in [value-diagnostic-v1](https://github.com/odysa/rdfdb/tree/c535ac3988f78fa16e9e1b290ed8cad84960dba5/docs/analytical-benchmark/value-diagnostic-v1);
