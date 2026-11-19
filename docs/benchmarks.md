@@ -12,8 +12,9 @@ commit links and evidence paths still say `rdfdb`; they refer to the same engine
 - **Memory** is the container's cgroup `memory.peak`, which includes page cache and kernel memory. It is not
   process RSS. **Lower is better.**
 - **Answer checks** (`60 / 60` = 60 of 60 requests correct) compare every engine's results against Apache Jena.
-  "Primary" requires the expected datatypes; "value-only" compares numeric values within registered rounding
-  bounds and ignores datatype; "COUNT int = integer" accepts `xsd:int` for COUNT results.
+  "Primary" requires the expected datatypes (on BSBM BI it allows registered numeric rounding
+  bounds; on the aggregate suite it requires exact RDF terms); "value-only" compares numeric values within
+  registered rounding bounds and ignores datatype; "COUNT int = integer" accepts `xsd:int` for COUNT results.
 - Each section links its raw evidence (queries, configs, per-request timings, answers).
 
 

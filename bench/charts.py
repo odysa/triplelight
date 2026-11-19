@@ -16,9 +16,9 @@ WORKLOADS = {
         "title": "BSBM Business Intelligence, 98.9M triples",
         "sub": "45 scored requests per pass, 4 CPUs and 12 GiB per engine, same VM and session",
         "engines": [  # name, (pass1 s, pass2 s), (pass1 bytes, pass2 bytes)
-            ("TripleLight", (11.744, 6.731), (3960119296, 4377493504)),
-            ("QLever", (24.176, 24.506), (548614144, 422412288)),
-            ("DuckDB 2.0", (573.759, 443.534), (12194824192, 12880408576)),
+            ("TripleLight", (11.744257042, 6.730454500), (3960119296, 4377493504)),
+            ("QLever", (24.175621040, 24.505901291), (548614144, 422412288)),
+            ("DuckDB 2.0", (573.757916960, 443.531885919), (12194824192, 12880408576)),
         ],
     },
     "aggregate72": {
