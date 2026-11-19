@@ -121,10 +121,10 @@ query time in **seconds**, pass 1 / pass 2 (lower is better):
 | WatDiv aggregates | 42 | **0.188 / 0.291** | 83.609 / 77.859 |
 | BSBM BI, 10M triples | 45 | 14.277 / 13.341 (standalone) | excluded: earlier qualification incomplete |
 
-All 696 scheduled requests (378 scored, 318 warm-up) passed the frozen Jena gates; no caps, out-of-memory kills,
+All 696 scheduled requests (378 scored, 318 warm-up) passed the frozen Jena gates; no cap hits, out-of-memory kills,
 retries or discarded phases. oxigraph BI was not reattempted: its earlier Node qualification stopped at its
-1,800-second cap after 11 passing answers. oxigraph's whole-phase cap was raised to 3,600 seconds before this run because
-its LUBM qualification took 1,087 seconds. oxigraph's JS API does not report result columns, so the adapter takes them
+1,800-second cap after 11 passing answers. Whole-phase caps were set before the run: 1,800 seconds for TripleLight and
+3,600 seconds for oxigraph, whose cap was raised because its LUBM qualification took 1,087 seconds. oxigraph's JS API does not report result columns, so the adapter takes them
 from the reference answers (empty-result projection is not independently verified).
 
 Whole-phase cgroup `memory.peak` (startup, load, warm-up, scored requests and close; not RSS), pass 1 / pass 2 in GiB:

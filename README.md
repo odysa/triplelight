@@ -168,8 +168,8 @@ workloads and answer checks. Summed query seconds, pass 1 / pass 2. **Lower is b
 
 | Workload | TripleLight in-memory | oxigraph JS (WASM) |
 |---|---:|---:|
-| LUBM-100 aggregates (30 queries) | **0.69 / 0.50 s** | 14.1 / 14.7 s |
-| WatDiv aggregates (42 queries) | **0.19 / 0.29 s** | 83.6 / 77.9 s |
+| LUBM-100 aggregates (30 timed requests) | **0.69 / 0.50 s** | 14.1 / 14.7 s |
+| WatDiv aggregates (42 timed requests) | **0.19 / 0.29 s** | 83.6 / 77.9 s |
 | BSBM BI, 10M triples (45 timed requests) | 14.3 / 13.3 s (standalone) | no total: qualification incomplete |
 
 All 696 scheduled requests passed the frozen answer gates against Apache Jena. Loading is outside the query timer.
