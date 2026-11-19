@@ -74,3 +74,15 @@ fn refuses_open_updates_on_a_public_address() {
     assert!(!out.status.success());
     assert!(String::from_utf8_lossy(&out.stderr).contains("TRIPLELIGHT_UPDATE_TOKEN"));
 }
+
+#[test]
+fn rejected_update_is_answered_without_reading_the_body() {
+    let s = start("nobody", &[], Some("s3cret"));
+    let mut c = TcpStream::connect(("127.0.0.1", s.1)).unwrap();
+    c.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    // Declares a 1 GB body but sends none: the 401 must still arrive.
+    write!(c, "POST /update HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/sparql-update\r\nContent-Length: 1000000000\r\n\r\n").unwrap();
+    let mut buf = [0u8; 64];
+    let n = c.read(&mut buf).expect("response before the body was sent");
+    assert!(String::from_utf8_lossy(&buf[..n]).contains(" 401 "));
+}

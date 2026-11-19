@@ -92,12 +92,19 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
     std::thread::scope(|scope| for _ in 0..workers { scope.spawn(move || {
         for mut req in server.incoming_requests() {
             let url = req.url().to_string();
-            let mut body = String::new();
-            let _ = req.as_reader().read_to_string(&mut body);
-            let ctype = req.headers().iter().find(|h| h.field.equiv("Content-Type")).map(|h| h.value.as_str().to_string()).unwrap_or_default();
             let path = url.split('?').next().unwrap_or("");
+            // Authorize before reading the body, so an unauthorized client cannot make the server buffer it.
+            if path == "/update" { if let Err(denied) = auth.check(&req) { let _ = req.respond(denied); continue } }
+            let limit = if path == "/update" { u64::MAX } else { MAX_QUERY_BYTES };
+            let mut body = String::new();
+            if req.as_reader().take(limit.saturating_add(1)).read_to_string(&mut body).is_err() {
+                let _ = req.respond(tiny_http::Response::from_string("request body is not valid UTF-8").with_status_code(400)); continue
+            }
+            if body.len() as u64 > limit {
+                let _ = req.respond(tiny_http::Response::from_string("query too large").with_status_code(413)); continue
+            }
+            let ctype = req.headers().iter().find(|h| h.field.equiv("Content-Type")).map(|h| h.value.as_str().to_string()).unwrap_or_default();
             let resp = if path == "/update" {
-                if let Err(denied) = auth.check(&req) { let _ = req.respond(denied); continue }
                 let u = if ctype.starts_with("application/sparql-update") { Some(body) } else { form_param(&body, "update") };
                 match u {
                     None => tiny_http::Response::from_string("missing update").with_status_code(400),
@@ -140,6 +147,9 @@ fn bind_host() -> String {
 fn is_loopback(host: &str) -> bool {
     host == "localhost" || host.parse::<std::net::IpAddr>().is_ok_and(|ip| ip.is_loopback())
 }
+
+/// Largest query body accepted (updates, which are authorized first, are not limited).
+const MAX_QUERY_BYTES: u64 = 16 << 20;
 
 /// Who may call /update on `serve-store`.
 ///

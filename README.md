@@ -46,7 +46,8 @@ cargo build --release --features server
 
 The server listens on 127.0.0.1 unless `TRIPLELIGHT_HOST` is set. On any other address, `serve-store` refuses to
 start with open updates: set `TRIPLELIGHT_UPDATE_TOKEN` (clients then send `Authorization: Bearer <token>`), or
-pass `--read-only`.
+pass `--read-only`. The token travels in plain HTTP, so on an untrusted network put the server behind a
+TLS-terminating proxy.
 
 Query the server with any SPARQL client, for example:
 
