@@ -1,7 +1,7 @@
 //! Explicit phase profiling, never a throughput benchmark. Run with RDFDB_PROFILE_PLAN=1.
-use rdfdb::exec::{Options, QueryResult, query_with};
-use rdfdb::opt::Stats;
-use rdfdb::storage::MemorySnapshot;
+use triplelight::exec::{Options, QueryResult, query_with};
+use triplelight::opt::Stats;
+use triplelight::storage::MemorySnapshot;
 use std::{fs::File, io::BufReader, time::Instant};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().collect();

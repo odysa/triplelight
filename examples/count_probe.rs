@@ -1,6 +1,6 @@
 //! Identical harness for baseline and candidate; serial, warm, exact-result checks.
 //! Usage: count_probe SNAPSHOT_DIR QUERY_DIR OUTPUT.tsv
-use rdfdb::{
+use triplelight::{
     exec::{Options, QueryResult, query_with},
     opt::Stats,
     storage::DiskSnapshot,
@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let text = fs::read_to_string(&path)?;
         let warm = query_with(&snap, &text, &options)?;
         if std::env::var_os("COUNT_PROBE_SAVE_JSON").is_some() {
-            fs::write(answers.join(format!("{name}.json")),rdfdb::exec::results::serialize(&warm).1)?;
+            fs::write(answers.join(format!("{name}.json")),triplelight::exec::results::serialize(&warm).1)?;
         }
         let expected = normalize(warm)?;
         let hash = format!("{:x}", Sha256::digest(expected.join("\n").as_bytes()));

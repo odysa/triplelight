@@ -1,7 +1,17 @@
 [package]
-name = "rdfdb"
+name = "triplelight"
 version = "0.1.0"
 edition = "2024"
+autobins = false
+default-run = "triplelight"
+
+[[bin]]
+name = "triplelight"
+path = "src/bin/rdfdb.rs"
+
+[[bin]]
+name = "rdfdb"
+path = "src/bin/rdfdb.rs"
 
 [dependencies]
 oxrdf = "0.3.5"

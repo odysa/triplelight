@@ -1,5 +1,5 @@
 use oxrdf::{NamedNode, Term, Triple};
-use rdfdb::{
+use triplelight::{
     exec::{QueryErrorKind, QueryResult, query},
     model::{Perm, TermId, TripleBatch},
     storage::{Dictionary, MemorySnapshot, Snapshot, StorageError},

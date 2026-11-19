@@ -1,10 +1,10 @@
 # Embedded Rust API
 
-`rdfdb::embedded::Database` opens a local persistent disk store in-process. It does not require a server or HTTP. Add rdfdb as a Rust dependency and use:
+`triplelight::embedded::Database` opens a local persistent disk store in-process. It does not require a server or HTTP. Add triplelight as a Rust dependency and use:
 
 ```rust,no_run
-use rdfdb::embedded::Database;
-use rdfdb::exec::QueryResult;
+use triplelight::embedded::Database;
+use triplelight::exec::QueryResult;
 
 let db = Database::open("./example.rdfdb")?;
 db.update("INSERT DATA { <https://example/s> <https://example/p> <https://example/o> }")?;
@@ -22,6 +22,6 @@ One process may open a directory at a time; share one database among application
 
 ## Bulk disk build
 
-`rdfdb build-disk source.nt new-directory --build-external` uses a scratch-backed N-Triples builder. `--parallel-load=N` sets ingestion workers (default: available cores; `1` selects the serial path). The external builder uses at most eight parsing workers and three concurrent index builders, reducing worker count if the configured budget cannot fit their run buffers. Turtle uses the existing in-memory path.
+`triplelight build-disk source.nt new-directory --build-external` uses a scratch-backed N-Triples builder. `--parallel-load=N` sets ingestion workers (default: available cores; `1` selects the serial path). The external builder uses at most eight parsing workers and three concurrent index builders, reducing worker count if the configured budget cannot fit their run buffers. Turtle uses the existing in-memory path.
 
 `--build-memory-mb=N` is an **advisory** strategy and run-buffer target, not a process RSS limit. File buffers, metadata, allocator overhead, concurrent work and caches consume additional memory; the serial fallback keeps its existing 128 MiB run buffer even if a smaller target is requested. For example, one exploratory LUBM-100 session observed up to 2.62 GB maximum RSS at a 1 GiB setting. Scratch disk use is not included in the setting.
