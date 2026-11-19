@@ -1,0 +1,767 @@
+2026-11-19 00:45:40.582 - WARN: The Linux kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty may have a bug that causes random stalls, crashes, and corrupt data on arm64, unless it contains the fix https://github.com/torvalds/linux/commit/478a1c3abebfc717db0d1281a9cdd7befafee542. As a workaround, QLever doesn't return freed memory to the operating system. On a kernel with the fix, you can disable the workaround by setting the environment variable QLEVER_DISABLE_KERNEL_BUG_WORKAROUND
+2026-11-19 00:45:40.582 - INFO: [1mQLever server 18c097c, compiled on Sat Nov 14 19:07:21 UTC 2026 using git hash 18c097c[22m
+2026-11-19 00:45:40.582 - INFO: Runtime parameter set from the command line: max-num-threads-per-query=4
+2026-11-19 00:45:40.583 - INFO: Cleanup of previous index directories after each rebuild enabled (--rebuild-keep-previous-index-dirs original-and-most-recent)
+2026-11-19 00:45:40.588 - INFO: The git hash used to build this index was "18c097c"
+2026-11-19 00:45:40.589 - INFO: Reading vocabulary from file lubm100.vocabulary.words ...
+2026-11-19 00:45:40.589 - WARN: io_uring is compiled in but unavailable at runtime (io_uring_queue_init failed in IoUringManager. In file "/qlever/src/util/IoUringManager.cpp" at line 69); falling back to synchronous pread for vocabulary lookups
+2026-11-19 00:45:40.589 - INFO: Done, number of words: 3,303,746
+2026-11-19 00:45:40.589 - INFO: Number of words in internal vocabulary (these are also part of the external vocabulary): 3,307
+2026-11-19 00:45:40.590 - INFO: Registered PSO permutation: #relations = 1, #blocks = 70, #triples = 2,181,773
+2026-11-19 00:45:40.591 - INFO: Registered PSO permutation: #relations = 18, #blocks = 438, #triples = 13,409,395
+2026-11-19 00:45:40.591 - INFO: Registered POS permutation: #relations = 1, #blocks = 70, #triples = 2,181,773
+2026-11-19 00:45:40.591 - INFO: Registered POS permutation: #relations = 18, #blocks = 438, #triples = 13,409,395
+2026-11-19 00:45:40.592 - INFO: Registered OPS permutation: #relations = 1,623,319, #blocks = 346, #triples = 13,409,395
+2026-11-19 00:45:40.592 - INFO: Registered OSP permutation: #relations = 1,623,319, #blocks = 346, #triples = 13,409,395
+2026-11-19 00:45:40.592 - INFO: Registered SPO permutation: #relations = 2,181,773, #blocks = 287, #triples = 13,409,395
+2026-11-19 00:45:40.593 - INFO: Registered SOP permutation: #relations = 2,181,773, #blocks = 287, #triples = 13,409,395
+2026-11-19 00:45:40.593 - INFO: Reading patterns from file lubm100.index.patterns ...
+2026-11-19 00:45:40.593 - INFO: Initializing server ...
+2026-11-19 00:45:40.593 - INFO: Access token for restricted API calls is ""
+2026-11-19 00:45:40.593 - INFO: The server is ready, listening for requests on port 31464 ...
+2026-11-19 00:45:40.643 - INFO: 
+2026-11-19 00:45:40.643 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.644 - INFO: Processing the following SPARQL query:
+ASK {}
+2026-11-19 00:45:40.645 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:40.645 - INFO: Query planning done in 2 ms
+2026-11-19 00:45:40.646 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-19 00:45:40.647 - INFO: 
+2026-11-19 00:45:40.647 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.647 - INFO: Processing command "get-settings": get server settings
+2026-11-19 00:45:40.649 - INFO: 
+2026-11-19 00:45:40.649 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.650 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+2026-11-19 00:45:40.650 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:40.651 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:40.787 - INFO: Result has size 1 x 1
+2026-11-19 00:45:40.788 - INFO: Done processing query and sending result, total time was 138 ms
+2026-11-19 00:45:40.800 - INFO: 
+2026-11-19 00:45:40.800 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.800 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:40.802 - INFO: 
+2026-11-19 00:45:40.802 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.804 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> }
+
+2026-11-19 00:45:40.804 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:40.805 - INFO: Query planning done in 2 ms
+2026-11-19 00:45:40.810 - INFO: Result has size 1 x 1
+2026-11-19 00:45:40.810 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-19 00:45:40.821 - INFO: 
+2026-11-19 00:45:40.821 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.821 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:40.824 - INFO: 
+2026-11-19 00:45:40.824 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.824 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> }
+
+2026-11-19 00:45:40.824 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:40.825 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:40.830 - INFO: Result has size 1 x 1
+2026-11-19 00:45:40.831 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-19 00:45:40.841 - INFO: 
+2026-11-19 00:45:40.842 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.842 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:40.844 - INFO: 
+2026-11-19 00:45:40.844 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.845 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:ResearchGroup . ?X ub:subOrganizationOf <http://www.Department0.University0.edu> }
+
+2026-11-19 00:45:40.845 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:40.845 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:40.849 - INFO: Result has size 1 x 1
+2026-11-19 00:45:40.849 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-19 00:45:40.859 - INFO: 
+2026-11-19 00:45:40.859 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.859 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:40.862 - INFO: 
+2026-11-19 00:45:40.862 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.862 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:FullProfessor . ?Y rdf:type ub:Department . ?X ub:worksFor ?Y . ?Y ub:subOrganizationOf <http://www.University0.edu> }
+
+2026-11-19 00:45:40.863 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:40.864 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:40.876 - INFO: Result has size 1 x 1
+2026-11-19 00:45:40.876 - INFO: Done processing query and sending result, total time was 14 ms
+2026-11-19 00:45:40.887 - INFO: 
+2026-11-19 00:45:40.888 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.888 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:40.891 - INFO: 
+2026-11-19 00:45:40.891 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.891 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:undergraduateDegreeFrom <http://www.University0.edu> }
+
+2026-11-19 00:45:40.891 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:40.892 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:40.899 - INFO: Result has size 1 x 1
+2026-11-19 00:45:40.899 - INFO: Done processing query and sending result, total time was 8 ms
+2026-11-19 00:45:40.909 - INFO: 
+2026-11-19 00:45:40.909 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.909 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:40.911 - INFO: 
+2026-11-19 00:45:40.911 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.912 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent }
+
+2026-11-19 00:45:40.912 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:40.912 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:40.922 - INFO: Result has size 1 x 1
+2026-11-19 00:45:40.923 - INFO: Done processing query and sending result, total time was 11 ms
+2026-11-19 00:45:40.933 - INFO: 
+2026-11-19 00:45:40.933 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.933 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:40.936 - INFO: 
+2026-11-19 00:45:40.936 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:40.937 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?Y rdf:type ub:University . ?Z rdf:type ub:Department . ?X ub:memberOf ?Z . ?Z ub:subOrganizationOf ?Y . ?X ub:undergraduateDegreeFrom ?Y }
+
+2026-11-19 00:45:40.937 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:40.944 - INFO: Query planning done in 7 ms
+2026-11-19 00:45:41.090 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.090 - INFO: Done processing query and sending result, total time was 154 ms
+2026-11-19 00:45:41.105 - INFO: 
+2026-11-19 00:45:41.105 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.105 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.108 - INFO: 
+2026-11-19 00:45:41.108 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.108 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:Publication . ?X ub:publicationAuthor <http://www.Department0.University0.edu/AssistantProfessor0> }
+
+2026-11-19 00:45:41.108 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.108 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:41.119 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.120 - INFO: Done processing query and sending result, total time was 12 ms
+2026-11-19 00:45:41.134 - INFO: 
+2026-11-19 00:45:41.134 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.134 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.137 - INFO: 
+2026-11-19 00:45:41.137 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.138 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:FullProfessor . ?X ub:worksFor <http://www.Department0.University0.edu> . ?X ub:name ?Y1 . ?X ub:emailAddress ?Y2 . ?X ub:telephone ?Y3 }
+
+2026-11-19 00:45:41.138 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.140 - INFO: Query planning done in 2 ms
+2026-11-19 00:45:41.154 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.154 - INFO: Done processing query and sending result, total time was 17 ms
+2026-11-19 00:45:41.168 - INFO: 
+2026-11-19 00:45:41.169 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.169 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.172 - INFO: 
+2026-11-19 00:45:41.172 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.172 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?X ub:memberOf <http://www.Department0.University0.edu> }
+
+2026-11-19 00:45:41.172 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.173 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:41.181 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.181 - INFO: Done processing query and sending result, total time was 9 ms
+2026-11-19 00:45:41.196 - INFO: 
+2026-11-19 00:45:41.196 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.197 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.199 - INFO: 
+2026-11-19 00:45:41.199 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.199 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent }
+
+2026-11-19 00:45:41.199 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.199 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:41.206 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.206 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-19 00:45:41.221 - INFO: 
+2026-11-19 00:45:41.221 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.221 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.224 - INFO: 
+2026-11-19 00:45:41.224 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.224 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:Course . ?X ub:takesCourse ?Y . <http://www.Department0.University0.edu/AssociateProfessor0> ub:teacherOf ?Y }
+
+2026-11-19 00:45:41.224 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.225 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:41.240 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.241 - INFO: Done processing query and sending result, total time was 16 ms
+2026-11-19 00:45:41.254 - INFO: 
+2026-11-19 00:45:41.254 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.254 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.257 - INFO: 
+2026-11-19 00:45:41.257 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.257 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:Department . ?X ub:memberOf ?Y . ?Y ub:subOrganizationOf <http://www.University0.edu> . ?X ub:emailAddress ?Z }
+
+2026-11-19 00:45:41.257 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.259 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:41.393 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.394 - INFO: Done processing query and sending result, total time was 136 ms
+2026-11-19 00:45:41.401 - INFO: 
+2026-11-19 00:45:41.401 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.401 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.403 - INFO: 
+2026-11-19 00:45:41.403 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.404 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:FullProfessor . ?Z rdf:type ub:Course . ?X ub:advisor ?Y . ?Y ub:teacherOf ?Z . ?X ub:takesCourse ?Z }
+
+2026-11-19 00:45:41.404 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.410 - INFO: Query planning done in 7 ms
+2026-11-19 00:45:41.568 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.568 - INFO: Done processing query and sending result, total time was 165 ms
+2026-11-19 00:45:41.578 - INFO: 
+2026-11-19 00:45:41.578 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.578 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.581 - INFO: 
+2026-11-19 00:45:41.581 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.582 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> }
+
+2026-11-19 00:45:41.582 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.583 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:41.589 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.590 - INFO: Done processing query and sending result, total time was 8 ms
+2026-11-19 00:45:41.598 - INFO: 
+2026-11-19 00:45:41.598 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.598 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.601 - INFO: 
+2026-11-19 00:45:41.601 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.601 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> }
+
+2026-11-19 00:45:41.601 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.602 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:41.608 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.609 - INFO: Done processing query and sending result, total time was 8 ms
+2026-11-19 00:45:41.617 - INFO: 
+2026-11-19 00:45:41.617 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.617 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.620 - INFO: 
+2026-11-19 00:45:41.620 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.621 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:ResearchGroup . ?X ub:subOrganizationOf <http://www.Department0.University0.edu> }
+
+2026-11-19 00:45:41.621 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.621 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:41.625 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.626 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-19 00:45:41.632 - INFO: 
+2026-11-19 00:45:41.632 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.632 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.635 - INFO: 
+2026-11-19 00:45:41.635 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.635 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:FullProfessor . ?Y rdf:type ub:Department . ?X ub:worksFor ?Y . ?Y ub:subOrganizationOf <http://www.University0.edu> }
+
+2026-11-19 00:45:41.635 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.636 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:41.646 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.647 - INFO: Done processing query and sending result, total time was 12 ms
+2026-11-19 00:45:41.654 - INFO: 
+2026-11-19 00:45:41.654 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.654 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.656 - INFO: 
+2026-11-19 00:45:41.656 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.656 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:undergraduateDegreeFrom <http://www.University0.edu> }
+
+2026-11-19 00:45:41.657 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.657 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:41.666 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.666 - INFO: Done processing query and sending result, total time was 9 ms
+2026-11-19 00:45:41.673 - INFO: 
+2026-11-19 00:45:41.673 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.673 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.676 - INFO: 
+2026-11-19 00:45:41.676 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.676 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent }
+
+2026-11-19 00:45:41.676 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.676 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:41.870 - INFO: Result has size 1 x 1
+2026-11-19 00:45:41.871 - INFO: Done processing query and sending result, total time was 195 ms
+2026-11-19 00:45:41.887 - INFO: 
+2026-11-19 00:45:41.887 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.887 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:41.889 - INFO: 
+2026-11-19 00:45:41.889 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:41.890 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?Y rdf:type ub:University . ?Z rdf:type ub:Department . ?X ub:memberOf ?Z . ?Z ub:subOrganizationOf ?Y . ?X ub:undergraduateDegreeFrom ?Y }
+
+2026-11-19 00:45:41.890 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:41.896 - INFO: Query planning done in 6 ms
+2026-11-19 00:45:42.011 - INFO: Result has size 1 x 1
+2026-11-19 00:45:42.011 - INFO: Done processing query and sending result, total time was 121 ms
+2026-11-19 00:45:42.023 - INFO: 
+2026-11-19 00:45:42.023 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.023 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:42.026 - INFO: 
+2026-11-19 00:45:42.026 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.026 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:Publication . ?X ub:publicationAuthor <http://www.Department0.University0.edu/AssistantProfessor0> }
+
+2026-11-19 00:45:42.027 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:42.027 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:42.038 - INFO: Result has size 1 x 1
+2026-11-19 00:45:42.038 - INFO: Done processing query and sending result, total time was 12 ms
+2026-11-19 00:45:42.050 - INFO: 
+2026-11-19 00:45:42.050 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.050 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:42.053 - INFO: 
+2026-11-19 00:45:42.053 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.053 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:FullProfessor . ?X ub:worksFor <http://www.Department0.University0.edu> . ?X ub:name ?Y1 . ?X ub:emailAddress ?Y2 . ?X ub:telephone ?Y3 }
+
+2026-11-19 00:45:42.053 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:42.055 - INFO: Query planning done in 2 ms
+2026-11-19 00:45:42.067 - INFO: Result has size 1 x 1
+2026-11-19 00:45:42.068 - INFO: Done processing query and sending result, total time was 14 ms
+2026-11-19 00:45:42.083 - INFO: 
+2026-11-19 00:45:42.084 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.084 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:42.088 - INFO: 
+2026-11-19 00:45:42.088 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.088 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?X ub:memberOf <http://www.Department0.University0.edu> }
+
+2026-11-19 00:45:42.088 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:42.088 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:42.096 - INFO: Result has size 1 x 1
+2026-11-19 00:45:42.096 - INFO: Done processing query and sending result, total time was 8 ms
+2026-11-19 00:45:42.108 - INFO: 
+2026-11-19 00:45:42.108 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.108 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:42.112 - INFO: 
+2026-11-19 00:45:42.112 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.112 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent }
+
+2026-11-19 00:45:42.112 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:42.112 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:42.295 - INFO: Result has size 1 x 1
+2026-11-19 00:45:42.296 - INFO: Done processing query and sending result, total time was 183 ms
+2026-11-19 00:45:42.313 - INFO: 
+2026-11-19 00:45:42.313 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.313 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:42.315 - INFO: 
+2026-11-19 00:45:42.316 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.316 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:Course . ?X ub:takesCourse ?Y . <http://www.Department0.University0.edu/AssociateProfessor0> ub:teacherOf ?Y }
+
+2026-11-19 00:45:42.316 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:42.317 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:42.332 - INFO: Result has size 1 x 1
+2026-11-19 00:45:42.332 - INFO: Done processing query and sending result, total time was 16 ms
+2026-11-19 00:45:42.347 - INFO: 
+2026-11-19 00:45:42.347 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.347 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:42.349 - INFO: 
+2026-11-19 00:45:42.349 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.350 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:Department . ?X ub:memberOf ?Y . ?Y ub:subOrganizationOf <http://www.University0.edu> . ?X ub:emailAddress ?Z }
+
+2026-11-19 00:45:42.350 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:42.351 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:42.475 - INFO: Result has size 1 x 1
+2026-11-19 00:45:42.476 - INFO: Done processing query and sending result, total time was 126 ms
+2026-11-19 00:45:42.493 - INFO: 
+2026-11-19 00:45:42.493 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.493 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:42.496 - INFO: 
+2026-11-19 00:45:42.496 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.496 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:FullProfessor . ?Z rdf:type ub:Course . ?X ub:advisor ?Y . ?Y ub:teacherOf ?Z . ?X ub:takesCourse ?Z }
+
+2026-11-19 00:45:42.496 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:42.502 - INFO: Query planning done in 6 ms
+2026-11-19 00:45:42.619 - INFO: Result has size 1 x 1
+2026-11-19 00:45:42.620 - INFO: Done processing query and sending result, total time was 123 ms
+2026-11-19 00:45:42.638 - INFO: 
+2026-11-19 00:45:42.638 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.639 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:42.641 - INFO: 
+2026-11-19 00:45:42.641 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:42.642 - INFO: Processing the following SPARQL query:
+SELECT ?o (COUNT(*) AS ?n) (COUNT(DISTINCT ?s) AS ?d) WHERE {?s <http://swat.cse.lehigh.edu/onto/univ-bench.owl#advisor> ?o} GROUP BY ?o
+
+2026-11-19 00:45:42.642 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:42.642 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:42.703 - INFO: Result has size 60,160 x 3
+2026-11-19 00:45:43.201 - INFO: Done processing query and sending result, total time was 560 ms
+2026-11-19 00:45:44.668 - INFO: 
+2026-11-19 00:45:44.669 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.669 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:44.671 - INFO: 
+2026-11-19 00:45:44.671 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.671 - INFO: Processing the following SPARQL query:
+SELECT ?o (COUNT(*) AS ?n) WHERE {?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?o} GROUP BY ?o
+
+2026-11-19 00:45:44.671 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:44.672 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:44.672 - INFO: Result has unknown size (not computed yet)
+2026-11-19 00:45:44.724 - INFO: Done processing query and sending result, total time was 52 ms
+2026-11-19 00:45:44.731 - INFO: 
+2026-11-19 00:45:44.731 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.732 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:44.734 - INFO: 
+2026-11-19 00:45:44.734 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.734 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> }
+
+2026-11-19 00:45:44.734 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:44.735 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:44.740 - INFO: Result has size 1 x 1
+2026-11-19 00:45:44.741 - INFO: Done processing query and sending result, total time was 6 ms
+2026-11-19 00:45:44.748 - INFO: 
+2026-11-19 00:45:44.748 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.748 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:44.750 - INFO: 
+2026-11-19 00:45:44.750 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.751 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> }
+
+2026-11-19 00:45:44.751 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:44.751 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:44.758 - INFO: Result has size 1 x 1
+2026-11-19 00:45:44.758 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-19 00:45:44.766 - INFO: 
+2026-11-19 00:45:44.766 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.766 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:44.768 - INFO: 
+2026-11-19 00:45:44.768 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.768 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:ResearchGroup . ?X ub:subOrganizationOf <http://www.Department0.University0.edu> }
+
+2026-11-19 00:45:44.769 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:44.769 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:44.773 - INFO: Result has size 1 x 1
+2026-11-19 00:45:44.773 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-19 00:45:44.780 - INFO: 
+2026-11-19 00:45:44.780 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.780 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:44.783 - INFO: 
+2026-11-19 00:45:44.783 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.783 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:FullProfessor . ?Y rdf:type ub:Department . ?X ub:worksFor ?Y . ?Y ub:subOrganizationOf <http://www.University0.edu> }
+
+2026-11-19 00:45:44.783 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:44.784 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:44.795 - INFO: Result has size 1 x 1
+2026-11-19 00:45:44.796 - INFO: Done processing query and sending result, total time was 13 ms
+2026-11-19 00:45:44.803 - INFO: 
+2026-11-19 00:45:44.803 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.803 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:44.806 - INFO: 
+2026-11-19 00:45:44.806 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.806 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:undergraduateDegreeFrom <http://www.University0.edu> }
+
+2026-11-19 00:45:44.806 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:44.807 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:44.813 - INFO: Result has size 1 x 1
+2026-11-19 00:45:44.814 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-19 00:45:44.821 - INFO: 
+2026-11-19 00:45:44.821 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.821 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:44.823 - INFO: 
+2026-11-19 00:45:44.823 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.823 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent }
+
+2026-11-19 00:45:44.823 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:44.824 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:44.832 - INFO: Result has size 1 x 1
+2026-11-19 00:45:44.833 - INFO: Done processing query and sending result, total time was 9 ms
+2026-11-19 00:45:44.840 - INFO: 
+2026-11-19 00:45:44.840 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.840 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:44.842 - INFO: 
+2026-11-19 00:45:44.843 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.843 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?Y rdf:type ub:University . ?Z rdf:type ub:Department . ?X ub:memberOf ?Z . ?Z ub:subOrganizationOf ?Y . ?X ub:undergraduateDegreeFrom ?Y }
+
+2026-11-19 00:45:44.843 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:44.850 - INFO: Query planning done in 6 ms
+2026-11-19 00:45:44.980 - INFO: Result has size 1 x 1
+2026-11-19 00:45:44.981 - INFO: Done processing query and sending result, total time was 138 ms
+2026-11-19 00:45:44.993 - INFO: 
+2026-11-19 00:45:44.993 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.993 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:44.997 - INFO: 
+2026-11-19 00:45:44.997 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:44.997 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:Publication . ?X ub:publicationAuthor <http://www.Department0.University0.edu/AssistantProfessor0> }
+
+2026-11-19 00:45:44.997 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:44.997 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:45.006 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.007 - INFO: Done processing query and sending result, total time was 10 ms
+2026-11-19 00:45:45.024 - INFO: 
+2026-11-19 00:45:45.024 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.024 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.027 - INFO: 
+2026-11-19 00:45:45.027 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.027 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:FullProfessor . ?X ub:worksFor <http://www.Department0.University0.edu> . ?X ub:name ?Y1 . ?X ub:emailAddress ?Y2 . ?X ub:telephone ?Y3 }
+
+2026-11-19 00:45:45.027 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.030 - INFO: Query planning done in 2 ms
+2026-11-19 00:45:45.044 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.045 - INFO: Done processing query and sending result, total time was 18 ms
+2026-11-19 00:45:45.058 - INFO: 
+2026-11-19 00:45:45.058 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.058 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.061 - INFO: 
+2026-11-19 00:45:45.061 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.061 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?X ub:memberOf <http://www.Department0.University0.edu> }
+
+2026-11-19 00:45:45.061 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.062 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:45.070 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.071 - INFO: Done processing query and sending result, total time was 9 ms
+2026-11-19 00:45:45.083 - INFO: 
+2026-11-19 00:45:45.084 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.084 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.087 - INFO: 
+2026-11-19 00:45:45.087 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.087 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent }
+
+2026-11-19 00:45:45.087 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.088 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:45.095 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.096 - INFO: Done processing query and sending result, total time was 8 ms
+2026-11-19 00:45:45.105 - INFO: 
+2026-11-19 00:45:45.106 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.106 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.108 - INFO: 
+2026-11-19 00:45:45.108 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.108 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:Course . ?X ub:takesCourse ?Y . <http://www.Department0.University0.edu/AssociateProfessor0> ub:teacherOf ?Y }
+
+2026-11-19 00:45:45.108 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.109 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:45.124 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.124 - INFO: Done processing query and sending result, total time was 16 ms
+2026-11-19 00:45:45.138 - INFO: 
+2026-11-19 00:45:45.138 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.138 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.141 - INFO: 
+2026-11-19 00:45:45.141 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.141 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:Department . ?X ub:memberOf ?Y . ?Y ub:subOrganizationOf <http://www.University0.edu> . ?X ub:emailAddress ?Z }
+
+2026-11-19 00:45:45.141 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.143 - INFO: Query planning done in 2 ms
+2026-11-19 00:45:45.268 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.269 - INFO: Done processing query and sending result, total time was 127 ms
+2026-11-19 00:45:45.284 - INFO: 
+2026-11-19 00:45:45.284 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.284 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.287 - INFO: 
+2026-11-19 00:45:45.288 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.288 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(*) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:FullProfessor . ?Z rdf:type ub:Course . ?X ub:advisor ?Y . ?Y ub:teacherOf ?Z . ?X ub:takesCourse ?Z }
+
+2026-11-19 00:45:45.288 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.294 - INFO: Query planning done in 6 ms
+2026-11-19 00:45:45.426 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.427 - INFO: Done processing query and sending result, total time was 139 ms
+2026-11-19 00:45:45.440 - INFO: 
+2026-11-19 00:45:45.441 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.441 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.443 - INFO: 
+2026-11-19 00:45:45.443 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.443 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> }
+
+2026-11-19 00:45:45.443 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.444 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:45.449 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.450 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-19 00:45:45.457 - INFO: 
+2026-11-19 00:45:45.458 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.458 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.460 - INFO: 
+2026-11-19 00:45:45.460 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.461 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> }
+
+2026-11-19 00:45:45.461 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.461 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:45.467 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.467 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-19 00:45:45.475 - INFO: 
+2026-11-19 00:45:45.475 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.475 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.478 - INFO: 
+2026-11-19 00:45:45.478 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.478 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:ResearchGroup . ?X ub:subOrganizationOf <http://www.Department0.University0.edu> }
+
+2026-11-19 00:45:45.478 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.478 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:45.482 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.482 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-19 00:45:45.489 - INFO: 
+2026-11-19 00:45:45.489 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.489 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.491 - INFO: 
+2026-11-19 00:45:45.491 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.492 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:FullProfessor . ?Y rdf:type ub:Department . ?X ub:worksFor ?Y . ?Y ub:subOrganizationOf <http://www.University0.edu> }
+
+2026-11-19 00:45:45.492 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.493 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:45.503 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.504 - INFO: Done processing query and sending result, total time was 12 ms
+2026-11-19 00:45:45.511 - INFO: 
+2026-11-19 00:45:45.511 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.511 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.514 - INFO: 
+2026-11-19 00:45:45.514 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.514 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?X ub:undergraduateDegreeFrom <http://www.University0.edu> }
+
+2026-11-19 00:45:45.514 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.515 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:45.522 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.523 - INFO: Done processing query and sending result, total time was 8 ms
+2026-11-19 00:45:45.530 - INFO: 
+2026-11-19 00:45:45.530 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.530 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.533 - INFO: 
+2026-11-19 00:45:45.533 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.533 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent }
+
+2026-11-19 00:45:45.533 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.534 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:45.739 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.740 - INFO: Done processing query and sending result, total time was 206 ms
+2026-11-19 00:45:45.752 - INFO: 
+2026-11-19 00:45:45.752 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.752 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.755 - INFO: 
+2026-11-19 00:45:45.755 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.755 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:GraduateStudent . ?Y rdf:type ub:University . ?Z rdf:type ub:Department . ?X ub:memberOf ?Z . ?Z ub:subOrganizationOf ?Y . ?X ub:undergraduateDegreeFrom ?Y }
+
+2026-11-19 00:45:45.755 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.761 - INFO: Query planning done in 5 ms
+2026-11-19 00:45:45.879 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.880 - INFO: Done processing query and sending result, total time was 125 ms
+2026-11-19 00:45:45.896 - INFO: 
+2026-11-19 00:45:45.896 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.896 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.900 - INFO: 
+2026-11-19 00:45:45.900 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.900 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:Publication . ?X ub:publicationAuthor <http://www.Department0.University0.edu/AssistantProfessor0> }
+
+2026-11-19 00:45:45.900 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.900 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:45.910 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.911 - INFO: Done processing query and sending result, total time was 11 ms
+2026-11-19 00:45:45.917 - INFO: 
+2026-11-19 00:45:45.917 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.917 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.920 - INFO: 
+2026-11-19 00:45:45.920 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.920 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:FullProfessor . ?X ub:worksFor <http://www.Department0.University0.edu> . ?X ub:name ?Y1 . ?X ub:emailAddress ?Y2 . ?X ub:telephone ?Y3 }
+
+2026-11-19 00:45:45.920 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.922 - INFO: Query planning done in 2 ms
+2026-11-19 00:45:45.936 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.937 - INFO: Done processing query and sending result, total time was 16 ms
+2026-11-19 00:45:45.944 - INFO: 
+2026-11-19 00:45:45.944 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.944 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.946 - INFO: 
+2026-11-19 00:45:45.946 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.947 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?X ub:memberOf <http://www.Department0.University0.edu> }
+
+2026-11-19 00:45:45.947 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.947 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:45.956 - INFO: Result has size 1 x 1
+2026-11-19 00:45:45.957 - INFO: Done processing query and sending result, total time was 10 ms
+2026-11-19 00:45:45.966 - INFO: 
+2026-11-19 00:45:45.966 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.966 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:45.969 - INFO: 
+2026-11-19 00:45:45.969 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:45.969 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent }
+
+2026-11-19 00:45:45.969 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:45.970 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:46.180 - INFO: Result has size 1 x 1
+2026-11-19 00:45:46.181 - INFO: Done processing query and sending result, total time was 212 ms
+2026-11-19 00:45:46.188 - INFO: 
+2026-11-19 00:45:46.188 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:46.188 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:46.191 - INFO: 
+2026-11-19 00:45:46.191 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:46.191 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:Course . ?X ub:takesCourse ?Y . <http://www.Department0.University0.edu/AssociateProfessor0> ub:teacherOf ?Y }
+
+2026-11-19 00:45:46.191 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:46.192 - INFO: Query planning done in 1 ms
+2026-11-19 00:45:46.215 - INFO: Result has size 1 x 1
+2026-11-19 00:45:46.215 - INFO: Done processing query and sending result, total time was 23 ms
+2026-11-19 00:45:46.223 - INFO: 
+2026-11-19 00:45:46.223 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:46.223 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:46.226 - INFO: 
+2026-11-19 00:45:46.226 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:46.226 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:Department . ?X ub:memberOf ?Y . ?Y ub:subOrganizationOf <http://www.University0.edu> . ?X ub:emailAddress ?Z }
+
+2026-11-19 00:45:46.226 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:46.228 - INFO: Query planning done in 2 ms
+2026-11-19 00:45:46.387 - INFO: Result has size 1 x 1
+2026-11-19 00:45:46.387 - INFO: Done processing query and sending result, total time was 161 ms
+2026-11-19 00:45:46.398 - INFO: 
+2026-11-19 00:45:46.398 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:46.398 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:46.401 - INFO: 
+2026-11-19 00:45:46.401 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:46.401 - INFO: Processing the following SPARQL query:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> SELECT (COUNT(DISTINCT ?X) AS ?count_result) WHERE { ?X rdf:type ub:UndergraduateStudent . ?Y rdf:type ub:FullProfessor . ?Z rdf:type ub:Course . ?X ub:advisor ?Y . ?Y ub:teacherOf ?Z . ?X ub:takesCourse ?Z }
+
+2026-11-19 00:45:46.401 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:46.408 - INFO: Query planning done in 7 ms
+2026-11-19 00:45:46.547 - INFO: Result has size 1 x 1
+2026-11-19 00:45:46.548 - INFO: Done processing query and sending result, total time was 147 ms
+2026-11-19 00:45:46.564 - INFO: 
+2026-11-19 00:45:46.564 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:46.564 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:46.567 - INFO: 
+2026-11-19 00:45:46.567 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:46.568 - INFO: Processing the following SPARQL query:
+SELECT ?o (COUNT(*) AS ?n) (COUNT(DISTINCT ?s) AS ?d) WHERE {?s <http://swat.cse.lehigh.edu/onto/univ-bench.owl#advisor> ?o} GROUP BY ?o
+
+2026-11-19 00:45:46.568 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:46.568 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:46.639 - INFO: Result has size 60,160 x 3
+2026-11-19 00:45:47.120 - INFO: Done processing query and sending result, total time was 552 ms
+2026-11-19 00:45:48.444 - INFO: 
+2026-11-19 00:45:48.444 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:48.444 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:45:48.446 - INFO: 
+2026-11-19 00:45:48.446 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:48.447 - INFO: Processing the following SPARQL query:
+SELECT ?o (COUNT(*) AS ?n) WHERE {?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?o} GROUP BY ?o
+
+2026-11-19 00:45:48.447 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:48.447 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:48.447 - INFO: Result has unknown size (not computed yet)
+2026-11-19 00:45:48.497 - INFO: Done processing query and sending result, total time was 50 ms
+2026-11-19 00:45:48.505 - INFO: 
+2026-11-19 00:45:48.505 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:45:48.505 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+2026-11-19 00:45:48.506 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:45:48.506 - INFO: Query planning done in 0 ms
+2026-11-19 00:45:48.650 - INFO: Result has size 1 x 1
+2026-11-19 00:45:48.651 - INFO: Done processing query and sending result, total time was 146 ms

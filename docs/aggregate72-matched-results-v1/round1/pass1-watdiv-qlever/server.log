@@ -1,0 +1,1627 @@
+2026-11-19 00:43:27.605 - WARN: The Linux kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty may have a bug that causes random stalls, crashes, and corrupt data on arm64, unless it contains the fix https://github.com/torvalds/linux/commit/478a1c3abebfc717db0d1281a9cdd7befafee542. As a workaround, QLever doesn't return freed memory to the operating system. On a kernel with the fix, you can disable the workaround by setting the environment variable QLEVER_DISABLE_KERNEL_BUG_WORKAROUND
+2026-11-19 00:43:27.606 - INFO: [1mQLever server 18c097c, compiled on Sat Nov 14 19:07:21 UTC 2026 using git hash 18c097c[22m
+2026-11-19 00:43:27.606 - INFO: Runtime parameter set from the command line: max-num-threads-per-query=4
+2026-11-19 00:43:27.606 - INFO: Cleanup of previous index directories after each rebuild enabled (--rebuild-keep-previous-index-dirs original-and-most-recent)
+2026-11-19 00:43:27.612 - INFO: The git hash used to build this index was "18c097c"
+2026-11-19 00:43:27.613 - INFO: Reading vocabulary from file watdiv100.vocabulary.words ...
+2026-11-19 00:43:27.614 - WARN: io_uring is compiled in but unavailable at runtime (io_uring_queue_init failed in IoUringManager. In file "/qlever/src/util/IoUringManager.cpp" at line 69); falling back to synchronous pread for vocabulary lookups
+2026-11-19 00:43:27.614 - INFO: Done, number of words: 1,052,949
+2026-11-19 00:43:27.614 - INFO: Number of words in internal vocabulary (these are also part of the external vocabulary): 1,057
+2026-11-19 00:43:27.615 - INFO: Registered PSO permutation: #relations = 1, #blocks = 17, #triples = 521,585
+2026-11-19 00:43:27.615 - INFO: Registered PSO permutation: #relations = 86, #blocks = 366, #triples = 10,914,314
+2026-11-19 00:43:27.615 - INFO: Registered POS permutation: #relations = 1, #blocks = 17, #triples = 521,585
+2026-11-19 00:43:27.616 - INFO: Registered POS permutation: #relations = 86, #blocks = 366, #triples = 10,914,314
+2026-11-19 00:43:27.616 - INFO: Registered OPS permutation: #relations = 1,000,845, #blocks = 249, #triples = 10,914,314
+2026-11-19 00:43:27.616 - INFO: Registered OSP permutation: #relations = 1,000,845, #blocks = 249, #triples = 10,914,314
+2026-11-19 00:43:27.617 - INFO: Registered SPO permutation: #relations = 521,585, #blocks = 234, #triples = 10,914,314
+2026-11-19 00:43:27.617 - INFO: Registered SOP permutation: #relations = 521,585, #blocks = 234, #triples = 10,914,314
+2026-11-19 00:43:27.617 - INFO: Reading patterns from file watdiv100.index.patterns ...
+2026-11-19 00:43:27.618 - INFO: Initializing server ...
+2026-11-19 00:43:27.619 - INFO: Access token for restricted API calls is ""
+2026-11-19 00:43:27.619 - INFO: The server is ready, listening for requests on port 31464 ...
+2026-11-19 00:43:27.667 - INFO: 
+2026-11-19 00:43:27.667 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:27.669 - INFO: Processing the following SPARQL query:
+ASK {}
+2026-11-19 00:43:27.669 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:27.669 - INFO: Query planning done in 2 ms
+2026-11-19 00:43:27.670 - INFO: Done processing query and sending result, total time was 2 ms
+2026-11-19 00:43:27.672 - INFO: 
+2026-11-19 00:43:27.672 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:27.672 - INFO: Processing command "get-settings": get server settings
+2026-11-19 00:43:27.674 - INFO: 
+2026-11-19 00:43:27.674 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:27.675 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+2026-11-19 00:43:27.675 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:27.675 - INFO: Query planning done in 1 ms
+2026-11-19 00:43:27.808 - INFO: Result has size 1 x 1
+2026-11-19 00:43:27.808 - INFO: Done processing query and sending result, total time was 134 ms
+2026-11-19 00:43:27.815 - INFO: 
+2026-11-19 00:43:27.815 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:27.815 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:27.818 - INFO: 
+2026-11-19 00:43:27.818 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:27.818 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://schema.org/caption> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	?v0 <http://schema.org/contentRating> ?v3 .
+	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 .
+	?v4 <http://purl.org/stuff/rev#title> ?v5 .
+	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 .
+	?v7 <http://schema.org/actor> ?v6 .
+	?v7 <http://schema.org/language> ?v8 .
+}
+
+
+2026-11-19 00:43:27.819 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:27.935 - INFO: Query planning done in 116 ms
+2026-11-19 00:43:27.975 - INFO: Result has size 1 x 1
+2026-11-19 00:43:27.976 - INFO: Done processing query and sending result, total time was 157 ms
+2026-11-19 00:43:27.984 - INFO: 
+2026-11-19 00:43:27.984 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:27.984 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:27.987 - INFO: 
+2026-11-19 00:43:27.987 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:27.987 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://schema.org/legalName> ?v1 .
+	?v0 <http://purl.org/goodrelations/offers> ?v2 .
+	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> .
+	?v2 <http://purl.org/goodrelations/includes> ?v3 .
+	?v4 <http://schema.org/jobTitle> ?v5 .
+	?v4 <http://xmlns.com/foaf/homepage> ?v6 .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 .
+	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 .
+	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 .
+}
+
+
+2026-11-19 00:43:27.987 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:28.149 - INFO: Query planning done in 161 ms
+2026-11-19 00:43:28.217 - INFO: Result has size 1 x 1
+2026-11-19 00:43:28.218 - INFO: Done processing query and sending result, total time was 231 ms
+2026-11-19 00:43:28.232 - INFO: 
+2026-11-19 00:43:28.233 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:28.233 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:28.237 - INFO: 
+2026-11-19 00:43:28.237 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:28.238 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 .
+	?v0 <http://purl.org/dc/terms/Location> ?v3 .
+	?v0 <http://xmlns.com/foaf/age> ?v4 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 .
+	?v0 <http://xmlns.com/foaf/givenName> ?v6 .
+}
+
+
+2026-11-19 00:43:28.238 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:28.247 - INFO: Query planning done in 9 ms
+2026-11-19 00:43:28.321 - INFO: Result has size 1 x 1
+2026-11-19 00:43:28.322 - INFO: Done processing query and sending result, total time was 84 ms
+2026-11-19 00:43:28.329 - INFO: 
+2026-11-19 00:43:28.329 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:28.329 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:28.331 - INFO: 
+2026-11-19 00:43:28.332 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:28.332 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v3 <http://schema.org/trailer> ?v4 .
+	?v3 <http://schema.org/keywords> ?v5 .
+	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 .
+	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> .
+}
+
+
+2026-11-19 00:43:28.332 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:28.366 - INFO: Query planning done in 34 ms
+2026-11-19 00:43:28.387 - INFO: Result has size 1 x 1
+2026-11-19 00:43:28.388 - INFO: Done processing query and sending result, total time was 56 ms
+2026-11-19 00:43:28.400 - INFO: 
+2026-11-19 00:43:28.400 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:28.400 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:28.404 - INFO: 
+2026-11-19 00:43:28.404 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:28.405 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v0 <http://ogp.me/ns#title> ?v2 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 .
+	?v0 <http://schema.org/caption> ?v4 .
+	?v0 <http://schema.org/description> ?v5 .
+	?v1 <http://schema.org/url> ?v6 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-19 00:43:28.405 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:28.516 - INFO: Query planning done in 111 ms
+2026-11-19 00:43:28.536 - INFO: Result has size 1 x 1
+2026-11-19 00:43:28.536 - INFO: Done processing query and sending result, total time was 131 ms
+2026-11-19 00:43:28.548 - INFO: 
+2026-11-19 00:43:28.548 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:28.548 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:28.552 - INFO: 
+2026-11-19 00:43:28.552 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:28.552 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://schema.org/contentRating> ?v1 .
+	?v0 <http://schema.org/contentSize> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 .
+}
+
+
+2026-11-19 00:43:28.553 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:28.580 - INFO: Query planning done in 28 ms
+2026-11-19 00:43:28.600 - INFO: Result has size 1 x 1
+2026-11-19 00:43:28.601 - INFO: Done processing query and sending result, total time was 48 ms
+2026-11-19 00:43:28.611 - INFO: 
+2026-11-19 00:43:28.612 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:28.612 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:28.616 - INFO: 
+2026-11-19 00:43:28.616 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:28.616 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v2 <http://purl.org/goodrelations/includes> ?v0 .
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/description> ?v4 .
+	?v0 <http://schema.org/contentSize> ?v8 .
+	?v1 <http://schema.org/url> ?v5 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 .
+	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-19 00:43:28.616 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:28.977 - INFO: Query planning done in 361 ms
+2026-11-19 00:43:29.020 - INFO: Result has size 1 x 1
+2026-11-19 00:43:29.022 - INFO: Done processing query and sending result, total time was 405 ms
+2026-11-19 00:43:29.027 - INFO: 
+2026-11-19 00:43:29.027 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.027 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:29.030 - INFO: 
+2026-11-19 00:43:29.030 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.031 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v4 .
+	?v1 <http://ogp.me/ns#title> ?v5 .
+	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 .
+}
+
+
+2026-11-19 00:43:29.031 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:29.062 - INFO: Query planning done in 31 ms
+2026-11-19 00:43:29.099 - INFO: Result has size 1 x 1
+2026-11-19 00:43:29.100 - INFO: Done processing query and sending result, total time was 69 ms
+2026-11-19 00:43:29.106 - INFO: 
+2026-11-19 00:43:29.106 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.106 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:29.110 - INFO: 
+2026-11-19 00:43:29.110 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.110 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+	?v2 <http://schema.org/caption> ?v3 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 .
+}
+
+
+2026-11-19 00:43:29.110 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:29.120 - INFO: Query planning done in 10 ms
+2026-11-19 00:43:29.131 - INFO: Result has size 1 x 1
+2026-11-19 00:43:29.131 - INFO: Done processing query and sending result, total time was 21 ms
+2026-11-19 00:43:29.138 - INFO: 
+2026-11-19 00:43:29.138 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.138 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:29.141 - INFO: 
+2026-11-19 00:43:29.141 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.142 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 .
+	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> .
+	?v2 <http://schema.org/nationality> ?v1 .
+}
+
+
+2026-11-19 00:43:29.142 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:29.149 - INFO: Query planning done in 8 ms
+2026-11-19 00:43:29.160 - INFO: Result has size 1 x 1
+2026-11-19 00:43:29.161 - INFO: Done processing query and sending result, total time was 19 ms
+2026-11-19 00:43:29.167 - INFO: 
+2026-11-19 00:43:29.167 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.167 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:29.170 - INFO: 
+2026-11-19 00:43:29.170 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.170 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+}
+
+
+2026-11-19 00:43:29.170 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:29.171 - INFO: Query planning done in 1 ms
+2026-11-19 00:43:29.178 - INFO: Result has size 1 x 1
+2026-11-19 00:43:29.179 - INFO: Done processing query and sending result, total time was 8 ms
+2026-11-19 00:43:29.184 - INFO: 
+2026-11-19 00:43:29.185 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.185 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:29.188 - INFO: 
+2026-11-19 00:43:29.188 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.188 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/caption> ?v2 .
+}
+
+
+2026-11-19 00:43:29.189 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:29.197 - INFO: Query planning done in 9 ms
+2026-11-19 00:43:29.204 - INFO: Result has size 1 x 1
+2026-11-19 00:43:29.205 - INFO: Done processing query and sending result, total time was 16 ms
+2026-11-19 00:43:29.212 - INFO: 
+2026-11-19 00:43:29.212 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.212 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:29.215 - INFO: 
+2026-11-19 00:43:29.216 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.216 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://schema.org/jobTitle> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 .
+	?v0 <http://schema.org/nationality> ?v3 .
+}
+
+
+2026-11-19 00:43:29.216 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:29.237 - INFO: Query planning done in 21 ms
+2026-11-19 00:43:29.255 - INFO: Result has size 1 x 1
+2026-11-19 00:43:29.255 - INFO: Done processing query and sending result, total time was 39 ms
+2026-11-19 00:43:29.267 - INFO: 
+2026-11-19 00:43:29.267 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.267 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:29.272 - INFO: 
+2026-11-19 00:43:29.272 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.273 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 .
+	?v0 <http://purl.org/goodrelations/validFrom> ?v5 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v6 .
+	?v0 <http://schema.org/eligibleQuantity> ?v7 .
+	?v0 <http://schema.org/eligibleRegion> ?v8 .
+	?v0 <http://schema.org/priceValidUntil> ?v9 .
+}
+
+
+2026-11-19 00:43:29.273 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:29.903 - INFO: Query planning done in 630 ms
+2026-11-19 00:43:29.944 - INFO: Result has size 1 x 1
+2026-11-19 00:43:29.944 - INFO: Done processing query and sending result, total time was 672 ms
+2026-11-19 00:43:29.961 - INFO: 
+2026-11-19 00:43:29.962 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.962 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:29.965 - INFO: 
+2026-11-19 00:43:29.965 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.965 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://purl.org/dc/terms/Location> ?v1 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> .
+}
+
+
+2026-11-19 00:43:29.965 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:29.967 - INFO: Query planning done in 2 ms
+2026-11-19 00:43:29.978 - INFO: Result has size 1 x 1
+2026-11-19 00:43:29.979 - INFO: Done processing query and sending result, total time was 13 ms
+2026-11-19 00:43:29.989 - INFO: 
+2026-11-19 00:43:29.989 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.989 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:29.995 - INFO: 
+2026-11-19 00:43:29.995 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:29.995 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/caption> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 .
+	?v0 <http://schema.org/publisher> ?v4 .
+}
+
+
+2026-11-19 00:43:29.995 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:30.012 - INFO: Query planning done in 17 ms
+2026-11-19 00:43:30.023 - INFO: Result has size 1 x 1
+2026-11-19 00:43:30.024 - INFO: Done processing query and sending result, total time was 28 ms
+2026-11-19 00:43:30.033 - INFO: 
+2026-11-19 00:43:30.033 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.033 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:30.036 - INFO: 
+2026-11-19 00:43:30.037 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.037 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> .
+	?v0 <http://xmlns.com/foaf/familyName> ?v2 .
+	?v3 <http://purl.org/ontology/mo/artist> ?v0 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> .
+}
+
+
+2026-11-19 00:43:30.037 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:30.040 - INFO: Query planning done in 3 ms
+2026-11-19 00:43:30.052 - INFO: Result has size 1 x 1
+2026-11-19 00:43:30.052 - INFO: Done processing query and sending result, total time was 15 ms
+2026-11-19 00:43:30.061 - INFO: 
+2026-11-19 00:43:30.061 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.061 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:30.064 - INFO: 
+2026-11-19 00:43:30.064 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.065 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/description> ?v2 .
+	?v0 <http://schema.org/keywords> ?v3 .
+	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+}
+
+
+2026-11-19 00:43:30.065 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:30.080 - INFO: Query planning done in 15 ms
+2026-11-19 00:43:30.090 - INFO: Result has size 1 x 1
+2026-11-19 00:43:30.091 - INFO: Done processing query and sending result, total time was 26 ms
+2026-11-19 00:43:30.096 - INFO: 
+2026-11-19 00:43:30.097 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.097 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:30.099 - INFO: 
+2026-11-19 00:43:30.099 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.100 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://purl.org/ontology/mo/conductor> ?v1 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-19 00:43:30.100 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:30.102 - INFO: Query planning done in 2 ms
+2026-11-19 00:43:30.110 - INFO: Result has size 1 x 1
+2026-11-19 00:43:30.110 - INFO: Done processing query and sending result, total time was 10 ms
+2026-11-19 00:43:30.118 - INFO: 
+2026-11-19 00:43:30.118 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.118 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:30.121 - INFO: 
+2026-11-19 00:43:30.121 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.121 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-19 00:43:30.121 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:30.127 - INFO: Query planning done in 6 ms
+2026-11-19 00:43:30.135 - INFO: Result has size 1 x 1
+2026-11-19 00:43:30.135 - INFO: Done processing query and sending result, total time was 14 ms
+2026-11-19 00:43:30.142 - INFO: 
+2026-11-19 00:43:30.142 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.142 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:30.145 - INFO: 
+2026-11-19 00:43:30.145 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.146 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://schema.org/caption> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	?v0 <http://schema.org/contentRating> ?v3 .
+	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 .
+	?v4 <http://purl.org/stuff/rev#title> ?v5 .
+	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 .
+	?v7 <http://schema.org/actor> ?v6 .
+	?v7 <http://schema.org/language> ?v8 .
+}
+
+
+2026-11-19 00:43:30.146 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:30.240 - INFO: Query planning done in 95 ms
+2026-11-19 00:43:30.273 - INFO: Result has size 1 x 1
+2026-11-19 00:43:30.274 - INFO: Done processing query and sending result, total time was 128 ms
+2026-11-19 00:43:30.288 - INFO: 
+2026-11-19 00:43:30.288 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.288 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:30.290 - INFO: 
+2026-11-19 00:43:30.290 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.291 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://schema.org/legalName> ?v1 .
+	?v0 <http://purl.org/goodrelations/offers> ?v2 .
+	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> .
+	?v2 <http://purl.org/goodrelations/includes> ?v3 .
+	?v4 <http://schema.org/jobTitle> ?v5 .
+	?v4 <http://xmlns.com/foaf/homepage> ?v6 .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 .
+	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 .
+	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 .
+}
+
+
+2026-11-19 00:43:30.291 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:30.430 - INFO: Query planning done in 139 ms
+2026-11-19 00:43:30.485 - INFO: Result has size 1 x 1
+2026-11-19 00:43:30.486 - INFO: Done processing query and sending result, total time was 195 ms
+2026-11-19 00:43:30.491 - INFO: 
+2026-11-19 00:43:30.491 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.491 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:30.493 - INFO: 
+2026-11-19 00:43:30.493 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.493 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 .
+	?v0 <http://purl.org/dc/terms/Location> ?v3 .
+	?v0 <http://xmlns.com/foaf/age> ?v4 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 .
+	?v0 <http://xmlns.com/foaf/givenName> ?v6 .
+}
+
+
+2026-11-19 00:43:30.493 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:30.502 - INFO: Query planning done in 9 ms
+2026-11-19 00:43:30.580 - INFO: Result has size 1 x 1
+2026-11-19 00:43:30.581 - INFO: Done processing query and sending result, total time was 88 ms
+2026-11-19 00:43:30.591 - INFO: 
+2026-11-19 00:43:30.591 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.591 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:30.594 - INFO: 
+2026-11-19 00:43:30.594 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.594 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v3 <http://schema.org/trailer> ?v4 .
+	?v3 <http://schema.org/keywords> ?v5 .
+	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 .
+	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> .
+}
+
+
+2026-11-19 00:43:30.595 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:30.629 - INFO: Query planning done in 35 ms
+2026-11-19 00:43:30.648 - INFO: Result has size 1 x 1
+2026-11-19 00:43:30.648 - INFO: Done processing query and sending result, total time was 54 ms
+2026-11-19 00:43:30.659 - INFO: 
+2026-11-19 00:43:30.659 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.659 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:30.664 - INFO: 
+2026-11-19 00:43:30.664 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.664 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v0 <http://ogp.me/ns#title> ?v2 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 .
+	?v0 <http://schema.org/caption> ?v4 .
+	?v0 <http://schema.org/description> ?v5 .
+	?v1 <http://schema.org/url> ?v6 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-19 00:43:30.664 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:30.772 - INFO: Query planning done in 107 ms
+2026-11-19 00:43:30.790 - INFO: Result has size 1 x 1
+2026-11-19 00:43:30.791 - INFO: Done processing query and sending result, total time was 126 ms
+2026-11-19 00:43:30.804 - INFO: 
+2026-11-19 00:43:30.804 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.804 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:30.807 - INFO: 
+2026-11-19 00:43:30.807 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.808 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://schema.org/contentRating> ?v1 .
+	?v0 <http://schema.org/contentSize> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 .
+}
+
+
+2026-11-19 00:43:30.808 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:30.835 - INFO: Query planning done in 28 ms
+2026-11-19 00:43:30.854 - INFO: Result has size 1 x 1
+2026-11-19 00:43:30.854 - INFO: Done processing query and sending result, total time was 46 ms
+2026-11-19 00:43:30.864 - INFO: 
+2026-11-19 00:43:30.864 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.864 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:30.867 - INFO: 
+2026-11-19 00:43:30.867 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:30.867 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v2 <http://purl.org/goodrelations/includes> ?v0 .
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/description> ?v4 .
+	?v0 <http://schema.org/contentSize> ?v8 .
+	?v1 <http://schema.org/url> ?v5 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 .
+	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-19 00:43:30.867 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.054 - INFO: Query planning done in 187 ms
+2026-11-19 00:43:31.082 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.082 - INFO: Done processing query and sending result, total time was 215 ms
+2026-11-19 00:43:31.087 - INFO: 
+2026-11-19 00:43:31.087 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.087 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.089 - INFO: 
+2026-11-19 00:43:31.089 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.090 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v4 .
+	?v1 <http://ogp.me/ns#title> ?v5 .
+	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 .
+}
+
+
+2026-11-19 00:43:31.090 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.106 - INFO: Query planning done in 17 ms
+2026-11-19 00:43:31.130 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.130 - INFO: Done processing query and sending result, total time was 40 ms
+2026-11-19 00:43:31.136 - INFO: 
+2026-11-19 00:43:31.136 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.136 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.138 - INFO: 
+2026-11-19 00:43:31.138 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.138 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+	?v2 <http://schema.org/caption> ?v3 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 .
+}
+
+
+2026-11-19 00:43:31.138 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.147 - INFO: Query planning done in 8 ms
+2026-11-19 00:43:31.156 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.157 - INFO: Done processing query and sending result, total time was 18 ms
+2026-11-19 00:43:31.162 - INFO: 
+2026-11-19 00:43:31.162 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.162 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.165 - INFO: 
+2026-11-19 00:43:31.165 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.165 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v1) AS ?count_result) WHERE {
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 .
+	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> .
+	?v2 <http://schema.org/nationality> ?v1 .
+}
+
+
+2026-11-19 00:43:31.165 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.170 - INFO: Query planning done in 5 ms
+2026-11-19 00:43:31.179 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.180 - INFO: Done processing query and sending result, total time was 15 ms
+2026-11-19 00:43:31.185 - INFO: 
+2026-11-19 00:43:31.185 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.185 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.188 - INFO: 
+2026-11-19 00:43:31.188 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.188 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+}
+
+
+2026-11-19 00:43:31.188 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.189 - INFO: Query planning done in 0 ms
+2026-11-19 00:43:31.194 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.195 - INFO: Done processing query and sending result, total time was 6 ms
+2026-11-19 00:43:31.200 - INFO: 
+2026-11-19 00:43:31.200 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.200 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.203 - INFO: 
+2026-11-19 00:43:31.203 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.203 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/caption> ?v2 .
+}
+
+
+2026-11-19 00:43:31.204 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.210 - INFO: Query planning done in 6 ms
+2026-11-19 00:43:31.214 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.215 - INFO: Done processing query and sending result, total time was 11 ms
+2026-11-19 00:43:31.220 - INFO: 
+2026-11-19 00:43:31.220 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.220 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.222 - INFO: 
+2026-11-19 00:43:31.222 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.222 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://schema.org/jobTitle> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 .
+	?v0 <http://schema.org/nationality> ?v3 .
+}
+
+
+2026-11-19 00:43:31.222 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.236 - INFO: Query planning done in 14 ms
+2026-11-19 00:43:31.246 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.246 - INFO: Done processing query and sending result, total time was 24 ms
+2026-11-19 00:43:31.252 - INFO: 
+2026-11-19 00:43:31.252 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.252 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.255 - INFO: 
+2026-11-19 00:43:31.255 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.255 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 .
+	?v0 <http://purl.org/goodrelations/validFrom> ?v5 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v6 .
+	?v0 <http://schema.org/eligibleQuantity> ?v7 .
+	?v0 <http://schema.org/eligibleRegion> ?v8 .
+	?v0 <http://schema.org/priceValidUntil> ?v9 .
+}
+
+
+2026-11-19 00:43:31.255 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.592 - INFO: Query planning done in 337 ms
+2026-11-19 00:43:31.622 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.623 - INFO: Done processing query and sending result, total time was 368 ms
+2026-11-19 00:43:31.636 - INFO: 
+2026-11-19 00:43:31.636 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.636 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.638 - INFO: 
+2026-11-19 00:43:31.639 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.639 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://purl.org/dc/terms/Location> ?v1 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> .
+}
+
+
+2026-11-19 00:43:31.639 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.640 - INFO: Query planning done in 1 ms
+2026-11-19 00:43:31.649 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.650 - INFO: Done processing query and sending result, total time was 11 ms
+2026-11-19 00:43:31.659 - INFO: 
+2026-11-19 00:43:31.659 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.659 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.662 - INFO: 
+2026-11-19 00:43:31.662 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.663 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/caption> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 .
+	?v0 <http://schema.org/publisher> ?v4 .
+}
+
+
+2026-11-19 00:43:31.663 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.676 - INFO: Query planning done in 14 ms
+2026-11-19 00:43:31.685 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.685 - INFO: Done processing query and sending result, total time was 23 ms
+2026-11-19 00:43:31.697 - INFO: 
+2026-11-19 00:43:31.697 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.697 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.701 - INFO: 
+2026-11-19 00:43:31.701 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.701 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> .
+	?v0 <http://xmlns.com/foaf/familyName> ?v2 .
+	?v3 <http://purl.org/ontology/mo/artist> ?v0 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> .
+}
+
+
+2026-11-19 00:43:31.701 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.704 - INFO: Query planning done in 2 ms
+2026-11-19 00:43:31.712 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.712 - INFO: Done processing query and sending result, total time was 11 ms
+2026-11-19 00:43:31.721 - INFO: 
+2026-11-19 00:43:31.721 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.722 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.725 - INFO: 
+2026-11-19 00:43:31.725 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.725 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/description> ?v2 .
+	?v0 <http://schema.org/keywords> ?v3 .
+	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+}
+
+
+2026-11-19 00:43:31.725 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.739 - INFO: Query planning done in 14 ms
+2026-11-19 00:43:31.747 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.748 - INFO: Done processing query and sending result, total time was 22 ms
+2026-11-19 00:43:31.758 - INFO: 
+2026-11-19 00:43:31.758 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.758 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.761 - INFO: 
+2026-11-19 00:43:31.761 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.761 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://purl.org/ontology/mo/conductor> ?v1 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-19 00:43:31.761 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.763 - INFO: Query planning done in 2 ms
+2026-11-19 00:43:31.768 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.768 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-19 00:43:31.777 - INFO: 
+2026-11-19 00:43:31.777 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.777 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.781 - INFO: 
+2026-11-19 00:43:31.781 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.782 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-19 00:43:31.782 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.788 - INFO: Query planning done in 6 ms
+2026-11-19 00:43:31.795 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.796 - INFO: Done processing query and sending result, total time was 14 ms
+2026-11-19 00:43:31.804 - INFO: 
+2026-11-19 00:43:31.804 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.804 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.807 - INFO: 
+2026-11-19 00:43:31.807 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.808 - INFO: Processing the following SPARQL query:
+SELECT ?o (COUNT(*) AS ?n) (COUNT(DISTINCT ?s) AS ?d) WHERE {?s <http://xmlns.com/foaf/age> ?o} GROUP BY ?o
+
+2026-11-19 00:43:31.808 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.809 - INFO: Query planning done in 1 ms
+2026-11-19 00:43:31.815 - INFO: Result has size 9 x 3
+2026-11-19 00:43:31.816 - INFO: Done processing query and sending result, total time was 8 ms
+2026-11-19 00:43:31.827 - INFO: 
+2026-11-19 00:43:31.827 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.827 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.829 - INFO: 
+2026-11-19 00:43:31.829 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.830 - INFO: Processing the following SPARQL query:
+SELECT ?o (COUNT(*) AS ?n) WHERE {?s <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?o} GROUP BY ?o
+
+2026-11-19 00:43:31.830 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.830 - INFO: Query planning done in 0 ms
+2026-11-19 00:43:31.830 - INFO: Result has unknown size (not computed yet)
+2026-11-19 00:43:31.833 - INFO: Done processing query and sending result, total time was 3 ms
+2026-11-19 00:43:31.843 - INFO: 
+2026-11-19 00:43:31.843 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.843 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.846 - INFO: 
+2026-11-19 00:43:31.846 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.846 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://schema.org/caption> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	?v0 <http://schema.org/contentRating> ?v3 .
+	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 .
+	?v4 <http://purl.org/stuff/rev#title> ?v5 .
+	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 .
+	?v7 <http://schema.org/actor> ?v6 .
+	?v7 <http://schema.org/language> ?v8 .
+}
+
+
+2026-11-19 00:43:31.846 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:31.939 - INFO: Query planning done in 93 ms
+2026-11-19 00:43:31.972 - INFO: Result has size 1 x 1
+2026-11-19 00:43:31.972 - INFO: Done processing query and sending result, total time was 126 ms
+2026-11-19 00:43:31.983 - INFO: 
+2026-11-19 00:43:31.983 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.983 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:31.988 - INFO: 
+2026-11-19 00:43:31.988 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:31.988 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://schema.org/legalName> ?v1 .
+	?v0 <http://purl.org/goodrelations/offers> ?v2 .
+	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> .
+	?v2 <http://purl.org/goodrelations/includes> ?v3 .
+	?v4 <http://schema.org/jobTitle> ?v5 .
+	?v4 <http://xmlns.com/foaf/homepage> ?v6 .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 .
+	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 .
+	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 .
+}
+
+
+2026-11-19 00:43:31.989 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:32.128 - INFO: Query planning done in 139 ms
+2026-11-19 00:43:32.184 - INFO: Result has size 1 x 1
+2026-11-19 00:43:32.185 - INFO: Done processing query and sending result, total time was 196 ms
+2026-11-19 00:43:32.195 - INFO: 
+2026-11-19 00:43:32.196 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.196 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:32.199 - INFO: 
+2026-11-19 00:43:32.200 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.200 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 .
+	?v0 <http://purl.org/dc/terms/Location> ?v3 .
+	?v0 <http://xmlns.com/foaf/age> ?v4 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 .
+	?v0 <http://xmlns.com/foaf/givenName> ?v6 .
+}
+
+
+2026-11-19 00:43:32.200 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:32.208 - INFO: Query planning done in 8 ms
+2026-11-19 00:43:32.275 - INFO: Result has size 1 x 1
+2026-11-19 00:43:32.275 - INFO: Done processing query and sending result, total time was 75 ms
+2026-11-19 00:43:32.283 - INFO: 
+2026-11-19 00:43:32.283 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.283 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:32.290 - INFO: 
+2026-11-19 00:43:32.290 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.290 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v3 <http://schema.org/trailer> ?v4 .
+	?v3 <http://schema.org/keywords> ?v5 .
+	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 .
+	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> .
+}
+
+
+2026-11-19 00:43:32.290 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:32.319 - INFO: Query planning done in 29 ms
+2026-11-19 00:43:32.336 - INFO: Result has size 1 x 1
+2026-11-19 00:43:32.337 - INFO: Done processing query and sending result, total time was 46 ms
+2026-11-19 00:43:32.350 - INFO: 
+2026-11-19 00:43:32.350 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.350 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:32.353 - INFO: 
+2026-11-19 00:43:32.353 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.354 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v0 <http://ogp.me/ns#title> ?v2 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 .
+	?v0 <http://schema.org/caption> ?v4 .
+	?v0 <http://schema.org/description> ?v5 .
+	?v1 <http://schema.org/url> ?v6 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-19 00:43:32.354 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:32.457 - INFO: Query planning done in 103 ms
+2026-11-19 00:43:32.477 - INFO: Result has size 1 x 1
+2026-11-19 00:43:32.478 - INFO: Done processing query and sending result, total time was 124 ms
+2026-11-19 00:43:32.491 - INFO: 
+2026-11-19 00:43:32.491 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.491 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:32.495 - INFO: 
+2026-11-19 00:43:32.495 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.495 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://schema.org/contentRating> ?v1 .
+	?v0 <http://schema.org/contentSize> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 .
+}
+
+
+2026-11-19 00:43:32.495 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:32.523 - INFO: Query planning done in 27 ms
+2026-11-19 00:43:32.542 - INFO: Result has size 1 x 1
+2026-11-19 00:43:32.543 - INFO: Done processing query and sending result, total time was 48 ms
+2026-11-19 00:43:32.553 - INFO: 
+2026-11-19 00:43:32.553 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.553 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:32.558 - INFO: 
+2026-11-19 00:43:32.559 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.559 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v2 <http://purl.org/goodrelations/includes> ?v0 .
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/description> ?v4 .
+	?v0 <http://schema.org/contentSize> ?v8 .
+	?v1 <http://schema.org/url> ?v5 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 .
+	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-19 00:43:32.559 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:32.741 - INFO: Query planning done in 182 ms
+2026-11-19 00:43:32.769 - INFO: Result has size 1 x 1
+2026-11-19 00:43:32.769 - INFO: Done processing query and sending result, total time was 210 ms
+2026-11-19 00:43:32.781 - INFO: 
+2026-11-19 00:43:32.781 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.781 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:32.784 - INFO: 
+2026-11-19 00:43:32.784 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.784 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v4 .
+	?v1 <http://ogp.me/ns#title> ?v5 .
+	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 .
+}
+
+
+2026-11-19 00:43:32.784 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:32.801 - INFO: Query planning done in 17 ms
+2026-11-19 00:43:32.821 - INFO: Result has size 1 x 1
+2026-11-19 00:43:32.821 - INFO: Done processing query and sending result, total time was 37 ms
+2026-11-19 00:43:32.830 - INFO: 
+2026-11-19 00:43:32.830 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.830 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:32.834 - INFO: 
+2026-11-19 00:43:32.834 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.834 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+	?v2 <http://schema.org/caption> ?v3 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 .
+}
+
+
+2026-11-19 00:43:32.834 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:32.841 - INFO: Query planning done in 7 ms
+2026-11-19 00:43:32.847 - INFO: Result has size 1 x 1
+2026-11-19 00:43:32.848 - INFO: Done processing query and sending result, total time was 14 ms
+2026-11-19 00:43:32.861 - INFO: 
+2026-11-19 00:43:32.861 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.861 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:32.864 - INFO: 
+2026-11-19 00:43:32.864 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.864 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 .
+	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> .
+	?v2 <http://schema.org/nationality> ?v1 .
+}
+
+
+2026-11-19 00:43:32.864 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:32.869 - INFO: Query planning done in 4 ms
+2026-11-19 00:43:32.876 - INFO: Result has size 1 x 1
+2026-11-19 00:43:32.877 - INFO: Done processing query and sending result, total time was 12 ms
+2026-11-19 00:43:32.886 - INFO: 
+2026-11-19 00:43:32.886 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.886 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:32.890 - INFO: 
+2026-11-19 00:43:32.890 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.890 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+}
+
+
+2026-11-19 00:43:32.890 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:32.890 - INFO: Query planning done in 0 ms
+2026-11-19 00:43:32.894 - INFO: Result has size 1 x 1
+2026-11-19 00:43:32.894 - INFO: Done processing query and sending result, total time was 4 ms
+2026-11-19 00:43:32.903 - INFO: 
+2026-11-19 00:43:32.903 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.903 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:32.906 - INFO: 
+2026-11-19 00:43:32.906 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.906 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/caption> ?v2 .
+}
+
+
+2026-11-19 00:43:32.906 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:32.911 - INFO: Query planning done in 5 ms
+2026-11-19 00:43:32.915 - INFO: Result has size 1 x 1
+2026-11-19 00:43:32.915 - INFO: Done processing query and sending result, total time was 9 ms
+2026-11-19 00:43:32.927 - INFO: 
+2026-11-19 00:43:32.927 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.927 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:32.930 - INFO: 
+2026-11-19 00:43:32.930 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.930 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://schema.org/jobTitle> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 .
+	?v0 <http://schema.org/nationality> ?v3 .
+}
+
+
+2026-11-19 00:43:32.930 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:32.942 - INFO: Query planning done in 11 ms
+2026-11-19 00:43:32.949 - INFO: Result has size 1 x 1
+2026-11-19 00:43:32.950 - INFO: Done processing query and sending result, total time was 20 ms
+2026-11-19 00:43:32.959 - INFO: 
+2026-11-19 00:43:32.959 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.959 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:32.962 - INFO: 
+2026-11-19 00:43:32.962 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:32.963 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 .
+	?v0 <http://purl.org/goodrelations/validFrom> ?v5 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v6 .
+	?v0 <http://schema.org/eligibleQuantity> ?v7 .
+	?v0 <http://schema.org/eligibleRegion> ?v8 .
+	?v0 <http://schema.org/priceValidUntil> ?v9 .
+}
+
+
+2026-11-19 00:43:32.963 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:33.266 - INFO: Query planning done in 303 ms
+2026-11-19 00:43:33.293 - INFO: Result has size 1 x 1
+2026-11-19 00:43:33.294 - INFO: Done processing query and sending result, total time was 331 ms
+2026-11-19 00:43:33.306 - INFO: 
+2026-11-19 00:43:33.306 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.306 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:33.309 - INFO: 
+2026-11-19 00:43:33.309 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.309 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://purl.org/dc/terms/Location> ?v1 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> .
+}
+
+
+2026-11-19 00:43:33.309 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:33.310 - INFO: Query planning done in 1 ms
+2026-11-19 00:43:33.319 - INFO: Result has size 1 x 1
+2026-11-19 00:43:33.320 - INFO: Done processing query and sending result, total time was 10 ms
+2026-11-19 00:43:33.324 - INFO: 
+2026-11-19 00:43:33.325 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.325 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:33.327 - INFO: 
+2026-11-19 00:43:33.327 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.327 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/caption> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 .
+	?v0 <http://schema.org/publisher> ?v4 .
+}
+
+
+2026-11-19 00:43:33.327 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:33.341 - INFO: Query planning done in 14 ms
+2026-11-19 00:43:33.349 - INFO: Result has size 1 x 1
+2026-11-19 00:43:33.350 - INFO: Done processing query and sending result, total time was 22 ms
+2026-11-19 00:43:33.354 - INFO: 
+2026-11-19 00:43:33.355 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.355 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:33.357 - INFO: 
+2026-11-19 00:43:33.357 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.357 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> .
+	?v0 <http://xmlns.com/foaf/familyName> ?v2 .
+	?v3 <http://purl.org/ontology/mo/artist> ?v0 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> .
+}
+
+
+2026-11-19 00:43:33.357 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:33.360 - INFO: Query planning done in 2 ms
+2026-11-19 00:43:33.367 - INFO: Result has size 1 x 1
+2026-11-19 00:43:33.368 - INFO: Done processing query and sending result, total time was 10 ms
+2026-11-19 00:43:33.372 - INFO: 
+2026-11-19 00:43:33.372 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.372 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:33.374 - INFO: 
+2026-11-19 00:43:33.375 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.375 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/description> ?v2 .
+	?v0 <http://schema.org/keywords> ?v3 .
+	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+}
+
+
+2026-11-19 00:43:33.375 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:33.389 - INFO: Query planning done in 14 ms
+2026-11-19 00:43:33.397 - INFO: Result has size 1 x 1
+2026-11-19 00:43:33.398 - INFO: Done processing query and sending result, total time was 23 ms
+2026-11-19 00:43:33.402 - INFO: 
+2026-11-19 00:43:33.402 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.402 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:33.404 - INFO: 
+2026-11-19 00:43:33.405 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.405 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://purl.org/ontology/mo/conductor> ?v1 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-19 00:43:33.405 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:33.406 - INFO: Query planning done in 1 ms
+2026-11-19 00:43:33.411 - INFO: Result has size 1 x 1
+2026-11-19 00:43:33.412 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-19 00:43:33.416 - INFO: 
+2026-11-19 00:43:33.416 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.416 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:33.418 - INFO: 
+2026-11-19 00:43:33.418 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.419 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-19 00:43:33.419 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:33.425 - INFO: Query planning done in 6 ms
+2026-11-19 00:43:33.432 - INFO: Result has size 1 x 1
+2026-11-19 00:43:33.433 - INFO: Done processing query and sending result, total time was 14 ms
+2026-11-19 00:43:33.438 - INFO: 
+2026-11-19 00:43:33.438 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.438 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:33.440 - INFO: 
+2026-11-19 00:43:33.440 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.440 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://schema.org/caption> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	?v0 <http://schema.org/contentRating> ?v3 .
+	?v0 <http://purl.org/stuff/rev#hasReview> ?v4 .
+	?v4 <http://purl.org/stuff/rev#title> ?v5 .
+	?v4 <http://purl.org/stuff/rev#reviewer> ?v6 .
+	?v7 <http://schema.org/actor> ?v6 .
+	?v7 <http://schema.org/language> ?v8 .
+}
+
+
+2026-11-19 00:43:33.440 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:33.548 - INFO: Query planning done in 107 ms
+2026-11-19 00:43:33.586 - INFO: Result has size 1 x 1
+2026-11-19 00:43:33.587 - INFO: Done processing query and sending result, total time was 146 ms
+2026-11-19 00:43:33.592 - INFO: 
+2026-11-19 00:43:33.592 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.593 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:33.595 - INFO: 
+2026-11-19 00:43:33.595 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.596 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://schema.org/legalName> ?v1 .
+	?v0 <http://purl.org/goodrelations/offers> ?v2 .
+	?v2 <http://schema.org/eligibleRegion> <http://db.uwaterloo.ca/~galuc/wsdbm/Country5> .
+	?v2 <http://purl.org/goodrelations/includes> ?v3 .
+	?v4 <http://schema.org/jobTitle> ?v5 .
+	?v4 <http://xmlns.com/foaf/homepage> ?v6 .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v7 .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v3 .
+	?v3 <http://purl.org/stuff/rev#hasReview> ?v8 .
+	?v8 <http://purl.org/stuff/rev#totalVotes> ?v9 .
+}
+
+
+2026-11-19 00:43:33.596 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:33.745 - INFO: Query planning done in 149 ms
+2026-11-19 00:43:33.802 - INFO: Result has size 1 x 1
+2026-11-19 00:43:33.803 - INFO: Done processing query and sending result, total time was 207 ms
+2026-11-19 00:43:33.817 - INFO: 
+2026-11-19 00:43:33.817 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.817 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:33.820 - INFO: 
+2026-11-19 00:43:33.820 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.821 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/friendOf> ?v2 .
+	?v0 <http://purl.org/dc/terms/Location> ?v3 .
+	?v0 <http://xmlns.com/foaf/age> ?v4 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v5 .
+	?v0 <http://xmlns.com/foaf/givenName> ?v6 .
+}
+
+
+2026-11-19 00:43:33.821 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:33.828 - INFO: Query planning done in 7 ms
+2026-11-19 00:43:33.904 - INFO: Result has size 1 x 1
+2026-11-19 00:43:33.904 - INFO: Done processing query and sending result, total time was 83 ms
+2026-11-19 00:43:33.914 - INFO: 
+2026-11-19 00:43:33.914 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.914 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:33.917 - INFO: 
+2026-11-19 00:43:33.917 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.918 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v3 <http://schema.org/trailer> ?v4 .
+	?v3 <http://schema.org/keywords> ?v5 .
+	?v3 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v0 .
+	?v3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory2> .
+}
+
+
+2026-11-19 00:43:33.918 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:33.953 - INFO: Query planning done in 35 ms
+2026-11-19 00:43:33.970 - INFO: Result has size 1 x 1
+2026-11-19 00:43:33.971 - INFO: Done processing query and sending result, total time was 53 ms
+2026-11-19 00:43:33.983 - INFO: 
+2026-11-19 00:43:33.983 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.983 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:33.988 - INFO: 
+2026-11-19 00:43:33.988 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:33.989 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v0 <http://ogp.me/ns#title> ?v2 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v3 .
+	?v0 <http://schema.org/caption> ?v4 .
+	?v0 <http://schema.org/description> ?v5 .
+	?v1 <http://schema.org/url> ?v6 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v7 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-19 00:43:33.989 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:34.096 - INFO: Query planning done in 107 ms
+2026-11-19 00:43:34.115 - INFO: Result has size 1 x 1
+2026-11-19 00:43:34.115 - INFO: Done processing query and sending result, total time was 126 ms
+2026-11-19 00:43:34.127 - INFO: 
+2026-11-19 00:43:34.127 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.127 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:34.131 - INFO: 
+2026-11-19 00:43:34.131 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.131 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://schema.org/contentRating> ?v1 .
+	?v0 <http://schema.org/contentSize> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+	?v4 <http://db.uwaterloo.ca/~galuc/wsdbm/makesPurchase> ?v5 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseDate> ?v6 .
+	?v5 <http://db.uwaterloo.ca/~galuc/wsdbm/purchaseFor> ?v0 .
+}
+
+
+2026-11-19 00:43:34.131 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:34.159 - INFO: Query planning done in 28 ms
+2026-11-19 00:43:34.176 - INFO: Result has size 1 x 1
+2026-11-19 00:43:34.177 - INFO: Done processing query and sending result, total time was 46 ms
+2026-11-19 00:43:34.187 - INFO: 
+2026-11-19 00:43:34.187 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.187 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:34.190 - INFO: 
+2026-11-19 00:43:34.190 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.190 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://xmlns.com/foaf/homepage> ?v1 .
+	?v2 <http://purl.org/goodrelations/includes> ?v0 .
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/description> ?v4 .
+	?v0 <http://schema.org/contentSize> ?v8 .
+	?v1 <http://schema.org/url> ?v5 .
+	?v1 <http://db.uwaterloo.ca/~galuc/wsdbm/hits> ?v6 .
+	?v1 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+	?v7 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-19 00:43:34.191 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:34.376 - INFO: Query planning done in 185 ms
+2026-11-19 00:43:34.402 - INFO: Result has size 1 x 1
+2026-11-19 00:43:34.403 - INFO: Done processing query and sending result, total time was 212 ms
+2026-11-19 00:43:34.413 - INFO: 
+2026-11-19 00:43:34.413 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.413 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:34.417 - INFO: 
+2026-11-19 00:43:34.417 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.417 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v4 .
+	?v1 <http://ogp.me/ns#title> ?v5 .
+	?v1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v6 .
+}
+
+
+2026-11-19 00:43:34.418 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:34.435 - INFO: Query planning done in 17 ms
+2026-11-19 00:43:34.453 - INFO: Result has size 1 x 1
+2026-11-19 00:43:34.453 - INFO: Done processing query and sending result, total time was 35 ms
+2026-11-19 00:43:34.465 - INFO: 
+2026-11-19 00:43:34.465 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.465 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:34.468 - INFO: 
+2026-11-19 00:43:34.468 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.468 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+	?v2 <http://schema.org/caption> ?v3 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v2 .
+}
+
+
+2026-11-19 00:43:34.468 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:34.475 - INFO: Query planning done in 7 ms
+2026-11-19 00:43:34.482 - INFO: Result has size 1 x 1
+2026-11-19 00:43:34.483 - INFO: Done processing query and sending result, total time was 14 ms
+2026-11-19 00:43:34.491 - INFO: 
+2026-11-19 00:43:34.491 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.491 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:34.496 - INFO: 
+2026-11-19 00:43:34.496 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.496 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v1) AS ?count_result) WHERE {
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v1 .
+	?v2 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> <http://db.uwaterloo.ca/~galuc/wsdbm/Product0> .
+	?v2 <http://schema.org/nationality> ?v1 .
+}
+
+
+2026-11-19 00:43:34.496 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:34.501 - INFO: Query planning done in 5 ms
+2026-11-19 00:43:34.508 - INFO: Result has size 1 x 1
+2026-11-19 00:43:34.509 - INFO: Done processing query and sending result, total time was 13 ms
+2026-11-19 00:43:34.522 - INFO: 
+2026-11-19 00:43:34.522 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.522 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:34.527 - INFO: 
+2026-11-19 00:43:34.527 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.527 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v1 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/subscribes> <http://db.uwaterloo.ca/~galuc/wsdbm/Website2855> .
+}
+
+
+2026-11-19 00:43:34.528 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:34.528 - INFO: Query planning done in 0 ms
+2026-11-19 00:43:34.532 - INFO: Result has size 1 x 1
+2026-11-19 00:43:34.532 - INFO: Done processing query and sending result, total time was 5 ms
+2026-11-19 00:43:34.539 - INFO: 
+2026-11-19 00:43:34.539 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.539 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:34.541 - INFO: 
+2026-11-19 00:43:34.541 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.541 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://ogp.me/ns#tag> <http://db.uwaterloo.ca/~galuc/wsdbm/Topic143> .
+	?v0 <http://schema.org/caption> ?v2 .
+}
+
+
+2026-11-19 00:43:34.542 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:34.547 - INFO: Query planning done in 5 ms
+2026-11-19 00:43:34.550 - INFO: Result has size 1 x 1
+2026-11-19 00:43:34.551 - INFO: Done processing query and sending result, total time was 9 ms
+2026-11-19 00:43:34.555 - INFO: 
+2026-11-19 00:43:34.555 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.555 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:34.557 - INFO: 
+2026-11-19 00:43:34.557 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.558 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://schema.org/jobTitle> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/City137> <http://www.geonames.org/ontology#parentCountry> ?v3 .
+	?v0 <http://schema.org/nationality> ?v3 .
+}
+
+
+2026-11-19 00:43:34.558 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:34.569 - INFO: Query planning done in 12 ms
+2026-11-19 00:43:34.577 - INFO: Result has size 1 x 1
+2026-11-19 00:43:34.578 - INFO: Done processing query and sending result, total time was 20 ms
+2026-11-19 00:43:34.586 - INFO: 
+2026-11-19 00:43:34.587 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.587 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:34.590 - INFO: 
+2026-11-19 00:43:34.590 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.590 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://purl.org/goodrelations/includes> ?v1 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/Retailer685> <http://purl.org/goodrelations/offers> ?v0 .
+	?v0 <http://purl.org/goodrelations/price> ?v3 .
+	?v0 <http://purl.org/goodrelations/serialNumber> ?v4 .
+	?v0 <http://purl.org/goodrelations/validFrom> ?v5 .
+	?v0 <http://purl.org/goodrelations/validThrough> ?v6 .
+	?v0 <http://schema.org/eligibleQuantity> ?v7 .
+	?v0 <http://schema.org/eligibleRegion> ?v8 .
+	?v0 <http://schema.org/priceValidUntil> ?v9 .
+}
+
+
+2026-11-19 00:43:34.590 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:34.907 - INFO: Query planning done in 317 ms
+2026-11-19 00:43:34.937 - INFO: Result has size 1 x 1
+2026-11-19 00:43:34.937 - INFO: Done processing query and sending result, total time was 347 ms
+2026-11-19 00:43:34.947 - INFO: 
+2026-11-19 00:43:34.947 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.947 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:34.951 - INFO: 
+2026-11-19 00:43:34.951 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.952 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://purl.org/dc/terms/Location> ?v1 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country14> .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role2> .
+}
+
+
+2026-11-19 00:43:34.952 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:34.953 - INFO: Query planning done in 1 ms
+2026-11-19 00:43:34.961 - INFO: Result has size 1 x 1
+2026-11-19 00:43:34.962 - INFO: Done processing query and sending result, total time was 10 ms
+2026-11-19 00:43:34.975 - INFO: 
+2026-11-19 00:43:34.975 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.975 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:34.979 - INFO: 
+2026-11-19 00:43:34.979 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:34.980 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/caption> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> ?v3 .
+	?v0 <http://schema.org/publisher> ?v4 .
+}
+
+
+2026-11-19 00:43:34.980 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:34.993 - INFO: Query planning done in 13 ms
+2026-11-19 00:43:35.002 - INFO: Result has size 1 x 1
+2026-11-19 00:43:35.002 - INFO: Done processing query and sending result, total time was 22 ms
+2026-11-19 00:43:35.010 - INFO: 
+2026-11-19 00:43:35.010 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.010 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:35.013 - INFO: 
+2026-11-19 00:43:35.013 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.013 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://xmlns.com/foaf/age> <http://db.uwaterloo.ca/~galuc/wsdbm/AgeGroup5> .
+	?v0 <http://xmlns.com/foaf/familyName> ?v2 .
+	?v3 <http://purl.org/ontology/mo/artist> ?v0 .
+	?v0 <http://schema.org/nationality> <http://db.uwaterloo.ca/~galuc/wsdbm/Country1> .
+}
+
+
+2026-11-19 00:43:35.013 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:35.015 - INFO: Query planning done in 2 ms
+2026-11-19 00:43:35.023 - INFO: Result has size 1 x 1
+2026-11-19 00:43:35.024 - INFO: Done processing query and sending result, total time was 11 ms
+2026-11-19 00:43:35.032 - INFO: 
+2026-11-19 00:43:35.032 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.032 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:35.035 - INFO: 
+2026-11-19 00:43:35.035 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.035 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/ProductCategory9> .
+	?v0 <http://schema.org/description> ?v2 .
+	?v0 <http://schema.org/keywords> ?v3 .
+	?v0 <http://schema.org/language> <http://db.uwaterloo.ca/~galuc/wsdbm/Language0> .
+}
+
+
+2026-11-19 00:43:35.035 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:35.049 - INFO: Query planning done in 13 ms
+2026-11-19 00:43:35.057 - INFO: Result has size 1 x 1
+2026-11-19 00:43:35.058 - INFO: Done processing query and sending result, total time was 22 ms
+2026-11-19 00:43:35.068 - INFO: 
+2026-11-19 00:43:35.068 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.068 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:35.071 - INFO: 
+2026-11-19 00:43:35.071 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.071 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://purl.org/ontology/mo/conductor> ?v1 .
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v2 .
+	?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre83> .
+}
+
+
+2026-11-19 00:43:35.071 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:35.073 - INFO: Query planning done in 2 ms
+2026-11-19 00:43:35.078 - INFO: Result has size 1 x 1
+2026-11-19 00:43:35.079 - INFO: Done processing query and sending result, total time was 7 ms
+2026-11-19 00:43:35.089 - INFO: 
+2026-11-19 00:43:35.089 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.089 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:35.092 - INFO: 
+2026-11-19 00:43:35.092 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.092 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(DISTINCT ?v0) AS ?count_result) WHERE {
+	?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?v1 .
+	?v0 <http://schema.org/text> ?v2 .
+	<http://db.uwaterloo.ca/~galuc/wsdbm/User57094> <http://db.uwaterloo.ca/~galuc/wsdbm/likes> ?v0 .
+}
+
+
+2026-11-19 00:43:35.092 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:35.098 - INFO: Query planning done in 6 ms
+2026-11-19 00:43:35.106 - INFO: Result has size 1 x 1
+2026-11-19 00:43:35.106 - INFO: Done processing query and sending result, total time was 14 ms
+2026-11-19 00:43:35.115 - INFO: 
+2026-11-19 00:43:35.116 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.116 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:35.118 - INFO: 
+2026-11-19 00:43:35.118 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.119 - INFO: Processing the following SPARQL query:
+SELECT ?o (COUNT(*) AS ?n) (COUNT(DISTINCT ?s) AS ?d) WHERE {?s <http://xmlns.com/foaf/age> ?o} GROUP BY ?o
+
+2026-11-19 00:43:35.119 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:35.119 - INFO: Query planning done in 0 ms
+2026-11-19 00:43:35.126 - INFO: Result has size 9 x 3
+2026-11-19 00:43:35.127 - INFO: Done processing query and sending result, total time was 8 ms
+2026-11-19 00:43:35.137 - INFO: 
+2026-11-19 00:43:35.137 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.137 - INFO: Processing command "clear-cache": clear the cache (unpinned elements only)
+2026-11-19 00:43:35.139 - INFO: 
+2026-11-19 00:43:35.139 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.139 - INFO: Processing the following SPARQL query:
+SELECT ?o (COUNT(*) AS ?n) WHERE {?s <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?o} GROUP BY ?o
+
+2026-11-19 00:43:35.139 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:35.140 - INFO: Query planning done in 0 ms
+2026-11-19 00:43:35.140 - INFO: Result has unknown size (not computed yet)
+2026-11-19 00:43:35.143 - INFO: Done processing query and sending result, total time was 3 ms
+2026-11-19 00:43:35.150 - INFO: 
+2026-11-19 00:43:35.150 - INFO: Request received via POST, content type "application/x-www-form-urlencoded"
+2026-11-19 00:43:35.150 - INFO: Processing the following SPARQL query:
+SELECT (COUNT(*) AS ?n) WHERE {?s ?p ?o}
+2026-11-19 00:43:35.150 - INFO: Requested media types of the result are: "application/sparql-results+json"
+2026-11-19 00:43:35.150 - INFO: Query planning done in 0 ms
+2026-11-19 00:43:35.251 - INFO: Result has size 1 x 1
+2026-11-19 00:43:35.252 - INFO: Done processing query and sending result, total time was 101 ms
