@@ -17,7 +17,7 @@ fn start(name: &str, flags: &[&str], token: Option<&str>) -> Server {
     let port = { let l = TcpListener::bind("127.0.0.1:0").unwrap(); l.local_addr().unwrap().port() };
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_triplelight"));
     cmd.arg("serve-store").arg(&dir).arg(port.to_string()).args(flags).stdout(Stdio::null()).stderr(Stdio::null())
-        .env_remove("TRIPLELIGHT_UPDATE_TOKEN").env_remove("TRIPLELIGHT_HOST").env_remove("RDFDB_HOST");
+        .env_remove("TRIPLELIGHT_UPDATE_TOKEN").env_remove("TRIPLELIGHT_HOST");
     if let Some(t) = token { cmd.env("TRIPLELIGHT_UPDATE_TOKEN", t); }
     let server = Server(cmd.spawn().unwrap(), port, dir);
     let deadline = Instant::now() + Duration::from_secs(10);

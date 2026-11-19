@@ -485,7 +485,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         if let Some(rows) = self.try_count_group(inner, keys, aggs, &input) { return rows; }
         let rows = self.eval(inner, input);
         let kidx: Vec<usize> = keys.iter().map(|v| self.var(v)).collect();
-        if std::env::var_os("RDFDB_LEGACY_GROUP").is_none() {
+        if std::env::var_os("TRIPLELIGHT_LEGACY_GROUP").is_none() {
             if let Some(out) = self.try_fast_group(&rows, &kidx, aggs) { return out; }
         }
         let mut groups: Vec<(Vec<TermId>, Vec<Row>)> = Vec::new();
@@ -726,7 +726,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let (stats, dynsnap) = self.stats?;
         if pats.len() < 2 || rows.len() != 1 || rows[0].iter().any(|&x| x != UNBOUND) { return None }
         // Explicit diagnostic only; normal requests do not acquire clocks or emit output.
-        let trace = std::env::var_os("RDFDB_PROFILE_PLAN").is_some();
+        let trace = std::env::var_os("TRIPLELIGHT_PROFILE_PLAN").is_some();
         let clock = || trace.then(std::time::Instant::now);
         let elapsed = |start: Option<std::time::Instant>| start.map_or(0, |s| s.elapsed().as_nanos());
         let total_clock = clock();

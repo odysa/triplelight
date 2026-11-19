@@ -58,7 +58,7 @@ samples still limit statistical inference.
 ## Reproduction
 
 ```sh
-RDFDB_PROFILE_PLAN=1 RAYON_NUM_THREADS=1 cargo run --release --example optimizer_hotpath -- DATA.nt bench/watdiv/F4.rq bench/watdiv/S1.rq bench/watdiv/C3.rq
+TRIPLELIGHT_PROFILE_PLAN=1 RAYON_NUM_THREADS=1 cargo run --release --example optimizer_hotpath -- DATA.nt bench/watdiv/F4.rq bench/watdiv/S1.rq bench/watdiv/C3.rq
 ```
 
 Run a separately built pinned old binary for F4/S1, then the rewritten binary.

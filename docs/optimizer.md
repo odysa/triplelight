@@ -175,7 +175,7 @@ preserving the original floating-point multiply/divide/clamp order. A unit test
 checks bitwise equality across 756 generated star subsets. Estimator limitations,
 including the Q9 error, remain unchanged.
 
-For opt-in diagnosis, `RDFDB_PROFILE_PLAN=1` prints clone, exact-count/refinement,
+For opt-in diagnosis, `TRIPLELIGHT_PROFILE_PLAN=1` prints clone, exact-count/refinement,
 search, and complete `planned_order` nanoseconds. `optimizer_hotpath` reports whole
 query time without serialization. Subtracting preparation gives parsing,
 execution and materialization together, not a pure operator/kernel time. Normal

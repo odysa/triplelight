@@ -4,7 +4,7 @@ use triplelight::exec::QueryResult;
 use std::path::PathBuf;
 
 fn temp(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!("rdfdb-embedded-{name}-{}", std::process::id()))
+    std::env::temp_dir().join(format!("triplelight-embedded-{name}-{}", std::process::id()))
 }
 fn ask(db: &Database, query: &str) -> bool {
     match db.query(query).unwrap() { QueryResult::Boolean(b) => b, x => panic!("expected ASK: {x:?}") }
@@ -44,7 +44,7 @@ fn exclusive_open_and_recovery() {
     assert!(Database::open(&dir).is_err());
     let child = std::process::Command::new(std::env::current_exe().unwrap())
         .args(["--exact", "lock_child", "--nocapture"])
-        .env("RDFDB_LOCK_TEST_DIR", &dir).status().unwrap();
+        .env("TRIPLELIGHT_LOCK_TEST_DIR", &dir).status().unwrap();
     assert!(child.success());
     db.update(INSERT).unwrap();
     drop(db);
@@ -56,7 +56,7 @@ fn exclusive_open_and_recovery() {
 
 #[test]
 fn lock_child() {
-    if let Some(dir) = std::env::var_os("RDFDB_LOCK_TEST_DIR") {
+    if let Some(dir) = std::env::var_os("TRIPLELIGHT_LOCK_TEST_DIR") {
         assert!(Database::open(PathBuf::from(dir)).is_err());
     }
 }

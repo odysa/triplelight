@@ -1,4 +1,4 @@
-//! rdfdb: single-machine RDF store. See DESIGN.md.
+//! TripleLight: an embedded analytical RDF database. See DESIGN.md.
 pub mod model;
 pub mod storage;
 pub mod opt;

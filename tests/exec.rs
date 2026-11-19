@@ -252,9 +252,9 @@ fn fast_group_matches_general_group() {
     ];
     let fast: Vec<_> = queries.iter().map(|q| run(q)).collect();
     // SAFETY: test-local toggle; other tests merely take the (equivalent) general path while it is set.
-    unsafe { std::env::set_var("RDFDB_LEGACY_GROUP", "1") };
+    unsafe { std::env::set_var("TRIPLELIGHT_LEGACY_GROUP", "1") };
     let legacy: Vec<_> = queries.iter().map(|q| run(q)).collect();
-    unsafe { std::env::remove_var("RDFDB_LEGACY_GROUP") };
+    unsafe { std::env::remove_var("TRIPLELIGHT_LEGACY_GROUP") };
     for ((q, f), l) in queries.iter().zip(&fast).zip(&legacy) { assert_eq!(f, l, "{q}"); }
 }
 
@@ -315,7 +315,7 @@ fn aggregate_errors_poison_like_jena() {
     let q2 = "SELECT ?g (SUM(?v*2) AS ?s) (COUNT(?v*2) AS ?c) (MIN(?v*2) AS ?mn) (GROUP_CONCAT(?v*2) AS ?gc) WHERE { ?x <urn:g> ?g OPTIONAL { ?x <urn:v> ?v } } GROUP BY ?g";
     for legacy in [false, true] {
         // SAFETY: test-local toggle; other tests just take the equivalent general path while set.
-        if legacy { unsafe { std::env::set_var("RDFDB_LEGACY_GROUP", "1") } }
+        if legacy { unsafe { std::env::set_var("TRIPLELIGHT_LEGACY_GROUP", "1") } }
         assert_eq!(rows(q1), vec![
             vec!["\"x\"".into(), "-".into(), int(2), "-".into(), "-".into(), "-".into()],
             vec!["\"y\"".into(), "-".into(), int(1), "-".into(), "-".into(), "-".into()],
@@ -326,7 +326,7 @@ fn aggregate_errors_poison_like_jena() {
             vec!["\"y\"".into(), "-".into(), int(1), "-".into(), "-".into()],
             vec!["\"z\"".into(), int(6), int(1), int(6), "\"6\"".into()],
         ], "legacy={legacy}");
-        if legacy { unsafe { std::env::remove_var("RDFDB_LEGACY_GROUP") } }
+        if legacy { unsafe { std::env::remove_var("TRIPLELIGHT_LEGACY_GROUP") } }
     }
 }
 

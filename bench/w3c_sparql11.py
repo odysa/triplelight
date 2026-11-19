@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Run the W3C SPARQL 1.1 query test suite (rdf-tests) against the rdfdb CLI and report pass rates.
+"""Run the W3C SPARQL 1.1 query test suite (rdf-tests) against the triplelight CLI and report pass rates.
 
-Usage: w3c_sparql11.py <rdf-tests/sparql/sparql11 dir> <rdfdb binary> <out.json>
+Usage: w3c_sparql11.py <rdf-tests/sparql/sparql11 dir> <triplelight binary> <out.json>
 
-Categories: pass, fail (wrong result / unexpected error), unsupported (rdfdb returned an explicit Unsupported error),
-skip-named (test needs named graphs / FROM, which rdfdb does not store), skip-format (result format we don't compare,
+Categories: pass, fail (wrong result / unexpected error), unsupported (triplelight returned an explicit Unsupported error),
+skip-named (test needs named graphs / FROM, which triplelight does not store), skip-format (result format we don't compare,
 e.g. CSV/TSV result-format tests), plus syntax tests (positive must parse, negative must be rejected).
 """
 import json, os, subprocess, sys, tempfile, collections
