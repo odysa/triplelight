@@ -98,6 +98,9 @@ impl PyDatabase {
         let db = py.allow_threads(|| Database::open_with(&path, opts)).map_err(err)?;
         Ok(PyDatabase { db: Arc::new(db) })
     }
+    /// Creates a non-durable in-memory database.
+    #[staticmethod]
+    fn in_memory() -> Self { Self { db: Arc::new(Database::in_memory()) } }
     fn query(&self, py: Python<'_>, sparql: &str) -> PyResult<PyObject> {
         let db = Arc::clone(&self.db);
         let r = py.allow_threads(|| db.query(sparql)).map_err(err)?;

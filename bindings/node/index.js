@@ -38,6 +38,8 @@ class Database {
   static open(path, options = {}) {
     return async_(() => native.Database.open(String(path), options.initial ?? null)).then((raw) => new Database(raw));
   }
+  /** Creates a non-durable in-memory database. */
+  static inMemory() { return new Database(sync(() => native.Database.inMemory())); }
   query(sparql) { return async_(() => this._raw.query(sparql)); }
   querySync(sparql) { return sync(() => this._raw.querySync(sparql)); }
   queryJson(sparql) { return async_(() => this._raw.queryJson(sparql)); }

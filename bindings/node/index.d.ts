@@ -28,6 +28,8 @@ export class Database {
   constructor(path: string, options?: OpenOptions);
   /** Opens on a worker thread (recovery and the initial load can take a while). */
   static open(path: string, options?: OpenOptions): Promise<Database>;
+  /** Creates a non-durable in-memory database. */
+  static inMemory(): Database;
   /** Runs a SPARQL query on the current state. Evaluation runs on a worker thread; converting the result to JS
    * objects happens on the event loop when the Promise resolves (use `queryJson` for very large results). */
   query(sparql: string): Promise<QueryResult>;
