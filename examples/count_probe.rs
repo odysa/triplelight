@@ -25,13 +25,11 @@ fn normalize(result: QueryResult) -> Result<Vec<String>, Box<dyn Error>> {
     Ok(out)
 }
 fn scalar(result: &QueryResult) -> String {
-    if let QueryResult::Solutions { vars, rows } = result {
-        if vars.len() == 1 && rows.len() == 1 {
-            if let Some(oxrdf::Term::Literal(value)) = &rows[0][0] {
+    if let QueryResult::Solutions { vars, rows } = result
+        && vars.len() == 1 && rows.len() == 1
+            && let Some(oxrdf::Term::Literal(value)) = &rows[0][0] {
                 return value.value().to_owned();
             }
-        }
-    }
     String::new()
 }
 fn main() -> Result<(), Box<dyn Error>> {

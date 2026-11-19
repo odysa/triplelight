@@ -14,3 +14,6 @@ sha2.workspace = true
 
 [dev-dependencies]
 triplelight-exec.workspace = true
+
+[lints]
+workspace = true

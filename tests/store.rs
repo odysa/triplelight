@@ -47,7 +47,7 @@ fn overlay_matches_rebuilt_snapshot() {
         for _ in 0..5 {
             rng = rng.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
             let (s, p, o) = ((rng >> 33) % 15, (rng >> 40) % 3, (rng >> 48) % 15);
-            let c = if (rng >> 20) % 3 == 0 { Change::Delete } else { Change::Insert };
+            let c = if (rng >> 20).is_multiple_of(3) { Change::Delete } else { Change::Insert };
             batch.push((c, t(s, p, o)));
         }
         // A new literal term exercises delta-allocated IDs.

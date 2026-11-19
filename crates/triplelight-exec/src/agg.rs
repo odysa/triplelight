@@ -105,7 +105,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                     }
                     continue;
                 }
-                if let Some(set) = &mut seen[i] { if !set.insert(id) { continue } }
+                if let Some(set) = &mut seen[i] && !set.insert(id) { continue }
                 match (&mut states[i], s.kind) {
                     (State::Count(n), _) => *n += 1,
                     (State::Sum(acc, n), _) => {
@@ -114,7 +114,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                     }
                     (State::Best(best), Kind::Min) => if best.is_none_or(|b| cmp(id, b) == Ordering::Less) { *best = Some(id) },
                     (State::Best(best), Kind::Max) => if best.is_none_or(|b| cmp(id, b) != Ordering::Less) { *best = Some(id) },
-                    (State::Best(best), _) => if best.is_none() { *best = Some(id) },
+                    (State::Best(best), _) if best.is_none() => { *best = Some(id) },
                     _ => {}
                 }
             }

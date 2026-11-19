@@ -9,6 +9,13 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.100"
 
+# Clippy runs with -D warnings in CI. These lints flag deliberate design choices here (dense generic iterator types,
+# executor entry points with many inputs, enums whose variants differ in size by design); everything else is enforced.
+[workspace.lints.clippy]
+type_complexity = "allow"
+too_many_arguments = "allow"
+large_enum_variant = "allow"
+
 [workspace.dependencies]
 triplelight-core = { path = "crates/triplelight-core" }
 triplelight-storage = { path = "crates/triplelight-storage" }
@@ -38,6 +45,9 @@ default-run = "triplelight"
 [[bin]]
 name = "triplelight"
 path = "src/bin/triplelight.rs"
+
+[lints]
+workspace = true
 
 [features]
 # The SPARQL HTTP server (`triplelight serve` / `serve-store`). Off by default: TripleLight is embedded first.

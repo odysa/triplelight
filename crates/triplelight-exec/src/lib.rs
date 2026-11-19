@@ -318,7 +318,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 let standalone = (!scope_safe(right)).then(|| self.eval(right, vec![self.empty_row()]));
                 for row in l {
                     let merged = match &standalone { Some(r) => join_rows(vec![row.clone()], r.clone()), None => self.eval(right, vec![row.clone()]) };
-                    let ext: Vec<Row> = merged.into_iter().filter(|r| expression.as_ref().map_or(true, |e| self.ebv(e, r))).collect();
+                    let ext: Vec<Row> = merged.into_iter().filter(|r| expression.as_ref().is_none_or(|e| self.ebv(e, r))).collect();
                     if ext.is_empty() { out.push(row) } else { out.extend(ext) }
                 }
                 out
@@ -491,9 +491,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         if let Some(rows) = self.try_count_group(inner, keys, aggs, &input) { return rows; }
         let rows = self.eval(inner, input);
         let kidx: Vec<usize> = keys.iter().map(|v| self.var(v)).collect();
-        if std::env::var_os("TRIPLELIGHT_LEGACY_GROUP").is_none() {
-            if let Some(out) = self.try_fast_group(&rows, &kidx, aggs) { return out; }
-        }
+        if std::env::var_os("TRIPLELIGHT_LEGACY_GROUP").is_none()
+            && let Some(out) = self.try_fast_group(&rows, &kidx, aggs) { return out; }
         let mut groups: Vec<(Vec<TermId>, Vec<Row>)> = Vec::new();
         let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
         for r in rows {
@@ -1089,14 +1088,12 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                     } };
                     // Templates with an unbound or ill-typed slot produce no triple for this solution.
                     for d in delete {
-                        if let (Some(s), Some(p), Some(o)) = (ground(&d.subject), pred(&d.predicate), ground(&d.object)) {
-                            if let Ok(s) = NamedOrBlankNode::try_from(s) { out.push((Change::Delete, Triple::new(s, p, o))) }
-                        }
+                        if let (Some(s), Some(p), Some(o)) = (ground(&d.subject), pred(&d.predicate), ground(&d.object))
+                            && let Ok(s) = NamedOrBlankNode::try_from(s) { out.push((Change::Delete, Triple::new(s, p, o))) }
                     }
                     for i in insert {
-                        if let (Some(s), Some(p), Some(o)) = (term(&i.subject), pred(&i.predicate), term(&i.object)) {
-                            if let Ok(s) = NamedOrBlankNode::try_from(s) { out.push((Change::Insert, Triple::new(s, p, o))) }
-                        }
+                        if let (Some(s), Some(p), Some(o)) = (term(&i.subject), pred(&i.predicate), term(&i.object))
+                            && let Ok(s) = NamedOrBlankNode::try_from(s) { out.push((Change::Insert, Triple::new(s, p, o))) }
                     }
                 }
             }
