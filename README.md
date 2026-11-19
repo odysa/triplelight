@@ -214,6 +214,22 @@ disagree with Jena on query q5 (an unbound GROUP BY key in a join). Each answer 
 so requests are not back to back as in the Python and Node tables. Evidence:
 [report and raw answers]((internal link removed)).
 
+### Embedded HDT baseline (Java API, separate session, no TripleLight row)
+
+HDT 3.0.10 is a compressed, read-only triple store queried through Jena 4.3.2's engine. It was measured on its own, in a
+separate session from the JVM table above, under the same frozen workloads, answer checks and JVM limits. Summed query
+seconds, pass 1 / pass 2. **Lower is better.**
+
+| Workload | HDT 3.0.10 / Jena 4.3.2 |
+|---|---:|
+| LUBM-100 aggregates (30 timed requests) | 9.3 / 9.8 s |
+| WatDiv aggregates (42 timed requests) | 11.4 / 14.5 s |
+| BSBM BI, 10M triples (45 timed requests) | 164.7 / 171.3 s |
+
+All 408 scheduled requests passed the frozen answer gates. Each phase opens a pre-built HDT store; building it is not
+timed. This is not a same-session comparison with Jena TDB2 6.2.0, and like the JVM table it does not rank TripleLight.
+Evidence: [report and raw answers]((internal link removed)).
+
 ### Server (HTTP)
 
 Two analytical workloads, each measured in its own session on one Linux VM, with every engine capped at 4 CPUs and
