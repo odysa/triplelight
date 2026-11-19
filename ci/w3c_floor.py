@@ -10,7 +10,7 @@ import json, sys
 
 results = json.load(open(sys.argv[1]))
 floor = json.load(open(sys.argv[2]))
-passing = {r["name"] for r in results if r["outcome"] == "pass"}
+passing = {r["suite"] + "/" + r["test"] for r in results if r["outcome"] == "pass"}
 required = set(floor["must_pass"])
 lost = sorted(required - passing)
 gained = sorted(passing - required)
