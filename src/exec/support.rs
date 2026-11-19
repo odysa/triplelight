@@ -19,7 +19,7 @@ pub(super) fn unsupported(q: &Query) -> Option<String> {
 pub(super) fn pattern_unsupported(p: &GraphPattern) -> Option<String> {
     match p {
         GraphPattern::Bgp { .. } => None,
-        GraphPattern::Path { .. } => Some("property paths are not supported".into()),
+        GraphPattern::Path { .. } => None,
         GraphPattern::Graph { .. } => Some("GRAPH patterns (named graphs) are not supported (only the default graph)".into()),
         GraphPattern::Service { .. } => Some("SERVICE is not supported".into()),
         GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right } => {
@@ -62,6 +62,7 @@ fn expr_unsupported(e: &Expression) -> Option<String> {
         Expression::If(a, b, c) => expr_unsupported(a).or_else(|| expr_unsupported(b)).or_else(|| expr_unsupported(c)),
         Expression::Coalesce(l) => l.iter().find_map(expr_unsupported),
         Expression::Exists(p) => pattern_unsupported(p),
+        Expression::FunctionCall(Function::BNode, args) if !args.is_empty() => Some("BNODE(string) is not supported".into()),
         Expression::FunctionCall(f, args) => function_unsupported(f).or_else(|| args.iter().find_map(expr_unsupported)),
     }
 }
@@ -71,11 +72,13 @@ fn function_unsupported(f: &Function) -> Option<String> {
     match f {
         Str | Lang | LangMatches | Datatype | Iri | IsIri | IsBlank | IsLiteral | IsNumeric | StrLen | UCase | LCase
         | Contains | StrStarts | StrEnds | StrBefore | StrAfter | Concat | SubStr | Regex | Replace | Abs | Ceil
-        | Floor | Round | Year | Month | Day | Hours | Minutes | StrLang | StrDt | EncodeForUri => None,
+        | Floor | Round | Year | Month | Day | Hours | Minutes | Seconds | Timezone | Tz | Now | Rand | Uuid | StrUuid
+        | BNode | Md5 | Sha1 | Sha256 | Sha384 | Sha512 | StrLang | StrDt | EncodeForUri => None,
         Custom(iri) => match iri.as_str().strip_prefix("http://www.w3.org/2001/XMLSchema#") {
             Some(t) if XSD_CASTS.contains(&t) => None,
             _ => Some(format!("function <{}> is not supported", iri.as_str())),
         },
+        #[allow(unreachable_patterns)]
         other => Some(format!("function {other} is not supported")),
     }
 }

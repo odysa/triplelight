@@ -265,11 +265,11 @@ pub(super) fn eval<S: Snapshot + ?Sized>(ctx: &Ctx<'_, S>, e: &Expression, r: &R
         Expression::Exists(p) => Some(bool_term(ctx.exists(p, r))),
         Expression::If(c, a, b) => if ebv(&v(c)?)? { v(a) } else { v(b) },
         Expression::Coalesce(l) => l.iter().find_map(v),
-        Expression::FunctionCall(f, args) => call(f, args, &|e| v(e), ctx.base.as_deref()),
+        Expression::FunctionCall(f, args) => call(f, args, &|e| v(e), ctx.base.as_deref(), &ctx.now),
     }
 }
 
-fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Term>, base: Option<&str>) -> Option<Term> {
+fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Term>, base: Option<&str>, now: &str) -> Option<Term> {
     let a = |i: usize| v(args.get(i)?);
     // SPARQL string functions take string literals only (simple, xsd:string or language-tagged); anything else,
     // including numbers and other typed literals, is a type error (§17.4.3).
@@ -398,8 +398,50 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             let x = s(0)?;
             Some(simple(x.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect::<String>()))
         }
+        Function::Seconds => {
+            let t = a(0)?;
+            let l = lit(&t).filter(|l| xsd_local(l) == Some("dateTime"))?;
+            let (_, time) = l.value().split_once('T')?;
+            let (clock, _) = split_timezone(time);
+            Some(Num::Dec(Decimal::from_str(clock.get(6..)?).ok()?).term())
+        }
+        Function::Timezone | Function::Tz => {
+            let t = a(0)?;
+            let l = lit(&t).filter(|l| xsd_local(l) == Some("dateTime"))?;
+            let (_, time) = l.value().split_once('T')?;
+            let (_, tz) = split_timezone(time);
+            if matches!(f, Function::Tz) { return Some(simple(tz)) }
+            if tz.is_empty() { return None } // TIMEZONE of a value without a timezone is an error
+            let minutes = if tz == "Z" { 0 } else {
+                let sign = if tz.starts_with('-') { -1 } else { 1 };
+                sign * (tz.get(1..3)?.parse::<i64>().ok()? * 60 + tz.get(4..6)?.parse::<i64>().ok()?)
+            };
+            let (h, m) = (minutes.abs() / 60, minutes.abs() % 60);
+            let mut d = String::from(if minutes < 0 { "-PT" } else { "PT" });
+            if minutes == 0 { d.push_str("0S") }
+            if h > 0 { d.push_str(&format!("{h}H")) }
+            if m > 0 { d.push_str(&format!("{m}M")) }
+            Some(Literal::new_typed_literal(d, NamedNode::new_unchecked("http://www.w3.org/2001/XMLSchema#dayTimeDuration")).into())
+        }
+        Function::Now => Some(Literal::new_typed_literal(now, xsd::DATE_TIME).into()),
+        Function::Rand => Some(Num::Dbl((random_u64() >> 11) as f64 / (1u64 << 53) as f64).term()),
+        Function::Uuid => Some(NamedNode::new_unchecked(format!("urn:uuid:{}", uuid_v4())).into()),
+        Function::StrUuid => Some(simple(uuid_v4())),
+        Function::BNode if args.is_empty() => Some(oxrdf::BlankNode::default().into()),
+        Function::Md5 | Function::Sha1 | Function::Sha256 | Function::Sha384 | Function::Sha512 => {
+            use sha2::Digest;
+            let x = plain(0)?;
+            let bytes: Vec<u8> = match f {
+                Function::Md5 => md5::Md5::digest(x.as_bytes()).to_vec(),
+                Function::Sha1 => sha1::Sha1::digest(x.as_bytes()).to_vec(),
+                Function::Sha256 => sha2::Sha256::digest(x.as_bytes()).to_vec(),
+                Function::Sha384 => sha2::Sha384::digest(x.as_bytes()).to_vec(),
+                _ => sha2::Sha512::digest(x.as_bytes()).to_vec(),
+            };
+            Some(simple(bytes.iter().map(|b| format!("{b:02x}")).collect::<String>()))
+        }
         Function::Custom(f) => xsd_cast(f.as_str(), &a(0)?),
-        _ => None, // hashes, NOW/RAND/UUID, BNODE and RDF-1.2 functions: not supported in P1
+        _ => None, // BNODE(string) and RDF-1.2 functions are rejected up front by `support`
     }
 }
 
@@ -577,4 +619,55 @@ pub(super) fn java_float_lexical(x: f32) -> String {
         let m = if m.contains('.') { m.to_string() } else { format!("{m}.0") };
         format!("{m}E{e}")
     }
+}
+
+/// `("12:30:05.5", "-05:00")` from the time part of an xsd:dateTime; the timezone is `""` when absent.
+fn split_timezone(time: &str) -> (&str, &str) {
+    if let Some(c) = time.strip_suffix('Z') { return (c, "Z") }
+    if time.len() > 6 {
+        let (c, tz) = time.split_at(time.len() - 6);
+        if (tz.starts_with('+') || tz.starts_with('-')) && tz.as_bytes()[3] == b':' { return (c, tz) }
+    }
+    (time, "")
+}
+
+/// A random 64-bit value from the standard library's randomly keyed hasher (no RNG dependency); good enough for
+/// RAND() and UUID(), not for cryptography.
+fn random_u64() -> u64 {
+    use std::hash::{BuildHasher, Hasher};
+    use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let mut h = std::collections::hash_map::RandomState::new().build_hasher();
+    h.write_u64(COUNTER.fetch_add(1, AtomicOrdering::Relaxed));
+    h.write_u128(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos()));
+    h.finish()
+}
+
+/// A random (version 4) UUID in lowercase hex.
+fn uuid_v4() -> String {
+    let mut b = [0u8; 16];
+    b[..8].copy_from_slice(&random_u64().to_le_bytes());
+    b[8..].copy_from_slice(&random_u64().to_le_bytes());
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    let h: String = b.iter().map(|x| format!("{x:02x}")).collect();
+    format!("{}-{}-{}-{}-{}", &h[..8], &h[8..12], &h[12..16], &h[16..20], &h[20..])
+}
+
+/// The current time as an xsd:dateTime lexical form in UTC with milliseconds (NOW() is fixed per query).
+pub(super) fn now_lexical() -> String {
+    let d = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+    let secs = d.as_secs() as i64;
+    let (days, rem) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
+    // Civil date from days since 1970-01-01 (Howard Hinnant's algorithm).
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!("{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z", rem / 3600, rem / 60 % 60, rem % 60, d.subsec_millis())
 }

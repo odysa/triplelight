@@ -25,6 +25,8 @@ spargebra = "0.4.8"
 tiny_http = "0.12.0"
 
 sha2 = "0.10"
+sha1 = "0.10"
+md5 = { package = "md-5", version = "0.10" }
 
 # glibc malloc costs ~20-25% on Linux (BSBM/LUBM in the VM); on macOS the system allocator is as fast, so Linux only.
 [target.'cfg(target_os = "linux")'.dependencies]
