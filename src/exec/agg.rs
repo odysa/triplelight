@@ -11,7 +11,7 @@ use crate::model::TermId;
 use crate::storage::Snapshot;
 use expr::Num;
 use oxrdf::{Literal, Term, Variable};
-use spargebra::algebra::{AggregateExpression, AggregateFunction, Expression};
+use crate::sparql::{AggregateExpression, AggregateFunction, Expression};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};

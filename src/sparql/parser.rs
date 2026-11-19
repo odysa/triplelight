@@ -51,7 +51,8 @@ enum Elem {
     Triples(Vec<TriplePattern>),
     Path(TermPattern, PropertyPathExpression, TermPattern),
     Filter(Expression),
-    Optional(GraphPattern),
+    /// The group, and whether its top-level Filter comes from the group's own FILTER elements.
+    Optional(GraphPattern, bool),
     Minus(GraphPattern),
     Bind(Expression, Variable),
     Other(GraphPattern),
@@ -74,6 +75,8 @@ struct Parser<'a> {
     /// Parsing a CONSTRUCT or INSERT/DELETE template: its blank nodes are not pattern variables, so they are outside
     /// the basic-graph-pattern label scope check.
     template: bool,
+    /// Whether the group just translated ended with its own FILTERs (read by OPTIONAL).
+    last_group_filtered: bool,
     /// Aggregates collected while parsing SELECT / HAVING / ORDER BY expressions; `None` where aggregates are invalid.
     aggregates: Option<Vec<(Variable, AggregateExpression)>>,
     in_aggregate: bool,
@@ -92,7 +95,7 @@ impl<'a> Parser<'a> {
         if let Some(b) = base { if oxiri::Iri::parse(b.to_string()).is_err() { return Err(Self::error_at(src, 0, format!("invalid base IRI {b}"))) } }
         Ok(Parser {
             src, toks, i: 0, base: base.map(str::to_string), prefixes: HashMap::new(), salt, counter: 0,
-            bnode_block: HashMap::new(), block: 0, data_bnodes: HashSet::new(), template: false, aggregates: None, in_aggregate: false,
+            bnode_block: HashMap::new(), block: 0, data_bnodes: HashSet::new(), template: false, last_group_filtered: false, aggregates: None, in_aggregate: false,
         })
     }
 
@@ -469,6 +472,7 @@ impl<'a> Parser<'a> {
             let p = self.modifiers(inner, Form::Select(sel))?;
             self.aggregates = saved;
             self.expect_punct("}")?;
+            self.last_group_filtered = false;
             return Ok(p);
         }
         // Aggregates are not allowed in WHERE; save the SELECT-level collection while inside.
@@ -477,7 +481,15 @@ impl<'a> Parser<'a> {
         let mut elems: Vec<Elem> = Vec::new();
         loop {
             if self.eat_punct("}") { break }
-            if self.is_kw("OPTIONAL") { self.next(); let g = self.group_graph_pattern()?; self.block += 1; elems.push(Elem::Optional(g)); }
+            if self.is_kw("OPTIONAL") {
+                self.next();
+                let g = self.group_graph_pattern()?;
+                // Only the OPTIONAL group's own FILTERs become the LeftJoin condition (§18.2.2.6); a filter that comes
+                // from a nested group stays inside the right-hand side.
+                let own = std::mem::take(&mut self.last_group_filtered);
+                self.block += 1;
+                elems.push(Elem::Optional(g, own));
+            }
             else if self.is_kw("MINUS") { self.next(); let g = self.group_graph_pattern()?; self.block += 1; elems.push(Elem::Minus(g)); }
             else if self.is_kw("GRAPH") {
                 self.next();
@@ -556,9 +568,9 @@ impl<'a> Parser<'a> {
                     flush(&mut g, &mut bgp);
                     g = join(g, GraphPattern::Path { subject: s, path, object: o });
                 }
-                Elem::Optional(a) => {
+                Elem::Optional(a, own_filter) => {
                     flush(&mut g, &mut bgp);
-                    let (right, expression) = match a { GraphPattern::Filter { expr, inner } => (*inner, Some(expr)), a => (a, None) };
+                    let (right, expression) = match a { GraphPattern::Filter { expr, inner } if own_filter => (*inner, Some(expr)), a => (a, None) };
                     g = GraphPattern::LeftJoin { left: Box::new(g), right: Box::new(right), expression };
                 }
                 Elem::Minus(a) => { flush(&mut g, &mut bgp); g = GraphPattern::Minus { left: Box::new(g), right: Box::new(a) } }
@@ -573,6 +585,7 @@ impl<'a> Parser<'a> {
             }
         }
         flush(&mut g, &mut bgp);
+        self.last_group_filtered = !filters.is_empty();
         if let Some(f) = filters.into_iter().reduce(|a, b| Expression::And(Box::new(a), Box::new(b))) {
             g = GraphPattern::Filter { expr: f, inner: Box::new(g) };
         }

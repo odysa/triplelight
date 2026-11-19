@@ -16,9 +16,9 @@ use crate::model::{Perm, TermId};
 use crate::storage::Snapshot;
 use crate::opt::{self, stats::Stats};
 use oxrdf::{BlankNode, Literal, Term, Variable};
-use spargebra::algebra::{AggregateExpression, AggregateFunction, Expression, Function, GraphPattern, OrderExpression};
-use spargebra::term::{GroundTerm, NamedNodePattern, TermPattern, TriplePattern};
-use spargebra::Query;
+use crate::sparql::{AggregateExpression, AggregateFunction, Expression, Function, GraphPattern, OrderExpression};
+use crate::sparql::{GroundTerm, NamedNodePattern, TermPattern, TriplePattern};
+use crate::sparql::Query;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
@@ -107,7 +107,7 @@ pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Resu
 }
 
 fn run<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
-    let q = spargebra::SparqlParser::new().parse_query(text).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
+    let q = crate::sparql::parse_query(text, None).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
     run_query(snap, &q, opts)
 }
 
@@ -115,7 +115,7 @@ fn run_query<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>) -> Result<Que
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
     if let Some(reason) = support::unsupported(q) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
     let mut ctx = Ctx::new(snap);
-    ctx.base = match q { Query::Select { base_iri, .. } | Query::Ask { base_iri, .. } | Query::Construct { base_iri, .. } | Query::Describe { base_iri, .. } => base_iri.as_ref().map(|b| b.as_str().to_string()) };
+    ctx.base = match q { Query::Select { base_iri, .. } | Query::Ask { base_iri, .. } | Query::Construct { base_iri, .. } | Query::Describe { base_iri, .. } => base_iri.clone() };
     ctx.wcoj = opts.wcoj;
     let stats = opts.stats;
     ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
@@ -985,7 +985,7 @@ fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
         GraphPattern::Path { subject, object, .. } => for tp in [subject, object] {
             match tp {
                 TermPattern::Variable(v) => add(v.as_str().to_string()),
-                // spargebra splits `a (p|q)/r ?x` into two paths joined on a fresh blank node.
+                // The parser splits `a (p|q)/r ?x` into two paths joined on a fresh blank node.
                 TermPattern::BlankNode(b) => add(format!("_b{}", b.as_str())),
                 _ => {}
             }
@@ -1037,11 +1037,11 @@ fn walk_expr(e: &Expression, out: &mut Vec<String>) {
 pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::store::Change, oxrdf::Triple)>, QueryError> {
     use crate::store::Change;
     use oxrdf::{NamedOrBlankNode, Triple};
-    use spargebra::term::GraphName;
-    use spargebra::term::{GraphNamePattern, GroundTermPattern};
-    use spargebra::GraphUpdateOperation as Op;
+    use crate::sparql::GraphName;
+    use crate::sparql::{GraphNamePattern, GroundTermPattern};
+    use crate::sparql::GraphUpdateOperation as Op;
     let unsupported = |what: &str| QueryError::new(QueryErrorKind::Unsupported, format!("{what} is not supported yet"));
-    let u = spargebra::SparqlParser::new().parse_update(text).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
+    let u = crate::sparql::parse_update(text, None).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
     let mut out = Vec::new();
     for op in &u.operations {
         match op {
@@ -1054,8 +1054,9 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                 let o: Term = match &q.object { GroundTerm::NamedNode(n) => n.clone().into(), GroundTerm::Literal(l) => l.clone().into() };
                 out.push((Change::Delete, Triple::new(q.subject.clone(), q.predicate.clone(), o)));
             },
-            Op::DeleteInsert { delete, insert, using, pattern } => {
+            Op::DeleteInsert { delete, insert, with, using, pattern } => {
                 if using.is_some() { return Err(unsupported("USING")) }
+                if with.is_some() { return Err(unsupported("WITH (named graphs)")) }
                 if delete.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph))
                     || insert.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph)) { return Err(unsupported("named graphs")) }
                 let q = Query::Select { dataset: None, pattern: (**pattern).clone(), base_iri: None };
@@ -1093,8 +1094,7 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                     }
                 }
             }
-            Op::Load { .. } => return Err(unsupported("LOAD")),
-            Op::Clear { .. } | Op::Create { .. } | Op::Drop { .. } => return Err(unsupported("graph management")),
+            Op::Management { operation } => return Err(unsupported(operation)),
         }
     }
     Ok(out)

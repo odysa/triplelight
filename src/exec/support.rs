@@ -3,8 +3,8 @@
 //! Principle 1 is "correct answers first": a construct we do not evaluate must fail with `Unsupported`, never be
 //! ignored (a `GRAPH` pattern answered from the default graph) or turned into a per-row evaluation error (a `NOW()`
 //! that makes every FILTER false). The check runs on the parsed query before any evaluation.
-use spargebra::algebra::{AggregateExpression, Expression, Function, GraphPattern, OrderExpression};
-use spargebra::Query;
+use crate::sparql::{AggregateExpression, Expression, Function, GraphPattern, OrderExpression};
+use crate::sparql::Query;
 
 /// `Some(reason)` if `q` uses a feature the evaluator does not support.
 pub(super) fn unsupported(q: &Query) -> Option<String> {
@@ -35,7 +35,7 @@ pub(super) fn pattern_unsupported(p: &GraphPattern) -> Option<String> {
         })),
         GraphPattern::Group { inner, aggregates, .. } => pattern_unsupported(inner).or_else(|| aggregates.iter().find_map(|(_, a)| match a {
             AggregateExpression::FunctionCall { expr, name, .. } => match name {
-                spargebra::algebra::AggregateFunction::Custom(f) => Some(format!("custom aggregate <{}> is not supported", f.as_str())),
+                crate::sparql::AggregateFunction::Custom(f) => Some(format!("custom aggregate <{}> is not supported", f.as_str())),
                 _ => expr_unsupported(expr),
             },
             AggregateExpression::CountSolutions { .. } => None,

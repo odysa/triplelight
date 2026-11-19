@@ -5,9 +5,9 @@ use oxrdf::Term;
 use triplelight::opt::plan::{JoinTree, Slot, TriplePattern};
 use triplelight::opt::{PlannerOptions, Stats, plan_bgp_with_options, q_error};
 use triplelight::storage::{MemorySnapshot, Snapshot};
-use spargebra::algebra::GraphPattern;
-use spargebra::term::{NamedNodePattern, TermPattern};
-use spargebra::{Query, SparqlParser};
+use triplelight::sparql::GraphPattern;
+use triplelight::sparql::{NamedNodePattern, TermPattern};
+use triplelight::sparql::Query;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs;
@@ -15,7 +15,7 @@ use std::io::{self, BufReader};
 use std::path::Path;
 use std::time::Instant;
 
-fn bgp(pattern: &GraphPattern) -> Result<Vec<spargebra::term::TriplePattern>, String> {
+fn bgp(pattern: &GraphPattern) -> Result<Vec<triplelight::sparql::TriplePattern>, String> {
     match pattern{
  GraphPattern::Bgp{patterns}=>Ok(patterns.clone()),
  GraphPattern::Project{inner,..}=>bgp(inner),
@@ -46,7 +46,7 @@ fn encode(
     text: &str,
     snapshot: &dyn Snapshot,
 ) -> Result<Option<Vec<TriplePattern>>, Box<dyn Error>> {
-    let query = SparqlParser::new().parse_query(text)?;
+    let query = triplelight::sparql::parse_query(text, None)?;
     let Query::Select { pattern, .. } = query else {
         return Err(io::Error::other("expected SELECT").into());
     };
