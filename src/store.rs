@@ -334,17 +334,7 @@ impl Store {
         self.check_poisoned()?;
         let mut p = self.pending.lock().unwrap();
         let cur = p.latest.clone();
-        let mut rec = Vec::new();
-        // Presence as of the changes applied so far in this set (a set may insert and later delete a triple).
-        let mut state: HashMap<Triple, bool> = HashMap::new();
-        for (c, t) in changes {
-            let present = match state.get(t) {
-                Some(&v) => v,
-                None => match ids_if_known(&cur, t)? { Some(spo) => cur.contains(spo)?, None => false },
-            };
-            if (*c == Change::Insert) != present { rec.push((*c, t.clone())) }
-            state.insert(t.clone(), *c == Change::Insert);
-        }
+        let rec = net_changes(&cur, changes)?;
         // Even a no-op must wait for earlier accepted changes it may have observed.
         if rec.is_empty() { return Ok((p.seq, 0)) }
         for (c, t) in &rec { p.buf.push_str(if *c == Change::Insert { "+ " } else { "- " }); p.buf.push_str(&t.to_string()); p.buf.push_str(" .\n"); }
@@ -426,6 +416,35 @@ fn ids_if_known(o: &Overlay, t: &Triple) -> Result<Option<[TermId; 3]>, StorageE
 }
 
 /// New overlay = `cur` + one committed record (copy-on-write delta).
+/// The changes of `changes` that actually change `cur`: inserting a present triple or deleting an absent one is
+/// dropped. Presence is tracked through the set, which may insert and later delete the same triple.
+fn net_changes(cur: &Overlay, changes: &[(Change, Triple)]) -> std::io::Result<Vec<(Change, Triple)>> {
+    let mut rec = Vec::new();
+    let mut state: HashMap<Triple, bool> = HashMap::new();
+    for (c, t) in changes {
+        let present = match state.get(t) {
+            Some(&v) => v,
+            None => match ids_if_known(cur, t)? { Some(spo) => cur.contains(spo)?, None => false },
+        };
+        if (*c == Change::Insert) != present { rec.push((*c, t.clone())) }
+        state.insert(t.clone(), *c == Change::Insert);
+    }
+    Ok(rec)
+}
+
+impl Overlay {
+    /// A read snapshot over `base` with no pending changes: the starting point of an in-memory, non-durable store
+    /// (used by the WebAssembly build, which has no file system).
+    pub fn from_base(base: Arc<dyn Snapshot>) -> Overlay { Overlay { base, delta: Arc::new(Delta::default()) } }
+
+    /// This snapshot with `changes` applied, in memory and without a WAL, plus the number of triples that actually
+    /// changed.
+    pub fn with_changes(&self, changes: &[(Change, Triple)]) -> std::io::Result<(Overlay, usize)> {
+        let rec = net_changes(self, changes)?;
+        Ok((apply(self, &rec)?, rec.len()))
+    }
+}
+
 fn apply(cur: &Overlay, rec: &[(Change, Triple)]) -> std::io::Result<Overlay> {
     let mut d: Delta = (*cur.delta).clone();
     let intern = |d: &mut Delta, term: Term| -> std::io::Result<TermId> {
