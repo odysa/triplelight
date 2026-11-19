@@ -176,7 +176,28 @@ fn run_query<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>) -> Result<Que
             }
             Ok(QueryResult::Graph(out))
         }
-        Query::Describe { .. } => Err(QueryError::new(QueryErrorKind::Unsupported, "DESCRIBE is not supported yet")),
+        Query::Describe { pattern, .. } => {
+            // Like Jena's default: every triple whose subject is a described resource, plus, recursively, the triples
+            // of blank nodes reached as objects (so a description never ends in a dangling blank node).
+            ctx.register_all(pattern);
+            let rows = ctx.eval(pattern, vec![ctx.empty_row()]);
+            let mut queue: Vec<TermId> = Vec::new();
+            let mut seen = HashSet::new();
+            for r in &rows { for &id in r { if id != UNBOUND && id.0 >> 60 != 0xe && seen.insert(id) { queue.push(id) } } }
+            let mut out = Vec::new();
+            while let Some(s) = queue.pop() {
+                let Ok(subject) = oxrdf::NamedOrBlankNode::try_from(ctx.resolve(s)) else { continue };
+                let mut triples = Vec::new();
+                ctx.scan_each(Perm::Spo, &[s], |_, p, o| triples.push((p, o)));
+                for (p, o) in triples {
+                    let Term::NamedNode(p) = ctx.resolve(p) else { continue };
+                    let object = ctx.resolve(o);
+                    if matches!(object, Term::BlankNode(_)) && seen.insert(o) { queue.push(o) }
+                    out.push(oxrdf::Triple::new(subject.clone(), p, object));
+                }
+            }
+            Ok(QueryResult::Graph(out))
+        }
     }
 }
 

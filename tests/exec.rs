@@ -84,7 +84,8 @@ fn id_results_serialize_like_decoded() {
 fn errors_carry_their_kind() {
     use triplelight::exec::QueryErrorKind;
     assert_eq!(query(&store(), "SELECT WHERE {").unwrap_err().kind, QueryErrorKind::Syntax);
-    assert_eq!(query(&store(), "DESCRIBE <http://ex/alice>").unwrap_err().kind, QueryErrorKind::Unsupported);
+    assert_eq!(query(&store(), "SELECT * WHERE { ?s ?p ?o } LIMIT 1 FROM <urn:g>").unwrap_err().kind, QueryErrorKind::Syntax);
+    assert_eq!(query(&store(), "SELECT * FROM <urn:g> WHERE { ?s ?p ?o }").unwrap_err().kind, QueryErrorKind::Unsupported);
 }
 
 /// A dictionary failure during query evaluation is a Storage error, not a missing result.
@@ -702,4 +703,16 @@ fn decimal_boundaries_are_exact_or_error() {
     assert!(v("SELECT ((9999999.9 * 9999999.9) AS ?r) {}").contains("99999998000000.01"));
     assert!(v("SELECT ((1.0 / 8) AS ?r) {}").contains("0.125"));
     assert!(v("SELECT ((1.0 / 3) AS ?r) {}").contains("0.333333"));
+}
+
+#[test]
+fn describe_returns_subject_triples_and_blank_node_closure() {
+    let data = "<urn:a> <urn:p> <urn:b> .\n<urn:a> <urn:q> _:x .\n_:x <urn:r> \"deep\" .\n<urn:b> <urn:p> <urn:c> .\n<urn:z> <urn:p> <urn:a> .\n";
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let count = |q: &str| match query(&s, q).unwrap() { QueryResult::Graph(t) => t.len(), r => panic!("{r:?}") };
+    // <urn:a>'s own two triples plus the blank node's triple; <urn:z>'s triple about <urn:a> is not included.
+    assert_eq!(count("DESCRIBE <urn:a>"), 3);
+    assert_eq!(count("DESCRIBE ?x WHERE { ?x <urn:p> <urn:c> }"), 1);
+    assert_eq!(count("DESCRIBE <urn:a> <urn:b>"), 4);
+    assert_eq!(count("DESCRIBE <urn:nothing>"), 0);
 }
