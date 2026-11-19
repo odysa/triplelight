@@ -84,7 +84,7 @@ jobs:
           python -m venv .venv
           . .venv/bin/activate
           pip install -q "maturin>=1.7,<2" pytest
-          maturin develop --release
+          maturin develop --release --locked
           pytest -q tests
 
   node:
@@ -103,7 +103,8 @@ jobs:
       - name: Build and test
         working-directory: bindings/node
         run: |
-          npm run build
+          cargo build --release --locked
+          node scripts/copy-native.js release
           npm test
 
   wasm:
@@ -125,5 +126,6 @@ jobs:
       - name: Build and test
         working-directory: bindings/wasm
         run: |
-          npm run build
+          cargo build --release --locked --target wasm32-unknown-unknown
+          node scripts/bindgen.js
           npm test
