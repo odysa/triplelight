@@ -810,7 +810,6 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
- "oxrdf",
  "triplelight",
 ]
 

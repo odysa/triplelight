@@ -7,7 +7,7 @@ use std::sync::Arc;
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject, Task};
 use napi_derive::napi;
-use oxrdf::{Literal, Term};
+use triplelight::rdf::{Literal, Term};
 use triplelight::embedded::{Database as Db, DatabaseError, DatabaseOptions, ReadSnapshot};
 use triplelight::exec::QueryResult;
 
