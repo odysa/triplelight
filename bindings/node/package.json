@@ -9,7 +9,7 @@
   "scripts": {
     "build": "cargo build --release && node scripts/copy-native.js release",
     "build:debug": "cargo build && node scripts/copy-native.js debug",
-    "test": "node --test test/"
+    "test": "node --test test/*.test.js"
   },
   "license": "UNLICENSED"
 }
