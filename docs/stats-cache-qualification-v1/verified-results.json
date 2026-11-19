@@ -1,0 +1,362 @@
+{
+  "m000_p00_q1.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m000_p01_q3.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m000_p02_q2.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m000_p03_q2.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m000_p04_q4.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m000_p05_q5.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 14
+  },
+  "m000_p06_q5.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 25
+  },
+  "m000_p07_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 14
+  },
+  "m000_p08_q5.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 26
+  },
+  "m000_p09_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 49
+  },
+  "m000_p10_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 32
+  },
+  "m000_p11_q7.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 0
+  },
+  "m000_p12_q8.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m000_p13_q7.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 2
+  },
+  "m000_p14_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 53
+  },
+  "m001_p00_q1.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m001_p01_q3.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m001_p02_q2.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m001_p03_q2.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m001_p04_q4.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m001_p05_q5.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 31
+  },
+  "m001_p06_q5.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 26
+  },
+  "m001_p07_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 20
+  },
+  "m001_p08_q5.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 31
+  },
+  "m001_p09_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 76
+  },
+  "m001_p10_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 56
+  },
+  "m001_p11_q7.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 71
+  },
+  "m001_p12_q8.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m001_p13_q7.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 0
+  },
+  "m001_p14_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 19
+  },
+  "m002_p00_q1.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m002_p01_q3.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m002_p02_q2.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m002_p03_q2.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m002_p04_q4.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m002_p05_q5.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 26
+  },
+  "m002_p06_q5.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 33
+  },
+  "m002_p07_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 55
+  },
+  "m002_p08_q5.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 28
+  },
+  "m002_p09_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 13
+  },
+  "m002_p10_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 20
+  },
+  "m002_p11_q7.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 107
+  },
+  "m002_p12_q8.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m002_p13_q7.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 14
+  },
+  "m002_p14_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 7
+  },
+  "m003_p00_q1.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m003_p01_q3.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m003_p02_q2.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m003_p03_q2.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m003_p04_q4.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m003_p05_q5.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 15
+  },
+  "m003_p06_q5.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 41
+  },
+  "m003_p07_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 20
+  },
+  "m003_p08_q5.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 16
+  },
+  "m003_p09_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 0
+  },
+  "m003_p10_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 72
+  },
+  "m003_p11_q7.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 0
+  },
+  "m003_p12_q8.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": true,
+    "rows": 10
+  },
+  "m003_p13_q7.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 51
+  },
+  "m003_p14_q6.rq": {
+    "primary_jena_gate_pass": true,
+    "exact_baseline_bag_pass": true,
+    "ordered_baseline_sequence_pass": null,
+    "rows": 24
+  }
+}

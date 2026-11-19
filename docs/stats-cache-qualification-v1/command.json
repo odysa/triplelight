@@ -1,0 +1,20 @@
+[
+  "<agent-workspace>/scratch/analytical25-venv/bin/python",
+  "/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/validator-source/http_measure.py",
+  "--workload",
+  "/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/workload",
+  "--reference",
+  "/private/tmp/rdf-jianlin-analytical25/bsbm10-holdout-v1/jena",
+  "--out",
+  "/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/queries",
+  "--runtime-evidence",
+  "/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/runtime.json",
+  "--numeric-inputs",
+  "/private/tmp/rdf-jianlin-analytical25/numeric-diagnostics-10m",
+  "--numeric-freeze-sha256",
+  "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+  "--lock-owner",
+  "Jianlin task34 stats c3a86d46 BI60 correctness",
+  "--timeout",
+  "120"
+]

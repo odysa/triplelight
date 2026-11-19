@@ -1,0 +1,23 @@
+{
+  "schema": "owned-import-supervisor-v1",
+  "command": [
+    "python3",
+    "/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/run.py"
+  ],
+  "root": "/private/tmp/rdf-jianlin-analytical25",
+  "owner": "Jianlin task34 stats c3a86d46 BI60 correctness",
+  "start": {
+    "time_unix": 1795056867.729758,
+    "allocated_bytes": 21185351680,
+    "free_bytes": 230971043840,
+    "abort": null
+  },
+  "complete": false,
+  "approved_cap_bytes": 51539607552,
+  "free_floor_bytes": 42949672960,
+  "sample_seconds": 2,
+  "guards_are_sampled": true,
+  "pid": 55013,
+  "exit_code": 1,
+  "end_unix": 1795056876.835799
+}

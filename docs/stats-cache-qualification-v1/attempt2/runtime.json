@@ -1,0 +1,40 @@
+{
+  "system": "rdfdb",
+  "endpoint": "http://127.0.0.1:31466/sparql",
+  "source_or_image": "c3a86d465c79bb42a5e1ca0323b8e7bcb1688aa2",
+  "dataset_sha256": "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
+  "threads": 4,
+  "memory_configuration": {
+    "cache_mib": 10240,
+    "host_no_container_cap": true
+  },
+  "cache_profile": "no-answer-cache",
+  "binary": {
+    "sha256": "0992a98cebf94d64108c0c01c529e10796d771de798323ebf8361ffafc682c4d",
+    "bytes": 6047360,
+    "commit": "c3a86d465c79bb42a5e1ca0323b8e7bcb1688aa2"
+  },
+  "server_command": [
+    "/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/triplelight-c3a86d46",
+    "serve-store",
+    "/private/tmp/rdf-jianlin-analytical25/bsbm10-parameter-check/rdfdb-store",
+    "31466",
+    "--disk",
+    "--cache-mb=10240"
+  ],
+  "store_manifest_hashes": {
+    "CURRENT": "c36f5a9f26ed4ae7181f6c7b81fbbce579587d0f243e1786347a5017a9081781",
+    "LOCK": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "base-0/MANIFEST": "cf1a008449468fa5404216568ee259ade98220c945b90e39944364c03efaae24",
+    "base-0/dictionary.id": "013f5930d800fed7084e256facdf84d0768d339e7a643bebf2c24db414d9b21a",
+    "base-0/dictionary.term": "00331e01aa06097184dc09e8415b32372ead69b4ef6a30cee37341a2edc45cbf",
+    "base-0/ops": "69e868981192f0685857e85e35d1b963eb18e22965f25933319b30b5644dff61",
+    "base-0/osp": "f8c8a39af0456395667627f145ba4a04368e10eb6725639f1a1a5af3eef34380",
+    "base-0/pos": "835efafb0abe679cdcec128fd00b8deea5802f2f7f336862e951258d097cc803",
+    "base-0/pso": "db678a731a24cd12103a40f0b0d473095341a2a05f7827ce78120cedd17fe41f",
+    "base-0/sop": "6a1c480435697b69cb0f636ccbdfbf7a14afed15b8506efe1ae2e20378c64bc6",
+    "base-0/spo": "e82fa7028a18e46719f7bdaf6a05e7533c92d71c186af7f29739e2be65115cdf",
+    "wal.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "scope": "host candidate correctness only; historical VM output comparison is not an A/B timing"
+}

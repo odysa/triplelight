@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/validator-source/http_measure.py", line 203, in <module>
+    run(args)
+    ~~~^^^^^^
+  File "/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/validator-source/http_measure.py", line 79, in run
+    frozen = FrozenInputs(args.numeric_inputs, args.numeric_freeze_sha256,
+                          manifest['source_data_sha256'], hashlib.sha256(manifest_raw).hexdigest())
+  File "/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/validator-source/envelope_qualify.py", line 91, in __init__
+    if hashlib.sha256((Path(__file__).parent/name).read_bytes()).hexdigest()!=digest:
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "<home>/.local/share/uv/python/cpython-3.14.3-macos-aarch64-none/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>/.local/share/uv/python/cpython-3.14.3-macos-aarch64-none/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/validator-source/freeze_numeric.py'

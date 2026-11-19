@@ -1,0 +1,27 @@
+{
+  "complete": true,
+  "source_commit": "c3a86d465c79bb42a5e1ca0323b8e7bcb1688aa2",
+  "binary_sha256": "0992a98cebf94d64108c0c01c529e10796d771de798323ebf8361ffafc682c4d",
+  "queries": 60,
+  "primary_jena_gate_pass": 60,
+  "exact_baseline_bags_pass": 60,
+  "ordered_baseline_sequences_pass": 36,
+  "numeric_freeze_sha256": "a9dd62b09ae40919c14bd28bd626ef8962190f1854b817b09b6a2ce6f9c11244",
+  "workload_manifest_sha256": "638126af630e952e0ee85a98778c274e64d52f9b0fe6456f5e9c70342e2ba13a",
+  "reference_files_match_frozen_hashes": true,
+  "source_store_binary_unchanged": true,
+  "pids_absent": [
+    47312,
+    47308,
+    55013,
+    73609,
+    86382,
+    55108,
+    73708,
+    86464
+  ],
+  "ps_stdout": "  PID COMM\n",
+  "comparative_timing_claim": false,
+  "failed_setup_attempts_retained": 2,
+  "verified_unix": 1795057334.571193
+}

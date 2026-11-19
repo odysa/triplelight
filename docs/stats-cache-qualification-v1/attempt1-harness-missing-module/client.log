@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/validator-source/http_measure.py", line 19, in <module>
+    from workload_check import diagnostics
+  File "/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/validator-source/workload_check.py", line 17, in <module>
+    from fixture_check import duck_result, XSD
+ModuleNotFoundError: No module named 'fixture_check'

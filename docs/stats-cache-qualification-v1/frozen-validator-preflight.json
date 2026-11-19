@@ -1,0 +1,17 @@
+{
+  "all_declared_source_hashes_pass": true,
+  "frozen_inputs_constructor_pass": true,
+  "sources": {
+    "float_envelope.py": "7316ee55304d9eeaf7ae8730559e82a1e4a15bb6b46d9922b58ef33a093aca32",
+    "envelope_qualify.py": "7ee98959fa12ee106a028aaf3116b581b938131eb4b030f9fa63ad5c677bc542",
+    "qualify.py": "2fe4528d6dc37b4dca42c3bdea11fb1e5565f62d5ab56d81a65ef9bd29569be1",
+    "numeric_inputs.py": "68496d84f0aa27f12a8fe146deeeb18b098717e9004427f7435d08edda07c051",
+    "workload_check.py": "0f1f1e00bbd14d0456dcd241090317b040778fe8db33ea6148d73aeee2673b36",
+    "bi_sql.py": "e34b2565e6e2db1b014ea5e499379830498772d658e6476a1c0a859939ac6fa0",
+    "fixture_check.py": "5fe2c238c07563c6b38dbbc72bf82566d7e3424c4f9257b4a3187862f48a9bd4",
+    "freeze_numeric.py": "f546c298876651f675c6ed505911009c4251280ea1339718acb458e0af05fea2",
+    "test_float_envelope.py": "345ebf1bf0d2e7e8ea63bb30c8a837b594c9f31ddeebaa94379678487c5cdf62",
+    "test_envelope_qualify.py": "c5a5e950d7c6bdf4e4eb27dcac4638c5aa3812cc0692ab488672a34796d4080d",
+    "test_qualify.py": "20d24fd78c1dd1340477c0a12d5ed99819cc5f2b0a286be68693f1170f2d94bf"
+  }
+}

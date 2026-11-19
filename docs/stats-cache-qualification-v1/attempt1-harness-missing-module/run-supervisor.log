@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/private/tmp/rdf-jianlin-analytical25/stats-c3a86d46-qualification-v1/run.py", line 79, in <module>
+    assert status['client_exit']==0 and status['complete'] and status['store_unchanged'] and status['binary_unchanged'],status
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'server_pid': 55108, 'complete': True, 'client_exit': 1, 'server_exit': -15, 'binary_posthash': '0992a98cebf94d64108c0c01c529e10796d771de798323ebf8361ffafc682c4d', 'store_identity_unchanged': True, 'store_unchanged': True, 'binary_unchanged': True}
