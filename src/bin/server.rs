@@ -63,7 +63,7 @@ fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'
     response
 }
 
-/// `rdfdb serve-store <dir> [port] [--init data.nt]`: persistent store. Queries at /sparql, updates at /update
+/// `triplelight serve-store <dir> [port] [--init data.nt]`: persistent store. Queries at /sparql, updates at /update
 /// (SPARQL 1.1 protocol: `update=` form field or `application/sparql-update` body). An update is acknowledged only
 /// after its WAL record is fsynced.
 fn serve_store(args: &[String], auth: &UpdateAuth) {
@@ -139,9 +139,9 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
     }); });
 }
 
-/// Listen address host: 127.0.0.1 unless TRIPLELIGHT_HOST (or the older RDFDB_HOST) is set, e.g. 0.0.0.0 in a container.
+/// Listen address host: 127.0.0.1 unless TRIPLELIGHT_HOST is set, e.g. 0.0.0.0 in a container.
 fn bind_host() -> String {
-    std::env::var("TRIPLELIGHT_HOST").or_else(|_| std::env::var("RDFDB_HOST")).unwrap_or_else(|_| "127.0.0.1".into())
+    std::env::var("TRIPLELIGHT_HOST").unwrap_or_else(|_| "127.0.0.1".into())
 }
 
 fn is_loopback(host: &str) -> bool {

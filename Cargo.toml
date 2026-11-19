@@ -7,11 +7,8 @@ default-run = "triplelight"
 
 [[bin]]
 name = "triplelight"
-path = "src/bin/rdfdb.rs"
+path = "src/bin/triplelight.rs"
 
-[[bin]]
-name = "rdfdb"
-path = "src/bin/rdfdb.rs"
 
 [features]
 # The SPARQL HTTP server (`triplelight serve` / `serve-store`). Off by default: TripleLight is embedded first.

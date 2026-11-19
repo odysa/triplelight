@@ -1,4 +1,4 @@
-//! Explicit phase profiling, never a throughput benchmark. Run with RDFDB_PROFILE_PLAN=1.
+//! Explicit phase profiling, never a throughput benchmark. Run with TRIPLELIGHT_PROFILE_PLAN=1.
 use triplelight::exec::{Options, QueryResult, query_with};
 use triplelight::opt::Stats;
 use triplelight::storage::MemorySnapshot;

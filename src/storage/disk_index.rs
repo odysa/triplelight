@@ -25,7 +25,7 @@ static READS: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
 static BYTES: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
 static EVICTIONS: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
 pub fn cache_trace_enabled() -> bool {
-    *TRACE_ENABLED.get_or_init(|| std::env::var_os("RDFDB_TRACE_BLOCK_CACHE").is_some())
+    *TRACE_ENABLED.get_or_init(|| std::env::var_os("TRIPLELIGHT_TRACE_BLOCK_CACHE").is_some())
 }
 pub(super) fn trace_dictionary(slot: usize, metric: usize, value: u64) {
     if !cache_trace_enabled() {

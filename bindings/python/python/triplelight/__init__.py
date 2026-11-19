@@ -13,11 +13,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterator, Optional
 
-from . import _rdfdb
-from ._rdfdb import LockedError, RdfdbError, StorageError, SyntaxError, UnsupportedError
+from . import _triplelight
+from ._triplelight import LockedError, TripleLightError, StorageError, SyntaxError, UnsupportedError
 
 __all__ = ["Database", "Snapshot", "IRI", "BNode", "Literal", "Result",
-           "RdfdbError", "SyntaxError", "UnsupportedError", "StorageError", "LockedError"]
+           "TripleLightError", "SyntaxError", "UnsupportedError", "StorageError", "LockedError"]
 
 
 
@@ -102,7 +102,7 @@ class Database:
     """
 
     def __init__(self, path, initial=None):
-        self._db = _rdfdb.Database(str(path), None if initial is None else str(initial))
+        self._db = _triplelight.Database(str(path), None if initial is None else str(initial))
 
     def query(self, sparql: str) -> Result:
         """Run a SPARQL SELECT / ASK / CONSTRUCT query on the current state."""
