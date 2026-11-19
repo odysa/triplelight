@@ -1,0 +1,21 @@
+[
+  "docker",
+  "run",
+  "--rm",
+  "--name",
+  "rdf-jianlin-agg72-linux-build-9a2f49b",
+  "--cpus=4",
+  "--memory=8g",
+  "--memory-swap=8g",
+  "--mount",
+  "type=bind,source=/private/tmp/rdf-jianlin-analytical25/aggregate72-matched-v1,target=/work",
+  "--env",
+  "CARGO_BUILD_JOBS=2",
+  "--env",
+  "CARGO_TARGET_DIR=/work/target-linux-9a2f49b",
+  "--entrypoint",
+  "sh",
+  "rust@sha256:0b0ea86881537b3f645aace7e8e39556289f8787db057317c8d4978548213b9e",
+  "-c",
+  "mkdir /b && cp -r /work/rdfdb-source-9a2f49b/src /work/rdfdb-source-9a2f49b/Cargo.toml /work/rdfdb-source-9a2f49b/Cargo.lock /b/ && cd /b && sha256sum -c /work/rdfdb-source-9a2f49b.sha256 && cargo build --locked --release --bin rdfdb -j2"
+]
