@@ -1,0 +1,4 @@
+opened disk snapshot /data in 0.25s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:31461/sparql
+statistics ready after 6.76s

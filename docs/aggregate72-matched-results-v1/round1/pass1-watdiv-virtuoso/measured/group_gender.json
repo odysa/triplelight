@@ -1,0 +1,5 @@
+
+{ "head": { "link": [], "vars": ["o", "n"] },
+  "results": { "distinct": false, "ordered": true, "bindings": [
+    { "o": { "type": "uri", "value": "http://db.uwaterloo.ca/~galuc/wsdbm/Gender0" }	, "n": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#integer", "value": "15119" }},
+    { "o": { "type": "uri", "value": "http://db.uwaterloo.ca/~galuc/wsdbm/Gender1" }	, "n": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#integer", "value": "44898" }} ] } }

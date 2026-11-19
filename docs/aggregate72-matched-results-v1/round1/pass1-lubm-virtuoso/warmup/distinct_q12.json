@@ -1,0 +1,4 @@
+
+{ "head": { "link": [], "vars": ["count_result"] },
+  "results": { "distinct": false, "ordered": true, "bindings": [
+    { "count_result": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#integer", "value": "125" }} ] } }
