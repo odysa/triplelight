@@ -14,21 +14,23 @@ GIB = 2**30
 WORKLOADS = {
     "bi100m": {
         "title": "BSBM Business Intelligence, 98.9M triples",
+        "duck": "DuckDB has no SPARQL: each request fills a hand-written SQL template over one triples table (generation time included).",
         "sub": "45 scored requests per pass, 4 CPUs and 12 GiB per engine, same VM and session",
         "engines": [  # name, (pass1 s, pass2 s), (pass1 bytes, pass2 bytes)
             ("TripleLight", (11.744257042, 6.730454500), (3960119296, 4377493504)),
             ("QLever", (24.175621040, 24.505901291), (548614144, 422412288)),
-            ("DuckDB 2.0", (573.757916960, 443.531885919), (12194824192, 12880408576)),
+            ("DuckDB 2.0\nSQL baseline*", (573.757916960, 443.531885919), (12194824192, 12880408576)),
         ],
     },
     "aggregate72": {
         "title": "72 aggregate queries, LUBM-100 (13.4M triples) + WatDiv (10.9M triples)",
+        "duck": "DuckDB has no SPARQL: a translator for this suite's COUNT queries turns each into SQL over one triples table, inside the timed request.",
         "sub": "72 scored queries per pass, 4 CPUs and 12 GiB per engine, same VM and session",
         "engines": [
             ("TripleLight", (0.5753, 0.5383), (1045774336, 1013239808)),
             ("Virtuoso 7", (4.6105, 4.4997), (11139768320, 11131449344)),
             ("QLever", (5.1056, 4.6043), (312086528, 311226368)),
-            ("DuckDB 2.0", (73.1489, 73.5915), (3602198528, 3604578304)),
+            ("DuckDB 2.0\nSQL baseline*", (73.1489, 73.5915), (3602198528, 3604578304)),
         ],
     },
 }
@@ -44,7 +46,7 @@ def fmt_g(b): return f"{b / GIB:.2f} GiB" if b < GIB else f"{b / GIB:.1f} GiB"
 def svg(w, t):
     eng = w["engines"]
     W, row, top = 960, 46, 108
-    H = top + row * len(eng) + 56
+    H = top + row * len(eng) + 74
     lab_w, pw, gap = 112, 330, 60
     x1 = lab_w; x2 = x1 + pw + gap + 70  # memory panel left edge (time values column sits between)
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" font-family="{FONT}">',
@@ -80,7 +82,10 @@ def svg(w, t):
     for r, (name, secs, mem) in enumerate(eng):
         y = top + r * row
         weight = "600" if r == 0 else "400"
-        out.append(f'<text x="16" y="{y + row / 2 + 4}" font-size="13" font-weight="{weight}" fill="{t["ink"]}">{name}</text>')
+        first, _, note = name.partition("\n")
+        ny = y + row / 2 + (4 if not note else -2)
+        out.append(f'<text x="16" y="{ny}" font-size="13" font-weight="{weight}" fill="{t["ink"]}">{first}</text>')
+        if note: out.append(f'<text x="16" y="{ny + 15}" font-size="11" fill="{t["ink2"]}">{note}</text>')
         for i, (s, b) in enumerate(zip(secs, mem)):
             c = t["s1"] if i == 0 else t["s2"]
             by = y + 10 + i * 14
@@ -92,7 +97,8 @@ def svg(w, t):
             bw = max(mx(b) - x2, 2)
             out.append(f'<rect x="{x2}" y="{by}" width="{bw:.1f}" height="11" rx="3" fill="{c}"><title>{name}, pass {i + 1}: {fmt_g(b)}</title></rect>')
             out.append(f'<text x="{x2 + bw + 6:.1f}" y="{by + 9.5}" font-size="12" fill="{t["ink"]}">{fmt_g(b)}</text>')
-    out.append(f'<text x="16" y="{H - 12}" font-size="11.5" fill="{t["ink2"]}">Time is end-to-end HTTP, summed over the scored requests of one pass. Memory includes page cache and kernel memory, not process RSS.</text>')
+    out.append(f'<text x="16" y="{H - 30}" font-size="11.5" fill="{t["ink2"]}">Time is end-to-end HTTP, summed over the scored requests of one pass. Memory includes page cache and kernel memory, not process RSS.</text>')
+    out.append(f'<text x="16" y="{H - 12}" font-size="11.5" fill="{t["ink2"]}">* {w["duck"]}</text>')
     out.append("</svg>")
     return "\n".join(out) + "\n"
 

@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="302" viewBox="0 0 960 302" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
-<rect width="960" height="302" fill="#1a1a19"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="320" viewBox="0 0 960 320" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+<rect width="960" height="320" fill="#1a1a19"/>
 <text x="16" y="28" font-size="17" font-weight="600" fill="#f0efec">BSBM Business Intelligence, 98.9M triples</text>
 <text x="16" y="48" font-size="12.5" fill="#c3c2b7">45 scored requests per pass, 4 CPUs and 12 GiB per engine, same VM and session. Lower is better in both panels.</text>
 <rect x="16" y="60" width="12" height="12" rx="3" fill="#3987e5"/>
@@ -46,16 +46,22 @@
 <text x="456" y="187.5" font-size="12" fill="#f0efec">24.51 s</text>
 <rect x="572" y="178" width="9.8" height="11" rx="3" fill="#d95926"><title>QLever, pass 2: 0.39 GiB</title></rect>
 <text x="587.8" y="187.5" font-size="12" fill="#f0efec">0.39 GiB</text>
-<text x="16" y="227.0" font-size="13" font-weight="400" fill="#f0efec">DuckDB 2.0</text>
+<text x="16" y="221.0" font-size="13" font-weight="400" fill="#f0efec">DuckDB 2.0</text>
+<text x="16" y="236.0" font-size="11" fill="#c3c2b7">SQL baseline*</text>
 <line x1="112" y1="215" x2="415.5" y2="215" stroke="#3987e5" stroke-width="2" stroke-opacity="0.35"/>
-<circle cx="415.5" cy="215" r="5" fill="#3987e5" stroke="#1a1a19" stroke-width="2"><title>DuckDB 2.0, pass 1: 573.8 s</title></circle>
+<circle cx="415.5" cy="215" r="5" fill="#3987e5" stroke="#1a1a19" stroke-width="2"><title>DuckDB 2.0
+SQL baseline*, pass 1: 573.8 s</title></circle>
 <text x="456" y="219.5" font-size="12" fill="#f0efec">573.8 s</text>
-<rect x="572" y="210" width="282.0" height="11" rx="3" fill="#3987e5"><title>DuckDB 2.0, pass 1: 11.4 GiB</title></rect>
+<rect x="572" y="210" width="282.0" height="11" rx="3" fill="#3987e5"><title>DuckDB 2.0
+SQL baseline*, pass 1: 11.4 GiB</title></rect>
 <text x="860.0" y="219.5" font-size="12" fill="#f0efec">11.4 GiB</text>
 <line x1="112" y1="229" x2="403.2" y2="229" stroke="#d95926" stroke-width="2" stroke-opacity="0.35"/>
-<circle cx="403.2" cy="229" r="5" fill="#d95926" stroke="#1a1a19" stroke-width="2"><title>DuckDB 2.0, pass 2: 443.5 s</title></circle>
+<circle cx="403.2" cy="229" r="5" fill="#d95926" stroke="#1a1a19" stroke-width="2"><title>DuckDB 2.0
+SQL baseline*, pass 2: 443.5 s</title></circle>
 <text x="456" y="233.5" font-size="12" fill="#f0efec">443.5 s</text>
-<rect x="572" y="224" width="297.9" height="11" rx="3" fill="#d95926"><title>DuckDB 2.0, pass 2: 12.0 GiB</title></rect>
+<rect x="572" y="224" width="297.9" height="11" rx="3" fill="#d95926"><title>DuckDB 2.0
+SQL baseline*, pass 2: 12.0 GiB</title></rect>
 <text x="875.9" y="233.5" font-size="12" fill="#f0efec">12.0 GiB</text>
 <text x="16" y="290" font-size="11.5" fill="#c3c2b7">Time is end-to-end HTTP, summed over the scored requests of one pass. Memory includes page cache and kernel memory, not process RSS.</text>
+<text x="16" y="308" font-size="11.5" fill="#c3c2b7">* DuckDB has no SPARQL: each request fills a hand-written SQL template over one triples table (generation time included).</text>
 </svg>

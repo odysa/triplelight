@@ -15,6 +15,13 @@ name. They refer to the same engine.
   "Primary" requires the expected datatypes (on BSBM BI it allows registered numeric rounding
   bounds; on the aggregate suite it requires exact RDF terms); "value-only" compares numeric values within
   registered rounding bounds and ignores datatype; "COUNT int = integer" accepts `xsd:int` for COUNT results.
+- **DuckDB has no RDF or SPARQL support.** It is a SQL baseline: the triples are loaded into one DuckDB table
+  (subject, predicate, and an object struct with kind, value, datatype and language), with no per-predicate tables,
+  extra indexes or precomputed joins. On BSBM BI, a small HTTP adapter fills a hand-written SQL template for each
+  query template with that request's parameters (`bi_sql.py`); on the aggregate suite, a translator written only for
+  that suite's flat COUNT / GROUP BY queries turns each SPARQL query into SQL (`aggregate_sql.py`). SQL generation,
+  execution and JSON encoding all run inside the timed request; the time to write the templates is not counted.
+  DuckDB's answers go through the same Jena checks.
 - Each section links its raw evidence (queries, configs, per-request timings, answers).
 
 
@@ -25,13 +32,13 @@ against Apache Jena. Numbers are sums of per-query medians unless stated. Lower 
 
 Same Linux VM (4 CPUs, 12 GiB cap per engine), two passes in reversed order. Each number is the sum of 45
 measured request times after 15 warmups, in seconds. TripleLight at main `5ac99cc`; QLever with its result cache cleared
-before every request; DuckDB 2.0.0 over one lossless triples table with hand-written SQL per query template.
+before every request; DuckDB 2.0.0 (no SPARQL) answers hand-written SQL templates, one per query template, over one lossless triples table.
 
 | | Pass 1 (s) | Pass 2 (s) | Primary answer check | COUNT int = integer | Value-only check |
 |---|---:|---:|---:|---:|---:|
 | **TripleLight** | **10.8** | **7.3** | 60 / 60 | 60 / 60 | 60 / 60 |
 | QLever | 18.3 | 18.7 | 9 / 60 | 21 / 60 | 60 / 60 |
-| DuckDB 2.0.0 | 170.7 | 113.4 | 60 / 60 | 60 / 60 | 60 / 60 |
+| DuckDB 2.0.0 (hand-written SQL) | 170.7 | 113.4 | 60 / 60 | 60 / 60 | 60 / 60 |
 
 All 360 requests pass a value-only check frozen before the run: numeric values within registered rounding bounds,
 datatype ignored. The primary check also allows those numeric bounds but requires the expected datatypes, so it is
@@ -45,7 +52,7 @@ Per query template, **seconds** summed over that template's requests, shown as p
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | TripleLight | 0.48 / 0.31 | **0.17 / 0.11** | 1.30 / 0.97 | **5.71 / 4.06** | 2.07 / **1.20** | **0.36 / 0.21** | **0.53 / 0.32** | **0.17 / 0.10** |
 | QLever | **0.26 / 0.28** | 2.06 / 2.17 | **0.42 / 0.44** | 10.89 / 11.01 | **1.78** / 1.90 | 1.88 / 1.91 | 0.54 / 0.54 | 0.44 / 0.42 |
-| DuckDB | 15.82 / 9.78 | 10.45 / 6.75 | 10.32 / 6.12 | 18.30 / 12.36 | 35.62 / 23.14 | 55.07 / 32.20 | 12.57 / 11.06 | 12.56 / 11.99 |
+| DuckDB (hand-written SQL) | 15.82 / 9.78 | 10.45 / 6.75 | 10.32 / 6.12 | 18.30 / 12.36 | 35.62 / 23.14 | 55.07 / 32.20 | 12.57 / 11.06 | 12.56 / 11.99 |
 
 QLever is still faster on q1 and q3, and uses much less memory: about 0.35 GiB peak server memory against TripleLight's
 1.41–1.53 GiB. q7 is tied in pass 1 and lower for TripleLight in pass 2, which is not yet a stable win. TripleLight's and DuckDB's
@@ -62,7 +69,7 @@ first four-engine pass in [matched-vm-v1](https://github.com/odysa/triplelight/t
 ## Analytical at 100M: BSBM Business Intelligence, 98.9M triples (three engines, one session)
 
 Same protocol as the 10M table above, on a 98,861,444-triple store, with a 600-second limit per request. TripleLight is at
-main `ef7a778`, served from its disk store with a 10 GB cache. QLever runs with 11 GB of query memory, and DuckDB has
+main `ef7a778`, served from its disk store with a 10 GB cache. QLever runs with 11 GB of query memory, and DuckDB (hand-written SQL templates, as above) has
 an 8 GB working set plus 8 GB of spill. Every container is capped at 4 CPUs and 12 GiB. The reference answers are
 Jena's: 59 come from full runs and one q1 instance had to be computed per product type, labelled as such.
 
@@ -70,7 +77,7 @@ Jena's: 59 come from full runs and one q1 instance had to be computed per produc
 |---|---:|---:|---:|---:|---:|---:|
 | **TripleLight** | **11.7** | **6.7** | 60 / 60 | 60 / 60 | 60 / 60 | 3.7 / 4.1 GiB |
 | QLever | 24.2 | 24.5 | 25 / 60 | 37 / 60 | 60 / 60 | **0.5 / 0.4 GiB** |
-| DuckDB 2.0.0 | 573.8 | 443.5 | 60 / 60 | 60 / 60 | 60 / 60 | 11.4 / 12.0 GiB |
+| DuckDB 2.0.0 (hand-written SQL) | 573.8 | 443.5 | 60 / 60 | 60 / 60 | 60 / 60 | 11.4 / 12.0 GiB |
 
 The primary check allows registered numeric error bounds; exact RDF-term equality of the full result sets holds for
 58 / 42 / 25 of 60 requests (TripleLight / DuckDB / QLever). The memory column is the container's cgroup `memory.peak`,
@@ -94,7 +101,7 @@ over the 72 queries:
 | **TripleLight** | **0.58** | **0.54** | **0.31 / 0.31** | **0.26 / 0.23** | 72 / 72 | 72 / 72 | 0.97 / 0.94 GiB |
 | Virtuoso 7 | 4.61 | 4.50 | 4.31 / 4.19 | 0.30 / 0.31 | 72 / 72 | 72 / 72 | 10.4 / 10.4 GiB |
 | QLever | 5.11 | 4.60 | 2.25 / 2.14 | 2.85 / 2.47 | 0 / 72 | 72 / 72 | **0.29 / 0.29 GiB** |
-| DuckDB 2.0.0 (typed-triples SQL baseline) | 73.1 | 73.6 | 48.7 / 47.2 | 24.5 / 26.4 | 72 / 72 | 72 / 72 | 3.4 / 3.4 GiB |
+| DuckDB 2.0.0 (SQL from a suite-specific translator) | 73.1 | 73.6 | 48.7 / 47.2 | 24.5 / 26.4 | 72 / 72 | 72 / 72 | 3.4 / 3.4 GiB |
 
 Totals are over the 72 query labels; the report also gives the prespecified mean-sum over the 68 distinct query
 texts, with the same ordering. "Primary" here means the complete result sets match as exact RDF terms, with no
