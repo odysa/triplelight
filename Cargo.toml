@@ -7,6 +7,7 @@ resolver = "3"
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.100"
 
 [workspace.dependencies]
 triplelight-core = { path = "crates/triplelight-core" }
@@ -30,6 +31,7 @@ web-time = "1"
 name = "triplelight"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 autobins = false
 default-run = "triplelight"
 

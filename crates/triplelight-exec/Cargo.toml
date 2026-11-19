@@ -3,6 +3,7 @@ name = "triplelight-exec"
 description = "TripleLight SPARQL evaluator over term IDs"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 triplelight-core.workspace = true

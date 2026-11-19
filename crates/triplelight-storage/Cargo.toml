@@ -3,6 +3,7 @@ name = "triplelight-storage"
 description = "TripleLight storage: in-memory and on-disk triple stores, dictionary, WAL and overlay"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 triplelight-core.workspace = true
