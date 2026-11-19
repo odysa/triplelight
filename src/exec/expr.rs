@@ -3,7 +3,7 @@ use super::{Ctx, Row};
 use crate::storage::Snapshot;
 use oxrdf::vocab::xsd;
 use oxrdf::{Literal, NamedNode, Term};
-use spargebra::algebra::{Expression, Function};
+use crate::sparql::{Expression, Function};
 use std::cmp::Ordering;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};

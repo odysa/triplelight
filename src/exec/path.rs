@@ -8,8 +8,8 @@
 use super::{storage_failure, Ctx, Row, UNBOUND};
 use crate::model::{Perm, TermId};
 use crate::storage::Snapshot;
-use spargebra::algebra::PropertyPathExpression as Ppe;
-use spargebra::term::TermPattern;
+use crate::sparql::PropertyPathExpression as Ppe;
+use crate::sparql::TermPattern;
 use std::collections::{HashMap, HashSet};
 
 /// A path with its IRIs resolved to IDs (`None` = not in the store, so that link never matches).
@@ -21,7 +21,7 @@ enum P {
     Star(Box<P>),
     Plus(Box<P>),
     Opt(Box<P>),
-    /// `!(p1|…|pn)` in the forward direction; spargebra already turns inverse members into `^!(…)`.
+    /// `!(p1|…|pn)` in the forward direction; the parser turns inverse members into `^!(…)`.
     Neg(Vec<Option<TermId>>),
 }
 
@@ -153,7 +153,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     fn endpoint(&self, tp: &TermPattern, row: &Row) -> Result<Option<TermId>, usize> {
         match tp {
             TermPattern::Variable(v) => { let i = self.var(v); if row[i] == UNBOUND { Err(i) } else { Ok(Some(row[i])) } }
-            TermPattern::BlankNode(b) => { let i = self.vars[&format!("_b{}", b.as_str())]; if row[i] == UNBOUND { Err(i) } else { Ok(Some(row[i])) } }
+            TermPattern::BlankNode(b) => { let i = self.vars[&format!("_:b{}", b.as_str())]; if row[i] == UNBOUND { Err(i) } else { Ok(Some(row[i])) } }
             TermPattern::NamedNode(n) => Ok(Some(self.intern(&n.clone().into()))),
             TermPattern::Literal(l) => Ok(Some(self.intern(&l.clone().into()))),
             #[allow(unreachable_patterns)]
