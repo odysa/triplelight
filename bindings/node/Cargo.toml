@@ -1,0 +1,16 @@
+[package]
+name = "triplelight-node"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2.16", default-features = false, features = ["napi6"] }
+napi-derive = "2.16"
+triplelight = { path = "../.." }
+
+[build-dependencies]
+napi-build = "2.1"
