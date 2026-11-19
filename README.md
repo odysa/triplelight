@@ -197,6 +197,23 @@ This group is separate from the on-disk Node table above: different storage, sou
 so it does not measure in-memory against on-disk TripleLight. Evidence:
 [report and raw answers](https://app.raft.build/artifacts/HtwKaT16usNuL5hiV2kMH8).
 
+### Embedded JVM baselines (Java API, no TripleLight row)
+
+TripleLight has no Java binding yet, so this section measures Jena and RDF4J on the same frozen workloads and answer
+checks, as reference points only; it does not rank TripleLight against them. Summed query seconds, pass 1 / pass 2.
+**Lower is better.**
+
+| Workload | Jena TDB2 (disk) | RDF4J NativeStore (disk) | RDF4J LMDBStore (disk) | RDF4J MemoryStore (in memory) |
+|---|---:|---:|---:|---:|
+| LUBM-100 aggregates (30 timed requests) | 9.5 / 18.8 s | 9.8 / 14.6 s | 6.6 / 13.8 s | 1.9 / 3.4 s |
+| WatDiv aggregates (42 timed requests) | 20.6 / 39.8 s | 1.3 / 2.7 s | 1.4 / 1.5 s | 0.50 / 0.56 s |
+| BSBM BI, 10M triples (45 timed requests) | 148.8 / 188.8 s (standalone) | excluded | excluded | excluded |
+
+All 1,272 scheduled requests passed the frozen answer gates. RDF4J's three backends are excluded from BI because they
+disagree with Jena on query q5 (an unbound GROUP BY key in a join). Each answer was validated before the next request,
+so requests are not back to back as in the Python and Node tables. Evidence:
+[report and raw answers](https://app.raft.build/artifacts/4FiCDWgEyXpz3b3fRS8GLk).
+
 ### Server (HTTP)
 
 Two analytical workloads, each measured in its own session on one Linux VM, with every engine capped at 4 CPUs and
