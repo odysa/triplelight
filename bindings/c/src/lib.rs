@@ -10,9 +10,10 @@ use std::collections::HashMap;
 use std::ffi::c_char;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-use triplelight::embedded::{Database, DatabaseError};
-use triplelight::exec::QueryResult;
-use triplelight::rdf::Term;
+use triplelight::embedded::{Database, DatabaseError, ReadSnapshot};
+use triplelight::exec::{IdSolutions, QueryResult, UNBOUND};
+use triplelight::model::TermId;
+use triplelight::rdf::{Term, TermRef};
 
 pub const TL_OK: i32 = 0;
 pub const TL_ERR_SYNTAX: i32 = 1;
@@ -135,6 +136,10 @@ fn build(r: QueryResult) -> Result<Box<TlResult>, TlError> {
         }
         QueryResult::Ids(_) => return Err(TlError { kind: TL_ERR_INTERNAL, message: "undecoded result".into() }),
     };
+    Ok(finish(b, kind, boolean, vars, cells, n_rows))
+}
+
+fn finish(b: Builder, kind: u32, boolean: u32, vars: Vec<TlStr>, cells: Vec<u32>, n_rows: usize) -> Box<TlResult> {
     let mut out = Box::new(TlResult {
         view: TlResultView {
             kind, boolean, n_vars: vars.len() as u64, vars: std::ptr::null(), n_rows: n_rows as u64, cells: std::ptr::null(),
@@ -146,7 +151,54 @@ fn build(r: QueryResult) -> Result<Box<TlResult>, TlError> {
     out.view.cells = out._cells.as_ptr();
     out.view.terms = out._terms.as_ptr();
     out.view.bytes = out._bytes.as_ptr();
-    Ok(out)
+    out
+}
+
+/// SELECT results as term IDs: every distinct stored ID is resolved once, through one batched dictionary pass on the
+/// same snapshot that produced the IDs, and written straight into the arena (no owned `Term`, no hashing of decoded
+/// terms). Computed values (scratch IDs) go through the owned-term path.
+fn build_ids(snap: &ReadSnapshot, sol: IdSolutions) -> Result<Box<TlResult>, TlError> {
+    let mut b = Builder::default();
+    let names: Vec<TlStr> = sol.vars.iter().map(|v| b.push(v.as_str())).collect();
+    let mut distinct: Vec<TermId> = sol.ids.iter().copied().filter(|id| *id != UNBOUND && !sol.scratch.contains_key(id)).collect();
+    distinct.sort_unstable();
+    distinct.dedup();
+    u32::try_from(distinct.len()).map_err(|_| TlError { kind: TL_ERR_INTERNAL, message: "more than 4,294,967,295 distinct terms".into() })?;
+    b.terms = vec![TlTerm::default(); distinct.len()];
+    let mut unsupported = false;
+    {
+        let Builder { bytes, terms, strings, .. } = &mut b;
+        let mut push = |s: &str| { let off = bytes.len() as u64; bytes.extend_from_slice(s.as_bytes()); TlStr { off, len: s.len() as u64 } };
+        snap.with_terms(&distinct, &mut |i, t| {
+            terms[i] = match t {
+                TermRef::NamedNode(n) => TlTerm { kind: TL_TERM_IRI, value: push(n.as_str()), ..Default::default() },
+                TermRef::BlankNode(n) => TlTerm { kind: TL_TERM_BLANK, value: push(n.as_str()), ..Default::default() },
+                TermRef::Literal(l) => {
+                    let value = push(l.value());
+                    let mut shared = |s: &str| match strings.get(s) { Some(r) => *r, None => { let r = push(s); strings.insert(s.to_string(), r); r } };
+                    let language = l.language().map(&mut shared).unwrap_or_default();
+                    let datatype = shared(l.datatype().as_str());
+                    TlTerm { kind: TL_TERM_LITERAL, value, language, datatype, ..Default::default() }
+                }
+                #[allow(unreachable_patterns)]
+                _ => { unsupported = true; TlTerm::default() }
+            };
+        }).map_err(db_error)?;
+    }
+    if unsupported { return Err(TlError { kind: TL_ERR_UNSUPPORTED, message: "RDF-star terms are not supported".into() }) }
+    let width = sol.vars.len();
+    let total = sol.rows.checked_mul(width).ok_or_else(|| TlError { kind: TL_ERR_INTERNAL, message: "result too large".into() })?;
+    let mut cells = Vec::with_capacity(total);
+    for &id in &sol.ids {
+        cells.push(if id == UNBOUND {
+            0
+        } else if let Some(t) = sol.scratch.get(&id) {
+            b.term(t)?
+        } else {
+            distinct.binary_search(&id).map(|i| i as u32 + 1).map_err(|_| TlError { kind: TL_ERR_INTERNAL, message: "undecoded term ID".into() })?
+        });
+    }
+    Ok(finish(b, TL_RESULT_BINDINGS, 0, names, cells, sol.rows))
 }
 
 fn db_error(e: DatabaseError) -> TlError {
@@ -225,7 +277,11 @@ pub unsafe extern "C" fn tl_query(db: *const TlDb, sparql: *const c_char, len: u
     unsafe { guard(err, || {
         if out.is_null() { return Err(invalid("null output pointer")) }
         let (d, q) = (handle(db)?, text(sparql, len)?);
-        let r = build(d.query(q).map_err(db_error)?)?;
+        let snap = d.read();
+        let r = match snap.query_ids(q).map_err(db_error)? {
+            QueryResult::Ids(ids) => build_ids(&snap, ids)?,
+            other => build(other)?,
+        };
         out!(out, Box::into_raw(r));
         Ok(())
     }) }
@@ -297,6 +353,18 @@ pub unsafe extern "C" fn tl_error_free(e: *mut TlError) {
     if !e.is_null() { drop(unsafe { Box::from_raw(e) }) }
 }
 
+/// Benchmark hooks (not part of the C ABI): encode one query result through the owned-term path or the ID path.
+#[doc(hidden)]
+pub fn bench_encode(db: &Database, sparql: &str, via_ids: bool) -> (usize, usize) {
+    let r = if via_ids {
+        let snap = db.read();
+        match snap.query_ids(sparql).unwrap() { QueryResult::Ids(ids) => build_ids(&snap, ids), other => build(other) }
+    } else {
+        build(db.query(sparql).unwrap())
+    }.ok().unwrap();
+    (r._terms.len(), r._bytes.len())
+}
+
 /// The ABI version of this library (`TL_ABI_VERSION` in the header); hosts check it before use.
 #[unsafe(no_mangle)]
 pub extern "C" fn tl_abi_version() -> u32 { 1 }
@@ -359,6 +427,46 @@ mod tests {
         let t = std::slice::from_raw_parts(v.terms, v.n_terms as usize);
         let c = std::slice::from_raw_parts(v.cells, 3);
         assert_eq!(t[c[2] as usize - 1].kind, TL_TERM_BLANK);
+        tl_result_free(r);
+        tl_close(db);
+    } }
+
+    #[test]
+    fn id_path_covers_computed_terms_zero_columns_and_construct() { unsafe {
+        let mut db = std::ptr::null_mut();
+        tl_open_in_memory(&mut db, std::ptr::null_mut());
+        let up = r#"INSERT DATA { <urn:a> <urn:p> 1 , 2 . <urn:b> <urn:p> 3 . <urn:a> <urn:q> "x" }"#;
+        tl_update(db, up.as_ptr() as _, up.len(), std::ptr::null_mut(), std::ptr::null_mut());
+        // Group keys are stored IDs, aggregates and BIND values are computed (scratch) terms.
+        let r = q(db, "SELECT ?s (SUM(?o) AS ?n) (CONCAT(STR(?s), \"!\") AS ?c) WHERE { ?s <urn:p> ?o } GROUP BY ?s ORDER BY ?s").unwrap();
+        let v = &*tl_result_get_view(r);
+        assert_eq!((v.n_rows, v.n_vars), (2, 3));
+        let cells = std::slice::from_raw_parts(v.cells, 6);
+        let terms = std::slice::from_raw_parts(v.terms, v.n_terms as usize);
+        let get = |c: u32| { let t = terms[c as usize - 1]; (t.kind, s(v, t.value)) };
+        assert_eq!(get(cells[0]), (TL_TERM_IRI, "urn:a".into()));
+        assert_eq!(get(cells[1]), (TL_TERM_LITERAL, "3".into()));
+        assert_eq!(get(cells[2]), (TL_TERM_LITERAL, "urn:a!".into()));
+        assert_eq!(get(cells[4]), (TL_TERM_LITERAL, "3".into()));
+        tl_result_free(r);
+        // A computed value equal to a stored term shares its table entry; an OPTIONAL miss is unbound.
+        let r = q(db, "SELECT ?s ?k ?z WHERE { ?s <urn:q> ?o BIND(<urn:a> AS ?k) OPTIONAL { ?s <urn:none> ?z } }").unwrap();
+        let v = &*tl_result_get_view(r);
+        let cells = std::slice::from_raw_parts(v.cells, 3);
+        assert_eq!(cells[0], cells[1], "BIND(<urn:a>) must reuse the stored <urn:a> entry");
+        assert_eq!(cells[2], 0, "?z is unbound");
+        tl_result_free(r);
+        // A pattern with no variables: zero columns, one solution.
+        let r = q(db, "SELECT * WHERE { <urn:a> <urn:q> \"x\" }").unwrap();
+        let v = &*tl_result_get_view(r);
+        assert_eq!((v.kind, v.n_vars, v.n_rows), (TL_RESULT_BINDINGS, 0, 1));
+        tl_result_free(r);
+        let r = q(db, "SELECT * WHERE { <urn:a> <urn:q> \"nope\" }").unwrap();
+        assert_eq!((*tl_result_get_view(r)).n_rows, 0);
+        tl_result_free(r);
+        let r = q(db, "CONSTRUCT { ?s <urn:r> ?o } WHERE { ?s <urn:p> ?o }").unwrap();
+        let v = &*tl_result_get_view(r);
+        assert_eq!((v.kind, v.n_rows), (TL_RESULT_TRIPLES, 3));
         tl_result_free(r);
         tl_close(db);
     } }

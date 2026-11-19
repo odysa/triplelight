@@ -262,6 +262,12 @@ impl ReadSnapshot {
         let opts = exec::Options { stats: stats.as_deref(), raw_ids: true, ..Default::default() };
         Ok(exec::query_with(&*self.snapshot, sparql, &opts)?)
     }
+    /// Decodes stored term IDs returned by `query_ids` on this snapshot in one batched dictionary pass, calling
+    /// `f(i, term)` for `ids[i]` (in any order). Computed terms are not stored: look them up in
+    /// `IdSolutions::scratch` instead.
+    pub fn with_terms(&self, ids: &[crate::model::TermId], f: &mut dyn FnMut(usize, crate::rdf::TermRef<'_>)) -> Result<(), DatabaseError> {
+        Ok(self.snapshot.with_terms(ids, f)?)
+    }
     /// Serializes SELECT IDs returned by this snapshot with batched dictionary access.
     pub fn serialize_ids(&self, ids: &exec::IdSolutions) -> Result<String, DatabaseError> {
         Ok(exec::results::serialize_ids(ids, &*self.snapshot)?)
