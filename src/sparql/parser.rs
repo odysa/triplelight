@@ -21,6 +21,13 @@ pub const MAX_ALGEBRA_DEPTH: usize = 1024;
 /// dropping a rejected tree stays shallow.
 pub const MAX_OPERATORS: usize = 10_000;
 
+/// Prefix of variables the parser (generated variables) and the executor (blank nodes in patterns) introduce. A
+/// SPARQL variable name cannot contain ':', so these never collide with a user variable such as `?_person`.
+pub const INTERNAL_PREFIX: &str = "_:";
+
+/// True for variables introduced by TripleLight rather than written in the query.
+pub fn is_internal_variable(name: &str) -> bool { name.starts_with(INTERNAL_PREFIX) }
+
 const XSD: &str = "http://www.w3.org/2001/XMLSchema#";
 const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
@@ -178,7 +185,7 @@ impl<'a> Parser<'a> {
 
     fn fresh_label(&mut self) -> String { self.counter += 1; format!("tl{}x{}", self.salt, self.counter) }
     fn fresh_bnode(&mut self) -> BlankNode { BlankNode::new_unchecked(self.fresh_label()) }
-    fn fresh_var(&mut self) -> Variable { Variable::new_unchecked(format!("_{}", self.fresh_label())) }
+    fn fresh_var(&mut self) -> Variable { Variable::new_unchecked(format!("{INTERNAL_PREFIX}g{}", self.fresh_label())) }
 
     // ---------- prologue and IRIs ----------
 
@@ -1288,67 +1295,82 @@ fn push_graph(graphs: &mut Vec<(NamedNodePattern, Vec<TriplePattern>)>, name: Na
     match graphs.iter_mut().find(|(n, _)| *n == name) { Some((_, ts)) => ts.push(t), None => graphs.push((name, vec![t])) }
 }
 
-/// Variables of an expression outside aggregates (aggregates are already replaced by their variables).
+/// Variables of an expression outside aggregates (aggregates are already replaced by their variables). Iterative,
+/// because it runs during parsing, before the algebra depth has been checked.
 fn expr_vars(e: &Expression, out: &mut Vec<Variable>) {
-    match e {
-        Expression::Variable(v) | Expression::Bound(v) => out.push(v.clone()),
-        Expression::NamedNode(_) | Expression::Literal(_) | Expression::Exists(_) => {}
-        Expression::Or(a, b) | Expression::And(a, b) | Expression::Equal(a, b) | Expression::SameTerm(a, b)
-        | Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b)
-        | Expression::Add(a, b) | Expression::Subtract(a, b) | Expression::Multiply(a, b) | Expression::Divide(a, b) => { expr_vars(a, out); expr_vars(b, out) }
-        Expression::UnaryPlus(a) | Expression::UnaryMinus(a) | Expression::Not(a) => expr_vars(a, out),
-        Expression::In(a, l) => { expr_vars(a, out); for x in l { expr_vars(x, out) } }
-        Expression::If(a, b, c) => { expr_vars(a, out); expr_vars(b, out); expr_vars(c, out) }
-        Expression::Coalesce(l) | Expression::FunctionCall(_, l) => for x in l { expr_vars(x, out) },
+    let mut stack = vec![e];
+    while let Some(e) = stack.pop() {
+        match e {
+            Expression::Variable(v) | Expression::Bound(v) => out.push(v.clone()),
+            Expression::NamedNode(_) | Expression::Literal(_) | Expression::Exists(_) => {}
+            Expression::Or(a, b) | Expression::And(a, b) | Expression::Equal(a, b) | Expression::SameTerm(a, b)
+            | Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b)
+            | Expression::Add(a, b) | Expression::Subtract(a, b) | Expression::Multiply(a, b) | Expression::Divide(a, b) => { stack.push(a); stack.push(b) }
+            Expression::UnaryPlus(a) | Expression::UnaryMinus(a) | Expression::Not(a) => stack.push(a),
+            Expression::In(a, l) => { stack.push(a); stack.extend(l.iter()) }
+            Expression::If(a, b, c) => { stack.push(a); stack.push(b); stack.push(c) }
+            Expression::Coalesce(l) | Expression::FunctionCall(_, l) => stack.extend(l.iter()),
+        }
     }
 }
 
-/// In-scope variables of a pattern (§18.2.1), in order of first appearance; blank-node variables are not included.
+/// In-scope variables of a pattern (§18.2.1), in order of first appearance; internal variables are not included.
+/// Iterative, because it runs during parsing, before the algebra depth has been checked.
+fn term_var(t: &TermPattern) -> Option<&Variable> { if let TermPattern::Variable(v) = t { Some(v) } else { None } }
+
 pub fn in_scope(p: &GraphPattern) -> Vec<Variable> {
+    enum W<'a> { P(&'a GraphPattern), V(&'a Variable) }
     let mut out: Vec<Variable> = Vec::new();
-    fn add(out: &mut Vec<Variable>, v: &Variable) { if !out.contains(v) { out.push(v.clone()) } }
-    fn term(out: &mut Vec<Variable>, t: &TermPattern) { if let TermPattern::Variable(v) = t { add(out, v) } }
-    fn walk(p: &GraphPattern, out: &mut Vec<Variable>) {
+    let mut seen: HashSet<&Variable> = HashSet::new();
+    // Work items are pushed in reverse so they are processed left to right (first-appearance order).
+    let mut stack: Vec<W<'_>> = vec![W::P(p)];
+    while let Some(w) = stack.pop() {
+        let p = match w {
+            W::V(v) => { if !is_internal_variable(v.as_str()) && seen.insert(v) { out.push(v.clone()) } continue }
+            W::P(p) => p,
+        };
+        let mut items: Vec<W<'_>> = Vec::new();
         match p {
             GraphPattern::Bgp { patterns } => for t in patterns {
-                term(out, &t.subject);
-                if let NamedNodePattern::Variable(v) = &t.predicate { add(out, v) }
-                term(out, &t.object);
+                items.extend(term_var(&t.subject).map(W::V));
+                if let NamedNodePattern::Variable(v) = &t.predicate { items.push(W::V(v)) }
+                items.extend(term_var(&t.object).map(W::V));
             },
-            GraphPattern::Path { subject, object, .. } => { term(out, subject); term(out, object) }
-            GraphPattern::Join { left, right } | GraphPattern::LeftJoin { left, right, .. } | GraphPattern::Union { left, right } => { walk(left, out); walk(right, out) }
-            GraphPattern::Minus { left, .. } => walk(left, out),
-            GraphPattern::Filter { inner, .. } | GraphPattern::OrderBy { inner, .. } | GraphPattern::Distinct { inner }
-            | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. } => walk(inner, out),
-            GraphPattern::Graph { name, inner } | GraphPattern::Service { name, inner, .. } => {
-                if let NamedNodePattern::Variable(v) = name { add(out, v) }
-                walk(inner, out)
+            GraphPattern::Path { subject, object, .. } => { items.extend(term_var(subject).map(W::V)); items.extend(term_var(object).map(W::V)) }
+            GraphPattern::Join { left, right } | GraphPattern::LeftJoin { left, right, .. } | GraphPattern::Union { left, right } => {
+                items.push(W::P(left)); items.push(W::P(right));
             }
-            GraphPattern::Extend { inner, variable, .. } => { walk(inner, out); add(out, variable) }
-            GraphPattern::Values { variables, .. } => for v in variables { add(out, v) },
-            GraphPattern::Project { variables, .. } => for v in variables { add(out, v) },
+            GraphPattern::Minus { left, .. } => items.push(W::P(left)),
+            GraphPattern::Filter { inner, .. } | GraphPattern::OrderBy { inner, .. } | GraphPattern::Distinct { inner }
+            | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. } => items.push(W::P(inner)),
+            GraphPattern::Graph { name, inner } | GraphPattern::Service { name, inner, .. } => {
+                if let NamedNodePattern::Variable(v) = name { items.push(W::V(v)) }
+                items.push(W::P(inner));
+            }
+            GraphPattern::Extend { inner, variable, .. } => { items.push(W::P(inner)); items.push(W::V(variable)) }
+            GraphPattern::Values { variables, .. } | GraphPattern::Project { variables, .. } => items.extend(variables.iter().map(W::V)),
             GraphPattern::Group { variables, aggregates, .. } => {
-                for v in variables { add(out, v) }
-                for (v, _) in aggregates { add(out, v) }
+                items.extend(variables.iter().map(W::V));
+                items.extend(aggregates.iter().map(|(v, _)| W::V(v)));
             }
         }
+        stack.extend(items.into_iter().rev());
     }
-    walk(p, &mut out);
-    out.retain(|v| !v.as_str().starts_with('_'));
     out
 }
 
 /// Fails if the algebra tree is deeper than `MAX_ALGEBRA_DEPTH` (patterns and expressions together). Iterative, so
 /// measuring a hostile tree cannot overflow the stack either.
 fn check_depth(root: &GraphPattern) -> Result<(), String> {
-    enum Node<'a> { P(&'a GraphPattern), E(&'a Expression) }
+    enum Node<'a> { P(&'a GraphPattern), E(&'a Expression), Path(&'a PropertyPathExpression) }
     let mut stack: Vec<(Node<'_>, usize)> = vec![(Node::P(root), 1)];
     while let Some((n, d)) = stack.pop() {
         if d > MAX_ALGEBRA_DEPTH { return Err(format!("query algebra is more than {MAX_ALGEBRA_DEPTH} levels deep")) }
         let c = d + 1;
         match n {
             Node::P(p) => match p {
-                GraphPattern::Bgp { .. } | GraphPattern::Path { .. } | GraphPattern::Values { .. } => {}
+                GraphPattern::Bgp { .. } | GraphPattern::Values { .. } => {}
+                GraphPattern::Path { path, .. } => stack.push((Node::Path(path), c)),
                 GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right } => {
                     stack.push((Node::P(left), c)); stack.push((Node::P(right), c));
                 }
@@ -1381,6 +1403,14 @@ fn check_depth(root: &GraphPattern) -> Result<(), String> {
                 Expression::If(a, b, x) => { stack.push((Node::E(a), c)); stack.push((Node::E(b), c)); stack.push((Node::E(x), c)) }
                 Expression::Coalesce(l) | Expression::FunctionCall(_, l) => for x in l { stack.push((Node::E(x), c)) },
                 Expression::Exists(p) => stack.push((Node::P(p), c)),
+            },
+            Node::Path(p) => match p {
+                PropertyPathExpression::NamedNode(_) | PropertyPathExpression::NegatedPropertySet(_) => {}
+                PropertyPathExpression::Reverse(a) | PropertyPathExpression::ZeroOrMore(a) | PropertyPathExpression::OneOrMore(a)
+                | PropertyPathExpression::ZeroOrOne(a) => stack.push((Node::Path(a), c)),
+                PropertyPathExpression::Sequence(a, b) | PropertyPathExpression::Alternative(a, b) => {
+                    stack.push((Node::Path(a), c)); stack.push((Node::Path(b), c));
+                }
             },
         }
     }

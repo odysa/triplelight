@@ -280,7 +280,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn collect_visible(&self, p: &GraphPattern) -> Vec<Variable> {
         let mut names = Vec::new();
         walk_vars(p, &mut names);
-        names.into_iter().filter(|n| !n.starts_with('_')).map(Variable::new_unchecked).collect()
+        names.into_iter().filter(|n| !crate::sparql::is_internal_variable(n)).map(Variable::new_unchecked).collect()
     }
     /// For CONSTRUCT templates: value of a template slot under the row currently being instantiated.
     fn term_slot(&self, tp: &TermPattern) -> Option<TermId> {
@@ -573,7 +573,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn slot_of(&self, tp: &TermPattern) -> Slot {
         match tp {
             TermPattern::Variable(v) => Slot::Var(self.var(v)),
-            TermPattern::BlankNode(b) => Slot::Var(self.vars[&format!("_b{}", b.as_str())]),
+            TermPattern::BlankNode(b) => Slot::Var(self.vars[&format!("_:b{}", b.as_str())]),
             TermPattern::NamedNode(n) => Slot::Const(self.lookup(&n.clone().into())),
             TermPattern::Literal(l) => Slot::Const(self.lookup(&l.clone().into())),
             #[allow(unreachable_patterns)]
@@ -976,7 +976,7 @@ fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
             for tp in [&t.subject, &t.object] {
                 match tp {
                     TermPattern::Variable(v) => add(v.as_str().to_string()),
-                    TermPattern::BlankNode(b) => add(format!("_b{}", b.as_str())),
+                    TermPattern::BlankNode(b) => add(format!("_:b{}", b.as_str())),
                     _ => {}
                 }
             }
@@ -986,7 +986,7 @@ fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
             match tp {
                 TermPattern::Variable(v) => add(v.as_str().to_string()),
                 // The parser splits `a (p|q)/r ?x` into two paths joined on a fresh blank node.
-                TermPattern::BlankNode(b) => add(format!("_b{}", b.as_str())),
+                TermPattern::BlankNode(b) => add(format!("_:b{}", b.as_str())),
                 _ => {}
             }
         },

@@ -5,4 +5,4 @@ mod lexer;
 mod parser;
 
 pub use algebra::*;
-pub use parser::{in_scope, parse_query, parse_update, ParseError};
+pub use parser::{in_scope, is_internal_variable, parse_query, parse_update, ParseError, INTERNAL_PREFIX};

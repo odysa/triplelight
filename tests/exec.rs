@@ -781,3 +781,32 @@ fn deep_nesting_is_a_syntax_error_not_a_stack_overflow() {
     assert_eq!(ok, None, "50 nested groups are well within the limit");
     assert_eq!(flat, None, "a 200-branch UNION is well within the limit and evaluates");
 }
+
+/// User variables may start with `_` (`?_person`); they are ordinary variables, distinct from internal ones and from
+/// blank nodes with a similar label.
+#[test]
+fn underscore_variables_are_ordinary_variables() {
+    let s = MemorySnapshot::from_ntriples(&b"<urn:a> <urn:p> <urn:b> .\n"[..]).unwrap();
+    let solutions = |q: &str| match query(&s, q).unwrap() {
+        QueryResult::Solutions { vars, rows } => (vars.iter().map(|v| v.as_str().to_string()).collect::<Vec<_>>(), rows.len()),
+        r => panic!("{r:?}"),
+    };
+    assert_eq!(solutions("SELECT * WHERE { ?_person <urn:p> ?o }"), (vec!["_person".into(), "o".into()], 1));
+    assert_eq!(solutions("SELECT * WHERE { { SELECT * WHERE { ?_s <urn:p> ?_o } } }"), (vec!["_s".into(), "_o".into()], 1));
+    assert_eq!(solutions("SELECT * WHERE { ?s <urn:p> ?o BIND(?o AS ?_x) }"), (vec!["s".into(), "o".into(), "_x".into()], 1));
+    // `?_bx` and the blank node `_:x` are different: the blank node matches anything, the variable is projected.
+    assert_eq!(solutions("SELECT * WHERE { _:x <urn:p> ?_bx }"), (vec!["_bx".into()], 1));
+}
+
+/// A long flat property path (`p|p|…`) is bounded by the algebra depth check, not left to overflow the evaluator.
+#[test]
+fn long_flat_paths_are_bounded() {
+    let h = std::thread::Builder::new().stack_size(8 << 20).spawn(|| {
+        let s = MemorySnapshot::from_ntriples(&b"<urn:a> <urn:p> <urn:b> .\n"[..]).unwrap();
+        let alt = |n: usize| format!("SELECT * WHERE {{ ?s ({})+ ?o }}", vec!["<urn:p>"; n].join("|"));
+        (query(&s, &alt(5_000)).err().map(|e| e.kind), query(&s, &alt(100)).is_ok())
+    }).unwrap();
+    let (long, short_ok) = h.join().expect("must not overflow the stack");
+    assert_eq!(long, Some(triplelight::exec::QueryErrorKind::Syntax));
+    assert!(short_ok);
+}
