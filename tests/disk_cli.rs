@@ -57,8 +57,14 @@ fn disk_server_restarts_and_answers_without_original_input() {
                 let addr=std::net::SocketAddr::from(([127,0,0,1],port));
                 let mut stream=TcpStream::connect_timeout(&addr,left()?)?;
                 let request=format!("POST /sparql HTTP/1.0\r\nHost: localhost\r\nContent-Type: application/sparql-query\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",q.len(),q);
-                stream.set_write_timeout(Some(left()?))?;
-                stream.write_all(request.as_bytes())?;
+                let mut sent=0;
+                while sent<request.len() {
+                    stream.set_write_timeout(Some(left()?))?;
+                    match stream.write(&request.as_bytes()[sent..])? {
+                        0 => return Err(std::io::Error::new(std::io::ErrorKind::WriteZero,"server closed the connection")),
+                        n => sent+=n,
+                    }
+                }
                 let mut body=Vec::new(); let mut buf=[0u8;4096];
                 loop {
                     stream.set_read_timeout(Some(left()?))?;
