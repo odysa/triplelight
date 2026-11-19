@@ -107,7 +107,8 @@ Benchmarks compare like with like: **embedded engines in the same process** (no 
 
 Each engine runs inside one Python process through its own API and its own on-disk store, in a container capped at
 4 CPUs and 12 GiB. Times are summed query seconds per pass, from submitting the query until the full result has been
-converted to Python values. Two passes (pass 2 in reversed order). **Lower is better.**
+converted to Python values. Two passes (pass 2 in reversed order). BI: 15 warm-up then 45 timed requests per pass;
+each aggregate phase: one complete warm pass, then one timed pass. **Lower is better.**
 
 | Workload | TripleLight | DuckDB (SQL baseline) | pyoxigraph |
 |---|---:|---:|---:|
@@ -115,8 +116,10 @@ converted to Python values. Two passes (pass 2 in reversed order). **Lower is be
 | LUBM-100 aggregates (30 queries) | **0.67 / 0.64 s** | 50.4 / 40.0 s | 41.7 / 34.5 s |
 | WatDiv aggregates (42 queries) | **0.20 / 0.23 s** | 27.1 / 18.9 s | 71.6 / 71.8 s |
 
-All 1,104 scheduled requests passed their answer checks against Apache Jena, with no retries or out-of-memory
-failures. TripleLight ran at commit `e2e9cb2f`. Engine cache settings differ between engines. DuckDB has no SPARQL;
+All 1,104 scheduled requests passed the frozen answer gates against Apache Jena, with no retries or out-of-memory
+failures. The gates are: BI value-compatible (registered numeric tolerance, exact anchors, ORDER BY rules), and for
+the aggregates COUNT-compatible with exact group terms and multiplicity. They are not exact typed-result equality on
+every query. TripleLight ran at commit `e2e9cb2f`. Engine cache settings differ between engines. DuckDB has no SPARQL;
 it answers SQL over one triples table: hand-written templates for BSBM BI, and a translator written only for the
 aggregate suite for LUBM and WatDiv (generation inside the timer). pyoxigraph has no BI total because its BI
 qualification timed out before completing (the 11 answers it produced passed); separately, in a nine-term identity
