@@ -158,7 +158,17 @@ impl MemorySnapshot {
     pub fn from_triples(triples: impl IntoIterator<Item = Triple>) -> Self {
         Self::build_triples(triples, false)
     }
+    /// Build a snapshot incrementally from a fallible stream. A failed stream drops the partial snapshot.
+    pub fn try_from_triples<E>(triples: impl IntoIterator<Item = Result<Triple, E>>) -> Result<Self, E> {
+        Self::try_build_triples(triples, false)
+    }
     fn build_triples(triples: impl IntoIterator<Item = Triple>, parallel_sort: bool) -> Self {
+        match Self::try_build_triples(triples.into_iter().map(Ok::<_, std::convert::Infallible>), parallel_sort) {
+            Ok(store) => store,
+            Err(never) => match never {},
+        }
+    }
+    fn try_build_triples<E>(triples: impl IntoIterator<Item = Result<Triple, E>>, parallel_sort: bool) -> Result<Self, E> {
         let mut store = Self {
             dictionary: HashMap::new(),
             reverse: HashMap::new(),
@@ -167,6 +177,7 @@ impl MemorySnapshot {
             first_keys: Default::default(),
         };
         for triple in triples {
+            let triple = triple?;
             let ids = [
                 store.intern(triple.subject.into()),
                 store.intern(triple.predicate.into()),
@@ -190,7 +201,7 @@ impl MemorySnapshot {
             }
         }
         store.rebuild_first_keys();
-        store
+        Ok(store)
     }
     fn rebuild_first_keys(&mut self) {
         for (idx, keys) in self.indexes.iter().zip(&mut self.first_keys) {
