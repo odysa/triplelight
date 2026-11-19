@@ -4,11 +4,11 @@
 //! held by the application to share it among threads. The directory lock is
 //! advisory: older programs that do not honor it must not open the same store.
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use crate::opt::stats::Stats;
 use crate::exec::{self, QueryError, QueryResult};
 use crate::store::{Change, Overlay, Store, StoreUpdate};
-use crate::storage::{DiskBase, MemorySnapshot, Snapshot};
+use crate::storage::{Dictionary, DiskBase, MemorySnapshot, Snapshot};
 use crate::model::Perm;
 
 /// Errors returned by embedded operations.
@@ -53,7 +53,8 @@ impl Default for DatabaseOptions {
 pub struct Database { store: Backend, stats: Arc<RwLock<Option<(Arc<Overlay>, Arc<Stats>)>>> }
 
 #[derive(Clone)]
-enum Backend { Disk(Arc<Store>), Memory(Arc<RwLock<Arc<Overlay>>>) }
+enum Backend { Disk(Arc<Store>), Memory(Arc<MemoryStore>) }
+struct MemoryStore { current: RwLock<Arc<Overlay>>, writer: Mutex<()> }
 
 impl Database {
     /// Opens an existing database, or creates an empty database at `dir`.
@@ -79,21 +80,30 @@ impl Database {
     pub fn in_memory() -> Self {
         let base = MemorySnapshot::from_triples(Vec::new());
         let current = Arc::new(Overlay::from_base(Arc::new(base)));
-        let db = Self { store: Backend::Memory(Arc::new(RwLock::new(current))), stats: Arc::new(RwLock::new(None)) };
+        let db = Self { store: Backend::Memory(Arc::new(MemoryStore { current: RwLock::new(current), writer: Mutex::new(()) })), stats: Arc::new(RwLock::new(None)) };
         db.refresh_stats();
         db
     }
 
     fn snapshot(&self) -> Arc<Overlay> {
-        match &self.store { Backend::Disk(s) => s.snapshot(), Backend::Memory(s) => s.read().unwrap().clone() }
+        match &self.store { Backend::Disk(s) => s.snapshot(), Backend::Memory(s) => s.current.read().unwrap().clone() }
     }
 
     fn refresh_stats(&self) {
         let snap = self.snapshot();
         let target = Arc::clone(&self.stats);
+        let memory = match &self.store { Backend::Memory(store) => Some(Arc::clone(store)), Backend::Disk(_) => None };
         std::thread::spawn(move || {
             if let Ok(st) = Stats::from_snapshot(snap.base()) {
-                *target.write().unwrap() = Some((snap, Arc::new(st)));
+                match &memory {
+                    Some(store) => {
+                        let current = store.current.read().unwrap();
+                        if current.base_id() == snap.base_id() {
+                            *target.write().unwrap() = Some((snap, Arc::new(st)));
+                        }
+                    }
+                    None => *target.write().unwrap() = Some((snap, Arc::new(st))),
+                }
             }
         });
     }
@@ -116,10 +126,11 @@ impl Database {
         match &self.store {
             Backend::Disk(store) => Ok(store.update(sparql)?),
             Backend::Memory(store) => {
-                let mut current = store.write().unwrap();
-                let changes = exec::update_changes(&**current, sparql)?;
+                let _writer = store.writer.lock().unwrap();
+                let current = store.current.read().unwrap().clone();
+                let changes = exec::update_changes(&*current, sparql)?;
                 let (next, count) = current.with_changes(&changes)?;
-                *current = Arc::new(next);
+                *store.current.write().unwrap() = Arc::new(next);
                 Ok(count)
             }
         }
@@ -149,18 +160,19 @@ impl Database {
                 Ok(store.commit(&changes)?)
             }
             Backend::Memory(store) => {
-                let mut current = store.write().unwrap();
+                let _writer = store.writer.lock().unwrap();
+                let current = store.current.read().unwrap().clone();
                 if current.count(Perm::Spo, &[])? == 0 {
                     let base = MemorySnapshot::from_triples(triples);
                     let count = base.count(Perm::Spo, &[])?;
-                    *current = Arc::new(Overlay::from_base(Arc::new(base)));
-                    drop(current);
+                    *store.current.write().unwrap() = Arc::new(Overlay::from_base(Arc::new(base)));
+                    drop(_writer);
                     self.refresh_stats();
                     Ok(count as usize)
                 } else {
                     let changes: Vec<_> = triples.into_iter().map(|t| (Change::Insert, t)).collect();
                     let (next, count) = current.with_changes(&changes)?;
-                    *current = Arc::new(next);
+                    *store.current.write().unwrap() = Arc::new(next);
                     Ok(count)
                 }
             }
@@ -171,7 +183,24 @@ impl Database {
     pub fn compact(&self) -> Result<(), DatabaseError> {
         match &self.store {
             Backend::Disk(store) => store.compact()?,
-            Backend::Memory(_) => return Err(DatabaseError::Unsupported("in-memory compaction is not supported".into())),
+            Backend::Memory(store) => {
+                let _writer = store.writer.lock().unwrap();
+                let current = store.current.read().unwrap().clone();
+                let mut triples = Vec::new();
+                for batch in current.scan(Perm::Spo, &[]) {
+                    let batch = batch?;
+                    for i in 0..batch.len() {
+                        let subject: crate::rdf::NamedOrBlankNode = current.resolve(batch.cols[0][i])?.try_into()
+                            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid RDF subject"))?;
+                        let predicate: crate::rdf::NamedNode = current.resolve(batch.cols[1][i])?.try_into()
+                            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid RDF predicate"))?;
+                        let object = current.resolve(batch.cols[2][i])?;
+                        triples.push(crate::rdf::Triple::new(subject, predicate, object));
+                    }
+                }
+                let base = MemorySnapshot::from_triples(triples);
+                *store.current.write().unwrap() = Arc::new(Overlay::from_base(Arc::new(base)));
+            }
         }
         self.refresh_stats(); Ok(())
     }
@@ -220,5 +249,23 @@ impl ReadSnapshot {
             QueryResult::Boolean(_) | QueryResult::Solutions { .. } => Ok(exec::results::serialize(&result).1),
             QueryResult::Graph(_) => Err(DatabaseError::Unsupported("query_json supports SELECT and ASK only".into())),
         }
+    }
+}
+
+#[cfg(test)]
+mod memory_tests {
+    use super::*;
+    #[test]
+    fn reader_does_not_wait_for_writer() {
+        let db = Database::in_memory();
+        let Backend::Memory(store) = &db.store else { unreachable!() };
+        let _writer = store.writer.lock().unwrap();
+        let copy = db.clone();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let thread = std::thread::spawn(move || { tx.send(copy.read()).unwrap(); });
+        let result = rx.recv_timeout(std::time::Duration::from_secs(2));
+        drop(_writer);
+        thread.join().unwrap();
+        assert!(result.is_ok(), "reader blocked behind writer mutex");
     }
 }

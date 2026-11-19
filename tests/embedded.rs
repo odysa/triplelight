@@ -179,3 +179,35 @@ fn memory_concurrent_updates_are_serializable() {
     let result = db.query_json("SELECT (COUNT(*) AS ?n) WHERE { ?s <urn:p> <urn:o> }").unwrap();
     assert!(result.contains("\"8\""), "{result}");
 }
+
+#[test]
+fn memory_compaction_retains_old_snapshot() {
+    let db = Database::in_memory();
+    db.update(INSERT).unwrap();
+    let old = db.read();
+    db.update(DELETE).unwrap();
+    db.compact().unwrap();
+    assert!(!ask(&db, ASK));
+    assert!(matches!(old.query(ASK).unwrap(), QueryResult::Boolean(true)));
+    for _ in 0..1000 {
+        if db.stats_ready() { return; }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    panic!("statistics not available after compaction");
+}
+
+#[test]
+fn disk_import_scopes_blank_nodes_per_document() {
+    let dir = temp("disk-blank-scopes");
+    let path = temp("disk-blank-scopes-input").with_extension("nt");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::write(&path, "_:a <urn:p> _:a .\n").unwrap();
+    let db = Database::open(&dir).unwrap();
+    assert_eq!(db.load(&path).unwrap(), 1);
+    assert_eq!(db.load(&path).unwrap(), 1);
+    let result = db.query_json("SELECT (COUNT(*) AS ?n) WHERE { ?s <urn:p> ?s }").unwrap();
+    assert!(result.contains("\"2\""), "{result}");
+    drop(db);
+    std::fs::remove_file(path).unwrap();
+    std::fs::remove_dir_all(dir).unwrap();
+}
