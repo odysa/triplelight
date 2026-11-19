@@ -99,6 +99,10 @@ impl Dictionary for Overlay {
 }
 
 impl Snapshot for Overlay {
+    fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> {
+        if self.delta.is_empty() { self.base.matching_rows(perm, prefix) } else { None }
+    }
+
     fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
         if self.delta.is_empty() { return self.base.scan(perm, prefix) }
         let (adds, dels) = (range(&self.delta.adds[slot(perm)], prefix), range(&self.delta.dels[slot(perm)], prefix));
@@ -541,5 +545,28 @@ mod writer_serialization_tests {
         worker.join().unwrap();
         drop(store);
         std::fs::remove_dir_all(dir).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod borrowed_overlay_tests {
+    use super::*;
+    use oxrdf::{NamedNode, Triple};
+
+    #[test]
+    fn borrowed_rows_only_bypass_an_empty_delta() {
+        let a = Triple::new(NamedNode::new("urn:a").unwrap(), NamedNode::new("urn:p").unwrap(), NamedNode::new("urn:o").unwrap());
+        let b = Triple::new(NamedNode::new("urn:b").unwrap(), NamedNode::new("urn:p").unwrap(), NamedNode::new("urn:o").unwrap());
+        let base = Arc::new(MemorySnapshot::from_triples([a.clone()]));
+        let original = Overlay::from_base(base);
+        assert_eq!(original.matching_rows(Perm::Spo, &[]).unwrap().len(), 1);
+        let (added, _) = original.with_changes(&[(Change::Insert, b.clone())]).unwrap();
+        assert!(added.matching_rows(Perm::Spo, &[]).is_none());
+        assert_eq!(added.count(Perm::Spo, &[]).unwrap(), 2);
+        let (deleted, _) = original.with_changes(&[(Change::Delete, a)]).unwrap();
+        assert!(deleted.matching_rows(Perm::Spo, &[]).is_none());
+        assert_eq!(deleted.count(Perm::Spo, &[]).unwrap(), 0);
+        let (restored, _) = added.with_changes(&[(Change::Delete, b)]).unwrap();
+        assert_eq!(restored.matching_rows(Perm::Spo, &[]).unwrap().len(), 1);
     }
 }
