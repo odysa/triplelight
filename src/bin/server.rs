@@ -153,25 +153,31 @@ const MAX_QUERY_BYTES: u64 = 16 << 20;
 
 /// Who may call /update on `serve-store`.
 ///
-/// - `--read-only`: nobody (403).
 /// - `TRIPLELIGHT_UPDATE_TOKEN` set: requests must send `Authorization: Bearer <token>` (401 otherwise).
-/// - neither: anyone who can reach the port. Allowed only on a loopback address unless
-///   `--allow-unauthenticated-updates` is given, so a server bound to 0.0.0.0 is never writable by accident.
+/// - `--allow-unauthenticated-updates`: anyone who can reach the port, except requests carrying an `Origin` header
+///   (a browser page posting a cross-origin form to localhost). Refused on a non-loopback address.
+/// - otherwise, including `--read-only`: nobody (403). Loopback alone is not an authentication boundary: any web
+///   page in a local browser can POST to 127.0.0.1, so open updates are never the default.
 pub(crate) enum UpdateAuth { ReadOnly, Token(String), Open }
 
 impl UpdateAuth {
     fn from_args(args: &[String], host: &str) -> Result<UpdateAuth, String> {
         if args.iter().any(|a| a == "--read-only") { return Ok(UpdateAuth::ReadOnly) }
         if let Some(t) = std::env::var("TRIPLELIGHT_UPDATE_TOKEN").ok().filter(|t| !t.is_empty()) { return Ok(UpdateAuth::Token(t)) }
-        if is_loopback(host) || args.iter().any(|a| a == "--allow-unauthenticated-updates") { return Ok(UpdateAuth::Open) }
-        Err(format!("refusing to accept unauthenticated updates on {host}: set TRIPLELIGHT_UPDATE_TOKEN, pass --read-only, \
-            or pass --allow-unauthenticated-updates"))
+        if args.iter().any(|a| a == "--allow-unauthenticated-updates") {
+            if is_loopback(host) { return Ok(UpdateAuth::Open) }
+            return Err(format!("refusing unauthenticated updates on {host}: set TRIPLELIGHT_UPDATE_TOKEN or pass --read-only"))
+        }
+        Ok(UpdateAuth::ReadOnly)
     }
 
     fn check(&self, req: &tiny_http::Request) -> Result<(), Resp> {
         match self {
+            UpdateAuth::Open if req.headers().iter().any(|h| h.field.equiv("Origin")) =>
+                Err(tiny_http::Response::from_string("updates from browser pages are refused").with_status_code(403)),
             UpdateAuth::Open => Ok(()),
-            UpdateAuth::ReadOnly => Err(tiny_http::Response::from_string("this server is read-only").with_status_code(403)),
+            UpdateAuth::ReadOnly => Err(tiny_http::Response::from_string(
+                "updates are disabled: start the server with TRIPLELIGHT_UPDATE_TOKEN set").with_status_code(403)),
             UpdateAuth::Token(t) => {
                 let sent = req.headers().iter().find(|h| h.field.equiv("Authorization")).map(|h| h.value.as_str().to_string());
                 let ok = sent.as_deref().and_then(|v| v.strip_prefix("Bearer ")).is_some_and(|v| constant_time_eq(v.as_bytes(), t.as_bytes()));
@@ -193,7 +199,7 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 pub(crate) fn run(cmd: &str, args: &[String]) {
     if cmd == "serve-store" {
         let auth = UpdateAuth::from_args(args, &bind_host()).unwrap_or_else(|e| { eprintln!("{e}"); std::process::exit(2) });
-        eprintln!("updates: {}", match &auth { UpdateAuth::ReadOnly => "disabled (--read-only)", UpdateAuth::Token(_) => "require TRIPLELIGHT_UPDATE_TOKEN", UpdateAuth::Open => "open to anyone who can reach the port" });
+        eprintln!("updates: {}", match &auth { UpdateAuth::ReadOnly => "disabled (set TRIPLELIGHT_UPDATE_TOKEN to enable)", UpdateAuth::Token(_) => "require TRIPLELIGHT_UPDATE_TOKEN", UpdateAuth::Open => "open to local clients without a browser Origin (--allow-unauthenticated-updates)" });
         return serve_store(args, &auth);
     }
     serve_memory(args);

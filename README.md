@@ -40,13 +40,14 @@ cargo build --release --features server
 # Serve a file over the SPARQL 1.1 protocol at http://127.0.0.1:7878/sparql (read-only)
 ./target/release/triplelight serve data.nt 7878
 
-# Persistent store with SPARQL Update at /update, created from data.nt on first start
-./target/release/triplelight serve-store ./store 7878 --disk --init data.nt
+# Persistent store, created from data.nt on first start; SPARQL Update at /update with a token
+TRIPLELIGHT_UPDATE_TOKEN=change-me ./target/release/triplelight serve-store ./store 7878 --disk --init data.nt
 ```
 
-The server listens on 127.0.0.1 unless `TRIPLELIGHT_HOST` is set. On any other address, `serve-store` refuses to
-start with open updates: set `TRIPLELIGHT_UPDATE_TOKEN` (clients then send `Authorization: Bearer <token>`), or
-pass `--read-only`. The token travels in plain HTTP, so on an untrusted network put the server behind a
+The server listens on 127.0.0.1 unless `TRIPLELIGHT_HOST` is set. `serve-store` accepts updates only when
+`TRIPLELIGHT_UPDATE_TOKEN` is set (clients then send `Authorization: Bearer <token>`); otherwise `/update` is
+disabled. For local scripts you can pass `--allow-unauthenticated-updates` instead; it works only on 127.0.0.1 and
+still refuses requests from browser pages. The token travels in plain HTTP, so on an untrusted network put the server behind a
 TLS-terminating proxy.
 
 Query the server with any SPARQL client, for example:
