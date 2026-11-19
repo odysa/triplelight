@@ -132,16 +132,26 @@ The same workloads, gates and container limits, with each engine running inside 
 ARM64). The timer runs from submitting the query until the full result has been converted to JavaScript term
 objects. Summed query seconds, pass 1 / pass 2. **Lower is better.**
 
-| Workload | TripleLight (on disk) | quadstore + Comunica (on disk) | oxigraph JS (in memory, separate group) |
-|---|---:|---:|---:|
-| BSBM BI, 10M triples (45 timed requests) | **8.49 / 9.94 s** | no total: qualification incomplete | no total: qualification incomplete |
-| LUBM-100 aggregates (30 queries) | **0.65 / 0.75 s** | no total: qualification incomplete | 16.4 / 16.2 s |
-| WatDiv aggregates (42 queries) | **0.21 / 0.26 s** | 322.9 / 543.6 s | 76.4 / 74.7 s |
+On-disk engines:
+
+| Workload | TripleLight | quadstore + Comunica |
+|---|---:|---:|
+| BSBM BI, 10M triples (45 timed requests) | **8.49 / 9.94 s** | no total: incomplete, and collected answers failed gates |
+| LUBM-100 aggregates (30 queries) | **0.65 / 0.75 s** | no total: qualification incomplete |
+| WatDiv aggregates (42 queries) | **0.21 / 0.26 s** | 322.9 / 543.6 s |
+
+In-memory engine, a separate storage group (the whole graph is loaded into memory before timing; not ranked against
+the on-disk engines):
+
+| Workload | oxigraph JS |
+|---|---:|
+| BSBM BI, 10M triples | no total: qualification incomplete |
+| LUBM-100 aggregates (30 queries) | 16.4 / 16.2 s |
+| WatDiv aggregates (42 queries) | 76.4 / 74.7 s |
 
 All 864 scheduled requests passed the frozen answer gates against Apache Jena. TripleLight ran at commit `2bd070ae`.
-oxigraph loads the whole graph into memory before timing, so it is listed as its own storage group rather than
-ranked with the on-disk engines; its JS API does not report result columns, so the adapter takes them from the
-reference answers. A first scored attempt stopped when quadstore WatDiv hit a 900-second whole-phase cap (which
+oxigraph's JS API does not report result columns, so the adapter takes them from the reference answers; that does
+not independently verify the projection of empty results. A first scored attempt stopped when quadstore WatDiv hit a 900-second whole-phase cap (which
 includes opening the store); the cap was raised to 1,800 seconds, registered before the second attempt, and the two
 attempts are not mixed. Missing totals mean an engine did not finish qualification, not a zero or a measured loss.
 Evidence: [report and raw answers](https://app.raft.build/artifacts/BasQeph4reGyBoJpfZ69hE).

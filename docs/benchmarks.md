@@ -67,7 +67,7 @@ On-disk engines:
 
 | Dataset | Timed requests per pass | TripleLight | quadstore 15.4.2 + Comunica 6.3.1 |
 |---|---:|---:|---:|
-| BSBM BI, 10M triples | 45 | **8.493 / 9.938** | no total: qualification incomplete |
+| BSBM BI, 10M triples | 45 | **8.493 / 9.938** | no total: incomplete, and collected answers failed gates |
 | LUBM-100 aggregates | 30 | **0.652 / 0.755** | no total: qualification incomplete |
 | WatDiv aggregates | 42 | **0.211 / 0.262** | 322.879 / 543.624 |
 
@@ -80,11 +80,20 @@ In-memory engine, a separate storage group (the whole graph is loaded into memor
 | WatDiv aggregates | 42 | 76.417 / 74.671 |
 
 All 864 scheduled requests (462 scored, 402 warm-up) passed the same frozen Jena gates as the Python cohort; no
-engine errors, retries, replacements, out-of-memory failures or caps in the scored attempt. TripleLight ran at
-commit `2bd070ae` with its default cache target (a quarter of the machine's 16 GB). oxigraph's JS API does not expose
-result columns, so the adapter takes them from the frozen reference answers (values still come from the engine);
-oxigraph also merges literals that RDF treats as distinct in the nine-term identity test. Peak container memory over
-each whole phase (startup, open or load, warm-up, scored requests and close), pass 1 / pass 2 in GiB: TripleLight BI
+engine errors, retries, replacements, out-of-memory failures or caps in the completed v2 attempt. TripleLight ran at
+commit `2bd070ae` with its default cache target, 4,007 MiB from one quarter of the VM's reported MemTotal. oxigraph's
+JS API does not expose result columns, so the adapter takes them from the frozen reference answers (values still come
+from the engine); this does not independently verify the projection of empty results. oxigraph also merges literals
+that RDF treats as distinct in the nine-term identity test.
+
+Qualification outcomes behind the missing totals: quadstore BI hit its cap and, separately, some collected answers
+failed the gates (q3 product selection, and q2 cutoff/order); quadstore LUBM and oxigraph BI hit their caps with every
+collected answer passing.
+
+Memory is the after-close cgroup `memory.peak` sample for each whole container phase (startup, open or load,
+warm-up, scored requests and close), read after Node exits but before the container exits. It includes file-backed
+(page cache) accounting and is not RSS or per-query memory; this VM reports `memory.stat` kernel 0, so no separate
+kernel-memory figure is claimed. Pass 1 / pass 2 in GiB: TripleLight BI
 2.00 / 2.18, LUBM 1.13 / 1.13, WatDiv 0.64 / 0.56; quadstore WatDiv 1.01 / 1.01; oxigraph LUBM 4.06 / 4.06, WatDiv
 2.93 / 2.99.
 
