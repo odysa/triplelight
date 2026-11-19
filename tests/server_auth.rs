@@ -1,0 +1,108 @@
+//! `serve-store` update authorization: read-only mode, bearer token, and refusal to expose open updates beyond
+//! loopback. Runs only when the `server` feature is built.
+#![cfg(all(unix, feature = "server"))]
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::process::{Child, Command, Stdio};
+use std::time::{Duration, Instant};
+
+struct Server(Child, u16, std::path::PathBuf);
+impl Drop for Server {
+    fn drop(&mut self) { let _ = self.0.kill(); let _ = self.0.wait(); let _ = std::fs::remove_dir_all(&self.2); }
+}
+
+fn start(name: &str, flags: &[&str], token: Option<&str>) -> Server {
+    let dir = std::env::temp_dir().join(format!("tl-auth-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let port = { let l = TcpListener::bind("127.0.0.1:0").unwrap(); l.local_addr().unwrap().port() };
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_triplelight"));
+    cmd.arg("serve-store").arg(&dir).arg(port.to_string()).args(flags).stdout(Stdio::null()).stderr(Stdio::null())
+        .env_remove("TRIPLELIGHT_UPDATE_TOKEN").env_remove("TRIPLELIGHT_HOST").env_remove("RDFDB_HOST");
+    if let Some(t) = token { cmd.env("TRIPLELIGHT_UPDATE_TOKEN", t); }
+    let server = Server(cmd.spawn().unwrap(), port, dir);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while TcpStream::connect(("127.0.0.1", port)).is_err() {
+        assert!(Instant::now() < deadline, "server did not start");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    server
+}
+
+fn post(port: u16, path: &str, ctype: &str, body: &str, auth: Option<&str>) -> String {
+    let mut s = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    s.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+    let auth = auth.map(|a| format!("Authorization: {a}\r\n")).unwrap_or_default();
+    write!(s, "POST {path} HTTP/1.0\r\nHost: localhost\r\nContent-Type: {ctype}\r\n{auth}Content-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).unwrap();
+    let mut r = String::new();
+    s.read_to_string(&mut r).unwrap();
+    r
+}
+
+const UPDATE: &str = "INSERT DATA { <urn:s> <urn:p> \"v\" }";
+const ASK: &str = "ASK { <urn:s> <urn:p> \"v\" }";
+
+fn post_with(port: u16, extra: &str, body: &str) -> String {
+    let mut s = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    s.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+    write!(s, "POST /update HTTP/1.0\r\nHost: localhost\r\nContent-Type: application/x-www-form-urlencoded\r\n{extra}Content-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).unwrap();
+    let mut r = String::new();
+    s.read_to_string(&mut r).unwrap();
+    r
+}
+
+#[test]
+fn updates_are_off_by_default_even_on_loopback() {
+    let s = start("default", &[], None);
+    assert!(post(s.1, "/update", "application/sparql-update", UPDATE, None).contains(" 403 "));
+    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
+}
+
+#[test]
+fn explicit_open_updates_refuse_browser_origins() {
+    let s = start("open", &["--allow-unauthenticated-updates"], None);
+    // A cross-origin HTML form POST from a web page carries an Origin header.
+    let form = "update=INSERT%20DATA%20%7B%20%3Curn%3As%3E%20%3Curn%3Ap%3E%20%22v%22%20%7D";
+    assert!(post_with(s.1, "Origin: https://evil.example\r\n", form).contains(" 403 "));
+    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
+    assert!(post_with(s.1, "", form).contains(" 200 "));
+    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("true"));
+}
+
+#[test]
+fn read_only_rejects_updates_but_answers_queries() {
+    let s = start("ro", &["--read-only"], None);
+    assert!(post(s.1, "/update", "application/sparql-update", UPDATE, None).contains(" 403 "));
+    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
+}
+
+#[test]
+fn token_is_required_and_checked() {
+    let s = start("token", &[], Some("s3cret"));
+    assert!(post(s.1, "/update", "application/sparql-update", UPDATE, None).contains(" 401 "));
+    assert!(post(s.1, "/update", "application/sparql-update", UPDATE, Some("Bearer wrong")).contains(" 401 "));
+    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
+    assert!(post(s.1, "/update", "application/sparql-update", UPDATE, Some("Bearer s3cret")).contains(" 200 "));
+    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("true"));
+}
+
+#[test]
+fn refuses_open_updates_on_a_public_address() {
+    let dir = std::env::temp_dir().join(format!("tl-auth-public-{}", std::process::id()));
+    let out = Command::new(env!("CARGO_BIN_EXE_triplelight")).arg("serve-store").arg(&dir).arg("0")
+        .arg("--allow-unauthenticated-updates").env_remove("TRIPLELIGHT_UPDATE_TOKEN").env("TRIPLELIGHT_HOST", "0.0.0.0").output().unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(!out.status.success());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("TRIPLELIGHT_UPDATE_TOKEN"));
+}
+
+#[test]
+fn rejected_update_is_answered_without_reading_the_body() {
+    let s = start("nobody", &[], Some("s3cret"));
+    let mut c = TcpStream::connect(("127.0.0.1", s.1)).unwrap();
+    c.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    // Declares a 1 GB body but sends none: the 401 must still arrive.
+    write!(c, "POST /update HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/sparql-update\r\nContent-Length: 1000000000\r\n\r\n").unwrap();
+    let mut buf = [0u8; 64];
+    let n = c.read(&mut buf).expect("response before the body was sent");
+    assert!(String::from_utf8_lossy(&buf[..n]).contains(" 401 "));
+}
