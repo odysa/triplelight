@@ -84,7 +84,8 @@ fn id_results_serialize_like_decoded() {
 fn errors_carry_their_kind() {
     use triplelight::exec::QueryErrorKind;
     assert_eq!(query(&store(), "SELECT WHERE {").unwrap_err().kind, QueryErrorKind::Syntax);
-    assert_eq!(query(&store(), "DESCRIBE <http://ex/alice>").unwrap_err().kind, QueryErrorKind::Unsupported);
+    assert_eq!(query(&store(), "SELECT * WHERE { ?s ?p ?o } LIMIT 1 FROM <urn:g>").unwrap_err().kind, QueryErrorKind::Syntax);
+    assert_eq!(query(&store(), "SELECT * FROM <urn:g> WHERE { ?s ?p ?o }").unwrap_err().kind, QueryErrorKind::Unsupported);
 }
 
 /// A dictionary failure during query evaluation is a Storage error, not a missing result.
@@ -702,4 +703,54 @@ fn decimal_boundaries_are_exact_or_error() {
     assert!(v("SELECT ((9999999.9 * 9999999.9) AS ?r) {}").contains("99999998000000.01"));
     assert!(v("SELECT ((1.0 / 8) AS ?r) {}").contains("0.125"));
     assert!(v("SELECT ((1.0 / 3) AS ?r) {}").contains("0.333333"));
+}
+
+#[test]
+fn describe_returns_subject_triples_and_blank_node_closure() {
+    let data = "<urn:a> <urn:p> <urn:b> .\n<urn:a> <urn:q> _:x .\n_:x <urn:r> \"deep\" .\n<urn:b> <urn:p> <urn:c> .\n<urn:z> <urn:p> <urn:a> .\n";
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let count = |q: &str| match query(&s, q).unwrap() { QueryResult::Graph(t) => t.len(), r => panic!("{r:?}") };
+    // <urn:a>'s own two triples plus the blank node's triple; <urn:z>'s triple about <urn:a> is not included.
+    assert_eq!(count("DESCRIBE <urn:a>"), 3);
+    assert_eq!(count("DESCRIBE ?x WHERE { ?x <urn:p> <urn:c> }"), 1);
+    assert_eq!(count("DESCRIBE <urn:a> <urn:b>"), 4);
+    assert_eq!(count("DESCRIBE <urn:nothing>"), 0);
+}
+
+#[test]
+fn describe_handles_blank_node_cycles_shared_nodes_and_projection() {
+    let count = |data: &str, q: &str| {
+        let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+        match query(&s, q).unwrap() { QueryResult::Graph(t) => t.len(), r => panic!("{r:?}") }
+    };
+    // A blank-node cycle terminates: a's triple plus the two cycle triples.
+    assert_eq!(count("<urn:a> <urn:q> _:x .\n_:x <urn:p> _:y .\n_:y <urn:p> _:x .\n", "DESCRIBE <urn:a>"), 3);
+    // A blank node shared by two described resources is described once.
+    assert_eq!(count("<urn:a> <urn:q> _:s .\n<urn:b> <urn:q> _:s .\n_:s <urn:r> \"v\" .\n", "DESCRIBE <urn:a> <urn:b>"), 3);
+    // Only projected variables are described: ?y's resource <urn:b> is not.
+    let d = "<urn:a> <urn:p> <urn:b> .\n<urn:b> <urn:q> \"1\" .\n";
+    assert_eq!(count(d, "DESCRIBE ?x WHERE { ?x <urn:p> ?y }"), 1);
+    assert_eq!(count(d, "DESCRIBE * WHERE { ?x <urn:p> ?y }"), 2);
+}
+
+/// A storage failure while describing is a Storage error, not a shorter description.
+#[test]
+fn describe_scan_errors_are_storage_errors() {
+    use triplelight::model::{Perm, TermId, TripleBatch};
+    use triplelight::storage::{Dictionary, Snapshot, StorageError};
+    struct BadScan(MemorySnapshot);
+    impl Dictionary for BadScan {
+        fn lookup(&self, t: &oxrdf::Term) -> Result<Option<TermId>, StorageError> { self.0.lookup(t) }
+        fn resolve(&self, id: TermId) -> Result<oxrdf::Term, StorageError> { self.0.resolve(id) }
+        fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
+    }
+    impl Snapshot for BadScan {
+        fn scan<'a>(&'a self, _: Perm, _: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+            Box::new(std::iter::once(Err(StorageError::other("planted scan failure"))))
+        }
+        fn count(&self, p: Perm, pre: &[TermId]) -> Result<u64, StorageError> { self.0.count(p, pre) }
+        fn seek(&self, p: Perm, pre: &[TermId], t: TermId) -> Result<Option<TermId>, StorageError> { self.0.seek(p, pre, t) }
+    }
+    let e = query(&BadScan(store()), "DESCRIBE <http://ex/alice>").unwrap_err();
+    assert_eq!(e.kind, triplelight::exec::QueryErrorKind::Storage);
 }
