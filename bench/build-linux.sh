@@ -5,4 +5,4 @@
 set -eu
 cd "$(dirname "$0")/.."
 docker run --rm -v $PWD:/src -e CARGO_TARGET_DIR=/src/target-linux rust:latest \
-  sh -c "mkdir /b && cp -r /src/src /src/Cargo.toml /src/Cargo.lock /b/ && cd /b && cargo build --release --features server"
+  sh -c "mkdir /b && cp -r /src/src /src/crates /src/Cargo.toml /src/Cargo.lock /b/ && cd /b && cargo build --release --features server"

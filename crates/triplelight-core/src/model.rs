@@ -27,3 +27,7 @@ impl TripleBatch {
     pub fn len(&self) -> usize { self.cols[0].len() }
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
+
+/// One change of a write: insert or delete a triple.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Change { Insert, Delete }

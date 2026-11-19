@@ -1,0 +1,15 @@
+[package]
+name = "triplelight-storage"
+description = "TripleLight storage: in-memory and on-disk triple stores, dictionary, WAL and overlay"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+triplelight-core.workspace = true
+oxrdf.workspace = true
+oxttl.workspace = true
+rayon.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+triplelight-exec.workspace = true

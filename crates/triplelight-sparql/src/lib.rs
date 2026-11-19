@@ -1,5 +1,7 @@
 //! TripleLight's own SPARQL 1.1 front end: tokenizer, parser and algebra (W3C SPARQL 1.1 Query Language §18–19,
 //! SPARQL 1.1 Update §3–4). Written from the specification.
+pub(crate) use triplelight_core::rdf;
+
 pub mod algebra;
 mod lexer;
 mod parser;

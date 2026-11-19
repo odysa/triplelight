@@ -1,0 +1,9 @@
+[package]
+name = "triplelight-core"
+description = "Shared types and storage traits of TripleLight"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+oxrdf.workspace = true
+oxttl.workspace = true

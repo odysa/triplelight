@@ -3,6 +3,12 @@
 //! Solutions are full-width rows of `TermId` over every variable of the query; `UNBOUND` (0) marks an unbound
 //! slot. Storage guarantees real IDs are never 0. Terms computed by expressions (BIND, aggregates) that are not
 //! in the store get per-query scratch IDs, so ID equality stays term equality throughout.
+// Paths used throughout this crate (`crate::model`, `crate::sparql::...`, `crate::opt::...`).
+pub(crate) use triplelight_core::{model, storage};
+pub(crate) use triplelight_plan as opt;
+pub(crate) use triplelight_sparql as sparql;
+pub(crate) mod store { pub use triplelight_core::model::Change; }
+
 mod agg;
 mod bgp;
 mod count;
@@ -14,7 +20,7 @@ pub mod results;
 
 use crate::model::{Perm, TermId};
 use crate::storage::Snapshot;
-use crate::opt::{self, stats::Stats};
+use crate::opt::stats::Stats;
 use oxrdf::{BlankNode, Literal, Term, Variable};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression, Function, GraphPattern, OrderExpression};
 use crate::sparql::{GroundTerm, NamedNodePattern, TermPattern, TriplePattern};

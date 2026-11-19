@@ -5,6 +5,7 @@ use std::io::Read;
 use std::time::Instant;
 use triplelight::exec::{query_with, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids}};
 use triplelight::opt::stats::Stats;
+use triplelight::store::StoreUpdate;
 
 fn decode(s: &str) -> String {
     let b = s.as_bytes();

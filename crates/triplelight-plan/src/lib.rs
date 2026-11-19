@@ -1,4 +1,6 @@
-//! Optimizer (owner: Jianlin-Su, task #3).
+//! Query planning: statistics (characteristic sets, histograms) and cost-based join ordering.
+pub(crate) use triplelight_core::{model, storage};
+
 pub mod plan;
 pub mod stats;
 pub use stats::{Estimate, Stats, StatsError, q_error};

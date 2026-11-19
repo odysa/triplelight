@@ -1,5 +1,6 @@
 //! Durable updates: overlay correctness against a rebuilt snapshot, reopen, torn WAL, compaction, crash.
 use oxrdf::{Literal, NamedNode, Triple};
+use triplelight::store::StoreUpdate;
 use triplelight::exec::{query, QueryResult};
 use triplelight::storage::MemorySnapshot;
 use triplelight::store::{Change, Store};
