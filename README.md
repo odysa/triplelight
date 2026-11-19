@@ -1,8 +1,10 @@
-# rdfdb
+# TripleLight
 
-rdfdb is an RDF database and SPARQL 1.1 query engine written in Rust. It is aimed at analytical workloads, in the
+TripleLight (formerly rdfdb) is an RDF database and SPARQL 1.1 query engine written in Rust. It is aimed at analytical workloads, in the
 way DuckDB is for tables. It runs as an embedded library (Rust and Python) or as a SPARQL HTTP server, and keeps
 data in memory or in a persistent, checksummed on-disk store with a write-ahead log.
+
+The Rust crate, CLI and Python distribution/import are named `triplelight`. Existing `rdfdb` CLI and Python imports are compatibility aliases; Rust users must switch imports from `rdfdb::` to `triplelight::` (or rename the dependency locally). Existing store formats are unchanged.
 
 Main design points: dictionary-encoded 64-bit term IDs with inline small values, six sorted triple permutations,
 worst-case-optimal (leapfrog) and bind joins chosen by a cost-based planner with statistics, filter pushdown and
@@ -179,11 +181,11 @@ Full method and earlier rounds (8–12, so some totals differ from the later rou
 ```sh
 cargo build --release
 # In-memory server over a file
-./target/release/rdfdb serve data.nt 7878
+./target/release/triplelight serve data.nt 7878
 # Persistent store, created from a file on first start
-./target/release/rdfdb serve-store ./store 7878 --init data.nt
+./target/release/triplelight serve-store ./store 7878 --init data.nt
 # One-off query
-./target/release/rdfdb query data.nt 'SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }'
+./target/release/triplelight query data.nt 'SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }'
 ```
 
 The server speaks the SPARQL 1.1 protocol at `http://127.0.0.1:7878/sparql`. For embedding, see the Rust API in

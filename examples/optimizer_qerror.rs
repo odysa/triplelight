@@ -2,9 +2,9 @@
 //! Usage: cargo run --release --example optimizer_qerror -- data.nt queries/ reference_counts.tsv
 //! Reference TSV: query-name<TAB>row-count, e.g. q1<TAB>4. No DISTINCT/FILTER/LIMIT semantics are silently ignored.
 use oxrdf::Term;
-use rdfdb::opt::plan::{JoinTree, Slot, TriplePattern};
-use rdfdb::opt::{PlannerOptions, Stats, plan_bgp_with_options, q_error};
-use rdfdb::storage::{MemorySnapshot, Snapshot};
+use triplelight::opt::plan::{JoinTree, Slot, TriplePattern};
+use triplelight::opt::{PlannerOptions, Stats, plan_bgp_with_options, q_error};
+use triplelight::storage::{MemorySnapshot, Snapshot};
 use spargebra::algebra::GraphPattern;
 use spargebra::term::{NamedNodePattern, TermPattern};
 use spargebra::{Query, SparqlParser};
@@ -185,7 +185,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             (0., 0., "absent-constant", "empty")
         };
         if verify {
-            use rdfdb::exec::{Options, QueryResult, query_with};
+            use triplelight::exec::{Options, QueryResult, query_with};
             let mut solutions = Vec::new();
             let modes = if verify_wcoj {
                 vec![(None, false), (None, true), (Some(&stats), true)]
@@ -235,7 +235,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rdfdb::storage::Dictionary;
+    use triplelight::storage::Dictionary;
     #[derive(Debug)]
     struct PlantedReadFailure;
     impl std::fmt::Display for PlantedReadFailure {
@@ -248,8 +248,8 @@ mod tests {
         inner: &'a MemorySnapshot,
         fail: Term,
     }
-    impl rdfdb::storage::Dictionary for FailingLookup<'_> {
-        fn lookup(&self, t: &Term) -> io::Result<Option<rdfdb::model::TermId>> {
+    impl triplelight::storage::Dictionary for FailingLookup<'_> {
+        fn lookup(&self, t: &Term) -> io::Result<Option<triplelight::model::TermId>> {
             if *t == self.fail {
                 Err(io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -259,12 +259,12 @@ mod tests {
                 self.inner.lookup(t)
             }
         }
-        fn resolve(&self, id: rdfdb::model::TermId) -> io::Result<Term> {
+        fn resolve(&self, id: triplelight::model::TermId) -> io::Result<Term> {
             self.inner.resolve(id)
         }
         fn with_term(
             &self,
-            id: rdfdb::model::TermId,
+            id: triplelight::model::TermId,
             f: &mut dyn FnMut(oxrdf::TermRef<'_>),
         ) -> io::Result<()> {
             self.inner.with_term(id, f)
@@ -273,20 +273,20 @@ mod tests {
     impl Snapshot for FailingLookup<'_> {
         fn scan<'a>(
             &'a self,
-            p: rdfdb::model::Perm,
-            prefix: &[rdfdb::model::TermId],
-        ) -> Box<dyn Iterator<Item = io::Result<rdfdb::model::TripleBatch>> + 'a> {
+            p: triplelight::model::Perm,
+            prefix: &[triplelight::model::TermId],
+        ) -> Box<dyn Iterator<Item = io::Result<triplelight::model::TripleBatch>> + 'a> {
             self.inner.scan(p, prefix)
         }
-        fn count(&self, p: rdfdb::model::Perm, prefix: &[rdfdb::model::TermId]) -> io::Result<u64> {
+        fn count(&self, p: triplelight::model::Perm, prefix: &[triplelight::model::TermId]) -> io::Result<u64> {
             self.inner.count(p, prefix)
         }
         fn seek(
             &self,
-            p: rdfdb::model::Perm,
-            prefix: &[rdfdb::model::TermId],
-            target: rdfdb::model::TermId,
-        ) -> io::Result<Option<rdfdb::model::TermId>> {
+            p: triplelight::model::Perm,
+            prefix: &[triplelight::model::TermId],
+            target: triplelight::model::TermId,
+        ) -> io::Result<Option<triplelight::model::TermId>> {
             self.inner.seek(p, prefix, target)
         }
     }

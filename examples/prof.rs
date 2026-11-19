@@ -1,6 +1,6 @@
-use rdfdb::exec::{query_with, Options, results::serialize, QueryResult};
-use rdfdb::opt::stats::Stats;
-use rdfdb::storage::MemorySnapshot;
+use triplelight::exec::{query_with, Options, results::serialize, QueryResult};
+use triplelight::opt::stats::Stats;
+use triplelight::storage::MemorySnapshot;
 use std::time::Instant;
 fn n(r: &QueryResult) -> usize { match r { QueryResult::Solutions { rows, .. } => rows.len(), _ => 0 } }
 fn main() {

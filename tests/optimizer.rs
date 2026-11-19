@@ -1,11 +1,11 @@
 use oxrdf::Term;
-use rdfdb::model::{Perm, TermId, TripleBatch};
-use rdfdb::opt::plan::{JoinTree, Slot, TriplePattern};
-use rdfdb::opt::stats::scan_permutation;
-use rdfdb::opt::{
+use triplelight::model::{Perm, TermId, TripleBatch};
+use triplelight::opt::plan::{JoinTree, Slot, TriplePattern};
+use triplelight::opt::stats::scan_permutation;
+use triplelight::opt::{
     BinaryJoinMode, PlannerOptions, Stats, StatsError, plan_bgp, plan_bgp_with_options, q_error,
 };
-use rdfdb::storage::{Dictionary, Snapshot};
+use triplelight::storage::{Dictionary, Snapshot};
 use std::collections::{BTreeMap, BTreeSet};
 fn c(x: u64) -> Slot {
     Slot::Const(TermId(x))
@@ -588,8 +588,8 @@ fn fixed_subject_star_uses_exact_leaf_products() {
 
 #[test]
 fn index_nested_loop_model_matches_runtime_executor_bindings() {
-    use rdfdb::exec::{Options, QueryResult, query_with};
-    use rdfdb::storage::MemorySnapshot;
+    use triplelight::exec::{Options, QueryResult, query_with};
+    use triplelight::storage::MemorySnapshot;
     let snapshot=MemorySnapshot::from_ntriples(
         "<urn:a> <urn:p> <urn:b> .\n<urn:a> <urn:p> <urn:c> .\n<urn:b> <urn:q> <urn:a> .\n<urn:c> <urn:q> <urn:a> .\n<urn:a> <urn:r> <urn:a> .".as_bytes()
     ).unwrap();
@@ -764,8 +764,8 @@ fn storage_failures_abort_stats_and_atomic_refinement() {
 }
 #[test]
 fn optimizer_count_failure_reaches_query_error() {
-    use rdfdb::exec::{Options, query_with};
-    use rdfdb::storage::MemorySnapshot;
+    use triplelight::exec::{Options, query_with};
+    use triplelight::storage::MemorySnapshot;
     let g = MemorySnapshot::from_ntriples(
         "<urn:a> <urn:p> <urn:b> .\n<urn:b> <urn:q> <urn:c> .".as_bytes(),
     )
@@ -785,7 +785,7 @@ fn optimizer_count_failure_reaches_query_error() {
         },
     )
     .unwrap_err();
-    assert_eq!(e.kind, rdfdb::exec::QueryErrorKind::Storage);
+    assert_eq!(e.kind, triplelight::exec::QueryErrorKind::Storage);
     assert!(e.to_string().contains("planted count failure"));
 }
 
@@ -811,7 +811,7 @@ fn shared_synopses_keep_query_caches_isolated() {
 
 #[test]
 fn variable_order_search_matches_exhaustive_cost_and_rejects_invalid_orders() {
-    use rdfdb::opt::planner::{choose_variable_order, variable_order_work};
+    use triplelight::opt::planner::{choose_variable_order, variable_order_work};
     let g = Graph::new(
         (1..=50)
             .flat_map(|i| [[i, 10, i % 7], [i % 7, 11, i % 3], [i % 3, 12, i]])
@@ -849,7 +849,7 @@ fn variable_order_search_matches_exhaustive_cost_and_rejects_invalid_orders() {
 
 #[test]
 fn work_gate_keeps_small_queries_greedy_and_admits_expanding_stars() {
-    use rdfdb::opt::planner::{MIN_OPTIMIZER_WORK, estimated_greedy_work};
+    use triplelight::opt::planner::{MIN_OPTIMIZER_WORK, estimated_greedy_work};
     let small = Graph::new(vec![[1, 10, 2], [2, 11, 3]]);
     let q = [p(v(0), c(10), v(1)), p(v(1), c(11), v(2))];
     assert!(estimated_greedy_work(&q, &small.stats()) < MIN_OPTIMIZER_WORK);
@@ -872,9 +872,9 @@ fn work_gate_keeps_small_queries_greedy_and_admits_expanding_stars() {
 
 #[test]
 fn wide_high_work_bgp_preserves_original_runtime_results() {
-    use rdfdb::exec::{Options, QueryResult, query_with};
-    use rdfdb::opt::planner::estimated_greedy_work;
-    use rdfdb::storage::MemorySnapshot;
+    use triplelight::exec::{Options, QueryResult, query_with};
+    use triplelight::opt::planner::estimated_greedy_work;
+    use triplelight::storage::MemorySnapshot;
     let mut input = String::new();
     for s in 0..500 {
         for o in 0..50 {
@@ -935,8 +935,8 @@ fn wide_high_work_bgp_preserves_original_runtime_results() {
 
 #[test]
 fn optimizer_dictionary_lookup_failure_is_not_an_empty_result() {
-    use rdfdb::exec::{Options, QueryErrorKind, query_with};
-    use rdfdb::storage::MemorySnapshot;
+    use triplelight::exec::{Options, QueryErrorKind, query_with};
+    use triplelight::storage::MemorySnapshot;
     let g = MemorySnapshot::from_ntriples("<urn:a> <urn:p> <urn:b> .".as_bytes()).unwrap();
     let stats = Stats::from_snapshot(&g).unwrap();
     let faulty = Faulty {

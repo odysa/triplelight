@@ -1,9 +1,9 @@
 //! `rdfdb serve <data.nt|data.ttl> [port]` — load into memory and serve the SPARQL 1.1 protocol at /sparql.
 //! `rdfdb query <data> <query>` — run one query and print JSON results.
-use rdfdb::exec::{query, query_with, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids}};
-use rdfdb::opt::stats::Stats;
-use rdfdb::storage::{MemorySnapshot, DiskSnapshot, Dictionary, Snapshot, StorageError};
-use rdfdb::model::{Perm, TermId, TripleBatch};
+use triplelight::exec::{query, query_with, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids}};
+use triplelight::opt::stats::Stats;
+use triplelight::storage::{MemorySnapshot, DiskSnapshot, Dictionary, Snapshot, StorageError};
+use triplelight::model::{Perm, TermId, TripleBatch};
 use oxrdf::{Term, TermRef};
 
 #[cfg(target_os = "linux")]
@@ -84,8 +84,8 @@ fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax
 
 /// One SPARQL query against a snapshot, as an HTTP response. Errors: 400 (bad query), 501 (unsupported), 500 (storage);
 /// never an empty result in place of a failure.
-fn answer<S: rdfdb::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>) -> Resp {
-    let before = rdfdb::storage::disk_index::cache_trace_enabled().then(rdfdb::storage::disk_index::cache_trace_snapshot);
+fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>) -> Resp {
+    let before = triplelight::storage::disk_index::cache_trace_enabled().then(triplelight::storage::disk_index::cache_trace_snapshot);
     let response = (|| { match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| query_with(snap, q, opts))) {
         Ok(Ok(r)) => {
             let (ct, b) = match &r {
@@ -105,7 +105,7 @@ fn answer<S: rdfdb::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>) ->
         }
     } })();
     if let Some(before) = before {
-        let after = rdfdb::storage::disk_index::cache_trace_snapshot();
+        let after = triplelight::storage::disk_index::cache_trace_snapshot();
         for (i,name) in ["spo","sop","pso","pos","osp","ops","dictionary.term","dictionary.id"].iter().enumerate() {
             let d: Vec<u64> = (0..5).map(|j|after[i][j].saturating_sub(before[i][j])).collect();
             eprintln!("block_cache {name} hits={} misses={} pread_calls={} pread_bytes={} evictions={}",d[0],d[1],d[2],d[3],d[4]);
@@ -122,15 +122,15 @@ fn serve_store(args: &[String]) {
     let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
     let t = Instant::now();
     let store = if args.iter().any(|a| a == "--disk") {
-        rdfdb::store::Store::open_with(&args[2], init.as_deref(), Box::new(rdfdb::storage::DiskBase { workers }))
+        triplelight::store::Store::open_with(&args[2], init.as_deref(), Box::new(triplelight::storage::DiskBase { workers }))
     } else {
-        rdfdb::store::Store::open(&args[2], init.as_deref(), workers)
+        triplelight::store::Store::open(&args[2], init.as_deref(), workers)
     }.expect("open store");
     eprintln!("opened {} in {:.2}s ({} pending changes replayed)", args[2], t.elapsed().as_secs_f64(), store.snapshot().delta_len());
     // Statistics describe the base; they are used only while there are no pending changes (they could otherwise
     // report a predicate as absent that an update added). Compaction rebuilds them.
     let stats: std::sync::RwLock<Option<(usize, std::sync::Arc<Stats>)>> = std::sync::RwLock::new(None);
-    let refresh = |stats: &std::sync::RwLock<Option<(usize, std::sync::Arc<Stats>)>>, snap: &rdfdb::store::Overlay| {
+    let refresh = |stats: &std::sync::RwLock<Option<(usize, std::sync::Arc<Stats>)>>, snap: &triplelight::store::Overlay| {
         if args.iter().any(|a| a == "--no-stats") { return }
         let st = Stats::from_snapshot(snap.base()).expect("statistics");
         *stats.write().unwrap() = Some((snap.base_id(), std::sync::Arc::new(st)));
@@ -188,30 +188,30 @@ fn bind_host() -> String { std::env::var("RDFDB_HOST").unwrap_or_else(|_| "127.0
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     for (i, arg) in args.iter().enumerate() {
-        if arg == "--build-external" { rdfdb::storage::external_build::force_external_build(); }
+        if arg == "--build-external" { triplelight::storage::external_build::force_external_build(); }
         let value=arg.strip_prefix("--build-memory-mb=").or_else(|| (arg == "--build-memory-mb").then(|| args.get(i+1).map(String::as_str)).flatten());
         if arg == "--build-memory-mb" && value.is_none() { eprintln!("--build-memory-mb requires a positive integer"); std::process::exit(2); }
-        if let Some(value)=value { let n=value.parse::<usize>().ok().filter(|n|*n>0).unwrap_or_else(|| { eprintln!("--build-memory-mb requires a positive integer"); std::process::exit(2) }); rdfdb::storage::external_build::set_build_budget_mb(n).expect("build budget"); }
+        if let Some(value)=value { let n=value.parse::<usize>().ok().filter(|n|*n>0).unwrap_or_else(|| { eprintln!("--build-memory-mb requires a positive integer"); std::process::exit(2) }); triplelight::storage::external_build::set_build_budget_mb(n).expect("build budget"); }
     }
     for (i, arg) in args.iter().enumerate() {
         let value = arg.strip_prefix("--cache-mb=").or_else(|| (arg == "--cache-mb").then(|| args.get(i + 1).map(String::as_str)).flatten());
         if arg == "--cache-mb" && value.is_none() { eprintln!("--cache-mb requires a positive integer"); std::process::exit(2); }
         if let Some(value) = value {
             let parsed = value.parse::<usize>().ok().filter(|n| *n > 0).unwrap_or_else(|| { eprintln!("--cache-mb requires a positive integer"); std::process::exit(2) });
-            rdfdb::storage::disk_index::set_cache_budget_mb(parsed).expect("cache budget");
+            triplelight::storage::disk_index::set_cache_budget_mb(parsed).expect("cache budget");
         }
     }
 
     match args.get(1).map(String::as_str) {
         Some("verify") => {
-            if args.len() != 3 { eprintln!("usage: rdfdb verify <directory>"); std::process::exit(2); }
+            if args.len() != 3 { eprintln!("usage: triplelight verify <directory>"); std::process::exit(2); }
             let result=DiskSnapshot::open(&args[2]).and_then(|s|s.verify());
             if let Err(e)=result { eprintln!("verification failed: {e}"); std::process::exit(1); }
             println!("snapshot verified");
         }
         Some("build-disk") => {
             if args.iter().skip(2).any(|arg| arg == "--help" || arg == "-h") {
-                println!("usage: rdfdb build-disk <source.nt|source.ttl> <new-directory> [--parallel-load=N] [--build-memory-mb=N] [--build-external]\n\
+                println!("usage: triplelight build-disk <source.nt|source.ttl> <new-directory> [--parallel-load=N] [--build-memory-mb=N] [--build-external]\n\
                     --parallel-load=N  Ingestion workers; defaults to available cores, 1 forces serial.\n\
                     External N-Triples parsing uses at most 8 workers and 3 index builders.\n\
                     --build-memory-mb=N  Advisory strategy/run-buffer target, not a process RSS limit.\n\
@@ -220,7 +220,7 @@ fn main() {
                 return;
             }
             if args.len() < 4 || args.iter().any(|a| a == "--disk") {
-                eprintln!("usage: rdfdb build-disk <source.nt|source.ttl> <new-directory> [--parallel-load=N]");
+                eprintln!("usage: triplelight build-disk <source.nt|source.ttl> <new-directory> [--parallel-load=N]");
                 std::process::exit(2);
             }
             if args[2].ends_with(".ttl") {
@@ -230,7 +230,7 @@ fn main() {
                 let workers = args.iter().find_map(|arg| arg.strip_prefix("--parallel-load="))
                     .map(|v| v.parse::<usize>().expect("parallel-load requires a nonzero integer"))
                     .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, |n| n.get()));
-                rdfdb::storage::build_disk_snapshot_with_workers(&args[3], Some(std::path::Path::new(&args[2])), workers).expect("create disk snapshot");
+                triplelight::storage::build_disk_snapshot_with_workers(&args[3], Some(std::path::Path::new(&args[2])), workers).expect("create disk snapshot");
             }
         }
         Some("query") => {
@@ -243,12 +243,12 @@ fn main() {
         }
         Some("stress-commit") => {
             // Test helper: commit one triple per transaction and report each acknowledgement.
-            let store = rdfdb::store::Store::open(&args[2], None, 1).expect("open store");
+            let store = triplelight::store::Store::open(&args[2], None, 1).expect("open store");
             let n: u64 = args[3].parse().unwrap();
             for i in 0..n {
                 let t = oxrdf::Triple::new(oxrdf::NamedNode::new_unchecked(format!("http://ex/{i}")),
                     oxrdf::NamedNode::new_unchecked("http://ex/100"), oxrdf::NamedNode::new_unchecked(format!("http://ex/{}", i + 1)));
-                store.commit(&[(rdfdb::store::Change::Insert, t)]).expect("commit");
+                store.commit(&[(triplelight::store::Change::Insert, t)]).expect("commit");
                 println!("acked {i}");
             }
         }
@@ -291,6 +291,6 @@ fn main() {
             }
             }); } });
         }
-        _ => eprintln!("usage: rdfdb serve <data.nt|.ttl> [port] | rdfdb serve-store <dir> [port] [--init data.nt] | rdfdb query <data> <sparql>"),
+        _ => eprintln!("usage: triplelight serve <data.nt|.ttl> [port] | triplelight serve-store <dir> [port] [--init data.nt] | triplelight query <data> <sparql>"),
     }
 }
