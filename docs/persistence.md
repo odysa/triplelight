@@ -7,7 +7,7 @@ rdfdb build-disk data.nt ./snapshot --build-external
 rdfdb serve ./snapshot 7878 --disk
 rdfdb verify ./snapshot
 # Serve durable updates backed by a disk snapshot and write-ahead log.
-rdfdb serve-store ./store 7878 --disk --init data.nt
+triplelight serve-store ./store 7878 --disk --init data.nt   # needs `--features server`
 ```
 
 New snapshots have compressed RDFIDX03 triple blocks and two front-coded dictionary indexes, one sorted by term and one by ID. The dictionary and triple index directories are read at open; their blocks are read on demand through bounded decoded-block caches. Older RDFSNAP2 snapshots and RDFIDX02 indexes remain readable; the older dictionary format is loaded fully at open. A failed build can leave an incomplete new directory. The manifest is written last.
