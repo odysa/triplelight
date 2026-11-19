@@ -132,7 +132,7 @@ and pyoxigraph have no internal ceiling beyond the shared 12 GiB container limit
 
 Whole-phase cgroup `memory.peak` (startup, load, warm-up, scored requests and close; not RSS), pass 1 / pass 2 in GiB:
 TripleLight LUBM 9.33 / 8.10, WatDiv 6.73 / 6.72, BI 8.99 / 9.06; pyoxigraph LUBM 6.21 / 7.66, WatDiv 5.82 / 5.82; DuckDB
-LUBM 4.05 / 4.07, WatDiv 4.75 / 4.94, BI 3.98 / 4.01. TripleLight's phases also show substantial cgroup page reclaim over
+LUBM 4.05 / 4.07, WatDiv 4.74 / 4.94, BI 3.98 / 4.01. TripleLight's phases also show substantial cgroup page reclaim over
 the whole phase; without counters at the query boundaries, this does not establish an effect on query time.
 
 This group is separate from the Node.js in-memory, on-disk Python, JVM and HTTP results (different runtimes, storage,
