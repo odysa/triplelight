@@ -40,7 +40,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     }
 
     /// Calls `f` for every triple matching `prefix` in `perm` (columns in that permutation's key order).
-    fn scan_each(&self, perm: Perm, prefix: &[TermId], mut f: impl FnMut(TermId, TermId, TermId)) {
+    pub(super) fn scan_each(&self, perm: Perm, prefix: &[TermId], mut f: impl FnMut(TermId, TermId, TermId)) {
         for batch in self.snap.scan(perm, prefix) {
             let b = batch.unwrap_or_else(|e| storage_failure(e));
             for i in 0..b.len() { f(b.cols[0][i], b.cols[1][i], b.cols[2][i]) }
