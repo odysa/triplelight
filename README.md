@@ -100,6 +100,35 @@ More in [docs/embedded/README.md](docs/embedded/README.md), including bulk loadi
 
 ## Performance
 
+Benchmarks compare like with like: **embedded engines in the same process** (no network on any side), and
+**servers over HTTP**. The two kinds of numbers are never mixed in one table.
+
+### Embedded (in-process): Python API
+
+Each engine runs inside one Python process through its own API and its own on-disk store, in a container capped at
+4 CPUs and 12 GiB. Times are summed query seconds per pass, from submitting the query until the full result has been
+converted to Python values. Two passes (pass 2 in reversed order). BI: 15 warm-up then 45 timed requests per pass;
+each aggregate phase: one complete warm pass, then one timed pass. **Lower is better.**
+
+| Workload | TripleLight | DuckDB (SQL baseline) | pyoxigraph |
+|---|---:|---:|---:|
+| BSBM BI, 10M triples (45 timed requests) | **11.6 / 13.1 s** | 130.0 / 110.6 s | not ranked: qualification incomplete |
+| LUBM-100 aggregates (30 queries) | **0.67 / 0.64 s** | 50.4 / 40.0 s | 41.7 / 34.5 s |
+| WatDiv aggregates (42 queries) | **0.20 / 0.23 s** | 27.1 / 18.9 s | 71.6 / 71.8 s |
+
+All 1,104 scheduled requests passed the frozen answer gates against Apache Jena, with no retries or out-of-memory
+failures. The gates are: BI value-compatible (registered numeric tolerance, exact anchors, ORDER BY rules), and for
+the aggregates COUNT-compatible with exact group terms and multiplicity. They are not exact typed-result equality on
+every query. TripleLight ran at commit `e2e9cb2f`. Engine cache settings differ between engines. DuckDB has no SPARQL;
+it answers SQL over one triples table: hand-written templates for BSBM BI, and a translator written only for the
+aggregate suite for LUBM and WatDiv (generation inside the timer). pyoxigraph has no BI total because its BI
+qualification timed out before completing (the 11 answers it produced passed); separately, in a nine-term identity
+test it merges literals that RDF treats as distinct terms. Evidence:
+[report and raw answers]((internal link removed)). A Node.js in-process comparison
+(TripleLight, oxigraph, quadstore + Comunica) is in progress.
+
+### Server (HTTP)
+
 Two analytical workloads, each measured in its own session on one Linux VM, with every engine capped at 4 CPUs and
 12 GiB. They were not measured together on one build: BI used TripleLight commit `ef7a778` and the aggregate suite
 `9a2f49b`.

@@ -28,6 +28,33 @@ name. They refer to the same engine.
 All comparisons run every system on the same machine in the same session, with each system's answers checked
 against Apache Jena. Numbers are sums of per-query medians unless stated. Lower is better.
 
+## Embedded, in-process: Python API (BSBM BI 10M, LUBM-100 and WatDiv aggregates)
+
+Each engine runs inside one Python process through its own API and its own on-disk store; no HTTP on any side.
+Fresh container per phase (`--network none`, 4 CPUs, 12 GiB memory, container swap disabled; host/VM memory
+behavior is outside that limit), two passes in reversed order. BI phases run 15 warm-up then 45 scored requests;
+each aggregate phase runs one complete warm pass, then one scored pass. The timer covers query execution plus complete conversion of the result to Python values;
+validation is outside the timer. Summed scored query time in **seconds**, pass 1 / pass 2 (lower is better):
+
+| Dataset | Timed requests per pass | TripleLight | DuckDB (SQL baseline) | pyoxigraph |
+|---|---:|---:|---:|---:|
+| BSBM BI, 10M triples | 45 | **11.608 / 13.145** | 130.025 / 110.581 | ineligible: incomplete qualification |
+| LUBM-100 aggregates | 30 | **0.666 / 0.639** | 50.397 / 40.005 | 41.701 / 34.497 |
+| WatDiv aggregates | 42 | **0.195 / 0.228** | 27.069 / 18.850 | 71.611 / 71.752 |
+
+All 1,104 scheduled requests (612 scored, 492 warm-up) passed the frozen answer gates against Apache Jena (BI:
+value-compatible, including the registered numeric tolerance, exact anchors and ORDER BY rules; aggregates:
+COUNT-compatible, with exact group terms and multiplicity; not exact typed-result equality on every query); no
+retries, replacements, out-of-memory failures or phase caps. TripleLight ran at commit `e2e9cb2f`. Engine cache
+settings differ. DuckDB answers SQL over one triples table: hand-written templates for BSBM BI, and the
+aggregate suite's restricted SPARQL-to-SQL translator for LUBM and WatDiv, with generation inside the timer.
+pyoxigraph 0.5.13 gets no BI total because its BI qualification timed out before completing (the 11 answers it
+produced passed); in a separate nine-term
+identity test it also stores `"01"^^xsd:int` and `"1"^^xsd:integer` as one term. These results are separate from the
+HTTP tables below and do not establish general state of the art or full SPARQL conformance. Report, per-query
+timings, memory scope and the original answers:
+[embedded Python cohort]((internal link removed)).
+
 ## Analytical: BSBM Business Intelligence, 10M triples (three engines, one session)
 
 Same Linux VM (4 CPUs, 12 GiB cap per engine), two passes in reversed order. Each number is the sum of 45
