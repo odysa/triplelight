@@ -304,7 +304,7 @@ and gates; they do not rank TripleLight across runtimes. Jena 6.2.0 and RDF4J 5.
 12 GiB with container swap disabled, network none; the root file system was not read-only, unlike the Python in-memory
 run); pass 2 is the exact reverse of pass 1. The timer covers query compilation, API execution and full conversion to
 typed RDF bindings; opening or import, the stored-triple count, warm-ups and validation are outside it. Each answer is
-serialized and validated before the next request is sent; those gaps are recorded and published, and they give
+serialized and validated before the next request is sent; those gaps are recorded and published, and they can give
 background JIT and GC work different opportunities than the back-to-back Python and Node cohorts. Summed scored query
 time in **seconds**, pass 1 / pass 2 (lower is better).
 
@@ -329,9 +329,9 @@ Standalone baselines:
 All 1,272 scheduled requests (666 scored, 606 warm-up) passed the frozen Jena gates; no cap hits, out-of-memory kills,
 request errors or cleanup failures. Every phase had a 1,800-second whole-phase cap set before the run. All three RDF4J
 backends were excluded from BI before scoring: each disagrees with Jena on the 12 instances of query q5, which joins on an
-unbound GROUP BY key; removing that key restores agreement for NativeStore in a separate diagnostic, which does not
-requalify the original query. In a separate small identity test, Jena TDB2 stores `"01"^^xsd:int` as `"1"`; none of
-these datasets contains a non-canonical numeric literal. Pass 2 is noticeably slower for several pairs (Jena aggregates,
+unbound GROUP BY key. A separate one-parameter NativeStore diagnostic (one q5 instance) restored agreement when that key
+was removed; it does not establish agreement across all 12 instances or the other backends, and does not requalify the
+original query. In a separate small identity test, Jena TDB2 stores `"01"^^xsd:int` as `"1"`. Pass 2 is noticeably slower for several pairs (Jena aggregates,
 RDF4J NativeStore and LMDBStore on LUBM); both passes are kept and no cause is established.
 
 Whole-phase cgroup `memory.peak` (startup, open or import, warm-up, scored requests, close; not heap or RSS), pass 1 /
