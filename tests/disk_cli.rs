@@ -45,17 +45,39 @@ fn disk_server_restarts_and_answers_without_original_input() {
         let listener=TcpListener::bind("127.0.0.1:0").unwrap(); let port=listener.local_addr().unwrap().port(); drop(listener);
         let child=Command::new(exe).arg("serve").arg(&snapshot).arg(port.to_string()).arg("--disk").stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).spawn().unwrap();
         let mut child=ChildGuard(child); let deadline=Instant::now()+Duration::from_secs(10);
-        let mut stream=loop {
-            match TcpStream::connect(("127.0.0.1",port)) {
-                Ok(s)=>break s,
-                Err(_) if Instant::now()<deadline => std::thread::sleep(Duration::from_millis(20)),
-                Err(e)=>panic!("server failed to start: {e}, status {:?}",child.0.try_wait()),
+        // Retry the whole request until the deadline: right after start-up a connection can be accepted and then
+        // reset (seen once on a Linux CI runner during the second restart). A server that never answers still fails.
+        let q="SELECT ?o WHERE { <urn:s> <urn:p> ?o }";
+        let response=loop {
+            // Every socket operation gets only the time left before the deadline, so neither a slow accept nor a
+            // trickling peer can extend the test past it.
+            let left=|| deadline.checked_duration_since(Instant::now()).filter(|d| !d.is_zero())
+                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::TimedOut,"deadline passed"));
+            let attempt=(|| -> std::io::Result<String> {
+                let addr=std::net::SocketAddr::from(([127,0,0,1],port));
+                let mut stream=TcpStream::connect_timeout(&addr,left()?)?;
+                let request=format!("POST /sparql HTTP/1.0\r\nHost: localhost\r\nContent-Type: application/sparql-query\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",q.len(),q);
+                let mut sent=0;
+                while sent<request.len() {
+                    stream.set_write_timeout(Some(left()?))?;
+                    match stream.write(&request.as_bytes()[sent..])? {
+                        0 => return Err(std::io::Error::new(std::io::ErrorKind::WriteZero,"server closed the connection")),
+                        n => sent+=n,
+                    }
+                }
+                let mut body=Vec::new(); let mut buf=[0u8;4096];
+                loop {
+                    stream.set_read_timeout(Some(left()?))?;
+                    match stream.read(&mut buf)? { 0 => break, n => body.extend_from_slice(&buf[..n]) }
+                }
+                Ok(String::from_utf8_lossy(&body).into_owned())
+            })();
+            match attempt {
+                Ok(r) if !r.is_empty() => break r,
+                _ if Instant::now()<deadline => std::thread::sleep(Duration::from_millis(20)),
+                other => panic!("server did not answer: {other:?}, status {:?}",child.0.try_wait()),
             }
         };
-        stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
-        let q="SELECT ?o WHERE { <urn:s> <urn:p> ?o }";
-        write!(stream,"POST /sparql HTTP/1.0\r\nHost: localhost\r\nContent-Type: application/sparql-query\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",q.len(),q).unwrap();
-        let mut response=String::new(); stream.read_to_string(&mut response).unwrap();
         assert!(response.starts_with("HTTP/1.1 200") || response.starts_with("HTTP/1.0 200"),"{response}");
         assert!(response.contains("persisted"),"{response}");
         drop(child);
