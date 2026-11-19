@@ -1,0 +1,15 @@
+[
+  "docker",
+  "run",
+  "--detach",
+  "--name",
+  "rdf-jianlin-agg72-match-pass1-lubm-virtuoso",
+  "--cpus=4",
+  "--memory=12g",
+  "--memory-swap=12g",
+  "-p",
+  "127.0.0.1:31463:8890",
+  "--mount",
+  "type=bind,source=/private/tmp/rdf-jianlin-analytical25/aggregate72-virtuoso-qualification-v1/lubm/database,target=/database",
+  "openlink/virtuoso-opensource-7@sha256:0dbe1ab4fa0cb7bbafc1f6c0c2b0a5d6f22d918dbd17672f2ddb24580aa6756a"
+]
