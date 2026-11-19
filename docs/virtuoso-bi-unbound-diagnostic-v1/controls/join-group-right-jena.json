@@ -1,0 +1,20 @@
+{ "head": {
+    "vars": [ "country" , "product" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "country": { "type": "uri" , "value": "urn:ex:US" } ,
+        "product": { "type": "uri" , "value": "urn:ex:p2" }
+      } ,
+      { 
+        "country": { "type": "uri" , "value": "urn:ex:US" } ,
+        "product": { "type": "uri" , "value": "urn:ex:p1" }
+      } ,
+      { 
+        "country": { "type": "uri" , "value": "urn:ex:DE" } ,
+        "product": { "type": "uri" , "value": "urn:ex:p1" }
+      }
+    ]
+  }
+}
