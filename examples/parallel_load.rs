@@ -1,6 +1,6 @@
 //! Fresh-process load comparison: parallel_load <serial|parallel> <file.nt> [workers].
-use rdfdb::model::Perm;
-use rdfdb::storage::{MemorySnapshot, Snapshot};
+use triplelight::model::Perm;
+use triplelight::storage::{MemorySnapshot, Snapshot};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().collect();
     if args.len() < 3 { return Err("usage: parallel_load <serial|parallel> <file.nt> [workers]".into()); }
