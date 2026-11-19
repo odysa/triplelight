@@ -1,0 +1,10 @@
+{
+  "name": "triplelight-wasm",
+  "version": "0.1.0",
+  "description": "TripleLight compiled to WebAssembly: an in-memory SPARQL 1.1 database for browsers, Deno, edge workers and Node",
+  "scripts": {
+    "build": "cargo build --release --target wasm32-unknown-unknown && node scripts/bindgen.js",
+    "test": "node --test test/*.test.js"
+  },
+  "license": "UNLICENSED"
+}

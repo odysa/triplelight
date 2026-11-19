@@ -5,6 +5,11 @@ use oxrdf::vocab::xsd;
 use oxrdf::{Literal, NamedNode, Term};
 use spargebra::algebra::{Expression, Function};
 use std::cmp::Ordering;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::{SystemTime, UNIX_EPOCH};
+// std's clock panics on wasm32-unknown-unknown; web-time reads the JS clock there.
+#[cfg(target_arch = "wasm32")]
+use web_time::{SystemTime, UNIX_EPOCH};
 use std::str::FromStr;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
@@ -639,7 +644,7 @@ fn random_u64() -> u64 {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let mut h = std::collections::hash_map::RandomState::new().build_hasher();
     h.write_u64(COUNTER.fetch_add(1, AtomicOrdering::Relaxed));
-    h.write_u128(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos()));
+    h.write_u128(SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_nanos()));
     h.finish()
 }
 
@@ -656,7 +661,7 @@ fn uuid_v4() -> String {
 
 /// The current time as an xsd:dateTime lexical form in UTC with milliseconds (NOW() is fixed per query).
 pub(super) fn now_lexical() -> String {
-    let d = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+    let d = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
     let secs = d.as_secs() as i64;
     let (days, rem) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
     // Civil date from days since 1970-01-01 (Howard Hinnant's algorithm).
