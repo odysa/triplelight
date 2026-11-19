@@ -108,12 +108,12 @@ both. Each engine ran two passes (pass 2 in reversed order); both are shown beca
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/bench-bi100m-dark.svg">
-  <img alt="BSBM Business Intelligence, 98.9M triples. Total time, pass 1 / pass 2: TripleLight 11.74 / 6.73 s, QLever 24.18 / 24.51 s, DuckDB 573.8 / 443.5 s. Peak memory: TripleLight 3.7 / 4.1 GiB, QLever 0.51 / 0.39 GiB, DuckDB 11.4 / 12.0 GiB." src="docs/images/bench-bi100m-light.svg">
+  <img alt="BSBM Business Intelligence, 98.9M triples. Total time, pass 1 / pass 2: TripleLight 11.74 / 6.73 s, QLever 24.18 / 24.51 s, DuckDB (hand-written SQL) 573.8 / 443.5 s. Peak memory: TripleLight 3.7 / 4.1 GiB, QLever 0.51 / 0.39 GiB, DuckDB 11.4 / 12.0 GiB." src="docs/images/bench-bi100m-light.svg">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/bench-aggregate72-dark.svg">
-  <img alt="72 aggregate queries on LUBM-100 and WatDiv. Total time, pass 1 / pass 2: TripleLight 0.58 / 0.54 s, Virtuoso 4.61 / 4.50 s, QLever 5.11 / 4.60 s, DuckDB 73.1 / 73.6 s. Peak memory: TripleLight 0.97 / 0.94 GiB, Virtuoso 10.4 GiB, QLever 0.29 GiB, DuckDB 3.4 GiB." src="docs/images/bench-aggregate72-light.svg">
+  <img alt="72 aggregate queries on LUBM-100 and WatDiv. Total time, pass 1 / pass 2: TripleLight 0.58 / 0.54 s, Virtuoso 4.61 / 4.50 s, QLever 5.11 / 4.60 s, DuckDB (SQL from a suite-specific translator) 73.1 / 73.6 s. Peak memory: TripleLight 0.97 / 0.94 GiB, Virtuoso 10.4 GiB, QLever 0.29 GiB, DuckDB 3.4 GiB." src="docs/images/bench-aggregate72-light.svg">
 </picture>
 
 | Workload | What is timed | Answers checked |
@@ -128,7 +128,11 @@ both. Each engine ran two passes (pass 2 in reversed order); both are shown beca
 - **QLever uses much less memory** (about a tenth of TripleLight's on BI 100M) and is faster on one BI query
   template (q3). Memory and q3 are our main open gaps.
 - On WatDiv alone, TripleLight and Virtuoso are close (0.26 / 0.23 s vs 0.30 / 0.31 s).
-- DuckDB is a SQL baseline over one triples table with hand-written SQL, not a native RDF engine.
+- **DuckDB does not support RDF or SPARQL**, so it is a SQL baseline here, not an RDF engine. The triples are loaded
+  into one DuckDB table (subject, predicate, and object with its datatype and language). For BSBM BI, each request
+  fills a hand-written SQL template for its query template; for the aggregate suite, a small translator written for
+  that suite turns each SPARQL COUNT query into SQL. In both cases the SQL generation runs inside the timed request.
+  A better SQL layout (integer IDs, one table per predicate) would likely be much faster and has not been measured.
 - Two passes on a shared machine is a bounded observation, not a significance test.
 
 Full tables, per-query breakdowns, more datasets (LUBM-1000, BSBM, WatDiv), other engines (Jena, RDF4J,
