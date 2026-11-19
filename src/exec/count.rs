@@ -6,10 +6,7 @@ use crate::{
 };
 use bgp::Slot;
 use oxrdf::{Literal, Variable};
-use spargebra::{
-    algebra::{AggregateExpression, AggregateFunction, Expression, GraphPattern},
-    term::NamedNodePattern,
-};
+use crate::sparql::{AggregateExpression, AggregateFunction, Expression, GraphPattern, NamedNodePattern};
 use std::collections::HashSet;
 
 #[derive(Clone, Copy)]
@@ -53,8 +50,8 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             .iter()
             .any(|(_, a)| matches!(a, AggregateExpression::CountSolutions { distinct: true }))
             && patterns.iter().any(|p| {
-                matches!(&p.subject, spargebra::term::TermPattern::BlankNode(_))
-                    || matches!(&p.object, spargebra::term::TermPattern::BlankNode(_))
+                matches!(&p.subject, crate::sparql::TermPattern::BlankNode(_))
+                    || matches!(&p.object, crate::sparql::TermPattern::BlankNode(_))
             })
         {
             return None;

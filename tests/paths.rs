@@ -101,6 +101,6 @@ fn endpoints_bound_by_earlier_patterns_must_be_graph_nodes() {
     // W3C values_and_path: the path is evaluated on its own, so its zero-length matches are graph nodes only.
     assert_eq!(rows("SELECT * WHERE { VALUES ?v { 1 } ?v :p? ?v }"), Vec::<String>::new());
     assert_eq!(rows("SELECT ?v WHERE { VALUES ?v { :a } ?v :p? ?v }"), v(&["<a>"]));
-    // Sequences of alternatives are split by spargebra on a blank node (W3C pp31).
+    // Sequences of alternatives are split by the parser on a blank node (W3C pp31).
     assert_eq!(rows("SELECT ?t WHERE { :a (:p|:q)/(:p|:q) ?t }"), v(&["<c>", "<c>"]));
 }
