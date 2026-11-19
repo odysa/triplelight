@@ -104,6 +104,41 @@ did not complete qualification, not a zero or a measured loss. These results are
 tables and do not establish general state of the art or full SPARQL conformance. Report, per-query timings, the
 stopped attempt and the original answers: [embedded Node.js cohort]((internal link removed)).
 
+## Embedded, in-memory: Python API (TripleLight in-memory vs pyoxigraph vs DuckDB)
+
+Every phase builds a fresh in-memory store from the original N-Triples file inside its own container: TripleLight
+`Database.in_memory()` and native `load()` (commit `fd204cec`), waiting for statistics readiness; pyoxigraph 0.5.13
+pathless `Store()` with its in-memory bulk loader; DuckDB 2.0.0 `:memory:` with the existing typed-triples SQL schema and
+translator (an SQL baseline, not a SPARQL engine). Same frozen workloads, references and gates as the other embedded
+cohorts. One registered attempt of 16 fresh containers (Python 3.11.18, Linux ARM64, 4 CPUs, 12 GiB with container swap
+disabled, network none, read-only root): pass 1 = TL, pyoxigraph, DuckDB on LUBM, then on WatDiv, then TL and DuckDB on BI;
+pass 2 in exactly the reverse order. Requests run back to back and answers are validated at each phase boundary. The timer
+covers the API call and full conversion to typed RDF bindings (plus SQL generation for DuckDB); loading, statistics
+readiness, the stored-triple count and validation are outside it. Summed scored query time in **seconds**, pass 1 / pass 2
+(lower is better):
+
+| Dataset | Timed requests per pass | TripleLight in-memory | pyoxigraph in-memory | DuckDB in-memory (SQL baseline) |
+|---|---:|---:|---:|---:|
+| LUBM-100 aggregates | 30 | **0.507 / 0.432** | 9.227 / 6.610 | 23.406 / 19.644 |
+| WatDiv aggregates | 42 | **0.258 / 0.199** | 114.681 / 45.501 | 13.412 / 11.635 |
+| BSBM BI, 10M triples | 45 | **18.858 / 17.435** | excluded: qualification incomplete | 29.293 / 29.477 |
+
+All 1,104 scheduled requests (612 scored, 492 warm-up) passed the frozen Jena gates; no cap hits, out-of-memory kills,
+request errors, retries or discarded phases. Every phase had a 1,800-second whole-phase cap set before the run.
+pyoxigraph BI was excluded after its in-memory qualification reached that cap with 13 passing answers and 47 unfinished;
+it was not retried. pyoxigraph's WatDiv passes differ by 2.52×, dominated by the two C3 count queries; no cause is
+established. DuckDB is internally limited to 8 GB (decimal; reported 7.4 GiB) with spilling disabled, while TripleLight
+and pyoxigraph have no internal ceiling beyond the shared 12 GiB container limit.
+
+Whole-phase cgroup `memory.peak` (startup, load, warm-up, scored requests and close; not RSS), pass 1 / pass 2 in GiB:
+TripleLight LUBM 9.33 / 8.10, WatDiv 6.73 / 6.72, BI 8.99 / 9.06; pyoxigraph LUBM 6.21 / 7.66, WatDiv 5.82 / 5.82; DuckDB
+LUBM 4.05 / 4.07, WatDiv 4.74 / 4.94, BI 3.98 / 4.01. TripleLight's phases also show substantial cgroup page reclaim over
+the whole phase; without counters at the query boundaries, this does not establish an effect on query time.
+
+This group is separate from the Node.js in-memory, on-disk Python, JVM and HTTP results (different runtimes, storage,
+source commits or sessions). Report, per-query timings, memory and reclaim counters, and the original answers:
+[embedded Python in-memory cohort]((internal link removed)).
+
 ## Embedded, in-memory: Node.js API (TripleLight in-memory vs oxigraph JS)
 
 Both engines build a fresh in-memory store from the N-Triples file inside each container: TripleLight with

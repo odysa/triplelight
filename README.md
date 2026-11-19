@@ -160,6 +160,25 @@ includes opening the store); the cap was raised to 1,800 seconds, registered bef
 attempts are not mixed. Missing totals mean an engine did not finish qualification, not a zero or a measured loss.
 Evidence: [report and raw answers]((internal link removed)).
 
+### Embedded in-memory (Python API)
+
+Each engine loads the N-Triples file into a fresh in-memory store inside its own container (TripleLight through
+`Database.in_memory()`, pyoxigraph through a pathless `Store()`, DuckDB through `:memory:`), then runs the same frozen
+workloads and answer checks. Summed query seconds, pass 1 / pass 2. **Lower is better.**
+
+| Workload | TripleLight in-memory | pyoxigraph in-memory | DuckDB in-memory (SQL baseline) |
+|---|---:|---:|---:|
+| LUBM-100 aggregates (30 timed requests) | **0.51 / 0.43 s** | 9.2 / 6.6 s | 23.4 / 19.6 s |
+| WatDiv aggregates (42 timed requests) | **0.26 / 0.20 s** | 114.7 / 45.5 s | 13.4 / 11.6 s |
+| BSBM BI, 10M triples (45 timed requests) | **18.9 / 17.4 s** | no total: qualification incomplete | 29.3 / 29.5 s |
+
+All 1,104 scheduled requests passed the frozen answer gates against Apache Jena. Loading is outside the query timer.
+TripleLight's whole-phase memory peak was higher (up to 9.3 GiB, against 7.7 GiB for pyoxigraph and about 4–5 GiB for
+DuckDB, which is internally limited to 8 GB while the others have no internal ceiling). DuckDB answers SQL over one
+triples table, with SQL generation inside the timer. pyoxigraph's two WatDiv passes differ by 2.5×; both are kept. This
+group is separate from the Node in-memory, on-disk Python and HTTP tables. Evidence:
+[report and raw answers]((internal link removed)).
+
 ### Embedded in-memory (Node.js API)
 
 Both engines load the N-Triples file into a fresh in-memory store inside each container (TripleLight through
