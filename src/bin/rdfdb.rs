@@ -1,7 +1,6 @@
-//! `rdfdb serve <data.nt|data.ttl> [port]` — load into memory and serve the SPARQL 1.1 protocol at /sparql.
-//! `rdfdb query <data> <query>` — run one query and print JSON results.
-use triplelight::exec::{query, query_with, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids}};
-use triplelight::opt::stats::Stats;
+//! `triplelight query <data> <query>` — run one query and print JSON results.
+//! With the `server` feature: `triplelight serve` / `serve-store` speak the SPARQL 1.1 protocol (see `server.rs`).
+use triplelight::exec::{query, results::serialize};
 use triplelight::storage::{MemorySnapshot, DiskSnapshot, Dictionary, Snapshot, StorageError};
 use triplelight::model::{Perm, TermId, TripleBatch};
 use oxrdf::{Term, TermRef};
@@ -10,7 +9,7 @@ use oxrdf::{Term, TermRef};
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-enum Backend { Memory(MemorySnapshot), Disk(DiskSnapshot) }
+pub(crate) enum Backend { Memory(MemorySnapshot), Disk(DiskSnapshot) }
 impl Dictionary for Backend {
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { match self { Self::Memory(s) => s.lookup(term), Self::Disk(s) => s.lookup(term) } }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> { match self { Self::Memory(s) => s.resolve(id), Self::Disk(s) => s.resolve(id) } }
@@ -33,7 +32,10 @@ impl Snapshot for Backend {
 }
 use std::time::Instant;
 
-fn load(path: &str, args: &[String]) -> Backend {
+#[cfg(feature = "server")]
+mod server;
+
+pub(crate) fn load(path: &str, args: &[String]) -> Backend {
     let t = Instant::now();
     if args.iter().any(|a| a == "--disk") {
         let snap = DiskSnapshot::open(path).expect("open disk snapshot");
@@ -56,134 +58,6 @@ fn load(path: &str, args: &[String]) -> Backend {
     eprintln!("loaded {path} in {:.2}s", t.elapsed().as_secs_f64());
     Backend::Memory(s)
 }
-
-fn decode(s: &str) -> String {
-    let b = s.as_bytes();
-    let mut out = Vec::with_capacity(b.len());
-    let mut i = 0;
-    while i < b.len() {
-        match b[i] {
-            b'+' => out.push(b' '),
-            b'%' if i + 2 < b.len() => {
-                if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) { out.push(v); i += 2 } else { out.push(b'%') }
-            }
-            c => out.push(c),
-        }
-        i += 1;
-    }
-    String::from_utf8_lossy(&out).into_owned()
-}
-
-fn form_param(body: &str, key: &str) -> Option<String> {
-    body.split('&').find_map(|kv| { let (k, v) = kv.split_once('=')?; (k == key).then(|| decode(v)) })
-}
-
-type Resp = tiny_http::Response<std::io::Cursor<Vec<u8>>>;
-
-fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax => 400, QueryErrorKind::Unsupported => 501, QueryErrorKind::Storage => 500 } }
-
-/// One SPARQL query against a snapshot, as an HTTP response. Errors: 400 (bad query), 501 (unsupported), 500 (storage);
-/// never an empty result in place of a failure.
-fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>) -> Resp {
-    let before = triplelight::storage::disk_index::cache_trace_enabled().then(triplelight::storage::disk_index::cache_trace_snapshot);
-    let response = (|| { match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| query_with(snap, q, opts))) {
-        Ok(Ok(r)) => {
-            let (ct, b) = match &r {
-                QueryResult::Ids(sol) => match serialize_ids(sol, snap) {
-                    Ok(b) => ("application/sparql-results+json", b),
-                    Err(e) => return tiny_http::Response::from_string(format!("storage error: {e}")).with_status_code(500),
-                },
-                r => serialize(r),
-            };
-            tiny_http::Response::from_string(b).with_header(tiny_http::Header::from_bytes("Content-Type", ct).unwrap())
-        }
-        Ok(Err(e)) => tiny_http::Response::from_string(e.to_string()).with_status_code(error_code(e.kind)),
-        Err(e) => {
-            let msg = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_default();
-            let code = if msg.contains("not supported") { 501 } else { 500 };
-            tiny_http::Response::from_string(msg).with_status_code(code)
-        }
-    } })();
-    if let Some(before) = before {
-        let after = triplelight::storage::disk_index::cache_trace_snapshot();
-        for (i,name) in ["spo","sop","pso","pos","osp","ops","dictionary.term","dictionary.id"].iter().enumerate() {
-            let d: Vec<u64> = (0..5).map(|j|after[i][j].saturating_sub(before[i][j])).collect();
-            eprintln!("block_cache {name} hits={} misses={} pread_calls={} pread_bytes={} evictions={}",d[0],d[1],d[2],d[3],d[4]);
-        }
-    }
-    response
-}
-
-/// `rdfdb serve-store <dir> [port] [--init data.nt]`: persistent store. Queries at /sparql, updates at /update
-/// (SPARQL 1.1 protocol: `update=` form field or `application/sparql-update` body). An update is acknowledged only
-/// after its WAL record is fsynced.
-fn serve_store(args: &[String]) {
-    let init = args.iter().position(|a| a == "--init").map(|i| std::path::PathBuf::from(&args[i + 1]));
-    let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let t = Instant::now();
-    let store = if args.iter().any(|a| a == "--disk") {
-        triplelight::store::Store::open_with(&args[2], init.as_deref(), Box::new(triplelight::storage::DiskBase { workers }))
-    } else {
-        triplelight::store::Store::open(&args[2], init.as_deref(), workers)
-    }.expect("open store");
-    eprintln!("opened {} in {:.2}s ({} pending changes replayed)", args[2], t.elapsed().as_secs_f64(), store.snapshot().delta_len());
-    // Statistics describe the base; they are used only while there are no pending changes (they could otherwise
-    // report a predicate as absent that an update added). Compaction rebuilds them.
-    let stats: std::sync::RwLock<Option<(usize, std::sync::Arc<Stats>)>> = std::sync::RwLock::new(None);
-    let refresh = |stats: &std::sync::RwLock<Option<(usize, std::sync::Arc<Stats>)>>, snap: &triplelight::store::Overlay| {
-        if args.iter().any(|a| a == "--no-stats") { return }
-        let st = Stats::from_snapshot(snap.base()).expect("statistics");
-        *stats.write().unwrap() = Some((snap.base_id(), std::sync::Arc::new(st)));
-    };
-    refresh(&stats, &store.snapshot());
-    let port = args.get(3).filter(|a| !a.starts_with("--")).map(String::as_str).unwrap_or("7878");
-    let server = tiny_http::Server::http(format!("{}:{port}", bind_host())).expect("bind");
-    eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql and /update");
-    let (server, store, stats, refresh) = (&server, &store, &stats, &refresh);
-    std::thread::scope(|scope| for _ in 0..workers { scope.spawn(move || {
-        for mut req in server.incoming_requests() {
-            let url = req.url().to_string();
-            let mut body = String::new();
-            let _ = req.as_reader().read_to_string(&mut body);
-            let ctype = req.headers().iter().find(|h| h.field.equiv("Content-Type")).map(|h| h.value.as_str().to_string()).unwrap_or_default();
-            let path = url.split('?').next().unwrap_or("");
-            let resp = if path == "/update" {
-                let u = if ctype.starts_with("application/sparql-update") { Some(body) } else { form_param(&body, "update") };
-                match u {
-                    None => tiny_http::Response::from_string("missing update").with_status_code(400),
-                    Some(u) => match store.update(&u) {
-                        Ok(n) => {
-                            let snap = store.snapshot();
-                            if snap.delta_len() > 1_000_000 {
-                                if let Err(e) = store.compact() { eprintln!("compaction failed: {e}") } else { refresh(stats, &store.snapshot()) }
-                            }
-                            tiny_http::Response::from_string(format!("{n} triples changed"))
-                        }
-                        Err(e) => tiny_http::Response::from_string(e.to_string()).with_status_code(error_code(e.kind)),
-                    },
-                }
-            } else {
-                let q = if ctype.starts_with("application/sparql-query") { Some(body) } else {
-                    url.split_once('?').and_then(|(_, qs)| form_param(qs, "query")).or_else(|| form_param(&body, "query"))
-                };
-                match q {
-                    None => tiny_http::Response::from_string("missing query").with_status_code(400),
-                    Some(q) => {
-                        let snap = store.snapshot();
-                        let st = stats.read().unwrap().clone();
-                        let st = st.filter(|(base, _)| snap.delta_len() == 0 && *base == snap.base_id());
-                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), wcoj: true, raw_ids: true };
-                        answer(&*snap, &q, &opts)
-                    }
-                }
-            };
-            let _ = req.respond(resp);
-        }
-    }); });
-}
-
-/// Listen address host: 127.0.0.1 unless RDFDB_HOST is set (e.g. 0.0.0.0 inside a container).
-fn bind_host() -> String { std::env::var("RDFDB_HOST").unwrap_or_else(|_| "127.0.0.1".into()) }
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -252,45 +126,16 @@ fn main() {
                 println!("acked {i}");
             }
         }
-        Some("serve-store") => serve_store(&args),
-        Some("serve") => {
-            let snap = load(&args[2], &args);
-            let port = args.get(3).map(String::as_str).unwrap_or("7878");
-            // Optimizer statistics (on by default, --no-stats disables) are built on a background thread so the
-            // server answers immediately: until they are ready, joins use the greedy order. Join and leapfrog orders
-            // then come from the cost model, which a work gate skips for small queries (round-2 benchmarks).
-            let stats: std::sync::RwLock<Option<std::sync::Arc<Stats>>> = std::sync::RwLock::new(None);
-            let want_stats = !args.iter().any(|a| a == "--no-stats");
-            eprintln!("optimizer statistics: {}", if want_stats { "building in background" } else { "off" });
-            let server = tiny_http::Server::http(format!("{}:{port}", bind_host())).expect("bind");
-            eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql");
-            // One worker per core: queries run concurrently against the same immutable snapshot.
-            let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
-            let (server, snap, stats) = (&server, &snap, &stats);
-            std::thread::scope(|scope| {
-            if want_stats { scope.spawn(move || {
-                let t = Instant::now();
-                match Stats::from_snapshot(snap) {
-                    Ok(st) => { *stats.write().unwrap() = Some(std::sync::Arc::new(st)); eprintln!("statistics ready after {:.2}s", t.elapsed().as_secs_f64()) }
-                    Err(e) => eprintln!("statistics failed ({e}); continuing with greedy join order"),
-                }
-            }); }
-            for _ in 0..workers { scope.spawn(move || {
-            for mut req in server.incoming_requests() {
-                let url = req.url().to_string();
-                let mut body = String::new();
-                let _ = req.as_reader().read_to_string(&mut body);
-                let is_query_body = req.headers().iter().any(|h| h.field.equiv("Content-Type") && h.value.as_str().starts_with("application/sparql-query"));
-                let q = if is_query_body { Some(body) } else {
-                    url.split_once('?').and_then(|(_, qs)| form_param(qs, "query")).or_else(|| form_param(&body, "query"))
-                };
-                let st = stats.read().unwrap().clone();
-                let opts = Options { stats: st.as_deref(), wcoj: true, raw_ids: true };
-                let resp = match q { Some(q) => answer(snap, &q, &opts), None => tiny_http::Response::from_string("missing query").with_status_code(400) };
-                let _ = req.respond(resp);
+        Some(cmd @ ("serve" | "serve-store")) => {
+            #[cfg(feature = "server")]
+            server::run(cmd, &args);
+            #[cfg(not(feature = "server"))]
+            {
+                eprintln!("`{cmd}` needs the HTTP server, which this build does not include. Rebuild with `cargo build --release --features server`.");
+                std::process::exit(2);
             }
-            }); } });
         }
-        _ => eprintln!("usage: triplelight serve <data.nt|.ttl> [port] | triplelight serve-store <dir> [port] [--init data.nt] | triplelight query <data> <sparql>"),
+        _ => eprintln!("usage: triplelight query <data> <sparql> | triplelight build-disk <source> <dir> | triplelight verify <dir>\n\
+            with --features server: triplelight serve <data.nt|.ttl> [port] | triplelight serve-store <dir> [port] [--init data.nt] [--read-only]"),
     }
 }

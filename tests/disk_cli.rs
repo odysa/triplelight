@@ -23,6 +23,7 @@ fn disk_snapshot_cli_survives_process_restart() {
     std::fs::remove_dir_all(root).unwrap();
 }
 
+#[cfg(feature = "server")]
 #[test]
 fn disk_server_restarts_and_answers_without_original_input() {
     use std::io::{Read, Write};
@@ -60,6 +61,14 @@ fn disk_server_restarts_and_answers_without_original_input() {
         drop(child);
     }
     std::fs::remove_dir_all(root).unwrap();
+}
+
+#[cfg(not(feature = "server"))]
+#[test]
+fn serve_without_the_server_feature_explains_how_to_enable_it() {
+    let out=Command::new(env!("CARGO_BIN_EXE_rdfdb")).arg("serve").arg("x.nt").output().unwrap();
+    assert!(!out.status.success());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("--features server"));
 }
 
 #[test]
