@@ -716,3 +716,41 @@ fn describe_returns_subject_triples_and_blank_node_closure() {
     assert_eq!(count("DESCRIBE <urn:a> <urn:b>"), 4);
     assert_eq!(count("DESCRIBE <urn:nothing>"), 0);
 }
+
+#[test]
+fn describe_handles_blank_node_cycles_shared_nodes_and_projection() {
+    let count = |data: &str, q: &str| {
+        let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+        match query(&s, q).unwrap() { QueryResult::Graph(t) => t.len(), r => panic!("{r:?}") }
+    };
+    // A blank-node cycle terminates: a's triple plus the two cycle triples.
+    assert_eq!(count("<urn:a> <urn:q> _:x .\n_:x <urn:p> _:y .\n_:y <urn:p> _:x .\n", "DESCRIBE <urn:a>"), 3);
+    // A blank node shared by two described resources is described once.
+    assert_eq!(count("<urn:a> <urn:q> _:s .\n<urn:b> <urn:q> _:s .\n_:s <urn:r> \"v\" .\n", "DESCRIBE <urn:a> <urn:b>"), 3);
+    // Only projected variables are described: ?y's resource <urn:b> is not.
+    let d = "<urn:a> <urn:p> <urn:b> .\n<urn:b> <urn:q> \"1\" .\n";
+    assert_eq!(count(d, "DESCRIBE ?x WHERE { ?x <urn:p> ?y }"), 1);
+    assert_eq!(count(d, "DESCRIBE * WHERE { ?x <urn:p> ?y }"), 2);
+}
+
+/// A storage failure while describing is a Storage error, not a shorter description.
+#[test]
+fn describe_scan_errors_are_storage_errors() {
+    use triplelight::model::{Perm, TermId, TripleBatch};
+    use triplelight::storage::{Dictionary, Snapshot, StorageError};
+    struct BadScan(MemorySnapshot);
+    impl Dictionary for BadScan {
+        fn lookup(&self, t: &oxrdf::Term) -> Result<Option<TermId>, StorageError> { self.0.lookup(t) }
+        fn resolve(&self, id: TermId) -> Result<oxrdf::Term, StorageError> { self.0.resolve(id) }
+        fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
+    }
+    impl Snapshot for BadScan {
+        fn scan<'a>(&'a self, _: Perm, _: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+            Box::new(std::iter::once(Err(StorageError::other("planted scan failure"))))
+        }
+        fn count(&self, p: Perm, pre: &[TermId]) -> Result<u64, StorageError> { self.0.count(p, pre) }
+        fn seek(&self, p: Perm, pre: &[TermId], t: TermId) -> Result<Option<TermId>, StorageError> { self.0.seek(p, pre, t) }
+    }
+    let e = query(&BadScan(store()), "DESCRIBE <http://ex/alice>").unwrap_err();
+    assert_eq!(e.kind, triplelight::exec::QueryErrorKind::Storage);
+}

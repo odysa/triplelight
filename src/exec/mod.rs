@@ -177,8 +177,10 @@ fn run_query<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>) -> Result<Que
             Ok(QueryResult::Graph(out))
         }
         Query::Describe { pattern, .. } => {
-            // Like Jena's default: every triple whose subject is a described resource, plus, recursively, the triples
-            // of blank nodes reached as objects (so a description never ends in a dangling blank node).
+            // SPARQL leaves the description implementation-defined. TripleLight's policy: every triple whose subject is
+            // a described resource (an IRI listed in the query, or a value of a projected variable), plus, recursively,
+            // the triples of blank nodes reached as objects, so a description never ends in a dangling blank node.
+            // Incoming triples are not included.
             ctx.register_all(pattern);
             let rows = ctx.eval(pattern, vec![ctx.empty_row()]);
             let mut queue: Vec<TermId> = Vec::new();
