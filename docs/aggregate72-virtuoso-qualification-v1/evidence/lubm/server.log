@@ -1,0 +1,130 @@
+Checking Plugins section
+Applying settings to virtuoso.ini
+[REDACTED credential-related diagnostic line]
+Generating SSL keypair
+Creating initial database
+Running initialization scripts
+[REDACTED credential-related diagnostic line]
+Fixing ownership of database volume
+Starting the Virtuoso Server
+-----
+
+		Wed Nov 18 2026
+23:52:58 { Loading plugin 1: Type `plain', file `geos' in `../hosting'
+23:52:58   plain version 1.2.3243 from OpenLink Software
+23:52:58   GEOS plugin based on Geometry Engine Open Source library from Open Source Geospatial Foundation
+23:52:58   SUCCESS plugin 1: loaded from ../hosting/geos.so }
+23:52:58 { Loading plugin 2: Type `plain', file `graphql' in `../hosting'
+23:52:58   GraphQL/SPARQL Bridge version 0.9.3 (8439c5e52f) from OpenLink Software
+23:52:58   Support functions for GraphQL/SPARQL Bridge
+23:52:58   SUCCESS plugin 2: loaded from ../hosting/graphql.so }
+23:52:58 { Loading plugin 3: Type `plain', file `proj4' in `../hosting'
+23:52:58   plain version 1.1.3243 from OpenLink Software
+23:52:58   Cartographic Projections support based on Frank Warmerdam's proj4 library
+23:52:58   SUCCESS plugin 3: loaded from ../hosting/proj4.so }
+23:52:58 { Loading plugin 4: Type `plain', file `shapefileio' in `../hosting'
+23:52:58   ShapefileIO version 0.1virt71 from OpenLink Software
+23:52:58   Shapefile support based on Frank Warmerdam's Shapelib
+23:52:58   SUCCESS plugin 4: loaded from ../hosting/shapefileio.so }
+23:52:58 SPARQL/MaxConstructTriples parameter cannot be more than 2097150, will use maximum possible limit.
+23:52:58 OpenLink Virtuoso Universal Server
+23:52:58 Version 07.20.3243-pthreads for Linux as of Aug  5 2026 (8439c5e52f)
+23:52:58 uses OpenSSL 3.0.13 30 Jan 2024
+23:52:58 uses parts of PCRE, Html Tidy
+23:53:00 SQL Optimizer enabled (max 1000 layouts)
+23:53:00 Compiler unit is timed at 0.000200 msec
+23:53:01 Checkpoint started
+23:53:01 Checkpoint finished.
+23:53:01 Roll forward started
+23:53:01 Roll forward complete
+23:53:01 PL LOG: Can't get list of vad packages in ../vad/
+23:53:02 PL LOG: Initializing DB.DBA.SYS_PROJ4_SRIDS
+23:53:02 PL LOG: ... checking for data files in "/usr/share/proj"
+23:53:02 PL LOG: ... using built-in data
+23:53:02 PL LOG: Initializing DB.DBA.SYS_PROJ4_SRIDS using built-in data
+23:53:02 PL LOG: DB.DBA.SYS_PROJ4_SRIDS initialized with 8650 spatial reference systems
+23:53:02 Checkpoint started
+23:53:02 Checkpoint finished, log reused
+23:53:02 Server exiting
+
+		Wed Nov 18 2026
+23:53:02 { Loading plugin 1: Type `plain', file `geos' in `../hosting'
+23:53:02   plain version 1.2.3243 from OpenLink Software
+23:53:02   GEOS plugin based on Geometry Engine Open Source library from Open Source Geospatial Foundation
+23:53:02   SUCCESS plugin 1: loaded from ../hosting/geos.so }
+23:53:02 { Loading plugin 2: Type `plain', file `graphql' in `../hosting'
+23:53:02   GraphQL/SPARQL Bridge version 0.9.3 (8439c5e52f) from OpenLink Software
+23:53:02   Support functions for GraphQL/SPARQL Bridge
+23:53:02   SUCCESS plugin 2: loaded from ../hosting/graphql.so }
+23:53:02 { Loading plugin 3: Type `plain', file `proj4' in `../hosting'
+23:53:02   plain version 1.1.3243 from OpenLink Software
+23:53:02   Cartographic Projections support based on Frank Warmerdam's proj4 library
+23:53:02   SUCCESS plugin 3: loaded from ../hosting/proj4.so }
+23:53:02 { Loading plugin 4: Type `plain', file `shapefileio' in `../hosting'
+23:53:02   ShapefileIO version 0.1virt71 from OpenLink Software
+23:53:02   Shapefile support based on Frank Warmerdam's Shapelib
+23:53:02   SUCCESS plugin 4: loaded from ../hosting/shapefileio.so }
+23:53:02 SPARQL/MaxConstructTriples parameter cannot be more than 2097150, will use maximum possible limit.
+23:53:02 OpenLink Virtuoso Universal Server
+23:53:02 Version 07.20.3243-pthreads for Linux as of Aug  5 2026 (8439c5e52f)
+23:53:02 uses OpenSSL 3.0.13 30 Jan 2024
+23:53:02 uses parts of PCRE, Html Tidy
+[REDACTED credential-related diagnostic line]
+23:53:03 Database version 3126
+23:53:03 SQL Optimizer enabled (max 1000 layouts)
+23:53:04 Compiler unit is timed at 0.000076 msec
+23:53:04 Roll forward started
+23:53:04     3 transactions, 185 bytes replayed (100 %)
+23:53:04 Roll forward complete
+23:53:04 PL LOG: Can't get list of vad packages in ../vad/
+[REDACTED credential-related diagnostic line]
+[REDACTED credential-related diagnostic line]
+23:53:04 Checkpoint started
+23:53:04 Checkpoint finished, log reused
+23:53:04 Server exiting
+
+		Wed Nov 18 2026
+23:53:04 { Loading plugin 1: Type `plain', file `geos' in `../hosting'
+23:53:04   plain version 1.2.3243 from OpenLink Software
+23:53:04   GEOS plugin based on Geometry Engine Open Source library from Open Source Geospatial Foundation
+23:53:04   SUCCESS plugin 1: loaded from ../hosting/geos.so }
+23:53:04 { Loading plugin 2: Type `plain', file `graphql' in `../hosting'
+23:53:04   GraphQL/SPARQL Bridge version 0.9.3 (8439c5e52f) from OpenLink Software
+23:53:04   Support functions for GraphQL/SPARQL Bridge
+23:53:04   SUCCESS plugin 2: loaded from ../hosting/graphql.so }
+23:53:04 { Loading plugin 3: Type `plain', file `proj4' in `../hosting'
+23:53:04   plain version 1.1.3243 from OpenLink Software
+23:53:04   Cartographic Projections support based on Frank Warmerdam's proj4 library
+23:53:04   SUCCESS plugin 3: loaded from ../hosting/proj4.so }
+23:53:04 { Loading plugin 4: Type `plain', file `shapefileio' in `../hosting'
+23:53:04   ShapefileIO version 0.1virt71 from OpenLink Software
+23:53:04   Shapefile support based on Frank Warmerdam's Shapelib
+23:53:04   SUCCESS plugin 4: loaded from ../hosting/shapefileio.so }
+23:53:04 SPARQL/MaxConstructTriples parameter cannot be more than 2097150, will use maximum possible limit.
+23:53:04 OpenLink Virtuoso Universal Server
+23:53:04 Version 07.20.3243-pthreads for Linux as of Aug  5 2026 (8439c5e52f)
+23:53:04 uses OpenSSL 3.0.13 30 Jan 2024
+23:53:04 uses parts of PCRE, Html Tidy
+23:53:05 Database version 3126
+23:53:05 SQL Optimizer enabled (max 1000 layouts)
+23:53:06 Compiler unit is timed at 0.000084 msec
+23:53:06 Roll forward started
+23:53:06 Roll forward complete
+23:53:06 PL LOG: Can't get list of vad packages in ../vad/
+23:53:06 Checkpoint started
+23:53:06 Checkpoint finished, log reused
+23:53:06 SSL server online at 1112
+23:53:06 HTTP/WebDAV server online at 8890
+23:53:06 HTTPS server online at 8891
+23:53:07 Server online at 1111 (pid 1)
+23:53:07 Checkpoint is disabled.
+23:53:07 Scheduler events are disabled.
+23:53:07 PL LOG: Loader started
+23:53:43 PL LOG: No more files to load. Loader has finished,
+23:53:44 Checkpoint started
+23:53:44 Checkpoint finished, log reused
+23:53:49 Server received signal 2
+23:53:49 Initiating normal shutdown
+23:53:49 Checkpoint started
+23:53:49 Checkpoint finished, log reused
+23:53:49 Server shutdown complete

@@ -1,0 +1,545 @@
+{
+  "complete": true,
+  "datasets": {
+    "lubm": {
+      "queries": {
+        "lubm/all_q1.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "85e1720e71debc2af0818c6a12f90fa2ce88e674d6deca33a14dac8d0d4f81ac"
+        },
+        "lubm/all_q10.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "85e1720e71debc2af0818c6a12f90fa2ce88e674d6deca33a14dac8d0d4f81ac"
+        },
+        "lubm/all_q11.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "dd3ebbdaf37e045be6f6fdfdbf4144700318b06924c799a4cc68d9bf38495706"
+        },
+        "lubm/all_q12.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "c00bc7798dd968c7e5fd021551f313229bf3d3fb180214714d7de3caa013c468"
+        },
+        "lubm/all_q13.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "b11e24f8852f1edcd51f4224bc190431a17cf800e20f6610550910ed8f982711"
+        },
+        "lubm/all_q14.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "d24b89f0b88570d32a00efd630e8e9fa951b6f4849bd87dd7a17c6bce3c9b3f7"
+        },
+        "lubm/all_q2.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "40c0b8266c0bc10417f2e38af00789367cefbda82d6b7aa4fbfdd0461574381a"
+        },
+        "lubm/all_q3.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "3503dca841842c5d13a680c598bcbbc47777727df1199456ed276c580fcaaee6"
+        },
+        "lubm/all_q4.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "dd3ebbdaf37e045be6f6fdfdbf4144700318b06924c799a4cc68d9bf38495706"
+        },
+        "lubm/all_q5.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "e43eceb9f6f902a2c74ecd5949b3380ff624b298a2b201d762676653e9356aef"
+        },
+        "lubm/all_q6.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "d24b89f0b88570d32a00efd630e8e9fa951b6f4849bd87dd7a17c6bce3c9b3f7"
+        },
+        "lubm/all_q7.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "8cb301bb241bbb89400721ece654cc6da0f3ef0f775f3284aa3eaa1b1532316a"
+        },
+        "lubm/all_q8.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "becf11ed95d83417d8e6aabc4f1bbe9653ee04730982f07a0c0a8a9f2a8fe71a"
+        },
+        "lubm/all_q9.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "07979e90d3d504e1e026b87b88d74fd01812a828ba65e4c8f95c181b949de1d0"
+        },
+        "lubm/distinct_q1.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "85e1720e71debc2af0818c6a12f90fa2ce88e674d6deca33a14dac8d0d4f81ac"
+        },
+        "lubm/distinct_q10.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "85e1720e71debc2af0818c6a12f90fa2ce88e674d6deca33a14dac8d0d4f81ac"
+        },
+        "lubm/distinct_q11.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "dd3ebbdaf37e045be6f6fdfdbf4144700318b06924c799a4cc68d9bf38495706"
+        },
+        "lubm/distinct_q12.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "c00bc7798dd968c7e5fd021551f313229bf3d3fb180214714d7de3caa013c468"
+        },
+        "lubm/distinct_q13.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "b11e24f8852f1edcd51f4224bc190431a17cf800e20f6610550910ed8f982711"
+        },
+        "lubm/distinct_q14.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "d24b89f0b88570d32a00efd630e8e9fa951b6f4849bd87dd7a17c6bce3c9b3f7"
+        },
+        "lubm/distinct_q2.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "40c0b8266c0bc10417f2e38af00789367cefbda82d6b7aa4fbfdd0461574381a"
+        },
+        "lubm/distinct_q3.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "3503dca841842c5d13a680c598bcbbc47777727df1199456ed276c580fcaaee6"
+        },
+        "lubm/distinct_q4.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "dd3ebbdaf37e045be6f6fdfdbf4144700318b06924c799a4cc68d9bf38495706"
+        },
+        "lubm/distinct_q5.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "e43eceb9f6f902a2c74ecd5949b3380ff624b298a2b201d762676653e9356aef"
+        },
+        "lubm/distinct_q6.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "d24b89f0b88570d32a00efd630e8e9fa951b6f4849bd87dd7a17c6bce3c9b3f7"
+        },
+        "lubm/distinct_q7.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "019bd73170fcac91fb58a9451d5b0de1f7ac2a93602304d0599c4d262128db65"
+        },
+        "lubm/distinct_q8.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "becf11ed95d83417d8e6aabc4f1bbe9653ee04730982f07a0c0a8a9f2a8fe71a"
+        },
+        "lubm/distinct_q9.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "3e8e45fc478ef102c8d69909e41b06290d3613d18c91f42661e0d0c884b81da9"
+        },
+        "lubm/group_advisors.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 60160,
+          "output_sha256": "04639bdddc6d546e5d23a9b248a35fde24cc111bfcf81121fe64ce8e55e9737a"
+        },
+        "lubm/group_type.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 15,
+          "output_sha256": "23819355dc43724c9648e5413fd3f428d2322144bfe7084042adc908973a1b27"
+        }
+      },
+      "input_before": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d",
+      "graph": "http://bench/aggregate72/lubm",
+      "command": [
+        "docker",
+        "run",
+        "--detach",
+        "--name",
+        "rdf-jianlin-agg72-virt-lubm-v1",
+        "--cpus=4",
+        "--memory=12g",
+        "--memory-swap=12g",
+        "-p",
+        "127.0.0.1:31449:8890",
+        "--mount",
+        "type=bind,source=/private/tmp/rdf-jianlin-analytical25/aggregate72-virtuoso-qualification-v1/lubm/database,target=/database",
+        "--mount",
+        "type=bind,source=<agent-workspace>/rdfdb/bench/tools/lubm100.nt,target=/import/data.nt,readonly",
+        "--env",
+        "DBA_PASSWORD",
+        "--env",
+        "VIRT_Parameters_NumberOfBuffers=1360000",
+        "--env",
+        "VIRT_Parameters_MaxDirtyBuffers=1000000",
+        "--env",
+        "VIRT_Parameters_ThreadsPerQuery=4",
+        "--env",
+        "VIRT_Parameters_DirsAllowed=.,/import,/usr/share/proj",
+        "--env",
+        "VIRT_SPARQL_ResultSetMaxRows=1000000000",
+        "--env",
+        "VIRT_SPARQL_MaxQueryExecutionTime=600",
+        "openlink/virtuoso-opensource-7@sha256:0dbe1ab4fa0cb7bbafc1f6c0c2b0a5d6f22d918dbd17672f2ddb24580aa6756a"
+      ],
+      "container_id": "47f6c524fb502662aeb23bd9cf03c1815618988742f55966027c2932db481305",
+      "load_command": [
+        "docker",
+        "exec",
+        "-i",
+        "rdf-jianlin-agg72-virt-lubm-v1",
+        "bash",
+        "-c",
+        "exec \"$VIRTUOSO_HOME/bin/isql\" 1111 dba \"$(cat /settings/dba_password)\" VERBOSE=OFF"
+      ],
+      "loader_exit": 0,
+      "graph_count": 13409395,
+      "input_after": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d",
+      "input_unchanged": true
+    },
+    "watdiv": {
+      "queries": {
+        "watdiv/all_C1.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "52e9099cdfcfdfc66027e822c320c0211d92837247f632f16923074693d64b4b"
+        },
+        "watdiv/all_C2.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/all_C3.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "2fd4eb90e75561efde7154d786875f392b74849072899672f59208ff291b921e"
+        },
+        "watdiv/all_F1.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/all_F2.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "912883b2b4100143b4cbdc3d5124351357a07150c56a85acc6de0e7e20382d86"
+        },
+        "watdiv/all_F3.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "6f32d0aa08d558d71a96a86214b3ad5a155f049e2499e0b1c2f1a073b786c7e8"
+        },
+        "watdiv/all_F4.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/all_F5.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "6500c5584c19495321acf77db16b3300f0efa50fd47548fb75bda1f8253d947c"
+        },
+        "watdiv/all_L1.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "1b940d1eea06bbf08943ca20534f377b23f021a201355caf8e5400031024d170"
+        },
+        "watdiv/all_L2.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "2954494fc35b7b8a8bae40ac3b7bb56f0bc6027bf29869f12edb1991bf72f667"
+        },
+        "watdiv/all_L3.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "a2951714eb85dfa750986e169286996f991696f4f493571537e2802dbefc2126"
+        },
+        "watdiv/all_L4.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "075b9aa3549fdb2064891e50dbfaf6db5e61e49a5daa02a6836168b4d37ba0a2"
+        },
+        "watdiv/all_L5.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "b45ce02465908b03e4d7829657935369afd5fafd8eb66e9e5d1ab4f10ee360ae"
+        },
+        "watdiv/all_S1.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/all_S2.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "f2568dd1cc2883f7ba7e8bd13aaac8df4a02ba5d720aa2af36ea90cb5575334a"
+        },
+        "watdiv/all_S3.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/all_S4.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "b0f6f0497988364a30043f373de8223780899beb3865791ea0d6eee13911901d"
+        },
+        "watdiv/all_S5.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/all_S6.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "d18d5d17cb5164a786e44f53324e86804ca09fdf13f4fb77860a6463c98e76fc"
+        },
+        "watdiv/all_S7.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/distinct_C1.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "496c998344453a7fda44ad9f2cfd2cd9df50a3a355d0de0654188dfd0d4a5beb"
+        },
+        "watdiv/distinct_C2.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/distinct_C3.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "76054650f8b09d4e872637ca09577c33177e11f26d52b77616aba5a7b3df017e"
+        },
+        "watdiv/distinct_F1.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/distinct_F2.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "912883b2b4100143b4cbdc3d5124351357a07150c56a85acc6de0e7e20382d86"
+        },
+        "watdiv/distinct_F3.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "dd3ebbdaf37e045be6f6fdfdbf4144700318b06924c799a4cc68d9bf38495706"
+        },
+        "watdiv/distinct_F4.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/distinct_F5.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "6500c5584c19495321acf77db16b3300f0efa50fd47548fb75bda1f8253d947c"
+        },
+        "watdiv/distinct_L1.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "b0f6f0497988364a30043f373de8223780899beb3865791ea0d6eee13911901d"
+        },
+        "watdiv/distinct_L2.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "b0f6f0497988364a30043f373de8223780899beb3865791ea0d6eee13911901d"
+        },
+        "watdiv/distinct_L3.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "f97d495c7e7a0efd88f1fe450bb35a6329dcc52bf52e0acbc66a791f17511939"
+        },
+        "watdiv/distinct_L4.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "075b9aa3549fdb2064891e50dbfaf6db5e61e49a5daa02a6836168b4d37ba0a2"
+        },
+        "watdiv/distinct_L5.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "b45ce02465908b03e4d7829657935369afd5fafd8eb66e9e5d1ab4f10ee360ae"
+        },
+        "watdiv/distinct_S1.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/distinct_S2.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "f2568dd1cc2883f7ba7e8bd13aaac8df4a02ba5d720aa2af36ea90cb5575334a"
+        },
+        "watdiv/distinct_S3.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/distinct_S4.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "b0f6f0497988364a30043f373de8223780899beb3865791ea0d6eee13911901d"
+        },
+        "watdiv/distinct_S5.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/distinct_S6.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "d18d5d17cb5164a786e44f53324e86804ca09fdf13f4fb77860a6463c98e76fc"
+        },
+        "watdiv/distinct_S7.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 1,
+          "output_sha256": "00fdaba01f81fe7748fb6b92312cf423b09ffdb3fb87da63aad0bd096a2032f8"
+        },
+        "watdiv/group_age.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 9,
+          "output_sha256": "088caaacfee16e0e87189c457965d4dfee36a9c7c83d19a4b56b1c35319ab633"
+        },
+        "watdiv/group_gender.rq": {
+          "primary_pass": true,
+          "count_compatible_pass": true,
+          "rows": 2,
+          "output_sha256": "8297c33b16ad4726f42868009de7bcf1b68ee1c85195579cb9d1f81e076046a9"
+        }
+      },
+      "input_before": "f53153e24d3e4e89d89c0587671022c11855c909cdcc4bf69f282feb554d6041",
+      "graph": "http://bench/aggregate72/watdiv",
+      "command": [
+        "docker",
+        "run",
+        "--detach",
+        "--name",
+        "rdf-jianlin-agg72-virt-watdiv-v1",
+        "--cpus=4",
+        "--memory=12g",
+        "--memory-swap=12g",
+        "-p",
+        "127.0.0.1:31449:8890",
+        "--mount",
+        "type=bind,source=/private/tmp/rdf-jianlin-analytical25/aggregate72-virtuoso-qualification-v1/watdiv/database,target=/database",
+        "--mount",
+        "type=bind,source=<agent-workspace>/rdfdb/bench/tools/watdiv100.nt,target=/import/data.nt,readonly",
+        "--env",
+        "DBA_PASSWORD",
+        "--env",
+        "VIRT_Parameters_NumberOfBuffers=1360000",
+        "--env",
+        "VIRT_Parameters_MaxDirtyBuffers=1000000",
+        "--env",
+        "VIRT_Parameters_ThreadsPerQuery=4",
+        "--env",
+        "VIRT_Parameters_DirsAllowed=.,/import,/usr/share/proj",
+        "--env",
+        "VIRT_SPARQL_ResultSetMaxRows=1000000000",
+        "--env",
+        "VIRT_SPARQL_MaxQueryExecutionTime=600",
+        "openlink/virtuoso-opensource-7@sha256:0dbe1ab4fa0cb7bbafc1f6c0c2b0a5d6f22d918dbd17672f2ddb24580aa6756a"
+      ],
+      "container_id": "b1c94219e0b6d1295d8c8aefdfb2e76d0b53ef574408622b3df8594f3d976ae7",
+      "load_command": [
+        "docker",
+        "exec",
+        "-i",
+        "rdf-jianlin-agg72-virt-watdiv-v1",
+        "bash",
+        "-c",
+        "exec \"$VIRTUOSO_HOME/bin/isql\" 1111 dba \"$(cat /settings/dba_password)\" VERBOSE=OFF"
+      ],
+      "loader_exit": 0,
+      "graph_count": 10914314,
+      "input_after": "f53153e24d3e4e89d89c0587671022c11855c909cdcc4bf69f282feb554d6041",
+      "input_unchanged": true
+    }
+  },
+  "comparative_timing_claim": false,
+  "comparative_load_claim": false,
+  "image": "openlink/virtuoso-opensource-7@sha256:0dbe1ab4fa0cb7bbafc1f6c0c2b0a5d6f22d918dbd17672f2ddb24580aa6756a",
+  "image_architecture": "arm64",
+  "started": 1795045977.1742668,
+  "ended": 1795046090.411629
+}
