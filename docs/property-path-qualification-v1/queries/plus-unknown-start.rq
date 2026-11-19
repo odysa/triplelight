@@ -1,0 +1,2 @@
+PREFIX ex:<urn:ex:>
+SELECT ?o WHERE { ex:absent ex:p+ ?o }

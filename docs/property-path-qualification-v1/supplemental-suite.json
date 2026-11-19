@@ -1,0 +1,65 @@
+{
+  "schema": "property-path-bound-endpoint-supplement-v1",
+  "purpose": "Exploratory controls added after author described bound-versus-constant zero-length behavior; before candidate outputs; frozen45case suite unchanged",
+  "comparison": "Exact RDF-term multiset; ordered sequence only on the ordered case; no numeric tolerance. Projected blank-node identity not exercised.",
+  "cases": [
+    {
+      "name": "values-absent-start",
+      "fixture": "fixtures/core.nt",
+      "query": "supplemental/values-absent-start.rq",
+      "query_sha256": "79f2daea449466df880328df2e7c8dd5e179ad520129e4595553f75b192e3ac8",
+      "ordered": false
+    },
+    {
+      "name": "bind-absent-start",
+      "fixture": "fixtures/core.nt",
+      "query": "supplemental/bind-absent-start.rq",
+      "query_sha256": "9c556166509c4ac4f2e65bff5c6f46236252a8eaf2ced09d8e2f94cdbe8bb6ec",
+      "ordered": false
+    },
+    {
+      "name": "values-absent-end",
+      "fixture": "fixtures/core.nt",
+      "query": "supplemental/values-absent-end.rq",
+      "query_sha256": "671510978dc35299ec3ed273a7314b2683d0251d89dce229e26701762ddc0cca",
+      "ordered": false
+    },
+    {
+      "name": "values-predicate-only-start",
+      "fixture": "fixtures/core.nt",
+      "query": "supplemental/values-predicate-only-start.rq",
+      "query_sha256": "41564573089ee4508ef16bb0afcc64d16634709ddd4dd7bd8c090d68a641dbe7",
+      "ordered": false
+    },
+    {
+      "name": "values-literal-start",
+      "fixture": "fixtures/core.nt",
+      "query": "supplemental/values-literal-start.rq",
+      "query_sha256": "fd82b2e75148743d7fb43d494e95bb5e2913761983d24b3c0c5f1508c561032f",
+      "ordered": false
+    },
+    {
+      "name": "constant-optional-absent",
+      "fixture": "fixtures/core.nt",
+      "query": "supplemental/constant-optional-absent.rq",
+      "query_sha256": "362c57ce66cff25739897cf0381e23ce6b742d4a8349116faff196a3f7703a04",
+      "ordered": false
+    },
+    {
+      "name": "values-optional-absent",
+      "fixture": "fixtures/core.nt",
+      "query": "supplemental/values-optional-absent.rq",
+      "query_sha256": "e7f7830fcac29ff29d42929f88035a0c65ac31a079aaf09741e3180ca3af9230",
+      "ordered": false
+    }
+  ],
+  "fixtures": {
+    "fixtures/bridge.nt": "fe6c9beed5b837d27b49cce480383a9b4fc3e1e86bcbec332413f95aaa17a1f1",
+    "fixtures/core.nt": "9fdb4d5ba662cb8ed18dc45136d4dca5e1adad66516c928e5ce2dd12a7a98498",
+    "fixtures/empty.nt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "sources": [
+    "https://www.w3.org/TR/sparql11-query/#propertypaths",
+    "https://www.w3.org/TR/sparql11-query/#defn_evalPP"
+  ]
+}

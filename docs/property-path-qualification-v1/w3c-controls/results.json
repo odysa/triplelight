@@ -1,0 +1,46 @@
+{
+  "values_and_path": {
+    "jena": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/w3c-controls/empty.ttl",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/w3c-controls/values_and_path.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "exact_expected_pass": true
+    },
+    "candidate": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/w3c-controls/empty.ttl",
+        "SELECT * WHERE {\n   VALUES ?v { 1 }\n   ?v <http://example.com/p>? ?v\n}"
+      ],
+      "exit_code": 0,
+      "exact_expected_pass": true
+    }
+  },
+  "zero_or_more_set_start": {
+    "jena": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/w3c-controls/empty.ttl",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/w3c-controls/zero_or_more_set_start.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "exact_expected_pass": true
+    },
+    "candidate": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/w3c-controls/empty.ttl",
+        "PREFIX : <http://example/>\nSELECT ?s WHERE { ?s :p* :o }"
+      ],
+      "exit_code": 0,
+      "exact_expected_pass": true
+    }
+  }
+}

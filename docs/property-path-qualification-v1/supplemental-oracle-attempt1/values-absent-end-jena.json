@@ -1,0 +1,12 @@
+{ "head": {
+    "vars": [ "s" , "o" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "s": { "type": "uri" , "value": "urn:ex:absent" } ,
+        "o": { "type": "uri" , "value": "urn:ex:absent" }
+      }
+    ]
+  }
+}

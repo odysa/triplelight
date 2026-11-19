@@ -1,0 +1,812 @@
+{
+  "link-baseline": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a ex:p ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "fab7ac0e4aa9e9b667a69888e38a2a3594a5b4b1c919779889598a90ceaab28c",
+      "stderr_sha256": "78915d32937b2100d00e970ac861a747e5f74a317881713f8351df07b246e376",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 2
+  },
+  "inverse-link": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s WHERE { ex:a ^ex:p ?s }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "e82bcacd5ba6ff23dc2270dfe610944599b31f0a58e1887328d0688ad6f43386",
+      "stderr_sha256": "7fe8e4121120bf4908bee25c77e08cfe632939365a03ea4be7aaa27f2caa41d2",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 1
+  },
+  "sequence-diamond-bag": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a ex:p/ex:p ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "ac3c23f182c0bfaf4ec3920512e458a3b35401b1005e239d115b1d7d34f36d80",
+      "stderr_sha256": "0219e4159ed54308568bec5702b5a8856abd91d687066e20bc76f1beac9a70c5",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 2
+  },
+  "sequence-diamond-distinct": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT DISTINCT ?o WHERE { ex:a ex:p/ex:p ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "d507d3cd7574528f47a9a48a0d6318e9fd984549cd1fb369250eb232a70c82c1",
+      "stderr_sha256": "0c612ac88284a154f6bdb0f2ccd49a94939ab1a0fba9c9ce190b24d11092baa8",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 1
+  },
+  "sequence-count": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT (COUNT(*) AS ?n) WHERE { ex:a ex:p/ex:p ex:d }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "f3f402597477c7e7c3ff3ce0f7549af9b5296381bf3adab3c398dc9a57f7b572",
+      "stderr_sha256": "f0e3da8920296268f31133c4ea411a3f70c2adbab767c43e33838565049e59b5",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 1
+  },
+  "alternative-overlap-bag": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:b (ex:p|ex:q) ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "ac3c23f182c0bfaf4ec3920512e458a3b35401b1005e239d115b1d7d34f36d80",
+      "stderr_sha256": "7ee3b302ef305f5e3d8aaeec03a0fd03473a390c5dd266ddbf50a2c057ee3918",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 2
+  },
+  "alternative-identical-bag": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a (ex:p|ex:p) ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "015ba58fa7aaf32452c10adaaad20d2e965d2b9fa2202524c46e1ce0a89b3b13",
+      "stderr_sha256": "3b0d25e68958c8f3eeaab6a302f7408a43bdf6a5de6ad43b54654d4dcf65308e",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 4
+  },
+  "plus-cycle-from-constant": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a ex:p+ ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "ecd689c450e95116aaf8c6f9bc8b48cc2204be464956165d774a772fb0f45af7",
+      "stderr_sha256": "3e258305254b47ded504367beeff0ffc64a218cc1926b98d3df2e6dd63075ebe",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 4
+  },
+  "star-cycle-from-constant": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a ex:p* ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "40df1264e82625ae6e65e0f815d3047bde77a00d050d285c4f9fc68292b5207b",
+      "stderr_sha256": "c0db892244292fb69354ddf16f6fedf894203356e272fe215620d10b19f2c949",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 4
+  },
+  "star-unknown-start": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:absent ex:p* ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "a60f514a7ef8b10af8df76fd0094bba7525fb46fb01c4fdd89a13c8c8b25b66f",
+      "stderr_sha256": "bb4ff3392e392fb996419646ccbfc91daeedab3870d2908199581a6b80d2d210",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 1
+  },
+  "star-unknown-end": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s WHERE { ?s ex:p* ex:absent }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "392169905aceccbe8809e77c43498206df2f4932175dca215df95c42aaf95ece",
+      "stderr_sha256": "4415fe6378f698a5a8c72397cc2ca304cd50662976360523ce3a0ab83f1c8f5e",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 1
+  },
+  "plus-unknown-start": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:absent ex:p+ ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "d67dc5acbdf8ee127284794d244ff3f0334f4fdece2ca90343b2ed1c30a7b5df",
+      "stderr_sha256": "eb80d2814bb789e5d5769ccd399b2896c417b16406a684ef85e4bf2dd87c74de",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 0
+  },
+  "zero-one-self-loop": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:e ex:p? ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "b5cc3a715973549f95da38383c2807a90a01699fd01fb05cf307866ddb3d2636",
+      "stderr_sha256": "7853b6e94f2d902cf3d571574cc5a11df5b89a5008449e08a5319c77dc89a216",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 1
+  },
+  "zero-one-diamond-start": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a ex:p? ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "703b32ad09f20b8fd66726c1872b874106f05bb4b732231bd1c877fa3200e22d",
+      "stderr_sha256": "14661a277aab874062749a7fc83eea0476153fd95767cada62a1c63c89a36301",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 3
+  },
+  "star-both-variable": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s ?o WHERE { ?s ex:p* ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "491ee71905a065151038505905d78cbeae3192e97036c59d7cabae1de22f6f11",
+      "stderr_sha256": "d582a488255d47a102b97245d21a3e8cec00671367d4d8561b9a8e7e681ba9ac",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 24
+  },
+  "plus-both-variable": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s ?o WHERE { ?s ex:p+ ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "9582a4113c7a26b6c91a2342d19e4b09ce854610b19b5cab8be04bd4b17c3a09",
+      "stderr_sha256": "dd588d390f06ae46a672980d565cc01b1e9100f09dcd8dc77d0f5e232870c79b",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 17
+  },
+  "star-same-variable": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?x WHERE { ?x ex:p* ?x }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "5a1dacf3e57c5eba98fa3afdd1fbc00ae52f4827f80c1e444369025a7fc75f25",
+      "stderr_sha256": "abbb0aaef1eafd34e80164eb3e4ab57360f711ebc0766422096b3bc980d110a0",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 12
+  },
+  "plus-same-variable": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?x WHERE { ?x ex:p+ ?x }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "68d5b90b13e6afc41d62e3bac4f0ca6b6feca1b2543510a083a07ebb9a85838d",
+      "stderr_sha256": "21185bb40dede49d02635d513a14dacac7ccffbb1617e449223617cc2110d269",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 5
+  },
+  "star-bound-equal-unknown": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nASK { ex:absent ex:p* ex:absent }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "30fe726a43485296e79b03c3ddd5ad8b4d2416deb7a84f811ee5deeaca8106b9",
+      "stderr_sha256": "768f95822a13f3d320195b90f754794f184d4dda1a40b3e7b42c7a450986e357",
+      "timed_out": false
+    },
+    "jena_exact_pass": false,
+    "contract_pass": true,
+    "oracle_disagreement": true,
+    "candidate_rows": null
+  },
+  "star-bound-different-unknown": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nASK { ex:absent ex:p* ex:otherAbsent }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "4d4dbfc639b4c5a66b27b2cb341850addff7f7bf577297d01d3dbb4a17760f3a",
+      "stderr_sha256": "46336e96e55e78c361d36559984737634b18216c1c0dff2303beabf18366ba11",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": null
+  },
+  "plus-bound-cycle": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nASK { ex:a ex:p+ ex:a }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "30fe726a43485296e79b03c3ddd5ad8b4d2416deb7a84f811ee5deeaca8106b9",
+      "stderr_sha256": "9b79eb8ccd6c893e91d6d0ca449212a6b4f35af09866a92843bfd775b10ace1d",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": null
+  },
+  "plus-bound-unreachable": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nASK { ex:a ex:p+ ex:sink }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "4d4dbfc639b4c5a66b27b2cb341850addff7f7bf577297d01d3dbb4a17760f3a",
+      "stderr_sha256": "4c372b3266884aceb0573f44b044e2bfe85453d81f0adf9400a8b10cfac67220",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": null
+  },
+  "inverse-closure": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s WHERE { ex:a (^ex:p)+ ?s }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "561453bdce9be91804f0d63329de4f68405749ba0aca95dd7a1c82f154de2620",
+      "stderr_sha256": "65df37c12328a48aebdcb488ed3a19960735c856543044f8c32bb43a8cf7483a",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 4
+  },
+  "nested-sequence-star": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a (ex:p/ex:q)* ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "a8be6afc100b2c5dd9ddb047c527df525f8af03fc4d0d1c66cce573aa990e6e9",
+      "stderr_sha256": "14661a277aab874062749a7fc83eea0476153fd95767cada62a1c63c89a36301",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 2
+  },
+  "nested-alternative-plus": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a (ex:p|ex:q)+ ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "96928887813b6e3aa8f34024e1f5328259f0feaa215cb0125071731dda1d74e1",
+      "stderr_sha256": "3e258305254b47ded504367beeff0ffc64a218cc1926b98d3df2e6dd63075ebe",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 5
+  },
+  "closure-followed-link": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a ex:p*/ex:q ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "5e0b4d48a400e1b075aafa3c7cbae5842e398a1545a3dfc88a0549dc357d2d00",
+      "stderr_sha256": "3c456339c1ea0bddd190c19355802c4379fa6c3ef4cd505dc4356962f644cdae",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 3
+  },
+  "link-followed-closure": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a ex:q/ex:p* ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "db94f1a613c03d62900e44299ce9905a495c74720d9314bc77abf02d593aacf9",
+      "stderr_sha256": "151ce7b665c40f8343f3192ef46734426e2b5bf20b3ddc33acffd2e2cb6d2361",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 4
+  },
+  "inverse-sequence": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a ^(ex:p/ex:p) ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "fab7ac0e4aa9e9b667a69888e38a2a3594a5b4b1c919779889598a90ceaab28c",
+      "stderr_sha256": "2aa15ffc7cf1e95aab11b5d72a09371f527c5516882ec46fa484045425640551",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 2
+  },
+  "negated-forward": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s ?o WHERE { ?s !ex:p ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "88a3a056565f7b7139e6576d33eafe4ce103679d37e17ff766e1a47c7c8beb9f",
+      "stderr_sha256": "294a862f2a6116dfdcf6b735abb992e36fb65e2f230f16303ee70efe1f76c638",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 8
+  },
+  "negated-inverse": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s ?o WHERE { ?s !^ex:p ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "b49ba50a074a82f17fb3ac9f6db9125e3a057bbfbdea73291f4b282aaf676602",
+      "stderr_sha256": "baee4827b80c73468fc47e6e245784b5b85df0081c11dc231a19c52b3be34a42",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 8
+  },
+  "negated-mixed": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s ?o WHERE { ?s !(ex:p|^ex:q) ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "bbd3aa59a116b0993b1fb1502a1e2cb1835815a0314957d5f10932568fff6ec2",
+      "stderr_sha256": "a2d355a0f9e52312633c77482e4fe28506d5d5c43d14567306deb84dea5fdcee",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 19
+  },
+  "negated-sequence": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a !ex:p/ex:p ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "f10cea368c0465c8193672da64eeb462a1ff25ff3e42eaea441bc9ba445eb7cb",
+      "stderr_sha256": "34f856a43435aa63d312b5627d95dde17a874e2aabc718143f4905e145c37af5",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 1
+  },
+  "values-repeated-start": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { VALUES ?s { ex:a ex:a } ?s ex:p+ ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "81a38b1aa304473f496748ea9a8cfba0406b458faf59847aec71cb6fc2615302",
+      "stderr_sha256": "a2d355a0f9e52312633c77482e4fe28506d5d5c43d14567306deb84dea5fdcee",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 8
+  },
+  "values-repeated-end": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s WHERE { VALUES ?o { ex:d ex:d } ?s ex:p+ ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "51ed515c605e9cde66051d9d21a02a24158c343b2db7ce4a8dc09138bdc7ba98",
+      "stderr_sha256": "1611f839b4ab37fefeb8cf6d71bd001685318a7044050b43688219ba7c764b81",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 8
+  },
+  "values-unbound-start": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s ?o WHERE { VALUES ?s { UNDEF } ?s ex:p+ ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "9582a4113c7a26b6c91a2342d19e4b09ce854610b19b5cab8be04bd4b17c3a09",
+      "stderr_sha256": "be34a928fdca118eb0f7ec8995ba7de0419e116bc49676936ca90039fc638a55",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 17
+  },
+  "optional-no-match": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s ?o WHERE { VALUES ?s { ex:a ex:sink } OPTIONAL { ?s ex:p+ ?o } }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "3228f66258bfe09a69f5ebd11ba2c5318295e9fd7cb4952a0e7447a45b8ef720",
+      "stderr_sha256": "721f193109be60ed2c99378eb14fc111e3f690574509f6fe1545bfcb44717f7d",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 5
+  },
+  "exists-path": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s WHERE { VALUES ?s { ex:a ex:sink ex:e } FILTER EXISTS { ?s ex:p+ ?s } }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "a4c3c516e681c174621c08eee0ddf0e55f562d4afce00b2a24f264f861379177",
+      "stderr_sha256": "edccbeded0b9bbb9446823d14c45da5dca6d66939a81bd56c786e6347498fc22",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 2
+  },
+  "union-multiplicity": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { { ex:a ex:p+ ?o } UNION { ex:a ex:p+ ?o } }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "81a38b1aa304473f496748ea9a8cfba0406b458faf59847aec71cb6fc2615302",
+      "stderr_sha256": "e8235f30313fd7ec467f8952630b6ce193b960d8a4d5e873590a2e6ccfc1c567",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 8
+  },
+  "ordered-limit-offset": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a ex:p+ ?o } ORDER BY ?o LIMIT 2 OFFSET 1\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "fab7ac0e4aa9e9b667a69888e38a2a3594a5b4b1c919779889598a90ceaab28c",
+      "stderr_sha256": "a3af591905b2ac4c7915342770f2a8de8d3fafb22cd1f1fcb28552fd4c4ab2bf",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 2
+  },
+  "language-literal-zero": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s WHERE { ?s ex:p* \"leaf\"@en }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "6c82c49d07d4e09fda2e35de57aa4736b8c8d02ed08060dd6317119f185c9875",
+      "stderr_sha256": "292fb4ca787d249e8d7dda4f6433c4712cd85892c8e62232c6abdbdfbd396df5",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 1
+  },
+  "typed-lexical-identity": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?o WHERE { ex:a ex:value/ex:p* ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "ab34192c6a35f2bbf7862d9b3f26ea2c798e5a12008f07d490fa66c245686cef",
+      "stderr_sha256": "4b74a86b22a3bd81eb200ad5ccf59d7299d032fb26c7a70792f9802ada027b6f",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 2
+  },
+  "empty-variable-star": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/empty.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT ?s ?o WHERE { ?s ex:p* ?o }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "55cfecea19f940483d8cc408d1ee11c570bb23e07b81f908db1f8d3bd66eda7b",
+      "stderr_sha256": "78684bcf8f65abd4d462fdf502c0f4cdd13e2997d3479538faf645711e0556f6",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 0
+  },
+  "empty-known-zero": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/empty.nt",
+        "PREFIX ex:<urn:ex:>\nASK { ex:absent ex:p* ex:absent }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "30fe726a43485296e79b03c3ddd5ad8b4d2416deb7a84f811ee5deeaca8106b9",
+      "stderr_sha256": "2e7304e0958847aba6ac06d3d239224971702be3ac814e13ca05b958f7a7be60",
+      "timed_out": false
+    },
+    "jena_exact_pass": false,
+    "contract_pass": true,
+    "oracle_disagreement": true,
+    "candidate_rows": null
+  },
+  "blank-node-intermediate": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/bridge.nt",
+        "PREFIX ex:<urn:ex:>\nSELECT (COUNT(*) AS ?n) WHERE { ex:a ex:p/ex:p ex:d }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "9baf712e5e0d2b8ae33405d8b6fd5671008dda60b13e77ddf4e68a0e7c4e4828",
+      "stderr_sha256": "885e80d936dc4ebc37b786fe278bbb07e5f8c36f0f25b5ec1798c41667f6be47",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": 1
+  },
+  "closure-blank-node-intermediate": {
+    "process": {
+      "command": [
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/triplelight-52fd1d71",
+        "query",
+        "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/bridge.nt",
+        "PREFIX ex:<urn:ex:>\nASK { ex:a ex:p+ ex:d }\n"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "30fe726a43485296e79b03c3ddd5ad8b4d2416deb7a84f811ee5deeaca8106b9",
+      "stderr_sha256": "35038097ca17b4d1911012ac27b6fc73df227d08f049939e7d757db6b4af52ce",
+      "timed_out": false
+    },
+    "jena_exact_pass": true,
+    "contract_pass": true,
+    "oracle_disagreement": false,
+    "candidate_rows": null
+  }
+}

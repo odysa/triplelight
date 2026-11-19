@@ -1,0 +1,12 @@
+{
+  "complete": true,
+  "cases": 45,
+  "jena_exact_pass": 43,
+  "declared_contract_pass": 45,
+  "oracle_disagreements": [
+    "star-bound-equal-unknown",
+    "empty-known-zero"
+  ],
+  "contract_gate": true,
+  "inputs_and_binary_unchanged": true
+}

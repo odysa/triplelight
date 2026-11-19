@@ -1,0 +1,2 @@
+PREFIX ex:<urn:ex:>
+SELECT ?s ?o WHERE { BIND(ex:absent AS ?s) ?s ex:p* ?o }

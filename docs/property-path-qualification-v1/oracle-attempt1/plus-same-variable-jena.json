@@ -1,0 +1,23 @@
+{ "head": {
+    "vars": [ "x" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "x": { "type": "uri" , "value": "urn:ex:a" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:ex:b" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:ex:c" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:ex:e" }
+      } ,
+      { 
+        "x": { "type": "uri" , "value": "urn:ex:d" }
+      }
+    ]
+  }
+}

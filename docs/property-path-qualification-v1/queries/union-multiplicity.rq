@@ -1,0 +1,2 @@
+PREFIX ex:<urn:ex:>
+SELECT ?o WHERE { { ex:a ex:p+ ?o } UNION { ex:a ex:p+ ?o } }

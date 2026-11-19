@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/qualify_paths.py", line 88, in <module>
+    if __name__=='__main__':sys.exit(main())
+                                     ~~~~^^
+  File "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/qualify_paths.py", line 44, in main
+    suite_path=args.suite.resolve();base=suite_path.parent;suite=json.loads(suite_path.read_text());output=args.output.resolve();output.mkdir(parents=True,exist_ok=False)
+                                                                                                                                 ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<home>/.local/share/uv/python/cpython-3.14.3-macos-aarch64-none/lib/python3.14/pathlib/__init__.py", line 1011, in mkdir
+    os.mkdir(self, mode)
+    ~~~~~~~~^^^^^^^^^^^^
+FileExistsError: [Errno 17] File exists: '/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/supplemental-oracle-attempt1'
