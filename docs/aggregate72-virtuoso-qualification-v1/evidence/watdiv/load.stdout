@@ -1,0 +1,6 @@
+SQL> SQL> SQL> SQL> SQL> ll_file                                                                           ll_state    ll_error
+VARCHAR NOT NULL                                                                  INTEGER     VARCHAR
+_______________________________________________________________________________
+
+/import/data.nt                                                                   2           NULL
+SQL> 
