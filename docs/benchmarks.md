@@ -296,6 +296,51 @@ Round 5, macOS host, systems that run natively. Same units: **total ms / geometr
 | WatDiv-100 | **119 / 0.8** | 141 / 1.3 | 301 / 2.8 | 879 / 5.4 | 10,198 / 9.0 | 161,338 / 57.2 |
 | BSBM-10M | **27 / 0.6** | 47 / 0.9 | 113 / 2.8 | 203 / 3.1 | 1,998 / 7.7 | 1,040 / 4.3 |
 
+## Embedded, in-process: JVM baselines (Jena and RDF4J native Java APIs)
+
+TripleLight has no Java binding in this evaluation, so these are JVM baselines on the same frozen workloads, references
+and gates; they do not rank TripleLight across runtimes. Jena 6.2.0 and RDF4J 5.3.2 through their native APIs on OpenJDK
+21.0.13 (G1, `-Xmx8g`, four active processors), Linux ARM64. One registered attempt of 18 fresh containers (4 CPUs,
+12 GiB with container swap disabled, network none; the root file system was not read-only, unlike the Python in-memory
+run); pass 2 is the exact reverse of pass 1. The timer covers query compilation, API execution and full conversion to
+typed RDF bindings; opening or import, the stored-triple count, warm-ups and validation are outside it. Each answer is
+serialized and validated before the next request is sent; those gaps are recorded and published, and they give
+background JIT and GC work different opportunities than the back-to-back Python and Node cohorts. Summed scored query
+time in **seconds**, pass 1 / pass 2 (lower is better).
+
+Persistent stores, aggregate workloads:
+
+| Dataset | Timed requests per pass | Jena TDB2 | RDF4J NativeStore | RDF4J LMDBStore |
+|---|---:|---:|---:|---:|
+| LUBM-100 aggregates | 30 | 9.503 / 18.807 | 9.791 / 14.568 | 6.640 / 13.800 |
+| WatDiv aggregates | 42 | 20.572 / 39.844 | 1.344 / 2.653 | 1.362 / 1.542 |
+
+Jena TDB2 and NativeStore start from private copies of prepared stores; LMDBStore imports the N-Triples file fresh in
+every phase. That difference in preparation and cache history limits comparisons between them.
+
+Standalone baselines:
+
+| Engine | Dataset | Timed requests per pass | Query seconds |
+|---|---|---:|---:|
+| Jena TDB2 | BSBM BI, 10M triples | 45 | 148.849 / 188.820 |
+| RDF4J MemoryStore (in memory) | LUBM-100 aggregates | 30 | 1.944 / 3.380 |
+| RDF4J MemoryStore (in memory) | WatDiv aggregates | 42 | 0.495 / 0.559 |
+
+All 1,272 scheduled requests (666 scored, 606 warm-up) passed the frozen Jena gates; no cap hits, out-of-memory kills,
+request errors or cleanup failures. Every phase had a 1,800-second whole-phase cap set before the run. All three RDF4J
+backends were excluded from BI before scoring: each disagrees with Jena on the 12 instances of query q5, which joins on an
+unbound GROUP BY key; removing that key restores agreement for NativeStore in a separate diagnostic, which does not
+requalify the original query. In a separate small identity test, Jena TDB2 stores `"01"^^xsd:int` as `"1"`; none of
+these datasets contains a non-canonical numeric literal. Pass 2 is noticeably slower for several pairs (Jena aggregates,
+RDF4J NativeStore and LMDBStore on LUBM); both passes are kept and no cause is established.
+
+Whole-phase cgroup `memory.peak` (startup, open or import, warm-up, scored requests, close; not heap or RSS), pass 1 /
+pass 2 in GiB: Jena BI 3.17 / 3.44, LUBM 4.48 / 4.17, WatDiv 2.08 / 2.01; NativeStore LUBM 4.59 / 4.66, WatDiv 1.08 / 1.49;
+MemoryStore LUBM 8.87 / 8.68, WatDiv 5.16 / 5.45; LMDBStore LUBM 9.85 / 9.88, WatDiv 10.25 / 10.27.
+
+This cohort is separate from every Python, Node.js and HTTP table, and from the stopped first JVM attempt. Report,
+per-query timings, request gaps and the original answers: [embedded JVM cohort](https://app.raft.build/artifacts/4FiCDWgEyXpz3b3fRS8GLk).
+
 ## Embedded, in-process: TripleLight vs LadybugDB
 
 Both through their Python APIs in one process, every result row decoded to RDF terms, no HTTP. Sum of per-query
