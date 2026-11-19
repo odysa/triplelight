@@ -85,9 +85,13 @@ over the 72 queries:
 | **rdfdb** | **0.58** | **0.54** | **0.31 / 0.31** | **0.26 / 0.23** | 72 / 72 | 72 / 72 | 0.97 / 0.94 GiB |
 | Virtuoso 7 | 4.61 | 4.50 | 4.31 / 4.19 | 0.30 / 0.31 | 72 / 72 | 72 / 72 | 10.4 / 10.4 GiB |
 | QLever | 5.11 | 4.60 | 2.25 / 2.14 | 2.85 / 2.47 | 0 / 72 | 72 / 72 | **0.29 / 0.29 GiB** |
-| DuckDB 2.0.0 | 73.1 | 73.6 | 48.7 / 47.2 | 24.5 / 26.4 | 72 / 72 | 72 / 72 | 3.4 / 3.4 GiB |
+| DuckDB 2.0.0 (typed-triples SQL baseline) | 73.1 | 73.6 | 48.7 / 47.2 | 24.5 / 26.4 | 72 / 72 | 72 / 72 | 3.4 / 3.4 GiB |
 
-QLever takes 8.9× / 8.6× as long as rdfdb in total, and Virtuoso 8.0× / 8.4×. On WatDiv alone, rdfdb and Virtuoso
+Totals are over the 72 query labels; the report also gives the prespecified mean-sum over the 68 distinct query
+texts, with the same ordering. "Primary" here means the complete result sets match as exact RDF terms, with no
+floating-point tolerance, and each score holds in both passes. The memory column is the maximum per-phase cgroup
+`memory.peak` in each pass, including startup, warmup, file and kernel pages, not process RSS. OS page caches were not
+cleared between phases. QLever takes 8.9× / 8.6× as long as rdfdb in total, and Virtuoso 8.0× / 8.4×. On WatDiv alone, rdfdb and Virtuoso
 are close (0.26 / 0.23 s against 0.30 / 0.31 s), so a total ratio is not a win on every query. QLever's primary-check
 failures are COUNT results typed `xsd:int`. QLever again uses the least memory. Two passes are a bounded observation
 on a shared host, not a significance test or a general SOTA claim. Evidence:
