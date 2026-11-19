@@ -1,0 +1,12 @@
+{
+  "schema": "path-oracle-disagreement-v1",
+  "suite_sha256": "5c4dbfe3da5b3fe16082917647282fa9e34267db5261f323ad1a3e8df95e9143",
+  "classification": "Declared manual boolean anchors retained; two Jena oracle disagreements, not a relaxation after candidate output",
+  "normative_boolean_anchors": {
+    "star-bound-equal-unknown": true,
+    "empty-known-zero": true
+  },
+  "basis": "Original suite.json expected_boolean true before Jena/candidate outputs; SPARQL 1.1 section18.4 ALP includes the start term, and bound/bound ZeroOrMorePath tests that reachable set",
+  "source": "https://www.w3.org/TR/sparql11-query/#defn_evalPP",
+  "reporting": "Always report raw Jena exact score separately from declared contract score. Do not claim all cases match Jena."
+}

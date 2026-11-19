@@ -1,0 +1,13 @@
+{
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "test_comparison.py"
+  ],
+  "tests": 8,
+  "failures": 0,
+  "exit_code": 0,
+  "recorded_unix": 1795055687.5524979
+}

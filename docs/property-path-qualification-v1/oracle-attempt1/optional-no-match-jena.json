@@ -1,0 +1,27 @@
+{ "head": {
+    "vars": [ "s" , "o" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "s": { "type": "uri" , "value": "urn:ex:a" } ,
+        "o": { "type": "uri" , "value": "urn:ex:b" }
+      } ,
+      { 
+        "s": { "type": "uri" , "value": "urn:ex:a" } ,
+        "o": { "type": "uri" , "value": "urn:ex:d" }
+      } ,
+      { 
+        "s": { "type": "uri" , "value": "urn:ex:a" } ,
+        "o": { "type": "uri" , "value": "urn:ex:a" }
+      } ,
+      { 
+        "s": { "type": "uri" , "value": "urn:ex:a" } ,
+        "o": { "type": "uri" , "value": "urn:ex:c" }
+      } ,
+      { 
+        "s": { "type": "uri" , "value": "urn:ex:sink" }
+      }
+    ]
+  }
+}

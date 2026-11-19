@@ -1,0 +1,2 @@
+PREFIX ex:<urn:ex:>
+SELECT (COUNT(*) AS ?n) WHERE { ex:a ex:p/ex:p ex:d }

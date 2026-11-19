@@ -1,0 +1,2 @@
+PREFIX ex:<urn:ex:>
+SELECT ?s WHERE { VALUES ?o { ex:d ex:d } ?s ex:p+ ?o }

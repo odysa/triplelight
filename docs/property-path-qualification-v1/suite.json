@@ -1,0 +1,370 @@
+{
+  "schema": "property-path-controls-v1",
+  "purpose": "Independent semantics controls; no performance ranking; freeze before candidate implementation outputs",
+  "comparison": "Exact RDF-term multiset; ordered sequence only on the ordered case; no numeric tolerance. Projected blank-node identity not exercised.",
+  "cases": [
+    {
+      "name": "link-baseline",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/link-baseline.rq",
+      "query_sha256": "99c99bfd1337e2d19584ce4a085fcb1cfd46caee283a571efd0167cf46c56def",
+      "ordered": false,
+      "expected_rows": 2
+    },
+    {
+      "name": "inverse-link",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/inverse-link.rq",
+      "query_sha256": "6100a125ea6be3fa2114fd8b299508198c1d87361a773981e9469dd8493ae119",
+      "ordered": false,
+      "expected_rows": 1
+    },
+    {
+      "name": "sequence-diamond-bag",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/sequence-diamond-bag.rq",
+      "query_sha256": "9184a80d089eb22cfcdcebcdd1e26bbf1139038cd8132effe2f265e3b5e5cab0",
+      "ordered": false,
+      "expected_rows": 2
+    },
+    {
+      "name": "sequence-diamond-distinct",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/sequence-diamond-distinct.rq",
+      "query_sha256": "83ce3c23b9cbc9a1075c029c67ccdb82c78d116c120d21f80403eaac5f7caf6f",
+      "ordered": false,
+      "expected_rows": 1
+    },
+    {
+      "name": "sequence-count",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/sequence-count.rq",
+      "query_sha256": "b6a0ed5fed74749c436dee891fd0813e78078258aeefe0766490f4774091b269",
+      "ordered": false,
+      "expected_rows": 1
+    },
+    {
+      "name": "alternative-overlap-bag",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/alternative-overlap-bag.rq",
+      "query_sha256": "667c2e5c2c7f9817ad562caf7e68f9387e61c1653ab044834825987a0fd78422",
+      "ordered": false,
+      "expected_rows": 2
+    },
+    {
+      "name": "alternative-identical-bag",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/alternative-identical-bag.rq",
+      "query_sha256": "d858711b388dbf1a1a08edd192458cf11fe016566530910699827d9bb2257651",
+      "ordered": false,
+      "expected_rows": 4
+    },
+    {
+      "name": "plus-cycle-from-constant",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/plus-cycle-from-constant.rq",
+      "query_sha256": "b5e8b810001cf762a48b35990519ded2302be79c625f0e75cbb3363dc3fe0085",
+      "ordered": false,
+      "expected_rows": 4
+    },
+    {
+      "name": "star-cycle-from-constant",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/star-cycle-from-constant.rq",
+      "query_sha256": "b60214465cbcb1c4de8bb4fdd32daaa7b3b1b051ecb5d9f45893dc5ff28a5a9e",
+      "ordered": false,
+      "expected_rows": 4
+    },
+    {
+      "name": "star-unknown-start",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/star-unknown-start.rq",
+      "query_sha256": "26997a2f297534289293959b02cf211363d38b9d22d6c2891053dc3b9355a463",
+      "ordered": false,
+      "expected_rows": 1
+    },
+    {
+      "name": "star-unknown-end",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/star-unknown-end.rq",
+      "query_sha256": "7a3ce4ea53489a9f25714c87d1444d7621a6a2ebe1b27d0d8b763a9b86197cb3",
+      "ordered": false,
+      "expected_rows": 1
+    },
+    {
+      "name": "plus-unknown-start",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/plus-unknown-start.rq",
+      "query_sha256": "4e95fca24ef38ad643e0e26f71a263c767025daed425476abd5b09f2fd982a58",
+      "ordered": false,
+      "expected_rows": 0
+    },
+    {
+      "name": "zero-one-self-loop",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/zero-one-self-loop.rq",
+      "query_sha256": "4691f488f15aaae3c2266363e15002b984275b75cda5d5c959e667c54e1f55c7",
+      "ordered": false,
+      "expected_rows": 1
+    },
+    {
+      "name": "zero-one-diamond-start",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/zero-one-diamond-start.rq",
+      "query_sha256": "0b5b6f28a8967eac5a2d17ea24eb79d79dd01f9eb238b2fad7b69f00a78851e8",
+      "ordered": false,
+      "expected_rows": 3
+    },
+    {
+      "name": "star-both-variable",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/star-both-variable.rq",
+      "query_sha256": "0d3c32ca79d5c63a562dcdede9ea4711fc4268008f293c46536d28e587d8b08e",
+      "ordered": false,
+      "expected_rows": 24
+    },
+    {
+      "name": "plus-both-variable",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/plus-both-variable.rq",
+      "query_sha256": "0acc82e4ba1a3d8a9ad5cd5a7014d73e0ff0a34e3051f90daaba78d49f0b2d5d",
+      "ordered": false,
+      "expected_rows": 17
+    },
+    {
+      "name": "star-same-variable",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/star-same-variable.rq",
+      "query_sha256": "d7286d627fb1bd14fffd2bac1d5ac173fdc5fd85ef70c6960b154df47746f21d",
+      "ordered": false,
+      "expected_rows": 12
+    },
+    {
+      "name": "plus-same-variable",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/plus-same-variable.rq",
+      "query_sha256": "26db3da94863a4ca69eb7723d4a6d3179321375e74d8aeb41b417dde06ba01e1",
+      "ordered": false,
+      "expected_rows": 5
+    },
+    {
+      "name": "star-bound-equal-unknown",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/star-bound-equal-unknown.rq",
+      "query_sha256": "79b3cb042d608ff5852a337b52c91e8efa585046079a5ae4ecd9f931ed47a984",
+      "ordered": false,
+      "expected_boolean": true
+    },
+    {
+      "name": "star-bound-different-unknown",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/star-bound-different-unknown.rq",
+      "query_sha256": "16f64dd7f407e179ecd25e4db4dda8058e3c23503b4b66bcc234b9524e2441c5",
+      "ordered": false,
+      "expected_boolean": false
+    },
+    {
+      "name": "plus-bound-cycle",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/plus-bound-cycle.rq",
+      "query_sha256": "123926085ca44ac4c308d6fe8fb539e4a7e49b667342c96ace5296aa8f3639c6",
+      "ordered": false,
+      "expected_boolean": true
+    },
+    {
+      "name": "plus-bound-unreachable",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/plus-bound-unreachable.rq",
+      "query_sha256": "f80ef1fdca561b1e59a935a1923052e9de7c46b87eb44cd67d7969a22fecbbe5",
+      "ordered": false,
+      "expected_boolean": false
+    },
+    {
+      "name": "inverse-closure",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/inverse-closure.rq",
+      "query_sha256": "8ba241385b925db77ded302a85c1821d54dc4e23fdb850f7df36a23e83ece17d",
+      "ordered": false,
+      "expected_rows": 4
+    },
+    {
+      "name": "nested-sequence-star",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/nested-sequence-star.rq",
+      "query_sha256": "2628036530db6594198b1699c59f1b0dbdcdaccd34008891db82c7dd5f1dff29",
+      "ordered": false
+    },
+    {
+      "name": "nested-alternative-plus",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/nested-alternative-plus.rq",
+      "query_sha256": "2dc37e8723c373648f7db910d6c02cd9ca14389cd880c691d5eb93acac229be9",
+      "ordered": false
+    },
+    {
+      "name": "closure-followed-link",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/closure-followed-link.rq",
+      "query_sha256": "e4ac1a5d649aeda31de7eab7ae094e561b04bd5893763722da25260dea0658ed",
+      "ordered": false
+    },
+    {
+      "name": "link-followed-closure",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/link-followed-closure.rq",
+      "query_sha256": "1af19700fa5fe9c9f50d5b04c5db20d9ad8d6948ecdce51265675408d9b1cb32",
+      "ordered": false,
+      "expected_rows": 4
+    },
+    {
+      "name": "inverse-sequence",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/inverse-sequence.rq",
+      "query_sha256": "43eb197ba0e1cafbf824ca32e529dc2be4b76db9c4b1f513cca825bbf0eed944",
+      "ordered": false
+    },
+    {
+      "name": "negated-forward",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/negated-forward.rq",
+      "query_sha256": "908d8b74ffc316bc96edbfc57cac86f8c4322708403532ad7d8d1de7150788d3",
+      "ordered": false,
+      "expected_rows": 8
+    },
+    {
+      "name": "negated-inverse",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/negated-inverse.rq",
+      "query_sha256": "58737d9715f1169eff23784c174c82a36e5c5f808c2c94577b968f20276abb14",
+      "ordered": false,
+      "expected_rows": 8
+    },
+    {
+      "name": "negated-mixed",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/negated-mixed.rq",
+      "query_sha256": "8efb88bb0e5e8eeb0baa0a3a214ece9fa7d6535d94c26e80f7212955ff36098e",
+      "ordered": false
+    },
+    {
+      "name": "negated-sequence",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/negated-sequence.rq",
+      "query_sha256": "59ab8d94d2c0dbba2520211a9e2b308491545e77b4989c86a210eb13c261fbae",
+      "ordered": false
+    },
+    {
+      "name": "values-repeated-start",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/values-repeated-start.rq",
+      "query_sha256": "da3920ee944dc4775ccbe25daa95ecce0506750db0204ee53f24e6826d34b477",
+      "ordered": false,
+      "expected_rows": 8
+    },
+    {
+      "name": "values-repeated-end",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/values-repeated-end.rq",
+      "query_sha256": "dbb5cad7c553c6e2ff7ed5132040990c66b484aa43f8b6127339b1c61a5c6df3",
+      "ordered": false,
+      "expected_rows": 8
+    },
+    {
+      "name": "values-unbound-start",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/values-unbound-start.rq",
+      "query_sha256": "77828c4d8e28b944926fcd749deb58e14394516ec67d104cd928832efa908d1e",
+      "ordered": false,
+      "expected_rows": 17
+    },
+    {
+      "name": "optional-no-match",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/optional-no-match.rq",
+      "query_sha256": "7fb15f117fd6a423e6125ba850b074872f8c7a5cf4957d9ac086943e308e3801",
+      "ordered": false,
+      "expected_rows": 5
+    },
+    {
+      "name": "exists-path",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/exists-path.rq",
+      "query_sha256": "09a32b6c04c52aeaf1dc8382127058b033524563489d779755a6f122d85e765a",
+      "ordered": false,
+      "expected_rows": 2
+    },
+    {
+      "name": "union-multiplicity",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/union-multiplicity.rq",
+      "query_sha256": "3ae7b4ff8e7fe53a400f4ac6ed07e608cc6cfee72de58d3f69f5eeed5fb2071d",
+      "ordered": false,
+      "expected_rows": 8
+    },
+    {
+      "name": "ordered-limit-offset",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/ordered-limit-offset.rq",
+      "query_sha256": "be61b2eb89845a7bffe0bb3c3204997f3edd7040bfee59f230c8551a8f4ba346",
+      "ordered": true,
+      "expected_rows": 2
+    },
+    {
+      "name": "language-literal-zero",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/language-literal-zero.rq",
+      "query_sha256": "de5f580e6540174f58f1dcfe70e93595964b2161dc9862ca45fbb1c09af805f1",
+      "ordered": false,
+      "expected_rows": 1
+    },
+    {
+      "name": "typed-lexical-identity",
+      "fixture": "fixtures/core.nt",
+      "query": "queries/typed-lexical-identity.rq",
+      "query_sha256": "cd9ebcd0145ca4813cb191f9d25d8b90110c01d0f7b7f49516f37b52a2180c67",
+      "ordered": false,
+      "expected_rows": 2
+    },
+    {
+      "name": "empty-variable-star",
+      "fixture": "fixtures/empty.nt",
+      "query": "queries/empty-variable-star.rq",
+      "query_sha256": "0d3c32ca79d5c63a562dcdede9ea4711fc4268008f293c46536d28e587d8b08e",
+      "ordered": false,
+      "expected_rows": 0
+    },
+    {
+      "name": "empty-known-zero",
+      "fixture": "fixtures/empty.nt",
+      "query": "queries/empty-known-zero.rq",
+      "query_sha256": "79b3cb042d608ff5852a337b52c91e8efa585046079a5ae4ecd9f931ed47a984",
+      "ordered": false,
+      "expected_boolean": true
+    },
+    {
+      "name": "blank-node-intermediate",
+      "fixture": "fixtures/bridge.nt",
+      "query": "queries/blank-node-intermediate.rq",
+      "query_sha256": "b6a0ed5fed74749c436dee891fd0813e78078258aeefe0766490f4774091b269",
+      "ordered": false,
+      "expected_rows": 1
+    },
+    {
+      "name": "closure-blank-node-intermediate",
+      "fixture": "fixtures/bridge.nt",
+      "query": "queries/closure-blank-node-intermediate.rq",
+      "query_sha256": "e775bf7e449920e46575ac1f7d146769e2f49481754144c5ae5cb8c9a1b776c7",
+      "ordered": false,
+      "expected_boolean": true
+    }
+  ],
+  "fixtures": {
+    "fixtures/bridge.nt": "fe6c9beed5b837d27b49cce480383a9b4fc3e1e86bcbec332413f95aaa17a1f1",
+    "fixtures/core.nt": "9fdb4d5ba662cb8ed18dc45136d4dca5e1adad66516c928e5ce2dd12a7a98498",
+    "fixtures/empty.nt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "sources": [
+    "https://www.w3.org/TR/sparql11-query/#propertypaths",
+    "https://www.w3.org/TR/sparql11-query/#defn_evalPP"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "owned-import-supervisor-v1",
+  "command": [
+    "python3",
+    "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/qualify_paths.py",
+    "--suite",
+    "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/suite.json",
+    "--jena-home",
+    "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0",
+    "--output",
+    "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/oracle-attempt1"
+  ],
+  "root": "/private/tmp/rdf-jianlin-analytical25",
+  "owner": "Jianlin task35 property-path Jena and candidate qualification",
+  "start": {
+    "time_unix": 1795055678.23072,
+    "allocated_bytes": 21151518720,
+    "free_bytes": 233821962240,
+    "abort": null
+  },
+  "complete": false,
+  "approved_cap_bytes": 51539607552,
+  "free_floor_bytes": 42949672960,
+  "sample_seconds": 2,
+  "guards_are_sampled": true,
+  "pid": 64293,
+  "exit_code": 1,
+  "end_unix": 1795055727.151026
+}

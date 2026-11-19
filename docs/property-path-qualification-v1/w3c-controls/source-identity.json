@@ -1,0 +1,22 @@
+{
+  "values_and_path.rq": {
+    "url": "https://github.com/w3c/rdf-tests/blob/main/sparql/sparql11/property-path/values_and_path.rq",
+    "sha256": "c56be399714e12630f480212a767ae4f137b6658e7387bf1a3d452367bed94ac"
+  },
+  "values_and_path.srx": {
+    "url": "https://github.com/w3c/rdf-tests/blob/main/sparql/sparql11/property-path/values_and_path.srx",
+    "sha256": "5c46769438cc7451eaaa70d416cf6907eee909199e40b5c74bc39e7d011f50fa"
+  },
+  "empty.ttl": {
+    "url": "https://github.com/w3c/rdf-tests/blob/main/sparql/sparql11/property-path/empty.ttl",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "zero_or_more_set_start.rq": {
+    "url": "https://github.com/w3c/rdf-tests/blob/main/sparql/sparql11/property-path/zero_or_more_set_start.rq",
+    "sha256": "806d8b8f1c2a871ea504d3eeda76ea023c812c677198f2b374b3c43c9b5cc3b0"
+  },
+  "zero_or_more_set_start.srx": {
+    "url": "https://github.com/w3c/rdf-tests/blob/main/sparql/sparql11/property-path/zero_or_more_set_start.srx",
+    "sha256": "857a52fe95813109624685c899432662c970d398a5c91586f2a666d1bf9c3d4a"
+  }
+}

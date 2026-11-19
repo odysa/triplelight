@@ -1,0 +1,722 @@
+{
+  "link-baseline": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/link-baseline.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "873540749b067042c9f78bf08eaaa485fe74419f7b83dbd2c505cd56ff6de1cf",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 2
+  },
+  "inverse-link": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/inverse-link.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "b19b1c4511945b590c7a59dc0d19827b821162a45056299a6e633f40fe7f2860",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 1
+  },
+  "sequence-diamond-bag": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/sequence-diamond-bag.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "3a93a240b6f2d5f903e2ce57c9e9d74d0766e3f5179cab90710e1b6a0ebe1cc0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 2
+  },
+  "sequence-diamond-distinct": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/sequence-diamond-distinct.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "cd515a992a55ebf162291aa1545b1e30966a88e6d6a89b99fe89356777809e16",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 1
+  },
+  "sequence-count": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/sequence-count.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "ba26163378b81644c48a213f79cf3ab139c796fb4da9864805cb1f8373cf3135",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 1
+  },
+  "alternative-overlap-bag": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/alternative-overlap-bag.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "3a93a240b6f2d5f903e2ce57c9e9d74d0766e3f5179cab90710e1b6a0ebe1cc0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 2
+  },
+  "alternative-identical-bag": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/alternative-identical-bag.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "5af57956e175cb85d5475be011598023d06e00254e186a92a7057438ec22fa9b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 4
+  },
+  "plus-cycle-from-constant": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/plus-cycle-from-constant.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "b757d59af60f237d88428cb4c31d5d1fb99ab7e027970fe74bfbeba781a51d97",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 4
+  },
+  "star-cycle-from-constant": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/star-cycle-from-constant.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "82af432c65c4e1c2f7ca76d58f5c98f8d9bbd3056d42087c3c15240e8c6d4739",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 4
+  },
+  "star-unknown-start": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/star-unknown-start.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "33cb6a7ccf12b00d6e9bdaefd7c2115280da4a9d2f2c017d196d57ff05738d43",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 1
+  },
+  "star-unknown-end": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/star-unknown-end.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "12c9ae46e3e1eb85df0edef838a7aaef23b8c319d5f28818815f93bffe5c0f7f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 1
+  },
+  "plus-unknown-start": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/plus-unknown-start.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "3d69e218a8d120d68f86692f399decccfff089c114648e3e0bd56e6c41e94493",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 0
+  },
+  "zero-one-self-loop": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/zero-one-self-loop.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "a526e4dfde86d3638b7a20bd7a146ea6196bafe1d9eaff02678836fcc00b20aa",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 1
+  },
+  "zero-one-diamond-start": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/zero-one-diamond-start.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "a3982b203f01ca9d78b087af361434907e45859cbe5ccd5426f8b94422ee210c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 3
+  },
+  "star-both-variable": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/star-both-variable.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "72e87a61f3ed00bb46cd2d2d6d08b24a145e7a945075d092d80f05bcc89c0077",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 24
+  },
+  "plus-both-variable": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/plus-both-variable.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "1273664ec322e77d64a91528e5c303c7e16dcd14986816aea3891fa5f8fba41a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 17
+  },
+  "star-same-variable": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/star-same-variable.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "877ae1a66af6eb00b70c9a6df91faeefd71afec3c1f9cba0b991432e72a97123",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 12
+  },
+  "plus-same-variable": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/plus-same-variable.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "c1b45f25b2396b855ac131538217d93eca12f32dd23b9fc2356605ad13819d21",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 5
+  },
+  "star-bound-equal-unknown": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/star-bound-equal-unknown.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "7b8d2c1c6cc3885e120bb695b5f15e7977bbdf6423c928dba7930f22bd2ce8e8",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": false,
+    "oracle_error": "AssertionError()"
+  },
+  "star-bound-different-unknown": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/star-bound-different-unknown.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "7b8d2c1c6cc3885e120bb695b5f15e7977bbdf6423c928dba7930f22bd2ce8e8",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": null
+  },
+  "plus-bound-cycle": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/plus-bound-cycle.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "673c243b8659f8ffff808f8d560cbb18db35a5cbf4c878b18cb03f3a08fa41c8",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": null
+  },
+  "plus-bound-unreachable": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/plus-bound-unreachable.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "7b8d2c1c6cc3885e120bb695b5f15e7977bbdf6423c928dba7930f22bd2ce8e8",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": null
+  },
+  "inverse-closure": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/inverse-closure.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "e5712375747e75b1f2417e5db816dec0113c193813bd3362a5cefdb9cacdbf1c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 4
+  },
+  "nested-sequence-star": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/nested-sequence-star.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "753d3a030d458870677da81a13df4cd8a4799417ed4bcb209d904cb7d0b91f3a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 2
+  },
+  "nested-alternative-plus": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/nested-alternative-plus.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "bd645f4fec5e400293c76e8fb20e1c6cc544574016f79f61fdc2a81212193533",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 5
+  },
+  "closure-followed-link": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/closure-followed-link.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "d0583fa4fb9b42db8346ae6908eedf4c21dd7446c9d48d2b8e1cc8ca96ca5b13",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 3
+  },
+  "link-followed-closure": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/link-followed-closure.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "57c5b77da1940ab16182693b652a4f7693246793d841d3e067af0ae89efbdf3a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 4
+  },
+  "inverse-sequence": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/inverse-sequence.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "873540749b067042c9f78bf08eaaa485fe74419f7b83dbd2c505cd56ff6de1cf",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 2
+  },
+  "negated-forward": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/negated-forward.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "652d9dec71a57f04110b619c5edca88a0d219d73b7dfa3258f8e59b1a1f84f98",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 8
+  },
+  "negated-inverse": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/negated-inverse.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "d65ecf34524ffddb2ff91a4acf79ac7e827cc5169736a5d2f1ffd8cf32e9697d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 8
+  },
+  "negated-mixed": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/negated-mixed.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "7a682af09cc28de6c82879eb8e382af87c068c3727e851511622b7cb03b5da96",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 19
+  },
+  "negated-sequence": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/negated-sequence.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "5251828660ab590b9fc430b7385d54a8f998ade05403ab6105b4cacab1d28464",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 1
+  },
+  "values-repeated-start": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/values-repeated-start.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "e327f8fe1ab6cea69eed346bae7f30aa0ca2d8a4ece423b7267993a495dce243",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 8
+  },
+  "values-repeated-end": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/values-repeated-end.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "df313a8ef23c17a3047890a295187cd35c72a36e8825949f68c62b5c2c9ca723",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 8
+  },
+  "values-unbound-start": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/values-unbound-start.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "1273664ec322e77d64a91528e5c303c7e16dcd14986816aea3891fa5f8fba41a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 17
+  },
+  "optional-no-match": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/optional-no-match.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "ed0660bc3c2c4824b2d059d8bd2f34a6d32af97b33ab5b4c0395fb00761c6bde",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 5
+  },
+  "exists-path": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/exists-path.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "9a1f73475f88aba00f185e346528b91c057ec139ae2d59b4aa90027b0e0bf37e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 2
+  },
+  "union-multiplicity": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/union-multiplicity.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "e327f8fe1ab6cea69eed346bae7f30aa0ca2d8a4ece423b7267993a495dce243",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 8
+  },
+  "ordered-limit-offset": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/ordered-limit-offset.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "873540749b067042c9f78bf08eaaa485fe74419f7b83dbd2c505cd56ff6de1cf",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 2
+  },
+  "language-literal-zero": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/language-literal-zero.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "e87b47c8879030bc884654802d143d54483399f1bae879fff97834d5c7cdaeda",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 1
+  },
+  "typed-lexical-identity": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/core.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/typed-lexical-identity.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "dc6c4ef5fb54ae584a2764eaa07431d0263df6b849c8efeb70664c83f3de15fd",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 2
+  },
+  "empty-variable-star": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/empty.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/empty-variable-star.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "1e9b78b60d018caa44f295beeb2c452cd86546205e570b42605813bbdc950b1a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 0
+  },
+  "empty-known-zero": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/empty.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/empty-known-zero.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "7b8d2c1c6cc3885e120bb695b5f15e7977bbdf6423c928dba7930f22bd2ce8e8",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": false,
+    "oracle_error": "AssertionError()"
+  },
+  "blank-node-intermediate": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/bridge.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/blank-node-intermediate.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "d4d9e86f8a5f789149396eb160b906ec584ad8de100619ae9fcd2a755d4337f5",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": 1
+  },
+  "closure-blank-node-intermediate": {
+    "oracle_process": {
+      "command": [
+        "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+        "--data=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/fixtures/bridge.nt",
+        "--query=/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/queries/closure-blank-node-intermediate.rq",
+        "--results=JSON"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "673c243b8659f8ffff808f8d560cbb18db35a5cbf4c878b18cb03f3a08fa41c8",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false
+    },
+    "oracle_pass": true,
+    "reference_rows": null
+  }
+}

@@ -1,0 +1,2 @@
+<urn:ex:a> <urn:ex:p> _:bridge .
+_:bridge <urn:ex:p> <urn:ex:d> .

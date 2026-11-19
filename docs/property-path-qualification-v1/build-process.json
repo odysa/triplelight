@@ -1,0 +1,1 @@
+{"pid": 71556, "command": ["cargo", "build", "--locked", "--release", "--bin", "triplelight", "-j1", "--target-dir", "/private/tmp/rdf-jianlin-analytical25/target"], "cwd": "/private/tmp/rdf-jianlin-analytical25/property-path-qualification-v1/source-52fd1d71"}

@@ -1,0 +1,10 @@
+{
+  "complete": true,
+  "cases": 45,
+  "oracle_pass": 43,
+  "oracle_gate": false,
+  "candidate_pass": null,
+  "candidate_gate": null,
+  "inputs_unchanged": true,
+  "comparison": "exact RDF term bags; explicit ordered case also exact sequence; no numerical tolerance"
+}

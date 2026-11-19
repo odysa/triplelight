@@ -1,0 +1,2 @@
+PREFIX ex:<urn:ex:>
+SELECT ?x WHERE { ?x ex:p* ?x }

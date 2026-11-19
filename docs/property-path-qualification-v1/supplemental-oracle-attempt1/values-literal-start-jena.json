@@ -1,0 +1,12 @@
+{ "head": {
+    "vars": [ "s" , "o" ]
+  } ,
+  "results": {
+    "bindings": [
+      { 
+        "s": { "type": "literal" , "xml:lang": "en" , "value": "leaf" } ,
+        "o": { "type": "literal" , "xml:lang": "en" , "value": "leaf" }
+      }
+    ]
+  }
+}

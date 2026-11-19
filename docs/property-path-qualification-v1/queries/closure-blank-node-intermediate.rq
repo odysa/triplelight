@@ -1,0 +1,2 @@
+PREFIX ex:<urn:ex:>
+ASK { ex:a ex:p+ ex:d }
