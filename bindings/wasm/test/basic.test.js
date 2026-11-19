@@ -56,3 +56,13 @@ test("errors carry a kind; a bad load adds nothing", async () => {
   assert.deepStrictEqual(Object.keys(b).sort(), ["__proto__", "constructor"]);
   assert.strictEqual(b.constructor.value, "y");
 });
+
+test("queryJson rejects graph results; blank-node labels are scoped per load", async () => {
+  const db = new Database();
+  db.loadSync("_:b <urn:p> <urn:x> .\n");
+  db.loadSync("_:b <urn:p> <urn:y> .\n");
+  assert.strictEqual(db.querySync("SELECT DISTINCT ?s WHERE { ?s <urn:p> ?o }").bindings.length, 2);
+  assert.throws(() => db.queryJsonSync("CONSTRUCT WHERE { ?s ?p ?o }"), (e) => e.kind === "UnsupportedError");
+  await assert.rejects(db.read().queryJson("DESCRIBE <urn:x>"), (e) => e.kind === "UnsupportedError");
+  await assert.rejects(db.queryJson("CONSTRUCT WHERE { ?s ?p ?o }"), (e) => e.kind === "UnsupportedError");
+});

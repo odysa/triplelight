@@ -1,6 +1,7 @@
 //! TripleLight compiled to WebAssembly: the full SPARQL engine over an in-memory store, for browsers, Deno, edge
 //! workers and Node without a native addon. The API mirrors the Node binding (`query`, `queryJson`, `update`, `load`,
-//! RDF/JS terms, errors with a `kind`), except that data lives in memory: load it from a string.
+//! RDF/JS-shaped terms, errors with a `kind`), except that data lives in memory and is loaded from a string. Every
+//! method, including the Promise-returning ones, runs to completion on the calling thread before it returns.
 use std::sync::Arc;
 
 use js_sys::{Array, Object, Promise, Reflect};
@@ -89,6 +90,28 @@ fn convert(r: QueryResult) -> Result<JsValue, JsValue> {
     Ok(out.into())
 }
 
+/// SPARQL Results JSON for SELECT and ASK. Like the Node binding, CONSTRUCT/DESCRIBE results are rejected here
+/// (their graph has no SPARQL JSON form); use `query` for them.
+fn results_json(r: QueryResult) -> Result<String, JsValue> {
+    match r {
+        QueryResult::Graph(_) => Err(error("UnsupportedError", "queryJson supports SELECT and ASK; use query() for CONSTRUCT and DESCRIBE")),
+        r => Ok(exec::results::serialize(&r).1),
+    }
+}
+
+/// Blank-node labels are scoped to the document they appear in: `_:b` in two `load` calls are two different nodes.
+fn fresh_blank_nodes(triples: Vec<Triple>) -> Vec<Triple> {
+    use std::collections::HashMap;
+    use triplelight::rdf::{BlankNode, NamedOrBlankNode};
+    let mut map: HashMap<BlankNode, BlankNode> = HashMap::new();
+    let mut fresh = |b: &BlankNode| map.entry(b.clone()).or_default().clone();
+    triples.into_iter().map(|t| {
+        let subject = match t.subject { NamedOrBlankNode::BlankNode(b) => NamedOrBlankNode::BlankNode(fresh(&b)), s => s };
+        let object = match t.object { Term::BlankNode(b) => Term::BlankNode(fresh(&b)), o => o };
+        Triple::new(subject, t.predicate, object)
+    }).collect()
+}
+
 fn settle(r: Result<JsValue, JsValue>) -> Promise {
     match r { Ok(v) => Promise::resolve(&v), Err(e) => Promise::reject(&e) }
 }
@@ -111,7 +134,8 @@ impl Database {
         let name = format.as_deref().unwrap_or("ntriples");
         let format = Format::from_name(name)
             .ok_or_else(|| error("UnsupportedError", &format!("unknown format {name:?}: use \"ntriples\" or \"turtle\"")))?;
-        let triples: Vec<Triple> = triplelight::rdf::parse_triples(data.as_bytes(), format).map_err(|e| error("SyntaxError", &e))?;
+        let triples = triplelight::rdf::parse_triples(data.as_bytes(), format).map_err(|e| error("SyntaxError", &e))?;
+        let triples = fresh_blank_nodes(triples);
         if self.cur.delta_len() == 0 && self.is_empty()? {
             // Bulk path: build sorted indexes once instead of inserting triple by triple.
             let base = MemorySnapshot::from_triples(triples);
@@ -149,11 +173,10 @@ impl Database {
 
     pub fn query(&self, sparql: &str) -> Promise { settle(self.query_sync(sparql)) }
 
-    /// SPARQL 1.1 Query Results JSON (or N-Triples for CONSTRUCT/DESCRIBE) as a string.
+    /// SPARQL 1.1 Query Results JSON for SELECT and ASK, as a string.
     #[wasm_bindgen(js_name = queryJsonSync)]
     pub fn query_json_sync(&self, sparql: &str) -> Result<String, JsValue> {
-        let r = exec::query(&*self.cur, sparql).map_err(query_error)?;
-        Ok(exec::results::serialize(&r).1)
+        results_json(exec::query(&*self.cur, sparql).map_err(query_error)?)
     }
 
     #[wasm_bindgen(js_name = queryJson)]
@@ -195,6 +218,6 @@ impl Snapshot {
     pub fn query(&self, sparql: &str) -> Promise { settle(self.query_sync(sparql)) }
     #[wasm_bindgen(js_name = queryJson)]
     pub fn query_json(&self, sparql: &str) -> Promise {
-        settle(exec::query(&*self.cur, sparql).map_err(query_error).map(|r| JsValue::from(exec::results::serialize(&r).1)))
+        settle(exec::query(&*self.cur, sparql).map_err(query_error).and_then(results_json).map(JsValue::from))
     }
 }
