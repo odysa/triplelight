@@ -124,6 +124,8 @@ pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D)
         }).collect::<Result<_, _>>()?;
         let body = chunks.concat();
         out.push_str(body.strip_prefix(',').unwrap_or(&body));
+    } else {
+        out.push_str(&vec!["{}"; sol.rows].join(","));
     }
     out.push_str("]}}");
     Ok(out)
