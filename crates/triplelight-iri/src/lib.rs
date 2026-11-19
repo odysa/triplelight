@@ -196,3 +196,48 @@ mod resolution_tests {
         ] { assert_eq!(base.resolve(reference).unwrap().as_str(), expected, "{reference}"); }
     }
 }
+
+#[cfg(test)]
+mod rfc3986_abnormal_examples {
+    use super::Iri;
+    #[test]
+    fn reference_resolution_abnormal_examples() {
+        let base = Iri::parse("http://a/b/c/d;p?q").unwrap();
+        for (reference, expected) in [
+            ("../../../g", "http://a/g"), ("../../../../g", "http://a/g"),
+            ("/./g", "http://a/g"), ("/../g", "http://a/g"),
+            ("g.", "http://a/b/c/g."), (".g", "http://a/b/c/.g"),
+            ("g..", "http://a/b/c/g.."), ("..g", "http://a/b/c/..g"),
+            ("./../g", "http://a/b/g"), ("./g/.", "http://a/b/c/g/"),
+            ("g/./h", "http://a/b/c/g/h"), ("g/../h", "http://a/b/c/h"),
+            ("g;x=1/./y", "http://a/b/c/g;x=1/y"),
+            ("g;x=1/../y", "http://a/b/c/y"),
+            ("g?y/./x", "http://a/b/c/g?y/./x"),
+            ("g?y/../x", "http://a/b/c/g?y/../x"),
+            ("g#s/./x", "http://a/b/c/g#s/./x"),
+            ("g#s/../x", "http://a/b/c/g#s/../x"),
+        ] {
+            assert_eq!(base.resolve(reference).unwrap().as_str(), expected, "reference {reference}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod unicode_and_escape_tests {
+    use super::Iri;
+    #[test]
+    fn unicode_and_percent_encoding_are_validated_without_normalizing() {
+        for iri in ["urn:é", "urn:猫", "urn:a%20b", "urn:a%2fb", "http://example/?x=\u{e000}"] {
+            assert_eq!(Iri::parse(iri).unwrap().as_str(), iri);
+        }
+        for iri in ["urn:a%", "urn:a%0", "urn:a%xz", "urn:a|b", "urn:a<b", "urn:a\u{e000}", "urn:a#\u{e000}"] {
+            assert!(Iri::parse(iri).is_err(), "{iri:?}");
+        }
+    }
+    #[test]
+    fn reference_resolution_retains_encoded_dots() {
+        let base = Iri::parse("http://example/a/b/").unwrap();
+        assert_eq!(base.resolve("%2e%2e/x").unwrap().as_str(), "http://example/a/b/%2e%2e/x");
+        assert!(base.resolve("1invalid:relative").is_err());
+    }
+}
