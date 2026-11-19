@@ -1,0 +1,15 @@
+[package]
+name = "triplelight-c"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+name = "triplelight_c"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+triplelight = { path = "../.." }
+
+# Built on its own (own toolchain and lockfile), not as a member of the root workspace.
+[workspace]
