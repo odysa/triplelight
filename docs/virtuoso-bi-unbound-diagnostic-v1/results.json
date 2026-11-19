@@ -1,0 +1,44 @@
+{
+  "group-alone": {
+    "reference_rows": 2,
+    "actual_rows": 2,
+    "exact_term_bag_pass": true,
+    "country_product_bag_pass": true
+  },
+  "join-group-left": {
+    "reference_rows": 3,
+    "actual_rows": 0,
+    "exact_term_bag_pass": false,
+    "country_product_bag_pass": false
+  },
+  "join-group-right": {
+    "reference_rows": 3,
+    "actual_rows": 0,
+    "exact_term_bag_pass": false,
+    "country_product_bag_pass": false
+  },
+  "join-projection-unbound": {
+    "reference_rows": 3,
+    "actual_rows": 0,
+    "exact_term_bag_pass": false,
+    "country_product_bag_pass": false
+  },
+  "join-remove-unbound": {
+    "reference_rows": 3,
+    "actual_rows": 3,
+    "exact_term_bag_pass": true,
+    "country_product_bag_pass": true
+  },
+  "q5-original": {
+    "reference_rows": 14,
+    "actual_rows": 0,
+    "exact_term_bag_pass": false,
+    "country_product_bag_pass": false
+  },
+  "q5-remove-unbound": {
+    "reference_rows": 14,
+    "actual_rows": 14,
+    "exact_term_bag_pass": false,
+    "country_product_bag_pass": true
+  }
+}
