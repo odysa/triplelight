@@ -55,6 +55,55 @@ HTTP tables below and do not establish general state of the art or full SPARQL c
 timings, memory scope and the original answers:
 [embedded Python cohort]((internal link removed)).
 
+## Embedded, in-process: Node.js API (BSBM BI 10M, LUBM-100 and WatDiv aggregates)
+
+Same frozen workloads, gates and container limits as the Python cohort (`--network none`, 4 CPUs, 12 GiB memory,
+container swap disabled), one fresh container per phase, two passes with pass 2 in reversed order. Node v24.16.0 on
+Linux ARM64. The timer covers query execution plus complete conversion of the result to plain JavaScript term
+objects; opening or loading the store, the stored-triple count and validation are outside it. Summed scored query
+time in **seconds**, pass 1 / pass 2 (lower is better).
+
+On-disk engines:
+
+| Dataset | Timed requests per pass | TripleLight | quadstore 15.4.2 + Comunica 6.3.1 |
+|---|---:|---:|---:|
+| BSBM BI, 10M triples | 45 | **8.493 / 9.938** | no total: incomplete, and collected answers failed gates |
+| LUBM-100 aggregates | 30 | **0.652 / 0.755** | no total: qualification incomplete |
+| WatDiv aggregates | 42 | **0.211 / 0.262** | 322.879 / 543.624 |
+
+In-memory engine, a separate storage group (the whole graph is loaded into memory before timing):
+
+| Dataset | Timed requests per pass | oxigraph JS 0.5.13 |
+|---|---:|---:|
+| BSBM BI, 10M triples | 45 | no total: qualification incomplete |
+| LUBM-100 aggregates | 30 | 16.431 / 16.179 |
+| WatDiv aggregates | 42 | 76.417 / 74.671 |
+
+All 864 scheduled requests (462 scored, 402 warm-up) passed the same frozen Jena gates as the Python cohort; no
+engine errors, retries, replacements, out-of-memory failures or caps in the completed v2 attempt. TripleLight ran at
+commit `2bd070ae` with its default cache target, 4,007 MiB from one quarter of the VM's reported MemTotal. oxigraph's
+JS API does not expose result columns, so the adapter takes them from the frozen reference answers (values still come
+from the engine); this does not independently verify the projection of empty results. oxigraph also merges literals
+that RDF treats as distinct in the nine-term identity test.
+
+Qualification outcomes behind the missing totals: quadstore BI hit its cap and, separately, some collected answers
+failed the gates (q3 product selection, and q2 cutoff/order); quadstore LUBM and oxigraph BI hit their caps with every
+collected answer passing.
+
+Memory is the after-close cgroup `memory.peak` sample for each whole container phase (startup, open or load,
+warm-up, scored requests and close), read after Node exits but before the container exits. It includes file-backed
+(page cache) accounting and is not RSS or per-query memory; this VM reports `memory.stat` kernel 0, so no separate
+kernel-memory figure is claimed. Pass 1 / pass 2 in GiB: TripleLight BI
+2.00 / 2.18, LUBM 1.13 / 1.13, WatDiv 0.64 / 0.56; quadstore WatDiv 1.01 / 1.01; oxigraph LUBM 4.06 / 4.06, WatDiv
+2.93 / 2.99.
+
+Cap history: the first registered scored attempt stopped when quadstore WatDiv hit its 900-second whole-phase cap
+(64 of 84 answers, all passing). A second attempt was registered before running with only that cap raised to 1,800
+seconds; the first attempt is kept in the report and none of its times are used here. Missing totals mean an engine
+did not complete qualification, not a zero or a measured loss. These results are separate from the Python and HTTP
+tables and do not establish general state of the art or full SPARQL conformance. Report, per-query timings, the
+stopped attempt and the original answers: [embedded Node.js cohort]((internal link removed)).
+
 ## Analytical: BSBM Business Intelligence, 10M triples (three engines, one session)
 
 Same Linux VM (4 CPUs, 12 GiB cap per engine), two passes in reversed order. Each number is the sum of 45
