@@ -9,7 +9,7 @@ fn n(i: u64) -> NamedNode { NamedNode::new_unchecked(format!("http://ex/{i}")) }
 fn t(s: u64, p: u64, o: u64) -> Triple { Triple::new(n(s), n(100 + p), n(o)) }
 
 fn tmp(name: &str) -> std::path::PathBuf {
-    let d = std::env::temp_dir().join(format!("rdfdb-test-{name}-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("triplelight-test-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     d
 }
@@ -113,7 +113,7 @@ fn sparql_update_operations() {
 #[test]
 fn acknowledged_commits_survive_sigkill() {
     let dir = tmp("crash");
-    let bin = env!("CARGO_BIN_EXE_rdfdb");
+    let bin = env!("CARGO_BIN_EXE_triplelight");
     let mut child = std::process::Command::new(bin).args(["stress-commit", dir.to_str().unwrap(), "100000"])
         .stdout(std::process::Stdio::piped()).spawn().unwrap();
     use std::io::BufRead;

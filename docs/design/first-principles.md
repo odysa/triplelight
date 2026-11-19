@@ -1,4 +1,4 @@
-# rdfdb: a first-principles design
+# TripleLight: a first-principles design
 
 Status: draft. Sections 1–4 and 7 by Kaiming; sections 5–6 (workflows, storage, durability, product) by Alex.
 Every number below is a measurement from `bench/results/` or the analytical-benchmark branch, with its run named.
@@ -43,9 +43,9 @@ intermediate rows alive at once`. Three levers follow, and they are the only one
 - **Hold fewer rows**: stream through operators and materialize only where an algorithm must (hash-join build side,
   sort, aggregation state).
 
-Measured on BSBM-BI 10M this week, rdfdb's remaining losses touch these levers. What is measured: rdfdb evaluates a
-date range by scanning and testing every dated review (q3: rdfdb 0.97–1.30 s vs QLever 0.42–0.44 s, round 6), and
-rdfdb's peak memory is dominated by resident blocks and materialized intermediates. **[hypothesis]** That QLever's
+Measured on BSBM-BI 10M this week, TripleLight's remaining losses touch these levers. What is measured: TripleLight evaluates a
+date range by scanning and testing every dated review (q3: TripleLight 0.97–1.30 s vs QLever 0.42–0.44 s, round 6), and
+TripleLight's peak memory is dominated by resident blocks and materialized intermediates. **[hypothesis]** That QLever's
 q1/q3 advantage comes from its value encoding is not established; we have only measured our own side (q4 peak 1.51 GB; of 807 MB live mid-query, 269 MB are index blocks
 the statistics builder left in cache and ~300 MB are q4's join intermediates; `ab35`, `ab37`).
 
@@ -104,7 +104,7 @@ Design:
 - **Decode once, at the end:** only projected, returned values are turned back into RDF terms; everything before that
   is IDs (and inline values).
 
-**[hypothesis]** for rdfdb; this is the standard design of analytical engines (DuckDB, QLever's ID tables, Umbra-style pipelines); rdfdb already
+**[hypothesis]** for TripleLight; this is the standard design of analytical engines (DuckDB, QLever's ID tables, Umbra-style pipelines); TripleLight already
 has most of the operators, but not the batch representation or the pipelining.
 
 ## 5. Optimizer
@@ -199,13 +199,13 @@ Each phase merges only after (a) the frozen BI/LUBM/BSBM answer sets match exact
 
 Non-goals for now: distribution across machines, OWL reasoning, full-text search, SPARQL federation.
 
-## 8. Where rdfdb stands today (measured)
+## 8. Where TripleLight stands today (measured)
 
-- BSBM-BI 10M, same VM session, value-compatible answers on all 360 requests: rdfdb 10.8 / 7.3 s, QLever 18.3 / 18.7 s,
+- BSBM-BI 10M, same VM session, value-compatible answers on all 360 requests: TripleLight 10.8 / 7.3 s, QLever 18.3 / 18.7 s,
   DuckDB 170.7 / 113.4 s (round 6). QLever is still faster on q1 and q3 and uses about a quarter of the memory.
-- LUBM-1000: rdfdb faster than QLever on every query QLever completed (round 14).
+- LUBM-1000: TripleLight faster than QLever on every query QLever completed (round 14).
 - Exact answers on the frozen sets; QLever fails strict datatype checks on 51/60 BI requests.
 - Embedded Rust/Python API with WAL, overlay and compaction.
 
-The plan targets rdfdb's two measured weaknesses, range-filter scans and materialized memory, without giving up the
+The plan targets TripleLight's two measured weaknesses, range-filter scans and materialized memory, without giving up the
 first or the fourth principle. Whether it closes the gap to QLever is a hypothesis each phase must test.

@@ -1,18 +1,18 @@
-//! Python bindings for the embedded rdfdb database (`import rdfdb`).
+//! Python bindings for the embedded TripleLight database (`import triplelight`).
 //! Terms are converted to Python values in Rust (see `to_py`). Query and update calls release the GIL.
 use oxrdf::Term;
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
-use rdfdb::embedded::{Database, DatabaseError, ReadSnapshot};
-use rdfdb::exec::QueryResult;
+use triplelight::embedded::{Database, DatabaseError, ReadSnapshot};
+use triplelight::exec::QueryResult;
 use std::sync::Arc;
 
-create_exception!(_rdfdb, RdfdbError, PyException);
-create_exception!(_rdfdb, SyntaxError, RdfdbError);
-create_exception!(_rdfdb, UnsupportedError, RdfdbError);
-create_exception!(_rdfdb, StorageError, RdfdbError);
-create_exception!(_rdfdb, LockedError, RdfdbError);
+create_exception!(_triplelight, TripleLightError, PyException);
+create_exception!(_triplelight, SyntaxError, TripleLightError);
+create_exception!(_triplelight, UnsupportedError, TripleLightError);
+create_exception!(_triplelight, StorageError, TripleLightError);
+create_exception!(_triplelight, LockedError, TripleLightError);
 
 fn err(e: DatabaseError) -> PyErr {
     match e {
@@ -23,7 +23,7 @@ fn err(e: DatabaseError) -> PyErr {
     }
 }
 
-/// Python classes from `rdfdb/__init__.py`, looked up once per call.
+/// Python classes from `triplelight/__init__.py`, looked up once per call.
 struct Classes<'py> { iri: Bound<'py, PyAny>, bnode: Bound<'py, PyAny>, literal: Bound<'py, PyAny> }
 impl<'py> Classes<'py> {
     fn get(py: Python<'py>) -> PyResult<Self> {
@@ -81,11 +81,11 @@ fn convert(py: Python<'_>, r: QueryResult) -> PyResult<PyObject> {
             }
             ("graph", out).into_pyobject(py)?.into_any().unbind()
         }
-        QueryResult::Ids(_) => return Err(RdfdbError::new_err("internal: undecoded result")),
+        QueryResult::Ids(_) => return Err(TripleLightError::new_err("internal: undecoded result")),
     })
 }
 
-#[pyclass(frozen, name = "Database", module = "triplelight._rdfdb")]
+#[pyclass(frozen, name = "Database", module = "triplelight._triplelight")]
 struct PyDatabase { db: Arc<Database> }
 
 #[pymethods]
@@ -93,7 +93,7 @@ impl PyDatabase {
     #[new]
     #[pyo3(signature = (path, initial=None))]
     fn new(py: Python<'_>, path: std::path::PathBuf, initial: Option<std::path::PathBuf>) -> PyResult<Self> {
-        let mut opts = rdfdb::embedded::DatabaseOptions::default();
+        let mut opts = triplelight::embedded::DatabaseOptions::default();
         opts.initial = initial;
         let db = py.allow_threads(|| Database::open_with(&path, opts)).map_err(err)?;
         Ok(PyDatabase { db: Arc::new(db) })
@@ -125,7 +125,7 @@ impl PyDatabase {
     }
 }
 
-#[pyclass(frozen, name = "Snapshot", module = "triplelight._rdfdb")]
+#[pyclass(frozen, name = "Snapshot", module = "triplelight._triplelight")]
 struct PySnapshot { snap: Arc<ReadSnapshot> }
 
 #[pymethods]
@@ -142,10 +142,10 @@ impl PySnapshot {
 }
 
 #[pymodule]
-fn _rdfdb(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _triplelight(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyDatabase>()?;
     m.add_class::<PySnapshot>()?;
-    m.add("RdfdbError", m.py().get_type::<RdfdbError>())?;
+    m.add("TripleLightError", m.py().get_type::<TripleLightError>())?;
     m.add("SyntaxError", m.py().get_type::<SyntaxError>())?;
     m.add("UnsupportedError", m.py().get_type::<UnsupportedError>())?;
     m.add("StorageError", m.py().get_type::<StorageError>())?;

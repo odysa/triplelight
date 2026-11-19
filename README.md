@@ -12,9 +12,7 @@ Data lives in memory or in a persistent on-disk store with a write-ahead log. Be
 against Apache Jena, and SPARQL features TripleLight does not implement are rejected with an "unsupported" error
 instead of returning a partial result.
 
-> **Status: early (0.1).** The project was called `rdfdb` until November 2026. The `rdfdb` command and Python
-> import still work as aliases, and existing stores open unchanged; Rust code must switch `rdfdb::` imports to
-> `triplelight::`. There are no published releases yet; build from source. The on-disk format and APIs may still
+> **Status: early (0.1).** There are no published releases yet; build from source. The on-disk format and APIs may still
 > change. Unix only (Linux, macOS), Rust 1.89+.
 
 ## Quickstart
@@ -22,7 +20,7 @@ instead of returning a partial result.
 ### Command line
 
 ```sh
-git clone https://github.com/odysa/rdfdb.git triplelight && cd triplelight
+git clone https://github.com/odysa/triplelight.git triplelight && cd triplelight
 cargo build --release            # binary: ./target/release/triplelight
 
 # Ask a question of an N-Triples or Turtle file
@@ -82,7 +80,7 @@ queries. See [bindings/python](bindings/python).
 
 ```toml
 [dependencies]
-triplelight = { git = "https://github.com/odysa/rdfdb" }
+triplelight = { git = "https://github.com/odysa/triplelight" }
 ```
 
 ```rust
@@ -103,7 +101,7 @@ More in [docs/embedded/README.md](docs/embedded/README.md), including bulk loadi
 ## Performance
 
 Two analytical workloads, each measured in its own session on one Linux VM, with every engine capped at 4 CPUs and
-12 GiB. They were not measured together on one build: BI used rdfdb commit `ef7a778` and the aggregate suite
+12 GiB. They were not measured together on one build: BI used TripleLight commit `ef7a778` and the aggregate suite
 `9a2f49b`.
 Left: total query time in **seconds, log scale**. Right: peak container memory in **GiB**. **Lower is better** in
 both. Each engine ran two passes (pass 2 in reversed order); both are shown because timings drift between passes.

@@ -5,7 +5,7 @@ No inference is enabled. Data is read in place and is not committed. Checksums,
 query hashes and compiler version are in `provenance.json`.
 
 `reference_counts.tsv` comes from `bench/results_lubm_1794494976.json`; its Jena,
-Oxigraph and rdfdb counts and answer hashes agree. `prefix_baseline.tsv` is the
+Oxigraph and TripleLight counts and answer hashes agree. `prefix_baseline.tsv` is the
 original synopsis with exact prefix counts; `refined.tsv` adds capped rare-object
 CS refinement. `bind_join.tsv` uses the same refinement and the new default index
 nested-loop cost model. Estimates do not change with the cost-model switch.

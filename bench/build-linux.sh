@@ -1,5 +1,5 @@
 #!/bin/bash
-# Linux (arm64) rdfdb binary for the Docker-VM systems (rdfdb-vm, rdfdb-disk-vm) -> target-linux/release/rdfdb.
+# Linux (arm64) triplelight binary for the Docker-VM systems (triplelight-vm, triplelight-disk-vm) -> target-linux/release/triplelight.
 # Sources are copied into the container first: building straight from the virtiofs bind mount has read stale,
 # truncated copies of recently rewritten files (failed build -> suite.sh silently measured the previous binary).
 set -eu

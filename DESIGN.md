@@ -1,4 +1,4 @@
-# rdfdb: a single-machine RDF store in Rust (design v0)
+# TripleLight: a single-machine RDF store in Rust (design v0)
 
 Goal (chengxu-bian, (internal discussion) b8e35e0d): a SPARQL store in the class of Apache Jena (TDB2) and Eclipse RDF4J,
 built with current database techniques, in Rust, single machine first, benchmarked against existing products.

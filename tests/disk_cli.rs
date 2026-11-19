@@ -2,11 +2,11 @@
 use std::process::Command;
 #[test]
 fn disk_snapshot_cli_survives_process_restart() {
-    let root=std::env::temp_dir().join(format!("rdfdb-disk-cli-{}",std::process::id()));
+    let root=std::env::temp_dir().join(format!("triplelight-disk-cli-{}",std::process::id()));
     std::fs::create_dir(&root).unwrap();
     let nt=root.join("input.nt");let snapshot=root.join("snapshot");
     std::fs::write(&nt,"<urn:s> <urn:p> \"hello\" .\n<urn:s2> <urn:p> \"hello\"@en .\n").unwrap();
-    let exe=env!("CARGO_BIN_EXE_rdfdb");
+    let exe=env!("CARGO_BIN_EXE_triplelight");
     let built=Command::new(exe).arg("build-disk").arg(&nt).arg(&snapshot).arg("--parallel-load=1").output().unwrap();
     assert!(built.status.success(),"{}",String::from_utf8_lossy(&built.stderr));
     let verify=Command::new(exe).arg("verify").arg(&snapshot).output().unwrap();
@@ -33,11 +33,11 @@ fn disk_server_restarts_and_answers_without_original_input() {
     impl Drop for ChildGuard {
         fn drop(&mut self) { let _ = self.0.kill(); let _ = self.0.wait(); }
     }
-    let root=std::env::temp_dir().join(format!("rdfdb-disk-server-{}",std::process::id()));
+    let root=std::env::temp_dir().join(format!("triplelight-disk-server-{}",std::process::id()));
     std::fs::create_dir(&root).unwrap();
     let nt=root.join("input.nt");let snapshot=root.join("snapshot");
     std::fs::write(&nt,"<urn:s> <urn:p> \"persisted\" .\n").unwrap();
-    let exe=env!("CARGO_BIN_EXE_rdfdb");
+    let exe=env!("CARGO_BIN_EXE_triplelight");
     let out=Command::new(exe).arg("build-disk").arg(&nt).arg(&snapshot).arg("--parallel-load=1").output().unwrap();
     assert!(out.status.success(),"{}",String::from_utf8_lossy(&out.stderr));
     std::fs::remove_file(nt).unwrap();
@@ -66,17 +66,17 @@ fn disk_server_restarts_and_answers_without_original_input() {
 #[cfg(not(feature = "server"))]
 #[test]
 fn serve_without_the_server_feature_explains_how_to_enable_it() {
-    let out=Command::new(env!("CARGO_BIN_EXE_rdfdb")).arg("serve").arg("x.nt").output().unwrap();
+    let out=Command::new(env!("CARGO_BIN_EXE_triplelight")).arg("serve").arg("x.nt").output().unwrap();
     assert!(!out.status.success());
     assert!(String::from_utf8_lossy(&out.stderr).contains("--features server"));
 }
 
 #[test]
 fn build_strategy_can_be_forced_and_matches_fast_path() {
-    let root=std::env::temp_dir().join(format!("rdfdb-build-strategy-{}",std::process::id()));
+    let root=std::env::temp_dir().join(format!("triplelight-build-strategy-{}",std::process::id()));
     std::fs::create_dir(&root).unwrap();let nt=root.join("data.nt");
     std::fs::write(&nt,"<urn:s> <urn:p> \"x\"@en .\n<urn:s> <urn:p> \"x\"@en .\n_:b <urn:p> \"7\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n").unwrap();
-    let exe=env!("CARGO_BIN_EXE_rdfdb");let mut answers=Vec::new();
+    let exe=env!("CARGO_BIN_EXE_triplelight");let mut answers=Vec::new();
     for (name,flags,expected) in [("fast",vec!["--build-memory-mb=1024"],"in-memory"),("ext",vec!["--build-external","--build-memory-mb=1024"],"external sort")] {
         let dir=root.join(name);let result=Command::new(exe).arg("build-disk").arg(&nt).arg(&dir).args(flags).output().unwrap();
         assert!(result.status.success(),"{}",String::from_utf8_lossy(&result.stderr));assert!(String::from_utf8_lossy(&result.stderr).contains(expected));
@@ -90,7 +90,7 @@ fn build_strategy_can_be_forced_and_matches_fast_path() {
 
 #[test]
 fn disk_build_help_explains_advisory_memory_and_worker_controls() {
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_rdfdb"))
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_triplelight"))
         .args(["build-disk", "--help"]).output().unwrap();
     assert!(output.status.success());
     let text = String::from_utf8(output.stdout).unwrap();

@@ -10,5 +10,4 @@ requires-python = ">=3.9"
 
 [tool.maturin]
 python-source = "python"
-python-packages = ["triplelight", "rdfdb"]
-module-name = "triplelight._rdfdb"
+module-name = "triplelight._triplelight"
