@@ -224,3 +224,18 @@ fn memory_streamed_import_is_atomic_on_late_parse_error() {
     assert!(ask(&db, "ASK { <urn:a> <urn:p> <urn:b> }"));
     std::fs::remove_file(path).unwrap();
 }
+
+#[test]
+fn memory_streamed_turtle_load_is_atomic_and_document_scoped() {
+    let path = temp("memory-turtle").with_extension("ttl");
+    let db = Database::in_memory();
+    std::fs::write(&path, "@prefix ex: <urn:example:> . _:a ex:p _:a . ex:s ex:p").unwrap();
+    assert!(db.load(&path).is_err());
+    assert!(!ask(&db, "ASK { ?s <urn:example:p> ?s }"));
+    std::fs::write(&path, "@prefix ex: <urn:example:> . _:a ex:p _:a .").unwrap();
+    assert_eq!(db.load(&path).unwrap(), 1);
+    assert_eq!(db.load(&path).unwrap(), 1);
+    let count = db.query_json("SELECT (COUNT(*) AS ?n) WHERE { ?s <urn:example:p> ?s }").unwrap();
+    assert!(count.contains("\"2\""), "{count}");
+    std::fs::remove_file(path).unwrap();
+}
