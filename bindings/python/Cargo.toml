@@ -1,5 +1,5 @@
 [package]
-name = "rdfdb-python"
+name = "triplelight-python"
 version = "0.1.0"
 edition = "2024"
 
@@ -9,5 +9,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }
-rdfdb = { path = "../.." }
+rdfdb = { package = "triplelight", path = "../.." }
 oxrdf = "0.3.5"

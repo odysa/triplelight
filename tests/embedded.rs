@@ -1,6 +1,6 @@
 #![cfg(unix)]
-use rdfdb::embedded::{Database, DatabaseError, DatabaseOptions};
-use rdfdb::exec::QueryResult;
+use triplelight::embedded::{Database, DatabaseError, DatabaseOptions};
+use triplelight::exec::QueryResult;
 use std::path::PathBuf;
 
 fn temp(name: &str) -> PathBuf {

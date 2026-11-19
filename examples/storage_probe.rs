@@ -1,5 +1,5 @@
-use rdfdb::storage::{MemorySnapshot, Snapshot};
-use rdfdb::model::Perm;
+use triplelight::storage::{MemorySnapshot, Snapshot};
+use triplelight::model::Perm;
 use oxrdf::{NamedNode, Literal, Triple};
 use std::hint::black_box;
 fn main() {

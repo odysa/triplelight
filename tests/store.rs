@@ -1,8 +1,8 @@
 //! Durable updates: overlay correctness against a rebuilt snapshot, reopen, torn WAL, compaction, crash.
 use oxrdf::{Literal, NamedNode, Triple};
-use rdfdb::exec::{query, QueryResult};
-use rdfdb::storage::MemorySnapshot;
-use rdfdb::store::{Change, Store};
+use triplelight::exec::{query, QueryResult};
+use triplelight::storage::MemorySnapshot;
+use triplelight::store::{Change, Store};
 use std::collections::BTreeSet;
 
 fn n(i: u64) -> NamedNode { NamedNode::new_unchecked(format!("http://ex/{i}")) }
@@ -14,7 +14,7 @@ fn tmp(name: &str) -> std::path::PathBuf {
     d
 }
 
-fn answers<S: rdfdb::storage::Snapshot>(s: &S, q: &str) -> Vec<String> {
+fn answers<S: triplelight::storage::Snapshot>(s: &S, q: &str) -> Vec<String> {
     match query(s, q).unwrap() {
         QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.iter().map(|r| format!("{r:?}")).collect(); v.sort(); v }
         QueryResult::Boolean(b) => vec![b.to_string()],
@@ -106,7 +106,7 @@ fn sparql_update_operations() {
     // Insert then delete of the same triple within one request nets to nothing.
     store.update("INSERT DATA { <http://ex/7> <http://ex/100> <http://ex/8> } ; DELETE DATA { <http://ex/7> <http://ex/100> <http://ex/8> }").unwrap();
     assert_eq!(answers(&*store.snapshot(), "ASK { <http://ex/7> <http://ex/100> <http://ex/8> }"), ["false"]);
-    assert_eq!(store.update("LOAD <http://ex/x>").unwrap_err().kind, rdfdb::exec::QueryErrorKind::Unsupported);
+    assert_eq!(store.update("LOAD <http://ex/x>").unwrap_err().kind, triplelight::exec::QueryErrorKind::Unsupported);
 }
 
 /// kill -9 a writer mid-stream; every commit it acknowledged must survive.
@@ -173,7 +173,7 @@ fn concurrent_commits_are_all_durable() {
 
 #[test]
 fn disk_base_replays_and_compacts_updates() {
-    use rdfdb::storage::DiskBase;
+    use triplelight::storage::DiskBase;
     let dir = tmp("disk-base");
     let open = || Store::open_with(&dir, None, Box::new(DiskBase { workers: 1 })).unwrap();
     let store = open();
@@ -213,7 +213,7 @@ fn overlay_scan_streams_across_batches() {
     let snap = store.snapshot();
     // Every batch is sorted and the concatenation is the expected set, in key order.
     let mut seen = Vec::new();
-    for b in rdfdb::storage::Snapshot::scan(&*snap, rdfdb::model::Perm::Pso, &[]) {
+    for b in triplelight::storage::Snapshot::scan(&*snap, triplelight::model::Perm::Pso, &[]) {
         let b = b.unwrap();
         assert!(b.len() <= 4096);
         for i in 0..b.len() { seen.push([b.cols[0][i], b.cols[1][i], b.cols[2][i]]); }
@@ -227,8 +227,8 @@ fn overlay_scan_streams_across_batches() {
 /// A base read error in the middle of a merged scan surfaces as an error (not a short result).
 #[test]
 fn overlay_scan_propagates_base_errors() {
-    use rdfdb::model::{Perm, TermId, TripleBatch};
-    use rdfdb::storage::{Dictionary, Snapshot, StorageError};
+    use triplelight::model::{Perm, TermId, TripleBatch};
+    use triplelight::storage::{Dictionary, Snapshot, StorageError};
     use std::sync::Arc;
     struct Faulty(MemorySnapshot);
     impl Dictionary for Faulty {
@@ -245,7 +245,7 @@ fn overlay_scan_propagates_base_errors() {
         fn seek(&self, p: Perm, pre: &[TermId], t: TermId) -> Result<Option<TermId>, StorageError> { self.0.seek(p, pre, t) }
     }
     struct FaultyFormat;
-    impl rdfdb::store::BaseFormat for FaultyFormat {
+    impl triplelight::store::BaseFormat for FaultyFormat {
         fn write(&self, _: &std::path::Path, _: &dyn Snapshot) -> std::io::Result<()> { unimplemented!() }
         fn import(&self, dir: &std::path::Path, _: Option<&std::path::Path>) -> std::io::Result<()> { std::fs::create_dir(dir) }
         fn open(&self, _: &std::path::Path) -> std::io::Result<Arc<dyn Snapshot>> {
@@ -258,10 +258,10 @@ fn overlay_scan_propagates_base_errors() {
     store.commit(&[(Change::Insert, t(1, 1, 1))]).unwrap(); // non-empty delta forces the merge path
     let results: Vec<_> = Snapshot::scan(&*store.snapshot(), Perm::Spo, &[]).collect();
     assert!(results.last().unwrap().is_err(), "error must surface");
-    let e = rdfdb::exec::query(&*store.snapshot(), "SELECT * WHERE { ?s ?p ?o }").unwrap_err();
-    assert_eq!(e.kind, rdfdb::exec::QueryErrorKind::Storage);
+    let e = triplelight::exec::query(&*store.snapshot(), "SELECT * WHERE { ?s ?p ?o }").unwrap_err();
+    assert_eq!(e.kind, triplelight::exec::QueryErrorKind::Storage);
     let dest = dir.join("failed-generation");
-    let err = rdfdb::storage::write_disk_snapshot(&dest, &*store.snapshot()).unwrap_err();
+    let err = triplelight::storage::write_disk_snapshot(&dest, &*store.snapshot()).unwrap_err();
     assert!(err.to_string().contains("planted read failure"));
     assert!(!dest.join("MANIFEST").exists());
 }

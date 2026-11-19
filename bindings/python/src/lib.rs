@@ -27,7 +27,7 @@ fn err(e: DatabaseError) -> PyErr {
 struct Classes<'py> { iri: Bound<'py, PyAny>, bnode: Bound<'py, PyAny>, literal: Bound<'py, PyAny> }
 impl<'py> Classes<'py> {
     fn get(py: Python<'py>) -> PyResult<Self> {
-        let m = py.import("rdfdb")?;
+        let m = py.import("triplelight")?;
         Ok(Classes { iri: m.getattr("IRI")?, bnode: m.getattr("BNode")?, literal: m.getattr("Literal")? })
     }
 }
@@ -85,7 +85,7 @@ fn convert(py: Python<'_>, r: QueryResult) -> PyResult<PyObject> {
     })
 }
 
-#[pyclass(frozen, name = "Database", module = "rdfdb._rdfdb")]
+#[pyclass(frozen, name = "Database", module = "triplelight._rdfdb")]
 struct PyDatabase { db: Arc<Database> }
 
 #[pymethods]
@@ -125,7 +125,7 @@ impl PyDatabase {
     }
 }
 
-#[pyclass(frozen, name = "Snapshot", module = "rdfdb._rdfdb")]
+#[pyclass(frozen, name = "Snapshot", module = "triplelight._rdfdb")]
 struct PySnapshot { snap: Arc<ReadSnapshot> }
 
 #[pymethods]
