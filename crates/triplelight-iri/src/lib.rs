@@ -1,4 +1,4 @@
-//! Independent RFC 3987 absolute IRI validation. Resolution is not implemented yet.
+//! Independent RFC 3987 absolute IRI validation and reference resolution.
 //! This work-in-progress crate is not integrated into TripleLight.
 use std::{fmt, net::Ipv6Addr, str::FromStr};
 
@@ -18,6 +18,10 @@ impl Iri {
         Ok(Self(input.to_owned()))
     }
     pub fn as_str(&self) -> &str { &self.0 }
+    /// Resolve an IRI reference against this absolute base (RFC 3986 section 5.2).
+    pub fn resolve(&self, reference: &str) -> Result<Self, InvalidIri> {
+        resolve_reference(self.as_str(), reference)
+    }
 }
 impl fmt::Display for Iri {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { f.write_str(self.as_str()) }
@@ -88,6 +92,78 @@ fn validate_absolute(input: &str) -> Result<(), InvalidIri> {
     component(path, |c| unreserved(c) || sub_delim(c) || ":@/".contains(c))
 }
 
+#[derive(Clone, Copy)]
+struct Parts<'a> {
+    scheme: Option<&'a str>, authority: Option<&'a str>, path: &'a str,
+    query: Option<&'a str>, fragment: Option<&'a str>,
+}
+fn parts(input: &str) -> Result<Parts<'_>, InvalidIri> {
+    let (prefix, fragment) = match input.split_once('#') { Some((a, b)) => (a, Some(b)), None => (input, None) };
+    if fragment.is_some_and(|f| f.contains('#')) { return Err(InvalidIri) }
+    let (prefix, query) = match prefix.split_once('?') { Some((a, b)) => (a, Some(b)), None => (prefix, None) };
+    let colon = prefix.find(':');
+    let slash = prefix.find('/');
+    let scheme = colon.filter(|&c| slash.is_none_or(|s| c < s));
+    let (scheme, remainder) = if let Some(i) = scheme {
+        let candidate = &prefix[..i];
+        let mut chars = candidate.chars();
+        if !chars.next().is_some_and(|c| c.is_ascii_alphabetic()) ||
+            !chars.all(|c| c.is_ascii_alphanumeric() || "+-.".contains(c)) { return Err(InvalidIri) }
+        (Some(candidate), &prefix[i + 1..])
+    } else { (None, prefix) };
+    let (authority, path) = if let Some(rest) = remainder.strip_prefix("//") {
+        match rest.find('/') { Some(i) => (Some(&rest[..i]), &rest[i..]), None => (Some(rest), "") }
+    } else { (None, remainder) };
+    Ok(Parts { scheme, authority, path, query, fragment })
+}
+
+fn remove_last_segment(out: &mut String) {
+    if let Some(i) = out.rfind('/') { out.truncate(i) } else { out.clear() }
+}
+fn remove_dot_segments(mut input: &str) -> String {
+    let mut output = String::new();
+    while !input.is_empty() {
+        if let Some(rest) = input.strip_prefix("../") { input = rest; }
+        else if let Some(rest) = input.strip_prefix("./") { input = rest; }
+        else if let Some(rest) = input.strip_prefix("/./") { input = &input[2..]; debug_assert!(input.starts_with('/')); let _ = rest; }
+        else if input == "/." { input = "/"; }
+        else if input.starts_with("/../") { input = &input[3..]; remove_last_segment(&mut output); }
+        else if input == "/.." { input = "/"; remove_last_segment(&mut output); }
+        else if input == "." || input == ".." { input = ""; }
+        else {
+            let after_initial_slash = usize::from(input.starts_with('/'));
+            let end = input[after_initial_slash..].find('/').map_or(input.len(), |i| i + after_initial_slash);
+            output.push_str(&input[..end]); input = &input[end..];
+        }
+    }
+    output
+}
+fn resolve_reference(base: &str, reference: &str) -> Result<Iri, InvalidIri> {
+    let b = parts(base)?;
+    let r = parts(reference)?;
+    let scheme = r.scheme.or(b.scheme).ok_or(InvalidIri)?;
+    let (auth, path, query) = if r.scheme.is_some() {
+        (r.authority, remove_dot_segments(r.path), r.query)
+    } else if r.authority.is_some() {
+        (r.authority, remove_dot_segments(r.path), r.query)
+    } else if r.path.is_empty() {
+        (b.authority, b.path.to_owned(), r.query.or(b.query))
+    } else if r.path.starts_with('/') {
+        (b.authority, remove_dot_segments(r.path), r.query)
+    } else {
+        let merged = if b.authority.is_some() && b.path.is_empty() { format!("/{}", r.path) }
+            else if let Some(i) = b.path.rfind('/') { format!("{}{}", &b.path[..=i], r.path) }
+            else { r.path.to_owned() };
+        (b.authority, remove_dot_segments(&merged), r.query)
+    };
+    let mut out = format!("{scheme}:");
+    if let Some(auth) = auth { out.push_str("//"); out.push_str(auth); }
+    out.push_str(&path);
+    if let Some(query) = query { out.push('?'); out.push_str(query); }
+    if let Some(fragment) = r.fragment { out.push('#'); out.push_str(fragment); }
+    Iri::parse(&out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,5 +178,21 @@ mod tests {
         for iri in ["relative/path", "1http:x", "https://a:port/", "https://a/%0g", "https://[::bad::]/", "urn:a#b#c", "http://a/b c", "urn:\u{e000}"] {
             assert!(Iri::parse(iri).is_err(), "{iri:?}");
         }
+    }
+}
+
+#[cfg(test)]
+mod resolution_tests {
+    use super::*;
+    #[test]
+    fn rfc3986_reference_resolution_examples() {
+        let base = Iri::parse("http://a/b/c/d;p?q").unwrap();
+        for (reference, expected) in [
+            ("g", "http://a/b/c/g"), ("./g", "http://a/b/c/g"), ("g/", "http://a/b/c/g/"),
+            ("/g", "http://a/g"), ("//g", "http://g"), ("?y", "http://a/b/c/d;p?y"),
+            ("g?y", "http://a/b/c/g?y"), ("#s", "http://a/b/c/d;p?q#s"),
+            ("", "http://a/b/c/d;p?q"), (".", "http://a/b/c/"), ("..", "http://a/b/"),
+            ("../g", "http://a/b/g"), ("../../g", "http://a/g"), ("g/../h", "http://a/b/c/h"),
+        ] { assert_eq!(base.resolve(reference).unwrap().as_str(), expected, "{reference}"); }
     }
 }
