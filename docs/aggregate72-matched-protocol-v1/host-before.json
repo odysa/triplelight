@@ -1,0 +1,33 @@
+{
+  "time_unix": 1795048486.749351,
+  "observations": {
+    "host_uptime": {
+      "command": [
+        "uptime"
+      ],
+      "stdout": "19:34  up 21 days, 22:21, 1 user, load averages: 3.99 20.53 18.79\n"
+    },
+    "host_swap": {
+      "command": [
+        "sysctl",
+        "vm.swapusage"
+      ],
+      "stdout": "vm.swapusage: total = 21504.00M  used = 20401.62M  free = 1102.38M  (encrypted)\n"
+    },
+    "host_vm_stat": {
+      "command": [
+        "vm_stat"
+      ],
+      "stdout": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                                   196649.\nPages active:                                1284299.\nPages inactive:                              1362243.\nPages speculative:                              1026.\nPages throttled:                                   0.\nPages wired down:                            1160361.\nPages purgeable:                               10422.\n\"Translation faults\":                   122532759672.\nPages copy-on-write:                     17399805946.\nPages zero filled:                       37219038088.\nPages reactivated:                         196251922.\nPages purged:                               39570944.\nFile-backed pages:                            896968.\nAnonymous pages:                             1750600.\nPages stored in compressor:                   301252.\nPages occupied by compressor:                 135037.\nDecompressions:                            336486495.\nCompressions:                              411503423.\nPageins:                                  1726128678.\nPageouts:                                      64819.\nSwapins:                                    18903795.\nSwapouts:                                   36222456.\n"
+    },
+    "docker_vm": {
+      "command": [
+        "docker",
+        "info",
+        "--format",
+        "{{.MemTotal}} {{.NCPU}} {{.ServerVersion}}"
+      ],
+      "stdout": "16808177664 10 29.4.0\n"
+    }
+  }
+}

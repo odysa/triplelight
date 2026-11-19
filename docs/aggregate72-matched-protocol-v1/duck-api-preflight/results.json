@@ -1,0 +1,23 @@
+{
+  "health": {
+    "system": "duckdb",
+    "version": "2.0.0",
+    "rows": 13409395,
+    "threads": 4,
+    "memory_limit": "8GB",
+    "max_spill": "8GB"
+  },
+  "queries": {
+    "lubm/all_q1.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 1
+    },
+    "lubm/group_advisors.rq": {
+      "primary_pass": true,
+      "count_compatible_pass": true,
+      "rows": 60160
+    }
+  },
+  "comparative_timing_claim": false
+}

@@ -1,0 +1,11 @@
+{
+  "source_hashes_unchanged": true,
+  "binary": {
+    "sha256": "4194d984202d1ee20d57e0a51f4a29928a908a55963808dbd50c5ccbb6c33a68",
+    "bytes": 7354632,
+    "file": "/private/tmp/rdf-jianlin-analytical25/aggregate72-matched-v1/target-linux-9a2f49b/release/rdfdb: ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-aarch64.so.1, BuildID[sha1]=26086ab669c4905ef703c4ff17bd2fd43e0d109c, for GNU/Linux 3.7.0, not stripped\n",
+    "commit": "9a2f49b652a73466873cacd0a9205098e27d15f6"
+  },
+  "different_from_old_ef7_build": true,
+  "owned_container_removed": true
+}
