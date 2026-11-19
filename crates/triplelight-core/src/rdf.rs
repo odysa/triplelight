@@ -1,7 +1,7 @@
 //! RDF terms and text formats as used by TripleLight's public API. Bindings (Python, Node, WASM) import these from
 //! here instead of depending on the underlying parsing and term crates, so those can be replaced without changing
 //! any binding.
-pub use oxrdf::{BlankNode, Literal, NamedNode, NamedOrBlankNode, Term, Triple, Variable};
+pub use oxrdf::{BlankNode, Literal, NamedNode, NamedOrBlankNode, Term, TermRef, Triple, Variable};
 
 /// RDF text formats TripleLight reads.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
