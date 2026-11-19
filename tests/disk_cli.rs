@@ -45,17 +45,22 @@ fn disk_server_restarts_and_answers_without_original_input() {
         let listener=TcpListener::bind("127.0.0.1:0").unwrap(); let port=listener.local_addr().unwrap().port(); drop(listener);
         let child=Command::new(exe).arg("serve").arg(&snapshot).arg(port.to_string()).arg("--disk").stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).spawn().unwrap();
         let mut child=ChildGuard(child); let deadline=Instant::now()+Duration::from_secs(10);
-        let mut stream=loop {
-            match TcpStream::connect(("127.0.0.1",port)) {
-                Ok(s)=>break s,
-                Err(_) if Instant::now()<deadline => std::thread::sleep(Duration::from_millis(20)),
-                Err(e)=>panic!("server failed to start: {e}, status {:?}",child.0.try_wait()),
+        // Retry the whole request until the deadline: right after start-up a connection can be accepted and then
+        // reset (seen once on a Linux CI runner during the second restart). A server that never answers still fails.
+        let q="SELECT ?o WHERE { <urn:s> <urn:p> ?o }";
+        let response=loop {
+            let attempt=(|| -> std::io::Result<String> {
+                let mut stream=TcpStream::connect(("127.0.0.1",port))?;
+                stream.set_read_timeout(Some(Duration::from_secs(10)))?;
+                write!(stream,"POST /sparql HTTP/1.0\r\nHost: localhost\r\nContent-Type: application/sparql-query\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",q.len(),q)?;
+                let mut response=String::new(); stream.read_to_string(&mut response)?; Ok(response)
+            })();
+            match attempt {
+                Ok(r) if !r.is_empty() => break r,
+                _ if Instant::now()<deadline => std::thread::sleep(Duration::from_millis(20)),
+                other => panic!("server did not answer: {other:?}, status {:?}",child.0.try_wait()),
             }
         };
-        stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
-        let q="SELECT ?o WHERE { <urn:s> <urn:p> ?o }";
-        write!(stream,"POST /sparql HTTP/1.0\r\nHost: localhost\r\nContent-Type: application/sparql-query\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",q.len(),q).unwrap();
-        let mut response=String::new(); stream.read_to_string(&mut response).unwrap();
         assert!(response.starts_with("HTTP/1.1 200") || response.starts_with("HTTP/1.0 200"),"{response}");
         assert!(response.contains("persisted"),"{response}");
         drop(child);
