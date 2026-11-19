@@ -754,3 +754,30 @@ fn describe_scan_errors_are_storage_errors() {
     let e = query(&BadScan(store()), "DESCRIBE <http://ex/alice>").unwrap_err();
     assert_eq!(e.kind, triplelight::exec::QueryErrorKind::Storage);
 }
+
+/// Deeply nested queries fail with a syntax error instead of overflowing the stack (run in a thread with a small
+/// stack so an unbounded recursion would crash the test).
+#[test]
+fn deep_nesting_is_a_syntax_error_not_a_stack_overflow() {
+    let deep = |n: usize, open: &str, close: &str, inner: &str| format!("SELECT * WHERE {}{}{}", open.repeat(n), inner, close.repeat(n));
+    let h = std::thread::Builder::new().stack_size(8 << 20).spawn(move || {
+        let s = MemorySnapshot::from_ntriples(&b"<urn:a> <urn:p> \"1\" .\n"[..]).unwrap();
+        let kind = |q: &str| query(&s, q).err().map(|e| e.kind);
+        let groups = deep(100_000, "{ ", " }", "?s ?p ?o");
+        let exprs = format!("SELECT * WHERE {{ ?s ?p ?o FILTER({}?o{}) }}", "(".repeat(100_000), ")".repeat(100_000));
+        let lists = format!("SELECT * WHERE {{ ?s ?p {}1{} }}", "(".repeat(100_000), ")".repeat(100_000));
+        let paths = format!("SELECT * WHERE {{ ?s {}<urn:p>{} ?o }}", "(".repeat(100_000), ")".repeat(100_000));
+        // Flat syntax that builds deep algebra: long UNION / + / OPTIONAL chains.
+        let unions = format!("SELECT * WHERE {{ {} }}", vec!["{ ?s ?p ?o }"; 100_000].join(" UNION "));
+        let sums = format!("SELECT * WHERE {{ ?s ?p ?o FILTER({} > 0) }}", vec!["?o"; 100_000].join(" + "));
+        let optionals = format!("SELECT * WHERE {{ ?s ?p ?o {} }}", "OPTIONAL { ?s ?p ?o } ".repeat(100_000));
+        let flat_ok = format!("SELECT * WHERE {{ {} }}", vec!["{ ?s ?p ?o }"; 200].join(" UNION "));
+        (kind(&groups), kind(&exprs), kind(&lists), kind(&paths), kind(&unions), kind(&sums), kind(&optionals),
+         kind(&deep(50, "{ ", " }", "?s ?p ?o")), kind(&flat_ok))
+    }).unwrap();
+    let syntax = Some(triplelight::exec::QueryErrorKind::Syntax);
+    let (g, e, l, p, u, s, o, ok, flat) = h.join().expect("parser and evaluator must not overflow the stack");
+    assert_eq!([g, e, l, p, u, s, o], [syntax; 7]);
+    assert_eq!(ok, None, "50 nested groups are well within the limit");
+    assert_eq!(flat, None, "a 200-branch UNION is well within the limit and evaluates");
+}

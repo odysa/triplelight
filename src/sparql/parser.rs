@@ -7,6 +7,20 @@ use crate::rdf::{BlankNode, Literal, NamedNode, NamedOrBlankNode, Term, Variable
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
+/// Deepest nesting of groups, expressions, paths and collections accepted. Parsing (and later evaluation) recurse once
+/// per level, so a bound keeps a hostile or generated query from overflowing the stack; real queries stay far below it.
+pub const MAX_NESTING: usize = 256;
+
+/// Deepest algebra tree accepted. Flat syntax can still build deep trees (`{a} UNION {b} UNION …`, `?a + ?b + …`,
+/// many OPTIONALs in one group fold left), and the evaluator recurses once per level, so the parsed algebra is
+/// measured too (iteratively) and rejected beyond this depth.
+pub const MAX_ALGEBRA_DEPTH: usize = 1024;
+
+/// Most chained operators (UNION / OPTIONAL / MINUS / BIND steps, binary operators, path steps) one query may build.
+/// Bounds the size, and so the depth, of the tree even before `MAX_ALGEBRA_DEPTH` is checked, so that building and
+/// dropping a rejected tree stays shallow.
+pub const MAX_OPERATORS: usize = 10_000;
+
 const XSD: &str = "http://www.w3.org/2001/XMLSchema#";
 const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
@@ -29,6 +43,8 @@ pub fn parse_query(text: &str, base_iri: Option<&str>) -> R<Query> {
     p.prologue()?;
     let q = p.query()?;
     p.expect_eof()?;
+    let pattern = match &q { Query::Select { pattern, .. } | Query::Construct { pattern, .. } | Query::Describe { pattern, .. } | Query::Ask { pattern, .. } => pattern };
+    check_depth(pattern).map_err(|m| Parser::error_at(text, 0, m))?;
     Ok(q)
 }
 
@@ -43,6 +59,9 @@ pub fn parse_update(text: &str, base_iri: Option<&str>) -> R<Update> {
         if !p.eat_punct(";") { break }
     }
     p.expect_eof()?;
+    for op in &operations {
+        if let GraphUpdateOperation::DeleteInsert { pattern, .. } = op { check_depth(pattern).map_err(|m| Parser::error_at(text, 0, m))? }
+    }
     Ok(Update { operations, base_iri: p.base.clone() })
 }
 
@@ -82,6 +101,10 @@ struct Parser<'a> {
     /// Aggregates collected while parsing SELECT / HAVING / ORDER BY expressions; `None` where aggregates are invalid.
     aggregates: Option<Vec<(Variable, AggregateExpression)>>,
     in_aggregate: bool,
+    /// Current nesting depth (see `MAX_NESTING`).
+    depth: usize,
+    /// Operators built so far (see `MAX_OPERATORS`).
+    operators: usize,
 }
 
 fn xsd(local: &str) -> NamedNode { NamedNode::new_unchecked(format!("{XSD}{local}")) }
@@ -100,11 +123,27 @@ impl<'a> Parser<'a> {
         };
         Ok(Parser {
             src, toks, i: 0, base: base.map(str::to_string), base_parsed, prefixes: HashMap::new(), salt, counter: 0,
-            bnode_block: HashMap::new(), block: 0, data_bnodes: HashSet::new(), template: false, last_group_filtered: false, aggregates: None, in_aggregate: false,
+            bnode_block: HashMap::new(), block: 0, data_bnodes: HashSet::new(), template: false, last_group_filtered: false, depth: 0, operators: 0, aggregates: None, in_aggregate: false,
         })
     }
 
     // ---------- token helpers ----------
+
+    /// Counts one operator node, failing beyond `MAX_OPERATORS`.
+    fn op(&mut self) -> R<()> {
+        self.operators += 1;
+        if self.operators > MAX_OPERATORS { return self.err(format!("query has more than {MAX_OPERATORS} operators")) }
+        Ok(())
+    }
+
+    /// Runs `f` one nesting level deeper, failing with a syntax error beyond `MAX_NESTING`.
+    fn nested<T>(&mut self, f: impl FnOnce(&mut Self) -> R<T>) -> R<T> {
+        if self.depth >= MAX_NESTING { return self.err(format!("query is nested more than {MAX_NESTING} levels deep")) }
+        self.depth += 1;
+        let r = f(self);
+        self.depth -= 1;
+        r
+    }
 
     fn error_at(src: &str, pos: usize, message: impl Into<String>) -> ParseError {
         let before = &src[..pos.min(src.len())];
@@ -479,7 +518,9 @@ impl<'a> Parser<'a> {
 
     // ---------- group graph patterns ----------
 
-    fn group_graph_pattern(&mut self) -> R<GraphPattern> {
+    fn group_graph_pattern(&mut self) -> R<GraphPattern> { self.nested(Self::group_graph_pattern_inner) }
+
+    fn group_graph_pattern_inner(&mut self) -> R<GraphPattern> {
         self.expect_punct("{")?;
         if self.is_kw("SELECT") {
             // Subquery: its own aggregates and solution modifiers; the outer collection state is saved around it.
@@ -540,6 +581,7 @@ impl<'a> Parser<'a> {
             } else if self.is_punct("{") {
                 let mut g = self.group_graph_pattern()?;
                 while self.eat_kw("UNION") {
+                    self.op()?;
                     let r = self.group_graph_pattern()?;
                     g = GraphPattern::Union { left: Box::new(g), right: Box::new(r) };
                 }
@@ -578,6 +620,7 @@ impl<'a> Parser<'a> {
             }
         };
         for e in elems {
+            if !matches!(e, Elem::Triples(_)) { self.op()? }
             match e {
                 Elem::Triples(ts) => bgp.extend(ts),
                 Elem::Filter(f) => filters.push(f),
@@ -676,6 +719,10 @@ impl<'a> Parser<'a> {
 
     /// A graph node: a term, a `[ property list ]` or a collection `( … )`. Generated triples go to `out`.
     fn graph_node(&mut self, out: &mut Vec<Elem>, paths: bool) -> R<TermPattern> {
+        self.nested(|p| p.graph_node_inner(out, paths))
+    }
+
+    fn graph_node_inner(&mut self, out: &mut Vec<Elem>, paths: bool) -> R<TermPattern> {
         if let Some(t) = self.try_var_or_term()? { return Ok(t) }
         if self.eat_punct("[") {
             let b = TermPattern::BlankNode(self.fresh_bnode());
@@ -745,14 +792,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn path(&mut self) -> R<PropertyPathExpression> {
+    fn path(&mut self) -> R<PropertyPathExpression> { self.nested(Self::path_inner) }
+
+    fn path_inner(&mut self) -> R<PropertyPathExpression> {
         let mut p = self.path_sequence()?;
-        while self.eat_punct("|") { p = PropertyPathExpression::Alternative(Box::new(p), Box::new(self.path_sequence()?)) }
+        while self.eat_punct("|") { self.op()?; p = PropertyPathExpression::Alternative(Box::new(p), Box::new(self.path_sequence()?)) }
         Ok(p)
     }
     fn path_sequence(&mut self) -> R<PropertyPathExpression> {
         let mut p = self.path_elt_or_inverse()?;
-        while self.eat_punct("/") { p = PropertyPathExpression::Sequence(Box::new(p), Box::new(self.path_elt_or_inverse()?)) }
+        while self.eat_punct("/") { self.op()?; p = PropertyPathExpression::Sequence(Box::new(p), Box::new(self.path_elt_or_inverse()?)) }
         Ok(p)
     }
     fn path_elt_or_inverse(&mut self) -> R<PropertyPathExpression> {
@@ -844,14 +893,16 @@ impl<'a> Parser<'a> {
         Ok(None)
     }
 
-    fn expression(&mut self) -> R<Expression> {
+    fn expression(&mut self) -> R<Expression> { self.nested(Self::expression_inner) }
+
+    fn expression_inner(&mut self) -> R<Expression> {
         let mut e = self.and_expression()?;
-        while self.eat_punct("||") { e = Expression::Or(Box::new(e), Box::new(self.and_expression()?)) }
+        while self.eat_punct("||") { self.op()?; e = Expression::Or(Box::new(e), Box::new(self.and_expression()?)) }
         Ok(e)
     }
     fn and_expression(&mut self) -> R<Expression> {
         let mut e = self.relational()?;
-        while self.eat_punct("&&") { e = Expression::And(Box::new(e), Box::new(self.relational()?)) }
+        while self.eat_punct("&&") { self.op()?; e = Expression::And(Box::new(e), Box::new(self.relational()?)) }
         Ok(e)
     }
     fn relational(&mut self) -> R<Expression> {
@@ -875,16 +926,16 @@ impl<'a> Parser<'a> {
     fn additive(&mut self) -> R<Expression> {
         let mut e = self.multiplicative()?;
         loop {
-            if self.eat_punct("+") { e = Expression::Add(Box::new(e), Box::new(self.multiplicative()?)) }
-            else if self.eat_punct("-") { e = Expression::Subtract(Box::new(e), Box::new(self.multiplicative()?)) }
+            if self.eat_punct("+") { self.op()?; e = Expression::Add(Box::new(e), Box::new(self.multiplicative()?)) }
+            else if self.eat_punct("-") { self.op()?; e = Expression::Subtract(Box::new(e), Box::new(self.multiplicative()?)) }
             else { return Ok(e) }
         }
     }
     fn multiplicative(&mut self) -> R<Expression> {
         let mut e = self.unary()?;
         loop {
-            if self.eat_punct("*") { e = Expression::Multiply(Box::new(e), Box::new(self.unary()?)) }
-            else if self.eat_punct("/") { e = Expression::Divide(Box::new(e), Box::new(self.unary()?)) }
+            if self.eat_punct("*") { self.op()?; e = Expression::Multiply(Box::new(e), Box::new(self.unary()?)) }
+            else if self.eat_punct("/") { self.op()?; e = Expression::Divide(Box::new(e), Box::new(self.unary()?)) }
             else { return Ok(e) }
         }
     }
@@ -1285,4 +1336,53 @@ pub fn in_scope(p: &GraphPattern) -> Vec<Variable> {
     walk(p, &mut out);
     out.retain(|v| !v.as_str().starts_with('_'));
     out
+}
+
+/// Fails if the algebra tree is deeper than `MAX_ALGEBRA_DEPTH` (patterns and expressions together). Iterative, so
+/// measuring a hostile tree cannot overflow the stack either.
+fn check_depth(root: &GraphPattern) -> Result<(), String> {
+    enum Node<'a> { P(&'a GraphPattern), E(&'a Expression) }
+    let mut stack: Vec<(Node<'_>, usize)> = vec![(Node::P(root), 1)];
+    while let Some((n, d)) = stack.pop() {
+        if d > MAX_ALGEBRA_DEPTH { return Err(format!("query algebra is more than {MAX_ALGEBRA_DEPTH} levels deep")) }
+        let c = d + 1;
+        match n {
+            Node::P(p) => match p {
+                GraphPattern::Bgp { .. } | GraphPattern::Path { .. } | GraphPattern::Values { .. } => {}
+                GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right } => {
+                    stack.push((Node::P(left), c)); stack.push((Node::P(right), c));
+                }
+                GraphPattern::LeftJoin { left, right, expression } => {
+                    stack.push((Node::P(left), c)); stack.push((Node::P(right), c));
+                    if let Some(e) = expression { stack.push((Node::E(e), c)) }
+                }
+                GraphPattern::Filter { expr, inner } => { stack.push((Node::E(expr), c)); stack.push((Node::P(inner), c)) }
+                GraphPattern::Extend { inner, expression, .. } => { stack.push((Node::E(expression), c)); stack.push((Node::P(inner), c)) }
+                GraphPattern::OrderBy { inner, expression } => {
+                    stack.push((Node::P(inner), c));
+                    for o in expression { let (OrderExpression::Asc(e) | OrderExpression::Desc(e)) = o; stack.push((Node::E(e), c)) }
+                }
+                GraphPattern::Group { inner, aggregates, .. } => {
+                    stack.push((Node::P(inner), c));
+                    for (_, a) in aggregates { if let AggregateExpression::FunctionCall { expr, .. } = a { stack.push((Node::E(expr), c)) } }
+                }
+                GraphPattern::Graph { inner, .. } | GraphPattern::Service { inner, .. } | GraphPattern::Project { inner, .. }
+                | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. } => stack.push((Node::P(inner), c)),
+            },
+            Node::E(e) => match e {
+                Expression::NamedNode(_) | Expression::Literal(_) | Expression::Variable(_) | Expression::Bound(_) => {}
+                Expression::Or(a, b) | Expression::And(a, b) | Expression::Equal(a, b) | Expression::SameTerm(a, b)
+                | Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b)
+                | Expression::Add(a, b) | Expression::Subtract(a, b) | Expression::Multiply(a, b) | Expression::Divide(a, b) => {
+                    stack.push((Node::E(a), c)); stack.push((Node::E(b), c));
+                }
+                Expression::UnaryPlus(a) | Expression::UnaryMinus(a) | Expression::Not(a) => stack.push((Node::E(a), c)),
+                Expression::In(a, l) => { stack.push((Node::E(a), c)); for x in l { stack.push((Node::E(x), c)) } }
+                Expression::If(a, b, x) => { stack.push((Node::E(a), c)); stack.push((Node::E(b), c)); stack.push((Node::E(x), c)) }
+                Expression::Coalesce(l) | Expression::FunctionCall(_, l) => for x in l { stack.push((Node::E(x), c)) },
+                Expression::Exists(p) => stack.push((Node::P(p), c)),
+            },
+        }
+    }
+    Ok(())
 }
