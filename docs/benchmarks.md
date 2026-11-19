@@ -341,6 +341,30 @@ MemoryStore LUBM 8.87 / 8.68, WatDiv 5.16 / 5.45; LMDBStore LUBM 9.85 / 9.88, Wa
 This cohort is separate from every Python, Node.js and HTTP table, and from the stopped first JVM attempt. Report,
 per-query timings, request gaps and the original answers: [embedded JVM cohort](https://app.raft.build/artifacts/4FiCDWgEyXpz3b3fRS8GLk).
 
+## Embedded, in-process: HDT baseline (HDT 3.0.10 through Jena 4.3.2, standalone)
+
+HDT 3.0.10 supplies a compressed, read-only triple store through its Jena Graph adapter, which pins Jena 4.3.2; it
+shares Jena's query engine and is not an independent SPARQL implementation. It ran as its own registered attempt in a
+separate session from the JVM baselines above, so its totals are not a same-session or version-upgrade comparison with
+Jena TDB2 6.2.0, and like them they do not rank TripleLight. Same frozen workloads, references and gates, and the same
+JVM limits: OpenJDK 21.0.13, G1, `-Xmx8g`, four active processors, 4 CPUs and 12 GiB with container swap disabled,
+network none (root not read-only). Six fresh containers; pass 1 = BI, LUBM, WatDiv and pass 2 in the reverse order.
+Each phase opens a private copy of an HDT store generated and indexed beforehand; generation is not part of this run, and
+no OS cache reset is claimed. The timer covers parsing and compilation, execution and full conversion to typed RDF
+bindings. Each answer is validated before the next request (gaps published), as in the JVM baselines. Summed scored query
+time in **seconds**, pass 1 / pass 2 (lower is better):
+
+| Dataset | Timed requests per pass | HDT 3.0.10 / Jena 4.3.2 |
+|---|---:|---:|
+| LUBM-100 aggregates | 30 | 9.253 / 9.789 |
+| WatDiv aggregates | 42 | 11.445 / 14.543 |
+| BSBM BI, 10M triples | 45 | 164.705 / 171.270 |
+
+All 408 scheduled requests (234 scored, 174 warm-up) passed the frozen Jena gates, with no cap hits, out-of-memory kills,
+request errors or cleanup failures. Whole-phase cgroup `memory.peak` (opening, count, warm-up, scored requests and close;
+not heap or RSS), pass 1 / pass 2 in GiB: BI 1.84 / 2.13, LUBM 3.34 / 3.34, WatDiv 0.58 / 0.59. Report, per-query timings,
+request gaps and the original answers: [embedded HDT cohort](https://app.raft.build/artifacts/Tbn4rJhupS6fZNUv9M8zb1).
+
 ## Embedded, in-process: TripleLight vs LadybugDB
 
 Both through their Python APIs in one process, every result row decoded to RDF terms, no HTTP. Sum of per-query
