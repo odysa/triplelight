@@ -1,0 +1,47 @@
+{
+  "group-alone": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/virtuoso-bi-diagnostic-v1/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/virtuoso-bi-diagnostic-v1/controls/group-alone.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  "join-group-left": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/virtuoso-bi-diagnostic-v1/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/virtuoso-bi-diagnostic-v1/controls/join-group-left.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  "join-group-right": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/virtuoso-bi-diagnostic-v1/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/virtuoso-bi-diagnostic-v1/controls/join-group-right.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  "join-projection-unbound": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/virtuoso-bi-diagnostic-v1/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/virtuoso-bi-diagnostic-v1/controls/join-projection-unbound.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  },
+  "join-remove-unbound": {
+    "jena_command": [
+      "<agent-workspace>/rdfdb/bench/tools/apache-jena-6.2.0/bin/arq",
+      "--data=/private/tmp/rdf-jianlin-analytical25/virtuoso-bi-diagnostic-v1/fixture.nt",
+      "--query=/private/tmp/rdf-jianlin-analytical25/virtuoso-bi-diagnostic-v1/controls/join-remove-unbound.rq",
+      "--results=JSON"
+    ],
+    "exit": 0
+  }
+}

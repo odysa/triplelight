@@ -1,0 +1,2 @@
+PREFIX ex:<urn:ex:>
+SELECT ?country ?product WHERE { { SELECT ?country ?product (COUNT(*) AS ?n) WHERE { VALUES (?product ?price) { (ex:p1 10) (ex:p1 20) (ex:p2 5) } } GROUP BY ?country ?product } VALUES (?country ?product) { (ex:US ex:p1) (ex:DE ex:p1) (ex:US ex:p2) } }

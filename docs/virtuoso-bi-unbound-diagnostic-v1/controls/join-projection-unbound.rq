@@ -1,0 +1,2 @@
+PREFIX ex:<urn:ex:>
+SELECT ?country ?product WHERE { { SELECT ?country ?product WHERE { VALUES ?product { ex:p1 ex:p2 } } } VALUES (?country ?product) { (ex:US ex:p1) (ex:DE ex:p1) (ex:US ex:p2) } }
