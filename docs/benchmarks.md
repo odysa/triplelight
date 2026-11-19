@@ -104,6 +104,38 @@ did not complete qualification, not a zero or a measured loss. These results are
 tables and do not establish general state of the art or full SPARQL conformance. Report, per-query timings, the
 stopped attempt and the original answers: [embedded Node.js cohort](https://app.raft.build/artifacts/BasQeph4reGyBoJpfZ69hE).
 
+## Embedded, in-memory: Node.js API (TripleLight in-memory vs oxigraph JS)
+
+Both engines build a fresh in-memory store from the N-Triples file inside each container: TripleLight with
+`Database.inMemory()` and `load()` through its native Node binding (commit `fd204cec`), oxigraph JS 0.5.13 through its
+WASM package. Same frozen workloads, references and gates as the other embedded cohorts. One registered attempt, ten
+fresh containers (4 CPUs, 12 GiB with container swap disabled, network none, read-only root), pass 1 = TL LUBM, oxigraph
+LUBM, TL WatDiv, oxigraph WatDiv, TL BI, and pass 2 in exactly the reverse order. Requests run back to back; answers
+are validated at each phase boundary. The timer covers the API call and full conversion to typed JavaScript terms;
+loading, TripleLight's statistics readiness, the stored-triple count and validation are outside it. Summed scored
+query time in **seconds**, pass 1 / pass 2 (lower is better):
+
+| Dataset | Timed requests per pass | TripleLight in-memory | oxigraph JS |
+|---|---:|---:|---:|
+| LUBM-100 aggregates | 30 | **0.686 / 0.496** | 14.122 / 14.653 |
+| WatDiv aggregates | 42 | **0.188 / 0.291** | 83.609 / 77.859 |
+| BSBM BI, 10M triples | 45 | 14.277 / 13.341 (standalone) | excluded: earlier qualification incomplete |
+
+All 696 scheduled requests (378 scored, 318 warm-up) passed the frozen Jena gates; no cap hits, out-of-memory kills,
+retries or discarded phases. oxigraph BI was not reattempted: its earlier Node qualification stopped at its
+1,800-second cap after 11 passing answers. Whole-phase caps were set before the run: 1,800 seconds for TripleLight and
+3,600 seconds for oxigraph, whose cap was raised because its LUBM qualification took 1,087 seconds. oxigraph's JS API does not report result columns, so the adapter takes them
+from the reference answers (empty-result projection is not independently verified).
+
+Whole-phase cgroup `memory.peak` (startup, load, warm-up, scored requests and close; not RSS), pass 1 / pass 2 in GiB:
+TripleLight LUBM 8.07 / 9.45, WatDiv 5.49 / 6.05, BI 7.83 / 8.80; oxigraph LUBM 4.05 / 4.02, WatDiv 2.93 / 2.95.
+TripleLight load took 29–44 seconds per phase, plus 2.4–3.3 seconds until statistics were ready. TripleLight uses
+roughly twice oxigraph's peak memory here; the cause has not been profiled yet.
+
+This group is separate from the on-disk Node, Python, JVM and HTTP results (different storage, source commit and
+session); in particular it does not measure TripleLight in-memory against TripleLight on disk. Report, per-query
+timings and the original answers: [embedded Node.js in-memory cohort](https://app.raft.build/artifacts/HtwKaT16usNuL5hiV2kMH8).
+
 ## Analytical: BSBM Business Intelligence, 10M triples (three engines, one session)
 
 Same Linux VM (4 CPUs, 12 GiB cap per engine), two passes in reversed order. Each number is the sum of 45
