@@ -6,6 +6,7 @@
 mod agg;
 mod bgp;
 mod count;
+mod path;
 mod expr;
 mod support;
 use bgp::Slot;
@@ -15,7 +16,7 @@ use crate::model::{Perm, TermId};
 use crate::storage::Snapshot;
 use crate::opt::{self, stats::Stats};
 use oxrdf::{BlankNode, Literal, Term, Variable};
-use spargebra::algebra::{AggregateExpression, AggregateFunction, Expression, GraphPattern, OrderExpression};
+use spargebra::algebra::{AggregateExpression, AggregateFunction, Expression, Function, GraphPattern, OrderExpression};
 use spargebra::term::{GroundTerm, NamedNodePattern, TermPattern, TriplePattern};
 use spargebra::Query;
 use std::cell::RefCell;
@@ -42,17 +43,20 @@ pub struct IdSolutions {
     pub vars: Vec<Variable>,
     pub ids: Vec<TermId>,
     pub scratch: HashMap<TermId, Term>,
+    /// Number of solutions. Needed because a query with no projected variables (`SELECT * { <s> <p> <o> }`) still
+    /// has one empty solution per match, which `ids` alone cannot count.
+    pub rows: usize,
 }
 
 impl IdSolutions {
     pub fn width(&self) -> usize { self.vars.len() }
-    pub fn len(&self) -> usize { if self.vars.is_empty() { 0 } else { self.ids.len() / self.vars.len() } }
+    pub fn len(&self) -> usize { self.rows }
     pub fn is_empty(&self) -> bool { self.len() == 0 }
     /// Decodes to owned terms (in parallel; decoding dominates large results).
     pub fn decode<D: crate::storage::Dictionary + Sync + ?Sized>(self, dict: &D) -> QueryResult {
         use rayon::prelude::*;
         let w = self.width();
-        let rows = if w == 0 { Vec::new() } else {
+        let rows = if w == 0 { vec![Vec::new(); self.rows] } else {
             self.ids.par_chunks(w).with_min_len(4096).map(|r| r.iter().map(|&id| {
                 if id == UNBOUND { None } else if let Some(t) = self.scratch.get(&id) { Some(t.clone()) } else { Some(dict.resolve(id).unwrap_or_else(|e| storage_failure(e))) }
             }).collect()).collect()
@@ -135,7 +139,7 @@ fn run_query<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>) -> Result<Que
             for r in &rows { for &i in &idx { ids.push(r[i]) } }
             let scratch: HashMap<TermId, Term> = ids.iter().filter(|id| id.0 >> 60 == 0xe)
                 .map(|&id| (id, ctx.resolve(id))).collect();
-            let sol = IdSolutions { vars, ids, scratch };
+            let sol = IdSolutions { vars, ids, scratch, rows: rows.len() };
             if opts.raw_ids { return Ok(QueryResult::Ids(sol)) }
             Ok(sol.decode(snap))
         }
@@ -189,6 +193,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     order_limit: std::cell::Cell<Option<usize>>,
     /// The query's BASE IRI, used by IRI()/URI() to resolve relative strings.
     pub(crate) base: Option<String>,
+    /// NOW(): one xsd:dateTime per query execution.
+    now: String,
     /// EXISTS / NOT EXISTS results memoized per pattern and per binding of the pattern's variables. Whether a
     /// pattern has a solution compatible with a row depends only on the row's values for the pattern's own
     /// variables, so rows that differ elsewhere (e.g. many offers of one product) share one evaluation.
@@ -205,7 +211,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), base: None, exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
+        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -322,7 +328,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                     let bgp_vars: HashSet<usize> = { let mut v = Vec::new(); walk_vars(inner, &mut v); v.iter().filter_map(|n| self.vars.get(n).copied()).collect() };
                     let (early, late): (Vec<&Expression>, Vec<&Expression>) = conjuncts(expr).into_iter().partition(|c| {
                         let vs = expr_vars(c);
-                        !vs.is_empty() && !has_exists(c) && vs.iter().all(|n| self.vars.get(n).is_some_and(|i| bgp_vars.contains(i)))
+                        !vs.is_empty() && !impure(c) && vs.iter().all(|n| self.vars.get(n).is_some_and(|i| bgp_vars.contains(i)))
                     });
                     if !early.is_empty() {
                         let early: Vec<(&Expression, Vec<usize>)> = early.into_iter().map(|c| (c, expr_vars(c).iter().map(|n| self.vars[n]).collect())).collect();
@@ -447,7 +453,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             }
             GraphPattern::Group { inner, variables, aggregates } => self.eval_group(inner, variables, aggregates, input),
             GraphPattern::Graph { inner, .. } => self.eval(inner, input), // default graph only in P1
-            GraphPattern::Path { .. } => panic!("property paths are not supported yet"),
+            GraphPattern::Path { subject, path, object } => self.eval_path(subject, path, object, input),
             GraphPattern::Service { .. } => panic!("SERVICE is not supported"),
         }
     }
@@ -488,7 +494,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 // variable) makes SUM/AVG/MIN/MAX/GROUP_CONCAT an error (unbound result). COUNT counts the non-error
                 // values; SAMPLE returns a non-error value. (Matches Jena.)
                 // Expressions are deterministic (NOW/RAND/UUID/BNODE are unsupported); EXISTS reads other variables.
-                let single = match expr_vars(expr).as_slice() { [v] if !has_exists(expr) => self.vars.get(v).copied(), _ => None };
+                let single = match expr_vars(expr).as_slice() { [v] if !impure(expr) => self.vars.get(v).copied(), _ => None };
                 let evaluated: Vec<Option<Term>> = match single {
                     Some(vi) => {
                         const MEMO_CAP: usize = 1 << 20;
@@ -649,7 +655,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             let mut val = |id: TermId| *memo.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
             // A filter over one variable (and no EXISTS) depends only on that column's term: memoize its result per
             // term ID, so e.g. a date range over many reviews decodes each distinct date once.
-            let single = match vs.as_slice() { [c] if !has_exists(e) => Some(*c), _ => None };
+            let single = match vs.as_slice() { [c] if !impure(e) => Some(*c), _ => None };
             let mut by_id: HashMap<TermId, bool> = HashMap::new();
             for r in rows.chunks_exact(w) {
                 let keep = match fast.as_ref().map(|f| f.eval(r, &mut val)) {
@@ -863,7 +869,7 @@ fn distributive(p: &GraphPattern) -> bool {
     match p {
         GraphPattern::Bgp { .. } => true,
         GraphPattern::Join { left, right } => distributive(left) && distributive(right),
-        GraphPattern::Filter { inner, expr } => distributive(inner) && !has_exists(expr),
+        GraphPattern::Filter { inner, expr } => distributive(inner) && !impure(expr),
         _ => false,
     }
 }
@@ -931,9 +937,9 @@ fn memo_safe(p: &GraphPattern) -> bool {
         GraphPattern::Graph { .. } | GraphPattern::Service { .. } => false,
         GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right }
         => memo_safe(left) && memo_safe(right),
-        GraphPattern::LeftJoin { left, right, expression } => memo_safe(left) && memo_safe(right) && !expression.as_ref().is_some_and(has_exists),
-        GraphPattern::Filter { inner, expr } => memo_safe(inner) && !has_exists(expr),
-        GraphPattern::Extend { inner, expression, .. } => memo_safe(inner) && !has_exists(expression),
+        GraphPattern::LeftJoin { left, right, expression } => memo_safe(left) && memo_safe(right) && !expression.as_ref().is_some_and(impure),
+        GraphPattern::Filter { inner, expr } => memo_safe(inner) && !impure(expr),
+        GraphPattern::Extend { inner, expression, .. } => memo_safe(inner) && !impure(expression),
         GraphPattern::OrderBy { inner, .. }
         | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. }
         | GraphPattern::Project { inner, .. } | GraphPattern::Group { inner, .. } => memo_safe(inner),
@@ -954,7 +960,12 @@ fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
             if let NamedNodePattern::Variable(v) = &t.predicate { add(v.as_str().to_string()) }
         },
         GraphPattern::Path { subject, object, .. } => for tp in [subject, object] {
-            if let TermPattern::Variable(v) = tp { add(v.as_str().to_string()) }
+            match tp {
+                TermPattern::Variable(v) => add(v.as_str().to_string()),
+                // spargebra splits `a (p|q)/r ?x` into two paths joined on a fresh blank node.
+                TermPattern::BlankNode(b) => add(format!("_b{}", b.as_str())),
+                _ => {}
+            }
         },
         GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right }
         => { walk_vars(left, out); walk_vars(right, out) }
@@ -1070,16 +1081,19 @@ fn conjuncts(e: &Expression) -> Vec<&Expression> {
     match e { Expression::And(a, b) => { let mut v = conjuncts(a); v.extend(conjuncts(b)); v } e => vec![e] }
 }
 fn expr_vars(e: &Expression) -> Vec<String> { let mut v = Vec::new(); walk_expr(e, &mut v); v }
-fn has_exists(e: &Expression) -> bool {
+/// True if `e` contains EXISTS or a function whose value differs between calls (RAND, UUID, STRUUID, BNODE). Such an
+/// expression depends on more than the IDs of its variables, so it must not be memoized per ID, unified or moved.
+fn impure(e: &Expression) -> bool {
     match e {
         Expression::Exists(_) => true,
+        Expression::FunctionCall(Function::Rand | Function::Uuid | Function::StrUuid | Function::BNode, _) => true,
         Expression::Or(a, b) | Expression::And(a, b) | Expression::Equal(a, b) | Expression::SameTerm(a, b)
         | Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b)
-        | Expression::Add(a, b) | Expression::Subtract(a, b) | Expression::Multiply(a, b) | Expression::Divide(a, b) => has_exists(a) || has_exists(b),
-        Expression::UnaryPlus(a) | Expression::UnaryMinus(a) | Expression::Not(a) => has_exists(a),
-        Expression::In(a, l) => has_exists(a) || l.iter().any(has_exists),
-        Expression::If(a, b, c) => has_exists(a) || has_exists(b) || has_exists(c),
-        Expression::Coalesce(l) | Expression::FunctionCall(_, l) => l.iter().any(has_exists),
+        | Expression::Add(a, b) | Expression::Subtract(a, b) | Expression::Multiply(a, b) | Expression::Divide(a, b) => impure(a) || impure(b),
+        Expression::UnaryPlus(a) | Expression::UnaryMinus(a) | Expression::Not(a) => impure(a),
+        Expression::In(a, l) => impure(a) || l.iter().any(impure),
+        Expression::If(a, b, c) => impure(a) || impure(b) || impure(c),
+        Expression::Coalesce(l) | Expression::FunctionCall(_, l) => l.iter().any(impure),
         _ => false,
     }
 }

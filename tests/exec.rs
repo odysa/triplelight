@@ -578,14 +578,9 @@ fn unsupported_features_are_rejected_not_misanswered() {
         "SELECT * WHERE { GRAPH ?g { ?s ?p ?o } }",
         "SELECT * FROM <urn:g> WHERE { ?s ?p ?o }",
         "SELECT * FROM NAMED <urn:g> WHERE { ?s ?p ?o }",
-        "SELECT * WHERE { ?s ?p ?o FILTER(?o < NOW()) }",
-        "SELECT (RAND() AS ?r) WHERE { ?s ?p ?o }",
-        "SELECT (UUID() AS ?u) WHERE { ?s ?p ?o }",
-        "SELECT (MD5(STR(?o)) AS ?h) WHERE { ?s ?p ?o }",
-        "SELECT (SECONDS(?o) AS ?x) WHERE { ?s ?p ?o }",
         "SELECT * WHERE { ?s ?p ?o FILTER(<urn:my:fn>(?o)) }",
-        "SELECT * WHERE { ?s <urn:p>+ ?o }",
         "SELECT * WHERE { ?s ?p ?o FILTER EXISTS { GRAPH ?g { ?s ?p ?o } } }",
+        "SELECT (BNODE(\"x\") AS ?b) WHERE { ?s ?p ?o }",
     ];
     for q in rejected {
         match query(&s, q) {
@@ -596,6 +591,10 @@ fn unsupported_features_are_rejected_not_misanswered() {
     let accepted = [
         "SELECT (xsd:double(?o) AS ?d) (STR(?o) AS ?str) WHERE { ?s ?p ?o }",
         "SELECT * WHERE { ?s ?p ?o FILTER(xsd:integer(?o) = 1 && REGEX(STR(?o), \"1\")) }",
+        "SELECT * WHERE { ?s ?p ?o FILTER(?o < NOW()) }",
+        "SELECT (RAND() AS ?r) (UUID() AS ?u) (STRUUID() AS ?v) (BNODE() AS ?b) WHERE { ?s ?p ?o }",
+        "SELECT (MD5(STR(?o)) AS ?h) (SHA1(STR(?o)) AS ?h1) (SHA512(STR(?o)) AS ?h5) WHERE { ?s ?p ?o }",
+        "SELECT * WHERE { ?s <urn:p>+ ?o }",
     ];
     for q in accepted {
         let q = format!("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> {q}");
