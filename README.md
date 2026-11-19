@@ -71,6 +71,28 @@ lead there. QLever uses about a tenth of rdfdb's memory. rdfdb's timings vary a 
 passes on a shared machine, not a general state-of-the-art claim. Evidence:
 [matched-bi100-v1](https://github.com/odysa/rdfdb/tree/13123a2/docs/matched-bi100-v1).
 
+### Aggregate queries: 72 COUNT / GROUP BY / DISTINCT queries on LUBM-100 and WatDiv (four engines, one session)
+
+A curated suite of 72 aggregate queries (68 distinct texts) over LUBM-100 (13.4M triples) and WatDiv (10.9M
+triples). It was frozen before timing, but the queries were already known to us, so this is not a blind
+benchmark. All four engines ran from disk stores in the same Linux VM, one engine at a time, with 4 CPUs and 12 GiB
+each. There were two passes in reversed dataset and engine order, each after a full warmup. rdfdb is at main
+`9a2f49b`, and QLever's result cache was cleared before every request. Times are end-to-end HTTP, in seconds summed
+over the 72 queries:
+
+| | Pass 1 (s) | Pass 2 (s) | LUBM (s) | WatDiv (s) | Primary check | COUNT int = integer | Peak cgroup memory |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **rdfdb** | **0.58** | **0.54** | **0.31 / 0.31** | **0.26 / 0.23** | 72 / 72 | 72 / 72 | 0.97 / 0.94 GiB |
+| Virtuoso 7 | 4.61 | 4.50 | 4.31 / 4.19 | 0.30 / 0.31 | 72 / 72 | 72 / 72 | 10.4 / 10.4 GiB |
+| QLever | 5.11 | 4.60 | 2.25 / 2.14 | 2.85 / 2.47 | 0 / 72 | 72 / 72 | **0.29 / 0.29 GiB** |
+| DuckDB 2.0.0 | 73.1 | 73.6 | 48.7 / 47.2 | 24.5 / 26.4 | 72 / 72 | 72 / 72 | 3.4 / 3.4 GiB |
+
+QLever takes 8.9× / 8.6× as long as rdfdb in total, and Virtuoso 8.0× / 8.4×. On WatDiv alone, rdfdb and Virtuoso
+are close (0.26 / 0.23 s against 0.30 / 0.31 s), so a total ratio is not a win on every query. QLever's primary-check
+failures are COUNT results typed `xsd:int`. QLever again uses the least memory. Two passes are a bounded observation
+on a shared host, not a significance test or a general SOTA claim. Evidence:
+[aggregate72-matched-results-v1](https://github.com/odysa/rdfdb/tree/87fa9e2b890b6eb2348ce30d73ac5db33325a28a/docs/aggregate72-matched-results-v1).
+
 ### Large scale: LUBM-1000 (133.6M triples) and BSBM-100M (98.9M triples)
 
 Round 13, one Docker Linux VM session (arm64, 16 GB RAM, 10 CPUs). rdfdb runs from its disk store with a 10 GB
