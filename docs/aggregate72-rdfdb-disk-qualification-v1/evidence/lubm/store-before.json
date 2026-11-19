@@ -1,0 +1,38 @@
+{
+  "MANIFEST": {
+    "bytes": 264,
+    "sha256": "7731de215c9ac57680f600e9417664cf836b310fcc500bdee41ec64ed6904755"
+  },
+  "dictionary.id": {
+    "bytes": 98382666,
+    "sha256": "d77e03502c347a377eb172a313d5d43446d021c6d63f6d69662a468e5076a5fc"
+  },
+  "dictionary.term": {
+    "bytes": 67506271,
+    "sha256": "f8620df028ac22fa8533ed368381ce89a9b2eb7e7122e018ab4dc791f23d9af1"
+  },
+  "ops": {
+    "bytes": 37270026,
+    "sha256": "c74fd7d10372add140f4fb16f656aa4eeea22b9e36fa3b60d0e09000e8e83300"
+  },
+  "osp": {
+    "bytes": 37209354,
+    "sha256": "c2d0c0e906af92bc1c7f974ec10078a54ef7af56cd2aac9078af196adee4cd23"
+  },
+  "pos": {
+    "bytes": 32694301,
+    "sha256": "43f05bf131f8227c687eddf817ac0ad5c753d04fd4a1022a02ba300435c6b7c8"
+  },
+  "pso": {
+    "bytes": 38909245,
+    "sha256": "51193c898ea9bdc5e6ec00c334b7f2d6b00369e2933a9fa81d9b4801d1f7d02e"
+  },
+  "sop": {
+    "bytes": 128871135,
+    "sha256": "c6d128b7e76347d047af340cbc123405abdea4ce3b1dcd4e2af9c702d2acb130"
+  },
+  "spo": {
+    "bytes": 128869247,
+    "sha256": "d8132f198e8c5452015055bf9c7f91ac6fdab6aaf69f886a620417b66bb4551a"
+  }
+}
