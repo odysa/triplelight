@@ -1,20 +1,19 @@
-[package]
-name = "triplelight"
+[workspace]
+members = [".", "crates/*"]
+# The language bindings (bindings/*) build as separate packages with their own toolchains and lockfiles; each
+# declares its own empty [workspace].
+resolver = "3"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
-autobins = false
-default-run = "triplelight"
 
-[[bin]]
-name = "triplelight"
-path = "src/bin/triplelight.rs"
-
-
-[features]
-# The SPARQL HTTP server (`triplelight serve` / `serve-store`). Off by default: TripleLight is embedded first.
-server = ["dep:tiny_http"]
-
-[dependencies]
+[workspace.dependencies]
+triplelight-core = { path = "crates/triplelight-core" }
+triplelight-storage = { path = "crates/triplelight-storage" }
+triplelight-sparql = { path = "crates/triplelight-sparql" }
+triplelight-plan = { path = "crates/triplelight-plan" }
+triplelight-exec = { path = "crates/triplelight-exec" }
 oxrdf = "0.3.5"
 oxttl = "0.2.5"
 oxiri = "0.2.11"
@@ -22,15 +21,40 @@ rust_decimal = { version = "1", default-features = false, features = ["std"] }
 num-bigint = { version = "0.4", default-features = false, features = ["std"] }
 rayon = "1.12.0"
 regex = "1.13.1"
-tiny_http = { version = "0.12.0", optional = true }
-
 sha2 = "0.10"
 sha1 = "0.10"
 md5 = { package = "md-5", version = "0.10" }
-
-# glibc malloc costs ~20-25% on Linux (BSBM/LUBM in the VM); on macOS the system allocator is as fast, so Linux only.
-[target.'cfg(target_arch = "wasm32")'.dependencies]
 web-time = "1"
 
+[package]
+name = "triplelight"
+version.workspace = true
+edition.workspace = true
+autobins = false
+default-run = "triplelight"
+
+[[bin]]
+name = "triplelight"
+path = "src/bin/triplelight.rs"
+
+[features]
+# The SPARQL HTTP server (`triplelight serve` / `serve-store`). Off by default: TripleLight is embedded first.
+server = ["dep:tiny_http"]
+
+[dependencies]
+triplelight-core.workspace = true
+triplelight-storage.workspace = true
+triplelight-sparql.workspace = true
+triplelight-plan.workspace = true
+triplelight-exec.workspace = true
+oxrdf.workspace = true
+oxttl.workspace = true
+tiny_http = { version = "0.12.0", optional = true }
+
+[dev-dependencies]
+sha2.workspace = true
+rayon.workspace = true
+
+# glibc malloc costs ~20-25% on Linux (BSBM/LUBM in the VM); on macOS the system allocator is as fast, so Linux only.
 [target.'cfg(target_os = "linux")'.dependencies]
 mimalloc = { version = "0.1", default-features = false }

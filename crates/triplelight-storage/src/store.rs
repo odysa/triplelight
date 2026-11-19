@@ -182,8 +182,7 @@ impl Iterator for MergeScan<'_> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Change { Insert, Delete }
+pub use crate::model::Change;
 
 /// How bases are written and opened (the memory/N-Triples format here; the disk snapshot plugs in the same way).
 pub trait BaseFormat: Send + Sync {
@@ -493,20 +492,27 @@ fn read_wal(path: &Path) -> std::io::Result<(Vec<Vec<(Change, Triple)>>, u64)> {
 }
 
 impl Store {
-    /// Executes a SPARQL 1.1 Update request atomically: every operation sees the effects of the previous ones, and
-    /// the net change set is committed once (all or nothing). Returns the number of triples changed.
-    pub fn update(&self, text: &str) -> Result<usize, crate::exec::QueryError> {
-        use crate::exec::{QueryError, QueryErrorKind};
-        let storage = |e: std::io::Error| QueryError::new(QueryErrorKind::Storage, e.to_string());
+    /// Executes an update request atomically: `compute` turns `text` into a change set against the latest accepted
+    /// state, and the net change set is committed once (all or nothing). Returns the number of triples changed.
+    ///
+    /// Serializable: the writer lock is held while reading the latest state, computing the changes and enqueueing
+    /// them, so every update sees all earlier accepted updates (durable or not) and none is accepted in between.
+    /// The lock is released before waiting for the fsync, so concurrent writers share one group commit. The query
+    /// engine is passed in as `compute` (the `triplelight` crate wires in SPARQL Update), which keeps this crate
+    /// independent of the executor.
+    pub fn update_with<E>(
+        &self,
+        text: &str,
+        compute: &dyn Fn(&Overlay, &str) -> Result<Vec<(Change, Triple)>, E>,
+        storage_error: &dyn Fn(std::io::Error) -> E,
+    ) -> Result<usize, E> {
         let (seq, n) = {
-            // Serializable: the WHERE clause sees every earlier accepted update, durable or not, and no other update
-            // is accepted between reading and enqueueing. The fsync wait happens outside this lock (group commit).
             let _writer = self.writer.lock().unwrap();
             let snap = self.pending.lock().unwrap().latest.clone();
-            let changes = crate::exec::update_changes(&*snap, text)?;
-            self.enqueue(&changes).map_err(storage)?
+            let changes = compute(&snap, text)?;
+            self.enqueue(&changes).map_err(storage_error)?
         };
-        self.flush_until(seq).map_err(storage)?;
+        self.flush_until(seq).map_err(storage_error)?;
         Ok(n)
     }
 }

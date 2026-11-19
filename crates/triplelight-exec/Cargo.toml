@@ -1,0 +1,22 @@
+[package]
+name = "triplelight-exec"
+description = "TripleLight SPARQL evaluator over term IDs"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+triplelight-core.workspace = true
+triplelight-plan.workspace = true
+triplelight-sparql.workspace = true
+oxrdf.workspace = true
+oxiri.workspace = true
+rust_decimal.workspace = true
+num-bigint.workspace = true
+rayon.workspace = true
+regex.workspace = true
+sha2.workspace = true
+sha1.workspace = true
+md5.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-time.workspace = true

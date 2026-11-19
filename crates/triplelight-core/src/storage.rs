@@ -1,4 +1,4 @@
-//! Storage API (owner: Alex-Chi, task #1). Executor (task #4) and optimizer (task #3) code only against this.
+//! The storage interface the query side is written against (snapshots and the term dictionary).
 use crate::model::{Perm, TermId, TripleBatch};
 use oxrdf::{Term, TermRef};
 
@@ -47,28 +47,3 @@ pub trait Snapshot: Dictionary + Send + Sync {
     fn matching_rows(&self, _perm: Perm, _prefix: &[TermId]) -> Option<&[[TermId; 3]]> { None }
 }
 
-mod memory;
-pub use memory::MemorySnapshot;
-
-#[cfg(unix)]
-pub mod disk_index;
-
-#[cfg(unix)]
-mod block_codec;
-
-#[cfg(unix)]
-mod term_block_codec;
-
-#[cfg(unix)]
-mod lazy_dictionary;
-
-#[cfg(unix)]
-mod external_sort;
-
-#[cfg(unix)]
-pub mod external_build;
-
-#[cfg(unix)]
-mod disk_snapshot;
-#[cfg(unix)]
-pub use disk_snapshot::{DiskBase, DiskSnapshot, build_disk_snapshot, build_disk_snapshot_with_workers, write_disk_snapshot};

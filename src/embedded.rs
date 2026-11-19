@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use crate::opt::stats::Stats;
 use crate::exec::{self, QueryError, QueryResult};
-use crate::store::{Change, Overlay, Store};
+use crate::store::{Change, Overlay, Store, StoreUpdate};
 use crate::storage::DiskBase;
 
 /// Errors returned by embedded operations.

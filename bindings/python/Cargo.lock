@@ -796,18 +796,48 @@ dependencies = [
 name = "triplelight"
 version = "0.1.0"
 dependencies = [
- "md-5",
  "mimalloc",
+ "oxrdf",
+ "oxttl",
+ "triplelight-core",
+ "triplelight-exec",
+ "triplelight-plan",
+ "triplelight-sparql",
+ "triplelight-storage",
+]
+
+[[package]]
+name = "triplelight-core"
+version = "0.1.0"
+dependencies = [
+ "oxrdf",
+ "oxttl",
+]
+
+[[package]]
+name = "triplelight-exec"
+version = "0.1.0"
+dependencies = [
+ "md-5",
  "num-bigint",
  "oxiri",
  "oxrdf",
- "oxttl",
  "rayon",
  "regex",
  "rust_decimal",
  "sha1",
  "sha2",
+ "triplelight-core",
+ "triplelight-plan",
+ "triplelight-sparql",
  "web-time",
+]
+
+[[package]]
+name = "triplelight-plan"
+version = "0.1.0"
+dependencies = [
+ "triplelight-core",
 ]
 
 [[package]]
@@ -817,6 +847,25 @@ dependencies = [
  "oxrdf",
  "pyo3",
  "triplelight",
+]
+
+[[package]]
+name = "triplelight-sparql"
+version = "0.1.0"
+dependencies = [
+ "oxiri",
+ "triplelight-core",
+]
+
+[[package]]
+name = "triplelight-storage"
+version = "0.1.0"
+dependencies = [
+ "oxrdf",
+ "oxttl",
+ "rayon",
+ "sha2",
+ "triplelight-core",
 ]
 
 [[package]]
