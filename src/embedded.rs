@@ -83,6 +83,8 @@ impl Database {
     /// Opens a database, optionally initializing a new one from an N-Triples file.
     /// The initial file is ignored when the directory already holds a database.
     /// Opening an already open directory fails instead of allowing two writers.
+    /// That failure (`DatabaseError::Locked`) is reported after a bounded wait of about 250 ms, which rides out a
+    /// just-closed database whose lock descriptor a concurrently spawned child process still holds until it execs.
     pub fn open_with(dir: impl AsRef<Path>, options: DatabaseOptions) -> Result<Self, DatabaseError> {
         if options.import_workers == 0 {
             return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "import_workers must be positive").into());

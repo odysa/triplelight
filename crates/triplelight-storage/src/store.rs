@@ -236,7 +236,6 @@ impl BaseFormat for NTriplesBase {
     }
 }
 
-/// A persistent store: base file + WAL in a directory.
 /// Takes the exclusive directory lock, retrying briefly before reporting `WouldBlock` ("already open").
 ///
 /// `flock` locks belong to the open file description, and a child process spawned anywhere in this process gets a
@@ -262,6 +261,7 @@ fn lock_directory(file: &File) -> std::io::Result<()> {
     }
 }
 
+/// A persistent store: base file + WAL in a directory.
 pub struct Store {
     dir: PathBuf,
     format: Box<dyn BaseFormat>,
