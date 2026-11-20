@@ -35,6 +35,14 @@ open returns: 0.74–0.91 s after open start versus 20.5–25.8 s with a backgro
 whole-process peak memory; the scan path itself shows no claimed change. Single registered session, descriptive
 comparison, host cache uncontrolled: [report and evidence](startup36-persisted-stats/README.md).
 
+## Arrow C Stream output
+
+For three registered SELECT cells (LUBM-1000 Q9 and Q14, BSBM-100M q010), the `tl_query_arrow` Arrow path and the
+existing `tl_query` view path show overlapping five-observation ranges when every cell is consumed with identical work;
+this is neither an equivalence nor a speed-up claim. In the two large cells a separate instrumented observation spends
+far longer in the combined conversion stage than in building the ID result, which motivates profiling that stage.
+Single registered warm-query session, host cache uncontrolled: [report and evidence](arrow-c-stream-measurement/README.md).
+
 ## Mapping and store qualification outside the timing tables
 
 The [R2RML DuckDB/SQLite tiny-control report](r2rml-tiny-qualification-v1/README.md) documents a separate,
