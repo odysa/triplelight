@@ -673,6 +673,7 @@ dependencies = [
  "mimalloc",
  "oxrdf",
  "oxttl",
+ "sha2",
  "triplelight-core",
  "triplelight-exec",
  "triplelight-plan",
