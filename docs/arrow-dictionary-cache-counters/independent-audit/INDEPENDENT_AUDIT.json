@@ -1,0 +1,221 @@
+{
+  "packet_sha256": "15af092f0cc98da4ce15f5c4f4914a03c26ff132bb670898d02b5b10d824e55e",
+  "manifest_files": 294,
+  "phases": 20,
+  "pass_summaries": 40,
+  "all_checks_pass": true,
+  "stats": {
+    "lubm1000-q9": {
+      "hits": {
+        "median": 9.0,
+        "min": 9,
+        "max": 9
+      },
+      "misses": {
+        "median": 54231.0,
+        "min": 54231,
+        "max": 54231
+      },
+      "reads": {
+        "median": 54231.0,
+        "min": 54231,
+        "max": 54231
+      },
+      "bytes": {
+        "median": 259835069.0,
+        "min": 259835069,
+        "max": 259835069
+      },
+      "evictions": {
+        "median": 54230.0,
+        "min": 54230,
+        "max": 54230
+      },
+      "miss_fraction": 0.9998340707964601,
+      "batch_distinct_id_occurrences_per_miss_event": 2.242868470063248,
+      "timing_ms": {
+        "True": {
+          "median": 10039.4465,
+          "min": 9387.146,
+          "max": 10538.806
+        },
+        "False": {
+          "median": 9932.2415,
+          "min": 9330.593,
+          "max": 10628.272
+        }
+      }
+    },
+    "lubm1000-q14": {
+      "hits": {
+        "median": 960.0,
+        "min": 960,
+        "max": 960
+      },
+      "misses": {
+        "median": 50916.0,
+        "min": 50916,
+        "max": 50916
+      },
+      "reads": {
+        "median": 50916.0,
+        "min": 50916,
+        "max": 50916
+      },
+      "bytes": {
+        "median": 243494113.0,
+        "min": 243494113,
+        "max": 243494113
+      },
+      "evictions": {
+        "median": 50916.0,
+        "min": 50916,
+        "max": 50916
+      },
+      "miss_fraction": 0.9814943326393708,
+      "batch_distinct_id_occurrences_per_miss_event": 155.64390368449997,
+      "timing_ms": {
+        "True": {
+          "median": 12228.5195,
+          "min": 11565.825,
+          "max": 13403.952
+        },
+        "False": {
+          "median": 12376.719000000001,
+          "min": 11529.883,
+          "max": 13001.462
+        }
+      }
+    }
+  },
+  "overlap_phases": [
+    "13-lubm1000-q14-r2-off",
+    "14-lubm1000-q14-r2-on",
+    "15-lubm1000-q14-r3-on"
+  ],
+  "windows": [
+    {
+      "phase": "01-lubm1000-q9-r1-on",
+      "empty_log_mtime_start_proxy": 1795173985.4192417,
+      "end_proxy": 1795174031.8338342,
+      "overlap": false
+    },
+    {
+      "phase": "02-lubm1000-q9-r1-off",
+      "empty_log_mtime_start_proxy": 1795174036.3213487,
+      "end_proxy": 1795174082.7347708,
+      "overlap": false
+    },
+    {
+      "phase": "03-lubm1000-q9-r2-off",
+      "empty_log_mtime_start_proxy": 1795174087.140021,
+      "end_proxy": 1795174133.5456538,
+      "overlap": false
+    },
+    {
+      "phase": "04-lubm1000-q9-r2-on",
+      "empty_log_mtime_start_proxy": 1795174137.9965963,
+      "end_proxy": 1795174184.3722649,
+      "overlap": false
+    },
+    {
+      "phase": "05-lubm1000-q9-r3-on",
+      "empty_log_mtime_start_proxy": 1795174189.7126586,
+      "end_proxy": 1795174236.097858,
+      "overlap": false
+    },
+    {
+      "phase": "06-lubm1000-q9-r3-off",
+      "empty_log_mtime_start_proxy": 1795174241.108651,
+      "end_proxy": 1795174287.4726486,
+      "overlap": false
+    },
+    {
+      "phase": "07-lubm1000-q9-r4-off",
+      "empty_log_mtime_start_proxy": 1795174291.9652905,
+      "end_proxy": 1795174337.3775904,
+      "overlap": false
+    },
+    {
+      "phase": "08-lubm1000-q9-r4-on",
+      "empty_log_mtime_start_proxy": 1795174341.7449872,
+      "end_proxy": 1795174388.1147287,
+      "overlap": false
+    },
+    {
+      "phase": "09-lubm1000-q9-r5-on",
+      "empty_log_mtime_start_proxy": 1795174392.945965,
+      "end_proxy": 1795174439.3236542,
+      "overlap": false
+    },
+    {
+      "phase": "10-lubm1000-q9-r5-off",
+      "empty_log_mtime_start_proxy": 1795174443.448444,
+      "end_proxy": 1795174489.8207748,
+      "overlap": false
+    },
+    {
+      "phase": "11-lubm1000-q14-r1-on",
+      "empty_log_mtime_start_proxy": 1795174494.2661715,
+      "end_proxy": 1795174535.659436,
+      "overlap": false
+    },
+    {
+      "phase": "12-lubm1000-q14-r1-off",
+      "empty_log_mtime_start_proxy": 1795174539.9964533,
+      "end_proxy": 1795174581.3582675,
+      "overlap": false
+    },
+    {
+      "phase": "13-lubm1000-q14-r2-off",
+      "empty_log_mtime_start_proxy": 1795174585.6350129,
+      "end_proxy": 1795174626.9942458,
+      "overlap": true
+    },
+    {
+      "phase": "14-lubm1000-q14-r2-on",
+      "empty_log_mtime_start_proxy": 1795174631.5653534,
+      "end_proxy": 1795174672.9378157,
+      "overlap": true
+    },
+    {
+      "phase": "15-lubm1000-q14-r3-on",
+      "empty_log_mtime_start_proxy": 1795174677.077898,
+      "end_proxy": 1795174718.4341488,
+      "overlap": true
+    },
+    {
+      "phase": "16-lubm1000-q14-r3-off",
+      "empty_log_mtime_start_proxy": 1795174722.582641,
+      "end_proxy": 1795174764.9604173,
+      "overlap": false
+    },
+    {
+      "phase": "17-lubm1000-q14-r4-off",
+      "empty_log_mtime_start_proxy": 1795174769.5074368,
+      "end_proxy": 1795174810.852861,
+      "overlap": false
+    },
+    {
+      "phase": "18-lubm1000-q14-r4-on",
+      "empty_log_mtime_start_proxy": 1795174815.4771557,
+      "end_proxy": 1795174856.8669996,
+      "overlap": false
+    },
+    {
+      "phase": "19-lubm1000-q14-r5-on",
+      "empty_log_mtime_start_proxy": 1795174861.5017195,
+      "end_proxy": 1795174902.8853738,
+      "overlap": false
+    },
+    {
+      "phase": "20-lubm1000-q14-r5-off",
+      "empty_log_mtime_start_proxy": 1795174907.127112,
+      "end_proxy": 1795174948.4792144,
+      "overlap": false
+    }
+  ],
+  "summary_limitation": "Original start_unix uses phase directory birth time, while seconds begins at Docker attach after preparation. That hybrid is not an exact interval and directory birth time is not archived. Empty log mtime provides a portable reconstructed start proxy and yields the same overlap flags. Preserve this provenance and correct the summary before publication.",
+  "earlier_attempts": "v1 unrun; v2 phase1 gate-failed,19not-run; no pooling",
+  "scope": "No engine, Docker or new large-store rehash. Raw probes and phase gates, receipts, saved resource/inspection checks and derived summaries replayed."
+}
