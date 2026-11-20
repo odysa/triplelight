@@ -1,8 +1,7 @@
 # Arrow C Stream output (`tl_query_arrow`): descriptive warm-query measurement
 
-For three registered SELECT cells, the public Arrow C Stream path (`tl_query_arrow`, PR #42) and the existing
-`tl_query` view path take similar time once every cell is consumed with identical work: their five-observation
-ranges overlap in every cell. Overlap is not evidence that the paths are equivalent, and nothing here claims a
+For three registered SELECT cells, consuming every cell with identical work, the five-observation ranges of the
+public Arrow C Stream path (`tl_query_arrow`, PR #42) and the existing `tl_query` view path overlap in every cell. Overlap is not evidence that the paths are equivalent, and nothing here claims a
 speed-up, zero-copy behaviour or a memory change. One registered session on one machine.
 
 ## What was measured
