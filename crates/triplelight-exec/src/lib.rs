@@ -108,9 +108,10 @@ pub struct Options<'a> {
     pub wcoj: bool,
     /// Return SELECT results undecoded (`QueryResult::Ids`).
     pub raw_ids: bool,
-    /// Evaluate GROUP BY with the general per-group path instead of the ID hash-aggregation fast path. Answers are
-    /// identical; this exists for differential verification (tests, release checks, benchmark controls) and
-    /// replaces the former process-global `TRIPLELIGHT_LEGACY_GROUP` environment variable.
+    /// Disable the ID hash-aggregation fast path for GROUP BY (`try_fast_group`), so groups that would take it use
+    /// the general per-group implementation. Index count pushdown (`try_count_group`) still runs first, exactly as
+    /// with the former process-global `TRIPLELIGHT_LEGACY_GROUP` environment variable this replaces. Answers are
+    /// identical; this exists for differential verification (tests, release checks, benchmark controls).
     pub general_group: bool,
 }
 impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false } } }
