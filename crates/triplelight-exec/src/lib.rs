@@ -250,8 +250,12 @@ fn run_construct<S: Snapshot>(ctx: &mut Ctx<'_, S>, template: &[TriplePattern], 
     // Template blank nodes get a fresh node per solution, labelled `<template label>r<row>`. Those labels must not
     // collide with a blank node from the data that a solution binds (e.g. an input `_:tr0`), or one output node could
     // stand for two different nodes. Collect the labels of every blank node the solutions bind, stored or computed.
+    // A template without blank nodes generates no labels, so there is nothing to reserve.
+    let has_template_blanks = template.iter().any(|t| matches!(t.subject, TermPattern::BlankNode(_)) || matches!(t.object, TermPattern::BlankNode(_)));
     let mut bound_ids = HashSet::new();
-    for r in &rows { for &id in r { if id != UNBOUND && matches!(id.0 >> 60, 2 | 0xe) { bound_ids.insert(id); } } }
+    if has_template_blanks {
+        for r in &rows { for &id in r { if id != UNBOUND && matches!(id.0 >> 60, 2 | 0xe) { bound_ids.insert(id); } } }
+    }
     let input_labels: HashSet<String> = bound_ids.into_iter()
         .filter_map(|id| match ctx.resolve(id) { Term::BlankNode(b) => Some(b.as_str().to_string()), _ => None })
         .collect();
