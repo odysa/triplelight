@@ -9,6 +9,9 @@ fn temp(name: &str) -> PathBuf {
 fn ask(db: &Database, query: &str) -> bool {
     match db.query(query).unwrap() { QueryResult::Boolean(b) => b, x => panic!("expected ASK: {x:?}") }
 }
+/// Spawning a child process can briefly duplicate this process's open descriptors (including another test's
+/// directory lock) until the child execs; tests asserting that a closed directory reopens at once hold this.
+static SPAWN: std::sync::Mutex<()> = std::sync::Mutex::new(());
 const ASK: &str = "ASK { <http://example/s> <http://example/p> <http://example/o> }";
 const INSERT: &str = "INSERT DATA { <http://example/s> <http://example/p> <http://example/o> }";
 const DELETE: &str = "DELETE DATA { <http://example/s> <http://example/p> <http://example/o> }";
@@ -38,6 +41,7 @@ fn embedded_update_snapshot_and_reopen() {
 
 #[test]
 fn exclusive_open_and_recovery() {
+    let _serial = SPAWN.lock().unwrap_or_else(|e| e.into_inner());
     let dir = temp("lock");
     let _ = std::fs::remove_dir_all(&dir);
     let db = Database::open(&dir).unwrap();
@@ -239,3 +243,119 @@ fn memory_streamed_turtle_load_is_atomic_and_document_scoped() {
     assert!(count.contains("\"2\""), "{count}");
     std::fs::remove_file(path).unwrap();
 }
+
+// ---------- persisted planner statistics (task #34) ----------
+use triplelight::embedded::StatsOrigin;
+
+fn seeded(name: &str) -> PathBuf {
+    let dir = temp(name);
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let nt = dir.with_extension("nt");
+    let mut text = String::new();
+    for i in 0..500 { text.push_str(&format!("<http://example/s{i}> <http://example/p{}> \"{i}\" .\n", i % 7)); }
+    std::fs::write(&nt, text).unwrap();
+    let db = Database::open_with(dir.join("db"), DatabaseOptions { initial: Some(nt), ..Default::default() }).unwrap();
+    wait_stats(&db);
+    dir
+}
+fn wait_stats(db: &Database) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
+    while !(db.stats_ready() && db.stats_origin().is_some()) && std::time::Instant::now() < deadline { std::thread::sleep(std::time::Duration::from_millis(2)); }
+    assert!(db.stats_ready() && db.stats_origin().is_some(), "statistics not ready");
+}
+fn stats_files(db_dir: &std::path::Path) -> Vec<String> {
+    let mut v: Vec<String> = std::fs::read_dir(db_dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .filter(|n| n.starts_with("stats-")).collect();
+    v.sort();
+    v
+}
+const COUNT_P3: &str = "SELECT (COUNT(*) AS ?n) WHERE { ?s <http://example/p3> ?o }";
+
+#[test]
+fn persisted_stats_are_reused_on_reopen() {
+    let dir = seeded("stats-reuse");
+    let db_dir = dir.join("db");
+    assert_eq!(stats_files(&db_dir), ["stats-0.v1"]);
+    let db = Database::open(&db_dir).unwrap();
+    // Loaded synchronously at open: ready immediately, no scan.
+    assert!(db.stats_ready());
+    assert!(matches!(db.stats_origin(), Some(StatsOrigin::Persisted { bytes, .. }) if bytes > 0));
+    assert!(db.query_json(COUNT_P3).unwrap().contains("\"71\""));
+    drop(db);
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn unusable_stats_files_fall_back_to_a_scan() {
+    let dir = seeded("stats-corrupt");
+    let db_dir = dir.join("db");
+    let file = db_dir.join("stats-0.v1");
+    let good = std::fs::read(&file).unwrap();
+    let flip_payload = { let mut b = good.clone(); let i = b.len() - 1; b[i] ^= 1; b };
+    let wrong_generation = { let mut b = good.clone(); b[8] ^= 1; b };
+    for (what, bytes) in [("truncated", good[..good.len() / 2].to_vec()), ("payload bit flip", flip_payload),
+                          ("wrong generation", wrong_generation), ("empty", Vec::new())] {
+        std::fs::write(&file, &bytes).unwrap();
+        let db = Database::open(&db_dir).unwrap();
+        wait_stats(&db);
+        assert!(matches!(db.stats_origin(), Some(StatsOrigin::Scanned { persist_ms: Some(_), .. })), "{what}: {:?}", db.stats_origin());
+        assert!(db.query_json(COUNT_P3).unwrap().contains("\"71\""), "{what}");
+        drop(db);
+        assert_eq!(std::fs::read(&file).unwrap(), good, "{what}: rescan rewrites the same statistics");
+    }
+    // A MANIFEST that differs from the one the file was bound to: the file no longer applies.
+    let manifest = db_dir.join("base-0").join("MANIFEST");
+    let original = std::fs::read(&manifest).unwrap();
+    let bound = std::fs::read(&file).unwrap();
+    let mut forged = bound.clone(); forged[16] ^= 1;
+    std::fs::write(&file, &forged).unwrap();
+    let db = Database::open(&db_dir).unwrap();
+    wait_stats(&db);
+    assert!(matches!(db.stats_origin(), Some(StatsOrigin::Scanned { .. })));
+    drop(db);
+    assert_eq!(std::fs::read(&manifest).unwrap(), original);
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn compaction_replaces_the_stats_file_and_stale_scans_are_dropped() {
+    let dir = seeded("stats-compact");
+    let db_dir = dir.join("db");
+    // Reopen without the file so a scan of base 0 runs, then compact at once: that scan must not be installed or
+    // persisted for the new base.
+    std::fs::remove_file(db_dir.join("stats-0.v1")).unwrap();
+    let db = Database::open(&db_dir).unwrap();
+    db.update(INSERT).unwrap();
+    db.compact().unwrap();
+    wait_stats(&db);
+    assert!(db.query_json(COUNT_P3).unwrap().contains("\"71\""));
+    // Allow the stale base-0 scan to finish; it must not resurrect stats-0.v1.
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    assert_eq!(stats_files(&db_dir), ["stats-1.v1"]);
+    drop(db);
+    let db = Database::open(&db_dir).unwrap();
+    assert!(matches!(db.stats_origin(), Some(StatsOrigin::Persisted { .. })));
+    assert!(ask(&db, ASK));
+    drop(db);
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn closing_during_a_scan_releases_the_directory_and_writes_nothing_late() {
+    let dir = seeded("stats-close");
+    let db_dir = dir.join("db");
+    std::fs::remove_file(db_dir.join("stats-0.v1")).unwrap();
+    let _serial = SPAWN.lock().unwrap_or_else(|e| e.into_inner());
+    for _ in 0..20 {
+        let db = Database::open(&db_dir).unwrap();
+        drop(db); // scan still running: the directory must be free immediately
+    }
+    let db = Database::open(&db_dir).unwrap();
+    wait_stats(&db);
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    assert_eq!(stats_files(&db_dir), ["stats-0.v1"], "no temp files or foreign generations left behind");
+    drop(db);
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
