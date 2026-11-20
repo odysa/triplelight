@@ -3,7 +3,7 @@ use super::{IdSolutions, QueryResult, UNBOUND};
 use crate::model::TermId;
 use crate::storage::Dictionary;
 use oxrdf::TermRef;
-use oxrdf::Term;
+use oxrdf::{Term, Variable};
 use std::fmt::Write;
 
 fn esc(s: &str, out: &mut String) {
@@ -39,34 +39,56 @@ fn term_ref_json(t: TermRef<'_>, out: &mut String) {
     out.push('}');
 }
 
+/// Shared JSON framing for decoded rows and borrowed dictionary fragments.
+/// Each chunk keeps its leading comma; the combined body drops only the first.
+struct SolutionsWriter {
+    names: Vec<String>,
+}
+
+impl SolutionsWriter {
+    fn start(vars: &[Variable], out: &mut String) -> Self {
+        out.push_str("{\"head\":{\"vars\":[");
+        for (i, v) in vars.iter().enumerate() { if i > 0 { out.push(',') } esc(v.as_str(), out); }
+        out.push_str("]},\"results\":{\"bindings\":[");
+        let names = vars.iter().map(|v| { let mut s = String::new(); esc(v.as_str(), &mut s); s.push(':'); s }).collect();
+        Self { names }
+    }
+
+    fn row<T>(&self, row: impl IntoIterator<Item = Option<T>>, out: &mut String, mut term: impl FnMut(T, &mut String)) {
+        out.push_str(",{");
+        let mut first = true;
+        for (name, value) in self.names.iter().zip(row) {
+            let Some(value) = value else { continue };
+            if !first { out.push(',') }
+            first = false;
+            out.push_str(name);
+            term(value, out);
+        }
+        out.push('}');
+    }
+
+    fn chunks(&self, chunks: Vec<String>, out: &mut String) {
+        let body = chunks.concat();
+        out.push_str(body.strip_prefix(',').unwrap_or(&body));
+    }
+}
+
 /// Returns (content type, body).
 pub fn serialize(r: &QueryResult) -> (&'static str, String) {
     let mut out = String::new();
     match r {
         QueryResult::Boolean(b) => { let _ = write!(out, "{{\"head\":{{}},\"boolean\":{b}}}"); ("application/sparql-results+json", out) }
         QueryResult::Solutions { vars, rows } => {
-            out.push_str("{\"head\":{\"vars\":[");
-            for (i, v) in vars.iter().enumerate() { if i > 0 { out.push(',') } esc(v.as_str(), &mut out); }
-            out.push_str("]},\"results\":{\"bindings\":[");
+            let writer = SolutionsWriter::start(vars, &mut out);
             use rayon::prelude::*;
-            let names: Vec<String> = vars.iter().map(|v| { let mut s = String::new(); esc(v.as_str(), &mut s); s.push(':'); s }).collect();
             let chunks: Vec<String> = rows.par_chunks(4096).map(|chunk| {
                 let mut out = String::with_capacity(chunk.len() * 96);
                 for row in chunk {
-                    out.push_str(",{");
-                    let mut first = true;
-                    for (name, t) in names.iter().zip(row) {
-                        let Some(t) = t else { continue };
-                        if !first { out.push(',') }
-                        first = false;
-                        out.push_str(name); term_json(t, &mut out);
-                    }
-                    out.push('}');
+                    writer.row(row.iter().map(Option::as_ref), &mut out, term_json);
                 }
                 out
             }).collect();
-            let body: String = chunks.concat();
-            out.push_str(body.strip_prefix(',').unwrap_or(&body));
+            writer.chunks(chunks, &mut out);
             out.push_str("]}}");
             ("application/sparql-results+json", out)
         }
@@ -83,12 +105,9 @@ pub fn serialize(r: &QueryResult) -> (&'static str, String) {
 pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D) -> Result<String, crate::storage::StorageError> {
     use rayon::prelude::*;
     let mut out = String::new();
-    out.push_str("{\"head\":{\"vars\":[");
-    for (i, v) in sol.vars.iter().enumerate() { if i > 0 { out.push(',') } esc(v.as_str(), &mut out); }
-    out.push_str("]},\"results\":{\"bindings\":[");
+    let writer = SolutionsWriter::start(&sol.vars, &mut out);
     let w = sol.width();
     if w > 0 {
-        let names: Vec<String> = sol.vars.iter().map(|v| { let mut s = String::new(); esc(v.as_str(), &mut s); s.push(':'); s }).collect();
         let chunks: Vec<String> = sol.ids.par_chunks(w * 4096).map(|chunk| -> Result<String, crate::storage::StorageError> {
             // Decode every distinct stored ID of this chunk with one batched dictionary call (one cache access per
             // dictionary block on disk), then assemble rows in their original order. Callbacks may arrive in any
@@ -106,24 +125,16 @@ pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D)
             })?;
             let mut out = String::with_capacity(chunk.len() / w * 96);
             for row in chunk.chunks_exact(w) {
-                out.push_str(",{");
-                let mut first = true;
-                for (name, &id) in names.iter().zip(row) {
-                    if id == UNBOUND { continue }
-                    if !first { out.push(',') }
-                    first = false;
-                    out.push_str(name);
+                writer.row(row.iter().map(|&id| (id != UNBOUND).then_some(id)), &mut out, |id, out| {
                     match sol.scratch.get(&id) {
-                        Some(t) => term_json(t, &mut out),
+                        Some(t) => term_json(t, out),
                         None => { let (a, b) = span[distinct.binary_search(&id).expect("decoded above")]; out.push_str(&arena[a as usize..b as usize]) }
                     }
-                }
-                out.push('}');
+                });
             }
             Ok(out)
         }).collect::<Result<_, _>>()?;
-        let body = chunks.concat();
-        out.push_str(body.strip_prefix(',').unwrap_or(&body));
+        writer.chunks(chunks, &mut out);
     } else {
         out.push_str(&vec!["{}"; sol.rows].join(","));
     }
