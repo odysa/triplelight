@@ -1,0 +1,18 @@
+{
+  "pass": true,
+  "registration_sha256": "ff33a0b7adaf9a0e379d5ab52be4f1ef23d1e2e62d823f2f4f91afa958ccdd9b",
+  "bags": 120,
+  "order_checks": 54,
+  "requests": 120,
+  "primary_seconds": {
+    "p1": {
+      "generic": 19.92376724956557,
+      "hybrid": 4.519276252016425
+    },
+    "p2": {
+      "generic": 19.436217790236697,
+      "hybrid": 4.423862208146602
+    }
+  },
+  "offline_only": true
+}

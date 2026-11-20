@@ -1,0 +1,352 @@
+{
+  "registration_sha256": "ff33a0b7adaf9a0e379d5ab52be4f1ef23d1e2e62d823f2f4f91afa958ccdd9b",
+  "eligible": true,
+  "requests": 120,
+  "bags": 120,
+  "orders": 54,
+  "runtime": {
+    "python": "3.14.3",
+    "system": "Darwin",
+    "machine": "arm64",
+    "packages": {
+      "pyarrow": "26.0.1",
+      "ladybug": "0.22.3"
+    }
+  },
+  "triples": 10102032,
+  "queries": 20,
+  "unique_query_texts": 20,
+  "metrics": {
+    "p1": {
+      "generic": {
+        "query_to_full_json_seconds": 19.92376724956557,
+        "open_seconds": 0.48200470907613635,
+        "execute_api_seconds": 18.78696187469177,
+        "fetch_arrow_seconds": 0.6836052089929581,
+        "encode_json_seconds": 0.4531176262535155,
+        "close_seconds": 0.5196218779310584,
+        "open_through_close_seconds": 20.9576054578647,
+        "peak_rss_bytes": 1446674432,
+        "peak_rss_at_full_json_bytes": 1445576704,
+        "payload_bytes": 247885
+      },
+      "hybrid": {
+        "query_to_full_json_seconds": 4.519276252016425,
+        "open_seconds": 0.7100712510291487,
+        "execute_api_seconds": 3.380314543377608,
+        "fetch_arrow_seconds": 0.6966291670687497,
+        "encode_json_seconds": 0.4422533353790641,
+        "close_seconds": 0.49699503905139863,
+        "open_through_close_seconds": 5.7578478320501745,
+        "peak_rss_bytes": 1817247744,
+        "peak_rss_at_full_json_bytes": 1816117248,
+        "payload_bytes": 247885
+      }
+    },
+    "p2": {
+      "generic": {
+        "query_to_full_json_seconds": 19.436217790236697,
+        "open_seconds": 0.481646666303277,
+        "execute_api_seconds": 18.346298456424847,
+        "fetch_arrow_seconds": 0.6567192936781794,
+        "encode_json_seconds": 0.4331217906437814,
+        "close_seconds": 0.5076228338293731,
+        "open_through_close_seconds": 20.455803666030988,
+        "peak_rss_bytes": 1447739392,
+        "peak_rss_at_full_json_bytes": 1446510592,
+        "payload_bytes": 247885
+      },
+      "hybrid": {
+        "query_to_full_json_seconds": 4.423862208146602,
+        "open_seconds": 0.7030891254544258,
+        "execute_api_seconds": 3.3253673317376524,
+        "fetch_arrow_seconds": 0.6632139170542359,
+        "encode_json_seconds": 0.43520083487965167,
+        "close_seconds": 0.49381279363296926,
+        "open_through_close_seconds": 5.651524207787588,
+        "peak_rss_bytes": 1817509888,
+        "peak_rss_at_full_json_bytes": 1816395776,
+        "payload_bytes": 247885
+      }
+    }
+  },
+  "ratios_generic_over_hybrid": {
+    "p1": 4.4086190218347285,
+    "p2": 4.3934952934213545
+  },
+  "per_query_seconds": {
+    "q001": {
+      "p1": {
+        "generic": 0.15643820888362825,
+        "hybrid": 0.08085187501274049
+      },
+      "p2": {
+        "generic": 0.15404991596005857,
+        "hybrid": 0.08041829103603959
+      }
+    },
+    "q002": {
+      "p1": {
+        "generic": 1.928887875052169,
+        "hybrid": 0.09552779188379645
+      },
+      "p2": {
+        "generic": 1.9202328328974545,
+        "hybrid": 0.09592587500810623
+      }
+    },
+    "q003": {
+      "p1": {
+        "generic": 1.9167224999982864,
+        "hybrid": 0.09805429191328585
+      },
+      "p2": {
+        "generic": 1.919819625094533,
+        "hybrid": 0.09589025005698204
+      }
+    },
+    "q004": {
+      "p1": {
+        "generic": 0.5946093751117587,
+        "hybrid": 0.1054917499423027
+      },
+      "p2": {
+        "generic": 0.5541814998723567,
+        "hybrid": 0.10292891622520983
+      }
+    },
+    "q005": {
+      "p1": {
+        "generic": 1.9420614580158144,
+        "hybrid": 0.09500433295033872
+      },
+      "p2": {
+        "generic": 1.9246034999378026,
+        "hybrid": 0.09553216607309878
+      }
+    },
+    "q006": {
+      "p1": {
+        "generic": 2.1434953750576824,
+        "hybrid": 0.10691633308306336
+      },
+      "p2": {
+        "generic": 1.924234916921705,
+        "hybrid": 0.09908149996772408
+      }
+    },
+    "q007": {
+      "p1": {
+        "generic": 0.753516374854371,
+        "hybrid": 0.11929295910522342
+      },
+      "p2": {
+        "generic": 0.68595049995929,
+        "hybrid": 0.11563970916904509
+      }
+    },
+    "q008": {
+      "p1": {
+        "generic": 1.9161419169977307,
+        "hybrid": 0.09545424999669194
+      },
+      "p2": {
+        "generic": 1.917703750077635,
+        "hybrid": 0.09568125009536743
+      }
+    },
+    "q009": {
+      "p1": {
+        "generic": 1.9246684999670833,
+        "hybrid": 0.09445700002834201
+      },
+      "p2": {
+        "generic": 1.9185373750515282,
+        "hybrid": 0.0961047918535769
+      }
+    },
+    "q010": {
+      "p1": {
+        "generic": 0.3772386668715626,
+        "hybrid": 0.11363470810465515
+      },
+      "p2": {
+        "generic": 0.36791299981996417,
+        "hybrid": 0.11343437479808927
+      }
+    },
+    "q011": {
+      "p1": {
+        "generic": 0.9108011249918491,
+        "hybrid": 0.7095664171501994
+      },
+      "p2": {
+        "generic": 0.9040657498408109,
+        "hybrid": 0.6856108331121504
+      }
+    },
+    "q012": {
+      "p1": {
+        "generic": 0.9244283328298479,
+        "hybrid": 0.6980517080519348
+      },
+      "p2": {
+        "generic": 0.91081912512891,
+        "hybrid": 0.6891274168156087
+      }
+    },
+    "q013": {
+      "p1": {
+        "generic": 0.3692791247740388,
+        "hybrid": 0.11061937501654029
+      },
+      "p2": {
+        "generic": 0.3664374998770654,
+        "hybrid": 0.10512458300217986
+      }
+    },
+    "q014": {
+      "p1": {
+        "generic": 0.9551279591396451,
+        "hybrid": 0.7546476670540869
+      },
+      "p2": {
+        "generic": 0.8874066669959575,
+        "hybrid": 0.7127827920485288
+      }
+    },
+    "q015": {
+      "p1": {
+        "generic": 0.9037581249140203,
+        "hybrid": 0.6888892918359488
+      },
+      "p2": {
+        "generic": 0.8792741659563035,
+        "hybrid": 0.6877763750962913
+      }
+    },
+    "q016": {
+      "p1": {
+        "generic": 0.6521112080663443,
+        "hybrid": 0.0930922080297023
+      },
+      "p2": {
+        "generic": 0.6656612078659236,
+        "hybrid": 0.09431650000624359
+      }
+    },
+    "q019": {
+      "p1": {
+        "generic": 0.6682430831715465,
+        "hybrid": 0.09353245794773102
+      },
+      "p2": {
+        "generic": 0.6521165838930756,
+        "hybrid": 0.09282379201613367
+      }
+    },
+    "q022": {
+      "p1": {
+        "generic": 0.3217572499997914,
+        "hybrid": 0.11734720878303051
+      },
+      "p2": {
+        "generic": 0.3189022080041468,
+        "hybrid": 0.11625241697765887
+      }
+    },
+    "q023": {
+      "p1": {
+        "generic": 0.3199458329472691,
+        "hybrid": 0.11724641709588468
+      },
+      "p2": {
+        "generic": 0.32145679206587374,
+        "hybrid": 0.11584758292883635
+      }
+    },
+    "q024": {
+      "p1": {
+        "generic": 0.24453495792113245,
+        "hybrid": 0.13159820903092623
+      },
+      "p2": {
+        "generic": 0.24285087501630187,
+        "hybrid": 0.13356279185973108
+      }
+    }
+  },
+  "hybrid_faster_in_both_passes": 20,
+  "storage": {
+    "databases": {
+      "generic": {
+        "path": "/private/tmp/rdf-jianlin-analytical25/ladybug-generic-import-v1/generic.db",
+        "sha256": "0b75600b22c0f07e7952c208f63db6a12a763bf177ba726f869a3b16a69797e7",
+        "bytes": 1606807552
+      },
+      "hybrid": {
+        "path": "/private/tmp/rdf-jianlin-analytical25/ladybug-hybrid-full-v1/hybrid.db",
+        "sha256": "dd805238b798c66b6e00fc2ada04718b1a162fc9e8e8fc393a62e5f01228ea99",
+        "bytes": 2553683968
+      }
+    },
+    "common_historical_csv": {
+      "logical_bytes": 1654110976,
+      "allocated_bytes": 1654206464,
+      "files": 45
+    },
+    "additional_hybrid_prepared": {
+      "logical_bytes": 1823305571,
+      "allocated_bytes": 1825918976,
+      "files": 22
+    },
+    "database_size_ratio": 1.5892904939495829
+  },
+  "costs": {
+    "additional_hybrid_conversion": {
+      "phase": "prepare",
+      "seconds": 69.35917237494141,
+      "peak_rss_bytes": 2167652352,
+      "python": "3.14.3",
+      "schema_freeze_sha256": "90d370cb4252b18f39d42d477af2861022dc73c1a17a4eac98add49b2868daef"
+    },
+    "hybrid_load": {
+      "phase": "load",
+      "seconds": 93.87763379211538,
+      "peak_rss_bytes": 4509581312,
+      "conservation": {
+        "resource_nodes": 1489462,
+        "literal_elements": 5220873,
+        "resource_edges": 4881159,
+        "rdf_triples": 10102032,
+        "duplicate_literal_nodes": 1255398,
+        "duplicate_literal_edges": 1887502
+      },
+      "buffer_pool_mb": 10240,
+      "threads": 4
+    },
+    "fresh_generic_load": {
+      "seconds": 153.44985333294608,
+      "peak_rss_bytes": 1900789760,
+      "pool_mb": 10240,
+      "threads": 4
+    },
+    "historical_common_csv_prepare_seconds": 413.43060062499717
+  },
+  "conservation": {
+    "resource_nodes": 1489462,
+    "literal_elements": 5220873,
+    "resource_edges": 4881159,
+    "rdf_triples": 10102032
+  },
+  "duplicate_storage": {
+    "literal_nodes": 1255398,
+    "literal_edges": 1887502
+  },
+  "resource_checks": {
+    "root_peak_allocated_bytes": 47457062912,
+    "minimum_free_bytes": 167574450176,
+    "max_sampled_rss_bytes": 242892800
+  },
+  "wall_bound_from_freeze_created_to_completion_seconds": 474.46588468551636
+}
