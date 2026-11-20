@@ -3,3 +3,5 @@ PREFIX : <http://ex/>
 :g1 :name :g1 . :g2 :name :g2 . :g3 :name :g3 . :absent :name :absent .
 GRAPH :g1 { :a :p "1" . :b :p "1" . }
 GRAPH :g2 { :a :p "2" . :a :p "1" . }
+GRAPH :g4 { _:x :p "4" . :iri :p "4" . }
+GRAPH :g5 { _:x :q "5" . :iri :q "5" . }

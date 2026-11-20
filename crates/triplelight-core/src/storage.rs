@@ -64,4 +64,8 @@ pub trait DatasetView: Send + Sync {
     fn graph(&self, name: TermId) -> Result<Option<&dyn Snapshot>, StorageError>;
     /// Every named graph in the catalog, in ascending ID order, empty graphs included.
     fn graph_names(&self) -> Result<Vec<TermId>, StorageError>;
+    /// Whether some blank node occurs in more than one of `graphs`. A FROM default graph is the RDF merge of its
+    /// sources, which standardizes blank nodes apart; a plain union over shared IDs is only that merge when no blank
+    /// node is shared. `None` means the store cannot tell cheaply, and the evaluator then refuses such a FROM.
+    fn shares_blank_nodes(&self, _graphs: &[TermId]) -> Result<Option<bool>, StorageError> { Ok(None) }
 }

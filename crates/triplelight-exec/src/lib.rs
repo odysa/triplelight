@@ -134,11 +134,12 @@ fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opt
 /// Evaluates `text` against an RDF dataset (task #36): `snap` is the dataset's stored default graph and dictionary,
 /// `dataset` its named-graph catalog over the same snapshot. Supports GRAPH, FROM and FROM NAMED with local graphs:
 /// - no FROM / FROM NAMED: the default graph is `snap`; GRAPH ranges over every catalog graph (empty ones included);
-/// - FROM g1..gn: the default graph is the duplicate-free merge of the listed graphs present in the catalog;
-///   FROM NAMED only: the default graph is empty;
-/// - FROM NAMED h1..hm: GRAPH ranges over the listed graphs present in the catalog; FROM without FROM NAMED: none.
+/// - FROM g1..gn: the default graph is the duplicate-free merge of the listed graphs; FROM NAMED only: it is empty;
+/// - FROM NAMED h1..hm: GRAPH ranges over the listed graphs; FROM without FROM NAMED: over none.
 ///
-/// The default graph is never a value of a GRAPH variable. Remote loading is not done: an IRI is only a local name.
+/// Dataset construction is local-only: a FROM / FROM NAMED source missing from the catalog is refused with an
+/// `Unsupported` error (present-but-empty graphs are fine); nothing is loaded remotely. `GRAPH <missing>` without a
+/// dataset clause is simply an empty match. The default graph is never a value of a GRAPH variable.
 pub fn query_dataset_with<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     catching_storage(|| run(snap, Some(dataset), text, opts))
 }
@@ -152,11 +153,17 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     let mut from: Vec<&dyn Snapshot> = Vec::new();
     let mut named: Vec<TermId> = Vec::new();
     if let Some(ds) = dataset {
+        // Local-only dataset construction: every FROM / FROM NAMED source must be a graph of the catalog (present,
+        // possibly empty). A missing source is refused rather than silently omitted or invented as an empty graph.
         let present = |iris: &[oxrdf::NamedNode]| -> Result<Vec<TermId>, QueryError> {
             let mut ids = Vec::new();
             for iri in iris {
-                if let Some(id) = snap.lookup(&iri.clone().into()).map_err(storage)?
-                    && ds.graph(id).map_err(storage)?.is_some() { ids.push(id) }
+                let id = snap.lookup(&iri.clone().into()).map_err(storage)?;
+                match id {
+                    Some(id) if ds.graph(id).map_err(storage)?.is_some() => ids.push(id),
+                    _ => return Err(QueryError::new(QueryErrorKind::Unsupported, format!(
+                        "dataset source <{}> is not a graph of this database (only local graphs can be named in FROM / FROM NAMED)", iri.as_str()))),
+                }
             }
             ids.sort_unstable(); ids.dedup();
             Ok(ids)
@@ -164,7 +171,12 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
         match spec {
             None => named = ds.graph_names().map_err(storage)?,
             Some(spec) => {
-                for id in present(&spec.default)? { from.push(ds.graph(id).map_err(storage)?.expect("checked present")) }
+                let default = present(&spec.default)?;
+                if default.len() > 1 && ds.shares_blank_nodes(&default).map_err(storage)? != Some(false) {
+                    return Err(QueryError::new(QueryErrorKind::Unsupported,
+                        "FROM over several graphs that share (or may share) blank nodes is not supported: the RDF merge would standardize them apart".to_string()));
+                }
+                for id in default { from.push(ds.graph(id).map_err(storage)?.expect("checked present")) }
                 if let Some(n) = &spec.named { named = present(n)? }
             }
         }

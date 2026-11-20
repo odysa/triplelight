@@ -59,29 +59,56 @@ impl DatasetView for TestDataset<'_> {
         v.sort();
         Ok(v)
     }
+    fn shares_blank_nodes(&self, graphs: &[TermId]) -> Result<Option<bool>, StorageError> {
+        let mut seen = std::collections::HashMap::new();
+        for g in graphs {
+            let (_, view) = self.named.iter().find(|(n, _)| n == g).unwrap();
+            let mut mine = std::collections::HashSet::new();
+            for r in &view.rows[0] {
+                for id in [r[0], r[2]] {
+                    if matches!(view.dict.resolve(id)?, Term::BlankNode(_)) { mine.insert(id); }
+                }
+            }
+            for id in mine { if seen.insert(id, *g).is_some() { return Ok(Some(true)) } }
+        }
+        Ok(Some(false))
+    }
 }
 
 fn iri(s: &str) -> NamedNode { NamedNode::new(format!("http://ex/{s}")).unwrap() }
+fn t_pq(s: &str, p: &str, o: &str) -> Triple { Triple::new(iri(s), iri(p), oxrdf::Literal::new_simple_literal(o)) }
 fn t(s: &str, o: &str) -> Triple { Triple::new(iri(s), iri("p"), oxrdf::Literal::new_simple_literal(o)) }
 
-/// default: a p "d" | g1: a p "1", b p "1" | g2: a p "2", a p "1" | g3: empty (in the catalog).
+/// default: a p "d" | g1: a p "1", b p "1" | g2: a p "2", a p "1" | g3: empty (in the catalog) | g4: _:x p "4" | g5: _:x q "5".
 /// `absent` occurs in the dictionary but is not a graph of the dataset.
 fn data() -> (MemorySnapshot, Vec<Triple>, Vec<(&'static str, Vec<Triple>)>) {
     let default = vec![t("a", "d")];
-    let graphs = vec![("g1", vec![t("a", "1"), t("b", "1")]), ("g2", vec![t("a", "2"), t("a", "1")]), ("g3", vec![])];
+    // g4 / g5 share the blank node _:x (one dataset input, so the same node in both graphs).
+    let x = oxrdf::BlankNode::new("x").unwrap();
+    let bn = |p: &str, o: &str| Triple::new(x.clone(), iri(p), oxrdf::Literal::new_simple_literal(o));
+    let graphs = vec![("g1", vec![t("a", "1"), t("b", "1")]), ("g2", vec![t("a", "2"), t("a", "1")]), ("g3", vec![]),
+                      ("g4", vec![bn("p", "4"), t_pq("iri", "p", "4")]), ("g5", vec![bn("q", "5"), t_pq("iri", "q", "5")])];
     let mut all: Vec<Triple> = default.iter().chain(graphs.iter().flat_map(|(_, g)| g)).cloned().collect();
     // Graph names need dictionary IDs (shared namespace); these triples belong to no graph view.
-    for n in ["g1", "g2", "g3", "absent"] { all.push(Triple::new(iri(n), iri("name"), iri(n))) }
+    for n in ["g1", "g2", "g3", "g4", "g5", "absent"] { all.push(Triple::new(iri(n), iri("name"), iri(n))) }
     (MemorySnapshot::from_triples(all), default, graphs)
 }
 
-fn run(q: &str) -> Vec<Vec<String>> {
+fn with_dataset<T>(f: impl FnOnce(&TestDataset<'_>) -> T) -> T {
     let (dict, default, graphs) = data();
     let ds = TestDataset {
         default: TestGraph::new(&dict, &default),
         named: graphs.iter().map(|(n, g)| (dict.lookup(&iri(n).into()).unwrap().unwrap(), TestGraph::new(&dict, g))).collect(),
     };
-    match query_dataset_with(&ds.default, &ds, q, &Options::default()).unwrap() {
+    f(&ds)
+}
+
+fn run_err(q: &str) -> triplelight::exec::QueryError {
+    with_dataset(|ds| query_dataset_with(&ds.default, ds, q, &Options::default()).unwrap_err())
+}
+
+fn run(q: &str) -> Vec<Vec<String>> {
+    match with_dataset(|ds| query_dataset_with(&ds.default, ds, q, &Options::default()).unwrap()) {
         QueryResult::Solutions { rows, .. } => {
             let mut v: Vec<Vec<String>> = rows.into_iter().map(|r| r.into_iter().map(|t| t.map(|t| t.to_string()).unwrap_or("-".into())).collect()).collect();
             v.sort();
@@ -112,7 +139,7 @@ fn graph_variable_ranges_over_named_graphs_only() {
 
 #[test]
 fn empty_group_in_graph_binds_every_catalog_graph_including_empty() {
-    assert_eq!(run(&format!("{P} SELECT ?g {{ GRAPH ?g {{ }} }}")), v(&[&["<http://ex/g1>"], &["<http://ex/g2>"], &["<http://ex/g3>"]]));
+    assert_eq!(run(&format!("{P} SELECT ?g {{ GRAPH ?g {{ }} }}")), v(&[&["<http://ex/g1>"], &["<http://ex/g2>"], &["<http://ex/g3>"], &["<http://ex/g4>"], &["<http://ex/g5>"]]));
 }
 
 #[test]
@@ -130,19 +157,35 @@ fn from_merges_graphs_without_duplicates() {
     assert_eq!(run(&format!("{P} SELECT ?s FROM :g1 FROM :g2 {{ ?s :p \"1\" }}")), v(&[&["<http://ex/a>"], &["<http://ex/b>"]]));
     assert_eq!(run(&format!("{P} SELECT (COUNT(*) AS ?n) FROM :g1 FROM :g2 {{ ?s ?p ?o }}")),
                v(&[&["\"3\"^^<http://www.w3.org/2001/XMLSchema#integer>"]]));
-    // An absent FROM graph contributes nothing.
-    assert_eq!(run(&format!("{P} SELECT ?o FROM :g1 FROM :absent {{ :a :p ?o }}")), v(&[&["\"1\""]]));
+    // A present but empty FROM graph contributes nothing.
+    assert_eq!(run(&format!("{P} SELECT ?o FROM :g1 FROM :g3 {{ :a :p ?o }}")), v(&[&["\"1\""]]));
+}
+
+/// Local-only dataset policy: a FROM / FROM NAMED source missing from the catalog is an error, while a present
+/// empty graph is accepted (and listed by FROM NAMED). `GRAPH <missing>` without a dataset clause is an empty match.
+#[test]
+fn missing_dataset_sources_are_refused_present_empty_ones_accepted() {
+    for q in [format!("{P} SELECT ?o FROM :g1 FROM :absent {{ :a :p ?o }}"),
+              format!("{P} SELECT ?g FROM NAMED :g1 FROM NAMED :absent {{ GRAPH ?g {{ }} }}"),
+              format!("{P} SELECT ?o FROM <http://ex/never-seen> {{ :a :p ?o }}")] {
+        let e = run_err(&q);
+        assert_eq!(e.kind, QueryErrorKind::Unsupported, "{q}");
+        assert!(e.message.contains("not a graph of this database"), "{q}: {}", e.message);
+    }
+    assert_eq!(run(&format!("{P} SELECT ?g FROM NAMED :g1 FROM NAMED :g3 {{ GRAPH ?g {{ }} }}")), v(&[&["<http://ex/g1>"], &["<http://ex/g3>"]]));
+    assert_eq!(run(&format!("{P} SELECT ?o FROM :g3 {{ :a :p ?o }}")), v(&[]));
+    assert_eq!(run(&format!("{P} SELECT ?s {{ GRAPH :absent {{ ?s ?p ?o }} }}")), v(&[]));
 }
 
 #[test]
 fn from_named_only_has_an_empty_default_graph() {
     assert_eq!(run(&format!("{P} SELECT ?o FROM NAMED :g1 {{ :a :p ?o }}")), v(&[]));
-    assert_eq!(run(&format!("{P} SELECT ?g FROM NAMED :g1 FROM NAMED :absent {{ GRAPH ?g {{ }} }}")), v(&[&["<http://ex/g1>"]]));
+    assert_eq!(run(&format!("{P} SELECT ?g FROM NAMED :g1 {{ GRAPH ?g {{ }} }}")), v(&[&["<http://ex/g1>"]]));
 }
 
 #[test]
 fn from_without_from_named_has_no_named_graphs() {
-    assert_eq!(run(&format!("{P} SELECT ?g {{ GRAPH ?g {{ ?s ?p ?o }} }}")).len(), 4);
+    assert_eq!(run(&format!("{P} SELECT ?g {{ GRAPH ?g {{ ?s ?p ?o }} }}")).len(), 8);
     assert_eq!(run(&format!("{P} SELECT ?g FROM :g1 {{ GRAPH ?g {{ ?s ?p ?o }} }}")), v(&[]));
 }
 
@@ -166,4 +209,20 @@ fn plain_snapshot_queries_still_reject_datasets() {
         let e = query_with(&dict, &q, &Options::default()).unwrap_err();
         assert_eq!(e.kind, QueryErrorKind::Unsupported, "{q}");
     }
+}
+
+#[test]
+fn from_merge_with_shared_blank_nodes_is_refused() {
+    // Controls after Jianlin's bnode-merge-controls: g4 = {_:x p "4", :iri p "4"}, g5 = {_:x q "5", :iri q "5"}.
+    // A real RDF merge would answer only :iri (the blank node standardized apart); a shared-ID union would also return
+    // _:x. Neither is computed: the FROM merge of graphs sharing a blank node is refused (scoped limitation).
+    let e = run_err(&format!("{P} SELECT ?x FROM :g4 FROM :g5 {{ ?x :p \"4\" ; :q \"5\" }}"));
+    assert_eq!(e.kind, QueryErrorKind::Unsupported);
+    // A single FROM graph, or several graphs without shared blank nodes, is fine.
+    assert_eq!(run(&format!("{P} SELECT ?o FROM :g4 {{ ?x :p ?o }}")), v(&[&["\"4\""], &["\"4\""]]));
+    assert_eq!(run(&format!("{P} SELECT ?o FROM :g1 FROM :g4 {{ ?x :p ?o }}")).len(), 4);
+    // GRAPH keeps the dataset's own blank node identity across graphs (no merge): both :iri and the shared _:x join.
+    let rows = run(&format!("{P} SELECT ?x {{ GRAPH :g4 {{ ?x :p \"4\" }} GRAPH :g5 {{ ?x :q \"5\" }} }}"));
+    assert_eq!(rows.len(), 2);
+    assert!(rows.iter().any(|r| r[0] == "<http://ex/iri>") && rows.iter().any(|r| r[0].starts_with("_:")), "{rows:?}");
 }
