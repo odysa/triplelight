@@ -640,7 +640,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 let single = match expr_vars(expr).as_slice() { [v] if !impure(expr) => self.vars.get(v).copied(), _ => None };
                 let evaluated: Vec<Option<Term>> = match single {
                     Some(vi) => {
-                        const MEMO_CAP: usize = 1 << 20;
                         let e: &Expression = expr;
                         let addr = e as *const Expression as usize;
                         let eid = {
@@ -696,8 +695,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             TermPattern::BlankNode(b) => Slot::Var(self.vars[&format!("_:b{}", b.as_str())]),
             TermPattern::NamedNode(n) => Slot::Const(self.lookup(&n.clone().into())),
             TermPattern::Literal(l) => Slot::Const(self.lookup(&l.clone().into())),
-            #[allow(unreachable_patterns)]
-            _ => Slot::Const(None),
         }
     }
 
@@ -937,7 +934,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
 
     pub(crate) fn exists(&self, p: &GraphPattern, r: &Row) -> bool {
-        const MEMO_CAP: usize = 1 << 20;
         let addr = p as *const GraphPattern as usize;
         let (slot, idx) = {
             let mut m = self.exists_vars.borrow_mut();
@@ -965,6 +961,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         b
     }
 }
+
+/// Upper bound on entries in each per-query memo (EXISTS results, aggregate arguments).
+const MEMO_CAP: usize = 1 << 20;
 
 /// Marker payload for storage failures raised inside evaluation.
 struct StorageFailure(String);
@@ -1201,14 +1200,12 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                         GroundTermPattern::NamedNode(x) => Some(x.clone().into()),
                         GroundTermPattern::Literal(x) => Some(x.clone().into()),
                         GroundTermPattern::Variable(v) => var(v),
-                        #[allow(unreachable_patterns)] _ => None,
                     } };
                     let term = |t: &TermPattern| -> Option<Term> { match t {
                         TermPattern::NamedNode(x) => Some(x.clone().into()),
                         TermPattern::Literal(x) => Some(x.clone().into()),
                         TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(format!("{}u{n}", b.as_str())).into()),
                         TermPattern::Variable(v) => var(v),
-                        #[allow(unreachable_patterns)] _ => None,
                     } };
                     let pred = |p: &NamedNodePattern| -> Option<oxrdf::NamedNode> { match p {
                         NamedNodePattern::NamedNode(x) => Some(x.clone()),
