@@ -211,35 +211,23 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         out
     }
 
+    /// Exact match count of each pattern's constant prefix (its candidate rows before any join).
+    fn const_counts(&self, pats: &[[Slot; 3]]) -> Vec<u64> {
+        pats.iter().map(|p| {
+            let fixed: [Option<TermId>; 3] = std::array::from_fn(|i| if let Slot::Const(c) = p[i] { c } else { None });
+            let (perm, prefix, n) = choose_perm(&fixed);
+            self.count(perm, &prefix[..n])
+        }).collect()
+    }
+
     /// Leapfrog triejoin (Veldhuizen, ICDT'14), the worst-case-optimal join: bind one variable at a time,
     /// intersecting by index seeks the sorted value lists of every pattern containing it. Each pattern reads the
     /// permutation keyed (its constants, then its variables in the global order). The first variable's values are
     /// split across rayon workers.
     pub fn leapfrog(&self, pats: &[[Slot; 3]], row: &[TermId], given: Option<Vec<usize>>) -> Vec<TermId> {
-        let counts: Vec<u64> = pats.iter().map(|p| {
-            let fixed: [Option<TermId>; 3] = std::array::from_fn(|i| if let Slot::Const(c) = p[i] { c } else { None });
-            let (perm, prefix, n) = choose_perm(&fixed);
-            self.count(perm, &prefix[..n])
-        }).collect();
+        let counts = self.const_counts(pats);
         if counts.contains(&0) { return Vec::new() }
-        let vars_of = |p: &[Slot; 3]| -> Vec<usize> { p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect() };
-        let all: HashSet<usize> = pats.iter().flat_map(vars_of).collect();
-        let mut order: Vec<usize> = given.filter(|o| o.len() == all.len() && o.iter().all(|v| all.contains(v))).unwrap_or_default();
-        while order.len() < all.len() {
-            let cand = all.iter().filter(|v| !order.contains(v)).min_by_key(|&&v| {
-                let connected = order.is_empty() || pats.iter().any(|p| { let vs = vars_of(p); vs.contains(&v) && vs.iter().any(|x| order.contains(x)) });
-                let best = pats.iter().zip(&counts).filter(|(p, _)| vars_of(p).contains(&v)).map(|(_, c)| *c).min().unwrap_or(u64::MAX);
-                (!connected, best, v)
-            }).copied().unwrap();
-            order.push(cand);
-        }
-        let rank: HashMap<usize, usize> = order.iter().enumerate().map(|(i, &v)| (v, i)).collect();
-        let plans: Vec<(Perm, [Slot; 3])> = pats.iter().map(|p| {
-            let mut pos = [0usize, 1, 2];
-            pos.sort_by_key(|&i| match p[i] { Slot::Const(_) => (0, 0), Slot::Var(v) => (1, rank[&v]) });
-            let perm = *Perm::ALL.iter().find(|q| q.order() == pos).unwrap();
-            (perm, [p[pos[0]], p[pos[1]], p[pos[2]]])
-        }).collect();
+        let (order, plans) = lf_plan(pats, &counts, given);
         let mut row = row.to_vec();
         let first = self.intersect(&plans, order[0], &row);
         if first.len() >= 64 {
@@ -292,11 +280,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// variable contributes an intersection size, or an exact prefix count when
     /// only one relation contains it. Callers reject repeated-variable patterns.
     pub fn count_leapfrog(&self, pats: &[[Slot; 3]], given: Option<Vec<usize>>) -> u64 {
-        let counts: Vec<u64> = pats.iter().map(|p| {
-            let fixed = std::array::from_fn(|i| if let Slot::Const(c) = p[i] { c } else { None });
-            let (perm, prefix, n) = choose_perm(&fixed);
-            self.count(perm, &prefix[..n])
-        }).collect();
+        let counts = self.const_counts(pats);
         if counts.contains(&0) { return 0; }
         if pats.len() == 1 { return counts[0]; }
         // Disconnected BGP components are independent factors. Counting their
@@ -318,25 +302,8 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
                 self.count_leapfrog(&part,None)
             }).fold(1u64, |a,b| a.checked_mul(b).unwrap_or_else(|| storage_failure(std::io::Error::new(std::io::ErrorKind::InvalidData,"aggregate count overflow"))));
         }
-        let vars_of = |p: &[Slot; 3]| -> Vec<usize> { p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect() };
-        let all: HashSet<usize> = pats.iter().flat_map(vars_of).collect();
-        if all.is_empty() { return 1; }
-        let mut order: Vec<usize> = given.filter(|o| o.len() == all.len() && o.iter().copied().collect::<HashSet<_>>().len() == all.len() && o.iter().all(|v| all.contains(v))).unwrap_or_default();
-        while order.len() < all.len() {
-            let cand = all.iter().filter(|v| !order.contains(v)).min_by_key(|&&v| {
-                let connected = order.is_empty() || pats.iter().any(|p| { let vs = vars_of(p); vs.contains(&v) && vs.iter().any(|x| order.contains(x)) });
-                let best = pats.iter().zip(&counts).filter(|(p, _)| vars_of(p).contains(&v)).map(|(_, c)| *c).min().unwrap_or(u64::MAX);
-                (!connected, best, v)
-            }).copied().unwrap();
-            order.push(cand);
-        }
-        let rank: HashMap<usize, usize> = order.iter().enumerate().map(|(i, &v)| (v, i)).collect();
-        let plans: Vec<(Perm, [Slot; 3])> = pats.iter().map(|p| {
-            let mut pos = [0usize, 1, 2];
-            pos.sort_by_key(|&i| match p[i] { Slot::Const(_) => (0, 0), Slot::Var(v) => (1, rank[&v]) });
-            let perm = *Perm::ALL.iter().find(|q| q.order() == pos).unwrap();
-            (perm, [p[pos[0]], p[pos[1]], p[pos[2]]])
-        }).collect();
+        if pats.iter().all(|p| vars_of(p).is_empty()) { return 1; }
+        let (order, plans) = lf_plan(pats, &counts, given);
         if order.len()==1 { return self.lf_count_depth(&plans,&order,0,&mut vec![UNBOUND;self.w]); }
         let row=vec![UNBOUND;self.w];
         let first=self.intersect(&plans,order[0],&row);
@@ -471,4 +438,31 @@ pub(super) fn no_repeated_var(p: &[Slot; 3]) -> bool {
 
 fn checked_count(a:u64,b:u64)->u64 {
     a.checked_add(b).unwrap_or_else(|| storage_failure(std::io::Error::new(std::io::ErrorKind::InvalidData,"aggregate count overflow")))
+}
+
+/// Variables of one pattern, in slot order.
+fn vars_of(p: &[Slot; 3]) -> Vec<usize> { p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect() }
+
+/// Leapfrog plan shared by `leapfrog` and `count_leapfrog`: the global variable order (the optimizer's `given` order
+/// when it is a permutation of the BGP's variables, otherwise greedy: connected first, then smallest constant-prefix
+/// count) and, per pattern, the permutation keyed (constants, then variables in that order) with its reordered slots.
+fn lf_plan(pats: &[[Slot; 3]], counts: &[u64], given: Option<Vec<usize>>) -> (Vec<usize>, Vec<(Perm, [Slot; 3])>) {
+    let all: HashSet<usize> = pats.iter().flat_map(vars_of).collect();
+    let mut order: Vec<usize> = given.filter(|o| o.len() == all.len() && o.iter().copied().collect::<HashSet<_>>().len() == all.len() && o.iter().all(|v| all.contains(v))).unwrap_or_default();
+    while order.len() < all.len() {
+        let cand = all.iter().filter(|v| !order.contains(v)).min_by_key(|&&v| {
+            let connected = order.is_empty() || pats.iter().any(|p| { let vs = vars_of(p); vs.contains(&v) && vs.iter().any(|x| order.contains(x)) });
+            let best = pats.iter().zip(counts).filter(|(p, _)| vars_of(p).contains(&v)).map(|(_, c)| *c).min().unwrap_or(u64::MAX);
+            (!connected, best, v)
+        }).copied().unwrap();
+        order.push(cand);
+    }
+    let rank: HashMap<usize, usize> = order.iter().enumerate().map(|(i, &v)| (v, i)).collect();
+    let plans = pats.iter().map(|p| {
+        let mut pos = [0usize, 1, 2];
+        pos.sort_by_key(|&i| match p[i] { Slot::Const(_) => (0, 0), Slot::Var(v) => (1, rank[&v]) });
+        let perm = *Perm::ALL.iter().find(|q| q.order() == pos).unwrap();
+        (perm, [p[pos[0]], p[pos[1]], p[pos[2]]])
+    }).collect();
+    (order, plans)
 }
