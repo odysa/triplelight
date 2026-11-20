@@ -1,0 +1,2 @@
+PREFIX : <http://ex/>
+SELECT ?s FROM :g1 FROM :g2 { ?s :p "1" }

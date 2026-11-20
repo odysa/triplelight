@@ -1,0 +1,2 @@
+PREFIX : <http://ex/>
+SELECT (COUNT(*) AS ?n) FROM :g1 FROM :g2 { ?s ?p ?o }

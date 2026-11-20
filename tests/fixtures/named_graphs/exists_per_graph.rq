@@ -1,0 +1,2 @@
+PREFIX : <http://ex/>
+SELECT ?g { GRAPH ?g { FILTER EXISTS { :a :p "2" } } }

@@ -1,0 +1,62 @@
+== count_in_graph
+2
+== default
+"d"
+== exists_per_graph_bgp
+<http://ex/g1>	<http://ex/a>
+<http://ex/g1>	<http://ex/b>
+<http://ex/g2>	<http://ex/a>
+<http://ex/g2>	<http://ex/a>
+<http://ex/g4>	_:BNODE
+<http://ex/g4>	<http://ex/iri>
+== exists_per_graph
+
+== from_absent
+"1"
+== from_merge_count
+3
+== from_merge_dedup
+<http://ex/a>
+<http://ex/b>
+== from_merge
+"1"
+"2"
+== from_named_absent
+<http://ex/absent>
+<http://ex/g1>
+== from_named_only_default
+== from_no_named
+== from_shared_bnode
+_:BNODE
+<http://ex/iri>
+== graph_all_triples
+<http://ex/g1>	<http://ex/a>	<http://ex/p>	"1"
+<http://ex/g1>	<http://ex/b>	<http://ex/p>	"1"
+<http://ex/g2>	<http://ex/a>	<http://ex/p>	"1"
+<http://ex/g2>	<http://ex/a>	<http://ex/p>	"2"
+<http://ex/g4>	_:BNODE	<http://ex/p>	"4"
+<http://ex/g4>	<http://ex/iri>	<http://ex/p>	"4"
+<http://ex/g5>	_:BNODE	<http://ex/q>	"5"
+<http://ex/g5>	<http://ex/iri>	<http://ex/q>	"5"
+== graph_bound_var
+"1"
+"2"
+== graph_empty_group
+<http://ex/g1>
+<http://ex/g2>
+<http://ex/g4>
+<http://ex/g5>
+== graph_iri_absent
+== graph_iri_empty
+== graph_iri
+<http://ex/a>
+<http://ex/b>
+== graph_shared_bnode
+_:BNODE
+<http://ex/iri>
+== graph_var
+<http://ex/g1>	"1"
+<http://ex/g2>	"1"
+<http://ex/g2>	"2"
+== path_in_graph
+"1"
