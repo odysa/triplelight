@@ -299,7 +299,7 @@ fn unusable_stats_files_fall_back_to_a_scan() {
         std::fs::write(&file, &bytes).unwrap();
         let db = Database::open(&db_dir).unwrap();
         wait_stats(&db);
-        assert!(matches!(db.stats_origin(), Some(StatsOrigin::Scanned { persisted: true, .. })), "{what}: {:?}", db.stats_origin());
+        assert!(matches!(db.stats_origin(), Some(StatsOrigin::Scanned { persist_ms: Some(_), .. })), "{what}: {:?}", db.stats_origin());
         assert!(db.query_json(COUNT_P3).unwrap().contains("\"71\""), "{what}");
         drop(db);
         assert_eq!(std::fs::read(&file).unwrap(), good, "{what}: rescan rewrites the same statistics");

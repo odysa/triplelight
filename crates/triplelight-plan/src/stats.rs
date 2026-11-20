@@ -877,9 +877,13 @@ impl Stats {
     /// Relations every scan-built summary satisfies; a payload that violates one is rejected as malformed.
     fn check_invariants(&self, base_triples: u64) -> Result<(), DecodeError> {
         let bad = |what| Err(DecodeError::Malformed(what));
+        // Misra-Gries bookkeeping: every add either raises one counter by 1 or (on overflow) lowers all
+        // HISTOGRAM_SIZE counters by 1 and drops the value, so triples = sum(counts) + (HISTOGRAM_SIZE + 1) * rounds.
         let props_ok = |m: &BTreeMap<TermId, Property>| m.iter().all(|(id, p)| {
             id.0 != 0 && p.triples > 0 && p.subjects <= p.triples && p.equality.iter().try_fold(0u64, |a, &e| a.checked_add(e)) == Some(p.triples)
-                && p.frequencies.counts.keys().all(|k| k.0 != 0) && p.frequencies.counts.values().try_fold(0u64, |a, &c| a.checked_add(c)).is_some_and(|f| f <= p.triples)
+                && p.frequencies.counts.keys().all(|k| k.0 != 0)
+                && p.frequencies.counts.values().try_fold(0u64, |a, &c| a.checked_add(c))
+                    .and_then(|f| p.frequencies.rounds.checked_mul(HISTOGRAM_SIZE as u64 + 1).and_then(|r| f.checked_add(r))) == Some(p.triples)
         });
         if self.triple_count != base_triples { return bad("triple count differs from the base") }
         if self.subject_count > self.triple_count || self.duplicate_triples_ignored != 0 { return bad("subject or duplicate count") }
@@ -887,9 +891,23 @@ impl Stats {
         if !props_ok(&self.predicates) { return bad("predicate summary") }
         if self.predicates.values().try_fold(0u64, |a, p| a.checked_add(p.triples)) != Some(self.triple_count) { return bad("predicate totals") }
         if self.characteristic_sets.iter().try_fold(0u64, |a, cs| a.checked_add(cs.subjects)) != Some(self.subject_count) { return bad("characteristic-set subjects") }
+        // Per predicate: its triples split exactly across the characteristic sets containing it, and its subjects
+        // are exactly those sets' subjects. Each set's property map has exactly the set's predicates.
+        let mut triples_by_p: BTreeMap<TermId, u64> = BTreeMap::new();
+        let mut subjects_by_p: BTreeMap<TermId, u64> = BTreeMap::new();
         for cs in self.characteristic_sets.iter() {
             if cs.subjects == 0 || cs.predicates.is_empty() || cs.predicates.iter().any(|p| !self.predicates.contains_key(p)) { return bad("characteristic set") }
-            if !props_ok(&cs.properties) || cs.properties.keys().any(|k| cs.predicates.binary_search(k).is_err()) { return bad("characteristic-set properties") }
+            if !props_ok(&cs.properties) || !cs.properties.keys().eq(cs.predicates.iter()) { return bad("characteristic-set properties") }
+            for (p, prop) in &cs.properties {
+                if prop.triples < cs.subjects || prop.subjects != 0 { return bad("characteristic-set property counts") }
+                let t = triples_by_p.entry(*p).or_default();
+                *t = t.checked_add(prop.triples).ok_or(DecodeError::Malformed("overflow"))?;
+                let n = subjects_by_p.entry(*p).or_default();
+                *n = n.checked_add(cs.subjects).ok_or(DecodeError::Malformed("overflow"))?;
+            }
+        }
+        for (p, prop) in self.predicates.iter() {
+            if triples_by_p.get(p) != Some(&prop.triples) || subjects_by_p.get(p) != Some(&prop.subjects) { return bad("characteristic sets disagree with predicate summary") }
         }
         // Finite, positive estimates follow from the above; check the derived NDVs explicitly anyway.
         if !self.objects.count().is_finite() || self.predicates.values().any(|p| !p.ndv_objects().is_finite()) { return bad("non-finite estimate") }
@@ -946,6 +964,21 @@ mod persist_tests {
         assert!(matches!(Stats::decode(&skew.encode(), n_t), Err(DecodeError::Malformed(_))));
         let mut skew = st.clone(); skew.equality[0] += 1;
         assert!(matches!(Stats::decode(&skew.encode(), n_t), Err(DecodeError::Malformed(_))));
+        // Jianlin's control: a predicate's frequency table cleared without rounds would report an exact zero for an
+        // object that exists; the Misra-Gries total must reject it.
+        let mut cleared = st.clone();
+        Arc::make_mut(&mut cleared.predicates).get_mut(&TermId(1000)).unwrap().frequencies.counts.clear();
+        assert!(matches!(Stats::decode(&cleared.encode(), n_t), Err(DecodeError::Malformed(_))));
+        // An empty characteristic-set property map, and a set property whose totals disagree with the predicate.
+        let mut empty_cs = st.clone();
+        Arc::make_mut(&mut empty_cs.characteristic_sets)[0].properties.clear();
+        assert!(matches!(Stats::decode(&empty_cs.encode(), n_t), Err(DecodeError::Malformed(_))));
+        let mut moved = st.clone();
+        let p = *moved.characteristic_sets[0].predicates.first().unwrap();
+        { let prop = Arc::make_mut(&mut moved.characteristic_sets)[0].properties.get_mut(&p).unwrap();
+          prop.triples += 1; prop.equality[0] += 1; prop.frequencies.rounds = 0;
+          prop.frequencies.counts = BTreeMap::from([(TermId(1), prop.triples)]); }
+        assert!(matches!(Stats::decode(&moved.encode(), n_t), Err(DecodeError::Malformed(_))));
         // Single-byte corruption anywhere: never a panic (it may still decode if it hits a plain counter).
         for i in 8..bytes.len() { let mut b = bytes.clone(); b[i] ^= 0xff; let _ = Stats::decode(&b, n_t); }
     }
