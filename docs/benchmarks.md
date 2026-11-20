@@ -384,9 +384,20 @@ medians (ms):
 | BSBM-10M, 20 queries | **27** | 4,009 | not built |
 
 LUBM Q6 and Q14 return 796K rows each and dominate these totals; without them TripleLight takes 86 ms and tuned Ladybug
-154 ms. On BSBM only Ladybug's generic mapping was measured, so the gap there reflects schema as
+154 ms. In this historical session, BSBM used only Ladybug's generic mapping, so that gap reflects schema as
 well as engine. Ladybug opens a store faster (30–240 ms against TripleLight's 3.1–4.3 s until statistics are ready).
 Details: [embedded/README.md](embedded/README.md).
+
+A later **within-Ladybug schema experiment** covers all 20 frozen BSBM10M Explore instances. In two recorded
+warm-cache passes, query-to-full-SPARQL-JSON totals were **19.924 / 19.436 s** for the generic mapping and
+**4.519 / 4.424 s** for a hybrid schema (4.41× / 4.39× lower time). All 120 scheduled responses, including warmup,
+pass typed bags; all 54 declared order checks pass. The hybrid retains literal edges for complex OPTIONAL:
+its database is **58.9% larger**, its maximum query/export worker RSS is about **25.6% higher**, and its warm-cache
+opens are slower. This experiment uses fresh Python processes per request and a different output boundary from
+the historical table above; **the times must not be combined into a cross-engine ranking**. The
+[report and complete portable evidence](ladybug-hybrid-explore-v1/README.md) include both passes, import/storage
+costs, every query, and the earlier pure-column limitation and q023 ordering failure.
+
 
 ## Where TripleLight is behind
 
