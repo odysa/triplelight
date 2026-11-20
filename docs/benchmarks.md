@@ -28,6 +28,13 @@ name. They refer to the same engine.
 All comparisons run every system on the same machine in the same session, with each system's answers checked
 against Apache Jena. Numbers are sums of per-query medians unless stated. Lower is better.
 
+## Embedded startup with persisted statistics
+
+With a valid statistics file beside the base (PR #36), an embedded disk database has planner statistics as soon as
+open returns: 0.74–0.91 s after open start versus 20.5–25.8 s with a background scan (about 28× sooner), with lower
+whole-process peak memory; the scan path itself shows no claimed change. Single registered session, descriptive
+comparison, host cache uncontrolled: [report and evidence](startup36-persisted-stats/README.md).
+
 ## Mapping and store qualification outside the timing tables
 
 The [R2RML DuckDB/SQLite tiny-control report](r2rml-tiny-qualification-v1/README.md) documents a separate,

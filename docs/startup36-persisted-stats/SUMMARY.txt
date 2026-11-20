@@ -1,0 +1,27 @@
+== lubm1000-q2
+  ready A-scan med   25759.6 [25713.5-26053.6] | B-reuse med     904.4 [892.1-975.7] lower | B-scan med   25412.6 [25333.1-25478.0] lower
+  open  A-scan med     896.7 [874.0-1010.5] | B-reuse med     904.4 [892.1-975.7] no change | B-scan med     886.7 [866.1-933.6] no change
+  q     A-scan med    1215.7 [1208.1-1443.1] | B-reuse med    1234.4 [1167.4-1463.3] no change | B-scan med    1202.6 [1201.4-1401.7] lower
+  peak  A-scan med    2232.9 [1625.8-2407.6] | B-reuse med    1009.0 [798.8-1009.5] lower | B-scan med    2407.2 [1627.8-2408.3] no change
+  resid A-scan med    1145.5 [46.2-1715.2] | B-reuse med     316.6 [45.3-317.3] no change | B-scan med    1714.9 [390.8-1715.9] no change
+  B-reuse load_ms med 0.73 [0.66-0.97]
+  B-scan scan_ms med 24531.64 [24420.93-24591.04]
+  B-scan persist_ms med 7.22 [6.89-11.45]
+== lubm1000-q9
+  ready A-scan med   25847.3 [25792.5-25930.4] | B-reuse med     906.1 [863.8-926.0] lower | B-scan med   25457.4 [25321.8-25561.3] lower
+  open  A-scan med     916.4 [879.3-957.6] | B-reuse med     906.1 [863.8-926.0] no change | B-scan med     898.2 [884.7-939.2] no change
+  q     A-scan med    3930.2 [3775.3-4182.6] | B-reuse med    3926.7 [3799.1-4593.0] no change | B-scan med    4108.6 [3838.3-4811.9] no change
+  peak  A-scan med    3933.5 [3459.5-4531.1] | B-reuse med    3127.1 [3112.5-3133.8] lower | B-scan med    3964.7 [2897.4-4509.3] no change
+  resid A-scan med    1510.7 [1037.7-2099.6] | B-reuse med     700.6 [699.5-701.6] lower | B-scan med    1556.3 [475.9-2100.1] no change
+  B-reuse load_ms med 0.77 [0.73-0.78]
+  B-scan scan_ms med 24547.45 [24376.72-24651.99]
+  B-scan persist_ms med 7.80 [5.36-16.04]
+== bsbm100-q010
+  ready A-scan med   20453.3 [20426.3-20482.8] | B-reuse med     743.5 [730.0-752.3] lower | B-scan med   20110.6 [19987.1-20238.0] lower
+  open  A-scan med     776.8 [724.9-834.0] | B-reuse med     743.5 [730.0-752.3] no change | B-scan med     818.6 [723.4-925.7] no change
+  q     A-scan med    4277.4 [3900.7-4627.6] | B-reuse med    4040.0 [4001.0-4107.5] no change | B-scan med    4273.0 [3921.9-4325.0] no change
+  peak  A-scan med    2624.1 [2324.5-2624.8] | B-reuse med    1698.8 [1698.3-1699.1] lower | B-scan med    2624.9 [1683.6-2625.3] higher
+  resid A-scan med    1875.1 [29.2-1876.5] | B-reuse med     950.4 [949.9-950.6] no change | B-scan med    1876.3 [347.8-1876.9] no change
+  B-reuse load_ms med 2.94 [2.88-5.99]
+  B-scan scan_ms med 19254.63 [19179.03-19410.33]
+  B-scan persist_ms med 7.63 [4.80-10.52]
