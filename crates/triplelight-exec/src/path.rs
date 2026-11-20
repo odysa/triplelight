@@ -41,10 +41,10 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
 
     /// Calls `f` for every triple matching `prefix` in `perm` (columns in that permutation's key order).
     pub(super) fn scan_each(&self, perm: Perm, prefix: &[TermId], mut f: impl FnMut(TermId, TermId, TermId)) {
-        for batch in self.snap.scan(perm, prefix) {
+        on_data!(self, |g| for batch in g.scan(perm, prefix) {
             let b = batch.unwrap_or_else(|e| storage_failure(e));
             for i in 0..b.len() { f(b.cols[0][i], b.cols[1][i], b.cols[2][i]) }
-        }
+        })
     }
 
     /// Nodes reached from `x` by one traversal of `p` (`rev`: traverse it backwards), as a multiset.
@@ -133,7 +133,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     }
 
     fn is_graph_node(&self, x: TermId) -> bool {
-        let n = |perm, x| self.snap.count(perm, &[x]).unwrap_or_else(|e| storage_failure(e));
+        let n = |perm, x| on_data!(self, |g| g.count(perm, &[x])).unwrap_or_else(|e| storage_failure(e));
         n(Perm::Spo, x) > 0 || n(Perm::Osp, x) > 0
     }
 

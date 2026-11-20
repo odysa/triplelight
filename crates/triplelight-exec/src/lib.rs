@@ -9,9 +9,18 @@ pub(crate) use triplelight_plan as opt;
 pub(crate) use triplelight_sparql as sparql;
 pub(crate) mod store { pub use triplelight_core::model::Change; }
 
+/// Runs `$body` with `$g` bound to the active graph of `$ctx`: the concrete snapshot (monomorphic fast path) or the
+/// dataset graph currently selected by GRAPH / FROM (trait object).
+macro_rules! on_data {
+    ($ctx:expr, |$g:ident| $body:expr) => {
+        match $ctx.data.get() { Some($g) => $body, None => { let $g = $ctx.snap; $body } }
+    };
+}
+
 mod agg;
 mod bgp;
 mod count;
+mod dataset;
 mod path;
 mod expr;
 mod support;
@@ -19,7 +28,7 @@ use bgp::Slot;
 pub mod results;
 
 use crate::model::{Perm, TermId};
-use crate::storage::Snapshot;
+use crate::storage::{DatasetView, Snapshot};
 use crate::opt::stats::Stats;
 use oxrdf::{BlankNode, Literal, Term, Variable};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression, Function, GraphPattern, OrderExpression};
@@ -103,7 +112,12 @@ pub struct Options<'a> {
 impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false } } }
 
 pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(snap, text, opts))) {
+    catching_storage(|| run(snap, None, text, opts))
+}
+
+/// Storage reads inside evaluation unwind with `StorageFailure`; turn that into a `Storage` error.
+fn catching_storage<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, QueryError> {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
         Ok(r) => r,
         Err(p) => match p.downcast::<StorageFailure>() {
             Ok(f) => Err(QueryError::new(QueryErrorKind::Storage, format!("storage error: {}", f.0))),
@@ -112,15 +126,58 @@ pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Resu
     }
 }
 
-fn run<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
+fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     let q = crate::sparql::parse_query(text, None).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
-    run_query(snap, &q, opts)
+    run_query(snap, dataset, &q, opts)
 }
 
-fn run_query<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
+/// Evaluates `text` against an RDF dataset (task #36): `snap` is the dataset's stored default graph and dictionary,
+/// `dataset` its named-graph catalog over the same snapshot. Supports GRAPH, FROM and FROM NAMED with local graphs:
+/// - no FROM / FROM NAMED: the default graph is `snap`; GRAPH ranges over every catalog graph (empty ones included);
+/// - FROM g1..gn: the default graph is the duplicate-free merge of the listed graphs present in the catalog;
+///   FROM NAMED only: the default graph is empty;
+/// - FROM NAMED h1..hm: GRAPH ranges over the listed graphs present in the catalog; FROM without FROM NAMED: none.
+///
+/// The default graph is never a value of a GRAPH variable. Remote loading is not done: an IRI is only a local name.
+pub fn query_dataset_with<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
+    catching_storage(|| run(snap, Some(dataset), text, opts))
+}
+
+fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
-    if let Some(reason) = support::unsupported(q) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
+    if let Some(reason) = support::unsupported(q, dataset.is_some()) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
+    let storage = |e: crate::storage::StorageError| QueryError::new(QueryErrorKind::Storage, format!("storage error: {e}"));
+    let spec = match q { Query::Select { dataset, .. } | Query::Ask { dataset, .. } | Query::Construct { dataset, .. } | Query::Describe { dataset, .. } => dataset };
+    // Graph views for the active dataset; they outlive `ctx`, which borrows them.
+    let mut from: Vec<&dyn Snapshot> = Vec::new();
+    let mut named: Vec<TermId> = Vec::new();
+    if let Some(ds) = dataset {
+        let present = |iris: &[oxrdf::NamedNode]| -> Result<Vec<TermId>, QueryError> {
+            let mut ids = Vec::new();
+            for iri in iris {
+                if let Some(id) = snap.lookup(&iri.clone().into()).map_err(storage)?
+                    && ds.graph(id).map_err(storage)?.is_some() { ids.push(id) }
+            }
+            ids.sort_unstable(); ids.dedup();
+            Ok(ids)
+        };
+        match spec {
+            None => named = ds.graph_names().map_err(storage)?,
+            Some(spec) => {
+                for id in present(&spec.default)? { from.push(ds.graph(id).map_err(storage)?.expect("checked present")) }
+                if let Some(n) = &spec.named { named = present(n)? }
+            }
+        }
+    }
+    let empty = dataset::EmptyGraph { dict: snap as &dyn Snapshot };
+    let union = (from.len() > 1).then(|| dataset::UnionGraph { members: from.clone() });
     let mut ctx = Ctx::new(snap);
+    ctx.dataset = dataset;
+    ctx.named = named;
+    if spec.is_some() && dataset.is_some() {
+        let default: &dyn Snapshot = match (from.len(), &union) { (0, _) => &empty, (1, _) => from[0], (_, Some(u)) => u, _ => unreachable!() };
+        ctx.data.set(Some(default));
+    }
     ctx.base = match q { Query::Select { base_iri, .. } | Query::Ask { base_iri, .. } | Query::Construct { base_iri, .. } | Query::Describe { base_iri, .. } => base_iri.clone() };
     ctx.wcoj = opts.wcoj;
     let stats = opts.stats;
@@ -210,7 +267,15 @@ fn run_query<S: Snapshot>(snap: &S, q: &Query, opts: &Options<'_>) -> Result<Que
 }
 
 pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
+    /// Dictionary, and the active graph unless `data` overrides it.
     pub(crate) snap: &'a S,
+    /// Active graph when it is not `snap`: a named graph inside GRAPH, or the FROM default graph. `None` keeps the
+    /// monomorphic fast path for ordinary default-graph queries.
+    data: std::cell::Cell<Option<&'a dyn Snapshot>>,
+    /// Dataset of a dataset-aware query (`query_dataset_with`); `None` for plain snapshot queries.
+    dataset: Option<&'a dyn DatasetView>,
+    /// Named graphs of the active dataset (catalog, or the FROM NAMED graphs present in it), ascending.
+    named: Vec<TermId>,
     vars: HashMap<String, usize>,
     scratch: RefCell<(HashMap<Term, TermId>, Vec<Term>)>,
     /// Row currently being instantiated into a CONSTRUCT template, used by `term_slot`.
@@ -229,7 +294,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// variables, so rows that differ elsewhere (e.g. many offers of one product) share one evaluation.
     /// Keys use a slot id, not the pattern's address: rewrites evaluate temporary patterns whose addresses are
     /// reused, so a slot is only reused when the pattern at that address is structurally the same.
-    exists_memo: RefCell<HashMap<(usize, Vec<TermId>), bool>>,
+    exists_memo: RefCell<HashMap<(usize, usize, Vec<TermId>), bool>>,
     exists_vars: RefCell<HashMap<usize, (GraphPattern, usize, Option<Vec<usize>>)>>,
     memo_slots: std::cell::Cell<usize>,
     /// Aggregate argument values memoized per expression and per ID of its single variable: the same term (e.g.
@@ -240,7 +305,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
+        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -250,7 +315,17 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
 
     // Storage reads are fallible; an error aborts the whole query (caught in `query_with`), never yields "no rows".
-    fn count(&self, perm: Perm, prefix: &[TermId]) -> u64 { self.snap.count(perm, prefix).unwrap_or_else(|e| storage_failure(e)) }
+    fn count(&self, perm: Perm, prefix: &[TermId]) -> u64 { on_data!(self, |g| g.count(perm, prefix)).unwrap_or_else(|e| storage_failure(e)) }
+    /// Identity of the active graph, for memo keys (0 = `snap`).
+    fn graph_token(&self) -> usize { self.data.get().map_or(0, |g| g as *const dyn Snapshot as *const () as usize) }
+    /// Evaluates `f` with `g` as the active graph; statistics describe `snap` only, so planning falls back to exact counts.
+    fn with_graph<T>(&self, g: &'a dyn Snapshot, f: impl FnOnce() -> T) -> T {
+        let prev = self.data.replace(Some(g));
+        struct Restore<'c, 'x>(&'c std::cell::Cell<Option<&'x dyn Snapshot>>, Option<&'x dyn Snapshot>);
+        impl Drop for Restore<'_, '_> { fn drop(&mut self) { self.0.set(self.1) } }
+        let _restore = Restore(&self.data, prev);
+        f()
+    }
     pub(crate) fn resolve(&self, id: TermId) -> Term {
         if id.0 >> 60 == 0xe { return self.scratch.borrow().1[(id.0 & !(0xf << 60)) as usize].clone(); }
         self.snap.resolve(id).unwrap_or_else(|e| storage_failure(e))
@@ -481,9 +556,37 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 rows.into_iter().skip(*start).take(length.unwrap_or(usize::MAX)).collect()
             }
             GraphPattern::Group { inner, variables, aggregates } => self.eval_group(inner, variables, aggregates, input),
-            GraphPattern::Graph { inner, .. } => self.eval(inner, input), // default graph only in P1
+            GraphPattern::Graph { name, inner } => self.eval_graph(name, inner, input),
             GraphPattern::Path { subject, path, object } => self.eval_path(subject, path, object, input),
             GraphPattern::Service { .. } => panic!("SERVICE is not supported"),
+        }
+    }
+
+    /// `GRAPH <g> P` / `GRAPH ?g P` over the active dataset: P is evaluated with each named graph as the active graph;
+    /// `?g` ranges over the dataset's named graphs (never the default graph) and is joined with P's solutions.
+    fn eval_graph(&self, name: &NamedNodePattern, inner: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
+        let ds = self.dataset.expect("GRAPH is rejected up front without a dataset");
+        let view = |g: TermId| ds.graph(g).unwrap_or_else(|e| storage_failure(e));
+        match name {
+            NamedNodePattern::NamedNode(n) => {
+                let Some(id) = self.lookup(&n.clone().into()) else { return Vec::new() };
+                if self.named.binary_search(&id).is_err() { return Vec::new() }
+                match view(id) { None => Vec::new(), Some(g) => self.with_graph(g, || self.eval(inner, input)) }
+            }
+            NamedNodePattern::Variable(v) => {
+                let i = self.var(v);
+                let mut out = Vec::new();
+                for &gid in &self.named {
+                    let rows: Vec<Row> = input.iter().filter(|r| r[i] == UNBOUND || r[i] == gid).cloned().collect();
+                    if rows.is_empty() { continue }
+                    let Some(g) = view(gid) else { continue };
+                    for mut r in self.with_graph(g, || self.eval(inner, rows)) {
+                        if r[i] == UNBOUND { r[i] = gid } else if r[i] != gid { continue }
+                        out.push(r);
+                    }
+                }
+                out
+            }
         }
     }
 
@@ -608,19 +711,21 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             });
             return if all { rows } else { Vec::new() };
         }
-        let bgp = bgp::Bgp { snap: self.snap, w };
         let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
         let flat: Vec<TermId> = rows.concat();
-        let out = if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(bgp::no_repeated_var) && bgp::cyclic(&pats) {
-            let mut out = bgp.leapfrog(&pats, &flat, self.variable_order(&pats));
-            if !filters.is_empty() { let all: HashSet<usize> = (0..w).collect(); self.apply_filters(&mut out, w, filters, &all, &mut vec![false; filters.len()]) }
-            out
-        } else {
-            let mut applied = vec![false; filters.len()];
-            let mut post = |rows: &mut Vec<TermId>, bound: &HashSet<usize>| self.apply_filters(rows, w, filters, bound, &mut applied);
-            if let Some(order) = self.planned_order(&pats, &rows) { bgp.eval_order(&pats, &order, flat, &mut post) }
-            else { bgp.eval_greedy(&pats, flat, &mut post) }
-        };
+        let out = on_data!(self, |g| {
+            let bgp = bgp::Bgp { snap: g, w };
+            if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(bgp::no_repeated_var) && bgp::cyclic(&pats) {
+                let mut out = bgp.leapfrog(&pats, &flat, self.variable_order(&pats));
+                if !filters.is_empty() { let all: HashSet<usize> = (0..w).collect(); self.apply_filters(&mut out, w, filters, &all, &mut vec![false; filters.len()]) }
+                out
+            } else {
+                let mut applied = vec![false; filters.len()];
+                let mut post = |rows: &mut Vec<TermId>, bound: &HashSet<usize>| self.apply_filters(rows, w, filters, bound, &mut applied);
+                if let Some(order) = self.planned_order(&pats, &rows) { bgp.eval_order(&pats, &order, flat, &mut post) }
+                else { bgp.eval_greedy(&pats, flat, &mut post) }
+            }
+        });
         out.chunks_exact(w).map(<[TermId]>::to_vec).collect()
     }
 
@@ -645,7 +750,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                     let NamedNodePattern::NamedNode(p) = &t.predicate else { return false };
                     let Some(pid) = self.lookup(&p.clone().into()) else { return true }; // no triples at all
                     let first_literal = TermId(3 << 60);
-                    match self.snap.seek(Perm::Pos, &[pid], first_literal) {
+                    match on_data!(self, |g| g.seek(Perm::Pos, &[pid], first_literal)) {
                         Ok(None) => {}
                         _ => return false,
                     }
@@ -717,6 +822,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     /// Leapfrog variable order from the optimizer's cost model (task #5), when statistics are available.
     fn variable_order(&self, pats: &[[Slot; 3]]) -> Option<Vec<usize>> {
+        if self.data.get().is_some() { return None }
         let (stats, _) = self.stats?;
         if pats.len() > opt::planner::MAX_RUNTIME_DP_PATTERNS { return None; }
         let conv = |s: &Slot| match *s { Slot::Const(c) => opt::plan::Slot::Const(c.unwrap()), Slot::Var(v) => opt::plan::Slot::Var(v as u32) };
@@ -728,6 +834,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     /// Pattern order from the cost-based planner: leaves of its join tree, left to right. Used for top-level BGPs
     /// (a single all-unbound input row); nested BGPs with bound inputs keep the greedy order.
     fn planned_order(&self, pats: &[[Slot; 3]], rows: &[Row]) -> Option<Vec<usize>> {
+        if self.data.get().is_some() { return None }
         let (stats, dynsnap) = self.stats?;
         if pats.len() < 2 || rows.len() != 1 || rows[0].iter().any(|&x| x != UNBOUND) { return None }
         // Explicit diagnostic only; normal requests do not acquire clocks or emit output.
@@ -838,7 +945,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             }
         };
         let Some(idx) = idx else { return !self.eval(p, vec![r.clone()]).is_empty() };
-        let key = (slot, idx.iter().map(|&i| r[i]).collect::<Vec<_>>());
+        let key = (slot, self.graph_token(), idx.iter().map(|&i| r[i]).collect::<Vec<_>>());
         if let Some(&b) = self.exists_memo.borrow().get(&key) { return b }
         let b = !self.eval(p, vec![r.clone()]).is_empty();
         let mut m = self.exists_memo.borrow_mut();
@@ -946,7 +1053,12 @@ fn certainly_bound(p: &GraphPattern) -> HashSet<String> {
         GraphPattern::LeftJoin { left, .. } | GraphPattern::Minus { left, .. } => certainly_bound(left),
         GraphPattern::Filter { inner, .. } | GraphPattern::Extend { inner, .. } | GraphPattern::OrderBy { inner, .. }
         | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. }
-        | GraphPattern::Graph { inner, .. } | GraphPattern::Service { inner, .. } => certainly_bound(inner),
+        | GraphPattern::Service { inner, .. } => certainly_bound(inner),
+        GraphPattern::Graph { name, inner } => {
+            let mut b = certainly_bound(inner);
+            if let NamedNodePattern::Variable(v) = name { b.insert(v.as_str().to_string()); }
+            b
+        }
         GraphPattern::Project { inner, variables } => { let b = certainly_bound(inner); variables.iter().map(|v| v.as_str().to_string()).filter(|v| b.contains(v)).collect() }
         // Group keys certainly bound inside, plus the aggregate output variables: those are fresh names set by the
         // aggregation itself, so no outer solution can supply a value for them.
@@ -1008,7 +1120,11 @@ fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
         }
         GraphPattern::Values { variables, .. } => for v in variables { add(v.as_str().to_string()) },
         GraphPattern::OrderBy { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner }
-        | GraphPattern::Slice { inner, .. } | GraphPattern::Graph { inner, .. } | GraphPattern::Service { inner, .. } => walk_vars(inner, out),
+        | GraphPattern::Slice { inner, .. } | GraphPattern::Service { inner, .. } => walk_vars(inner, out),
+        GraphPattern::Graph { name, inner } => {
+            if let NamedNodePattern::Variable(v) = name { add(v.as_str().to_string()) }
+            walk_vars(inner, out)
+        }
         GraphPattern::Project { inner, variables } => {
             walk_vars(inner, out);
             for v in variables { let s = v.as_str().to_string(); if !out.contains(&s) { out.push(s) } }
@@ -1065,7 +1181,7 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                 if delete.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph))
                     || insert.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph)) { return Err(unsupported("named graphs")) }
                 let q = Query::Select { dataset: None, pattern: (**pattern).clone(), base_iri: None };
-                let QueryResult::Solutions { vars, rows } = run_query(snap, &q, &Options::default())? else { unreachable!() };
+                let QueryResult::Solutions { vars, rows } = run_query(snap, None, &q, &Options::default())? else { unreachable!() };
                 let col: HashMap<&str, usize> = vars.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
                 for (n, row) in rows.iter().enumerate() {
                     let var = |v: &Variable| col.get(v.as_str()).and_then(|&i| row[i].clone());

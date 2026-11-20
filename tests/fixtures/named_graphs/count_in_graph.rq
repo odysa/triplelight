@@ -1,0 +1,2 @@
+PREFIX : <http://ex/>
+SELECT (COUNT(*) AS ?n) { GRAPH :g2 { ?s ?p ?o } }

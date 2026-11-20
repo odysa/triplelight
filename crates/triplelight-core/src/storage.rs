@@ -51,3 +51,17 @@ pub trait Snapshot: Dictionary + Send + Sync {
     fn matching_rows(&self, _perm: Perm, _prefix: &[TermId]) -> Option<&[[TermId; 3]]> { None }
 }
 
+
+/// An RDF dataset read view: the default graph plus a catalog of named graphs, all sharing one dictionary and one
+/// consistent snapshot (provisional query-side contract for named graphs, task #36).
+///
+/// An absent graph (`graph` returns `Ok(None)`) differs from an empty one (`Ok(Some(view))` with no triples); the
+/// catalog lists every named graph, empty ones included. Graph names are dictionary IDs of IRIs.
+pub trait DatasetView: Send + Sync {
+    /// The stored default graph (distinct from every named graph).
+    fn default_graph(&self) -> &dyn Snapshot;
+    /// The named graph `name`, or `None` if the catalog does not contain it.
+    fn graph(&self, name: TermId) -> Result<Option<&dyn Snapshot>, StorageError>;
+    /// Every named graph in the catalog, in ascending ID order, empty graphs included.
+    fn graph_names(&self) -> Result<Vec<TermId>, StorageError>;
+}
