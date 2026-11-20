@@ -1,0 +1,122 @@
+{
+  "complete": true,
+  "registered_auxiliary_files_verified": 353,
+  "response_files_verified": 60,
+  "counts": {
+    "strict": 42,
+    "count": 42,
+    "value": 59
+  },
+  "value_gate_failures": [
+    {
+      "query": "m000_p08_q5.rq",
+      "template": 5,
+      "mix": 0,
+      "scored": false,
+      "actual_rows": 0,
+      "reference_rows": 25
+    }
+  ],
+  "q5_reference_rows": [
+    {
+      "query": "m000_p05_q5.rq",
+      "template": 5,
+      "mix": 0,
+      "scored": false,
+      "actual_rows": 0,
+      "reference_rows": 0
+    },
+    {
+      "query": "m000_p06_q5.rq",
+      "template": 5,
+      "mix": 0,
+      "scored": false,
+      "actual_rows": 0,
+      "reference_rows": 0
+    },
+    {
+      "query": "m000_p08_q5.rq",
+      "template": 5,
+      "mix": 0,
+      "scored": false,
+      "actual_rows": 0,
+      "reference_rows": 25
+    },
+    {
+      "query": "m001_p05_q5.rq",
+      "template": 5,
+      "mix": 1,
+      "scored": true,
+      "actual_rows": 0,
+      "reference_rows": 0
+    },
+    {
+      "query": "m001_p06_q5.rq",
+      "template": 5,
+      "mix": 1,
+      "scored": true,
+      "actual_rows": 0,
+      "reference_rows": 0
+    },
+    {
+      "query": "m001_p08_q5.rq",
+      "template": 5,
+      "mix": 1,
+      "scored": true,
+      "actual_rows": 0,
+      "reference_rows": 0
+    },
+    {
+      "query": "m002_p05_q5.rq",
+      "template": 5,
+      "mix": 2,
+      "scored": true,
+      "actual_rows": 0,
+      "reference_rows": 0
+    },
+    {
+      "query": "m002_p06_q5.rq",
+      "template": 5,
+      "mix": 2,
+      "scored": true,
+      "actual_rows": 0,
+      "reference_rows": 0
+    },
+    {
+      "query": "m002_p08_q5.rq",
+      "template": 5,
+      "mix": 2,
+      "scored": true,
+      "actual_rows": 0,
+      "reference_rows": 0
+    },
+    {
+      "query": "m003_p05_q5.rq",
+      "template": 5,
+      "mix": 3,
+      "scored": true,
+      "actual_rows": 0,
+      "reference_rows": 0
+    },
+    {
+      "query": "m003_p06_q5.rq",
+      "template": 5,
+      "mix": 3,
+      "scored": true,
+      "actual_rows": 0,
+      "reference_rows": 0
+    },
+    {
+      "query": "m003_p08_q5.rq",
+      "template": 5,
+      "mix": 3,
+      "scored": true,
+      "actual_rows": 0,
+      "reference_rows": 0
+    }
+  ],
+  "all_ranking_totals_null": true,
+  "container_exit_0_no_oom": true,
+  "no_original_import_receipts": true,
+  "scope": "retrospective copied-store untimed correctness screen, not a performance comparison; current store equality beyond the frozen query set unproved"
+}
