@@ -114,33 +114,42 @@ impl TermArena {
     }
     /// Stores a term under `id`. `false` (and no change) if that ID or that term is already stored.
     fn insert(&mut self, id: TermId, term: oxrdf::TermRef<'_>) -> bool {
-        let key = parts(term);
-        let (kind, value, aux) = key;
-        let len = |s: &str| u32::try_from(s.len()).expect("RDF term component longer than 4 GiB");
-        let entry = ArenaEntry { start: self.text.len() as u64, len: len(value), aux_len: len(aux), kind };
+        let key @ (_, value, aux) = parts(term);
         if is_inline(id) {
             if self.inline.contains_key(&id) {
                 return false;
             }
+            let entry = self.entry_at_end(key);
             self.text.push_str(value);
             self.text.push_str(aux);
             self.inline.insert(id, entry);
-        } else {
-            let index = direct_index(id);
-            let hash = self.hash(key);
-            if self.direct.get(index).is_some_and(|e| e.kind != 0) || self.find_hashed(key, hash).is_some() {
-                return false;
-            }
-            self.text.push_str(value);
-            self.text.push_str(aux);
-            if self.direct.len() <= index {
-                self.direct.resize(index + 1, ArenaEntry::default());
-            }
-            self.direct[index] = entry;
-            self.by_term.insert_unique(hash, (hash, id), |&(h, _)| h);
+            self.len += 1;
+            return true;
         }
-        self.len += 1;
+        let index = direct_index(id);
+        let hash = self.hash(key);
+        if self.direct.get(index).is_some_and(|e| e.kind != 0) || self.find_hashed(key, hash).is_some() {
+            return false;
+        }
+        self.push_direct(index, id, key, hash);
         true
+    }
+    /// The entry for `key` if its text is appended to the arena next.
+    fn entry_at_end(&self, (kind, value, aux): (u8, &str, &str)) -> ArenaEntry {
+        let len = |s: &str| u32::try_from(s.len()).expect("RDF term component longer than 4 GiB");
+        ArenaEntry { start: self.text.len() as u64, len: len(value), aux_len: len(aux), kind }
+    }
+    /// Stores a non-inline term in free slot `index`; the caller has already looked it up by `hash` and found it absent.
+    fn push_direct(&mut self, index: usize, id: TermId, key: (u8, &str, &str), hash: u64) {
+        let entry = self.entry_at_end(key);
+        self.text.push_str(key.1);
+        self.text.push_str(key.2);
+        if self.direct.len() <= index {
+            self.direct.resize(index + 1, ArenaEntry::default());
+        }
+        self.direct[index] = entry;
+        self.by_term.insert_unique(hash, (hash, id), |&(h, _)| h);
+        self.len += 1;
     }
     fn get(&self, id: TermId) -> Option<oxrdf::TermRef<'_>> {
         let (kind, value, aux) = self.entry_parts(self.entry(id)?);
@@ -403,13 +412,20 @@ impl MemorySnapshot {
         Ok(snapshot)
     }
     fn intern(&mut self, term: oxrdf::TermRef<'_>) -> TermId {
-        if let Some(id) = self.arena.find(term) {
+        if let Some(id) = inline_ref(term) {
+            self.arena.insert(id, term); // no-op if already stored
+            return id;
+        }
+        // One hash per term: the same hash serves the lookup and, for a new term, the insertion.
+        let key = parts(term);
+        let hash = self.arena.hash(key);
+        if let Some(id) = self.arena.find_hashed(key, hash) {
             return id;
         }
         // Non-inline IDs are dense: the next one is the next arena slot.
-        let id = inline_ref(term).unwrap_or_else(|| TermId((tag_of(parts(term).0) << 60) | self.arena.direct.len() as u64));
-        let inserted = self.arena.insert(id, term);
-        debug_assert!(inserted);
+        let index = self.arena.direct.len();
+        let id = TermId((tag_of(key.0) << 60) | index as u64);
+        self.arena.push_direct(index, id, key, hash);
         id
     }
     /// Every stored term with its ID, in ascending ID order (for snapshot and dictionary writers).
