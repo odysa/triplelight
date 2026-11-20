@@ -126,8 +126,9 @@ int32_t tl_stats_ready(const tl_db *db);
  *   literals); a null struct is an unbound cell. A zero-variable SELECT yields zero-column batches whose length is
  *   the solution count.
  * - Batches hold at most 8192 solutions; this bounds rows per batch, not bytes.
- * - End of stream: get_next returns 0 with out->release == NULL. Errors: nonzero errno; get_last_error is valid
- *   until the next call on the stream or its release.
+ * - End of stream: get_next returns 0 and marks the output ArrowArray released (its release callback is NULL;
+ *   the output pointer itself is not). Errors: nonzero errno; get_last_error is valid until the next call on the
+ *   stream or its release.
  * - Single consumer: pulls must be serialized. The stream owns its snapshot and stays valid after tl_close; each
  *   returned batch and schema is independently owned and stays valid after the stream is released.
  * - ASK and CONSTRUCT return TL_ERR_UNSUPPORTED. The query's term IDs are materialized before the first batch. */
