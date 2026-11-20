@@ -10,6 +10,13 @@ use std::collections::HashMap;
 use std::ffi::c_char;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
+#[doc(hidden)]
+pub mod arrow;
+#[doc(hidden)]
+pub mod export;
+pub use arrow::BATCH_ROWS;
+use arrow_array::ffi_stream::FFI_ArrowArrayStream;
+
 use triplelight::embedded::{Database, DatabaseError, ReadSnapshot};
 use triplelight::exec::{IdSolutions, QueryResult, UNBOUND};
 use triplelight::model::TermId;
@@ -283,6 +290,26 @@ pub unsafe extern "C" fn tl_query(db: *const TlDb, sparql: *const c_char, len: u
             other => build(other)?,
         };
         out!(out, Box::into_raw(r));
+        Ok(())
+    }) }
+}
+
+/// Runs a SELECT query and returns its solutions as an Arrow C Stream written into caller-allocated `*out`
+/// (see `struct ArrowArrayStream` in the header). On failure `*out` is left untouched. ASK and CONSTRUCT are
+/// `TL_ERR_UNSUPPORTED`. The stream owns its snapshot and stays valid after `tl_close`; batches it returns are
+/// independently owned and stay valid after the stream is released. Pulls must be serialized by the consumer.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_query_arrow(db: *const TlDb, sparql: *const c_char, len: usize, out: *mut FFI_ArrowArrayStream, err: *mut *mut TlError) -> i32 {
+    unsafe { guard(err, || {
+        if out.is_null() { return Err(invalid("null output pointer")) }
+        let (d, q) = (handle(db)?, text(sparql, len)?);
+        let snap = d.read();
+        let ids = match snap.query_ids(q).map_err(db_error)? {
+            QueryResult::Ids(ids) => ids,
+            _ => return Err(TlError { kind: TL_ERR_UNSUPPORTED, message: "Arrow output supports SELECT only".into() }),
+        };
+        let reader = arrow::IdBatchReader::new(snap, ids);
+        export::export(Box::new(reader), out);
         Ok(())
     }) }
 }

@@ -12,6 +12,8 @@
     <maven.compiler.release>25</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>5.13.4</junit.version>
+    <!-- Test-only consumer of the Arrow C Stream (tl_query_arrow); the binding itself has no Arrow dependency. -->
+    <arrow.version>19.0.0</arrow.version>
     <!-- Override with -Dtriplelight.library=/path/to/libtriplelight_c.so to test against another build. -->
     <triplelight.library>${project.basedir}/../c/target/release/${native.lib}</triplelight.library>
   </properties>
@@ -21,6 +23,18 @@
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.arrow</groupId>
+      <artifactId>arrow-c-data</artifactId>
+      <version>${arrow.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.arrow</groupId>
+      <artifactId>arrow-memory-unsafe</artifactId>
+      <version>${arrow.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -38,7 +52,7 @@
         <version>3.5.3</version>
         <configuration>
           <!-- The native library is built from ../c; FFM downcalls need native access enabled. -->
-          <argLine>--enable-native-access=ALL-UNNAMED -Dtriplelight.library=${triplelight.library}</argLine>
+          <argLine>--enable-native-access=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dtriplelight.library=${triplelight.library}</argLine>
         </configuration>
       </plugin>
     </plugins>
