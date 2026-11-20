@@ -35,12 +35,7 @@ fn number(r: &mut impl Read) -> io::Result<u64> {
 fn write_dictionary(source: &MemorySnapshot, path: &Path) -> io::Result<()> {
     let mut out = BufWriter::new(File::create(path)?);
     out.write_all(b"RDFDIC01")?;
-    let mut entries: Vec<_> = source
-        .dictionary
-        .iter()
-        .map(|(term, id)| (id, term))
-        .collect();
-    entries.sort_unstable_by_key(|(id, _)| **id);
+    let entries = source.terms();
     out.write_all(&(entries.len() as u64).to_le_bytes())?;
     for (id, term) in entries {
         let text = term.to_string();
