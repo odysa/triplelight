@@ -232,7 +232,9 @@ passes on a shared machine, not a general state-of-the-art claim. Evidence:
 
 A separate untimed Virtuoso100M correctness screen completed all 60 requests, passing 42 primary,
 42 COUNT-compatible and 59 value-compatible checks. One warmup q5 returned 0 rows against 25 reference rows;
-the other eleven q5 references were empty. The frozen eligibility rule includes warmups, so no Virtuoso total
+the other eleven q5 references were empty. Of the 18 primary/COUNT failures, 17 are output-datatype failures
+(16 q6 and `m000_p04_q4` lack the required `xsd:float` type); all 17 pass the value and ordering checks.
+The remaining failure is the q5 bag mismatch. The frozen eligibility rule includes warmups, so no Virtuoso total
 or speed ratio is added. Original import receipts are also missing, and this four-thread screen is separate
 from the historical performance cohort. [Report and portable raw evidence](virtuoso100-qualification-v1/README.md).
 

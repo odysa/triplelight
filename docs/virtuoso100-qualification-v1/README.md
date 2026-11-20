@@ -8,6 +8,12 @@ The registered 60-request attempt completed, but it does **not qualify for a com
 | COUNT-compatible gate | 42 | 60 |
 | Value-compatible gate | 59 | 60 |
 
+The 18 primary/COUNT failures have two causes: **17 output-datatype failures** (16 q6 instances and
+`m000_p04_q4`) report `Computed float output must have xsd:float datatype`; all 17 pass the registered
+value and ordering checks. The remaining failure is the q5 result-bag mismatch, 0 versus 25 rows.
+Thus 42/60 primary does not mean 18 numerically incompatible result sets. The type failures remain
+failures of their original gates, and the one value mismatch still prevents complete-workload eligibility.
+
 The only value-compatible failure is `m000_p08_q5.rq`: this candidate returns **0 rows** against the frozen Jena reference's **25 rows**. It occurs in warmup mix 0. The registered eligibility policy requires all 60 requests, including warmups, so dropping that request or reporting only the 45 later requests would change the policy after seeing the answer. Every overall ranking total remains null. No request was rerun or rewritten.
 
 The other eleven q5 instances have empty reference answers and empty candidate answers. Their passing results do not demonstrate correct handling of the nonempty q5 case. The mismatch is consistent with the previously investigated projected-unbound-variable pattern, but this screen does not independently isolate the cause or establish a general Virtuoso defect.
