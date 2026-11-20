@@ -60,7 +60,7 @@ fn union_distinct_group_ask() {
 #[test]
 fn leapfrog_matches_bind_join() {
     let q = "SELECT ?a ?b ?c WHERE { ?a <http://ex/knows> ?b . ?b <http://ex/knows> ?c . ?c <http://ex/knows> ?a }";
-    let run = |wcoj| match triplelight::exec::query_with(&store(), q, &triplelight::exec::Options { stats: None, wcoj, raw_ids: false }).unwrap() {
+    let run = |wcoj| match triplelight::exec::query_with(&store(), q, &triplelight::exec::Options { stats: None, wcoj, raw_ids: false, general_group: false }).unwrap() {
         QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.iter().map(|r| format!("{r:?}")).collect(); v.sort(); v }
         _ => unreachable!(),
     };
@@ -240,9 +240,11 @@ fn fast_group_matches_general_group() {
 <http://ex/j> <http://ex/g> "x" .
 "#;
     let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
-    let run = |q: &str| -> Vec<String> {
-        match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| format!("{r:?}")).collect(), r => panic!("{r:?}") }
+    let run_with = |q: &str, general_group: bool| -> Vec<String> {
+        let opts = triplelight::exec::Options { general_group, ..Default::default() };
+        match triplelight::exec::query_with(&s, q, &opts).unwrap() { QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| format!("{r:?}")).collect(), r => panic!("{r:?}") }
     };
+    let run = |q: &str| run_with(q, false);
     let queries = [
         "SELECT ?g (COUNT(*) AS ?n) (COUNT(?v) AS ?c) (SUM(?v) AS ?s) (AVG(?v) AS ?a) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } } GROUP BY ?g",
         "SELECT ?g (MIN(?v) AS ?lo) (MAX(?v) AS ?hi) (SAMPLE(?v) AS ?sm) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } } GROUP BY ?g",
@@ -251,10 +253,7 @@ fn fast_group_matches_general_group() {
         "SELECT ?g (AVG(?v) AS ?a) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } } GROUP BY ?g HAVING (COUNT(?v) > 1)",
     ];
     let fast: Vec<_> = queries.iter().map(|q| run(q)).collect();
-    // SAFETY: test-local toggle; other tests merely take the (equivalent) general path while it is set.
-    unsafe { std::env::set_var("TRIPLELIGHT_LEGACY_GROUP", "1") };
-    let legacy: Vec<_> = queries.iter().map(|q| run(q)).collect();
-    unsafe { std::env::remove_var("TRIPLELIGHT_LEGACY_GROUP") };
+    let legacy: Vec<_> = queries.iter().map(|q| run_with(q, true)).collect();
     for ((q, f), l) in queries.iter().zip(&fast).zip(&legacy) { assert_eq!(f, l, "{q}"); }
 }
 
@@ -305,8 +304,9 @@ fn aggregate_errors_poison_like_jena() {
 <urn:f> <urn:v> "3"^^<http://www.w3.org/2001/XMLSchema#integer> .
 "#;
     let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
-    let rows = |q: &str| -> Vec<Vec<String>> {
-        match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => {
+    let rows = |q: &str, general_group: bool| -> Vec<Vec<String>> {
+        let opts = triplelight::exec::Options { general_group, ..Default::default() };
+        match triplelight::exec::query_with(&s, q, &opts).unwrap() { QueryResult::Solutions { rows, .. } => {
             let mut v: Vec<Vec<String>> = rows.into_iter().map(|r| r.into_iter().map(|t| t.map_or("-".into(), |t| t.to_string())).collect()).collect(); v.sort(); v }
             r => panic!("{r:?}") }
     };
@@ -314,19 +314,16 @@ fn aggregate_errors_poison_like_jena() {
     let q1 = "SELECT ?g (SUM(?v) AS ?s) (COUNT(?v) AS ?c) (MIN(?v) AS ?mn) (MAX(?v) AS ?mx) (AVG(?v) AS ?a) WHERE { ?x <urn:g> ?g OPTIONAL { ?x <urn:v> ?v } } GROUP BY ?g";
     let q2 = "SELECT ?g (SUM(?v*2) AS ?s) (COUNT(?v*2) AS ?c) (MIN(?v*2) AS ?mn) (GROUP_CONCAT(?v*2) AS ?gc) WHERE { ?x <urn:g> ?g OPTIONAL { ?x <urn:v> ?v } } GROUP BY ?g";
     for legacy in [false, true] {
-        // SAFETY: test-local toggle; other tests just take the equivalent general path while set.
-        if legacy { unsafe { std::env::set_var("TRIPLELIGHT_LEGACY_GROUP", "1") } }
-        assert_eq!(rows(q1), vec![
+        assert_eq!(rows(q1, legacy), vec![
             vec!["\"x\"".into(), "-".into(), int(2), "-".into(), "-".into(), "-".into()],
             vec!["\"y\"".into(), "-".into(), int(1), "-".into(), "-".into(), "-".into()],
             vec!["\"z\"".into(), int(3), int(1), int(3), int(3), "\"3.0\"^^<http://www.w3.org/2001/XMLSchema#decimal>".into()],
         ], "legacy={legacy}");
-        assert_eq!(rows(q2), vec![
+        assert_eq!(rows(q2, legacy), vec![
             vec!["\"x\"".into(), "-".into(), int(1), "-".into(), "-".into()],
             vec!["\"y\"".into(), "-".into(), int(1), "-".into(), "-".into()],
             vec!["\"z\"".into(), int(6), int(1), int(6), "\"6\"".into()],
         ], "legacy={legacy}");
-        if legacy { unsafe { std::env::remove_var("TRIPLELIGHT_LEGACY_GROUP") } }
     }
 }
 

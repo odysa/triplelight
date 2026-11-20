@@ -108,8 +108,13 @@ pub struct Options<'a> {
     pub wcoj: bool,
     /// Return SELECT results undecoded (`QueryResult::Ids`).
     pub raw_ids: bool,
+    /// Disable the ID hash-aggregation fast path for GROUP BY (`try_fast_group`), so groups that would take it use
+    /// the general per-group implementation. Index count pushdown (`try_count_group`) still runs first, exactly as
+    /// with the former process-global `TRIPLELIGHT_LEGACY_GROUP` environment variable this replaces. Answers are
+    /// identical; this exists for differential verification (tests, release checks, benchmark controls).
+    pub general_group: bool,
 }
-impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false } } }
+impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false } } }
 
 pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     catching_storage(|| run(snap, None, text, opts))
@@ -192,6 +197,7 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     }
     ctx.base = match q { Query::Select { base_iri, .. } | Query::Ask { base_iri, .. } | Query::Construct { base_iri, .. } | Query::Describe { base_iri, .. } => base_iri.clone() };
     ctx.wcoj = opts.wcoj;
+    ctx.general_group = opts.general_group;
     let stats = opts.stats;
     ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
     match q {
@@ -291,6 +297,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     scratch: RefCell<(HashMap<Term, TermId>, Vec<Term>)>,
     stats: Option<(&'a Stats, &'a dyn Snapshot)>,
     wcoj: bool,
+    /// `Options::general_group`.
+    general_group: bool,
     /// LIMIT (+OFFSET) of a Slice directly above the next ORDER BY (through at most a Project): lets ORDER BY keep
     /// only the first `k` rows (stable top-k) instead of sorting everything. Taken by that ORDER BY.
     order_limit: std::cell::Cell<Option<usize>>,
@@ -314,7 +322,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
+        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, general_group: false, order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -603,7 +611,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         if let Some(rows) = self.try_count_group(inner, keys, aggs, &input) { return rows; }
         let rows = self.eval(inner, input);
         let kidx: Vec<usize> = keys.iter().map(|v| self.var(v)).collect();
-        if std::env::var_os("TRIPLELIGHT_LEGACY_GROUP").is_none()
+        if !self.general_group
             && let Some(out) = self.try_fast_group(&rows, &kidx, aggs) { return out; }
         let mut groups: Vec<(Vec<TermId>, Vec<Row>)> = Vec::new();
         let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
