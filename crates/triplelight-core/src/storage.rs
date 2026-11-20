@@ -33,6 +33,10 @@ pub trait Snapshot: Dictionary + Send + Sync {
         perm: Perm,
         prefix: &[TermId],
     ) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a>;
+    /// Full ordered scan intended for one-pass statistics; backends may bypass their query cache.
+    fn scan_for_stats(&self) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + '_> {
+        self.scan(Perm::Spo, &[])
+    }
     /// Exact number of triples matching the prefix (from block index / aggregated counts, no full scan).
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError>;
     /// Seek support for leapfrog joins: smallest value >= `target` in key position `prefix.len()` under `prefix`.
