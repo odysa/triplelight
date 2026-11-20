@@ -230,6 +230,12 @@ lead there. QLever uses about a tenth of TripleLight's memory. TripleLight's tim
 passes on a shared machine, not a general state-of-the-art claim. Evidence:
 [matched-bi100-v1](https://github.com/odysa/triplelight/tree/13123a2/docs/matched-bi100-v1).
 
+A separate untimed Virtuoso100M correctness screen completed all 60 requests, passing 42 primary,
+42 COUNT-compatible and 59 value-compatible checks. One warmup q5 returned 0 rows against 25 reference rows;
+the other eleven q5 references were empty. The frozen eligibility rule includes warmups, so no Virtuoso total
+or speed ratio is added. Original import receipts are also missing, and this four-thread screen is separate
+from the historical performance cohort. [Report and portable raw evidence](virtuoso100-qualification-v1/README.md).
+
 ## Aggregate queries: 72 COUNT / GROUP BY / DISTINCT queries on LUBM-100 and WatDiv (four engines, one session)
 
 A curated suite of 72 aggregate queries (68 distinct texts) over LUBM-100 (13.4M triples) and WatDiv (10.9M
