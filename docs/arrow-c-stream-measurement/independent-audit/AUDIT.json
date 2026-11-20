@@ -1,0 +1,238 @@
+{
+  "packet_files_verified": 237,
+  "qualification_files_rehashed": 92,
+  "qualification_omitted_files": [
+    "bin/arrow_probe"
+  ],
+  "phases": 15,
+  "observations_checked": 120,
+  "canonical_q010_order_checks": 15,
+  "summary_matches": true,
+  "MemTotal_kB": [
+    16414236
+  ],
+  "clone_paths_absent": 15,
+  "base_store_tree_independently_rehashed": false,
+  "live_container_inventory_checked": false,
+  "engine_executed": false,
+  "packet_diff_is_formatted_summary": true,
+  "exact_raw_diff_missing_from_v1": true,
+  "summary": [
+    {
+      "cell": "lubm1000-q9",
+      "rows": 44190,
+      "arrow": {
+        "median_ms": 11102.381,
+        "min_ms": 10898.641,
+        "max_ms": 12275.782,
+        "obs_ms": [
+          10925.185,
+          11897.495,
+          10898.641,
+          12275.782,
+          11102.381
+        ]
+      },
+      "view": {
+        "median_ms": 11798.133,
+        "min_ms": 10861.742,
+        "max_ms": 12269.666,
+        "obs_ms": [
+          12269.666,
+          11041.146,
+          11798.133,
+          10861.742,
+          11841.018
+        ]
+      },
+      "ids": {
+        "median_ms": 703.564,
+        "min_ms": 650.437,
+        "max_ms": 704.785,
+        "obs_ms": [
+          702.889,
+          650.437,
+          703.564,
+          704.554,
+          704.785
+        ]
+      },
+      "convert": {
+        "median_ms": 12298.614,
+        "min_ms": 12265.669,
+        "max_ms": 12525.068,
+        "obs_ms": [
+          12278.551,
+          12265.669,
+          12525.068,
+          12377.413,
+          12298.614
+        ]
+      },
+      "convert_us_per_row_median": 278.3121520706042,
+      "arrow_us_per_row_median": 251.2419325639285,
+      "view_us_per_row_median": 266.98649015614393,
+      "arrow_vs_view_ranges": "ranges overlap",
+      "positions": {
+        "arrow": [
+          1,
+          2,
+          1,
+          2,
+          1
+        ],
+        "view": [
+          2,
+          1,
+          2,
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "cell": "lubm1000-q14",
+      "rows": 7924765,
+      "arrow": {
+        "median_ms": 13809.231,
+        "min_ms": 13533.267,
+        "max_ms": 14848.71,
+        "obs_ms": [
+          13587.379,
+          14190.405,
+          13533.267,
+          14848.71,
+          13809.231
+        ]
+      },
+      "view": {
+        "median_ms": 13393.479,
+        "min_ms": 12115.825,
+        "max_ms": 14027.332,
+        "obs_ms": [
+          13393.479,
+          12115.825,
+          14027.332,
+          12556.511,
+          13718.521
+        ]
+      },
+      "ids": {
+        "median_ms": 1237.274,
+        "min_ms": 1139.725,
+        "max_ms": 1292.842,
+        "obs_ms": [
+          1237.274,
+          1139.725,
+          1227.858,
+          1292.842,
+          1276.332
+        ]
+      },
+      "convert": {
+        "median_ms": 15381.628,
+        "min_ms": 14608.138,
+        "max_ms": 15644.816,
+        "obs_ms": [
+          14927.826,
+          14608.138,
+          15385.497,
+          15381.628,
+          15644.816
+        ]
+      },
+      "convert_us_per_row_median": 1.9409569873680796,
+      "arrow_us_per_row_median": 1.7425413876625995,
+      "view_us_per_row_median": 1.6900790118066593,
+      "arrow_vs_view_ranges": "ranges overlap",
+      "positions": {
+        "arrow": [
+          1,
+          2,
+          1,
+          2,
+          1
+        ],
+        "view": [
+          2,
+          1,
+          2,
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "cell": "bsbm100-q010",
+      "rows": 5,
+      "arrow": {
+        "median_ms": 57.406,
+        "min_ms": 55.088,
+        "max_ms": 60.19,
+        "obs_ms": [
+          60.19,
+          57.406,
+          55.088,
+          56.493,
+          57.559
+        ]
+      },
+      "view": {
+        "median_ms": 55.514,
+        "min_ms": 54.325,
+        "max_ms": 61.88,
+        "obs_ms": [
+          61.88,
+          54.325,
+          56.52,
+          54.532,
+          55.514
+        ]
+      },
+      "ids": {
+        "median_ms": 56.624,
+        "min_ms": 53.966,
+        "max_ms": 76.249,
+        "obs_ms": [
+          76.249,
+          56.579,
+          53.966,
+          56.624,
+          57.026
+        ]
+      },
+      "convert": {
+        "median_ms": 0.064,
+        "min_ms": 0.058,
+        "max_ms": 0.136,
+        "obs_ms": [
+          0.136,
+          0.064,
+          0.08,
+          0.058,
+          0.062
+        ]
+      },
+      "convert_us_per_row_median": 12.8,
+      "arrow_us_per_row_median": 11481.2,
+      "view_us_per_row_median": 11102.8,
+      "arrow_vs_view_ranges": "ranges overlap",
+      "positions": {
+        "arrow": [
+          1,
+          2,
+          1,
+          2,
+          1
+        ],
+        "view": [
+          2,
+          1,
+          2,
+          1,
+          2
+        ]
+      }
+    }
+  ]
+}
