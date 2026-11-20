@@ -810,3 +810,24 @@ fn long_flat_paths_are_bounded() {
     assert_eq!(long, Some(triplelight::exec::QueryErrorKind::Syntax));
     assert!(short_ok);
 }
+
+#[test]
+fn construct_rows_scope_blank_nodes_and_skip_unbound_slots() {
+    // Template blank nodes are fresh per solution; a template triple with an unbound variable is skipped.
+    let q = "CONSTRUCT { ?x <http://ex/tag> _:t . ?x <http://ex/n> ?name } WHERE { ?x <http://ex/age> ?a OPTIONAL { ?x <http://ex/name> ?name } }";
+    let QueryResult::Graph(triples) = query(&store(), q).unwrap() else { panic!() };
+    let tags: Vec<_> = triples.iter().filter(|t| t.predicate.as_str() == "http://ex/tag").collect();
+    assert_eq!(tags.len(), 3, "one tag per solution (alice, bob, carol)");
+    let blanks: std::collections::HashSet<String> = tags.iter().map(|t| t.object.to_string()).collect();
+    assert_eq!(blanks.len(), 3, "a fresh blank node per solution");
+    // carol has no name: her ?name triple is skipped, alice's and bob's are kept.
+    assert_eq!(triples.iter().filter(|t| t.predicate.as_str() == "http://ex/n").count(), 2);
+    // Within one solution, repeated references to the same template blank node denote one node.
+    let q = "CONSTRUCT { ?x <http://ex/tag> _:t . _:t <http://ex/of> ?x } WHERE { ?x <http://ex/age> ?a }";
+    let QueryResult::Graph(triples) = query(&store(), q).unwrap() else { panic!() };
+    for t in triples.iter().filter(|t| t.predicate.as_str() == "http://ex/tag") {
+        let back: Vec<_> = triples.iter().filter(|u| u.predicate.as_str() == "http://ex/of" && u.subject.to_string() == t.object.to_string()).collect();
+        assert_eq!(back.len(), 1, "same _:t within a solution");
+        assert_eq!(back[0].object.to_string(), t.subject.to_string());
+    }
+}
