@@ -35,7 +35,7 @@ and cell (45 phases), rotation `[A-scan, B-reuse, B-scan]` shifted per repetitio
 - B-reuse statistics load (`load_ms`): 0.7 ms (LUBM, 62,472-byte file) and 2.9 ms (BSBM, 535,136-byte file).
 - B-scan: `scan_ms` 24.5 s / 19.3 s, `persist_ms` 7–8 ms median. B-scan readiness is 1.3–1.7% below A-scan; no
   cause is established, and this is not claimed as a speed-up.
-- First-query time shows no measurable change in 8 of 9 condition comparisons; Q2 B-scan is marginally lower.
+- First-query time shows no measurable change in 5 of the 6 B-versus-A comparisons; Q2 B-scan is marginally lower.
 - Peak memory is the container cgroup `memory.peak` for the whole process (open, statistics, query, close), not
   RSS; the q010 B-scan "higher" call is a 0.1 MiB crossing of A's maximum.
 
@@ -44,8 +44,9 @@ Full table with ranges and the residual (post-close) charge: [SUMMARY.txt](SUMMA
 ## Preparation cost (separate, untimed)
 
 Each B-reuse file was produced once by binary B scanning a fresh clone: LUBM-1000 25.4 s to ready (scan 24.5 s,
-persist 9.0 ms), BSBM-100M 20.1 s (scan 19.2 s, persist 14.0 ms). That is the cost any store pays on its first
-open after #36; it is not part of the B-reuse measurements.
+persist 9.0 ms), BSBM-100M 20.1 s (scan 19.2 s, persist 14.0 ms). These two untimed runs match the measured B-scan
+path on the same stores; other stores and circumstances will differ. Preparation is not part of the B-reuse
+measurements.
 
 ## Limitations
 
