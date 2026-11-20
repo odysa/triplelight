@@ -100,8 +100,11 @@ containers or a rehash of the large store.
 [packet-v1.tar.gz](packet-v1.tar.gz) is the audited packet. [packet-v2.tar.gz](packet-v2.tar.gz) keeps all 294 of its
 files byte-identical and adds `summarize-v2.py`, `SUMMARY-v2.json` (the corrected interval reconstruction, identical
 counters, timings and overlap flags) and `PACKAGING-NOTE.md`, with a regenerated `PACKET_FILES.json`. Verify both
-with [SHA256SUMS](SHA256SUMS). The audit's recomputed values (`INDEPENDENT_AUDIT.json`) and the
-script that produced them are in [independent-audit/](independent-audit/), as a record. The script was written to
-run inside the auditor's working copy of the packet and reads that review directory, so it is not a portable replay
-of the published archives. Compiled binaries and databases are not included; receipts keep their
+with [SHA256SUMS](SHA256SUMS). The audit's recomputed values are in
+[independent-audit/](independent-audit/README.md). `replay.py` there is a portable replay (Python 3.12+, standard
+library only): `python3 replay.py --packet packet-v1.tar.gz --out audit.json` verifies the archive's digest and all
+294 file hashes, recomputes the counter deltas, summaries, timing medians, cleanup and resource checks and overlap
+flags from the raw records, and reproduces `INDEPENDENT_AUDIT.json` byte for byte. It needs no network, live stores
+or containers. `independent_audit.py` is the auditor's original script, kept as a record; it runs only inside the
+auditor's working copy. Compiled binaries and databases are not included; receipts keep their
 original host paths.
