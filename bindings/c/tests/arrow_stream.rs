@@ -22,8 +22,11 @@ use triplelight_c::*;
 type Cell = Option<(String, String, Option<String>, Option<String>)>;
 
 fn db_with(nt: &str) -> *mut TlDb {
-    let dir = std::env::temp_dir().join(format!("tl-arrow-{}-{}", std::process::id(), nt.len()));
-    std::fs::create_dir_all(&dir).unwrap();
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("tl-arrow-{}-{n}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir(&dir).unwrap();
     let f = dir.join("data.nt");
     std::fs::write(&f, nt).unwrap();
     let mut db = ptr::null_mut();
@@ -172,11 +175,11 @@ fn empty_and_zero_column_results_keep_cardinality() {
     // No projected variables at all: the solution count must survive (one match, then ten matches).
     for (q, n) in [("SELECT * WHERE { <urn:s> <urn:v> <urn:iri> }", 1usize), ("SELECT * WHERE { <urn:s> <urn:v> [] }", 10)] {
         let (v1, r1) = via_view(db, q);
+        assert_eq!((v1.len(), r1.len()), (0, n), "view: {q}");
         let reader = stream(db, q).unwrap();
-        assert_eq!(reader.schema().fields().len(), v1.len(), "{q}");
-        let total: usize = reader.map(|b| b.unwrap().num_rows()).sum();
-        assert_eq!(total, r1.len(), "{q}");
-        if v1.is_empty() { assert_eq!(total, n, "{q}") }
+        assert_eq!(reader.schema().fields().len(), 0, "{q}");
+        let total: usize = reader.map(|b| { let b = b.unwrap(); assert_eq!(b.num_columns(), 0); b.num_rows() }).sum();
+        assert_eq!(total, n, "{q}");
     }
     unsafe { tl_close(db) }
 }
@@ -192,19 +195,28 @@ fn errors_lifetimes_and_release() {
         tl_error_free(err);
         for (q, rc) in [("ASK { ?s ?p ?o }", TL_ERR_UNSUPPORTED), ("CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }", TL_ERR_UNSUPPORTED), ("SELEKT", TL_ERR_SYNTAX)] {
             let mut s = FFI_ArrowArrayStream::empty();
+            raw(&mut s).private_data = 0x5eed as *mut std::ffi::c_void; // sentinel; release stays NULL so drop is a no-op
             let mut err = ptr::null_mut();
             assert_eq!(tl_query_arrow(db, q.as_ptr() as *const c_char, q.len(), &mut s, &mut err), rc, "{q}");
-            assert!(raw(&mut s).release.is_none(), "out untouched on failure");
+            let r = raw(&mut s);
+            assert!(r.release.is_none() && r.get_next.is_none() && r.private_data as usize == 0x5eed, "out untouched on failure");
             tl_error_free(err);
         }
-        // Stream and batches outlive the database handle; early release after partial consumption is fine.
-        let mut reader = stream(db, q).unwrap();
         tl_close(db);
-        let first = reader.next().unwrap().unwrap();
-        drop(reader); // early release after partial consumption
-        assert_eq!(first.num_rows(), 10, "batch stays valid after the stream and the database are gone");
-        let _ = cells_of(&first);
     }
+    // Stream and batches outlive the database handle; release with a batch still unread.
+    let mut nt = String::new();
+    let n = BATCH_ROWS + 100;
+    for i in 0..n { nt.push_str(&format!("<urn:r{i:06}> <urn:p> \"0{i}\"^^<http://www.w3.org/2001/XMLSchema#int> .\n")) }
+    let db = db_with(&nt);
+    let q = "SELECT ?s ?o WHERE { ?s <urn:p> ?o } ORDER BY ?s";
+    let (_, expected) = via_view(db, q);
+    let mut reader = stream(db, q).unwrap();
+    unsafe { tl_close(db) };
+    let first = reader.next().unwrap().unwrap();
+    assert_eq!(first.num_rows(), BATCH_ROWS, "a second batch is still unread");
+    drop(reader); // release the stream before reading its second batch
+    assert_eq!(cells_of(&first), expected[..BATCH_ROWS].to_vec(), "retained batch outlives stream and database");
 }
 
 #[test]

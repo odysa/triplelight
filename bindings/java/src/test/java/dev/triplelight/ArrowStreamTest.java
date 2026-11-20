@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,25 +27,27 @@ class ArrowStreamTest {
     static final String XSD = "http://www.w3.org/2001/XMLSchema#";
     static final long STREAM_BYTES = 5 * 8; // struct ArrowArrayStream: four callbacks and private_data
 
-    record Imported(List<String> names, List<String> rows, List<Integer> batches) {}
+    /** One cell; {@code UNBOUND} for an unbound cell, null datatype/language when absent. */
+    record Cell(boolean bound, String kind, String value, String datatype, String language) {}
+    static final Cell UNBOUND = new Cell(false, null, null, null, null);
 
-    static String cell(StructVector s, int i) {
-        if (s.isNull(i)) return "-";
-        String kind = new String(((VarCharVector) s.getChild("kind")).get(i), StandardCharsets.UTF_8);
-        String value = new String(((LargeVarCharVector) s.getChild("value")).get(i), StandardCharsets.UTF_8);
-        VarCharVector dt = (VarCharVector) s.getChild("datatype"), lang = (VarCharVector) s.getChild("language");
-        String out = kind + "|" + value;
-        if (!dt.isNull(i)) out += "|^" + new String(dt.get(i), StandardCharsets.UTF_8);
-        if (!lang.isNull(i)) out += "|@" + new String(lang.get(i), StandardCharsets.UTF_8);
-        return out;
+    record Imported(List<String> names, List<List<Cell>> rows, List<Integer> batches) {}
+
+    static String opt(VarCharVector v, int i) { return v.isNull(i) ? null : new String(v.get(i), StandardCharsets.UTF_8); }
+
+    static Cell cell(StructVector s, int i) {
+        if (s.isNull(i)) return UNBOUND;
+        return new Cell(true, opt((VarCharVector) s.getChild("kind"), i),
+                new String(((LargeVarCharVector) s.getChild("value")).get(i), StandardCharsets.UTF_8),
+                opt((VarCharVector) s.getChild("datatype"), i), opt((VarCharVector) s.getChild("language"), i));
     }
 
-    static String viewCell(Term t) {
+    static Cell viewCell(Term t) {
         return switch (t) {
-            case null -> "-";
-            case Term.Iri i -> "iri|" + i.value();
-            case Term.BlankNode b -> "bnode|" + b.value();
-            case Term.Literal l -> "literal|" + l.value() + "|^" + l.datatype() + (l.language().isEmpty() ? "" : "|@" + l.language());
+            case null -> UNBOUND;
+            case Term.Iri i -> new Cell(true, "iri", i.value(), null, null);
+            case Term.BlankNode b -> new Cell(true, "bnode", b.value(), null, null);
+            case Term.Literal l -> new Cell(true, "literal", l.value(), l.datatype(), l.language().isEmpty() ? null : l.language());
         };
     }
 
@@ -59,14 +62,15 @@ class ArrowStreamTest {
                     assertInstanceOf(ArrowType.Struct.class, f.getType(), f.getName());
                     names.add(f.getName());
                 }
-                List<String> rows = new ArrayList<>();
+                List<List<Cell>> rows = new ArrayList<>();
                 List<Integer> batches = new ArrayList<>();
                 while (reader.loadNextBatch()) {
                     batches.add(root.getRowCount());
+                    assertEquals(names.size(), root.getFieldVectors().size());
                     for (int r = 0; r < root.getRowCount(); r++) {
-                        String[] parts = new String[root.getFieldVectors().size()];
-                        for (int c = 0; c < parts.length; c++) parts[c] = cell((StructVector) root.getVector(c), r);
-                        rows.add(String.join(" ", parts));
+                        List<Cell> row = new ArrayList<>();
+                        for (int c = 0; c < names.size(); c++) row.add(cell((StructVector) root.getVector(c), r));
+                        rows.add(row);
                     }
                 }
                 return new Imported(names, rows, batches);
@@ -74,9 +78,9 @@ class ArrowStreamTest {
         }
     }
 
-    static List<String> viaView(Database db, String q) {
-        List<String> rows = new ArrayList<>();
-        for (Term[] row : db.query(q).rows()) rows.add(String.join(" ", Arrays.stream(row).map(ArrowStreamTest::viewCell).toList()));
+    static List<List<Cell>> viaView(Database db, String q) {
+        List<List<Cell>> rows = new ArrayList<>();
+        for (Term[] row : db.query(q).rows()) rows.add(Arrays.stream(row).map(ArrowStreamTest::viewCell).toList());
         return rows;
     }
 
@@ -84,24 +88,33 @@ class ArrowStreamTest {
     void typedTermsMatchView() throws Exception {
         try (Database db = Database.inMemory()) {
             db.update("INSERT DATA { <urn:a> <urn:p> <urn:iri> . <urn:a> <urn:p> \"urn:iri\" . <urn:a> <urn:p> \"\" ."
-                    + " <urn:a> <urn:p> \"hi\"@en . <urn:a> <urn:p> \"01\"^^<" + XSD + "int> . <urn:a> <urn:p> _:b }");
+                    + " <urn:a> <urn:p> \"hi\"@en . <urn:a> <urn:p> \"01\"^^<" + XSD + "int> . <urn:a> <urn:p> _:b ."
+                    + " <urn:a> <urn:p> \"a|b ^c @d - e\" }");
             String q = "SELECT ?o ?z ?len WHERE { <urn:a> <urn:p> ?o OPTIONAL { ?o <urn:none> ?z }"
                     + " BIND(IF(isLiteral(?o), STRLEN(STR(?o)), 0) AS ?len) } ORDER BY STR(?o)";
             Imported got = viaStream(db, q);
             assertEquals(db.query(q).variables(), got.names());
             assertEquals(viaView(db, q), got.rows());
-            assertEquals(6, got.rows().size());
+            assertEquals(7, got.rows().size());
+            assertTrue(got.rows().stream().anyMatch(r -> r.get(0).equals(new Cell(true, "literal", "a|b ^c @d - e", XSD + "string", null))
+                    && r.get(1).equals(UNBOUND)), "delimiter-bearing literal");
         }
     }
 
     @Test
     void batchBoundaries() throws Exception {
-        for (int n : new int[] {8191, 8192, 8193}) {
+        for (int n : new int[] {8191, 8192, 8193, 16387}) {
             try (Database db = Database.inMemory()) {
                 StringBuilder b = new StringBuilder("INSERT DATA {");
-                for (int i = 0; i < n; i++) b.append(" <urn:s").append(i).append("> <urn:p> \"").append(i).append("\"@en .");
+                for (int i = 0; i < n; i++) {
+                    // Mixed across the boundary: language-tagged, empty, noncanonical integers; every 5th row binds ?x.
+                    String o = switch (i % 7) { case 0 -> "\"t" + i + "\"@en"; case 3 -> "\"\""; default -> "\"0" + i + "\"^^<" + XSD + "int>"; };
+                    String s = String.format("<urn:r%06d>", i);
+                    b.append(' ').append(s).append(" <urn:p> ").append(o).append(" .");
+                    if (i % 5 == 0) b.append(' ').append(s).append(" <urn:q> <urn:x").append(i).append("> .");
+                }
                 db.update(b.append(" }").toString());
-                String q = "SELECT ?s ?o ?z WHERE { ?s <urn:p> ?o OPTIONAL { ?s <urn:none> ?z } } ORDER BY ?s";
+                String q = "SELECT ?s ?o ?x WHERE { ?s <urn:p> ?o OPTIONAL { ?s <urn:q> ?x } } ORDER BY ?s";
                 Imported got = viaStream(db, q);
                 assertEquals(viaView(db, q), got.rows(), "n=" + n);
                 int total = 0;
@@ -118,14 +131,19 @@ class ArrowStreamTest {
     @Test
     void zeroColumnsAndEmpty() throws Exception {
         try (Database db = Database.inMemory()) {
-            db.update("INSERT DATA { <urn:a> <urn:p> 1 . <urn:b> <urn:p> 2 }");
+            db.update("INSERT DATA { <urn:a> <urn:p> 1 . <urn:a> <urn:p> 2 . <urn:a> <urn:p> 3 . <urn:b> <urn:p> 2 }");
             Imported empty = viaStream(db, "SELECT ?s WHERE { ?s <urn:none> ?o }");
             assertEquals(List.of("s"), empty.names());
             assertTrue(empty.rows().isEmpty());
-            Imported zero = viaStream(db, "SELECT * WHERE { <urn:a> <urn:p> 1 }");
-            assertTrue(zero.names().isEmpty());
-            assertEquals(1, zero.batches().stream().mapToInt(Integer::intValue).sum(), "zero-column cardinality");
-            assertEquals(0, viaStream(db, "SELECT * WHERE { <urn:a> <urn:p> 2 }").batches().stream().mapToInt(Integer::intValue).sum());
+            // No variables: the solution count survives as the batch row count.
+            Map<String, Integer> cases = Map.of("SELECT * WHERE { <urn:a> <urn:p> 2 }", 1, "SELECT * WHERE { <urn:a> <urn:p> [] }", 3,
+                    "SELECT * WHERE { <urn:a> <urn:p> [] . [] <urn:p> 2 }", 6, "SELECT * WHERE { <urn:a> <urn:p> 9 }", 0);
+            for (var c : cases.entrySet()) {
+                Imported got = viaStream(db, c.getKey());
+                assertTrue(got.names().isEmpty() && db.query(c.getKey()).variables().isEmpty(), c.getKey());
+                assertEquals(c.getValue(), got.rows().size(), c.getKey());
+                assertEquals(c.getValue(), db.query(c.getKey()).rows().size(), c.getKey());
+            }
         }
     }
 
@@ -148,7 +166,7 @@ class ArrowStreamTest {
                 assertTrue(reader.loadNextBatch());
                 VectorSchemaRoot root = reader.getVectorSchemaRoot();
                 assertEquals(1, root.getRowCount());
-                assertEquals("literal|x|^" + XSD + "string", cell((StructVector) root.getVector(1), 0));
+                assertEquals(new Cell(true, "literal", "x", XSD + "string", null), cell((StructVector) root.getVector(1), 0));
                 assertFalse(reader.loadNextBatch());
             }
         }

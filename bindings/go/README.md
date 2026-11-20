@@ -20,3 +20,5 @@ runs the tests. A `*DB` is safe for concurrent use; `Close` waits for calls in f
 `DB.QueryArrow(sparql, unsafe.Pointer(&stream))` fills a caller-owned `struct ArrowArrayStream`, for example
 arrow-go's `cdata.CArrowArrayStream`, which `cdata.ImportCRecordReader` then reads. The binding itself does not
 depend on Arrow; the import tests live in the separate `arrowtest` module (arrow-go v18.8.0).
+arrow-go's `String.Value` aliases the batch buffer, which is released when the reader advances; copy values
+(`strings.Clone`) that must outlive the batch.
