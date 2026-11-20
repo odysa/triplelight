@@ -50,6 +50,14 @@ copies) takes 99.27–99.39% of each Q9 observation's instrumented total and 87.
 instrumented copy only and is not a proven bottleneck; Q9's scattered IDs suggest, but do not establish, a locality
 explanation. Single registered warm-query session: [report and evidence](arrow-conversion-profile/README.md).
 
+## Dictionary block-cache counters during Arrow conversion
+
+At the default cache budget, nearly every dictionary block-cache access during Arrow conversion of LUBM-1000 Q9 and
+Q14 is a miss (99.98% and 98.15% of lookups), with evictions nearly equal to misses despite a prior warm-up. This is
+consistent with cache capacity pressure and motivates a cache-budget sweep; it does not establish the cause. Counters
+are block-cache lookups and `read_at` attempts, not physical I/O. Single registered session:
+[report and evidence](arrow-dictionary-cache-counters/README.md).
+
 ## Mapping and store qualification outside the timing tables
 
 The [R2RML DuckDB/SQLite tiny-control report](r2rml-tiny-qualification-v1/README.md) documents a separate,
