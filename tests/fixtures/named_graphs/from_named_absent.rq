@@ -1,0 +1,2 @@
+PREFIX : <http://ex/>
+SELECT ?g FROM NAMED :g1 FROM NAMED :absent { GRAPH ?g { } }

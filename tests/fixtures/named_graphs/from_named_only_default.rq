@@ -1,0 +1,2 @@
+PREFIX : <http://ex/>
+SELECT ?o FROM NAMED :g1 { :a :p ?o }

@@ -98,12 +98,14 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             let n = if missing {
                 0
             } else {
-                let join=bgp::Bgp { snap:self.snap,w:self.vars.len() };
-                if self.wcoj && pats.len()>=3 && bgp::cyclic(&pats) {
-                    join.count_leapfrog(&pats,self.variable_order(&pats))
-                } else {
-                    join.count_binary(&pats,self.planned_order(&pats,input).as_deref())
-                }
+                on_data!(self, |g| {
+                    let join=bgp::Bgp { snap:g,w:self.vars.len() };
+                    if self.wcoj && pats.len()>=3 && bgp::cyclic(&pats) {
+                        join.count_leapfrog(&pats,self.variable_order(&pats))
+                    } else {
+                        join.count_binary(&pats,self.planned_order(&pats,input).as_deref())
+                    }
+                })
             };
             let mut out = self.empty_row();
             for (i, c) in requests {
@@ -199,9 +201,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         }
         let v = groups[depth];
         let mut target = TermId(1);
-        while let Some(value) = self
-            .snap
-            .seek(perm, prefix, target)
+        while let Some(value) = on_data!(self, |g| g.seek(perm, prefix, target))
             .unwrap_or_else(|e| storage_failure(e))
         {
             prefix.push(value);
@@ -295,9 +295,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let _ = pat; // Pattern identity is already represented by the fixed prefix.
         let mut n = 0;
         let mut next = TermId(1);
-        while let Some(value) = self
-            .snap
-            .seek(perm, &bound, next)
+        while let Some(value) = on_data!(self, |g| g.seek(perm, &bound, next))
             .unwrap_or_else(|e| storage_failure(e))
         {
             n += 1;

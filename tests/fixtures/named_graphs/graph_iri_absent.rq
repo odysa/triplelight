@@ -1,0 +1,2 @@
+PREFIX : <http://ex/>
+SELECT ?s { GRAPH :absent { ?s ?p ?o } }

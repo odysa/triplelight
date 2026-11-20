@@ -1,0 +1,2 @@
+PREFIX : <http://ex/>
+SELECT ?o FROM :g1 FROM :absent { :a :p ?o }
