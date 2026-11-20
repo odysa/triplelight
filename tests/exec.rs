@@ -810,3 +810,16 @@ fn long_flat_paths_are_bounded() {
     assert_eq!(long, Some(triplelight::exec::QueryErrorKind::Syntax));
     assert!(short_ok);
 }
+
+#[test]
+fn construct_rows_scope_blank_nodes_and_skip_unbound_slots() {
+    // Template blank nodes are fresh per solution; a template triple with an unbound variable is skipped.
+    let q = "CONSTRUCT { ?x <http://ex/tag> _:t . ?x <http://ex/n> ?name } WHERE { ?x <http://ex/age> ?a OPTIONAL { ?x <http://ex/name> ?name } }";
+    let QueryResult::Graph(triples) = query(&store(), q).unwrap() else { panic!() };
+    let tags: Vec<_> = triples.iter().filter(|t| t.predicate.as_str() == "http://ex/tag").collect();
+    assert_eq!(tags.len(), 3, "one tag per solution (alice, bob, carol)");
+    let blanks: std::collections::HashSet<String> = tags.iter().map(|t| t.object.to_string()).collect();
+    assert_eq!(blanks.len(), 3, "a fresh blank node per solution");
+    // carol has no name: her ?name triple is skipped, alice's and bob's are kept.
+    assert_eq!(triples.iter().filter(|t| t.predicate.as_str() == "http://ex/n").count(), 2);
+}

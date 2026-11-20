@@ -231,12 +231,11 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
             let mut out = Vec::new();
             let mut seen = HashSet::new();
             for (n, r) in rows.iter().enumerate() {
-                *ctx.current.borrow_mut() = Some(r.clone());
                 for t in template {
                     let inst = |tp: &TermPattern| -> Option<Term> {
                         match tp {
                             TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(format!("{}r{n}", b.as_str())).into()),
-                            tp => ctx.term_slot(tp).and_then(|id| (id != UNBOUND).then(|| ctx.resolve(id))),
+                            tp => ctx.term_slot(tp, r).and_then(|id| (id != UNBOUND).then(|| ctx.resolve(id))),
                         }
                     };
                     let (Some(s), Some(o)) = (inst(&t.subject), inst(&t.object)) else { continue };
@@ -290,8 +289,6 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     named: Vec<TermId>,
     vars: HashMap<String, usize>,
     scratch: RefCell<(HashMap<Term, TermId>, Vec<Term>)>,
-    /// Row currently being instantiated into a CONSTRUCT template, used by `term_slot`.
-    current: RefCell<Option<Row>>,
     stats: Option<(&'a Stats, &'a dyn Snapshot)>,
     wcoj: bool,
     /// LIMIT (+OFFSET) of a Slice directly above the next ORDER BY (through at most a Project): lets ORDER BY keep
@@ -317,7 +314,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), current: RefCell::new(None), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
+        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -375,10 +372,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         walk_vars(p, &mut names);
         names.into_iter().filter(|n| !crate::sparql::is_internal_variable(n)).map(Variable::new_unchecked).collect()
     }
-    /// For CONSTRUCT templates: value of a template slot under the row currently being instantiated.
-    fn term_slot(&self, tp: &TermPattern) -> Option<TermId> {
+    /// For CONSTRUCT templates: value of a template slot under solution `row`.
+    fn term_slot(&self, tp: &TermPattern, row: &Row) -> Option<TermId> {
         match tp {
-            TermPattern::Variable(v) => self.current.borrow().as_ref().map(|r| r[self.var(v)]),
+            TermPattern::Variable(v) => Some(row[self.var(v)]),
             TermPattern::NamedNode(n) => Some(self.intern(&n.clone().into())),
             TermPattern::Literal(l) => Some(self.intern(&l.clone().into())),
             _ => None,
