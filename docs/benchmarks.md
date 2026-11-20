@@ -62,6 +62,10 @@ The [Oxilite SQLite-store tiny qualification](oxilite-tiny-qualification-v1/READ
 observations across memory, disk-load and separate-process disk-reopen. It has no workload timing
 or full-workload admission; compiler explain output is retained separately from runtime-tracing claims.
 
+A separate [Oxilite Linux ARM64 platform qualification](oxilite-linux-tiny-qualification-v1/README.md) also passes
+all 24 fixed observations across the three modes. Its persisted file uses a macOS virtiofs bind mount; no
+full-workload import or timing is reported, and the Linux and macOS profiles are not pooled.
+
 The [RDFLib Memory tiny qualification](rdflib-tiny-qualification-v1/README.md) retains default-normalization
 and lexical-preserving profiles separately. Both fail the fixed empty-result control; no workload timing
 is reported, and their lexical-form results are documented without transferring earlier cohort scores.
