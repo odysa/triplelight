@@ -200,6 +200,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         stats: mode,
                         wcoj,
                         raw_ids: false,
+                        general_group: false,
                     },
                 )?
                 else {

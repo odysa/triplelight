@@ -130,7 +130,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
                         let snap = store.snapshot();
                         let st = stats.read().unwrap().clone();
                         let st = st.filter(|(base, _)| snap.delta_len() == 0 && *base == snap.base_id());
-                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), wcoj: true, raw_ids: true };
+                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), wcoj: true, raw_ids: true, general_group: false };
                         answer(&*snap, &q, &opts)
                     }
                 }
@@ -239,7 +239,7 @@ fn serve_memory(args: &[String]) {
                     url.split_once('?').and_then(|(_, qs)| form_param(qs, "query")).or_else(|| form_param(&body, "query"))
                 };
                 let st = stats.read().unwrap().clone();
-                let opts = Options { stats: st.as_deref(), wcoj: true, raw_ids: true };
+                let opts = Options { stats: st.as_deref(), wcoj: true, raw_ids: true, general_group: false };
                 let resp = match q { Some(q) => answer(snap, &q, &opts), None => tiny_http::Response::from_string("missing query").with_status_code(400) };
                 let _ = req.respond(resp);
             }
