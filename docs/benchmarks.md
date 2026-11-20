@@ -36,6 +36,10 @@ count controls; SQLite rejects 10 of 13 unmodified DuckDB-dialect queries. The t
 auxiliary discriminator preserve all nine terms. Neither profile qualifies for a timing total. The packet retains
 the setup failure and the disclosed shared-machine lock/cache incident; these are not additional timing rows.
 
+The [Oxilite SQLite-store tiny qualification](oxilite-tiny-qualification-v1/README.md) passes all 24
+observations across memory, disk-load and separate-process disk-reopen. It has no workload timing
+or full-workload admission; compiler explain output is retained separately from runtime-tracing claims.
+
 The [embedded-store evidence inventory](embedded-store-inventory.md) distinguishes completed cohorts,
 failed admission checks and unattempted candidates. Ontop and Oxilite are newly identified candidates, not
 installed or measured comparators. Existing timed tables below retain their original sources and sessions.
