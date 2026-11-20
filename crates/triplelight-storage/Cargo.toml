@@ -10,6 +10,7 @@ triplelight-core.workspace = true
 oxrdf.workspace = true
 oxttl.workspace = true
 rayon.workspace = true
+hashbrown.workspace = true
 sha2.workspace = true
 
 [dev-dependencies]
