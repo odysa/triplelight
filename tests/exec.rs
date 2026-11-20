@@ -828,3 +828,30 @@ fn construct_rows_scope_blank_nodes_and_skip_unbound_slots() {
         assert_eq!(back[0].object.to_string(), t.subject.to_string());
     }
 }
+
+#[test]
+fn construct_template_blank_nodes_never_reuse_an_input_label() {
+    // The input already has a blank node labelled exactly like the first generated one (`_:t` + `r` + row 0). The
+    // generated node must not merge with it: the output edge links two different nodes, never a self-loop.
+    let data = "_:tr0 <http://ex/q> <http://ex/v> .\n_:tr0_1 <http://ex/q> <http://ex/w> .\n";
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let q = "CONSTRUCT { _:t <http://ex/p> ?x } WHERE { ?x <http://ex/q> ?y } ORDER BY ?y";
+    let QueryResult::Graph(triples) = query(&s, q).unwrap() else { panic!() };
+    assert_eq!(triples.len(), 2);
+    let inputs: std::collections::HashSet<String> = triples.iter().map(|t| t.object.to_string()).collect();
+    assert_eq!(inputs, ["_:tr0", "_:tr0_1"].iter().map(|x| x.to_string()).collect(), "objects are the input nodes");
+    let generated: std::collections::HashSet<String> = triples.iter().map(|t| t.subject.to_string()).collect();
+    assert_eq!(generated.len(), 2, "a distinct fresh node per solution");
+    assert!(generated.is_disjoint(&inputs), "generated labels avoid every bound input label: {generated:?}");
+    for t in &triples { assert_ne!(t.subject.to_string(), t.object.to_string(), "no self-loop") }
+}
+
+#[test]
+fn construct_template_labels_unchanged_without_collision() {
+    // No bound input blank node collides, so the existing `<label>r<row>` labels are kept as they were.
+    let q = "CONSTRUCT { ?x <http://ex/tag> _:t } WHERE { ?x <http://ex/age> ?a } ORDER BY ?x";
+    let QueryResult::Graph(triples) = query(&store(), q).unwrap() else { panic!() };
+    let mut labels: Vec<String> = triples.iter().map(|t| t.object.to_string()).collect();
+    labels.sort();
+    assert_eq!(labels, vec!["_:tr0", "_:tr1", "_:tr2"]);
+}
