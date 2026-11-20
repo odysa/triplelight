@@ -15,7 +15,7 @@ name. They refer to the same engine.
   "Primary" requires the expected datatypes (on BSBM BI it allows registered numeric rounding
   bounds; on the aggregate suite it requires exact RDF terms); "value-only" compares numeric values within
   registered rounding bounds and ignores datatype; "COUNT int = integer" accepts `xsd:int` for COUNT results.
-- **DuckDB has no RDF or SPARQL support.** It is a SQL baseline: the triples are loaded into one DuckDB table
+- **The measured DuckDB baseline uses explicit SQL mappings.** The triples are loaded into one DuckDB table
   (subject, predicate, and an object struct with kind, value, datatype and language), with no per-predicate tables,
   extra indexes or precomputed joins. On BSBM BI, a small HTTP adapter fills a hand-written SQL template for each
   query template with that request's parameters (`bi_sql.py`); on the aggregate suite, a translator written only for
@@ -27,6 +27,18 @@ name. They refer to the same engine.
 
 All comparisons run every system on the same machine in the same session, with each system's answers checked
 against Apache Jena. Numbers are sums of per-query medians unless stated. Lower is better.
+
+## Mapping and store qualification outside the timing tables
+
+The [R2RML DuckDB/SQLite tiny-control report](r2rml-tiny-qualification-v1/README.md) documents a separate,
+untimed admission check. Its tested DuckDB RDF extension returns 8 instead of 9 on plain projection and both
+count controls; SQLite rejects 10 of 13 unmodified DuckDB-dialect queries. The typed projection and DISTINCT
+auxiliary discriminator preserve all nine terms. Neither profile qualifies for a timing total. The packet retains
+the setup failure and the disclosed shared-machine lock/cache incident; these are not additional timing rows.
+
+The [embedded-store evidence inventory](embedded-store-inventory.md) distinguishes completed cohorts,
+failed admission checks and unattempted candidates. Ontop and Oxilite are newly identified candidates, not
+installed or measured comparators. Existing timed tables below retain their original sources and sessions.
 
 ## Embedded, in-process: Python API (BSBM BI 10M, LUBM-100 and WatDiv aggregates)
 
