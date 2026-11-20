@@ -73,6 +73,8 @@ or full-workload admission; compiler explain output is retained separately from 
 A separate [Oxilite Linux ARM64 platform qualification](oxilite-linux-tiny-qualification-v1/README.md) also passes
 all 24 fixed observations across the three modes. Its persisted file uses a macOS virtiofs bind mount; no
 full-workload import or timing is reported, and the Linux and macOS profiles are not pooled.
+The [Oxilite LUBM-100 import attempt](oxilite-lubm100-resource-stop-v1/README.md) hit the 12 GiB
+container memory limit before returning a triple count. Reopen and all workload queries were skipped.
 
 The [RDFLib Memory tiny qualification](rdflib-tiny-qualification-v1/README.md) retains default-normalization
 and lexical-preserving profiles separately. Both fail the fixed empty-result control; no workload timing

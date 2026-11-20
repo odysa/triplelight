@@ -1,0 +1,55 @@
+{
+  "registration_sha256": "1fdcb3c06690a5806adeac73eae184feb0ad13cf590bb458baaba8d529cd02e3",
+  "input_sha256": "49eb4a916134e35a582f159e26f5abef42e6c5fe379dc64c2e84069553c38e6d",
+  "input_bytes": 2377133547,
+  "expected_unique_triples": 13409395,
+  "status": {
+    "import": "failed",
+    "reopen-count": "not-run",
+    "queries": "not-run"
+  },
+  "attach_exit": 137,
+  "cleanup": "verified-removed",
+  "identities_postchecked": true,
+  "native_count_record_present": false,
+  "queries_not_run": 30,
+  "stage_elapsed_including_cleanup_seconds": 21.69413908291608,
+  "inspection_checks": {
+    "image": true,
+    "platform": true,
+    "cpus": true,
+    "memory": true,
+    "swap": true,
+    "network": true,
+    "cgroup": true,
+    "readonly": true,
+    "mounts": true,
+    "owner": true,
+    "tmpfs": true,
+    "threads": true,
+    "pythonpath": true,
+    "no_bytecode": true,
+    "command": true
+  },
+  "image": "python@sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd",
+  "image_id": "sha256:5bc33246ad7c3481addfaf44161555fb8858612cc08e7e92a55668b7e17d74ff",
+  "runtime_sha256": "47898146208f4eccb09fc618e9fef38bd4088cbb83898037f133f835fa14c89c",
+  "memory_plus_swap_bytes": 12884901888,
+  "final_database_inventory": [
+    {
+      "path": "store.sqlite-wal",
+      "bytes": 119512,
+      "allocated_bytes": 122880
+    },
+    {
+      "path": "store.sqlite-shm",
+      "bytes": 32768,
+      "allocated_bytes": 32768
+    },
+    {
+      "path": "store.sqlite",
+      "bytes": 4096,
+      "allocated_bytes": 4096
+    }
+  ]
+}
