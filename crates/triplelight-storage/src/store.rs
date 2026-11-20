@@ -318,6 +318,21 @@ impl Store {
     /// The current read snapshot.
     pub fn snapshot(&self) -> Arc<Overlay> { self.current.read().unwrap().clone() }
 
+    /// The active base generation and a snapshot of it, read consistently (compaction switches both while holding
+    /// the generation lock).
+    pub fn generation_snapshot(&self) -> (u64, Arc<Overlay>) {
+        let generation = self.generation.lock().unwrap();
+        (*generation, self.snapshot())
+    }
+
+    /// Runs `f` on the database directory only while `generation` is still the active base, holding the generation
+    /// lock so compaction cannot switch bases meanwhile. For small derived files tied to one base (planner
+    /// statistics); the caller holds this `Store`, so the directory lock is held too. `None` if the base changed.
+    pub fn with_generation<R>(&self, generation: u64, f: impl FnOnce(&Path) -> R) -> Option<R> {
+        let current = self.generation.lock().unwrap();
+        (*current == generation).then(|| f(&self.dir))
+    }
+
     /// Durably commits a change set; returns once it is fsynced and visible to new readers. Concurrent commits
     /// share one fsync (group commit). No-op changes (inserting a present triple, deleting an absent one) are dropped.
     pub fn commit(&self, changes: &[(Change, Triple)]) -> std::io::Result<usize> {

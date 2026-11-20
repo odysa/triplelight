@@ -745,3 +745,208 @@ mod sketch_tests {
         assert!((7_000.0..13_000.0).contains(&d.count()), "{}", d.count());
     }
 }
+
+// ---------- persistence (task #34): the scan-derived core, without the lazily filled query caches ----------
+
+/// Byte-format and statistics-semantics version. Bump when either the layout or the meaning of a field changes.
+pub const STATS_FORMAT: &[u8; 8] = b"TLSTATS1";
+
+/// Why a persisted statistics payload was rejected (the caller then rescans; never a query error).
+#[derive(Debug, PartialEq, Eq)]
+pub enum DecodeError { BadMagic, Truncated, Malformed(&'static str), TrailingBytes }
+
+/// Upper bounds checked before allocating while decoding (a valid checksum does not make a payload safe).
+const MAX_SETS: u64 = 1 << 32;
+const MAX_PREDICATES: u64 = 1 << 32;
+
+struct Writer(Vec<u8>);
+impl Writer {
+    fn u64(&mut self, v: u64) { self.0.extend_from_slice(&v.to_le_bytes()) }
+    fn distinct(&mut self, d: &Distinct) { self.0.extend_from_slice(&d.registers) }
+    fn property(&mut self, p: &Property) {
+        self.u64(p.triples); self.u64(p.subjects); self.distinct(&p.objects);
+        self.u64(p.frequencies.rounds); self.u64(p.frequencies.counts.len() as u64);
+        for (id, c) in &p.frequencies.counts { self.u64(id.0); self.u64(*c) }
+        for e in p.equality { self.u64(e) }
+    }
+    fn properties(&mut self, m: &BTreeMap<TermId, Property>) {
+        self.u64(m.len() as u64);
+        for (id, p) in m { self.u64(id.0); self.property(p) }
+    }
+}
+
+struct Reader<'a> { buf: &'a [u8], at: usize, max_entries: u64 }
+impl Reader<'_> {
+    fn bytes(&mut self, n: usize) -> Result<&[u8], DecodeError> {
+        let end = self.at.checked_add(n).ok_or(DecodeError::Truncated)?;
+        let s = self.buf.get(self.at..end).ok_or(DecodeError::Truncated)?;
+        self.at = end;
+        Ok(s)
+    }
+    fn u64(&mut self) -> Result<u64, DecodeError> { Ok(u64::from_le_bytes(self.bytes(8)?.try_into().unwrap())) }
+    /// A length that must fit both `max` and the bytes left at `min_bytes` per element.
+    fn len(&mut self, max: u64, min_bytes: usize) -> Result<usize, DecodeError> {
+        let n = self.u64()?;
+        let left = (self.buf.len() - self.at) as u64;
+        if n > max || n > self.max_entries || n.saturating_mul(min_bytes as u64) > left { return Err(DecodeError::Malformed("length exceeds payload or base")) }
+        Ok(n as usize)
+    }
+    fn distinct(&mut self) -> Result<Distinct, DecodeError> {
+        let mut registers = [0u8; 128];
+        registers.copy_from_slice(self.bytes(128)?);
+        if registers.iter().any(|&r| r > 58) { return Err(DecodeError::Malformed("HLL register out of range")) }
+        Ok(Distinct { registers })
+    }
+    fn property(&mut self) -> Result<Property, DecodeError> {
+        let (triples, subjects, objects, rounds) = (self.u64()?, self.u64()?, self.distinct()?, self.u64()?);
+        let n = self.len(HISTOGRAM_SIZE as u64, 16)?;
+        let mut counts = BTreeMap::new();
+        for _ in 0..n {
+            let (id, c) = (TermId(self.u64()?), self.u64()?);
+            if c == 0 || counts.insert(id, c).is_some() { return Err(DecodeError::Malformed("frequency entry")) }
+        }
+        let mut equality = [0u64; 8];
+        for e in &mut equality { *e = self.u64()? }
+        Ok(Property { triples, subjects, objects, frequencies: Frequencies { counts, rounds }, equality })
+    }
+    fn properties(&mut self) -> Result<BTreeMap<TermId, Property>, DecodeError> {
+        let n = self.len(MAX_PREDICATES, 8 + 8 * 4 + 128 + 64)?;
+        let mut m = BTreeMap::new();
+        for _ in 0..n {
+            let id = TermId(self.u64()?);
+            let p = self.property()?;
+            if m.insert(id, p).is_some() { return Err(DecodeError::Malformed("duplicate predicate")) }
+        }
+        Ok(m)
+    }
+}
+
+impl Stats {
+    /// The scan-derived core in a self-describing little-endian encoding (magic/version first). The query-time
+    /// caches (exact counts, star estimates, planning domains) are not included; they refill on demand.
+    pub fn encode(&self) -> Vec<u8> {
+        let mut w = Writer(STATS_FORMAT.to_vec());
+        w.u64(self.triple_count); w.u64(self.subject_count); w.u64(self.duplicate_triples_ignored);
+        w.distinct(&self.objects);
+        for e in self.equality { w.u64(e) }
+        w.properties(&self.predicates);
+        w.u64(self.characteristic_sets.len() as u64);
+        for cs in self.characteristic_sets.iter() {
+            w.u64(cs.subjects);
+            w.u64(cs.predicates.len() as u64);
+            for p in &cs.predicates { w.u64(p.0) }
+            w.properties(&cs.properties);
+        }
+        w.0
+    }
+
+    /// Inverse of `encode` for a base holding `base_triples` triples (from its own metadata, not the payload).
+    /// Every length is bounded by that count before allocation, and the decoded summary must satisfy the scan's
+    /// invariants (see `check_invariants`); malformed input is an error, never a panic.
+    pub fn decode(buf: &[u8], base_triples: u64) -> Result<Self, DecodeError> {
+        if buf.len() < 8 || &buf[..8] != STATS_FORMAT { return Err(DecodeError::BadMagic) }
+        let mut r = Reader { buf, at: 8, max_entries: base_triples };
+        let (triple_count, subject_count, duplicate_triples_ignored) = (r.u64()?, r.u64()?, r.u64()?);
+        let objects = r.distinct()?;
+        let mut equality = [0u64; 8];
+        for e in &mut equality { *e = r.u64()? }
+        let predicates = r.properties()?;
+        let n = r.len(MAX_SETS, 16)?;
+        let mut sets = Vec::with_capacity(n);
+        for _ in 0..n {
+            let subjects = r.u64()?;
+            let k = r.len(MAX_PREDICATES, 8)?;
+            let mut preds = Vec::with_capacity(k);
+            for _ in 0..k { preds.push(TermId(r.u64()?)) }
+            if preds.windows(2).any(|w| w[0] >= w[1]) { return Err(DecodeError::Malformed("characteristic set not sorted")) }
+            let properties = r.properties()?;
+            sets.push(CharacteristicSet { predicates: preds, subjects, properties });
+        }
+        if r.at != buf.len() { return Err(DecodeError::TrailingBytes) }
+        let cs_lookup: HashMap<Vec<TermId>, usize> = sets.iter().enumerate().map(|(i, cs)| (cs.predicates.clone(), i)).collect();
+        if cs_lookup.len() != sets.len() { return Err(DecodeError::Malformed("duplicate characteristic set")) }
+        let st = Stats {
+            triple_count, subject_count, duplicate_triples_ignored,
+            characteristic_sets: Arc::new(sets), cs_lookup: Arc::new(cs_lookup), predicates: Arc::new(predicates),
+            objects, equality, ..Default::default()
+        };
+        st.check_invariants(base_triples)?;
+        Ok(st)
+    }
+
+    /// Relations every scan-built summary satisfies; a payload that violates one is rejected as malformed.
+    fn check_invariants(&self, base_triples: u64) -> Result<(), DecodeError> {
+        let bad = |what| Err(DecodeError::Malformed(what));
+        let props_ok = |m: &BTreeMap<TermId, Property>| m.iter().all(|(id, p)| {
+            id.0 != 0 && p.triples > 0 && p.subjects <= p.triples && p.equality.iter().try_fold(0u64, |a, &e| a.checked_add(e)) == Some(p.triples)
+                && p.frequencies.counts.keys().all(|k| k.0 != 0) && p.frequencies.counts.values().try_fold(0u64, |a, &c| a.checked_add(c)).is_some_and(|f| f <= p.triples)
+        });
+        if self.triple_count != base_triples { return bad("triple count differs from the base") }
+        if self.subject_count > self.triple_count || self.duplicate_triples_ignored != 0 { return bad("subject or duplicate count") }
+        if self.equality.iter().try_fold(0u64, |a, &e| a.checked_add(e)) != Some(self.triple_count) { return bad("equality buckets") }
+        if !props_ok(&self.predicates) { return bad("predicate summary") }
+        if self.predicates.values().try_fold(0u64, |a, p| a.checked_add(p.triples)) != Some(self.triple_count) { return bad("predicate totals") }
+        if self.characteristic_sets.iter().try_fold(0u64, |a, cs| a.checked_add(cs.subjects)) != Some(self.subject_count) { return bad("characteristic-set subjects") }
+        for cs in self.characteristic_sets.iter() {
+            if cs.subjects == 0 || cs.predicates.is_empty() || cs.predicates.iter().any(|p| !self.predicates.contains_key(p)) { return bad("characteristic set") }
+            if !props_ok(&cs.properties) || cs.properties.keys().any(|k| cs.predicates.binary_search(k).is_err()) { return bad("characteristic-set properties") }
+        }
+        // Finite, positive estimates follow from the above; check the derived NDVs explicitly anyway.
+        if !self.objects.count().is_finite() || self.predicates.values().any(|p| !p.ndv_objects().is_finite()) { return bad("non-finite estimate") }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod persist_tests {
+    use super::*;
+    fn sample() -> Stats {
+        let mut t: Vec<[TermId; 3]> = Vec::new();
+        for s in 1..200u64 {
+            t.push([TermId(s), TermId(1000), TermId(5000 + s % 7)]);
+            if s % 3 == 0 { t.push([TermId(s), TermId(1001), TermId(s)]) }
+            if s % 5 == 0 { t.push([TermId(s), TermId(1002), TermId(9000 + s)]) }
+        }
+        t.sort();
+        Stats::from_spo(t).unwrap()
+    }
+    #[test]
+    fn roundtrip_preserves_core_and_estimates() {
+        let st = sample();
+        let bytes = st.encode();
+        let back = Stats::decode(&bytes, st.triple_count).unwrap();
+        assert_eq!(back.encode(), bytes);
+        assert_eq!((back.triple_count, back.subject_count), (st.triple_count, st.subject_count));
+        let v = |i| Slot::Var(i);
+        let c = |x| Slot::Const(TermId(x));
+        for p in [TriplePattern { s: v(0), p: c(1000), o: v(1) }, TriplePattern { s: v(0), p: c(1001), o: v(0) },
+                  TriplePattern { s: v(0), p: c(1000), o: c(5003) }, TriplePattern { s: v(0), p: v(1), o: v(2) }] {
+            assert_eq!(st.estimate_pattern(&p).rows.to_bits(), back.estimate_pattern(&p).rows.to_bits(), "{p:?}");
+        }
+        let bgp = [TriplePattern { s: v(0), p: c(1000), o: v(1) }, TriplePattern { s: v(0), p: c(1002), o: v(2) }];
+        assert_eq!(st.estimate_bgp(&bgp).to_bits(), back.estimate_bgp(&bgp).to_bits());
+    }
+    #[test]
+    fn malformed_payloads_are_errors_not_panics() {
+        let st = sample();
+        let n_t = st.triple_count;
+        let bytes = st.encode();
+        for n in 0..bytes.len() { assert!(Stats::decode(&bytes[..n], n_t).is_err(), "prefix {n}") }
+        let mut extra = bytes.clone(); extra.push(0);
+        assert_eq!(Stats::decode(&extra, n_t).unwrap_err(), DecodeError::TrailingBytes);
+        let mut bad = bytes.clone(); bad[0] ^= 1;
+        assert_eq!(Stats::decode(&bad, n_t).unwrap_err(), DecodeError::BadMagic);
+        // A huge declared length must be refused before allocating.
+        let mut huge = bytes[..8 + 24 + 128 + 64].to_vec(); huge.extend_from_slice(&u64::MAX.to_le_bytes());
+        assert!(Stats::decode(&huge, n_t).is_err());
+        // A well-formed payload for a different base (wrong triple count) violates the invariants.
+        assert!(matches!(Stats::decode(&bytes, n_t + 1), Err(DecodeError::Malformed(_))));
+        // Well-formed bytes with an inconsistent total (as a checksum-valid but wrong file would carry).
+        let mut skew = st.clone(); skew.subject_count += 1;
+        assert!(matches!(Stats::decode(&skew.encode(), n_t), Err(DecodeError::Malformed(_))));
+        let mut skew = st.clone(); skew.equality[0] += 1;
+        assert!(matches!(Stats::decode(&skew.encode(), n_t), Err(DecodeError::Malformed(_))));
+        // Single-byte corruption anywhere: never a panic (it may still decode if it hits a plain counter).
+        for i in 8..bytes.len() { let mut b = bytes.clone(); b[i] ^= 0xff; let _ = Stats::decode(&b, n_t); }
+    }
+}

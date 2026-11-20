@@ -50,7 +50,25 @@ impl Default for DatabaseOptions {
 /// An embedded RDF database. Each operation observes a consistent snapshot.
 /// Persistent updates are acknowledged after the write-ahead log is synchronized; in-memory updates are not durable.
 #[derive(Clone)]
-pub struct Database { store: Backend, stats: Arc<RwLock<Option<(Arc<Overlay>, Arc<Stats>)>>> }
+pub struct Database {
+    // Declared first so it drops first: closing waits for an in-flight statistics write, then the Store (and its
+    // directory lock) is released, so the directory can be reopened as soon as the last handle is dropped.
+    closer: Arc<CloseGate>,
+    store: Backend, stats: Arc<RwLock<Option<(Arc<Overlay>, Arc<Stats>)>>>, origin: Arc<Mutex<Option<StatsOrigin>>> }
+
+/// Set when the last `Database` handle is dropped; a background statistics writer checks it (under the same lock)
+/// before touching the directory, so nothing is written after close and close waits for a write in progress.
+struct CloseGate(Arc<Mutex<bool>>);
+impl Drop for CloseGate { fn drop(&mut self) { *self.0.lock().unwrap() = true } }
+
+/// Where the planner statistics for the current base came from (diagnostics and measurement).
+#[derive(Debug, Clone, PartialEq)]
+pub enum StatsOrigin {
+    /// Loaded at open from the base's persisted statistics file: its size and the read + verify + decode time.
+    Persisted { bytes: u64, load_ms: f64 },
+    /// Built by a background scan of the base; `persisted` tells whether a statistics file was then written.
+    Scanned { scan_ms: f64, persisted: bool },
+}
 
 #[derive(Clone)]
 enum Backend { Disk(Arc<Store>), Memory(Arc<MemoryStore>) }
@@ -71,8 +89,8 @@ impl Database {
         }
         let format = DiskBase { workers: options.import_workers };
         let store = Arc::new(Store::open_with(dir, options.initial.as_deref(), Box::new(format))?);
-        let db = Self { store: Backend::Disk(store), stats: Arc::new(RwLock::new(None)) };
-        db.refresh_stats();
+        let db = Self { closer: Arc::new(CloseGate(Arc::new(Mutex::new(false)))), store: Backend::Disk(store), stats: Arc::new(RwLock::new(None)), origin: Arc::new(Mutex::new(None)) };
+        if !db.load_persisted_stats()? { db.refresh_stats(); }
         Ok(db)
     }
 
@@ -80,7 +98,7 @@ impl Database {
     pub fn in_memory() -> Self {
         let base = MemorySnapshot::from_triples(Vec::new());
         let current = Arc::new(Overlay::from_base(Arc::new(base)));
-        let db = Self { store: Backend::Memory(Arc::new(MemoryStore { current: RwLock::new(current), writer: Mutex::new(()) })), stats: Arc::new(RwLock::new(None)) };
+        let db = Self { closer: Arc::new(CloseGate(Arc::new(Mutex::new(false)))), store: Backend::Memory(Arc::new(MemoryStore { current: RwLock::new(current), writer: Mutex::new(()) })), stats: Arc::new(RwLock::new(None)), origin: Arc::new(Mutex::new(None)) };
         db.refresh_stats();
         db
     }
@@ -89,24 +107,69 @@ impl Database {
         match &self.store { Backend::Disk(s) => s.snapshot(), Backend::Memory(s) => s.current.read().unwrap().clone() }
     }
 
+    /// Statistics for the current base from its persisted file, if one exists and verifies. `Ok(false)` means
+    /// the file is missing or unusable (the caller rescans); errors reading the base itself are returned.
+    fn load_persisted_stats(&self) -> Result<bool, DatabaseError> {
+        let Backend::Disk(store) = &self.store else { return Ok(false) };
+        let start = std::time::Instant::now();
+        let (generation, snap) = store.generation_snapshot();
+        let base_triples = snap.base().count(Perm::Spo, &[])?;
+        let Some(loaded) = store.with_generation(generation, |dir| stats_file::load(dir, generation, base_triples)).flatten() else { return Ok(false) };
+        let (stats, bytes) = loaded;
+        *self.stats.write().unwrap() = Some((snap, Arc::new(stats)));
+        *self.origin.lock().unwrap() = Some(StatsOrigin::Persisted { bytes, load_ms: start.elapsed().as_secs_f64() * 1e3 });
+        Ok(true)
+    }
+
     fn refresh_stats(&self) {
-        let snap = self.snapshot();
         let target = Arc::clone(&self.stats);
-        let memory = match &self.store { Backend::Memory(store) => Some(Arc::clone(store)), Backend::Disk(_) => None };
-        std::thread::spawn(move || {
-            if let Ok(st) = Stats::from_snapshot(snap.base()) {
-                match &memory {
-                    Some(store) => {
+        let origin = Arc::clone(&self.origin);
+        match &self.store {
+            Backend::Memory(store) => {
+                let snap = self.snapshot();
+                let store = Arc::clone(store);
+                std::thread::spawn(move || {
+                    let start = std::time::Instant::now();
+                    if let Ok(st) = Stats::from_snapshot(snap.base()) {
                         let current = store.current.read().unwrap();
                         if current.base_id() == snap.base_id() {
                             *target.write().unwrap() = Some((snap, Arc::new(st)));
+                            *origin.lock().unwrap() = Some(StatsOrigin::Scanned { scan_ms: start.elapsed().as_secs_f64() * 1e3, persisted: false });
                         }
                     }
-                    None => *target.write().unwrap() = Some((snap, Arc::new(st))),
-                }
+                });
             }
-        });
+            Backend::Disk(store) => {
+                // The scan keeps its snapshot (the base files) but not the Store: holding only a Weak, it cannot keep
+                // the directory lock after the database is closed, and it writes nothing once it has been.
+                let (generation, snap) = store.generation_snapshot();
+                let weak = Arc::downgrade(store);
+                let gate = Arc::clone(&self.closer.0);
+                std::thread::spawn(move || {
+                    let start = std::time::Instant::now();
+                    let Ok(st) = Stats::from_snapshot(snap.base()) else { return };
+                    let scan_ms = start.elapsed().as_secs_f64() * 1e3;
+                    let closed = gate.lock().unwrap();
+                    if *closed { return }
+                    let Some(store) = weak.upgrade() else { return };
+                    // A scan of an older base (compaction happened meanwhile) is neither installed nor persisted.
+                    if store.snapshot().base_id() != snap.base_id() { return }
+                    let st = Arc::new(st);
+                    let persisted = match snap.base().count(Perm::Spo, &[]) {
+                        Ok(n) => store.with_generation(generation, |dir| stats_file::store(dir, generation, &st, n).is_ok()).unwrap_or(false),
+                        Err(_) => false,
+                    };
+                    *target.write().unwrap() = Some((snap, st));
+                    *origin.lock().unwrap() = Some(StatsOrigin::Scanned { scan_ms, persisted });
+                    drop(store); // before `closed`: a waiting close then frees the Store and its directory lock
+                    drop(closed);
+                });
+            }
+        }
     }
+
+    /// Where the current statistics came from, once they are available (see `stats_ready`).
+    pub fn stats_origin(&self) -> Option<StatsOrigin> { self.origin.lock().unwrap().clone() }
     /// Whether statistics for the currently visible unmodified base are ready.
     pub fn stats_ready(&self) -> bool {
         let snap = self.snapshot();
@@ -298,5 +361,74 @@ mod memory_tests {
         drop(_writer);
         thread.join().unwrap();
         assert!(result.is_ok(), "reader blocked behind writer mutex");
+    }
+}
+
+/// Persisted planner statistics: `<db>/stats-<generation>.v1` beside the immutable `base-<generation>/` it describes.
+///
+/// Layout: `TLSIDE01`, generation (u64 LE), sha256 of the exact `base-<generation>/MANIFEST` bytes, payload length
+/// (u64 LE), sha256 of the payload, payload (`Stats::encode`). The file is disposable: anything that does not verify
+/// is ignored (the caller rescans) and replaced by the next scan.
+mod stats_file {
+    use super::Stats;
+    use sha2::{Digest, Sha256};
+    use std::io::Write;
+    use std::path::{Path, PathBuf};
+
+    const MAGIC: &[u8; 8] = b"TLSIDE01";
+    const HEADER: usize = 8 + 8 + 32 + 8 + 32;
+    /// Refuse absurd files before reading them into memory.
+    const MAX_FILE: u64 = 1 << 30;
+
+    fn path(dir: &Path, generation: u64) -> PathBuf { dir.join(format!("stats-{generation}.v1")) }
+    fn manifest_sha(dir: &Path, generation: u64) -> std::io::Result<[u8; 32]> {
+        Ok(Sha256::digest(std::fs::read(dir.join(format!("base-{generation}")).join("MANIFEST"))?).into())
+    }
+
+    /// The statistics and the file size, or `None` if the file is missing, foreign, stale or malformed.
+    pub(super) fn load(dir: &Path, generation: u64, base_triples: u64) -> Option<(Stats, u64)> {
+        let p = path(dir, generation);
+        if std::fs::metadata(&p).ok()?.len() > MAX_FILE { return None }
+        let buf = std::fs::read(&p).ok()?;
+        if buf.len() < HEADER || &buf[..8] != MAGIC { return None }
+        let field = |a: usize| u64::from_le_bytes(buf[a..a + 8].try_into().unwrap());
+        if field(8) != generation || buf[16..48] != manifest_sha(dir, generation).ok()? { return None }
+        let len = usize::try_from(field(48)).ok()?;
+        let payload = buf.get(HEADER..)?;
+        if payload.len() != len || buf[56..88] != Sha256::digest(payload)[..] { return None }
+        Some((Stats::decode(payload, base_triples).ok()?, buf.len() as u64))
+    }
+
+    /// Writes the file for `generation` (unique temp name, fsync, rename, fsync of the directory) and removes
+    /// statistics files and temp files of other generations. The caller holds the store and its generation lock.
+    pub(super) fn store(dir: &Path, generation: u64, stats: &Stats, base_triples: u64) -> std::io::Result<()> {
+        if stats.triple_count != base_triples { return Err(std::io::Error::other("statistics do not describe this base")) }
+        let payload = stats.encode();
+        let mut out = Vec::with_capacity(HEADER + payload.len());
+        out.extend_from_slice(MAGIC);
+        out.extend_from_slice(&generation.to_le_bytes());
+        out.extend_from_slice(&manifest_sha(dir, generation)?);
+        out.extend_from_slice(&(payload.len() as u64).to_le_bytes());
+        out.extend_from_slice(&Sha256::digest(&payload));
+        out.extend_from_slice(&payload);
+        let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos());
+        let tmp = dir.join(format!("stats-{generation}.v1.tmp-{}-{nonce}", std::process::id()));
+        let result = (|| {
+            let mut f = std::fs::OpenOptions::new().write(true).create_new(true).open(&tmp)?;
+            f.write_all(&out)?;
+            f.sync_all()?;
+            std::fs::rename(&tmp, path(dir, generation))?;
+            std::fs::File::open(dir)?.sync_all()
+        })();
+        if result.is_err() { let _ = std::fs::remove_file(&tmp); }
+        result?;
+        let keep = format!("stats-{generation}.v1");
+        for entry in std::fs::read_dir(dir)? {
+            let name = entry?.file_name().to_string_lossy().into_owned();
+            if name.starts_with("stats-") && name != keep && (name.ends_with(".v1") || name.contains(".v1.tmp-")) {
+                let _ = std::fs::remove_file(dir.join(&name));
+            }
+        }
+        Ok(())
     }
 }

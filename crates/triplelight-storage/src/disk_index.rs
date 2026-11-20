@@ -597,7 +597,16 @@ fn read_exact_at_traced(
     Ok(())
 }
 /// Physical memory in bytes (macOS: sysctl hw.memsize; Linux: /proc/meminfo MemTotal), if it can be determined.
+/// Computed once per process: on macOS it spawns `sysctl`, and a child process briefly shares the parent's open
+/// file descriptions until it execs. Spawning on every open could therefore hold another open database's
+/// directory lock (flock) for a few milliseconds after that database is closed, so an immediate reopen in
+/// the same process would see `Locked`.
 pub fn physical_memory_bytes() -> Option<u64> {
+    static MEMORY: std::sync::OnceLock<Option<u64>> = std::sync::OnceLock::new();
+    *MEMORY.get_or_init(read_physical_memory_bytes)
+}
+
+fn read_physical_memory_bytes() -> Option<u64> {
     #[cfg(target_os = "macos")]
     {
         let out = std::process::Command::new("/usr/sbin/sysctl")
