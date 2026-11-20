@@ -1149,14 +1149,7 @@ fn walk_expr(e: &Expression, out: &mut Vec<String>) {
     match e {
         Expression::Exists(p) => walk_vars(p, out),
         Expression::Variable(v) | Expression::Bound(v) => { let s = v.as_str().to_string(); if !out.contains(&s) { out.push(s) } }
-        Expression::Or(a, b) | Expression::And(a, b) | Expression::Equal(a, b) | Expression::SameTerm(a, b)
-        | Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b)
-        | Expression::Add(a, b) | Expression::Subtract(a, b) | Expression::Multiply(a, b) | Expression::Divide(a, b) => { walk_expr(a, out); walk_expr(b, out) }
-        Expression::UnaryPlus(a) | Expression::UnaryMinus(a) | Expression::Not(a) => walk_expr(a, out),
-        Expression::In(a, l) => { walk_expr(a, out); for x in l { walk_expr(x, out) } }
-        Expression::If(a, b, c) => { walk_expr(a, out); walk_expr(b, out); walk_expr(c, out) }
-        Expression::Coalesce(l) | Expression::FunctionCall(_, l) => for x in l { walk_expr(x, out) },
-        Expression::NamedNode(_) | Expression::Literal(_) => {}
+        e => for c in e.children() { walk_expr(c, out) },
     }
 }
 
@@ -1235,14 +1228,7 @@ fn impure(e: &Expression) -> bool {
     match e {
         Expression::Exists(_) => true,
         Expression::FunctionCall(Function::Rand | Function::Uuid | Function::StrUuid | Function::BNode, _) => true,
-        Expression::Or(a, b) | Expression::And(a, b) | Expression::Equal(a, b) | Expression::SameTerm(a, b)
-        | Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b)
-        | Expression::Add(a, b) | Expression::Subtract(a, b) | Expression::Multiply(a, b) | Expression::Divide(a, b) => impure(a) || impure(b),
-        Expression::UnaryPlus(a) | Expression::UnaryMinus(a) | Expression::Not(a) => impure(a),
-        Expression::In(a, l) => impure(a) || l.iter().any(impure),
-        Expression::If(a, b, c) => impure(a) || impure(b) || impure(c),
-        Expression::Coalesce(l) | Expression::FunctionCall(_, l) => l.iter().any(impure),
-        _ => false,
+        e => e.children().any(impure),
     }
 }
 
