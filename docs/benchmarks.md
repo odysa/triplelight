@@ -43,6 +43,13 @@ this is neither an equivalence nor a speed-up claim. In the two large cells a se
 far longer in the combined conversion stage than in building the ID result, which motivates profiling that stage.
 Single registered warm-query session, host cache uncontrolled: [report and evidence](arrow-c-stream-measurement/README.md).
 
+## Arrow conversion stage profile
+
+In an instrumented copy of the Arrow batch reader on LUBM-1000, the dictionary-lookup stage (`with_terms` plus term
+copies) takes 99.27–99.39% of each Q9 observation's instrumented total and 87.67–89.85% for Q14. This describes the
+instrumented copy only and is not a proven bottleneck; Q9's scattered IDs suggest, but do not establish, a locality
+explanation. Single registered warm-query session: [report and evidence](arrow-conversion-profile/README.md).
+
 ## Mapping and store qualification outside the timing tables
 
 The [R2RML DuckDB/SQLite tiny-control report](r2rml-tiny-qualification-v1/README.md) documents a separate,
