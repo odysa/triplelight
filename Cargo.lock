@@ -792,6 +792,7 @@ dependencies = [
 name = "triplelight-storage"
 version = "0.1.0"
 dependencies = [
+ "hashbrown",
  "oxrdf",
  "oxttl",
  "rayon",
