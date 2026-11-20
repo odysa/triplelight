@@ -18,3 +18,10 @@ library path. Requires Java 25. `Database` is thread-safe; `close()` waits for c
 
 Results are copied into plain Java objects in one pass: the native string arena is copied once, each distinct term is
 decoded once and shared across rows, and the cell array is read as one `int[]`.
+
+## Arrow output
+
+`Database.queryArrow(sparql, streamAddress)` fills a caller-owned `struct ArrowArrayStream`, for example
+`org.apache.arrow.c.ArrowArrayStream.allocateNew(allocator).memoryAddress()`, which `Data.importArrayStream`
+then reads. The binding itself does not depend on Arrow; the tests use arrow-c-data 19.0.0 with the Unsafe
+allocator.

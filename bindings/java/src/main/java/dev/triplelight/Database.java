@@ -71,6 +71,31 @@ public final class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Runs a SPARQL SELECT and exports its solutions as an Arrow C Stream into the caller-owned
+     * {@code struct ArrowArrayStream} at {@code streamAddress} (for example
+     * {@code org.apache.arrow.c.ArrowArrayStream#memoryAddress()}). On success the caller owns the stream and must
+     * release it; it stays valid after {@link #close}. On failure the struct is left untouched. Each variable is a
+     * nullable struct column {@code {kind, value, datatype, language}}; a null struct is an unbound cell. ASK and
+     * CONSTRUCT throw {@link TripleLightException.Kind#UNSUPPORTED}.
+     */
+    public void queryArrow(String sparql, long streamAddress) {
+        if (streamAddress == 0) throw new IllegalArgumentException("null stream address");
+        lock.readLock().lock();
+        try (Arena a = Arena.ofConfined()) {
+            byte[] q = sparql.getBytes(StandardCharsets.UTF_8);
+            MemorySegment err = a.allocate(ADDRESS);
+            check((int) Native.QUERY_ARROW.invokeExact(live(), a.allocateFrom(JAVA_BYTE, q), (long) q.length,
+                    MemorySegment.ofAddress(streamAddress), err), err);
+        } catch (TripleLightException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw internal(t);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     /** Applies a SPARQL Update; returns the number of triples inserted or deleted. */
     public long update(String sparql) { return counted(Native.UPDATE_KIND, sparql); }
 

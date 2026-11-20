@@ -35,7 +35,7 @@ final class Native {
     static final long VIEW_N_BYTES = VIEW.byteOffset(MemoryLayout.PathElement.groupElement("n_bytes"));
     static final long VIEW_BYTES = VIEW.byteOffset(MemoryLayout.PathElement.groupElement("bytes"));
 
-    static final MethodHandle ABI, OPEN, OPEN_IN_MEMORY, CLOSE, QUERY, UPDATE, LOAD, COMPACT, STATS_READY,
+    static final MethodHandle ABI, OPEN, OPEN_IN_MEMORY, CLOSE, QUERY, QUERY_ARROW, UPDATE, LOAD, COMPACT, STATS_READY,
             RESULT_VIEW, RESULT_FREE, ERROR_KIND, ERROR_MESSAGE, ERROR_FREE;
 
     static {
@@ -49,6 +49,7 @@ final class Native {
         OPEN_IN_MEMORY = h(linker, lib, "tl_open_in_memory", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
         CLOSE = h(linker, lib, "tl_close", FunctionDescriptor.ofVoid(ADDRESS));
         QUERY = h(linker, lib, "tl_query", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS));
+        QUERY_ARROW = h(linker, lib, "tl_query_arrow", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS));
         UPDATE = h(linker, lib, "tl_update", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS));
         LOAD = h(linker, lib, "tl_load", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS));
         COMPACT = h(linker, lib, "tl_compact", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
