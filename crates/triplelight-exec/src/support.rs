@@ -53,20 +53,11 @@ const XSD_CASTS: &[&str] = &["string", "double", "float", "decimal", "integer", 
 
 fn expr_unsupported(e: &Expression) -> Option<String> {
     match e {
-        Expression::NamedNode(_) | Expression::Literal(_) | Expression::Variable(_) | Expression::Bound(_) => None,
-        Expression::Or(a, b) | Expression::And(a, b) | Expression::Equal(a, b) | Expression::SameTerm(a, b)
-        | Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b)
-        | Expression::Add(a, b) | Expression::Subtract(a, b) | Expression::Multiply(a, b) | Expression::Divide(a, b) => {
-            expr_unsupported(a).or_else(|| expr_unsupported(b))
-        }
-        Expression::UnaryPlus(a) | Expression::UnaryMinus(a) | Expression::Not(a) => expr_unsupported(a),
-        Expression::In(a, l) => expr_unsupported(a).or_else(|| l.iter().find_map(expr_unsupported)),
-        Expression::If(a, b, c) => expr_unsupported(a).or_else(|| expr_unsupported(b)).or_else(|| expr_unsupported(c)),
-        Expression::Coalesce(l) => l.iter().find_map(expr_unsupported),
         // Conservative: GRAPH inside EXISTS is rejected even for dataset queries (not yet covered by fixtures).
         Expression::Exists(p) => pattern_unsupported(p, false),
         Expression::FunctionCall(Function::BNode, args) if !args.is_empty() => Some("BNODE(string) is not supported".into()),
         Expression::FunctionCall(f, args) => function_unsupported(f).or_else(|| args.iter().find_map(expr_unsupported)),
+        e => e.children().find_map(expr_unsupported),
     }
 }
 
