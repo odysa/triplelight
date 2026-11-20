@@ -5,8 +5,8 @@
 //! unchanged (no native-type conversion). Batches hold up to `BATCH_ROWS` solutions and are produced one at a time
 //! from the query's ID result: each batch decodes its distinct stored IDs with one dictionary pass on the same
 //! snapshot. This bounds the conversion work per batch, not memory: terms can be arbitrarily large. The query
-//! result itself (term IDs) is still fully materialized before the stream starts.
-use std::panic::{catch_unwind, AssertUnwindSafe};
+//! result itself (term IDs) is still fully materialized before the stream starts. The C callbacks live in
+//! `export.rs`.
 use std::sync::Arc;
 
 use arrow_array::builder::{LargeStringBuilder, StringBuilder};
@@ -59,13 +59,17 @@ pub struct IdBatchReader {
     sol: IdSolutions,
     schema: SchemaRef,
     next_row: usize,
+    scratch_converted: usize,
 }
 
 impl IdBatchReader {
     pub fn new(snap: ReadSnapshot, sol: IdSolutions) -> Self {
         let names: Vec<String> = sol.vars.iter().map(|v| v.as_str().to_string()).collect();
-        Self { schema: schema_for(&names), snap, sol, next_row: 0 }
+        Self { schema: schema_for(&names), snap, sol, next_row: 0, scratch_converted: 0 }
     }
+
+    /// Computed terms converted so far, summed over batches (each batch converts only the ones it contains).
+    pub fn scratch_converted(&self) -> usize { self.scratch_converted }
 
     fn batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
         let rows = self.sol.rows;
@@ -90,9 +94,15 @@ impl IdBatchReader {
             Err(e) => failure = Some(e),
         }).map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
         if let Some(e) = failure { return Err(e) }
-        let scratch: std::collections::HashMap<TermId, Owned> = self.sol.scratch.iter()
-            .map(|(id, t)| Ok((*id, owned(t.as_ref())?)))
-            .collect::<Result<_, ArrowError>>()?;
+        // Computed (scratch) terms: convert only those present in this batch.
+        let mut scratch: std::collections::HashMap<TermId, Owned> = std::collections::HashMap::new();
+        for id in cells {
+            if scratch.contains_key(id) { continue }
+            if let Some(t) = self.sol.scratch.get(id) {
+                scratch.insert(*id, owned(t.as_ref())?);
+            }
+        }
+        self.scratch_converted += scratch.len();
         let mut columns: Vec<ArrayRef> = Vec::with_capacity(width);
         for col in 0..width {
             let mut kind = StringBuilder::new();
@@ -139,12 +149,9 @@ impl IdBatchReader {
 impl Iterator for IdBatchReader {
     type Item = Result<RecordBatch, ArrowError>;
     fn next(&mut self) -> Option<Self::Item> {
-        // No panic may reach the C stream callbacks: report it as a stream error and end the stream.
-        match catch_unwind(AssertUnwindSafe(|| self.batch())) {
-            Ok(Ok(Some(b))) => Some(Ok(b)),
-            Ok(Ok(None)) => None,
-            Ok(Err(e)) => { self.next_row = self.sol.rows; Some(Err(e)) }
-            Err(_) => { self.next_row = self.sol.rows; Some(Err(ArrowError::ComputeError("internal panic while building a batch".into()))) }
+        match self.batch() {
+            Ok(b) => b.map(Ok),
+            Err(e) => { self.next_row = self.sol.rows; Some(Err(e)) }
         }
     }
 }

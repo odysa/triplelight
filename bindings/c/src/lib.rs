@@ -10,7 +10,10 @@ use std::collections::HashMap;
 use std::ffi::c_char;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-mod arrow;
+#[doc(hidden)]
+pub mod arrow;
+#[doc(hidden)]
+pub mod export;
 pub use arrow::BATCH_ROWS;
 use arrow_array::ffi_stream::FFI_ArrowArrayStream;
 
@@ -306,7 +309,7 @@ pub unsafe extern "C" fn tl_query_arrow(db: *const TlDb, sparql: *const c_char, 
             _ => return Err(TlError { kind: TL_ERR_UNSUPPORTED, message: "Arrow output supports SELECT only".into() }),
         };
         let reader = arrow::IdBatchReader::new(snap, ids);
-        std::ptr::write(out, FFI_ArrowArrayStream::new(Box::new(reader)));
+        export::export(Box::new(reader), out);
         Ok(())
     }) }
 }
