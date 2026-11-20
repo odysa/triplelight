@@ -372,10 +372,8 @@ impl<'a> Parser<'a> {
         Ok(Select { modifier, items: Some(items) })
     }
 
-    /// GROUP BY / HAVING / ORDER BY / LIMIT / OFFSET / VALUES, and the projection (§18.2.4, §18.2.5).
-    fn modifiers(&mut self, mut p: GraphPattern, form: Form) -> R<GraphPattern> {
-        let mut aggregates = self.aggregates.take().unwrap_or_default();
-        // GROUP BY
+    /// GROUP BY: key variables, with expression keys bound by `Extend` over `p`.
+    fn group_by(&mut self, mut p: GraphPattern) -> R<(GraphPattern, Option<Vec<Variable>>)> {
         let mut keys: Option<Vec<Variable>> = None;
         if self.eat_kw("GROUP") {
             self.expect_kw("BY")?;
@@ -399,14 +397,10 @@ impl<'a> Parser<'a> {
             if ks.is_empty() { return self.err("expected a GROUP BY condition") }
             keys = Some(ks);
         }
-        // HAVING (aggregates allowed)
-        let mut having = Vec::new();
-        self.aggregates = Some(std::mem::take(&mut aggregates));
-        if self.eat_kw("HAVING") {
-            while let Some(e) = self.try_constraint()? { having.push(e) }
-            if having.is_empty() { return self.err("expected a HAVING condition") }
-        }
-        // ORDER BY (aggregates allowed)
+        Ok((p, keys))
+    }
+
+    fn order_by(&mut self) -> R<Vec<OrderExpression>> {
         let mut order = Vec::new();
         if self.eat_kw("ORDER") {
             self.expect_kw("BY")?;
@@ -418,13 +412,34 @@ impl<'a> Parser<'a> {
             }
             if order.is_empty() { return self.err("expected an ORDER BY condition") }
         }
-        aggregates = self.aggregates.take().unwrap_or_default();
-        // LIMIT / OFFSET
+        Ok(order)
+    }
+
+    fn limit_offset(&mut self) -> R<(Option<usize>, Option<usize>)> {
         let (mut limit, mut offset) = (None, None);
         for _ in 0..2 {
             if self.eat_kw("LIMIT") { if limit.is_some() { return self.err("duplicate LIMIT") } limit = Some(self.integer()?) }
             else if self.eat_kw("OFFSET") { if offset.is_some() { return self.err("duplicate OFFSET") } offset = Some(self.integer()?) }
         }
+        Ok((limit, offset))
+    }
+
+    /// GROUP BY / HAVING / ORDER BY / LIMIT / OFFSET / VALUES, and the projection (§18.2.4, §18.2.5).
+    fn modifiers(&mut self, p: GraphPattern, form: Form) -> R<GraphPattern> {
+        let mut aggregates = self.aggregates.take().unwrap_or_default();
+        let (mut p, keys) = self.group_by(p)?;
+        // HAVING (aggregates allowed)
+        let mut having = Vec::new();
+        self.aggregates = Some(std::mem::take(&mut aggregates));
+        if self.eat_kw("HAVING") {
+            while let Some(e) = self.try_constraint()? { having.push(e) }
+            if having.is_empty() { return self.err("expected a HAVING condition") }
+        }
+        // ORDER BY (aggregates allowed)
+        let mut order = self.order_by()?;
+        aggregates = self.aggregates.take().unwrap_or_default();
+        // LIMIT / OFFSET
+        let (limit, offset) = self.limit_offset()?;
         // Trailing VALUES
         let values = if self.is_kw("VALUES") { Some(self.inline_data()?) } else { None };
 

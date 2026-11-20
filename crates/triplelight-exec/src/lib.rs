@@ -149,43 +149,47 @@ pub fn query_dataset_with<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, text
     catching_storage(|| run(snap, Some(dataset), text, opts))
 }
 
+/// Graph views and named graphs of the active dataset. Every FROM / FROM NAMED source must be a graph of the catalog.
+fn resolve_dataset<'a, S: Snapshot>(snap: &S, ds: &'a dyn DatasetView, spec: Option<&crate::sparql::QueryDataset>) -> Result<(Vec<&'a dyn Snapshot>, Vec<TermId>), QueryError> {
+    let storage = |e: crate::storage::StorageError| QueryError::new(QueryErrorKind::Storage, format!("storage error: {e}"));
+    let mut from: Vec<&dyn Snapshot> = Vec::new();
+    let mut named: Vec<TermId> = Vec::new();
+    // Local-only dataset construction: every FROM / FROM NAMED source must be a graph of the catalog (present,
+    // possibly empty). A missing source is refused rather than silently omitted or invented as an empty graph.
+    let present = |iris: &[oxrdf::NamedNode]| -> Result<Vec<TermId>, QueryError> {
+        let mut ids = Vec::new();
+        for iri in iris {
+            let id = snap.lookup(&iri.clone().into()).map_err(storage)?;
+            match id {
+                Some(id) if ds.graph(id).map_err(storage)?.is_some() => ids.push(id),
+                _ => return Err(QueryError::new(QueryErrorKind::Unsupported, format!(
+                    "dataset source <{}> is not a graph of this database (only local graphs can be named in FROM / FROM NAMED)", iri.as_str()))),
+            }
+        }
+        ids.sort_unstable(); ids.dedup();
+        Ok(ids)
+    };
+    match spec {
+        None => named = ds.graph_names().map_err(storage)?,
+        Some(spec) => {
+            let default = present(&spec.default)?;
+            if default.len() > 1 && ds.shares_blank_nodes(&default).map_err(storage)? != Some(false) {
+                return Err(QueryError::new(QueryErrorKind::Unsupported,
+                    "FROM over several graphs that share (or may share) blank nodes is not supported: the RDF merge would standardize them apart".to_string()));
+            }
+            for id in default { from.push(ds.graph(id).map_err(storage)?.expect("checked present")) }
+            if let Some(n) = &spec.named { named = present(n)? }
+        }
+    }
+    Ok((from, named))
+}
+
 fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
     if let Some(reason) = support::unsupported(q, dataset.is_some()) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
-    let storage = |e: crate::storage::StorageError| QueryError::new(QueryErrorKind::Storage, format!("storage error: {e}"));
     let spec = match q { Query::Select { dataset, .. } | Query::Ask { dataset, .. } | Query::Construct { dataset, .. } | Query::Describe { dataset, .. } => dataset };
     // Graph views for the active dataset; they outlive `ctx`, which borrows them.
-    let mut from: Vec<&dyn Snapshot> = Vec::new();
-    let mut named: Vec<TermId> = Vec::new();
-    if let Some(ds) = dataset {
-        // Local-only dataset construction: every FROM / FROM NAMED source must be a graph of the catalog (present,
-        // possibly empty). A missing source is refused rather than silently omitted or invented as an empty graph.
-        let present = |iris: &[oxrdf::NamedNode]| -> Result<Vec<TermId>, QueryError> {
-            let mut ids = Vec::new();
-            for iri in iris {
-                let id = snap.lookup(&iri.clone().into()).map_err(storage)?;
-                match id {
-                    Some(id) if ds.graph(id).map_err(storage)?.is_some() => ids.push(id),
-                    _ => return Err(QueryError::new(QueryErrorKind::Unsupported, format!(
-                        "dataset source <{}> is not a graph of this database (only local graphs can be named in FROM / FROM NAMED)", iri.as_str()))),
-                }
-            }
-            ids.sort_unstable(); ids.dedup();
-            Ok(ids)
-        };
-        match spec {
-            None => named = ds.graph_names().map_err(storage)?,
-            Some(spec) => {
-                let default = present(&spec.default)?;
-                if default.len() > 1 && ds.shares_blank_nodes(&default).map_err(storage)? != Some(false) {
-                    return Err(QueryError::new(QueryErrorKind::Unsupported,
-                        "FROM over several graphs that share (or may share) blank nodes is not supported: the RDF merge would standardize them apart".to_string()));
-                }
-                for id in default { from.push(ds.graph(id).map_err(storage)?.expect("checked present")) }
-                if let Some(n) = &spec.named { named = present(n)? }
-            }
-        }
-    }
+    let (from, named) = match dataset { Some(ds) => resolve_dataset(snap, ds, spec.as_ref())?, None => (Vec::new(), Vec::new()) };
     let empty = dataset::EmptyGraph { dict: snap as &dyn Snapshot };
     let union = (from.len() > 1).then(|| dataset::UnionGraph { members: from.clone() });
     let mut ctx = Ctx::new(snap);
@@ -201,87 +205,96 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     let stats = opts.stats;
     ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
     match q {
-        Query::Select { pattern, .. } => {
-            // The projection sits under any LIMIT/OFFSET and DISTINCT/REDUCED wrappers.
-            fn projected(p: &GraphPattern) -> Option<&Vec<Variable>> {
-                match p {
-                    GraphPattern::Project { variables, .. } => Some(variables),
-                    GraphPattern::Slice { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } => projected(inner),
-                    _ => None,
-                }
-            }
-            let vars = projected(pattern).cloned().unwrap_or_else(|| ctx.collect_visible(pattern));
-            ctx.register_all(pattern);
-            let rows = ctx.eval(pattern, vec![ctx.empty_row()]);
-            let idx: Vec<usize> = vars.iter().map(|v| ctx.var(v)).collect();
-            // Keep results as IDs: projected columns in a flat buffer, plus the few computed (scratch) terms.
-            let w = idx.len();
-            let mut ids = Vec::with_capacity(rows.len() * w);
-            for r in &rows { for &i in &idx { ids.push(r[i]) } }
-            let scratch: HashMap<TermId, Term> = ids.iter().filter(|id| id.0 >> 60 == 0xe)
-                .map(|&id| (id, ctx.resolve(id))).collect();
-            let sol = IdSolutions { vars, ids, scratch, rows: rows.len() };
-            if opts.raw_ids { return Ok(QueryResult::Ids(sol)) }
-            Ok(sol.decode(snap))
-        }
-        Query::Ask { pattern, .. } => {
-            ctx.register_all(pattern);
-            let rows = ctx.eval(&GraphPattern::Slice { inner: Box::new(pattern.clone()), start: 0, length: Some(1) },
-                                vec![ctx.empty_row()]);
-            Ok(QueryResult::Boolean(!rows.is_empty()))
-        }
-        Query::Construct { template, pattern, .. } => {
-            ctx.register_all(pattern);
-            for t in template { ctx.register_triple(t); }
-            let rows = ctx.eval(pattern, vec![ctx.empty_row()]);
-            let mut out = Vec::new();
-            let mut seen = HashSet::new();
-            for (n, r) in rows.iter().enumerate() {
-                for t in template {
-                    let inst = |tp: &TermPattern| -> Option<Term> {
-                        match tp {
-                            TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(format!("{}r{n}", b.as_str())).into()),
-                            tp => ctx.term_slot(tp, r).and_then(|id| (id != UNBOUND).then(|| ctx.resolve(id))),
-                        }
-                    };
-                    let (Some(s), Some(o)) = (inst(&t.subject), inst(&t.object)) else { continue };
-                    let p = match &t.predicate {
-                        NamedNodePattern::NamedNode(n) => Some(Term::NamedNode(n.clone())),
-                        NamedNodePattern::Variable(v) => { let id = r[ctx.var(v)]; (id != UNBOUND).then(|| ctx.resolve(id)) }
-                    };
-                    let (Some(Term::NamedNode(p)), Ok(s)) = (p, oxrdf::NamedOrBlankNode::try_from(s)) else { continue };
-                    let tr = oxrdf::Triple::new(s, p, o);
-                    if seen.insert(tr.clone()) { out.push(tr); }
-                }
-            }
-            Ok(QueryResult::Graph(out))
-        }
-        Query::Describe { pattern, .. } => {
-            // SPARQL leaves the description implementation-defined. TripleLight's policy: every triple whose subject is
-            // a described resource (an IRI listed in the query, or a value of a projected variable), plus, recursively,
-            // the triples of blank nodes reached as objects, so a description never ends in a dangling blank node.
-            // Incoming triples are not included.
-            ctx.register_all(pattern);
-            let rows = ctx.eval(pattern, vec![ctx.empty_row()]);
-            let mut queue: Vec<TermId> = Vec::new();
-            let mut seen = HashSet::new();
-            for r in &rows { for &id in r { if id != UNBOUND && id.0 >> 60 != 0xe && seen.insert(id) { queue.push(id) } } }
-            let mut out = Vec::new();
-            while let Some(s) = queue.pop() {
-                let Ok(subject) = oxrdf::NamedOrBlankNode::try_from(ctx.resolve(s)) else { continue };
-                let mut triples = Vec::new();
-                ctx.scan_each(Perm::Spo, &[s], |_, p, o| triples.push((p, o)));
-                for (p, o) in triples {
-                    let Term::NamedNode(p) = ctx.resolve(p) else { continue };
-                    let object = ctx.resolve(o);
-                    if matches!(object, Term::BlankNode(_)) && seen.insert(o) { queue.push(o) }
-                    out.push(oxrdf::Triple::new(subject.clone(), p, object));
-                }
-            }
-            Ok(QueryResult::Graph(out))
-        }
+        Query::Select { pattern, .. } => run_select(&mut ctx, snap, pattern, opts),
+        Query::Ask { pattern, .. } => run_ask(&mut ctx, pattern),
+        Query::Construct { template, pattern, .. } => run_construct(&mut ctx, template, pattern),
+        Query::Describe { pattern, .. } => run_describe(&mut ctx, pattern),
     }
 }
+
+fn run_select<S: Snapshot>(ctx: &mut Ctx<'_, S>, snap: &S, pattern: &GraphPattern, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
+    // The projection sits under any LIMIT/OFFSET and DISTINCT/REDUCED wrappers.
+    fn projected(p: &GraphPattern) -> Option<&Vec<Variable>> {
+        match p {
+            GraphPattern::Project { variables, .. } => Some(variables),
+            GraphPattern::Slice { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } => projected(inner),
+            _ => None,
+        }
+    }
+    let vars = projected(pattern).cloned().unwrap_or_else(|| ctx.collect_visible(pattern));
+    ctx.register_all(pattern);
+    let rows = ctx.eval(pattern, vec![ctx.empty_row()]);
+    let idx: Vec<usize> = vars.iter().map(|v| ctx.var(v)).collect();
+    // Keep results as IDs: projected columns in a flat buffer, plus the few computed (scratch) terms.
+    let w = idx.len();
+    let mut ids = Vec::with_capacity(rows.len() * w);
+    for r in &rows { for &i in &idx { ids.push(r[i]) } }
+    let scratch: HashMap<TermId, Term> = ids.iter().filter(|id| id.0 >> 60 == 0xe)
+        .map(|&id| (id, ctx.resolve(id))).collect();
+    let sol = IdSolutions { vars, ids, scratch, rows: rows.len() };
+    if opts.raw_ids { return Ok(QueryResult::Ids(sol)) }
+    Ok(sol.decode(snap))
+}
+
+fn run_ask<S: Snapshot>(ctx: &mut Ctx<'_, S>, pattern: &GraphPattern) -> Result<QueryResult, QueryError> {
+    ctx.register_all(pattern);
+    let rows = ctx.eval(&GraphPattern::Slice { inner: Box::new(pattern.clone()), start: 0, length: Some(1) },
+                        vec![ctx.empty_row()]);
+    Ok(QueryResult::Boolean(!rows.is_empty()))
+}
+
+fn run_construct<S: Snapshot>(ctx: &mut Ctx<'_, S>, template: &[TriplePattern], pattern: &GraphPattern) -> Result<QueryResult, QueryError> {
+    ctx.register_all(pattern);
+    for t in template { ctx.register_triple(t); }
+    let rows = ctx.eval(pattern, vec![ctx.empty_row()]);
+    let mut out = Vec::new();
+    let mut seen = HashSet::new();
+    for (n, r) in rows.iter().enumerate() {
+        for t in template {
+            let inst = |tp: &TermPattern| -> Option<Term> {
+                match tp {
+                    TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(format!("{}r{n}", b.as_str())).into()),
+                    tp => ctx.term_slot(tp, r).and_then(|id| (id != UNBOUND).then(|| ctx.resolve(id))),
+                }
+            };
+            let (Some(s), Some(o)) = (inst(&t.subject), inst(&t.object)) else { continue };
+            let p = match &t.predicate {
+                NamedNodePattern::NamedNode(n) => Some(Term::NamedNode(n.clone())),
+                NamedNodePattern::Variable(v) => { let id = r[ctx.var(v)]; (id != UNBOUND).then(|| ctx.resolve(id)) }
+            };
+            let (Some(Term::NamedNode(p)), Ok(s)) = (p, oxrdf::NamedOrBlankNode::try_from(s)) else { continue };
+            let tr = oxrdf::Triple::new(s, p, o);
+            if seen.insert(tr.clone()) { out.push(tr); }
+        }
+    }
+    Ok(QueryResult::Graph(out))
+}
+
+fn run_describe<S: Snapshot>(ctx: &mut Ctx<'_, S>, pattern: &GraphPattern) -> Result<QueryResult, QueryError> {
+    // SPARQL leaves the description implementation-defined. TripleLight's policy: every triple whose subject is
+    // a described resource (an IRI listed in the query, or a value of a projected variable), plus, recursively,
+    // the triples of blank nodes reached as objects, so a description never ends in a dangling blank node.
+    // Incoming triples are not included.
+    ctx.register_all(pattern);
+    let rows = ctx.eval(pattern, vec![ctx.empty_row()]);
+    let mut queue: Vec<TermId> = Vec::new();
+    let mut seen = HashSet::new();
+    for r in &rows { for &id in r { if id != UNBOUND && id.0 >> 60 != 0xe && seen.insert(id) { queue.push(id) } } }
+    let mut out = Vec::new();
+    while let Some(s) = queue.pop() {
+        let Ok(subject) = oxrdf::NamedOrBlankNode::try_from(ctx.resolve(s)) else { continue };
+        let mut triples = Vec::new();
+        ctx.scan_each(Perm::Spo, &[s], |_, p, o| triples.push((p, o)));
+        for (p, o) in triples {
+            let Term::NamedNode(p) = ctx.resolve(p) else { continue };
+            let object = ctx.resolve(o);
+            if matches!(object, Term::BlankNode(_)) && seen.insert(o) { queue.push(o) }
+            out.push(oxrdf::Triple::new(subject.clone(), p, object));
+        }
+    }
+    Ok(QueryResult::Graph(out))
+}
+
 
 pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// Dictionary, and the active graph unless `data` overrides it.
@@ -402,149 +415,17 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 // itself; otherwise evaluate the right group on its own and join the solution sets.
                 if scope_safe(right) { self.eval(right, l) } else { join_rows(l, self.eval(right, vec![self.empty_row()])) }
             }
-            GraphPattern::LeftJoin { left, right, expression } => {
-                let l = self.eval(left, input);
-                let mut out = Vec::new();
-                // As for Join: the OPTIONAL group sees the left solution only if it is scope-safe. The LeftJoin's own
-                // expression is evaluated on the merged solution either way.
-                let standalone = (!scope_safe(right)).then(|| self.eval(right, vec![self.empty_row()]));
-                for row in l {
-                    let merged = match &standalone { Some(r) => join_rows(vec![row.clone()], r.clone()), None => self.eval(right, vec![row.clone()]) };
-                    let ext: Vec<Row> = merged.into_iter().filter(|r| expression.as_ref().is_none_or(|e| self.ebv(e, r))).collect();
-                    if ext.is_empty() { out.push(row) } else { out.extend(ext) }
-                }
-                out
-            }
-            GraphPattern::Filter { expr, inner } => {
-                // Filter pushdown: conjuncts over variables the BGP binds are applied inside it, right after the
-                // join step that binds their last variable, so failing rows are never extended further.
-                if let GraphPattern::Bgp { patterns } = &**inner {
-                    // `FILTER(?a = ?b)` (or sameTerm) where neither variable can be bound to a literal: equality is term
-                    // identity, so evaluate the BGP with ?b renamed to ?a (a join instead of a cross product) and copy
-                    // ?a into ?b afterwards. Literals are excluded because `=` on literals is value equality.
-                    let all = conjuncts(expr);
-                    let unify = all.iter().enumerate().find_map(|(k, c)| self.unifiable_equality(c, patterns).map(|(a, b)| (k, a, b)))
-                        // Other conjuncts must not read ?b: it is only filled in after the renamed BGP.
-                        .filter(|(k, _, b)| all.iter().enumerate().all(|(i, c)| i == *k || !expr_vars(c).iter().any(|n| n == b.as_str())));
-                    // Only when no incoming row binds either variable: an outer binding of ?b (VALUES, OPTIONAL, a
-                    // nested evaluation) must still be checked, not overwritten.
-                    let unify = unify.filter(|(_, a, b)| {
-                        let (ai, bi) = (self.var(a), self.var(b));
-                        input.iter().all(|r| r[ai] == UNBOUND && r[bi] == UNBOUND)
-                    });
-                    if let Some((k, a, b)) = unify {
-                        let renamed: Vec<TriplePattern> = patterns.iter().map(|t| rename_var(t, &b, &a)).collect();
-                        let rest: Vec<&Expression> = all.iter().enumerate().filter(|(i, _)| *i != k).map(|(_, c)| *c).collect();
-                        let inner2 = GraphPattern::Bgp { patterns: renamed };
-                        let (ai, bi) = (self.var(&a), self.var(&b));
-                        let rows = match rest.split_first() {
-                            None => self.eval(&inner2, input),
-                            Some((first, more)) => {
-                                let e = more.iter().fold((*first).clone(), |acc, c| Expression::And(Box::new(acc), Box::new((*c).clone())));
-                                self.eval(&GraphPattern::Filter { expr: e, inner: Box::new(inner2) }, input)
-                            }
-                        };
-                        return rows.into_iter().map(|mut r| { r[bi] = r[ai]; r }).collect();
-                    }
-                    let bgp_vars: HashSet<usize> = { let mut v = Vec::new(); walk_vars(inner, &mut v); v.iter().filter_map(|n| self.vars.get(n).copied()).collect() };
-                    let (early, late): (Vec<&Expression>, Vec<&Expression>) = conjuncts(expr).into_iter().partition(|c| {
-                        let vs = expr_vars(c);
-                        !vs.is_empty() && !impure(c) && vs.iter().all(|n| self.vars.get(n).is_some_and(|i| bgp_vars.contains(i)))
-                    });
-                    if !early.is_empty() {
-                        let early: Vec<(&Expression, Vec<usize>)> = early.into_iter().map(|c| (c, expr_vars(c).iter().map(|n| self.vars[n]).collect())).collect();
-                        let rows = self.eval_bgp_filtered(patterns, input, &early);
-                        return rows.into_iter().filter(|r| late.iter().all(|c| self.ebv(c, r))).collect();
-                    }
-                }
-                let rows = self.eval(inner, input);
-                if let Some(out) = self.exists_batch(expr, &rows) { return out }
-                rows.into_iter().filter(|r| self.ebv(expr, r)).collect()
-            }
+            GraphPattern::LeftJoin { left, right, expression } => self.eval_left_join(left, right, expression, input),
+            GraphPattern::Filter { expr, inner } => self.eval_filter(expr, inner, input),
             GraphPattern::Union { left, right } => {
                 let mut l = self.eval(left, input.clone());
                 l.extend(self.eval(right, input));
                 l
             }
-            GraphPattern::Extend { inner, variable, expression } => {
-                let i = self.var(variable);
-                // If an outer solution passed in sideways already binds the target, the BIND result must be
-                // compatible with it (the group's solution is joined with the outer one): equal keeps the row, a
-                // different value drops it, an expression error leaves the outer value (W3C-style `{ BIND(2 AS ?x) }`).
-                self.eval(inner, input).into_iter().filter_map(|mut r| {
-                    if let Some(t) = self.value(expression, &r) {
-                        let id = self.intern(&t);
-                        if r[i] == UNBOUND { r[i] = id } else if r[i] != id { return None }
-                    }
-                    Some(r)
-                }).collect()
-            }
-            GraphPattern::Minus { left, right } => {
-                let l = self.eval(left, input);
-                let r = self.eval(right, vec![self.empty_row()]);
-                l.into_iter().filter(|a| !r.iter().any(|b| {
-                    let mut shared = false;
-                    for (x, y) in a.iter().zip(b) {
-                        if *x != UNBOUND && *y != UNBOUND { if x != y { return false } shared = true }
-                    }
-                    shared
-                })).collect()
-            }
-            GraphPattern::Values { variables, bindings } => {
-                let idx: Vec<usize> = variables.iter().map(|v| self.var(v)).collect();
-                let mut out = Vec::new();
-                for row in &input {
-                    'b: for b in bindings {
-                        let mut r = row.clone();
-                        for (k, v) in b.iter().enumerate() {
-                            let Some(v) = v else { continue };
-                            let t: Term = match v { GroundTerm::NamedNode(n) => n.clone().into(), GroundTerm::Literal(l) => l.clone().into() };
-                            let id = self.intern(&t);
-                            if r[idx[k]] != UNBOUND && r[idx[k]] != id { continue 'b }
-                            r[idx[k]] = id;
-                        }
-                        out.push(r);
-                    }
-                }
-                out
-            }
-            GraphPattern::OrderBy { inner, expression } => {
-                let limit = self.order_limit.take();
-                let rows = self.eval(inner, input);
-                // Sort keys: a plain variable is decoded once per distinct ID; other expressions per row.
-                let mut memo: HashMap<TermId, Option<Term>> = HashMap::new();
-                let keys: Vec<Vec<Option<Term>>> = rows.iter().map(|r| expression.iter().map(|e| {
-                    let e = match e { OrderExpression::Asc(e) | OrderExpression::Desc(e) => e };
-                    match e {
-                        Expression::Variable(v) => match self.vars.get(v.as_str()).map(|&i| r[i]) {
-                            Some(id) if id != UNBOUND => memo.entry(id).or_insert_with(|| Some(self.resolve(id))).clone(),
-                            _ => None,
-                        },
-                        e => self.value(e, r),
-                    }
-                }).collect()).collect();
-                let cmp = |a: &usize, b: &usize| -> std::cmp::Ordering {
-                    for (k, e) in expression.iter().enumerate() {
-                        let c = expr::order_cmp(keys[*a][k].as_ref(), keys[*b][k].as_ref());
-                        let c = if matches!(e, OrderExpression::Desc(_)) { c.reverse() } else { c };
-                        if c.is_ne() { return c }
-                    }
-                    a.cmp(b) // ties keep input order (as the stable sort did)
-                };
-                let mut idx: Vec<usize> = (0..rows.len()).collect();
-                match limit {
-                    Some(k) if k < idx.len() => {
-                        // Stable top-k: the comparator is a total order (index tie-break), so the k smallest equal the
-                        // first k of a full stable sort.
-                        if k > 0 { idx.select_nth_unstable_by(k - 1, cmp); }
-                        idx.truncate(k);
-                        idx.sort_unstable_by(cmp);
-                    }
-                    _ => idx.sort_unstable_by(cmp),
-                }
-                let mut rows: Vec<Option<Row>> = rows.into_iter().map(Some).collect();
-                idx.into_iter().map(|i| rows[i].take().unwrap()).collect()
-            }
+            GraphPattern::Extend { inner, variable, expression } => self.eval_extend(inner, variable, expression, input),
+            GraphPattern::Minus { left, right } => self.eval_minus(left, right, input),
+            GraphPattern::Values { variables, bindings } => self.eval_values(variables, bindings, input),
+            GraphPattern::OrderBy { inner, expression } => self.eval_order_by(inner, expression, input),
             GraphPattern::Project { inner, variables } => {
                 let keep: HashSet<usize> = variables.iter().map(|v| self.var(v)).collect();
                 // Inner variables are scoped to the subquery: evaluate from an empty row, then join back.
@@ -559,24 +440,170 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 let mut seen = HashSet::new();
                 self.eval(inner, input).into_iter().filter(|r| seen.insert(r.clone())).collect()
             }
-            GraphPattern::Slice { inner, start, length } => {
-                if let Some(l) = length {
-                    let direct = match inner.as_ref() {
-                        GraphPattern::OrderBy { .. } => true,
-                        GraphPattern::Project { inner, .. } => matches!(inner.as_ref(), GraphPattern::OrderBy { .. }),
-                        _ => false,
-                    };
-                    if direct { self.order_limit.set(Some(start.saturating_add(*l))) }
-                }
-                let rows = self.eval(inner, input);
-                self.order_limit.set(None);
-                rows.into_iter().skip(*start).take(length.unwrap_or(usize::MAX)).collect()
-            }
+            GraphPattern::Slice { inner, start, length } => self.eval_slice(inner, start, length, input),
             GraphPattern::Group { inner, variables, aggregates } => self.eval_group(inner, variables, aggregates, input),
             GraphPattern::Graph { name, inner } => self.eval_graph(name, inner, input),
             GraphPattern::Path { subject, path, object } => self.eval_path(subject, path, object, input),
             GraphPattern::Service { .. } => panic!("SERVICE is not supported"),
         }
+    }
+
+    fn eval_left_join(&self, left: &GraphPattern, right: &GraphPattern, expression: &Option<Expression>, input: Vec<Row>) -> Vec<Row> {
+        let l = self.eval(left, input);
+        let mut out = Vec::new();
+        // As for Join: the OPTIONAL group sees the left solution only if it is scope-safe. The LeftJoin's own
+        // expression is evaluated on the merged solution either way.
+        let standalone = (!scope_safe(right)).then(|| self.eval(right, vec![self.empty_row()]));
+        for row in l {
+            let merged = match &standalone { Some(r) => join_rows(vec![row.clone()], r.clone()), None => self.eval(right, vec![row.clone()]) };
+            let ext: Vec<Row> = merged.into_iter().filter(|r| expression.as_ref().is_none_or(|e| self.ebv(e, r))).collect();
+            if ext.is_empty() { out.push(row) } else { out.extend(ext) }
+        }
+        out
+    }
+
+    fn eval_filter(&self, expr: &Expression, inner: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
+        // Filter pushdown: conjuncts over variables the BGP binds are applied inside it, right after the
+        // join step that binds their last variable, so failing rows are never extended further.
+        if let GraphPattern::Bgp { patterns } = inner {
+            // `FILTER(?a = ?b)` (or sameTerm) where neither variable can be bound to a literal: equality is term
+            // identity, so evaluate the BGP with ?b renamed to ?a (a join instead of a cross product) and copy
+            // ?a into ?b afterwards. Literals are excluded because `=` on literals is value equality.
+            let all = conjuncts(expr);
+            let unify = all.iter().enumerate().find_map(|(k, c)| self.unifiable_equality(c, patterns).map(|(a, b)| (k, a, b)))
+                // Other conjuncts must not read ?b: it is only filled in after the renamed BGP.
+                .filter(|(k, _, b)| all.iter().enumerate().all(|(i, c)| i == *k || !expr_vars(c).iter().any(|n| n == b.as_str())));
+            // Only when no incoming row binds either variable: an outer binding of ?b (VALUES, OPTIONAL, a
+            // nested evaluation) must still be checked, not overwritten.
+            let unify = unify.filter(|(_, a, b)| {
+                let (ai, bi) = (self.var(a), self.var(b));
+                input.iter().all(|r| r[ai] == UNBOUND && r[bi] == UNBOUND)
+            });
+            if let Some((k, a, b)) = unify {
+                let renamed: Vec<TriplePattern> = patterns.iter().map(|t| rename_var(t, &b, &a)).collect();
+                let rest: Vec<&Expression> = all.iter().enumerate().filter(|(i, _)| *i != k).map(|(_, c)| *c).collect();
+                let inner2 = GraphPattern::Bgp { patterns: renamed };
+                let (ai, bi) = (self.var(&a), self.var(&b));
+                let rows = match rest.split_first() {
+                    None => self.eval(&inner2, input),
+                    Some((first, more)) => {
+                        let e = more.iter().fold((*first).clone(), |acc, c| Expression::And(Box::new(acc), Box::new((*c).clone())));
+                        self.eval(&GraphPattern::Filter { expr: e, inner: Box::new(inner2) }, input)
+                    }
+                };
+                return rows.into_iter().map(|mut r| { r[bi] = r[ai]; r }).collect();
+            }
+            let bgp_vars: HashSet<usize> = { let mut v = Vec::new(); walk_vars(inner, &mut v); v.iter().filter_map(|n| self.vars.get(n).copied()).collect() };
+            let (early, late): (Vec<&Expression>, Vec<&Expression>) = conjuncts(expr).into_iter().partition(|c| {
+                let vs = expr_vars(c);
+                !vs.is_empty() && !impure(c) && vs.iter().all(|n| self.vars.get(n).is_some_and(|i| bgp_vars.contains(i)))
+            });
+            if !early.is_empty() {
+                let early: Vec<(&Expression, Vec<usize>)> = early.into_iter().map(|c| (c, expr_vars(c).iter().map(|n| self.vars[n]).collect())).collect();
+                let rows = self.eval_bgp_filtered(patterns, input, &early);
+                return rows.into_iter().filter(|r| late.iter().all(|c| self.ebv(c, r))).collect();
+            }
+        }
+        let rows = self.eval(inner, input);
+        if let Some(out) = self.exists_batch(expr, &rows) { return out }
+        rows.into_iter().filter(|r| self.ebv(expr, r)).collect()
+    }
+
+    fn eval_extend(&self, inner: &GraphPattern, variable: &Variable, expression: &Expression, input: Vec<Row>) -> Vec<Row> {
+        let i = self.var(variable);
+        // If an outer solution passed in sideways already binds the target, the BIND result must be
+        // compatible with it (the group's solution is joined with the outer one): equal keeps the row, a
+        // different value drops it, an expression error leaves the outer value (W3C-style `{ BIND(2 AS ?x) }`).
+        self.eval(inner, input).into_iter().filter_map(|mut r| {
+            if let Some(t) = self.value(expression, &r) {
+                let id = self.intern(&t);
+                if r[i] == UNBOUND { r[i] = id } else if r[i] != id { return None }
+            }
+            Some(r)
+        }).collect()
+    }
+
+    fn eval_minus(&self, left: &GraphPattern, right: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
+        let l = self.eval(left, input);
+        let r = self.eval(right, vec![self.empty_row()]);
+        l.into_iter().filter(|a| !r.iter().any(|b| {
+            let mut shared = false;
+            for (x, y) in a.iter().zip(b) {
+                if *x != UNBOUND && *y != UNBOUND { if x != y { return false } shared = true }
+            }
+            shared
+        })).collect()
+    }
+
+    fn eval_values(&self, variables: &[Variable], bindings: &[Vec<Option<GroundTerm>>], input: Vec<Row>) -> Vec<Row> {
+        let idx: Vec<usize> = variables.iter().map(|v| self.var(v)).collect();
+        let mut out = Vec::new();
+        for row in &input {
+            'b: for b in bindings {
+                let mut r = row.clone();
+                for (k, v) in b.iter().enumerate() {
+                    let Some(v) = v else { continue };
+                    let t: Term = match v { GroundTerm::NamedNode(n) => n.clone().into(), GroundTerm::Literal(l) => l.clone().into() };
+                    let id = self.intern(&t);
+                    if r[idx[k]] != UNBOUND && r[idx[k]] != id { continue 'b }
+                    r[idx[k]] = id;
+                }
+                out.push(r);
+            }
+        }
+        out
+    }
+
+    fn eval_order_by(&self, inner: &GraphPattern, expression: &[OrderExpression], input: Vec<Row>) -> Vec<Row> {
+        let limit = self.order_limit.take();
+        let rows = self.eval(inner, input);
+        // Sort keys: a plain variable is decoded once per distinct ID; other expressions per row.
+        let mut memo: HashMap<TermId, Option<Term>> = HashMap::new();
+        let keys: Vec<Vec<Option<Term>>> = rows.iter().map(|r| expression.iter().map(|e| {
+            let e = match e { OrderExpression::Asc(e) | OrderExpression::Desc(e) => e };
+            match e {
+                Expression::Variable(v) => match self.vars.get(v.as_str()).map(|&i| r[i]) {
+                    Some(id) if id != UNBOUND => memo.entry(id).or_insert_with(|| Some(self.resolve(id))).clone(),
+                    _ => None,
+                },
+                e => self.value(e, r),
+            }
+        }).collect()).collect();
+        let cmp = |a: &usize, b: &usize| -> std::cmp::Ordering {
+            for (k, e) in expression.iter().enumerate() {
+                let c = expr::order_cmp(keys[*a][k].as_ref(), keys[*b][k].as_ref());
+                let c = if matches!(e, OrderExpression::Desc(_)) { c.reverse() } else { c };
+                if c.is_ne() { return c }
+            }
+            a.cmp(b) // ties keep input order (as the stable sort did)
+        };
+        let mut idx: Vec<usize> = (0..rows.len()).collect();
+        match limit {
+            Some(k) if k < idx.len() => {
+                // Stable top-k: the comparator is a total order (index tie-break), so the k smallest equal the
+                // first k of a full stable sort.
+                if k > 0 { idx.select_nth_unstable_by(k - 1, cmp); }
+                idx.truncate(k);
+                idx.sort_unstable_by(cmp);
+            }
+            _ => idx.sort_unstable_by(cmp),
+        }
+        let mut rows: Vec<Option<Row>> = rows.into_iter().map(Some).collect();
+        idx.into_iter().map(|i| rows[i].take().unwrap()).collect()
+    }
+
+    fn eval_slice(&self, inner: &GraphPattern, start: &usize, length: &Option<usize>, input: Vec<Row>) -> Vec<Row> {
+        if let Some(l) = length {
+            let direct = match inner {
+                GraphPattern::OrderBy { .. } => true,
+                GraphPattern::Project { inner, .. } => matches!(inner.as_ref(), GraphPattern::OrderBy { .. }),
+                _ => false,
+            };
+            if direct { self.order_limit.set(Some(start.saturating_add(*l))) }
+        }
+        let rows = self.eval(inner, input);
+        self.order_limit.set(None);
+        rows.into_iter().skip(*start).take(length.unwrap_or(usize::MAX)).collect()
     }
 
     /// `GRAPH <g> P` / `GRAPH ?g P` over the active dataset: P is evaluated with each named graph as the active graph;
