@@ -81,7 +81,5 @@ fn function_unsupported(f: &Function) -> Option<String> {
             Some(t) if XSD_CASTS.contains(&t) => None,
             _ => Some(format!("function <{}> is not supported", iri.as_str())),
         },
-        #[allow(unreachable_patterns)]
-        other => Some(format!("function {other} is not supported")),
     }
 }

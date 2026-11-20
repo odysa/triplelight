@@ -156,8 +156,6 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             TermPattern::BlankNode(b) => { let i = self.vars[&format!("_:b{}", b.as_str())]; if row[i] == UNBOUND { Err(i) } else { Ok(Some(row[i])) } }
             TermPattern::NamedNode(n) => Ok(Some(self.intern(&n.clone().into()))),
             TermPattern::Literal(l) => Ok(Some(self.intern(&l.clone().into()))),
-            #[allow(unreachable_patterns)]
-            _ => Ok(None),
         }
     }
 

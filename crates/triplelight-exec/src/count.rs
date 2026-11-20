@@ -86,15 +86,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             .flatten()
             .any(|s| matches!(s, Slot::Const(None)));
         if pats.len() != 1 {
-            // Distinct projected variables and grouped joins need additional state;
-            // never replace these with a full-binding count.
-            if !keys.is_empty()
-                || requests
-                    .iter()
-                    .any(|(_, c)| matches!(c, Count::Variable { distinct: true, .. }))
-            {
-                return None;
-            }
+            // Grouped joins and DISTINCT projections were already refused above (they need extra state).
             let n = if missing {
                 0
             } else {
@@ -254,7 +246,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                         Some(_) if n == 0 => 0,
                         Some(_) if binding[index] != UNBOUND => 1,
                         Some(_) if prefix.len() == 2 => n,
-                        Some(target) => self.count_distinct(pat, target, perm, prefix),
+                        Some(target) => self.count_distinct(target, perm, prefix),
                     }
                 }
             };
@@ -264,7 +256,6 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     }
     fn count_distinct(
         &self,
-        pat: &[Slot; 3],
         target: usize,
         group_perm: Perm,
         prefix: &[TermId],
@@ -292,7 +283,6 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         if bound.len() == 2 {
             return self.count(perm, &bound);
         }
-        let _ = pat; // Pattern identity is already represented by the fixed prefix.
         let mut n = 0;
         let mut next = TermId(1);
         while let Some(value) = on_data!(self, |g| g.seek(perm, &bound, next))
