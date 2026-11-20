@@ -65,10 +65,13 @@ qualification v3 passed 9/9 with 96/96 offline gate controls. Registration v1 wa
 audited the saved packet (all 15 phase gates, 120 observation checks, 15 canonical q010 order checks, and the exact
 summary statistics); the audit used saved receipts, not live containers or a rehash of the large stores. Its
 note, script and recomputed values are in [independent-audit/](independent-audit/README.md). The audit covered
-packet v1 (237 files); the published packet is v2, which adds only `probe-worktree.raw.diff`,
-`probe-worktree.raw.status` and `PACKAGING-NOTE.md` (all other files byte-identical).
+packet v1 (237 payload files plus its `PACKET_FILES.json`), which is kept unchanged as
+[packet-v1.tar.gz](packet-v1.tar.gz) so the included audit script runs directly on its original input. Packet v2
+([packet-v2.tar.gz](packet-v2.tar.gz)) keeps the same 237 payload files byte-identical, adds
+`probe-worktree.raw.diff`, `probe-worktree.raw.status` and `PACKAGING-NOTE.md`, and carries a regenerated
+`PACKET_FILES.json` listing 240 entries; that manifest itself therefore differs from v1's.
 
-[packet.tar.gz](packet.tar.gz) (verify with [SHA256SUMS](SHA256SUMS)) holds the registration and Raft receipt, every
+[packet-v2.tar.gz](packet-v2.tar.gz) (verify both packets with [SHA256SUMS](SHA256SUMS)) holds the registration and Raft receipt, every
 phase receipt, raw probe output and container inspection, the qualification, the probe source and diffs, supervisor,
 launcher and controls, `summarize.py` and `SUMMARY.json`. `PACKAGING-NOTE.md` explains why `probe-worktree.diff` and
 `probe-worktree.status` are shell-hook summaries, with the exact raw outputs added beside them; the raw diff matches the
