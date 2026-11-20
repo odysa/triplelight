@@ -393,7 +393,8 @@ warm-cache passes, query-to-full-SPARQL-JSON totals were **19.924 / 19.436 s** f
 **4.519 / 4.424 s** for a hybrid schema (4.41× / 4.39× lower time). All 120 scheduled responses, including warmup,
 pass typed bags; all 54 declared order checks pass. The hybrid retains literal edges for complex OPTIONAL:
 its database is **58.9% larger**, its maximum query/export worker RSS is about **25.6% higher**, and its warm-cache
-opens are slower. This experiment uses fresh Python processes per request and a different output boundary from
+opens are slower. Gains vary: q011/q012/q014/q015 improve about 1.3×; the largest gains are around 20×.
+This experiment uses fresh Python processes per request and a different output boundary from
 the historical table above; **the times must not be combined into a cross-engine ranking**. The
 [report and complete portable evidence](ladybug-hybrid-explore-v1/README.md) include both passes, import/storage
 costs, every query, and the earlier pure-column limitation and q023 ordering failure.

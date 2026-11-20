@@ -5,6 +5,7 @@ Does not load an engine or execute archived drivers.
 import sys,json,gzip,hashlib,math,collections,datetime,re
 from decimal import Decimal
 from pathlib import Path
+sys.dont_write_bytecode=True
 XSD='http://www.w3.org/2001/XMLSchema#'
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 def canonical(t):
