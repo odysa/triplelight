@@ -247,13 +247,29 @@ fn run_construct<S: Snapshot>(ctx: &mut Ctx<'_, S>, template: &[TriplePattern], 
     ctx.register_all(pattern);
     for t in template { ctx.register_triple(t); }
     let rows = ctx.eval(pattern, vec![ctx.empty_row()]);
+    // Template blank nodes get a fresh node per solution, labelled `<template label>r<row>`. Those labels must not
+    // collide with a blank node from the data that a solution binds (e.g. an input `_:tr0`), or one output node could
+    // stand for two different nodes. Collect the labels of every blank node the solutions bind, stored or computed.
+    let mut bound_ids = HashSet::new();
+    for r in &rows { for &id in r { if id != UNBOUND && matches!(id.0 >> 60, 2 | 0xe) { bound_ids.insert(id); } } }
+    let input_labels: HashSet<String> = bound_ids.into_iter()
+        .filter_map(|id| match ctx.resolve(id) { Term::BlankNode(b) => Some(b.as_str().to_string()), _ => None })
+        .collect();
+    // A deterministic label per (template label, row). The text after the last `r` is the row number, so base labels
+    // are distinct from one another; on a collision, `_<k>` (no `r`, not all digits) keeps it distinct from every
+    // base label and from other suffixed ones.
+    let fresh = |tpl: &str, n: usize| -> String {
+        let base = format!("{tpl}r{n}");
+        if !input_labels.contains(&base) { return base }
+        (1..).map(|k| format!("{base}_{k}")).find(|l| !input_labels.contains(l)).expect("finite input set")
+    };
     let mut out = Vec::new();
     let mut seen = HashSet::new();
     for (n, r) in rows.iter().enumerate() {
         for t in template {
             let inst = |tp: &TermPattern| -> Option<Term> {
                 match tp {
-                    TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(format!("{}r{n}", b.as_str())).into()),
+                    TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(fresh(b.as_str(), n)).into()),
                     tp => ctx.term_slot(tp, r).and_then(|id| (id != UNBOUND).then(|| ctx.resolve(id))),
                 }
             };
