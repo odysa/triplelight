@@ -1295,18 +1295,13 @@ fn push_graph(graphs: &mut Vec<(NamedNodePattern, Vec<TriplePattern>)>, name: Na
 /// Variables of an expression outside aggregates (aggregates are already replaced by their variables). Iterative,
 /// because it runs during parsing, before the algebra depth has been checked.
 fn expr_vars(e: &Expression, out: &mut Vec<Variable>) {
+    // Iterative: runs before the nesting-depth check.
     let mut stack = vec![e];
     while let Some(e) = stack.pop() {
         match e {
             Expression::Variable(v) | Expression::Bound(v) => out.push(v.clone()),
-            Expression::NamedNode(_) | Expression::Literal(_) | Expression::Exists(_) => {}
-            Expression::Or(a, b) | Expression::And(a, b) | Expression::Equal(a, b) | Expression::SameTerm(a, b)
-            | Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b)
-            | Expression::Add(a, b) | Expression::Subtract(a, b) | Expression::Multiply(a, b) | Expression::Divide(a, b) => { stack.push(a); stack.push(b) }
-            Expression::UnaryPlus(a) | Expression::UnaryMinus(a) | Expression::Not(a) => stack.push(a),
-            Expression::In(a, l) => { stack.push(a); stack.extend(l.iter()) }
-            Expression::If(a, b, c) => { stack.push(a); stack.push(b); stack.push(c) }
-            Expression::Coalesce(l) | Expression::FunctionCall(_, l) => stack.extend(l.iter()),
+            Expression::Exists(_) => {}
+            e => stack.extend(e.children()),
         }
     }
 }
@@ -1389,17 +1384,8 @@ fn check_depth(root: &GraphPattern) -> Result<(), String> {
                 | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. } => stack.push((Node::P(inner), c)),
             },
             Node::E(e) => match e {
-                Expression::NamedNode(_) | Expression::Literal(_) | Expression::Variable(_) | Expression::Bound(_) => {}
-                Expression::Or(a, b) | Expression::And(a, b) | Expression::Equal(a, b) | Expression::SameTerm(a, b)
-                | Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b)
-                | Expression::Add(a, b) | Expression::Subtract(a, b) | Expression::Multiply(a, b) | Expression::Divide(a, b) => {
-                    stack.push((Node::E(a), c)); stack.push((Node::E(b), c));
-                }
-                Expression::UnaryPlus(a) | Expression::UnaryMinus(a) | Expression::Not(a) => stack.push((Node::E(a), c)),
-                Expression::In(a, l) => { stack.push((Node::E(a), c)); for x in l { stack.push((Node::E(x), c)) } }
-                Expression::If(a, b, x) => { stack.push((Node::E(a), c)); stack.push((Node::E(b), c)); stack.push((Node::E(x), c)) }
-                Expression::Coalesce(l) | Expression::FunctionCall(_, l) => for x in l { stack.push((Node::E(x), c)) },
                 Expression::Exists(p) => stack.push((Node::P(p), c)),
+                e => stack.extend(e.children().map(|x| (Node::E(x), c))),
             },
             Node::Path(p) => match p {
                 PropertyPathExpression::NamedNode(_) | PropertyPathExpression::NegatedPropertySet(_) => {}

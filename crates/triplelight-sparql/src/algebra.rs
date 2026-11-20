@@ -152,6 +152,24 @@ pub enum Expression {
     FunctionCall(Function, Vec<Expression>),
 }
 
+impl Expression {
+    /// Direct sub-expressions in source order (left operand first; for `IN`, the needle then the list).
+    /// `EXISTS` has none here: its pattern is not an expression, and each caller treats it specially.
+    pub fn children(&self) -> impl Iterator<Item = &Expression> {
+        let (fixed, rest): ([Option<&Expression>; 3], &[Expression]) = match self {
+            Expression::Or(a, b) | Expression::And(a, b) | Expression::Equal(a, b) | Expression::SameTerm(a, b)
+            | Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b)
+            | Expression::Add(a, b) | Expression::Subtract(a, b) | Expression::Multiply(a, b) | Expression::Divide(a, b) => ([Some(a), Some(b), None], &[]),
+            Expression::UnaryPlus(a) | Expression::UnaryMinus(a) | Expression::Not(a) => ([Some(a), None, None], &[]),
+            Expression::In(a, l) => ([Some(a), None, None], l),
+            Expression::If(a, b, c) => ([Some(a), Some(b), Some(c)], &[]),
+            Expression::Coalesce(l) | Expression::FunctionCall(_, l) => ([None; 3], l),
+            Expression::NamedNode(_) | Expression::Literal(_) | Expression::Variable(_) | Expression::Bound(_) | Expression::Exists(_) => ([None; 3], &[]),
+        };
+        fixed.into_iter().flatten().chain(rest.iter())
+    }
+}
+
 /// Built-in functions (§17.4), plus calls to an IRI (`Custom`: XSD casts or extension functions).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Function {
@@ -202,3 +220,22 @@ pub enum AggregateFunction {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum OrderExpression { Asc(Expression), Desc(Expression) }
+
+#[cfg(test)]
+mod children_tests {
+    use super::*;
+    fn v(n: &str) -> Expression { Expression::Variable(Variable::new_unchecked(n)) }
+    fn names(e: &Expression) -> Vec<String> {
+        e.children().map(|c| match c { Expression::Variable(x) => x.as_str().to_string(), _ => "?".into() }).collect()
+    }
+    #[test]
+    fn children_in_source_order() {
+        assert_eq!(names(&Expression::Less(Box::new(v("a")), Box::new(v("b")))), ["a", "b"]);
+        assert_eq!(names(&Expression::Not(Box::new(v("a")))), ["a"]);
+        assert_eq!(names(&Expression::In(Box::new(v("a")), vec![v("b"), v("c")])), ["a", "b", "c"]);
+        assert_eq!(names(&Expression::If(Box::new(v("a")), Box::new(v("b")), Box::new(v("c")))), ["a", "b", "c"]);
+        assert_eq!(names(&Expression::Coalesce(vec![v("a"), v("b")])), ["a", "b"]);
+        assert!(v("a").children().next().is_none());
+        assert!(Expression::Exists(Box::new(GraphPattern::Bgp { patterns: vec![] })).children().next().is_none());
+    }
+}
