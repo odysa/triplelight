@@ -47,6 +47,10 @@ The [Oxilite SQLite-store tiny qualification](oxilite-tiny-qualification-v1/READ
 observations across memory, disk-load and separate-process disk-reopen. It has no workload timing
 or full-workload admission; compiler explain output is retained separately from runtime-tracing claims.
 
+The [RDFLib Memory tiny qualification](rdflib-tiny-qualification-v1/README.md) retains default-normalization
+and lexical-preserving profiles separately. Both fail the fixed empty-result control; no workload timing
+is reported, and their lexical-form results are documented without transferring earlier cohort scores.
+
 The [embedded-store evidence inventory](embedded-store-inventory.md) distinguishes completed cohorts,
 failed admission checks and unattempted candidates. Ontop and Oxilite are newly identified candidates, not
 installed or measured comparators. Existing timed tables below retain their original sources and sessions.
