@@ -23,7 +23,9 @@ This follows the [Arrow C Stream measurement](../arrow-c-stream-measurement/READ
   records its stage sums and a signed, unclamped remainder against its own total; the remainder includes the reader's
   destruction and the per-batch copies dropped after the build clock. The profiled copy's timings are those of a
   separate instrumented implementation, not of the library reader.
-- **Each pass recomputes `query_ids`** on the same snapshot; `ids_ms` is recorded per pass and is outside both totals.
+- **Each pass acquires its own read snapshot** of the same unmodified store and recomputes `query_ids` on it; `ids_ms`
+  is recorded per pass and is outside both totals. The answer gates and the source and base-tree checks are the
+  evidence that both passes saw the same data; the snapshots are not the same object.
 - **Warm-query experiment:** VM page cache dropped before each phase, then one untimed control warm-up; then both
   passes in the registered order (r1, r3, r5 control first; r2, r4 profiled first), positions retained. One process
   per phase, Linux arm64 Docker (4 CPUs, 12 GiB, no swap, no network, read-only root, private cgroup), a fresh private
