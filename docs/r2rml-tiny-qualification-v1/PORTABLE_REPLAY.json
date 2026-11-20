@@ -1,0 +1,21 @@
+{
+  "packet_files_verified": 85,
+  "query_cases": 13,
+  "engine_observations": 26,
+  "duckdb_plain_rows": 8,
+  "expected_plain_rows": 9,
+  "duckdb_both_counts": 8,
+  "duckdb_typed_projection_matches_nine_terms": true,
+  "duckdb_distinct_discriminator_matches_nine_terms": true,
+  "distinct_original_failure_is_adapter_shape": true,
+  "sqlite_execution_errors": 10,
+  "sqlite_passing_controls": [
+    "duplicate-input",
+    "employee-null",
+    "empty-projection"
+  ],
+  "admitted_duckdb": false,
+  "admitted_sqlite": false,
+  "lock_release_anomaly_retained": true,
+  "engine_executed_by_replay": false
+}
