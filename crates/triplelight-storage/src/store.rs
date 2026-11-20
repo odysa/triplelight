@@ -236,6 +236,31 @@ impl BaseFormat for NTriplesBase {
     }
 }
 
+/// Takes the exclusive directory lock, retrying briefly before reporting `WouldBlock` ("already open").
+///
+/// `flock` locks belong to the open file description, and a child process spawned anywhere in this process gets a
+/// copy of every descriptor (including a just-closed database's LOCK) until it execs and close-on-exec drops it. A
+/// database closed while another thread spawns can therefore stay locked for a moment after its last handle is
+/// dropped. A database that is really open keeps the lock, so it is still reported after the bounded wait.
+fn lock_directory(file: &File) -> std::io::Result<()> {
+    const WAIT: std::time::Duration = std::time::Duration::from_millis(250);
+    let start = std::time::Instant::now();
+    let mut pause = std::time::Duration::from_millis(1);
+    loop {
+        match file.try_lock() {
+            Ok(()) => return Ok(()),
+            Err(std::fs::TryLockError::Error(e)) => return Err(e),
+            Err(std::fs::TryLockError::WouldBlock) if start.elapsed() < WAIT => {
+                std::thread::sleep(pause);
+                pause = (pause * 2).min(std::time::Duration::from_millis(32));
+            }
+            Err(std::fs::TryLockError::WouldBlock) => {
+                return Err(std::io::Error::new(std::io::ErrorKind::WouldBlock, "database directory is already open"))
+            }
+        }
+    }
+}
+
 /// A persistent store: base file + WAL in a directory.
 pub struct Store {
     dir: PathBuf,
@@ -271,10 +296,7 @@ impl Store {
         // Lock before reading CURRENT, recovery, or deleting any abandoned generation.
         // The file remains in place to avoid lock-inode replacement races between processes.
         let directory_lock = OpenOptions::new().read(true).write(true).create(true).truncate(false).open(dir.join("LOCK"))?;
-        directory_lock.try_lock().map_err(|e| match e {
-            std::fs::TryLockError::WouldBlock => std::io::Error::new(std::io::ErrorKind::WouldBlock, "database directory is already open"),
-            std::fs::TryLockError::Error(e) => e,
-        })?;
+        lock_directory(&directory_lock)?;
         let generation = match std::fs::read_to_string(dir.join("CURRENT")) {
             Ok(s) => s.trim().strip_prefix("base-").and_then(|n| n.parse().ok())
                 .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?,
@@ -589,5 +611,33 @@ mod borrowed_overlay_tests {
         assert_eq!(deleted.count(Perm::Spo, &[]).unwrap(), 0);
         let (restored, _) = added.with_changes(&[(Change::Delete, b)]).unwrap();
         assert_eq!(restored.matching_rows(Perm::Spo, &[]).unwrap().len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod directory_lock_tests {
+    use super::*;
+
+    /// A child process spawned while a database closes holds a copy of its LOCK descriptor until it execs. Model
+    /// that copy with a clone of the same open file description, released shortly after close: reopening must wait
+    /// for it instead of reporting the closed database as still open.
+    #[test]
+    fn reopen_waits_out_a_briefly_inherited_lock_descriptor() {
+        let dir = std::env::temp_dir().join(format!("rdf-inherited-lock-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store = Store::open(&dir, None, 1).unwrap();
+        let inherited = store._directory_lock.try_clone().unwrap();
+        drop(store);
+        let releaser = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            drop(inherited);
+        });
+        let reopened = Store::open(&dir, None, 1).expect("reopen after the inherited descriptor closes");
+        releaser.join().unwrap();
+        // A database that really is open still reports WouldBlock after the bounded wait.
+        let err = Store::open(&dir, None, 1).err().expect("second open of an open directory");
+        assert_eq!(err.kind(), std::io::ErrorKind::WouldBlock);
+        drop(reopened);
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }
