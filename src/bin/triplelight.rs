@@ -20,6 +20,9 @@ impl Snapshot for Backend {
     fn scan<'a>(&'a self, p: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + 'a> {
         match self { Self::Memory(s) => s.scan(p,prefix), Self::Disk(s) => s.scan(p,prefix) }
     }
+    fn scan_for_stats(&self) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + '_> {
+        match self { Self::Memory(s) => s.scan_for_stats(), Self::Disk(s) => s.scan_for_stats() }
+    }
     fn count(&self, p: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
         match self { Self::Memory(s) => s.count(p,prefix), Self::Disk(s) => s.count(p,prefix) }
     }

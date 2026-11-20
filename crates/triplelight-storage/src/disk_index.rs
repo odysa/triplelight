@@ -526,6 +526,15 @@ impl DiskIndex {
         let count = (end - start).min(BLOCK_ROWS - start % BLOCK_ROWS) as usize;
         Ok(rows[from..from + count].to_vec())
     }
+    /// Read a full-scan block without populating the shared query cache.
+    pub fn block_slice_uncached(&self, start: u64, end: u64) -> io::Result<Vec<[TermId; 3]>> {
+        if start >= end || end > self.rows { return Err(invalid("invalid block slice")); }
+        let rows = self.read_block(start / BLOCK_ROWS)?;
+        let from = (start % BLOCK_ROWS) as usize;
+        let count = (end - start).min(BLOCK_ROWS - start % BLOCK_ROWS) as usize;
+        Ok(rows[from..from + count].to_vec())
+    }
+
     pub fn seek_value(&self, prefix: &[TermId], target: TermId) -> io::Result<Option<TermId>> {
         if prefix.len() >= 3 {
             return Ok(None);
@@ -654,6 +663,22 @@ mod tests {
         let cut = index.blocks[2].offset as usize + index.blocks[2].length / 2;
         std::fs::write(&path, &bytes[..cut]).unwrap();
         assert!(index.get(699).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn uncached_stats_blocks_do_not_pollute_cache_and_check_corruption() {
+        let path = std::env::temp_dir().join(format!("rdf-stats-uncached-{}", std::process::id()));
+        let rows: Vec<_> = (1..=700).map(|i| [TermId(i), TermId(1), TermId(2)]).collect();
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.clone().into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::open(&path).unwrap();
+        assert_eq!(index.block_slice_uncached(256, 512).unwrap(), rows[256..512]);
+        assert!(index.cache.iter().all(|shard| shard.read().unwrap().entries.is_empty()));
+        let mut bad = bytes;
+        bad[index.blocks[1].offset as usize + 3] ^= 0xff;
+        std::fs::write(&path, bad).unwrap();
+        assert!(index.block_slice_uncached(256, 512).is_err());
         std::fs::remove_file(path).unwrap();
     }
     #[test]
