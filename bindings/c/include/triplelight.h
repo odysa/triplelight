@@ -78,6 +78,35 @@ typedef struct tl_result_view {
     const uint8_t *bytes;  /* UTF-8 arena for every tl_str */
 } tl_result_view;
 
+/* Arrow C Data / C Stream interface (https://arrow.apache.org/docs/format/CStreamInterface.html), declared here
+ * unless the including program already has it. */
+#ifndef ARROW_C_DATA_INTERFACE
+#define ARROW_C_DATA_INTERFACE
+#define ARROW_FLAG_DICTIONARY_ORDERED 1
+#define ARROW_FLAG_NULLABLE 2
+#define ARROW_FLAG_MAP_KEYS_SORTED 4
+struct ArrowSchema {
+  const char *format; const char *name; const char *metadata; int64_t flags; int64_t n_children;
+  struct ArrowSchema **children; struct ArrowSchema *dictionary;
+  void (*release)(struct ArrowSchema *); void *private_data;
+};
+struct ArrowArray {
+  int64_t length; int64_t null_count; int64_t offset; int64_t n_buffers; int64_t n_children;
+  const void **buffers; struct ArrowArray **children; struct ArrowArray *dictionary;
+  void (*release)(struct ArrowArray *); void *private_data;
+};
+#endif
+#ifndef ARROW_C_STREAM_INTERFACE
+#define ARROW_C_STREAM_INTERFACE
+struct ArrowArrayStream {
+  int (*get_schema)(struct ArrowArrayStream *, struct ArrowSchema *out);
+  int (*get_next)(struct ArrowArrayStream *, struct ArrowArray *out);
+  const char *(*get_last_error)(struct ArrowArrayStream *);
+  void (*release)(struct ArrowArrayStream *);
+  void *private_data;
+};
+#endif
+
 uint32_t tl_abi_version(void);
 
 int32_t tl_open(const char *path, size_t path_len, tl_db **out, tl_error **err);
@@ -89,6 +118,20 @@ int32_t tl_update(const tl_db *db, const char *sparql, size_t len, uint64_t *cha
 int32_t tl_load(const tl_db *db, const char *path, size_t len, uint64_t *loaded, tl_error **err);
 int32_t tl_compact(const tl_db *db, tl_error **err);
 int32_t tl_stats_ready(const tl_db *db);
+
+/* SELECT solutions as an Arrow C Stream written into caller-allocated *out.
+ * - out must be non-null (checked before the query runs); on failure *out is left untouched.
+ * - Schema: one nullable struct column per projected variable, fields kind (utf8: "iri" | "bnode" | "literal"),
+ *   value (large_utf8, lexical form), datatype (utf8, set for literals), language (utf8, set for language-tagged
+ *   literals); a null struct is an unbound cell. A zero-variable SELECT yields zero-column batches whose length is
+ *   the solution count.
+ * - Batches hold at most 8192 solutions; this bounds rows per batch, not bytes.
+ * - End of stream: get_next returns 0 with out->release == NULL. Errors: nonzero errno; get_last_error is valid
+ *   until the next call on the stream or its release.
+ * - Single consumer: pulls must be serialized. The stream owns its snapshot and stays valid after tl_close; each
+ *   returned batch and schema is independently owned and stays valid after the stream is released.
+ * - ASK and CONSTRUCT return TL_ERR_UNSUPPORTED. The query's term IDs are materialized before the first batch. */
+int32_t tl_query_arrow(const tl_db *db, const char *sparql, size_t len, struct ArrowArrayStream *out, tl_error **err);
 
 const tl_result_view *tl_result_get_view(const tl_result *r);
 void tl_result_free(tl_result *r);

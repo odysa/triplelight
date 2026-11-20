@@ -13,3 +13,10 @@ Design:
 - Every call returns `TL_OK` or a `TL_ERR_*` kind with an optional owned `tl_error`. Panics never unwind into the host.
 - A `tl_db` may be used from several threads; `tl_close` must not race with other calls on the same handle (the Go
   and Java bindings serialize this for you).
+
+## Arrow output
+
+`tl_query_arrow` exports SELECT solutions as an [Arrow C Stream](https://arrow.apache.org/docs/format/CStreamInterface.html):
+one nullable struct column `{kind, value, datatype, language}` per variable (a null struct is an unbound cell),
+batches of at most 8192 rows. The stream is independent of the database handle. See `include/triplelight.h` for
+the full contract.

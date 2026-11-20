@@ -187,6 +187,20 @@ func (d *DB) StatsReady() bool {
 	return ready
 }
 
+// QueryArrow runs a SELECT query and exports its solutions as an Arrow C Stream into out, which must point to a
+// caller-owned struct ArrowArrayStream (for example arrow-go's cdata.CArrowArrayStream). On success
+// the caller owns the stream and must release it; it stays valid after Close. On failure out is left untouched.
+// Each variable is a nullable struct column {kind, value, datatype, language}; a null struct is an unbound cell.
+// ASK and CONSTRUCT queries return ErrUnsupported.
+func (d *DB) QueryArrow(sparql string, out unsafe.Pointer) error {
+	return d.with(func(h *C.tl_db) error {
+		var e *C.tl_error
+		p, l := cstr(sparql)
+		defer runtime.KeepAlive(sparql)
+		return check(C.tl_query_arrow(h, p, l, (*C.struct_ArrowArrayStream)(out), &e), e)
+	})
+}
+
 // TermKind is the kind of an RDF term.
 type TermKind uint8
 
