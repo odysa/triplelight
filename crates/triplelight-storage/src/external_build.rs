@@ -208,9 +208,9 @@ impl Builder {
         drop(input);
         fs::remove_file(&assignments)?;
         checkpoint(2)?;
-        let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir, true)?;
+        let dictionary_identity = super::lazy_dictionary::convert_unified(dir)?;
         checkpoint(3)?;
-        let mut identities = vec![term_identity, id_identity];
+        let mut identities = vec![dictionary_identity];
         let jobs: Vec<_> = FILES[1..].iter().copied().zip(Perm::ALL).collect();
         let workers = self.index_workers;
         let run_budget = (budget_mb().saturating_mul(1_048_576) / workers).min(MEMORY);
@@ -235,7 +235,7 @@ impl Builder {
                 .create_new(true)
                 .open(dir.join("MANIFEST"))?,
         );
-        manifest.write_all(b"RDFSNAP3")?;
+        manifest.write_all(b"RDFSNAP4")?;
         for identity in identities {
             manifest.write_all(&identity)?;
         }
@@ -428,7 +428,7 @@ mod tests {
         fs::write(&file, "# comment\r\n<urn:s> <urn:p> \"é\"@fr .\r\n\n_:a <urn:p> <urn:o> .\n<urn:s> <urn:p> \"é\"@fr .\n<urn:last> <urn:p> \"x\" .").unwrap();
         let a = root.join("serial"); let b = root.join("parallel");
         from_nt(&a, Some(&file)).unwrap(); from_nt_parallel(&b, Some(&file), 8).unwrap();
-        for name in FILES[1..].iter().copied().chain(["dictionary.id", "dictionary.term"]) { assert_eq!(fs::read(a.join(name)).unwrap(), fs::read(b.join(name)).unwrap(), "{name}"); }
+        for name in FILES[1..].iter().copied().chain(["dictionary.unified"]) { assert_eq!(fs::read(a.join(name)).unwrap(), fs::read(b.join(name)).unwrap(), "{name}"); }
         assert_eq!(fs::read(a.join("MANIFEST")).unwrap(), fs::read(b.join("MANIFEST")).unwrap());
         let snap = DiskSnapshot::open(&b).unwrap(); snap.verify().unwrap(); drop(snap);
         fs::remove_dir_all(root).unwrap();
@@ -510,7 +510,7 @@ mod tests {
         from_nt(&out, Some(&input)).unwrap();
         let mut names: Vec<_> = fs::read_dir(&out).unwrap().map(|e| e.unwrap().file_name().into_string().unwrap()).collect();
         names.sort();
-        assert_eq!(names, ["MANIFEST", "dictionary.id", "dictionary.term", "ops", "osp", "pos", "pso", "sop", "spo"]);
+        assert_eq!(names, ["MANIFEST", "dictionary.unified", "ops", "osp", "pos", "pso", "sop", "spo"]);
         DiskSnapshot::open(&out).unwrap().verify().unwrap();
         fs::remove_dir_all(dir).unwrap();
     }
@@ -530,6 +530,35 @@ mod tests {
             assert!(DiskSnapshot::open(&out).is_err(), "phase {phase} must not open as a snapshot");
             fs::remove_dir_all(dir).unwrap();
         }
+    }
+
+    #[test]
+    fn snapshot_format_fence_refuses_mismatched_manifests() {
+        let dir = std::env::temp_dir().join(format!("rdf-ext-fence-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir(&dir).unwrap();
+        let input = small_input(&dir);
+        let out = dir.join("base");
+        from_nt(&out, Some(&input)).unwrap();
+        let manifest = fs::read(out.join("MANIFEST")).unwrap();
+        assert_eq!(&manifest[..8], b"RDFSNAP4");
+        assert_eq!(manifest.len(), 8 + 7 * 32, "one dictionary identity and six indexes");
+        DiskSnapshot::open(&out).unwrap().verify().unwrap();
+        // A reader that only knows RDFSNAP3 would expect eight identities and two dictionary files; the current code
+        // path for 3 must refuse this store rather than misread it.
+        let mut as_v3 = manifest.clone();
+        as_v3[..8].copy_from_slice(b"RDFSNAP3");
+        fs::write(out.join("MANIFEST"), &as_v3).unwrap();
+        assert!(DiskSnapshot::open(&out).is_err(), "a v4 store read as v3 must be refused");
+        // Unknown future versions are refused.
+        let mut future = manifest.clone();
+        future[..8].copy_from_slice(b"RDFSNAP9");
+        fs::write(out.join("MANIFEST"), &future).unwrap();
+        assert!(DiskSnapshot::open(&out).is_err());
+        // Restoring the manifest makes it open again.
+        fs::write(out.join("MANIFEST"), &manifest).unwrap();
+        DiskSnapshot::open(&out).unwrap();
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
