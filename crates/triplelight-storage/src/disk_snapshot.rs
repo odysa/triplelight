@@ -609,22 +609,21 @@ mod tests {
         assert!(verify_error(&dir).contains("dictionary index disagreement"));
     }
     #[test]
-    fn verify_rejects_a_term_index_that_repeats_a_term_under_two_ids() {
+    fn a_term_index_cannot_repeat_a_term_under_two_ids() {
+        // Term-order keys are the term text alone, and both the writer and every block decode require strictly
+        // increasing keys, so a repeated term is unrepresentable; `verify` keeps an explicit guard as well.
         let dir = std::env::temp_dir().join(format!("rdf-verify-dict-dup-{}", std::process::id()));
         three_triple_snapshot(&dir);
         let by_term = super::super::lazy_dictionary::LazyIndex::open(&dir.join("dictionary.term"), super::super::lazy_dictionary::Order::Term).unwrap();
         let mut rows = Vec::new();
         by_term.for_each(&mut |id, term| { rows.push((id, term.clone())); Ok(()) }).unwrap();
         drop(by_term);
-        // Same entry count: the first term appears twice (its own ID and the second term's), the second term is gone.
         rows[1].1 = rows[0].1.clone();
         rows.sort_by(|x, y| x.1.to_string().cmp(&y.1.to_string()).then(x.0.cmp(&y.0)));
-        fs::remove_file(dir.join("dictionary.term")).unwrap();
-        super::super::lazy_dictionary::write_index(&dir.join("dictionary.term"), super::super::lazy_dictionary::Order::Term, rows.into_iter().map(Ok)).unwrap();
-        let identity = super::super::lazy_dictionary::LazyIndex::open(&dir.join("dictionary.term"), super::super::lazy_dictionary::Order::Term).unwrap().identity();
-        replace_manifest_identity(&dir, 0, identity);
-        let err = verify_error(&dir);
-        assert!(err.contains("repeats a term") || err.contains("dictionary index disagreement"), "{err}");
+        let path = dir.join("dictionary.term.dup");
+        let err = super::super::lazy_dictionary::write_index(&path, super::super::lazy_dictionary::Order::Term, rows.into_iter().map(Ok)).unwrap_err();
+        assert!(err.to_string().contains("not unique"), "{err}");
+        fs::remove_dir_all(dir).unwrap();
     }
     #[test]
     fn data_corruption_is_lazy_but_verify_and_query_fail() {
