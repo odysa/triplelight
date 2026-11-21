@@ -108,6 +108,10 @@ fixture triples across load and fresh-process reopen. With normalization disable
 reference. Both default storage reads match the already-normalized parsed bag. Both reopens recover the
 write-ahead log. This Linux ARM64 fixture run contributes no workload timing.
 
+The [RDFLib Kyoto Cabinet report](rdflib-kyotocabinet-qualification-v1/README.md) records a modern
+packaging failure and a separate archival RDFLib 4.2.2 check with a Debian binding. The archival profile
+retains nine triples across load and reopen. It contributes no workload timing.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.

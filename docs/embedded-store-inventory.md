@@ -45,6 +45,12 @@ Sources reconciled for this inventory are the linked Python, Node, JVM and HDT/O
 
 The initial candidate list was not exhaustive. A maintenance label alone is not an installation failure: historical Blazegraph and other libraries should be evaluated by version/API/availability if added to the finite work plan. Existing Virtuoso/QLever server cohorts do not supply embedded latency evidence. Further discovered plugins are recorded as candidates rather than being represented as tested engines.
 
+## Historical adapter qualification
+
+| Adapter | Modern packaging | Archival interoperability |
+|---|---|---|
+| [RDFLib Kyoto Cabinet](rdflib-kyotocabinet-qualification-v1/README.md) | The untouched source failed during wheel metadata generation on CPython 3.12.16 and setuptools 80.9.0. | RDFLib 4.2.2 on Linux ARM64 with a substituted Debian binding retains nine triples across load and reopen. Normalization disabled preserves the exact reference. Current deployment support and comparisons with RDFLib 7.6 are outside this archival profile's scope. No workload timing. |
+
 ## Current execution order
 
 The first task46 R2RML controls are complete as an independently replayed negative admission result. Oxilite's declared tiny SQLite-store feasibility is now complete and independently replayed. RDFLib Memory's two profiles and Oxrdflib's four disk profiles are complete, and each failed at least one tiny gate. The bounded Oxilite LUBM-100 attempt stopped during import. Next assess untested RDFLib backends separately and retain the Ontop / DuckDB JDBC count-distinct failure as a separate negative admission result. Public package metadata is a packaging observation, not installation success. Any full workload attempt follows successful declared admission, immutable inputs, bounded resources and an announced machine window. The currently completed reports are not rerun or pooled. Task39 remains open for the unattempted candidates and supported workload comparisons; this document does not close it.
