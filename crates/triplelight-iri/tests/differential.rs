@@ -105,6 +105,9 @@ const CURATED: &[&str] = &[
 const BASES: &[&str] = &[
     "http://a/b/c/d;p?q", "http://a", "http://a/", "http://a/b", "file:///tmp/x/y", "urn:a:b", "a:b/c/d", "http://u@[::1]:8/x/y/?z#w",
     "http://example.org/a/b/c/", "tag:x", "a:", "a:/", "a://h",
+    // Bases with dot segments of their own (kept as written by oxiri when a reference is merged in).
+    "http://h/a/../b/c", "http://h/a/./b/c", "http://h/./", "http://h/../", "http://h/a/..", "http://h/a/.", "http://h/..",
+    "http://h/a/b/../../c/d", "urn:a/../b", "urn:./a", "urn:..", "a:../b/c", "file:///x/./y/../z?q#f",
 ];
 
 const REFS: &[&str] = &[
@@ -153,13 +156,22 @@ fn random_corpus_agrees() {
         let (a, b) = (ours_parse(&candidate), theirs_parse(&candidate));
         assert_eq!(a, b, "parse {candidate:?}");
         if a.is_some() { valid += 1 }
-        let base = BASES[(next() % BASES.len() as u64) as usize];
+        // Half the time a random base too, so inherited dot segments and odd base paths are exercised.
+        let random_base = format!("http://h/{}", make(&mut next));
+        let base = if i % 4 == 1 && Iri::parse(&random_base).is_ok() { random_base.as_str() } else { BASES[(next() % BASES.len() as u64) as usize] };
         if check_resolve(base, &s) { differs += 1 }
         if ours_resolve(base, &s).is_some() { resolved += 1 }
     }
     // The corpus must exercise both outcomes, or the agreement says little.
     eprintln!("random corpus: {valid} valid, {resolved} resolved, {differs} where both differ from RFC 3986");
     assert!(valid > 10_000 && resolved > 20_000, "valid {valid}, resolved {resolved}");
+}
+
+#[test]
+fn dot_segments_inherited_from_the_base_are_kept() {
+    let base = Iri::parse("http://h/a/../b/c").unwrap();
+    assert_eq!(base.resolve("d").unwrap().as_str(), "http://h/a/../b/d");
+    assert_eq!(base.resolve("../d").unwrap().as_str(), "http://h/a/../d");
 }
 
 #[test]

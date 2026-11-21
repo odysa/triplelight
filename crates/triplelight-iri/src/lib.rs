@@ -20,8 +20,10 @@ impl Iri {
     pub fn as_str(&self) -> &str { &self.0 }
     pub fn into_string(self) -> String { self.0 }
     /// Resolve an IRI reference against this absolute base (RFC 3986 section 5.2). The reference must itself be a valid
-    /// IRI reference. One deliberate departure, shared with `oxiri`: a reference with a scheme or an authority keeps
-    /// its path as written (`x:/../g` stays `x:/../g`), where the RFC would remove its dot segments.
+    /// IRI reference. Resolution follows `oxiri` exactly so answers stay identical, which departs from RFC 3986 in
+    /// three ways: a reference with a scheme or an authority keeps its path as written (`x:/../g`); dot segments
+    /// inherited from the base path are kept (`http://h/a/../b/c` + `d` is `http://h/a/../b/d`); and without an
+    /// authority a `..` that empties a rootless path drops the following slash (`urn:a:b` + `/../g` is `urn:g`).
     pub fn resolve(&self, reference: &str) -> Result<Self, InvalidIri> {
         resolve_reference(self.as_str(), reference)
     }
@@ -120,36 +122,32 @@ fn parts(input: &str) -> Result<Parts<'_>, InvalidIri> {
     Ok(Parts { scheme, authority, path, query, fragment })
 }
 
-fn remove_last_segment(out: &mut String) {
-    if let Some(i) = out.rfind('/') { out.truncate(i) } else { out.clear() }
+/// Removes the last segment of a merged path, keeping its slash (`oxiri`'s rule): `/a/b` becomes `/a/`. Without a
+/// slash the path empties, and gets a root slash only when there is an authority.
+fn pop_segment(out: &mut String, has_authority: bool) {
+    if let Some(i) = out.rfind('/') { out.truncate(i + 1) } else { out.clear(); if has_authority { out.push('/') } }
 }
-/// RFC 3986 section 5.2.4, with one rule shared with `oxiri` so answers stay identical: without an authority, a `..`
-/// that empties a rootless output also drops the slash that follows, so `urn:a:b` + `/../g` is `urn:g` (the RFC
-/// gives `urn:/g`). A rooted path keeps its root.
-fn remove_dot_segments(mut input: &str, has_authority: bool) -> String {
-    let mut output = String::new();
-    let pop = |output: &mut String, rest: &'static str| -> &'static str {
-        let rooted = output.starts_with('/');
-        remove_last_segment(output);
-        if !has_authority && !rooted && output.is_empty() { "" } else { rest }
-    };
-    while !input.is_empty() {
-        if let Some(rest) = input.strip_prefix("../") { input = rest; }
-        else if let Some(rest) = input.strip_prefix("./") { input = rest; }
-        else if input.starts_with("/./") { input = &input[2..]; }
-        else if input == "/." { input = "/"; }
-        else if let Some(rest) = input.strip_prefix("/../") {
-            input = if pop(&mut output, "/").is_empty() { rest } else { &input[3..] };
+
+/// Appends a reference's relative path to `out` (the base directory) segment by segment, applying the dot-segment
+/// rules only to segments read from the reference, the way `oxiri` does. Dot segments inherited from the base stay
+/// as written (`http://h/a/../b/c` + `d` is `http://h/a/../b/d`); RFC 3986 section 5.2.4 would normalize the whole
+/// merged path. Without an authority a popped rootless path loses its slash (`urn:a:b` + `/../g` is `urn:g`).
+fn append_reference_path(out: &mut String, reference: &str, has_authority: bool) {
+    let mut rest = reference;
+    loop {
+        let (segment, more) = match rest.find('/') { Some(i) => (&rest[..i], Some(&rest[i + 1..])), None => (rest, None) };
+        out.push_str(segment);
+        if out.ends_with("/..") || out == ".." {
+            out.truncate(out.len() - 2);
+            if out.ends_with('/') { out.pop(); }
+            pop_segment(out, has_authority);
+        } else if out.ends_with("/.") || out == "." {
+            out.pop();
+        } else if more.is_some() {
+            out.push('/');
         }
-        else if input == "/.." { input = pop(&mut output, "/"); }
-        else if input == "." || input == ".." { input = ""; }
-        else {
-            let after_initial_slash = usize::from(input.starts_with('/'));
-            let end = input[after_initial_slash..].find('/').map_or(input.len(), |i| i + after_initial_slash);
-            output.push_str(&input[..end]); input = &input[end..];
-        }
+        match more { Some(r) => rest = r, None => break }
     }
-    output
 }
 /// Validate an IRI reference (RFC 3987 `IRI-reference`): an absolute IRI, or a relative reference whose parts use
 /// only their allowed characters. Checked before resolution, because removing dot segments can drop invalid text.
@@ -172,13 +170,15 @@ fn resolve_reference(base: &str, reference: &str) -> Result<Iri, InvalidIri> {
         (r.authority, r.path.to_owned(), r.query)
     } else if r.path.is_empty() {
         (b.authority, b.path.to_owned(), r.query.or(b.query))
-    } else if r.path.starts_with('/') {
-        (b.authority, remove_dot_segments(r.path, b.authority.is_some()), r.query)
+    } else if let Some(after_root) = r.path.strip_prefix('/') {
+        let mut path = String::from("/");
+        append_reference_path(&mut path, after_root, b.authority.is_some());
+        (b.authority, path, r.query)
     } else {
-        let merged = if b.authority.is_some() && b.path.is_empty() { format!("/{}", r.path) }
-            else if let Some(i) = b.path.rfind('/') { format!("{}{}", &b.path[..=i], r.path) }
-            else { r.path.to_owned() };
-        (b.authority, remove_dot_segments(&merged, b.authority.is_some()), r.query)
+        let mut path = b.path.to_owned();
+        pop_segment(&mut path, b.authority.is_some());
+        append_reference_path(&mut path, r.path, b.authority.is_some());
+        (b.authority, path, r.query)
     };
     // Without an authority, a path starting with "//" would be read back as one (RFC 3986 section 3.3): refuse it.
     if auth.is_none() && path.starts_with("//") { return Err(InvalidIri) }
