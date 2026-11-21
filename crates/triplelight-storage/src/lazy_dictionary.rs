@@ -1045,6 +1045,72 @@ mod tests {
         std::fs::remove_dir_all(dir).unwrap();
     }
 
+    /// Dictionary lookup A/B at the layer the Arrow decode uses (`with_ids` over result-sized batches, plus term
+    /// lookups): a two-file store (`TL_BENCH_OLD`) against a unified one (`TL_BENCH_NEW`) built from the same data.
+    /// `TL_BENCH_OLD=... TL_BENCH_NEW=... cargo test --release -p triplelight-storage dictionary_lookup_bench -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn dictionary_lookup_bench_two_file_vs_unified() {
+        use std::time::Instant;
+        let old_dir = std::path::PathBuf::from(std::env::var("TL_BENCH_OLD").expect("TL_BENCH_OLD"));
+        let new_dir = std::path::PathBuf::from(std::env::var("TL_BENCH_NEW").expect("TL_BENCH_NEW"));
+        let old_id = LazyIndex::open(&old_dir.join("dictionary.id"), Order::Id).unwrap();
+        let old_term = LazyIndex::open(&old_dir.join("dictionary.term"), Order::Term).unwrap();
+        let unified = LazyIndex::open(&new_dir.join(UNIFIED_FILE), Order::Unified).unwrap();
+        // A deterministic sample of IDs and their texts, in scrambled order like a join result.
+        let mut ids = Vec::new();
+        let mut n = 0u64;
+        old_id.for_each(&mut |id, _| { n += 1; if n % 13 == 0 { ids.push(id); } Ok(()) }).unwrap();
+        let mut x = 0x9e37_79b9_7f4a_7c15u64;
+        for i in (1..ids.len()).rev() {
+            x ^= x << 13; x ^= x >> 7; x ^= x << 17;
+            ids.swap(i, (x % (i as u64 + 1)) as usize);
+        }
+        let mut texts = vec![String::new(); ids.len()];
+        old_id.with_ids(&ids, &mut |i, t| texts[i] = t.to_string()).unwrap();
+        // Same answers first.
+        let mut a = vec![None; ids.len()];
+        let mut b = vec![None; ids.len()];
+        old_id.with_ids(&ids, &mut |i, t| a[i] = Some(t.into_owned())).unwrap();
+        unified.with_ids(&ids, &mut |i, t| b[i] = Some(t.into_owned())).unwrap();
+        assert_eq!(a, b);
+        for text in texts.iter().step_by(97) {
+            assert_eq!(old_term.find(text.as_bytes()).unwrap(), unified.find_term(text.as_bytes()).unwrap());
+        }
+        let by_id = |ix: &LazyIndex, cold: bool| -> f64 {
+            if cold { ix.clear_cache().unwrap(); }
+            let t = Instant::now();
+            for chunk in ids.chunks(4096) { ix.with_ids(chunk, &mut |_, t| { std::hint::black_box(t); }).unwrap(); }
+            t.elapsed().as_nanos() as f64 / ids.len() as f64
+        };
+        let by_text = |find: &dyn Fn(&[u8]), cold: Option<&LazyIndex>| -> f64 {
+            if let Some(ix) = cold { ix.clear_cache().unwrap(); }
+            let t = Instant::now();
+            for text in &texts { find(text.as_bytes()); }
+            t.elapsed().as_nanos() as f64 / texts.len() as f64
+        };
+        let mut rows: Vec<(&str, Vec<f64>, Vec<f64>)> = vec![("by ID cold", vec![], vec![]), ("by ID warm", vec![], vec![]), ("by term cold", vec![], vec![]), ("by term warm", vec![], vec![])];
+        for round in 0..5 {
+            for variant in if round % 2 == 0 { [0, 1] } else { [1, 0] } {
+                let (c1, w1, c2, w2) = if variant == 0 {
+                    (by_id(&old_id, true), by_id(&old_id, false),
+                     by_text(&|k| { std::hint::black_box(old_term.find(k).unwrap()); }, Some(&old_term)),
+                     by_text(&|k| { std::hint::black_box(old_term.find(k).unwrap()); }, None))
+                } else {
+                    (by_id(&unified, true), by_id(&unified, false),
+                     by_text(&|k| { std::hint::black_box(unified.find_term(k).unwrap()); }, Some(&unified)),
+                     by_text(&|k| { std::hint::black_box(unified.find_term(k).unwrap()); }, None))
+                };
+                for (r, v) in rows.iter_mut().zip([c1, w1, c2, w2]) { if variant == 0 { r.1.push(v) } else { r.2.push(v) } }
+            }
+        }
+        for (name, mut o, mut n) in rows {
+            o.sort_by(f64::total_cmp);
+            n.sort_by(f64::total_cmp);
+            eprintln!("{name}: ns per lookup, median of 5 interleaved: two-file {:.0}, unified {:.0}, ratio {:.3}", o[2], n[2], n[2] / o[2]);
+        }
+    }
+
     #[test]
     fn dual_indexes_roundtrip_cross_blocks_and_report_corruption() {
         let dir = std::env::temp_dir().join(format!("rdf-lazy-dict-{}", std::process::id()));
