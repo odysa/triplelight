@@ -16,6 +16,8 @@ The separate RDFLib evaluator diagnostic returned nine rows for `FILTER(false)` 
 
 The run used macOS ARM64, CPython 3.12.12, RDFLib 7.6.0 and SQLite 3.50.4 on the ready profile. The original plugin was paired with SQLAlchemy 1.4.54, and the BrickSchema fork ran with 2.0.48. Both environments used pinned wheels. Python 3.12 was chosen because SQLAlchemy 1.4.54 provides a matching wheel for it. Earlier RDFLib storage reports used Python 3.14.3.
 
+The later [original-plugin qualification with explicit setuptools](../rdflib-sqlite-upstream-qualification-v1/README.md) completed a separate load and reopen check.
+
 ## Replay
 
 Extract `packet.tar.gz` to a fresh directory and run from the extracted directory:
