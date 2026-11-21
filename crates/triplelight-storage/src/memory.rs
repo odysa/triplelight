@@ -219,7 +219,8 @@ impl PermIndex {
     fn rows(&self) -> impl Iterator<Item = [TermId; 3]> + '_ {
         self.groups().flat_map(|(k, tails)| tails.iter().map(move |t| [k, t[0], t[1]]))
     }
-    /// The tails of the rows that start with `prefix` (1 to 3 IDs), still sorted.
+    /// The tails of the rows that start with `prefix` (1 to 3 IDs), still sorted. An empty prefix returns every tail
+    /// with its first key dropped, which is only meaningful for its length (use `rows` for whole rows).
     fn tail(&self, prefix: &[TermId]) -> &[[TermId; 2]] {
         let Some((&first, rest)) = prefix.split_first() else { return &self.tails };
         if rest.len() > 2 {
