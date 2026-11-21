@@ -1021,10 +1021,21 @@ const MEMO_CAP: usize = 1 << 20;
 struct StorageFailure(String);
 fn storage_failure(e: crate::storage::StorageError) -> ! { std::panic::panic_any(StorageFailure(e.to_string())) }
 
-/// Compatible-mapping join (used to merge subquery results back into the outer rows).
-/// Compatible-mapping join of two row sets. Columns bound in every row on both sides are a sound hash key: two
-/// compatible mappings must agree there. The remaining columns are merged with the usual compatibility check. Without
-/// such a column (partial or unbound mappings), the nested-loop join is used.
+/// Merge two mappings: `a` extended with every binding of `b`, or `None` when they disagree on a variable both bind.
+#[inline(always)]
+fn merge_compatible(a: &Row, b: &Row) -> Option<Row> {
+    let mut r = a.clone();
+    for (i, &y) in b.iter().enumerate() {
+        if y == UNBOUND { continue }
+        if r[i] == UNBOUND { r[i] = y } else if r[i] != y { return None }
+    }
+    Some(r)
+}
+
+/// Compatible-mapping join of two row sets (used to merge subquery results back into the outer rows). Columns bound in
+/// every row on both sides are a sound hash key: two compatible mappings must agree there. The remaining columns are
+/// merged with the usual compatibility check. Without such a column (partial or unbound mappings), the nested-loop
+/// join is used.
 fn join_rows(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
     if left.is_empty() || right.is_empty() { return Vec::new() }
     let width = left[0].len();
@@ -1037,28 +1048,13 @@ fn join_rows(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
         for a in &left {
             k.clear(); k.extend(key.iter().map(|&i| a[i]));
             let Some(matches) = table.get(k.as_slice()) else { continue };
-            'm: for &j in matches {
-                let b = &right[j];
-                let mut r = a.clone();
-                for (i, &y) in b.iter().enumerate() {
-                    if y == UNBOUND { continue }
-                    if r[i] == UNBOUND { r[i] = y } else if r[i] != y { continue 'm }
-                }
-                out.push(r);
-            }
+            out.extend(matches.iter().filter_map(|&j| merge_compatible(a, &right[j])));
         }
         return out;
     }
     let mut out = Vec::new();
     for a in &left {
-        'r: for b in &right {
-            let mut r = a.clone();
-            for (i, &y) in b.iter().enumerate() {
-                if y == UNBOUND { continue }
-                if r[i] == UNBOUND { r[i] = y } else if r[i] != y { continue 'r }
-            }
-            out.push(r);
-        }
+        out.extend(right.iter().filter_map(|b| merge_compatible(a, b)));
     }
     out
 }
@@ -1292,4 +1288,79 @@ fn rename_var(t: &TriplePattern, from: &Variable, to: &Variable) -> TriplePatter
     let tp = |x: &TermPattern| match x { TermPattern::Variable(v) if v == from => TermPattern::Variable(to.clone()), x => x.clone() };
     let pp = match &t.predicate { NamedNodePattern::Variable(v) if v == from => NamedNodePattern::Variable(to.clone()), p => p.clone() };
     TriplePattern { subject: tp(&t.subject), predicate: pp, object: tp(&t.object) }
+}
+
+#[cfg(test)]
+mod join_rows_bench {
+    use super::*;
+    use std::time::Instant;
+
+    /// The previous `join_rows`, kept only as the microbenchmark baseline.
+    fn join_rows_old(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
+        if left.is_empty() || right.is_empty() { return Vec::new() }
+        let width = left[0].len();
+        let key: Vec<usize> = (0..width).filter(|&i| left.iter().all(|r| r[i] != UNBOUND) && right.iter().all(|r| r[i] != UNBOUND)).collect();
+        if !key.is_empty() && left.len().saturating_mul(right.len()) > 64 {
+            let mut table: HashMap<Vec<TermId>, Vec<usize>> = HashMap::new();
+            for (j, b) in right.iter().enumerate() { table.entry(key.iter().map(|&i| b[i]).collect()).or_default().push(j) }
+            let mut out = Vec::new();
+            let mut k: Vec<TermId> = Vec::with_capacity(key.len());
+            for a in &left {
+                k.clear(); k.extend(key.iter().map(|&i| a[i]));
+                let Some(matches) = table.get(k.as_slice()) else { continue };
+                'm: for &j in matches {
+                    let b = &right[j];
+                    let mut r = a.clone();
+                    for (i, &y) in b.iter().enumerate() {
+                        if y == UNBOUND { continue }
+                        if r[i] == UNBOUND { r[i] = y } else if r[i] != y { continue 'm }
+                    }
+                    out.push(r);
+                }
+            }
+            return out;
+        }
+        let mut out = Vec::new();
+        for a in &left {
+            'r: for b in &right {
+                let mut r = a.clone();
+                for (i, &y) in b.iter().enumerate() {
+                    if y == UNBOUND { continue }
+                    if r[i] == UNBOUND { r[i] = y } else if r[i] != y { continue 'r }
+                }
+                out.push(r);
+            }
+        }
+        out
+    }
+    fn rows(n: u64, offset: u64) -> Vec<Row> {
+        // Column 0 is a join key bound everywhere; column 1 is bound on one side; column 2 conflicts on about 1 in 5.
+        (0..n).map(|i| vec![TermId(1 + i % 400), if offset == 0 { TermId(7 + i % 5) } else { UNBOUND }, TermId(100 + (i + offset) % 5)]).collect()
+    }
+
+    /// `cargo test --release -p triplelight-exec join_rows_bench -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn merge_helper_is_not_slower_than_the_inlined_join() {
+        for (name, l, r) in [("hash path", (rows(4000, 0), rows(4000, 1)), 0), ("nested loop", (rows(60, 0), rows(60, 1)), 0)].map(|(n, (a, b), _)| (n, a, b)) {
+            assert_eq!(join_rows_old(l.clone(), r.clone()), join_rows(l.clone(), r.clone()), "{name}: identical output");
+            let out_rows = join_rows(l.clone(), r.clone()).len().max(1) as f64;
+            let (mut old, mut new) = (Vec::new(), Vec::new());
+            for round in 0..9 {
+                for variant in if round % 2 == 0 { [0, 1] } else { [1, 0] } {
+                    let (a, b) = (l.clone(), r.clone());
+                    let t = Instant::now();
+                    let out = if variant == 0 { join_rows_old(a, b) } else { join_rows(a, b) };
+                    let ns = t.elapsed().as_nanos() as f64 / out_rows;
+                    std::hint::black_box(&out);
+                    if variant == 0 { old.push(ns) } else { new.push(ns) }
+                }
+            }
+            old.sort_by(f64::total_cmp);
+            new.sort_by(f64::total_cmp);
+            let (o, n) = (old[4], new[4]);
+            eprintln!("join_rows {name}, ns per output row (median of 9, interleaved): old {o:.2}, new {n:.2}, ratio {:.3}", n / o);
+            assert!(n <= o * 1.05, "{name}: new is more than 5% slower");
+        }
+    }
 }
