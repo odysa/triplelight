@@ -165,9 +165,11 @@ pub(super) struct DictionaryCache {
     shard_budget: usize,
 }
 impl DictionaryCache {
-    pub(super) fn new() -> Arc<Self> {
+    pub(super) fn new() -> Arc<Self> { Self::with_shares(super::disk_index::DEFAULT_SHARES) }
+    /// The dictionary's three of `shares` budget shares (see `DiskIndex::open_with_share`).
+    pub(super) fn with_shares(shares: usize) -> Arc<Self> {
         Arc::new(Self {
-            shard_budget: super::disk_index::cache_budget_mb().saturating_mul(1024 * 1024) / 3 / 16,
+            shard_budget: super::disk_index::cache_budget_mb().saturating_mul(1024 * 1024).saturating_mul(3) / shares.max(3) / 16,
             shards: (0..16).map(|i| Mutex::new(Cache::new(i))).collect(),
         })
     }
