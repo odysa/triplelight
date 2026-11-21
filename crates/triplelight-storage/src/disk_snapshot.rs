@@ -121,6 +121,8 @@ enum DictionaryBackend {
         by_term: super::lazy_dictionary::LazyIndex,
         by_id: super::lazy_dictionary::LazyIndex,
     },
+    /// One file in ID order serving both lookups (manifest `RDFSNAP4`).
+    Unified(super::lazy_dictionary::LazyIndex),
 }
 pub struct DiskSnapshot {
     dictionary: DictionaryBackend,
@@ -132,7 +134,7 @@ impl DiskSnapshot {
         let dir = dir.as_ref();
         fs::create_dir(dir)?;
         write_dictionary(source, &dir.join(FILES[0]))?;
-        let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir, false)?;
+        let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir)?;
         let mut identities = vec![term_identity, id_identity];
         for (i, name) in FILES[1..].iter().enumerate() {
             let file = File::create(dir.join(name))?;
@@ -167,12 +169,14 @@ impl DiskSnapshot {
         let mut manifest = BufReader::new(File::open(dir.join("MANIFEST"))?);
         let mut magic = [0; 8];
         manifest.read_exact(&mut magic)?;
-        let lazy = match &magic {
-            b"RDFSNAP2" => false,
-            b"RDFSNAP3" => true,
+        // RDFSNAP2: one legacy dictionary file; RDFSNAP3: dictionary.term + dictionary.id; RDFSNAP4: one unified file.
+        let version = match &magic {
+            b"RDFSNAP2" => 2,
+            b"RDFSNAP3" => 3,
+            b"RDFSNAP4" => 4,
             _ => return Err(bad("bad snapshot manifest or version")),
         };
-        let mut expected = vec![[0u8; 32]; if lazy { 8 } else { 7 }];
+        let mut expected = vec![[0u8; 32]; if version == 3 { 8 } else { 7 }];
         for item in &mut expected {
             manifest.read_exact(item)?;
         }
@@ -180,7 +184,14 @@ impl DiskSnapshot {
         if manifest.read(&mut extra)? != 0 {
             return Err(bad("manifest trailing bytes"));
         }
-        let (dictionary, index_offset) = if lazy {
+        let (dictionary, index_offset) = if version == 4 {
+            use super::lazy_dictionary::{DictionaryCache, LazyIndex, Order, UNIFIED_FILE};
+            let unified = LazyIndex::open_shared(&dir.join(UNIFIED_FILE), Order::Unified, DictionaryCache::new())?;
+            if unified.identity() != expected[0] {
+                return Err(bad("dictionary directory checksum mismatch"));
+            }
+            (DictionaryBackend::Unified(unified), 1)
+        } else if version == 3 {
             use super::lazy_dictionary::{DictionaryCache, LazyIndex, Order};
             let cache = DictionaryCache::new();
             let by_term = LazyIndex::open_shared(&dir.join("dictionary.term"), Order::Term, std::sync::Arc::clone(&cache))?;
@@ -226,6 +237,20 @@ impl DiskSnapshot {
     ///    every order. Do not reorder these phases.
     pub fn verify(&self) -> io::Result<()> {
         use rayon::prelude::*;
+        if let DictionaryBackend::Unified(unified) = &self.dictionary {
+            // Every block decode already enforces: one kind per block, strictly increasing IDs and, inside a kind,
+            // strictly increasing term text that agrees with the kind. That makes (ID <-> term) one bijection and
+            // `find_term` exact, so a single pass over all blocks is the whole dictionary check.
+            unified.clear_cache()?;
+            let mut count = 0u64;
+            unified.for_each(&mut |_, _| {
+                count += 1;
+                Ok(())
+            })?;
+            if count == 0 && self.indexes[0].len() != 0 {
+                return Err(bad("dictionary is empty but the indexes are not"));
+            }
+        }
         if let DictionaryBackend::Lazy { by_term, by_id } = &self.dictionary {
             by_term.clear_cache()?;
             by_id.clear_cache()?;
@@ -311,6 +336,7 @@ impl Dictionary for DiskSnapshot {
             DictionaryBackend::Lazy { by_term, .. } => {
                 Ok(by_term.find(term.to_string().as_bytes())?.map(|v| v.0))
             }
+            DictionaryBackend::Unified(unified) => Ok(unified.find_term(term.to_string().as_bytes())?.map(|v| v.0)),
         }
     }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> {
@@ -332,6 +358,7 @@ impl Dictionary for DiskSnapshot {
                 Ok(())
             }
             DictionaryBackend::Lazy { by_id, .. } => by_id.with_id(id, f),
+            DictionaryBackend::Unified(unified) => unified.with_id(id, f),
         }
     }
     fn with_terms(
@@ -353,6 +380,7 @@ impl Dictionary for DiskSnapshot {
                 Ok(())
             }
             DictionaryBackend::Lazy { by_id, .. } => by_id.with_ids(ids, f),
+            DictionaryBackend::Unified(unified) => unified.with_ids(ids, f),
         }
     }
 }

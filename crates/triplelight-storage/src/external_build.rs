@@ -208,9 +208,9 @@ impl Builder {
         drop(input);
         fs::remove_file(&assignments)?;
         checkpoint(2)?;
-        let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir, true)?;
+        let dictionary_identity = super::lazy_dictionary::convert_unified(dir)?;
         checkpoint(3)?;
-        let mut identities = vec![term_identity, id_identity];
+        let mut identities = vec![dictionary_identity];
         let jobs: Vec<_> = FILES[1..].iter().copied().zip(Perm::ALL).collect();
         let workers = self.index_workers;
         let run_budget = (budget_mb().saturating_mul(1_048_576) / workers).min(MEMORY);
@@ -235,7 +235,7 @@ impl Builder {
                 .create_new(true)
                 .open(dir.join("MANIFEST"))?,
         );
-        manifest.write_all(b"RDFSNAP3")?;
+        manifest.write_all(b"RDFSNAP4")?;
         for identity in identities {
             manifest.write_all(&identity)?;
         }

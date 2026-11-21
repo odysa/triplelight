@@ -13,6 +13,11 @@ use std::{
 };
 const TERM_MAGIC: &[u8; 8] = b"RDFDTM01";
 const ID_MAGIC: &[u8; 8] = b"RDFDID01";
+/// One file in ID order whose directory also carries each block's last term text, so term lookups can search a
+/// kind's run of blocks (inside a kind, ID order is term-text order).
+const UNIFIED_MAGIC: &[u8; 8] = b"RDFDID02";
+/// File name of the unified dictionary inside a snapshot directory.
+pub(super) const UNIFIED_FILE: &str = "dictionary.unified";
 const LIMIT: usize = 16 * 1024 * 1024 + 8192;
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(ErrorKind::InvalidData, s)
@@ -21,23 +26,40 @@ fn bad(s: &'static str) -> io::Error {
 pub(super) enum Order {
     Term,
     Id,
+    Unified,
 }
 impl Order {
     fn magic(self) -> &'static [u8; 8] {
         match self {
             Self::Term => TERM_MAGIC,
             Self::Id => ID_MAGIC,
+            Self::Unified => UNIFIED_MAGIC,
         }
     }
     fn key(self, id: TermId, term: &Term) -> Vec<u8> {
         match self {
             Self::Term => term.to_string().into_bytes(),
-            Self::Id => id.0.to_be_bytes().to_vec(),
+            Self::Id | Self::Unified => id.0.to_be_bytes().to_vec(),
         }
+    }
+}
+/// Kind tag of a dictionary ID (1 IRI, 2 blank node, 3 literal).
+fn id_kind(id: u64) -> u64 {
+    id >> 60
+}
+/// Kind implied by an N-Triples term text, by its first byte.
+fn text_kind(text: &[u8]) -> Option<u64> {
+    match text.first()? {
+        b'<' => Some(1),
+        b'_' => Some(2),
+        b'"' => Some(3),
+        _ => None,
     }
 }
 struct Meta {
     last: Vec<u8>,
+    /// Unified order only: the block's last term text.
+    last_text: Vec<u8>,
     offset: u64,
     length: usize,
     hash: [u8; 32],
@@ -245,14 +267,32 @@ impl LazyIndex {
                 .checked_add(keylen)
                 .filter(|v| *v <= raw.len())
                 .ok_or_else(|| bad("truncated dictionary key"))?;
-            let hashend = keyend
+            // Unified order: each entry carries the block's last term text between the key and the checksum.
+            let (last_text, textend) = if matches!(order, Order::Unified) {
+                let lenend = keyend
+                    .checked_add(4)
+                    .filter(|v| *v <= raw.len())
+                    .ok_or_else(|| bad("truncated dictionary text length"))?;
+                let textlen = u32::from_le_bytes(raw[keyend..lenend].try_into().unwrap()) as usize;
+                let textend = lenend
+                    .checked_add(textlen)
+                    .filter(|v| *v <= raw.len())
+                    .ok_or_else(|| bad("truncated dictionary text"))?;
+                if !(1..=LIMIT).contains(&textlen) {
+                    return Err(bad("invalid dictionary block metadata"));
+                }
+                (raw[lenend..textend].to_vec(), textend)
+            } else {
+                (Vec::new(), keyend)
+            };
+            let hashend = textend
                 .checked_add(32)
                 .filter(|v| *v <= raw.len())
                 .ok_or_else(|| bad("truncated dictionary checksum"))?;
             if offset != next
                 || !(2..=LIMIT).contains(&length)
                 || !(1..=LIMIT).contains(&keylen)
-                || (matches!(order, Order::Id) && keylen != 8)
+                || (matches!(order, Order::Id | Order::Unified) && keylen != 8)
             {
                 return Err(bad("invalid dictionary block metadata"));
             }
@@ -260,15 +300,29 @@ impl LazyIndex {
             if entries.last().is_some_and(|e| e.last >= last) {
                 return Err(bad("unsorted dictionary directory"));
             }
+            if matches!(order, Order::Unified) {
+                let kind = id_kind(u64::from_be_bytes(last.as_slice().try_into().unwrap()));
+                if text_kind(&last_text) != Some(kind) {
+                    return Err(bad("dictionary block kind disagrees with its last term"));
+                }
+                // Inside one kind, block order is term-text order.
+                if let Some(prev) = entries.last() {
+                    let prev_kind = id_kind(u64::from_be_bytes(prev.last.as_slice().try_into().unwrap()));
+                    if prev_kind == kind && prev.last_text >= last_text {
+                        return Err(bad("unsorted dictionary directory"));
+                    }
+                }
+            }
             next = next
                 .checked_add(length as u64)
                 .filter(|v| *v <= start)
                 .ok_or_else(|| bad("dictionary block bounds"))?;
             entries.push(Meta {
                 last,
+                last_text,
                 offset,
                 length,
-                hash: raw[keyend..hashend].try_into().unwrap(),
+                hash: raw[textend..hashend].try_into().unwrap(),
             });
             pos = hashend;
         }
@@ -287,24 +341,32 @@ impl LazyIndex {
         self.identity
     }
     fn block(&self, index: usize) -> io::Result<Arc<Vec<(TermId, Term)>>> {
+        self.block_traced(index, match self.order {
+            Order::Term => 6,
+            Order::Id | Order::Unified => 7,
+        })
+    }
+    /// `trace_slot` only labels the counters (6 = looked up by term, 7 = by ID). Both lookup paths of a unified
+    /// dictionary read the same blocks, so they share one cache entry.
+    fn block_traced(&self, index: usize, trace_slot: usize) -> io::Result<Arc<Vec<(TermId, Term)>>> {
         let mut cache = self.cache.shards[index % self.cache.shards.len()]
             .lock()
             .map_err(|_| io::Error::other("dictionary cache lock poisoned"))?;
-        let slot = match self.order {
+        let cache_slot = match self.order {
             Order::Term => 6,
-            Order::Id => 7,
+            Order::Id | Order::Unified => 7,
         };
-        if let Some(value) = cache.get((slot, index)) {
-            super::disk_index::trace_dictionary(slot, 0, 1);
+        if let Some(value) = cache.get((cache_slot, index)) {
+            super::disk_index::trace_dictionary(trace_slot, 0, 1);
             return Ok(value);
         }
-        super::disk_index::trace_dictionary(slot, 1, 1);
+        super::disk_index::trace_dictionary(trace_slot, 1, 1);
         let meta = self
             .entries
             .get(index)
             .ok_or_else(|| bad("dictionary block absent"))?;
         let mut bytes = vec![0; meta.length];
-        exact_traced(&self.file, &mut bytes, meta.offset, Some(slot))?;
+        exact_traced(&self.file, &mut bytes, meta.offset, Some(trace_slot))?;
         if Sha256::digest(&bytes).as_slice() != meta.hash {
             return Err(bad("dictionary block checksum mismatch"));
         }
@@ -316,16 +378,46 @@ impl LazyIndex {
         {
             return Err(bad("invalid dictionary block order"));
         }
+        if matches!(self.order, Order::Unified) {
+            self.check_unified_block(index, meta, &rows)?;
+        }
         let size = bytes
             .len()
             .saturating_add(keys.iter().map(Vec::len).sum::<usize>())
             .saturating_add(rows.len() * 128);
         let rows = Arc::new(rows);
-        let evicted = cache.insert((slot, index), &rows, size, self.cache.shard_budget)?;
+        let evicted = cache.insert((cache_slot, index), &rows, size, self.cache.shard_budget)?;
         if evicted > 0 {
-            super::disk_index::trace_dictionary(slot, 4, evicted);
+            super::disk_index::trace_dictionary(trace_slot, 4, evicted);
         }
         Ok(rows)
+    }
+    /// Unified blocks hold one kind, in strictly increasing term text, ending at the directory's last text and
+    /// continuing the previous block of the same kind.
+    fn check_unified_block(&self, index: usize, meta: &Meta, rows: &[(TermId, Term)]) -> io::Result<()> {
+        let kind = id_kind(rows[0].0 .0);
+        let mut previous: Option<String> = None;
+        for (id, term) in rows {
+            let text = term.to_string();
+            if id_kind(id.0) != kind || text_kind(text.as_bytes()) != Some(kind) {
+                return Err(bad("dictionary block mixes kinds or a term disagrees with its kind"));
+            }
+            if previous.as_ref().is_some_and(|p| *p >= text) {
+                return Err(bad("invalid dictionary block order"));
+            }
+            previous = Some(text);
+        }
+        if previous.as_deref().map(str::as_bytes) != Some(meta.last_text.as_slice()) {
+            return Err(bad("invalid dictionary block order"));
+        }
+        if index > 0 {
+            let prev = &self.entries[index - 1];
+            let first = rows[0].1.to_string();
+            if id_kind(u64::from_be_bytes(prev.last.as_slice().try_into().unwrap())) == kind && first.as_bytes() <= prev.last_text.as_slice() {
+                return Err(bad("invalid dictionary block order"));
+            }
+        }
+        Ok(())
     }
     pub(super) fn clear_cache(&self) -> io::Result<()> {
         for shard in &self.cache.shards {
@@ -360,13 +452,31 @@ impl LazyIndex {
             .filter(|(id, t)| self.order.key(*id, t) == key)
             .cloned())
     }
+    /// Unified order only: look a term up by its N-Triples text. The first byte gives the kind, whose blocks are a
+    /// contiguous run; inside it ID order is text order, so the per-block last text locates the one block to read.
+    pub(super) fn find_term(&self, text: &[u8]) -> io::Result<Option<(TermId, Term)>> {
+        if !matches!(self.order, Order::Unified) {
+            return Err(bad("wrong dictionary index"));
+        }
+        let Some(kind) = text_kind(text) else { return Ok(None) };
+        let kind_of = |e: &Meta| id_kind(u64::from_be_bytes(e.last.as_slice().try_into().unwrap()));
+        let lo = self.entries.partition_point(|e| kind_of(e) < kind);
+        let hi = self.entries.partition_point(|e| kind_of(e) <= kind);
+        let i = lo + self.entries[lo..hi].partition_point(|e| e.last_text.as_slice() < text);
+        if i == hi {
+            return Ok(None);
+        }
+        let rows = self.block_traced(i, 6)?;
+        let at = rows.partition_point(|(_, t)| t.to_string().as_bytes() < text);
+        Ok(rows.get(at).filter(|(_, t)| t.to_string().as_bytes() == text).cloned())
+    }
     /// Group requests by on-disk block. Callback positions are original input indices.
     pub(super) fn with_ids(
         &self,
         ids: &[TermId],
         f: &mut dyn FnMut(usize, oxrdf::TermRef<'_>),
     ) -> io::Result<()> {
-        if !matches!(self.order, Order::Id) {
+        if !matches!(self.order, Order::Id | Order::Unified) {
             return Err(bad("wrong dictionary index"));
         }
         let mut requests = Vec::with_capacity(ids.len());
@@ -404,7 +514,7 @@ impl LazyIndex {
         id: TermId,
         f: &mut dyn FnMut(oxrdf::TermRef<'_>),
     ) -> io::Result<()> {
-        if !matches!(self.order, Order::Id) {
+        if !matches!(self.order, Order::Id | Order::Unified) {
             return Err(bad("wrong dictionary index"));
         }
         let key = id.0.to_be_bytes();
@@ -438,13 +548,14 @@ pub(super) fn write_index(
     let mut meta = Vec::new();
     let mut block = Vec::new();
     let mut previous: Option<Vec<u8>> = None;
+    let mut previous_unified: Option<(TermId, Vec<u8>)> = None;
     let mut offset = 8u64;
     let mut bytes_estimate = 0usize;
     fn flush(
         out: &mut impl Write,
         block: &mut Vec<(TermId, Term)>,
         order: Order,
-        meta: &mut Vec<(Vec<u8>, u64, usize, [u8; 32])>,
+        meta: &mut Vec<(Vec<u8>, Vec<u8>, u64, usize, [u8; 32])>,
         offset: &mut u64,
     ) -> io::Result<()> {
         if block.is_empty() {
@@ -454,7 +565,8 @@ pub(super) fn write_index(
         let (id, t) = block.last().unwrap();
         let key = order.key(*id, t);
         out.write_all(&bytes)?;
-        meta.push((key, *offset, bytes.len(), Sha256::digest(&bytes).into()));
+        let last_text = if matches!(order, Order::Unified) { t.to_string().into_bytes() } else { Vec::new() };
+        meta.push((key, last_text, *offset, bytes.len(), Sha256::digest(&bytes).into()));
         *offset = offset
             .checked_add(bytes.len() as u64)
             .ok_or_else(|| bad("dictionary size overflow"))?;
@@ -466,6 +578,22 @@ pub(super) fn write_index(
         let key = order.key(id, &t);
         if id.0 == 0 || previous.as_ref().is_some_and(|v| *v >= key) {
             return Err(bad("dictionary keys not unique and sorted"));
+        }
+        if matches!(order, Order::Unified) {
+            // A block holds one kind, and inside a kind the text is strictly increasing.
+            let text = t.to_string().into_bytes();
+            if text_kind(&text) != Some(id_kind(id.0)) {
+                return Err(bad("dictionary term disagrees with its kind"));
+            }
+            if let Some((pid, ptext)) = previous_unified.as_ref() {
+                if id_kind(pid.0) != id_kind(id.0) {
+                    flush(&mut out, &mut block, order, &mut meta, &mut offset)?;
+                    bytes_estimate = 0;
+                } else if *ptext >= text {
+                    return Err(bad("dictionary keys not unique and sorted"));
+                }
+            }
+            previous_unified = Some((id, text));
         }
         let estimate = t.to_string().len().saturating_add(16);
         if !block.is_empty()
@@ -482,11 +610,15 @@ pub(super) fn write_index(
     let mut dir = Vec::new();
     let count = u32::try_from(meta.len()).map_err(|_| bad("too many dictionary blocks"))?;
     dir.extend_from_slice(&count.to_le_bytes());
-    for (key, off, len, hash) in meta {
+    for (key, last_text, off, len, hash) in meta {
         dir.extend_from_slice(&off.to_le_bytes());
         dir.extend_from_slice(&(len as u32).to_le_bytes());
         dir.extend_from_slice(&(key.len() as u32).to_le_bytes());
         dir.extend_from_slice(&key);
+        if matches!(order, Order::Unified) {
+            dir.extend_from_slice(&(last_text.len() as u32).to_le_bytes());
+            dir.extend_from_slice(&last_text);
+        }
         dir.extend_from_slice(&hash);
     }
     out.write_all(&dir)?;
@@ -557,13 +689,15 @@ impl Iterator for Rows {
 }
 
 
-/// Single-pass variant for a legacy dictionary already in strictly increasing `Order::Term` key order (the external
-/// build writes it that way). The term index is written straight from the file; `write_index` still rejects any
-/// out-of-order or duplicate key. Only the ID-ordered copy needs a sort.
-fn convert_term_sorted(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
-    use super::external_sort::ExternalSort;
-    use std::io::{BufReader, Read};
-    let mut input = BufReader::new(File::open(dir.join("dictionary"))?);
+/// Unified conversion for a legacy dictionary already in strictly increasing term-text order (the external build
+/// writes it that way). Term text starts with `"` (literal), `<` (IRI) or `_` (blank node), so each kind is one
+/// contiguous run of the file. The unified file wants ID order, which is kind 1, 2, 3 and, inside a kind, the same
+/// text order: the runs are read back in that order. No sort is involved; `write_index` rejects any term that
+/// breaks the order or its kind.
+pub(super) fn convert_unified(dir: &Path) -> io::Result<[u8; 32]> {
+    use std::io::{BufReader, Read, Seek, SeekFrom};
+    let legacy = dir.join("dictionary");
+    let mut input = BufReader::new(File::open(&legacy)?);
     let mut header = [0u8; 8];
     input.read_exact(&mut header)?;
     if &header != b"RDFDIC01" {
@@ -574,98 +708,100 @@ fn convert_term_sorted(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
     if count > 100_000_000 {
         return Err(bad("dictionary count too large"));
     }
-    let mut by_id = ExternalSort::new(dir, 128 * 1024 * 1024, 16 * 1024 * 1024 + 8)?;
-    struct Legacy<'a> {
-        input: BufReader<File>,
-        remaining: u64,
-        by_id: &'a mut ExternalSort,
-        done: bool,
+    /// One decoded legacy record: its ID, canonical text and term.
+    fn read_one(input: &mut BufReader<File>) -> io::Result<(u64, Vec<u8>, Term)> {
+        let mut header = [0u8; 8];
+        input.read_exact(&mut header)?;
+        let id = u64::from_le_bytes(header);
+        if id == 0 {
+            return Err(bad("zero dictionary ID"));
+        }
+        input.read_exact(&mut header)?;
+        let len = usize::try_from(u64::from_le_bytes(header)).map_err(|_| bad("dictionary term length"))?;
+        if len > 16 * 1024 * 1024 {
+            return Err(bad("dictionary term too long"));
+        }
+        let mut text = vec![0; len];
+        input.read_exact(&mut text)?;
+        if text.contains(&0) {
+            return Err(bad("invalid dictionary text"));
+        }
+        let term: Term = std::str::from_utf8(&text)
+            .map_err(|_| bad("invalid dictionary UTF-8"))?
+            .parse()
+            .map_err(|_| bad("invalid dictionary term"))?;
+        if term.to_string().as_bytes() != text {
+            return Err(bad("noncanonical dictionary term"));
+        }
+        Ok((id, text, term))
     }
-    impl Legacy<'_> {
-        fn one(&mut self) -> io::Result<Option<(TermId, Term)>> {
-            let mut header = [0u8; 8];
-            if self.remaining == 0 {
-                let mut extra = [0u8; 1];
-                if self.input.read(&mut extra)? != 0 {
-                    return Err(bad("dictionary trailing bytes"));
+    // Pass 1: where each kind's run starts and how many records it holds; every kind must be one run.
+    let mut runs: Vec<(u64, u64, u64)> = Vec::new(); // (kind, byte offset, records)
+    let mut offset = 16u64;
+    for _ in 0..count {
+        let at = offset;
+        let (id, text, _) = read_one(&mut input)?;
+        offset += 16 + text.len() as u64;
+        let kind = id_kind(id);
+        if text_kind(&text) != Some(kind) {
+            return Err(bad("dictionary term disagrees with its kind"));
+        }
+        match runs.last_mut() {
+            Some(run) if run.0 == kind => run.2 += 1,
+            _ => {
+                if runs.iter().any(|r| r.0 == kind) {
+                    return Err(bad("dictionary kinds are not contiguous"));
                 }
-                return Ok(None);
+                runs.push((kind, at, 1));
             }
-            self.input.read_exact(&mut header)?;
-            let id = u64::from_le_bytes(header);
-            if id == 0 {
-                return Err(bad("zero dictionary ID"));
-            }
-            self.input.read_exact(&mut header)?;
-            let len = usize::try_from(u64::from_le_bytes(header)).map_err(|_| bad("dictionary term length"))?;
-            if len > 16 * 1024 * 1024 {
-                return Err(bad("dictionary term too long"));
-            }
-            let mut text = vec![0; len];
-            self.input.read_exact(&mut text)?;
-            if text.contains(&0) {
-                return Err(bad("invalid dictionary text"));
-            }
-            let term: Term = std::str::from_utf8(&text)
-                .map_err(|_| bad("invalid dictionary UTF-8"))?
-                .parse()
-                .map_err(|_| bad("invalid dictionary term"))?;
-            if term.to_string().as_bytes() != text {
-                return Err(bad("noncanonical dictionary term"));
-            }
-            let mut id_key = Vec::with_capacity(len + 8);
-            id_key.extend_from_slice(&id.to_be_bytes());
-            id_key.extend_from_slice(&text);
-            self.by_id.push(id_key)?;
-            self.remaining -= 1;
-            Ok(Some((TermId(id), term)))
         }
     }
-    impl Iterator for Legacy<'_> {
+    let mut extra = [0u8; 1];
+    if input.read(&mut extra)? != 0 {
+        return Err(bad("dictionary trailing bytes"));
+    }
+    runs.sort_by_key(|r| r.0);
+    // Pass 2: the runs in kind (ID) order.
+    struct Unified {
+        input: BufReader<File>,
+        runs: std::vec::IntoIter<(u64, u64, u64)>,
+        left: u64,
+        failed: bool,
+    }
+    impl Iterator for Unified {
         type Item = io::Result<(TermId, Term)>;
         fn next(&mut self) -> Option<Self::Item> {
-            if self.done {
+            if self.failed {
                 return None;
             }
-            match self.one() {
-                Ok(Some(row)) => Some(Ok(row)),
-                Ok(None) => {
-                    self.done = true;
-                    None
+            while self.left == 0 {
+                let (_, at, n) = self.runs.next()?;
+                if let Err(e) = self.input.seek(SeekFrom::Start(at)) {
+                    self.failed = true;
+                    return Some(Err(e));
                 }
+                self.left = n;
+            }
+            self.left -= 1;
+            match read_one(&mut self.input) {
+                Ok((id, _, term)) => Some(Ok((TermId(id), term))),
                 Err(e) => {
-                    self.done = true;
+                    self.failed = true;
                     Some(Err(e))
                 }
             }
         }
     }
-    let term_path = dir.join("dictionary.term");
-    let id_path = dir.join("dictionary.id");
-    write_index(&term_path, Order::Term, Legacy { input, remaining: count, by_id: &mut by_id, done: false })?;
-    let id_run = by_id.finish()?;
-    write_index(
-        &id_path,
-        Order::Id,
-        Rows { input: BufReader::new(File::open(&id_run)?), order: Order::Id, done: false },
-    )?;
-    std::fs::remove_file(&id_run)?;
-    let identities = (
-        LazyIndex::open(&term_path, Order::Term)?.identity(),
-        LazyIndex::open(&id_path, Order::Id)?.identity(),
-    );
-    drop(by_id);
-    std::fs::remove_file(dir.join("dictionary"))?;
-    Ok(identities)
+    let path = dir.join(UNIFIED_FILE);
+    write_index(&path, Order::Unified, Unified { input, runs: runs.into_iter(), left: 0, failed: false })?;
+    let identity = LazyIndex::open(&path, Order::Unified)?.identity();
+    std::fs::remove_file(&legacy)?;
+    Ok(identity)
 }
 
 /// Convert a freshly written legacy dictionary into two immutable indexes.
 /// Caller owns manifest publication and scratch directory durability.
-/// `term_sorted` declares that the legacy dictionary is already in strictly increasing term-text order.
-pub(super) fn convert_legacy(dir: &Path, term_sorted: bool) -> io::Result<([u8; 32], [u8; 32])> {
-    if term_sorted {
-        return convert_term_sorted(dir);
-    }
+pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
     use super::external_sort::ExternalSort;
     use std::io::{BufReader, Read};
     let mut input = BufReader::new(File::open(dir.join("dictionary"))?);
@@ -769,41 +905,137 @@ mod tests {
         std::fs::write(dir.join("dictionary"), bytes).unwrap();
     }
 
-    #[test]
-    fn single_pass_conversion_matches_the_sorting_conversion() {
-        let root = std::env::temp_dir().join(format!("rdf-lazy-conv-{}", std::process::id()));
-        let (a, b) = (root.join("sorting"), root.join("single"));
-        std::fs::create_dir_all(&a).unwrap();
-        std::fs::create_dir_all(&b).unwrap();
-        // Term-text order: literals ('"') before IRIs ('<'); IDs rise within each kind and kinds differ in the top bits.
+    /// Terms in the text order the external build writes: literals (`"`), IRIs (`<`), blank nodes (`_`), with IDs
+    /// `(kind << 60) | rank`, the rank rising in that global text order.
+    fn sample_terms() -> Vec<(u64, String)> {
         let mut texts: Vec<String> = (0..700).map(|i| format!("<urn:t{i:04}>")).collect();
         texts.extend((0..300).map(|i| format!("\"lit{i:04}\"")));
+        texts.extend((0..40).map(|i| format!("_:b{i:02}")));
+        // The same lexical value in its plain, language-tagged and typed forms, and an adjacent lang/typed pair.
+        texts.extend(["\"a\"", "\"a\"@en", "\"a\"@en-us", "\"a\"^^<http://example.org/dt>", "\"a\"^^<http://www.w3.org/2001/XMLSchema#integer>"].map(String::from));
         texts.sort();
-        let entries: Vec<(u64, &str)> = texts
-            .iter()
+        texts.dedup();
+        texts
+            .into_iter()
             .enumerate()
-            .map(|(n, t)| (((if t.starts_with('<') { 1u64 } else { 3 }) << 60) | n as u64, t.as_str()))
-            .collect();
+            .map(|(n, t)| {
+                let kind = match t.as_bytes()[0] {
+                    b'<' => 1u64,
+                    b'_' => 2,
+                    _ => 3,
+                };
+                ((kind << 60) | n as u64, t)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn unified_dictionary_answers_both_lookups_like_the_two_file_pair() {
+        let root = std::env::temp_dir().join(format!("rdf-unified-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let (a, b) = (root.join("unified"), root.join("pair"));
+        std::fs::create_dir_all(&a).unwrap();
+        std::fs::create_dir_all(&b).unwrap();
+        let rows = sample_terms();
+        let entries: Vec<(u64, &str)> = rows.iter().map(|(i, t)| (*i, t.as_str())).collect();
         legacy_dictionary(&a, &entries);
         legacy_dictionary(&b, &entries);
-        let left = convert_legacy(&a, false).unwrap();
-        let right = convert_legacy(&b, true).unwrap();
-        assert_eq!(left, right);
-        for name in ["dictionary.term", "dictionary.id"] {
-            assert_eq!(std::fs::read(a.join(name)).unwrap(), std::fs::read(b.join(name)).unwrap(), "{name}");
+        convert_unified(&a).unwrap();
+        convert_legacy(&b).unwrap();
+        assert!(!a.join("dictionary").exists(), "legacy file removed");
+        assert_eq!(std::fs::read_dir(&a).unwrap().count(), 1, "only the unified file remains");
+        let unified = LazyIndex::open(&a.join(UNIFIED_FILE), Order::Unified).unwrap();
+        let by_term = LazyIndex::open(&b.join("dictionary.term"), Order::Term).unwrap();
+        let by_id = LazyIndex::open(&b.join("dictionary.id"), Order::Id).unwrap();
+        for (id, text) in &rows {
+            let from_unified = unified.find_term(text.as_bytes()).unwrap().expect("present");
+            let from_pair = by_term.find(text.as_bytes()).unwrap().expect("present");
+            assert_eq!(from_unified, from_pair, "{text}");
+            assert_eq!(from_unified.0, TermId(*id));
+            let (mut u, mut p) = (None, None);
+            unified.with_id(TermId(*id), &mut |t| u = Some(t.into_owned())).unwrap();
+            by_id.with_id(TermId(*id), &mut |t| p = Some(t.into_owned())).unwrap();
+            assert_eq!(u, p, "{text}");
         }
-        assert!(!b.join("dictionary").exists());
-        assert_eq!(std::fs::read_dir(&b).unwrap().count(), 2, "no scratch left behind");
+        // Batched lookups in a scrambled order.
+        let ids: Vec<TermId> = rows.iter().rev().step_by(7).map(|(i, _)| TermId(*i)).collect();
+        let (mut got, mut want) = (vec![None; ids.len()], vec![None; ids.len()]);
+        unified.with_ids(&ids, &mut |i, t| got[i] = Some(t.into_owned())).unwrap();
+        by_id.with_ids(&ids, &mut |i, t| want[i] = Some(t.into_owned())).unwrap();
+        assert_eq!(got, want);
+        // Absent terms: before everything, between neighbours, after the last of a kind, wrong kind, empty and odd text.
+        for absent in ["\"", "\"a\"@fr", "\"a\"^^<http://example.org/other>", "\"zzz\"", "<urn:t0000", "<urn:t0000>x", "<urn:t9999>", "<", "_:b00x", "_:zz", "_:", "", "x", "\"a"] {
+            assert_eq!(unified.find_term(absent.as_bytes()).unwrap(), by_term.find(absent.as_bytes()).unwrap(), "{absent:?}");
+            assert!(unified.find_term(absent.as_bytes()).unwrap().is_none(), "{absent:?}");
+        }
+        assert!(unified.with_id(TermId((1 << 60) | 99_999), &mut |_| ()).is_err());
         std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
-    fn single_pass_conversion_rejects_an_unsorted_legacy_dictionary() {
-        let dir = std::env::temp_dir().join(format!("rdf-lazy-unsorted-{}", std::process::id()));
+    fn unified_dictionary_with_a_missing_kind_still_finds_the_others() {
+        let dir = std::env::temp_dir().join(format!("rdf-unified-missing-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        legacy_dictionary(&dir, &[((1 << 60) | 1, "<urn:b>"), ((1 << 60) | 2, "<urn:a>")]);
-        assert!(convert_legacy(&dir, true).is_err());
-        assert!(!dir.join("dictionary.term").exists() || !dir.join("dictionary.id").exists());
+        // No blank nodes at all, and the literal run is a single block.
+        legacy_dictionary(&dir, &[((3 << 60) | 1, "\"x\""), ((1 << 60) | 2, "<urn:a>"), ((1 << 60) | 3, "<urn:b>")]);
+        convert_unified(&dir).unwrap();
+        let u = LazyIndex::open(&dir.join(UNIFIED_FILE), Order::Unified).unwrap();
+        assert_eq!(u.find_term(b"<urn:b>").unwrap().unwrap().0, TermId((1 << 60) | 3));
+        assert_eq!(u.find_term(b"\"x\"").unwrap().unwrap().0, TermId((3 << 60) | 1));
+        assert!(u.find_term(b"_:b1").unwrap().is_none());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn unified_conversion_rejects_disordered_or_mislabelled_input() {
+        let root = std::env::temp_dir().join(format!("rdf-unified-bad-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        for (name, entries) in [
+            // Text out of order inside a kind.
+            ("unsorted", vec![((1u64 << 60) | 1, "<urn:b>"), ((1 << 60) | 2, "<urn:a>")]),
+            // IRI text carrying a literal kind tag.
+            ("mislabelled", vec![((3u64 << 60) | 1, "<urn:a>")]),
+            // A kind split into two runs.
+            ("split", vec![((1u64 << 60) | 1, "<urn:a>"), ((2 << 60) | 2, "_:b"), ((1 << 60) | 3, "<urn:c>")]),
+        ] {
+            let dir = root.join(name);
+            std::fs::create_dir_all(&dir).unwrap();
+            legacy_dictionary(&dir, &entries);
+            assert!(convert_unified(&dir).is_err(), "{name} must be rejected");
+        }
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn unified_dictionary_reports_a_corrupt_directory_or_block() {
+        let dir = std::env::temp_dir().join(format!("rdf-unified-corrupt-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let rows = sample_terms();
+        let entries: Vec<(u64, &str)> = rows.iter().map(|(i, t)| (*i, t.as_str())).collect();
+        legacy_dictionary(&dir, &entries);
+        convert_unified(&dir).unwrap();
+        let path = dir.join(UNIFIED_FILE);
+        let good = std::fs::read(&path).unwrap();
+        // A flipped byte inside the first block: the directory still opens, the block read fails.
+        let mut bad_block = good.clone();
+        bad_block[20] ^= 0xff;
+        std::fs::write(&path, &bad_block).unwrap();
+        let u = LazyIndex::open(&path, Order::Unified).unwrap();
+        assert!(u.find_term(rows.iter().find(|(_, t)| t.starts_with('<')).unwrap().1.as_bytes()).is_err() || u.for_each(&mut |_, _| Ok(())).is_err());
+        // A flipped byte in the directory fails at open; truncation fails at open.
+        let mut bad_dir = good.clone();
+        let n = bad_dir.len();
+        bad_dir[n - 60] ^= 0xff;
+        std::fs::write(&path, &bad_dir).unwrap();
+        assert!(LazyIndex::open(&path, Order::Unified).is_err());
+        std::fs::write(&path, &good[..good.len() / 2]).unwrap();
+        assert!(LazyIndex::open(&path, Order::Unified).is_err());
+        // The old two-file readers refuse a unified file and vice versa.
+        std::fs::write(&path, &good).unwrap();
+        assert!(LazyIndex::open(&path, Order::Id).is_err());
+        assert!(LazyIndex::open(&path, Order::Term).is_err());
         std::fs::remove_dir_all(dir).unwrap();
     }
 
