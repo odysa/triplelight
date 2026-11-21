@@ -119,6 +119,8 @@ This contributes no workload timing.
 
 The [Blazegraph streaming COUNT fixture](blazegraph-embedded-count-fixture-v1/README.md) records an explicit-only fast range-count assertion and the matching typed count with all statements visible on a fixture containing nine explicit triples. It includes no workload timing.
 
+The [Blazegraph LUBM-100 qualification](blazegraph-lubm100-qualification-v1/README.md) reports 13,409,395 total and explicit triples at load and reopen, plus 30 exact typed answer passes on the registered aggregate queries. It uses the separate all-statements profile and collects no scored latency.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.
