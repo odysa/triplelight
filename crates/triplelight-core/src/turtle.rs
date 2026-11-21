@@ -50,6 +50,17 @@ impl<I: BufRead> Src<I> {
         Ok(Some(self.buf[self.pos + i]))
     }
     fn byte(&mut self, i: usize) -> R<u8> { Ok(self.at(i)?.unwrap_or(0)) }
+    /// The offset (from `pos`) of the first byte at or after `from` that matches `stop`, reading more input as
+    /// needed; `None` if the input ends first. Scans whole buffered spans instead of byte by byte.
+    fn find(&mut self, from: usize, stop: impl Fn(u8) -> bool) -> R<Option<usize>> {
+        let mut i = from;
+        loop {
+            if self.at(i)?.is_none() { return Ok(None) }
+            let span = &self.buf[self.pos + i..];
+            if let Some(k) = span.iter().position(|&b| stop(b)) { return Ok(Some(i + k)) }
+            i += span.len();
+        }
+    }
     /// Drops consumed input once enough has accumulated.
     fn compact(&mut self) {
         if self.pos > (1 << 20) { self.buf.drain(..self.pos); self.pos = 0; }
@@ -166,7 +177,10 @@ impl<I: BufRead> Lexer<I> {
         let mut bytes = Vec::new();
         let mut i = 1;
         loop {
-            match self.src.at(i)?.ok_or("Unterminated IRI")? {
+            let end = self.src.find(i, |b| b == b'>' || b == b'\\')?.ok_or("Unterminated IRI")?;
+            bytes.extend_from_slice(self.src.slice(i, end));
+            i = end;
+            match self.src.byte(i)? {
                 b'>' => break,
                 b'\\' => {
                     let save = self.src.pos;
@@ -178,7 +192,7 @@ impl<I: BufRead> Lexer<I> {
                     bytes.extend_from_slice(c.encode_utf8(&mut b).as_bytes());
                     i += len;
                 }
-                b => { bytes.push(b); i += 1 }
+                _ => unreachable!(),
             }
         }
         let iri = String::from_utf8(bytes).map_err(|e| format!("Invalid UTF-8: {e}"))?;
@@ -207,12 +221,7 @@ impl<I: BufRead> Lexer<I> {
         let mut i = 1;
         loop {
             let start = i;
-            loop {
-                match self.src.at(i)?.ok_or("Unterminated string literal")? {
-                    b if b == delimiter || b == b'\\' || b == b'\n' || b == b'\r' => break,
-                    _ => i += 1,
-                }
-            }
+            i = self.src.find(i, |b| b == delimiter || b == b'\\' || b == b'\n' || b == b'\r')?.ok_or("Unterminated string literal")?;
             out.push_str(std::str::from_utf8(self.src.slice(start, i)).map_err(|e| format!("Invalid UTF-8: {e}"))?);
             match self.src.byte(i)? {
                 b if b == delimiter => return Ok((Tok::Str(out), i + 1)),
@@ -235,12 +244,7 @@ impl<I: BufRead> Lexer<I> {
         let mut i = 3;
         loop {
             let start = i;
-            loop {
-                match self.src.at(i)?.ok_or("Unterminated long string literal")? {
-                    b if b == delimiter || b == b'\\' => break,
-                    _ => i += 1,
-                }
-            }
+            i = self.src.find(i, |b| b == delimiter || b == b'\\')?.ok_or("Unterminated long string literal")?;
             out.push_str(std::str::from_utf8(self.src.slice(start, i)).map_err(|e| format!("Invalid UTF-8: {e}"))?);
             if self.src.byte(i)? == delimiter {
                 if self.src.at(i + 1)?.ok_or("Unterminated long string literal")? == delimiter
@@ -402,12 +406,18 @@ impl<I: BufRead> Lexer<I> {
 }
 
 /// The Turtle / TriG grammar over the lexer, emitting statements as `oxttl` does.
-struct Parser<I> { lex: Lexer<I>, prefixes: HashMap<String, Iri>, with_graph: bool, graph: GraphName, out: VecDeque<Quad> }
+/// `oxttl` hands back the statements produced while processing one token last-first (its results are a stack), so
+/// statements are batched per token, the most recently lexed one (peeked or consumed), and released in reverse.
+struct Parser<I> { lex: Lexer<I>, prefixes: HashMap<String, Iri>, with_graph: bool, graph: GraphName, batch: Vec<Quad>, out: VecDeque<Quad> }
 
 fn rdf(local: &str) -> NamedNode { NamedNode::new_unchecked(format!("{RDF}{local}")) }
 
 impl<I: BufRead> Parser<I> {
-    fn emit(&mut self, s: &NamedOrBlankNode, p: &NamedNode, o: Term) { self.out.push_back(Quad::new(s.clone(), p.clone(), o, self.graph.clone())) }
+    fn emit(&mut self, s: &NamedOrBlankNode, p: &NamedNode, o: Term) { self.batch.push(Quad::new(s.clone(), p.clone(), o, self.graph.clone())) }
+    fn flush(&mut self) { while let Some(q) = self.batch.pop() { self.out.push_back(q) } }
+    /// The next token; a newly lexed token starts a new batch.
+    fn next(&mut self) -> R<Tok> { if self.lex.peeked.is_none() { self.flush() } self.lex.next() }
+    fn peek(&mut self) -> R<&Tok> { if self.lex.peeked.is_none() { self.flush() } self.lex.peek() }
 
     fn resolve_pname(&self, prefix: &str, local: &str, might_be_invalid: bool) -> R<NamedNode> {
         let Some(start) = self.prefixes.get(prefix) else { return Err(Fail::Syntax(format!("The prefix {prefix}: has not been declared"))) };
@@ -426,15 +436,15 @@ impl<I: BufRead> Parser<I> {
         }
     }
     fn expect(&mut self, p: &'static str, message: &str) -> R<()> {
-        if self.lex.next()? == Tok::Punct(p) { Ok(()) } else { Err(Fail::Syntax(message.to_owned())) }
+        if self.next()? == Tok::Punct(p) { Ok(()) } else { Err(Fail::Syntax(message.to_owned())) }
     }
 
     /// One top-level statement (directive, triples or graph block); `false` at the end of the document.
     fn statement(&mut self) -> R<bool> {
         self.graph = GraphName::DefaultGraph;
-        let t = self.lex.next()?;
+        let t = self.next()?;
         match &t {
-            Tok::Eof => return Ok(false),
+            Tok::Eof => { self.flush(); return Ok(false) }
             Tok::Keyword(k) if k.eq_ignore_ascii_case("base") => self.base()?,
             Tok::Keyword(k) if k.eq_ignore_ascii_case("prefix") => self.prefix()?,
             Tok::Lang(l) if l == "prefix" => { self.prefix()?; self.expect(".", "A dot is expected at the end of statements")? }
@@ -443,20 +453,21 @@ impl<I: BufRead> Parser<I> {
             Tok::Punct("{") if self.with_graph => { self.lex.peeked = Some(t); self.wrapped_graph()? }
             _ => self.triples_or_graph(t)?,
         }
+        self.flush();
         Ok(true)
     }
     fn base(&mut self) -> R<()> {
-        match self.lex.next()? {
+        match self.next()? {
             Tok::Iri(i) => { self.lex.base = Some(Iri::parse(&i).map_err(|e| e.to_string())?); Ok(()) }
             _ => Err("The BASE keyword should be followed by an IRI".into()),
         }
     }
     fn prefix(&mut self) -> R<()> {
-        let name = match self.lex.next()? {
+        let name = match self.next()? {
             Tok::PName { prefix, local, .. } if local.is_empty() => prefix,
             _ => return Err("The PREFIX keyword should be followed by a prefix like 'ex:'".into()),
         };
-        match self.lex.next()? {
+        match self.next()? {
             Tok::Iri(i) => { self.prefixes.insert(name, Iri::parse(&i).map_err(|e| e.to_string())?); Ok(()) }
             _ => Err("The PREFIX declaration should be followed by a prefix and its value as an IRI".into()),
         }
@@ -466,14 +477,14 @@ impl<I: BufRead> Parser<I> {
         let term: NamedOrBlankNode = match &t {
             Tok::BNode(l) => BlankNode::new_unchecked(l.clone()).into(),
             Tok::Punct("[") => {
-                if self.lex.peek()? == &Tok::Punct("]") {
-                    self.lex.next()?;
+                if self.peek()? == &Tok::Punct("]") {
+                    self.next()?;
                     BlankNode::default().into()
                 } else {
                     let s: NamedOrBlankNode = BlankNode::default().into();
                     self.predicate_object_list(&s)?;
-                    if self.lex.peek()? == &Tok::Punct("]") { self.lex.next()?; } else { return Err("blank node property lists should end with a ']'".into()) }
-                    if !matches!(self.lex.peek()?, Tok::Punct("." | "}")) { self.predicate_object_list(&s)? }
+                    if self.peek()? == &Tok::Punct("]") { self.next()?; } else { return Err("blank node property lists should end with a ']'".into()) }
+                    if !matches!(self.peek()?, Tok::Punct("." | "}")) { self.predicate_object_list(&s)? }
                     return self.expect(".", "A dot is expected at the end of statements");
                 }
             }
@@ -484,7 +495,7 @@ impl<I: BufRead> Parser<I> {
             }
             t => match self.iri_of(t) { Some(i) => i?.into(), None => return Err("TOKEN is not a valid subject or graph name".into()) },
         };
-        if self.with_graph && self.lex.peek()? == &Tok::Punct("{") {
+        if self.with_graph && self.peek()? == &Tok::Punct("{") {
             self.graph = match term { NamedOrBlankNode::NamedNode(n) => GraphName::NamedNode(n), NamedOrBlankNode::BlankNode(b) => GraphName::BlankNode(b) };
             return self.wrapped_graph();
         }
@@ -493,11 +504,11 @@ impl<I: BufRead> Parser<I> {
     }
 
     fn graph_name(&mut self) -> R<()> {
-        let t = self.lex.next()?;
+        let t = self.next()?;
         self.graph = match &t {
             Tok::BNode(l) => GraphName::BlankNode(BlankNode::new_unchecked(l.clone())),
             Tok::Punct("[") => {
-                if self.lex.next()? != Tok::Punct("]") { return Err("Anonymous blank node with a property list are not allowed as graph name".into()) }
+                if self.next()? != Tok::Punct("]") { return Err("Anonymous blank node with a property list are not allowed as graph name".into()) }
                 GraphName::BlankNode(BlankNode::default())
             }
             t => match self.iri_of(t) { Some(i) => GraphName::NamedNode(i?), None => return Err("TOKEN is not a valid graph name".into()) },
@@ -506,10 +517,10 @@ impl<I: BufRead> Parser<I> {
     }
 
     fn wrapped_graph(&mut self) -> R<()> {
-        if self.lex.next()? != Tok::Punct("{") { return Err("The GRAPH keyword should be followed by a graph name and a value in '{'".into()) }
+        if self.next()? != Tok::Punct("{") { return Err("The GRAPH keyword should be followed by a graph name and a value in '{'".into()) }
         loop {
             self.triples()?;
-            match self.lex.next()? {
+            match self.next()? {
                 Tok::Punct("}") => return Ok(()),
                 Tok::Punct(".") => continue,
                 _ => return Err("A '}' or a '.' is expected at the end of a graph block".into()),
@@ -519,18 +530,18 @@ impl<I: BufRead> Parser<I> {
 
     /// `triples` inside a graph block; returns at once before a `}`.
     fn triples(&mut self) -> R<()> {
-        let t = self.lex.next()?;
+        let t = self.next()?;
         match &t {
             Tok::Punct("}") => { self.lex.peeked = Some(t); Ok(()) }
             Tok::Punct("[") => {
                 let s: NamedOrBlankNode = BlankNode::default().into();
-                if self.lex.peek()? == &Tok::Punct("]") {
-                    self.lex.next()?;
+                if self.peek()? == &Tok::Punct("]") {
+                    self.next()?;
                     return self.predicate_object_list(&s);
                 }
                 self.predicate_object_list(&s)?;
-                if self.lex.peek()? == &Tok::Punct("]") { self.lex.next()?; } else { return Err("blank node property lists should end with a ']'".into()) }
-                if !matches!(self.lex.peek()?, Tok::Punct("." | "}")) { self.predicate_object_list(&s)? }
+                if self.peek()? == &Tok::Punct("]") { self.next()?; } else { return Err("blank node property lists should end with a ']'".into()) }
+                if !matches!(self.peek()?, Tok::Punct("." | "}")) { self.predicate_object_list(&s)? }
                 Ok(())
             }
             Tok::BNode(l) => { let s = BlankNode::new_unchecked(l.clone()).into(); self.predicate_object_list(&s) }
@@ -543,44 +554,44 @@ impl<I: BufRead> Parser<I> {
         loop {
             let p = self.verb()?;
             self.objects_list(s, &p)?;
-            if self.lex.peek()? != &Tok::Punct(";") { return Ok(()) }
-            while self.lex.peek()? == &Tok::Punct(";") { self.lex.next()?; }
-            if matches!(self.lex.peek()?, Tok::Punct("." | "}" | "]" | "|}")) { return Ok(()) }
+            if self.peek()? != &Tok::Punct(";") { return Ok(()) }
+            while self.peek()? == &Tok::Punct(";") { self.next()?; }
+            if matches!(self.peek()?, Tok::Punct("." | "}" | "]" | "|}")) { return Ok(()) }
         }
     }
     fn verb(&mut self) -> R<NamedNode> {
-        let t = self.lex.next()?;
+        let t = self.next()?;
         if t == Tok::Keyword("a".into()) { return Ok(rdf("type")) }
         match self.iri_of(&t) { Some(i) => i, None => Err("TOKEN is not a valid predicate".into()) }
     }
     fn objects_list(&mut self, s: &NamedOrBlankNode, p: &NamedNode) -> R<()> {
         loop {
             self.object(s, p)?;
-            if self.lex.peek()? != &Tok::Punct(",") { return Ok(()) }
-            self.lex.next()?;
+            if self.peek()? != &Tok::Punct(",") { return Ok(()) }
+            self.next()?;
         }
     }
 
     /// Reads one object and emits `(s, p, object)`, with any nested statements in `oxttl`'s order: a property list's
     /// own statements before the triple that uses it, a collection's head triple before its list statements.
     fn object(&mut self, s: &NamedOrBlankNode, p: &NamedNode) -> R<()> {
-        let t = self.lex.next()?;
+        let t = self.next()?;
         let o: Term = match t {
             Tok::BNode(l) => BlankNode::new_unchecked(l).into(),
             Tok::Punct("[") => {
-                if self.lex.peek()? == &Tok::Punct("]") {
-                    self.lex.next()?;
+                if self.peek()? == &Tok::Punct("]") {
+                    self.next()?;
                     BlankNode::default().into()
                 } else {
                     let b: NamedOrBlankNode = BlankNode::default().into();
                     self.predicate_object_list(&b)?;
-                    if self.lex.next()? != Tok::Punct("]") { return Err("blank node property lists should end with a ']'".into()) }
+                    if self.next()? != Tok::Punct("]") { return Err("blank node property lists should end with a ']'".into()) }
                     Term::from(b)
                 }
             }
             Tok::Punct("(") => {
-                if self.lex.peek()? == &Tok::Punct(")") {
-                    self.lex.next()?;
+                if self.peek()? == &Tok::Punct(")") {
+                    self.next()?;
                     rdf("nil").into()
                 } else {
                     let root = BlankNode::default();
@@ -606,8 +617,8 @@ impl<I: BufRead> Parser<I> {
         loop {
             let n: NamedOrBlankNode = node.clone().into();
             self.object(&n, &first)?;
-            if self.lex.peek()? == &Tok::Punct(")") {
-                self.lex.next()?;
+            if self.peek()? == &Tok::Punct(")") {
+                self.next()?;
                 self.emit(&n, &rest, rdf("nil").into());
                 return Ok(());
             }
@@ -618,18 +629,18 @@ impl<I: BufRead> Parser<I> {
     }
     /// A collection used as a subject: its list statements, and its head node (or `rdf:nil`).
     fn collection_subject(&mut self) -> R<NamedOrBlankNode> {
-        if self.lex.peek()? == &Tok::Punct(")") { self.lex.next()?; return Ok(rdf("nil").into()) }
+        if self.peek()? == &Tok::Punct(")") { self.next()?; return Ok(rdf("nil").into()) }
         let root = BlankNode::default();
         self.collection_items(root.clone())?;
         Ok(root.into())
     }
 
     fn literal_suffix(&mut self, value: String) -> R<Term> {
-        match self.lex.peek()? {
-            Tok::Lang(_) => { let Tok::Lang(l) = self.lex.next()? else { unreachable!() }; Ok(Literal::new_language_tagged_literal_unchecked(value, l.to_ascii_lowercase()).into()) }
+        match self.peek()? {
+            Tok::Lang(_) => { let Tok::Lang(l) = self.next()? else { unreachable!() }; Ok(Literal::new_language_tagged_literal_unchecked(value, l.to_ascii_lowercase()).into()) }
             Tok::Punct("^^") => {
-                self.lex.next()?;
-                let t = self.lex.next()?;
+                self.next()?;
+                let t = self.next()?;
                 let d = match self.iri_of(&t) { Some(i) => i?, None => return Err("A literal datatype must be an IRI".into()) };
                 if d.as_str() == format!("{RDF}langString") { return Err("The datatype of a literal without a language tag must not be rdf:langString".into()) }
                 Ok(Literal::new_typed_literal(value, d).into())
@@ -645,7 +656,7 @@ pub struct TurtleReader<I> { parser: Parser<I>, done: bool }
 impl<I: BufRead> TurtleReader<I> {
     fn new(input: I, with_graph: bool, capped: bool) -> Self {
         let src = Src { input, buf: Vec::new(), pos: 0, eof: false, capped, token_start: 0 };
-        TurtleReader { parser: Parser { lex: Lexer { src, base: None, peeked: None }, prefixes: HashMap::new(), with_graph, graph: GraphName::DefaultGraph, out: VecDeque::new() }, done: false }
+        TurtleReader { parser: Parser { lex: Lexer { src, base: None, peeked: None }, prefixes: HashMap::new(), with_graph, graph: GraphName::DefaultGraph, batch: Vec::new(), out: VecDeque::new() }, done: false }
     }
 }
 
@@ -667,6 +678,7 @@ impl<I: BufRead> Iterator for TurtleReader<I> {
                         Fail::TooLarge => ReadError::Io(std::io::Error::new(std::io::ErrorKind::OutOfMemory, format!("token larger than {MAX_TOKEN} bytes"))),
                     };
                     self.parser.out.clear();
+                    self.parser.batch.clear();
                     return Some(Err(e));
                 }
             }

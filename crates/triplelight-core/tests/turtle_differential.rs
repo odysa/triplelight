@@ -92,9 +92,27 @@ fn random_documents_agree() {
     let mut rng = 0x2545f4914f6cdd1du64;
     let mut next = move || { rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17; rng };
     let (mut accepted, mut total) = (0usize, 0usize);
+    const SUBJECTS: &[&str] = &[":a", "p:x", "<s>", "<http://a>", "_:b", "[]", "[ :q :r ]", "( :a 1 )", "()", "[ :q [ :r :s ] ]"];
+    const PREDICATES: &[&str] = &[":p", "a", "p:y", "<http://p>"];
+    const OBJECTS: &[&str] = &[":o", "p:z", "<o>", "_:c", "[]", "[ :q :r ; :s 1 ]", "( :a ( 2 ) [ :t :u ] )", "()", "\"s\"", "\"s\"@en", "'t'^^:d",
+        "\"\"\"l\nl\"\"\"", "1", "-1.5", ".5e2", "true", "false", ":a.b"];
     for i in 0..150_000 {
-        let mut doc = String::from(if i % 2 == 0 { "@prefix : <http://ex/> . PREFIX p: <http://ex/p/> " } else { "" });
-        for _ in 0..(3 + next() % 10) { doc.push_str(PIECES[(next() % PIECES.len() as u64) as usize]); doc.push(' '); }
+        let mut doc = String::from("@prefix : <http://ex/> . PREFIX p: <http://ex/p/> @base <http://ex/b/> . ");
+        let pick = |n: u64, xs: &[&'static str]| xs[(n % xs.len() as u64) as usize];
+        let graph = i % 3 == 0;
+        if graph { doc.push_str(pick(next(), &[":g { ", "GRAPH :h { ", "{ ", "_:g { "])) }
+        for _ in 0..(1 + next() % 3) {
+            doc.push_str(pick(next(), SUBJECTS)); doc.push(' ');
+            for k in 0..(1 + next() % 2) {
+                if k > 0 { doc.push_str(" ; ") }
+                doc.push_str(pick(next(), PREDICATES)); doc.push(' ');
+                for m in 0..(1 + next() % 2) { if m > 0 { doc.push_str(" , ") } doc.push_str(pick(next(), OBJECTS)) }
+            }
+            doc.push_str(" . ");
+            // An occasional random piece, to exercise errors next to valid statements.
+            if next() % 4 == 0 { doc.push_str(pick(next(), PIECES)); doc.push(' ') }
+        }
+        if graph { doc.push('}') }
         for trig in [false, true] {
             let (a, b) = (ours(doc.as_bytes(), trig), theirs(doc.as_bytes(), trig));
             assert_eq!(a, b, "{doc:?} (trig: {trig})");
@@ -104,4 +122,33 @@ fn random_documents_agree() {
     }
     eprintln!("random documents: {total} compared, {accepted} yielded statements");
     assert!(accepted > 5_000, "too few valid documents ({accepted})");
+}
+
+/// Large files in lockstep plus descriptive parse timing (run with `--release --ignored --nocapture` and
+/// `TL_TTL_FILES=a.ttl:b.nt`; N-Triples files are valid Turtle).
+#[test]
+#[ignore]
+fn files_agree_and_time() {
+    let Some(files) = std::env::var_os("TL_TTL_FILES") else { return };
+    for path in std::env::split_paths(&files) {
+        let open = || std::io::BufReader::with_capacity(1 << 20, std::fs::File::open(&path).unwrap());
+        let mut a = read_turtle(open()).map(|r| r.unwrap_or_else(|e| panic!("ours failed: {e}")));
+        let mut b = oxttl::TurtleParser::new().for_reader(open()).map(|r| r.unwrap_or_else(|e| panic!("oxttl failed: {e}")));
+        let mut n = 0u64;
+        loop {
+            match (a.next(), b.next()) {
+                (None, None) => break,
+                (Some(x), Some(y)) => { assert_eq!(x, y, "{} statement {n}", path.display()); n += 1 }
+                (x, y) => panic!("{}: one side ended at {n}: {x:?} / {y:?}", path.display()),
+            }
+        }
+        let t = std::time::Instant::now();
+        let ours_n = read_turtle(open()).count();
+        let ours_s = t.elapsed().as_secs_f64();
+        let t = std::time::Instant::now();
+        let theirs_n = oxttl::TurtleParser::new().for_reader(open()).count();
+        let theirs_s = t.elapsed().as_secs_f64();
+        assert_eq!(ours_n, theirs_n);
+        eprintln!("{}: {n} statements identical; parse ours {ours_s:.2} s, oxttl {theirs_s:.2} s", path.display());
+    }
 }
