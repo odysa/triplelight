@@ -73,7 +73,7 @@ fn build_permutation(dir: &Path, raw: &Path, triples: u64, name: &str, perm: Per
     output.flush()?; output.get_ref().sync_all()?; drop(output);
     Ok(DiskIndex::open(path)?.identity())
 }
-/// Test-only failure injection: `checkpoint(n)` fails when the test selected phase `n`. Compiled out in normal builds.
+// Test-only failure injection: `checkpoint(n)` fails when the test selected phase `n`. Compiled out in normal builds.
 #[cfg(test)]
 thread_local! { static FAIL_AT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
 #[cfg(test)]
