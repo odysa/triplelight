@@ -29,6 +29,7 @@ pub const TL_ERR_STORAGE: i32 = 3;
 pub const TL_ERR_LOCKED: i32 = 4;
 pub const TL_ERR_INVALID_ARGUMENT: i32 = 5;
 pub const TL_ERR_INTERNAL: i32 = 6;
+pub const TL_ERR_GRAPH_STATE: i32 = 7;
 
 pub const TL_RESULT_BINDINGS: u32 = 0;
 pub const TL_RESULT_BOOLEAN: u32 = 1;
@@ -214,6 +215,7 @@ fn db_error(e: DatabaseError) -> TlError {
         DatabaseError::Unsupported(_) => TL_ERR_UNSUPPORTED,
         DatabaseError::Storage(_) => TL_ERR_STORAGE,
         DatabaseError::Locked => TL_ERR_LOCKED,
+        DatabaseError::GraphState(_) => TL_ERR_GRAPH_STATE,
     };
     TlError { kind, message: e.to_string() }
 }

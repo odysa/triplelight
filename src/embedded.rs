@@ -13,10 +13,17 @@ use crate::model::Perm;
 
 /// Errors returned by embedded operations.
 #[derive(Debug)]
-pub enum DatabaseError { Syntax(String), Unsupported(String), Storage(std::io::Error), Locked }
+pub enum DatabaseError {
+    Syntax(String),
+    Unsupported(String),
+    Storage(std::io::Error),
+    Locked,
+    /// An update names a graph in the wrong state (see `exec::QueryErrorKind::GraphState`).
+    GraphState(String),
+}
 impl std::fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self { Self::Syntax(s) | Self::Unsupported(s) => f.write_str(s), Self::Storage(e) => e.fmt(f), Self::Locked => f.write_str("database directory is already open") }
+        match self { Self::Syntax(s) | Self::Unsupported(s) | Self::GraphState(s) => f.write_str(s), Self::Storage(e) => e.fmt(f), Self::Locked => f.write_str("database directory is already open") }
     }
 }
 impl std::error::Error for DatabaseError {}
@@ -29,6 +36,7 @@ impl From<QueryError> for DatabaseError {
             exec::QueryErrorKind::Syntax => Self::Syntax(e.message),
             exec::QueryErrorKind::Unsupported => Self::Unsupported(e.message),
             exec::QueryErrorKind::Storage => Self::Storage(std::io::Error::other(e.message)),
+            exec::QueryErrorKind::GraphState => Self::GraphState(e.message),
         }
     }
 }

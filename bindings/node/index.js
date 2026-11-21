@@ -10,10 +10,11 @@ class SyntaxError_ extends TripleLightError {}
 class UnsupportedError extends TripleLightError {}
 class StorageError extends TripleLightError {}
 class LockedError extends TripleLightError {}
-const KINDS = { SyntaxError: SyntaxError_, UnsupportedError, StorageError, LockedError };
+class GraphStateError extends TripleLightError {}
+const KINDS = { SyntaxError: SyntaxError_, UnsupportedError, StorageError, LockedError, GraphStateError };
 
 function wrapError(e) {
-  const m = /^(SyntaxError|UnsupportedError|StorageError|LockedError): ([\s\S]*)$/.exec(e && e.message);
+  const m = /^(SyntaxError|UnsupportedError|StorageError|LockedError|GraphStateError): ([\s\S]*)$/.exec(e && e.message);
   if (!m) return e;
   const err = new KINDS[m[1]](m[2], m[1]);
   err.cause = e;
@@ -51,4 +52,4 @@ class Database {
   close() { this._raw.close(); }
 }
 
-module.exports = { Database, Snapshot, TripleLightError, SyntaxError: SyntaxError_, UnsupportedError, StorageError, LockedError };
+module.exports = { Database, Snapshot, TripleLightError, SyntaxError: SyntaxError_, UnsupportedError, StorageError, LockedError, GraphStateError };

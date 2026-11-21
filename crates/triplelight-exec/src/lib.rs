@@ -85,7 +85,14 @@ pub struct QueryError { pub kind: QueryErrorKind, pub message: String }
 
 /// What failed: the caller's query (HTTP 400), a feature we don't implement (501), or the store itself (500).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum QueryErrorKind { Syntax, Unsupported, Storage }
+pub enum QueryErrorKind {
+    Syntax,
+    Unsupported,
+    Storage,
+    /// An update names a graph in the wrong state: `CREATE` of an existing graph, or `DROP`, `CLEAR`, `ADD`, `MOVE`
+    /// or `COPY` of an absent one, without `SILENT`. The request is at fault, not the store.
+    GraphState,
+}
 
 impl QueryError {
     pub fn new(kind: QueryErrorKind, message: impl Into<String>) -> Self { QueryError { kind, message: message.into() } }
@@ -1415,7 +1422,7 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
             // keeps it; MOVE then drops the source. The default graph always exists.
             if let GraphName::NamedNode(g) = from && !graph_exists(snap, dataset, g)? {
                 if *silent { return Ok(out) }
-                return Err(QueryError::new(QueryErrorKind::Storage, format!("graph {g} does not exist")));
+                return Err(QueryError::new(QueryErrorKind::GraphState, format!("graph {g} does not exist")));
             }
             if from == to { return Ok(out) }
             let triples = graph_triples(snap, dataset, from)?;

@@ -35,6 +35,17 @@ def test_snapshot_isolation_and_errors():
     except triplelight.SyntaxError:
         pass
 
+def test_named_graphs_and_graph_state_errors():
+    d = tempfile.mkdtemp()
+    db = triplelight.Database(os.path.join(d, "db"))
+    db.update("INSERT DATA { GRAPH <urn:g> { <urn:a> <urn:p> 1 } } ; COPY <urn:g> TO <urn:h>")
+    assert len(db.query("SELECT ?o WHERE { GRAPH <urn:h> { <urn:a> <urn:p> ?o } }")) == 1
+    try:
+        db.update("CREATE GRAPH <urn:g>")
+        assert False
+    except triplelight.GraphStateError as e:
+        assert isinstance(e, triplelight.TripleLightError)
+
 def test_lexical_identity_and_unbound():
     d = tempfile.mkdtemp()
     db = triplelight.Database(os.path.join(d, "db"))

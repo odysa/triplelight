@@ -24,6 +24,7 @@ fn query_error(e: exec::QueryError) -> JsValue {
         QueryErrorKind::Syntax => "SyntaxError",
         QueryErrorKind::Unsupported => "UnsupportedError",
         QueryErrorKind::Storage => "StorageError",
+        QueryErrorKind::GraphState => "GraphStateError",
     };
     error(kind, &e.message)
 }

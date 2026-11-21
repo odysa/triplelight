@@ -26,7 +26,6 @@ pub mod store {
 
     impl StoreUpdate for Store {
         fn update(&self, text: &str) -> Result<usize, crate::exec::QueryError> {
-            use crate::exec::{QueryError, QueryErrorKind};
             // Report the sum of the operations' changed triples, as the in-memory database does (not the net effect
             // of the concatenated list, which is what the WAL records).
             let changed = std::cell::Cell::new(0);
@@ -34,9 +33,17 @@ pub mod store {
                 let (_, changes, n) = dataset_update(snap, text)?;
                 changed.set(n);
                 Ok(changes)
-            }, &|e| QueryError::new(QueryErrorKind::Storage, e.to_string()))?;
+            }, &storage_error)?;
             Ok(changed.get())
         }
+    }
+
+    /// A storage failure as a query error. A graph-state error (`CREATE` of an existing graph, `DROP`/`CLEAR` of an
+    /// absent one) is the request's fault, so it keeps its own kind instead of becoming a storage error.
+    pub fn storage_error(e: std::io::Error) -> crate::exec::QueryError {
+        use crate::exec::{QueryError, QueryErrorKind};
+        let kind = if e.get_ref().is_some_and(|inner| inner.is::<GraphStateError>()) { QueryErrorKind::GraphState } else { QueryErrorKind::Storage };
+        QueryError::new(kind, e.to_string())
     }
 
     /// Executes the operations of a SPARQL 1.1 Update request in order on in-memory copies of `snap` (task #36):
@@ -44,8 +51,7 @@ pub mod store {
     /// the concatenated dataset changes (to commit atomically) and the number of triples that changed.
     pub fn dataset_update(snap: &Overlay, text: &str)
         -> Result<(Option<Overlay>, Vec<crate::model::DatasetChange>, usize), crate::exec::QueryError> {
-        use crate::exec::{QueryError, QueryErrorKind};
-        let storage = |e: std::io::Error| QueryError::new(QueryErrorKind::Storage, e.to_string());
+        let storage = storage_error;
         let mut owned: Option<Overlay> = None;
         let mut all = Vec::new();
         let mut changed = 0;

@@ -37,6 +37,9 @@ extern "C" {
 #define TL_ERR_LOCKED 4
 #define TL_ERR_INVALID_ARGUMENT 5
 #define TL_ERR_INTERNAL 6
+/* An update names a graph in the wrong state (CREATE of an existing graph; DROP, CLEAR, ADD, MOVE or COPY of an
+ * absent one, without SILENT). */
+#define TL_ERR_GRAPH_STATE 7
 
 #define TL_RESULT_BINDINGS 0u
 #define TL_RESULT_BOOLEAN 1u

@@ -18,4 +18,5 @@ db.close();
 
 Build from source (Rust 1.89+, Node 18+, Linux or macOS): `npm run build`, then `npm test`.
 Types are in `index.d.ts`. Errors are `TripleLightError` subclasses: `SyntaxError`, `UnsupportedError`,
-`StorageError` and `LockedError` (the directory is open in another process).
+`StorageError`, `LockedError` (the directory is open in another process) and `GraphStateError` (an update names a
+graph in the wrong state, such as `CREATE` of an existing graph).

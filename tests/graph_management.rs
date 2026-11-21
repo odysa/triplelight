@@ -41,7 +41,7 @@ fn create_adds_an_empty_graph_and_fails_on_an_existing_one_unless_silent() {
     backends("create", |db| {
         update(db, "CREATE GRAPH :g");
         assert_eq!(graphs(db), g(&["g"]));
-        assert!(matches!(fails(db, "CREATE GRAPH :g"), DatabaseError::Storage(_)));
+        assert!(matches!(fails(db, "CREATE GRAPH :g"), DatabaseError::GraphState(_)));
         update(db, "CREATE SILENT GRAPH :g");
         assert_eq!(graphs(db), g(&["g"]));
     });
@@ -56,8 +56,8 @@ fn clear_empties_and_drop_removes_with_absent_graph_errors() {
         assert_eq!(objects(db, Some(":g")), NONE);
         update(db, "DROP GRAPH :g");
         assert_eq!(graphs(db), g(&["h"]));
-        assert!(matches!(fails(db, "DROP GRAPH :g"), DatabaseError::Storage(_)));
-        assert!(matches!(fails(db, "CLEAR GRAPH :g"), DatabaseError::Storage(_)));
+        assert!(matches!(fails(db, "DROP GRAPH :g"), DatabaseError::GraphState(_)));
+        assert!(matches!(fails(db, "CLEAR GRAPH :g"), DatabaseError::GraphState(_)));
         update(db, "DROP SILENT GRAPH :g ; CLEAR SILENT GRAPH :g");
         // DROP DEFAULT only empties the default graph, which always exists; named graphs are untouched.
         update(db, "DROP DEFAULT");
@@ -115,7 +115,7 @@ fn transfer_from_an_absent_graph_fails_unless_silent_and_to_itself_does_nothing(
     backends("transfer-edge", |db| {
         update(db, "INSERT DATA { GRAPH :g { :a :p 1 } }");
         for op in ["ADD", "COPY", "MOVE"] {
-            assert!(matches!(fails(db, &format!("{op} :absent TO :g")), DatabaseError::Storage(_)), "{op}");
+            assert!(matches!(fails(db, &format!("{op} :absent TO :g")), DatabaseError::GraphState(_)), "{op}");
             update(db, &format!("{op} SILENT :absent TO :g"));
             update(db, &format!("{op} :g TO :g"));
             assert_eq!(objects(db, Some(":g")), vec![lit(1)], "{op}");
@@ -132,7 +132,7 @@ fn transfer_from_an_absent_graph_fails_unless_silent_and_to_itself_does_nothing(
 fn a_failed_operation_rolls_back_the_whole_request() {
     backends("atomic", |db| {
         update(db, "CREATE GRAPH :g");
-        assert!(matches!(fails(db, "INSERT DATA { GRAPH :g { :a :p 1 } } ; CREATE GRAPH :g"), DatabaseError::Storage(_)));
+        assert!(matches!(fails(db, "INSERT DATA { GRAPH :g { :a :p 1 } } ; CREATE GRAPH :g"), DatabaseError::GraphState(_)));
         assert_eq!(objects(db, Some(":g")), NONE);
     });
 }
