@@ -283,7 +283,7 @@ The separate [Virtuoso100M correctness screen](docs/virtuoso100-qualification-v1
 - **SPARQL 1.1 query and update**: SELECT, ASK, CONSTRUCT, OPTIONAL, UNION, MINUS, FILTER, EXISTS, subqueries,
   VALUES, BIND, GROUP BY with all standard aggregates, ORDER BY, LIMIT/OFFSET, `INSERT DATA`, `DELETE DATA`,
   `DELETE/INSERT WHERE`.
-- **Named graphs** (Rust, Python, Node.js and the C, Go and Java bindings): `GRAPH`, `FROM` and `FROM NAMED` in
+- **Named graphs** (Rust, Python, Node.js, WebAssembly and the C, Go and Java bindings): `GRAPH`, `FROM` and `FROM NAMED` in
   queries; updates into named graphs (`GRAPH` in `INSERT`/`DELETE`, `WITH`, `USING`); and graph management with
   `CREATE`, `DROP`, `CLEAR`, `ADD`, `MOVE` and `COPY`. A request's operations apply in order and commit together.
   `load` also reads N-Quads (`.nq`) and TriG (`.trig`) files into their named graphs.
@@ -310,7 +310,6 @@ off by default and can be enabled with a token or, on loopback only, without one
 
 - `LOAD`; blank-node graph names in N-Quads and TriG files; empty TriG graph blocks (they add no graph). A persistent store keeps named graphs in its
   write-ahead log until a later release stores them in its base files.
-- Named graphs in the WebAssembly package (named-graph updates return an "unsupported" error there).
 - `SERVICE` and `BNODE(string)`.
 - Results are materialized before output; Arrow output then streams that result in batches.
 - One process per store directory (enforced by a file lock).
