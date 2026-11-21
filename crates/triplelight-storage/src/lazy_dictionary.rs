@@ -83,15 +83,17 @@ impl Cache {
         entry.referenced = true;
         Some(Arc::clone(&entry.rows))
     }
-    fn remove_at(&mut self, pos: usize) -> usize {
+    // An inconsistent cache is reported as an I/O error, as before B2, rather than panicking under the shard lock
+    // (which would poison it and hide the cause behind "lock poisoned").
+    fn remove_at(&mut self, pos: usize) -> io::Result<usize> {
         let key = self.keys.swap_remove(pos);
         if let Some(&moved) = self.keys.get(pos) {
-            self.entries.get_mut(&moved).expect("cache key without entry").pos = pos;
+            self.entries.get_mut(&moved).ok_or_else(|| bad("dictionary cache invariant"))?.pos = pos;
         }
-        self.entries.remove(&key).expect("cache key without entry").size
+        Ok(self.entries.remove(&key).ok_or_else(|| bad("dictionary cache invariant"))?.size)
     }
     /// Evicts one block chosen by reference-bit sampling; returns its charged size.
-    fn evict_one(&mut self) -> usize {
+    fn evict_one(&mut self) -> io::Result<usize> {
         let mut victim = None;
         let mut last = 0;
         // A block whose bit this sweep cleared is not eligible again in the same sweep: one sweep costs a referenced
@@ -100,7 +102,7 @@ impl Cache {
         for n in 0..EVICTION_SAMPLE {
             let pos = (self.next() % self.keys.len() as u64) as usize;
             last = pos;
-            let entry = self.entries.get_mut(&self.keys[pos]).expect("cache key without entry");
+            let entry = self.entries.get_mut(&self.keys[pos]).ok_or_else(|| bad("dictionary cache invariant"))?;
             if entry.referenced {
                 entry.referenced = false;
                 cleared[n] = pos;
@@ -111,22 +113,23 @@ impl Cache {
         self.remove_at(victim.unwrap_or(last))
     }
     /// Caches `rows` if admitted; returns the number of evicted blocks. Never exceeds `budget`.
-    fn insert(&mut self, key: (usize, usize), rows: &Arc<Vec<(TermId, Term)>>, size: usize, budget: usize) -> u64 {
+    fn insert(&mut self, key: (usize, usize), rows: &Arc<Vec<(TermId, Term)>>, size: usize, budget: usize) -> io::Result<u64> {
         if size > budget || self.entries.contains_key(&key) {
-            return 0;
+            return Ok(0);
         }
         if self.used + size > budget && !self.next().is_multiple_of(ADMIT_ONE_IN) {
-            return 0;
+            return Ok(0);
         }
         let mut evicted = 0;
         while self.used + size > budget {
-            self.used -= self.evict_one();
+            if self.keys.is_empty() { return Err(bad("dictionary cache invariant")); }
+            self.used -= self.evict_one()?;
             evicted += 1;
         }
         self.used += size;
         self.entries.insert(key, Entry { rows: Arc::clone(rows), size, pos: self.keys.len(), referenced: false });
         self.keys.push(key);
-        evicted
+        Ok(evicted)
     }
     fn clear(&mut self) {
         self.entries.clear();
@@ -318,7 +321,7 @@ impl LazyIndex {
             .saturating_add(keys.iter().map(Vec::len).sum::<usize>())
             .saturating_add(rows.len() * 128);
         let rows = Arc::new(rows);
-        let evicted = cache.insert((slot, index), &rows, size, self.cache.shard_budget);
+        let evicted = cache.insert((slot, index), &rows, size, self.cache.shard_budget)?;
         if evicted > 0 {
             super::disk_index::trace_dictionary(slot, 4, evicted);
         }
@@ -875,35 +878,35 @@ mod admission_cache_tests {
     fn budget_is_never_exceeded_and_full_shards_admit_about_one_in_four() {
         let mut c = Cache::new(3);
         let r = rows();
-        for i in 0..10 { c.insert((7, i), &r, 10, 100); }
+        for i in 0..10 { c.insert((7, i), &r, 10, 100).unwrap(); }
         assert_eq!((c.used, c.keys.len()), (100, 10), "a shard with room admits every miss");
         let mut admitted = 0;
         for i in 10..4010 {
             let before = c.entries.contains_key(&(7, i));
             assert!(!before);
-            c.insert((7, i), &r, 10, 100);
+            c.insert((7, i), &r, 10, 100).unwrap();
             admitted += u32::from(c.entries.contains_key(&(7, i)));
             assert!(c.used <= 100 && c.keys.len() == c.entries.len());
             for (pos, key) in c.keys.iter().enumerate() { assert_eq!(c.entries[key].pos, pos) }
         }
         assert!((850..=1150).contains(&admitted), "admitted {admitted} of 4000, expected about 1000");
-        assert_eq!(c.insert((7, 99_999), &r, 101, 100), 0, "a block larger than the shard is never cached");
+        assert_eq!(c.insert((7, 99_999), &r, 101, 100).unwrap(), 0, "a block larger than the shard is never cached");
     }
 
     #[test]
     fn a_referenced_block_survives_an_eviction_sample_sweep() {
         let mut c = Cache::new(0);
         let r = rows();
-        for i in 0..8 { c.insert((7, i), &r, 10, 80); }
+        for i in 0..8 { c.insert((7, i), &r, 10, 80).unwrap(); }
         assert!(c.get((7, 0)).is_some());
         // Every resident except block 0 is unreferenced, so one eviction never picks block 0 unless all eight
         // samples land on it, in which case its bit is cleared and it is the fallback victim.
         let mut survived = 0;
         for trial in 0..200 {
             let mut d = Cache::new(trial);
-            for i in 0..8 { d.insert((7, i), &r, 10, 80); }
+            for i in 0..8 { d.insert((7, i), &r, 10, 80).unwrap(); }
             d.get((7, 0));
-            d.used -= d.evict_one();
+            d.used -= d.evict_one().unwrap();
             survived += u32::from(d.entries.contains_key(&(7, 0)));
         }
         assert!(survived >= 199, "referenced block evicted in {} of 200 sweeps", 200 - survived);
@@ -913,7 +916,7 @@ mod admission_cache_tests {
     fn clear_resets_contents_and_the_generator() {
         let mut c = Cache::new(5);
         let r = rows();
-        for i in 0..50 { c.insert((6, i), &r, 10, 100); }
+        for i in 0..50 { c.insert((6, i), &r, 10, 100).unwrap(); }
         let first: Vec<_> = (0..20).map(|_| c.next()).collect();
         c.clear();
         assert!(c.entries.is_empty() && c.keys.is_empty() && c.used == 0);
@@ -955,7 +958,7 @@ mod b2_hit_bench {
             old.entries.insert((7, i), (Arc::clone(&rows), 10));
             old.order.push_back((7, i));
             old.used += 10;
-            new.insert((7, i), &rows, 10, usize::MAX);
+            new.insert((7, i), &rows, 10, usize::MAX).unwrap();
         }
         // Fixed pseudo-random key sequence shared by both.
         let mut x = 0x2545_f491_4f6c_dd1du64;
@@ -993,7 +996,7 @@ mod b2_hit_bench {
         let mut new = Cache::new(7);
         for i in 0..CAP {
             old.entries.insert((7, i), (Arc::clone(&rows), 10)); old.order.push_back((7, i)); old.used += 10;
-            new.insert((7, i), &rows, 10, budget);
+            new.insert((7, i), &rows, 10, budget).unwrap();
         }
         // Half the residents referenced, so the sweep does real bit clearing.
         for i in (0..CAP).step_by(2) { new.get((7, i)); }
@@ -1013,7 +1016,7 @@ mod b2_hit_bench {
                         }
                         old.used += 10; old.entries.insert(key, (Arc::clone(&rows), 10)); old.order.push_back(key);
                     } else {
-                        new.insert(key, &rows, 10, budget);
+                        new.insert(key, &rows, 10, budget).unwrap();
                         if which == 1 && round == 0 && new.entries.contains_key(&key) { admitted_r0 += 1; }
                     }
                 }
