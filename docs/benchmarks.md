@@ -66,6 +66,10 @@ count controls; SQLite rejects 10 of 13 unmodified DuckDB-dialect queries. The t
 auxiliary discriminator preserve all nine terms. Neither profile qualifies for a timing total. The packet retains
 the setup failure and the disclosed shared-machine lock/cache incident; these are not additional timing rows.
 
+The [RDFLib BerkeleyDB storage qualification](berkeleydb-storage-qualification-v1/README.md) preserves all nine
+reference triples through fresh-process reopen with literal normalization disabled. A separate shared RDFLib
+evaluator diagnostic reproduces the earlier FILTER(false) failure. No workload timing was collected.
+
 The [Oxilite SQLite-store tiny qualification](oxilite-tiny-qualification-v1/README.md) passes all 24
 observations across memory, disk-load and separate-process disk-reopen. It has no workload timing
 or full-workload admission; compiler explain output is retained separately from runtime-tracing claims.
@@ -79,6 +83,10 @@ container memory limit before returning a triple count. Reopen and all workload 
 The [RDFLib Memory tiny qualification](rdflib-tiny-qualification-v1/README.md) retains default-normalization
 and lexical-preserving profiles separately. Both fail the fixed empty-result control; no workload timing
 is reported, and their lexical-form results are documented without transferring earlier cohort scores.
+
+The [Oxrdflib disk qualification](oxrdflib-disk-qualification-v1/README.md) returns eight triples and eight
+groups against nine expected across four parser and normalization profiles, at load and after
+fresh-process reopen. It has no workload timing.
 
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
