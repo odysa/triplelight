@@ -2,6 +2,7 @@
 //! strict parsers do, and builds the same terms, so documents, WAL lines and store files are unchanged by the switch.
 //! The format is line-based: every statement is on its own line (`\n`, `\r` or `\r\n`), followed by a dot and
 //! optionally a `#` comment. Comments are not checked for UTF-8; every token is.
+//! Derived in part from oxttl (MIT); see THIRD_PARTY_NOTICES.md.
 use crate::rdf::{BlankNode, GraphName, Literal, NamedNode, NamedOrBlankNode, Quad, ReadError, Term, Triple};
 use std::io::BufRead;
 
