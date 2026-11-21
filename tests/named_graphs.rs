@@ -4,7 +4,9 @@
 use oxrdf::{NamedNode, Term, TermRef, Triple};
 use triplelight::exec::{query_dataset_with, query_with, Options, QueryErrorKind, QueryResult};
 use triplelight::model::{Perm, TermId, TripleBatch};
+use triplelight::model::{Change, DatasetChange, GraphTarget};
 use triplelight::storage::{DatasetView, Dictionary, MemorySnapshot, Snapshot, StorageError};
+use triplelight::store::Overlay;
 
 /// One graph as sorted ID triples per permutation, over a shared dictionary.
 struct TestGraph<'a> { dict: &'a MemorySnapshot, rows: Vec<Vec<[TermId; 3]>> }
@@ -103,20 +105,59 @@ fn with_dataset<T>(f: impl FnOnce(&TestDataset<'_>) -> T) -> T {
     f(&ds)
 }
 
-fn run_err(q: &str) -> triplelight::exec::QueryError {
-    with_dataset(|ds| query_dataset_with(&ds.default, ds, q, &Options::default()).unwrap_err())
+/// The same dataset as a real store (task #36, step 1): an overlay built by one dataset update. With `in_base`, the
+/// default graph sits in the base and the named graphs mix base and delta IDs; without, every term is a delta term.
+fn store_dataset(in_base: bool) -> Overlay {
+    let (_, default, graphs) = data();
+    let base = MemorySnapshot::from_triples(if in_base { default.clone() } else { Vec::new() });
+    let mut changes: Vec<DatasetChange> = Vec::new();
+    if !in_base {
+        changes.extend(default.iter().map(|t| DatasetChange::Quad(GraphTarget::Default, Change::Insert, t.clone())));
+    }
+    for (n, g) in &graphs {
+        changes.push(DatasetChange::Create { graph: iri(n), silent: false });
+        changes.extend(g.iter().map(|t| DatasetChange::Quad(GraphTarget::Named(iri(n)), Change::Insert, t.clone())));
+    }
+    // As in the double, `:absent` is a known IRI that is not a graph: interned by a default-graph triple that the same
+    // update deletes again, so it is in the dictionary but in no graph view.
+    let mention = Triple::new(iri("absent"), iri("name"), iri("absent"));
+    changes.push(DatasetChange::Quad(GraphTarget::Default, Change::Insert, mention.clone()));
+    changes.push(DatasetChange::Quad(GraphTarget::Default, Change::Delete, mention));
+    let store = Overlay::from_base(std::sync::Arc::new(base)).with_dataset_changes(&changes).unwrap().0;
+    let absent = store.lookup(&iri("absent").into()).unwrap().expect(":absent is known to the store dictionary");
+    assert!(store.graph(absent).unwrap().is_none() && !store.graph_names().unwrap().contains(&absent));
+    assert_eq!(store.count(Perm::Spo, &[]).unwrap(), default.len() as u64, "the mention left no triple behind");
+    store
 }
 
-fn run(q: &str) -> Vec<Vec<String>> {
-    match with_dataset(|ds| query_dataset_with(&ds.default, ds, q, &Options::default()).unwrap()) {
-        QueryResult::Solutions { rows, .. } => {
-            let mut v: Vec<Vec<String>> = rows.into_iter().map(|r| r.into_iter().map(|t| t.map(|t| t.to_string()).unwrap_or("-".into())).collect()).collect();
-            v.sort();
-            v
+/// The answer (sorted rows, or the error kind and message) of `q` on the test double and on both store layouts,
+/// which must agree.
+fn answer(q: &str) -> Result<Vec<Vec<String>>, (QueryErrorKind, String)> {
+    fn rows(r: Result<QueryResult, triplelight::exec::QueryError>) -> Result<Vec<Vec<String>>, (QueryErrorKind, String)> {
+        match r {
+            Ok(QueryResult::Solutions { rows, .. }) => {
+                let mut v: Vec<Vec<String>> = rows.into_iter().map(|r| r.into_iter().map(|t| t.map(|t| t.to_string()).unwrap_or("-".into())).collect()).collect();
+                v.sort();
+                Ok(v)
+            }
+            Ok(r) => panic!("{r:?}"),
+            Err(e) => Err((e.kind, e.message)),
         }
-        r => panic!("{r:?}"),
     }
+    let double = with_dataset(|ds| rows(query_dataset_with(&ds.default, ds, q, &Options::default())));
+    for in_base in [false, true] {
+        let store = store_dataset(in_base);
+        assert_eq!(rows(query_dataset_with(&store, &store, q, &Options::default())), double, "store (in_base={in_base}) differs: {q}");
+    }
+    double
 }
+
+fn run_err(q: &str) -> triplelight::exec::QueryError {
+    let (kind, message) = answer(q).unwrap_err();
+    triplelight::exec::QueryError { kind, message }
+}
+
+fn run(q: &str) -> Vec<Vec<String>> { answer(q).unwrap() }
 
 fn v(rows: &[&[&str]]) -> Vec<Vec<String>> {
     let mut v: Vec<Vec<String>> = rows.iter().map(|r| r.iter().map(|s| s.to_string()).collect()).collect();

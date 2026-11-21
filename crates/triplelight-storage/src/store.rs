@@ -22,6 +22,9 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 
+mod named;
+pub use named::{GraphStateError, NamedGraph};
+
 /// IDs for terms first seen in the delta.
 const DELTA_TAG: u64 = 0xd;
 
@@ -56,6 +59,8 @@ impl Delta {
 pub struct Overlay {
     base: Arc<dyn Snapshot>,
     delta: Arc<Delta>,
+    /// The named graphs (task #36): every graph in the catalog, empty ones included, over this overlay's dictionary.
+    named: Arc<named::Catalog>,
 }
 
 impl Overlay {
@@ -73,12 +78,21 @@ impl Overlay {
 }
 
 impl Overlay {
+    fn dict(&self) -> DictRef<'_> { DictRef { base: &*self.base, delta: &self.delta } }
+}
+
+/// The dictionary of a base plus a delta: base terms first, then terms first seen in the delta. Shared by the
+/// default graph (`Overlay`) and every named graph view.
+#[derive(Clone, Copy)]
+pub(crate) struct DictRef<'a> { base: &'a dyn Snapshot, delta: &'a Delta }
+
+impl DictRef<'_> {
     fn delta_term(&self, id: TermId) -> Result<&Term, StorageError> {
         self.delta.rev.get((id.0 & !(0xf << 60)) as usize).ok_or_else(|| StorageError::other("unknown delta term ID"))
     }
 }
 
-impl Dictionary for Overlay {
+impl Dictionary for DictRef<'_> {
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> {
         Ok(self.base.lookup(term)?.or_else(|| self.delta.terms.get(term).copied()))
     }
@@ -95,6 +109,15 @@ impl Dictionary for Overlay {
             if id.0 >> 60 == DELTA_TAG { f(i, self.delta_term(id)?.as_ref()) } else { base_ids.push(id); base_pos.push(i) }
         }
         self.base.with_terms(&base_ids, &mut |j, t| f(base_pos[j], t))
+    }
+}
+
+impl Dictionary for Overlay {
+    fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { self.dict().lookup(term) }
+    fn resolve(&self, id: TermId) -> Result<Term, StorageError> { self.dict().resolve(id) }
+    fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> { self.dict().with_term(id, f) }
+    fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, TermRef<'_>)) -> Result<(), StorageError> {
+        self.dict().with_terms(ids, f)
     }
 }
 
@@ -319,7 +342,7 @@ impl Store {
             if name.starts_with("base-") && name != format!("base-{generation}") { std::fs::remove_dir_all(dir.join(&name))?; }
         }
         let base = format.open(&dir.join(format!("base-{generation}")))?;
-        let mut overlay = Overlay { base, delta: Arc::new(Delta::default()) };
+        let mut overlay = Overlay::from_base(base);
         let wal_path = dir.join("wal.log");
         let (records, valid_len) = read_wal(&wal_path)?;
         for rec in records { overlay = apply(&overlay, &rec)?; }
@@ -438,7 +461,8 @@ impl Store {
         w.file.sync_all()?;
         use std::io::Seek;
         w.file.seek(std::io::SeekFrom::Start(0))?;
-        let fresh = Arc::new(Overlay { base, delta: Arc::new(Delta::default()) });
+        debug_assert!(cur.named.is_empty(), "the disk store does not hold named graphs yet");
+        let fresh = Arc::new(Overlay::from_base(base));
         p.latest = fresh.clone();
         *self.current.write().unwrap() = fresh;
         *generation = next;
@@ -484,7 +508,7 @@ fn net_changes(cur: &Overlay, changes: &[(Change, Triple)]) -> std::io::Result<V
 impl Overlay {
     /// A read snapshot over `base` with no pending changes: the starting point of an in-memory, non-durable store
     /// (used by the WebAssembly build, which has no file system).
-    pub fn from_base(base: Arc<dyn Snapshot>) -> Overlay { Overlay { base, delta: Arc::new(Delta::default()) } }
+    pub fn from_base(base: Arc<dyn Snapshot>) -> Overlay { Overlay { base, delta: Arc::new(Delta::default()), named: Default::default() } }
 
     /// This snapshot with `changes` applied, in memory and without a WAL, plus the number of triples that actually
     /// changed.
@@ -517,7 +541,10 @@ fn apply(cur: &Overlay, rec: &[(Change, Triple)]) -> std::io::Result<Overlay> {
             }
         }
     }
-    Ok(Overlay { base: cur.base.clone(), delta: Arc::new(d) })
+    let delta = Arc::new(d);
+    // Named graph views share the dictionary, so they follow the new delta (their rows are unchanged).
+    let named = cur.named.rebound(&cur.base, &delta);
+    Ok(Overlay { base: cur.base.clone(), delta, named })
 }
 
 /// Complete records in the WAL, and the byte length they span (everything after is a torn tail).
