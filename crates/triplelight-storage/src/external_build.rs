@@ -73,6 +73,17 @@ fn build_permutation(dir: &Path, raw: &Path, triples: u64, name: &str, perm: Per
     output.flush()?; output.get_ref().sync_all()?; drop(output);
     Ok(DiskIndex::open(path)?.identity())
 }
+/// Experiment: phase boundaries with elapsed seconds and the size of everything under the build directory.
+fn phase(label: &str, dir: &Path) {
+    static T0: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    let t0 = T0.get_or_init(std::time::Instant::now);
+    fn du(p: &Path) -> u64 {
+        let Ok(rd) = fs::read_dir(p) else { return 0 };
+        rd.flatten().map(|e| match e.metadata() { Ok(m) if m.is_dir() => du(&e.path()), Ok(m) => m.len(), _ => 0 }).sum()
+    }
+    eprintln!("[phase] {label} t={:.1}s dir_mb={}", t0.elapsed().as_secs_f64(), du(dir) / 1_048_576);
+}
+
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, s)
 }
@@ -113,6 +124,7 @@ impl Builder {
     }
     fn finish(mut self, dir: &Path) -> io::Result<()> {
         let sorted = self.terms.finish()?;
+        phase("terms_sorted_merged", dir);
         let mut input = BufReader::new(File::open(sorted)?);
         let mut mapping = ExternalSort::new(dir, MEMORY, 17)?;
         let mut dict = BufWriter::new(
@@ -165,7 +177,9 @@ impl Builder {
         dict.flush()?;
         dict.get_ref().sync_all()?;
         drop(dict);
+        phase("legacy_dictionary_written_and_mapping_pushed", dir);
         let assignments = mapping.finish()?;
+        phase("mapping_sorted", dir);
         let mut input = BufReader::new(File::open(assignments)?);
         let raw = dir.join(".triples.raw");
         let mut triples =
@@ -191,7 +205,9 @@ impl Builder {
         }
         triples.flush()?;
         drop(triples);
+        phase("triples_raw_written", dir);
         let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir)?;
+        phase("dictionary_converted", dir);
         let mut identities = vec![term_identity, id_identity];
         let jobs: Vec<_> = FILES[1..].iter().copied().zip(Perm::ALL).collect();
         let workers = self.index_workers;
@@ -206,8 +222,10 @@ impl Builder {
             });
             // Join all workers before returning any failure, so no background writer survives.
             for result in results { identities.push(result?); }
+        phase("permutation_batch_done", dir);
         }
         fs::remove_file(raw)?;
+        phase("raw_removed", dir);
         // Finish and remove all scratch before publishing the manifest.
         drop(mapping);
         drop(input);
@@ -323,6 +341,7 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
     }
     boundaries.push(size);
     fs::create_dir(dir)?;
+    phase("start", dir);
     let results = std::thread::scope(|scope| {
         let mut handles = Vec::new();
         for (shard, limits) in boundaries.windows(2).enumerate() {
@@ -344,6 +363,7 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
         handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(io::Error::other("N-Triples worker panicked")))).collect::<Vec<_>>()
     });
     let builders = results.into_iter().collect::<io::Result<Vec<_>>>()?;
+        phase("shards_parsed_and_sorted", dir);
     let mut paths = Vec::with_capacity(builders.len());
     let mut count = 0u64;
     for (b, path) in &builders {
@@ -352,6 +372,7 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
     }
     let mut combined = Builder::new(dir)?;
     combined.terms.import_sorted(&paths)?;
+        phase("shard_runs_imported", dir);
     combined.triples = count;
     combined.index_workers = shards.min(3);
     drop(builders);
@@ -360,6 +381,7 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
 
 pub(super) fn from_nt(dir: &Path, path: Option<&Path>) -> io::Result<()> {
     fs::create_dir(dir)?;
+    phase("start", dir);
     let mut builder = Builder::new(dir)?;
     if let Some(path) = path {
         let input = BufReader::new(File::open(path)?);
