@@ -158,6 +158,20 @@ impl DatasetView for Overlay {
     }
 }
 
+/// Calls `f` with the rows only in `after` (insertions) and only in `before` (deletions); both sorted.
+fn diff(before: &[[TermId; 3]], after: &[[TermId; 3]], f: &mut dyn FnMut([TermId; 3], Change)) {
+    let (mut i, mut j) = (0, 0);
+    while i < before.len() || j < after.len() {
+        match (before.get(i), after.get(j)) {
+            (Some(a), Some(b)) if a == b => { i += 1; j += 1 }
+            (Some(a), Some(b)) if a < b => { f(*a, Change::Delete); i += 1 }
+            (Some(a), None) => { f(*a, Change::Delete); i += 1 }
+            (_, Some(b)) => { f(*b, Change::Insert); j += 1 }
+            (None, None) => unreachable!(),
+        }
+    }
+}
+
 /// A named graph being updated: still shared with the old overlay, or copied out as a set of SPO rows.
 enum Pending {
     Shared(Arc<Rows>),
@@ -180,6 +194,10 @@ struct Work<'a> {
     d: Delta,
     named: BTreeMap<TermId, Pending>,
     changed: usize,
+    /// Default-graph rows whose visibility changed at some step, with their visibility before the update.
+    touched: HashMap<[TermId; 3], bool>,
+    /// Whether the default graph was emptied (then the net change is found by comparing whole scans).
+    cleared: bool,
 }
 
 impl Work<'_> {
@@ -214,6 +232,7 @@ impl Work<'_> {
         let visible = if in_base { self.d.dels[0].binary_search(&spo).is_err() } else { self.d.adds[0].binary_search(&spo).is_ok() };
         if visible == (c == Change::Insert) { return Ok(()) }
         self.changed += 1;
+        self.touched.entry(spo).or_insert(visible);
         for p in Perm::ALL {
             let k = key(p, spo);
             let (adds, dels) = (&mut self.d.adds[slot(p)], &mut self.d.dels[slot(p)]);
@@ -230,6 +249,7 @@ impl Work<'_> {
     fn clear_default(&mut self) -> Result<(), StorageError> {
         let visible = self.base.count(Perm::Spo, &[])? as usize - self.d.dels[0].len() + self.d.adds[0].len();
         self.changed += visible;
+        self.cleared = true;
         for p in Perm::ALL {
             let mut rows = Vec::new();
             for b in self.base.scan(p, &[]) {
@@ -289,11 +309,21 @@ impl Overlay {
     /// of triples that changed (in any graph). All or nothing: a refused step (see `GraphStateError`) leaves `self`
     /// as the only state.
     pub fn with_dataset_changes(&self, changes: &[DatasetChange]) -> std::io::Result<(Overlay, usize)> {
+        let (next, changed, _) = self.apply_dataset(changes, false)?;
+        Ok((next, changed))
+    }
+
+    /// `with_dataset_changes`, plus (with `record`) the update's net effect as a WAL record: graph creations, then
+    /// triple insertions and deletions in any graph, then graph removals. Re-applying a record (or a sequence of them)
+    /// to a state that already contains it changes nothing, which recovery after compaction relies on.
+    pub(super) fn apply_dataset(&self, changes: &[DatasetChange], record: bool) -> std::io::Result<(Overlay, usize, Vec<DatasetChange>)> {
         let mut w = Work {
             base: &self.base,
             d: (*self.delta).clone(),
             named: self.named.0.iter().map(|(&g, v)| (g, Pending::Shared(v.rows.clone()))).collect(),
             changed: 0,
+            touched: HashMap::new(),
+            cleared: false,
         };
         for change in changes {
             match change {
@@ -304,12 +334,79 @@ impl Overlay {
                 DatasetChange::Clear { target, silent } => w.empty(target, *silent, false)?,
             }
         }
+        let (touched, cleared) = (std::mem::take(&mut w.touched), w.cleared);
         let delta = Arc::new(w.d);
-        let named = w.named.into_iter().map(|(g, p)| {
+        let named: BTreeMap<TermId, NamedGraph> = w.named.into_iter().map(|(g, p)| {
             let rows = match p { Pending::Shared(r) => r, Pending::Owned(s) => Arc::new(Rows::from_spo(&s)) };
             (g, NamedGraph { base: self.base.clone(), delta: delta.clone(), rows })
         }).collect();
-        Ok((Overlay { base: self.base.clone(), delta, named: Arc::new(Catalog(named)) }, w.changed))
+        let next = Overlay { base: self.base.clone(), delta, named: Arc::new(Catalog(named)) };
+        let rec = if record { self.net_record(&next, touched, cleared)? } else { Vec::new() };
+        Ok((next, w.changed, rec))
+    }
+
+    /// The net difference from `self` to `next` (see `apply_dataset`). Terms are resolved in `next`, whose dictionary
+    /// extends this one.
+    fn net_record(&self, next: &Overlay, touched: HashMap<[TermId; 3], bool>, cleared: bool) -> std::io::Result<Vec<DatasetChange>> {
+        let triple = |r: [TermId; 3]| -> std::io::Result<Triple> {
+            let invalid = |what| StorageError::new(std::io::ErrorKind::InvalidData, what);
+            let subject: oxrdf::NamedOrBlankNode = next.resolve(r[0])?.try_into().map_err(|_| invalid("invalid RDF subject"))?;
+            let predicate: NamedNode = next.resolve(r[1])?.try_into().map_err(|_| invalid("invalid RDF predicate"))?;
+            Ok(Triple::new(subject, predicate, next.resolve(r[2])?))
+        };
+        let graph_name = |g: TermId| -> std::io::Result<NamedNode> {
+            match next.resolve(g)? {
+                Term::NamedNode(n) => Ok(n),
+                _ => Err(StorageError::new(std::io::ErrorKind::InvalidData, "graph name is not an IRI")),
+            }
+        };
+        let (mut creates, mut quads, mut drops) = (Vec::new(), Vec::new(), Vec::new());
+        // Default graph.
+        let mut flips: Vec<([TermId; 3], Change)> = Vec::new();
+        if cleared {
+            let all = |o: &Overlay| -> std::io::Result<Vec<[TermId; 3]>> {
+                let mut v = Vec::new();
+                for b in o.scan(Perm::Spo, &[]) {
+                    let b = b?;
+                    v.extend((0..b.len()).map(|i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]));
+                }
+                Ok(v)
+            };
+            let (before, after) = (all(self)?, all(next)?);
+            diff(&before, &after, &mut |r, c| flips.push((r, c)));
+        } else {
+            for (spo, was) in touched {
+                if next.contains(spo)? != was { flips.push((spo, if was { Change::Delete } else { Change::Insert })) }
+            }
+            flips.sort_unstable_by_key(|&(r, _)| r);
+        }
+        for (r, c) in flips { quads.push(DatasetChange::Quad(GraphTarget::Default, c, triple(r)?)) }
+        // Named graphs.
+        let gids: BTreeSet<TermId> = self.named.0.keys().chain(next.named.0.keys()).copied().collect();
+        for g in gids {
+            match (self.named.0.get(&g), next.named.0.get(&g)) {
+                (Some(_), None) => drops.push(DatasetChange::Drop { target: GraphScope::Graph(graph_name(g)?), silent: true }),
+                (old, Some(new)) => {
+                    if old.is_some_and(|old| Arc::ptr_eq(&old.rows, &new.rows)) { continue }
+                    let name = graph_name(g)?;
+                    if old.is_none() { creates.push(DatasetChange::Create { graph: name.clone(), silent: true }) }
+                    let before = old.map_or(&[][..], |o| o.rows(Perm::Spo));
+                    let mut err = None;
+                    diff(before, new.rows(Perm::Spo), &mut |r, c| {
+                        if err.is_some() { return }
+                        match triple(r) {
+                            Ok(t) => quads.push(DatasetChange::Quad(GraphTarget::Named(name.clone()), c, t)),
+                            Err(e) => err = Some(e),
+                        }
+                    });
+                    if let Some(e) = err { return Err(e) }
+                }
+                (None, None) => {}
+            }
+        }
+        creates.extend(quads);
+        creates.extend(drops);
+        Ok(creates)
     }
 
     /// The named graphs as dataset changes (a `Create` per graph, then its triples), for carrying them onto a new

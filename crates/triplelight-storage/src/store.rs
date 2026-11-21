@@ -11,9 +11,17 @@
 //! truncates the WAL. A crash leaves either the old base with the full WAL, or the new base with a WAL whose records
 //! re-apply idempotently. Base directories not named by CURRENT are deleted at open.
 //!
-//! WAL record: one line per change, `+ <triple> .` or `- <triple> .` in N-Triples syntax, then a line `C`.
+//! WAL record: one line per change, then a line `C`. A change is `+ <triple> .` or `- <triple> .` (N-Triples, the
+//! default graph), `+ <triple> <graph> .` or `- <triple> <graph> .` (N-Quads, a named graph), `G+ <graph>` (the graph
+//! joins the catalog) or `G- <graph>` (it leaves the catalog with its triples). A record is the net effect of one
+//! update, so replaying it on a state that already contains it changes nothing.
 //! Recovery replays complete records only; a torn tail (crash mid-append) is ignored and truncated.
-use crate::model::{Perm, TermId, TripleBatch};
+//!
+//! Format fence (task #36): a binary that predates named graphs would read the first named-graph line as a torn tail
+//! and truncate the WAL there. So before the first record that touches a named graph, CURRENT is rewritten as
+//! `dataset-1 base-<n>`. Older binaries accept only `base-<n>` and refuse to open such a directory before they touch
+//! the WAL; the change is one-way.
+use crate::model::{DatasetChange, GraphScope, GraphTarget, Perm, TermId, TripleBatch};
 use crate::storage::{Dictionary, MemorySnapshot, Snapshot, StorageError};
 use oxrdf::{Term, TermRef, Triple};
 use std::collections::HashMap;
@@ -291,8 +299,9 @@ fn lock_directory(file: &File) -> std::io::Result<()> {
 pub struct Store {
     dir: PathBuf,
     format: Box<dyn BaseFormat>,
-    /// Number of the active base directory.
+    /// Number of the active base directory, and whether CURRENT carries the dataset fence (see the module docs).
     generation: Mutex<u64>,
+    fenced: std::sync::atomic::AtomicBool,
     /// What readers see: everything durable.
     current: RwLock<Arc<Overlay>>,
     /// Accepted change sets, possibly not yet durable (group commit).
@@ -305,6 +314,8 @@ pub struct Store {
     poisoned: std::sync::atomic::AtomicBool,
     /// Held until the other store state is dropped; the persistent file must never be removed on close.
     _directory_lock: File,
+    #[cfg(test)]
+    fail_at: Mutex<Option<String>>,
 }
 
 struct Pending { latest: Arc<Overlay>, buf: String, seq: u64 }
@@ -323,16 +334,15 @@ impl Store {
         // The file remains in place to avoid lock-inode replacement races between processes.
         let directory_lock = OpenOptions::new().read(true).write(true).create(true).truncate(false).open(dir.join("LOCK"))?;
         lock_directory(&directory_lock)?;
-        let generation = match std::fs::read_to_string(dir.join("CURRENT")) {
-            Ok(s) => s.trim().strip_prefix("base-").and_then(|n| n.parse().ok())
-                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?,
+        let (generation, fenced) = match std::fs::read_to_string(dir.join("CURRENT")) {
+            Ok(s) => parse_current(&s).ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 let base0 = dir.join("base-0");
                 // No CURRENT means no base was ever committed: a `base-0` here is an abandoned earlier attempt.
                 if base0.exists() { std::fs::remove_dir_all(&base0)?; }
                 format.import(&base0, initial)?;
-                set_current(&dir, 0)?;
-                0
+                set_current(&dir, 0, false)?;
+                (0, false)
             }
             Err(e) => return Err(e),
         };
@@ -345,7 +355,7 @@ impl Store {
         let mut overlay = Overlay::from_base(base);
         let wal_path = dir.join("wal.log");
         let (records, valid_len) = read_wal(&wal_path)?;
-        for rec in records { overlay = apply(&overlay, &rec)?; }
+        for rec in records { overlay = overlay.with_dataset_changes(&rec)?.0; }
         let mut wal = OpenOptions::new().create(true).truncate(false).read(true).write(true).open(&wal_path)?;
         wal.set_len(valid_len)?; // drop a torn tail
         wal.sync_all()?;
@@ -353,13 +363,15 @@ impl Store {
         wal.seek(std::io::SeekFrom::End(0))?;
         let overlay = Arc::new(overlay);
         Ok(Store {
-            dir, format, generation: Mutex::new(generation),
+            dir, format, generation: Mutex::new(generation), fenced: std::sync::atomic::AtomicBool::new(fenced),
             current: RwLock::new(overlay.clone()),
             pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0 }),
             wal: Mutex::new(Wal { file: wal, durable: 0 }),
             writer: Mutex::new(()),
             poisoned: std::sync::atomic::AtomicBool::new(false),
             _directory_lock: directory_lock,
+            #[cfg(test)]
+            fail_at: Mutex::new(None),
         })
     }
 
@@ -409,7 +421,7 @@ impl Store {
         let rec = net_changes(&cur, changes)?;
         // Even a no-op must wait for earlier accepted changes it may have observed.
         if rec.is_empty() { return Ok((p.seq, 0)) }
-        for (c, t) in &rec { p.buf.push_str(if *c == Change::Insert { "+ " } else { "- " }); p.buf.push_str(&t.to_string()); p.buf.push_str(" .\n"); }
+        for (c, t) in &rec { push_quad(&mut p.buf, *c, t, None) }
         p.buf.push_str("C\n");
         p.latest = Arc::new(apply(&cur, &rec)?);
         p.seq += 1;
@@ -440,12 +452,14 @@ impl Store {
     /// blocked (they keep their snapshot); writers wait.
     pub fn compact(&self) -> std::io::Result<()> {
         let _writer = self.writer.lock().unwrap();
+        // After a failed switch the on-disk generation may differ from `generation`; only a reopen can tell.
+        self.check_poisoned()?;
         let seq = self.pending.lock().unwrap().seq;
         self.flush_until(seq)?;
         let mut w = self.wal.lock().unwrap();
         let mut p = self.pending.lock().unwrap(); // no new commits while we switch
         let cur = p.latest.clone();
-        if cur.delta.is_empty() { return Ok(()) }
+        if cur.delta.is_empty() && !cur.has_named_graphs() { return Ok(()) }
         let mut generation = self.generation.lock().unwrap();
         let next = *generation + 1;
         let new_dir = self.dir.join(format!("base-{next}"));
@@ -455,14 +469,41 @@ impl Store {
         // Open (and so validate) the new base before committing to it: if this fails, CURRENT, the WAL and the
         // in-memory state all still describe the old base.
         let base = self.format.open(&new_dir)?;
-        set_current(&self.dir, next)?;
-        // The new base is durable and current; only now drop the log.
-        w.file.set_len(0)?;
-        w.file.sync_all()?;
-        use std::io::Seek;
-        w.file.seek(std::io::SeekFrom::Start(0))?;
-        debug_assert!(cur.named.is_empty(), "the disk store does not hold named graphs yet");
-        let fresh = Arc::new(Overlay::from_base(base));
+        let fenced = self.fenced.load(std::sync::atomic::Ordering::SeqCst);
+        let mut fresh = Overlay::from_base(base);
+        if cur.has_named_graphs() {
+            // Bases do not hold named graphs yet, so they move into the new WAL as its first record. That WAL is
+            // durable before CURRENT switches; a crash before the rename leaves the old WAL, whose full history
+            // re-applies idempotently on the new base.
+            let carried = cur.named_graph_changes()?;
+            let (moved, _, rec) = fresh.apply_dataset(&carried, true)?;
+            let mut buf = String::new();
+            push_record(&mut buf, &rec);
+            let tmp = self.dir.join("wal.log.tmp");
+            // This handle (positioned at its end) becomes the live WAL: after the rename it is `wal.log`.
+            let mut f = File::create(&tmp)?;
+            f.write_all(buf.as_bytes())?;
+            f.sync_all()?;
+            self.publish(|| {
+                set_current(&self.dir, next, fenced)?;
+                std::fs::rename(&tmp, self.dir.join("wal.log"))?;
+                self.fail_point("after-wal-rename")?;
+                sync_dir(&self.dir)
+            })?;
+            w.file = f;
+            fresh = moved;
+        } else {
+            self.publish(|| {
+                set_current(&self.dir, next, fenced)?;
+                self.fail_point("after-current")?;
+                // The new base is durable and current; only now drop the log.
+                w.file.set_len(0)?;
+                w.file.sync_all()?;
+                use std::io::Seek;
+                w.file.seek(std::io::SeekFrom::Start(0)).map(|_| ())
+            })?;
+        }
+        let fresh = Arc::new(fresh);
         p.latest = fresh.clone();
         *self.current.write().unwrap() = fresh;
         *generation = next;
@@ -470,11 +511,38 @@ impl Store {
     }
 }
 
-/// Atomically points CURRENT at `base-<n>`.
-fn set_current(dir: &Path, n: u64) -> std::io::Result<()> {
+impl Store {
+    /// Runs the steps that switch the store to a new base. If one fails, CURRENT may already name the new base while
+    /// the WAL handle, `generation` and the published overlay still describe the old one, so the store is poisoned:
+    /// commits and compaction are refused until a reopen recovers from what is on disk.
+    fn publish(&self, steps: impl FnOnce() -> std::io::Result<()>) -> std::io::Result<()> {
+        steps().inspect_err(|_| self.poisoned.store(true, std::sync::atomic::Ordering::SeqCst))
+    }
+
+    /// Test-only fault injection: fails at the named point when a test armed it.
+    #[cfg(test)]
+    fn fail_point(&self, point: &str) -> std::io::Result<()> {
+        if *self.fail_at.lock().unwrap() == Some(point.to_string()) { return Err(std::io::Error::other(format!("injected failure at {point}"))) }
+        Ok(())
+    }
+    #[cfg(not(test))]
+    fn fail_point(&self, _point: &str) -> std::io::Result<()> { Ok(()) }
+}
+
+/// CURRENT's content: `base-<n>`, or `dataset-1 base-<n>` once fenced. `None` if it is neither.
+fn parse_current(s: &str) -> Option<(u64, bool)> {
+    let s = s.trim();
+    let (fenced, base) = match s.strip_prefix("dataset-1 ") { Some(rest) => (true, rest), None => (false, s) };
+    let n = base.strip_prefix("base-")?;
+    if n.is_empty() || !n.bytes().all(|b| b.is_ascii_digit()) { return None }
+    Some((n.parse().ok()?, fenced))
+}
+
+/// Atomically points CURRENT at `base-<n>` (with the dataset fence if `fenced`).
+fn set_current(dir: &Path, n: u64, fenced: bool) -> std::io::Result<()> {
     let tmp = dir.join("CURRENT.tmp");
     let mut f = File::create(&tmp)?;
-    writeln!(f, "base-{n}")?;
+    writeln!(f, "{}base-{n}", if fenced { "dataset-1 " } else { "" })?;
     f.sync_all()?;
     std::fs::rename(&tmp, dir.join("CURRENT"))?;
     sync_dir(dir)
@@ -547,25 +615,122 @@ fn apply(cur: &Overlay, rec: &[(Change, Triple)]) -> std::io::Result<Overlay> {
     Ok(Overlay { base: cur.base.clone(), delta, named })
 }
 
+/// One WAL line for a triple change, in the default graph (`graph == None`) or a named graph.
+fn push_quad(buf: &mut String, c: Change, t: &Triple, graph: Option<&oxrdf::NamedNode>) {
+    use std::fmt::Write as _;
+    buf.push_str(if c == Change::Insert { "+ " } else { "- " });
+    let _ = match graph { Some(g) => writeln!(buf, "{t} {g} ."), None => writeln!(buf, "{t} .") };
+}
+
+/// A net dataset record (from `apply_dataset`) as WAL lines, with its commit line.
+fn push_record(buf: &mut String, rec: &[DatasetChange]) {
+    for change in rec {
+        match change {
+            DatasetChange::Quad(GraphTarget::Default, c, t) => push_quad(buf, *c, t, None),
+            DatasetChange::Quad(GraphTarget::Named(g), c, t) => push_quad(buf, *c, t, Some(g)),
+            DatasetChange::Create { graph, .. } => { buf.push_str("G+ "); buf.push_str(&graph.to_string()); buf.push('\n') }
+            DatasetChange::Drop { target: GraphScope::Graph(graph), .. } => { buf.push_str("G- "); buf.push_str(&graph.to_string()); buf.push('\n') }
+            other => unreachable!("not a net record step: {other:?}"),
+        }
+    }
+    buf.push_str("C\n");
+}
+
+/// Whether a record needs the dataset fence (it mentions a named graph).
+fn needs_fence(rec: &[DatasetChange]) -> bool {
+    rec.iter().any(|c| !matches!(c, DatasetChange::Quad(GraphTarget::Default, ..)))
+}
+
+/// One WAL line as a replayable step, or `None` if it is not a valid change line (a torn tail).
+fn parse_line(line: &str) -> Option<DatasetChange> {
+    let graph = |rest: &str| rest.strip_prefix('<')?.strip_suffix('>').and_then(|iri| oxrdf::NamedNode::new(iri).ok());
+    if let Some(rest) = line.strip_prefix("G+ ") { return Some(DatasetChange::Create { graph: graph(rest)?, silent: true }) }
+    if let Some(rest) = line.strip_prefix("G- ") {
+        return Some(DatasetChange::Drop { target: GraphScope::Graph(graph(rest)?), silent: true });
+    }
+    let (c, rest) = match line.split_at_checked(2) {
+        Some(("+ ", r)) => (Change::Insert, r),
+        Some(("- ", r)) => (Change::Delete, r),
+        _ => return None,
+    };
+    let mut quads = oxttl::NQuadsParser::new().for_slice(rest.as_bytes());
+    let quad = quads.next()?.ok()?;
+    if quads.next().is_some() { return None }
+    let target = match quad.graph_name {
+        oxrdf::GraphName::DefaultGraph => GraphTarget::Default,
+        oxrdf::GraphName::NamedNode(g) => GraphTarget::Named(g),
+        oxrdf::GraphName::BlankNode(_) => return None,
+    };
+    Some(DatasetChange::Quad(target, c, Triple::new(quad.subject, quad.predicate, quad.object)))
+}
+
 /// Complete records in the WAL, and the byte length they span (everything after is a torn tail).
-fn read_wal(path: &Path) -> std::io::Result<(Vec<Vec<(Change, Triple)>>, u64)> {
+fn read_wal(path: &Path) -> std::io::Result<(Vec<Vec<DatasetChange>>, u64)> {
     let Ok(f) = File::open(path) else { return Ok((Vec::new(), 0)) };
     let mut records = Vec::new();
     let (mut cur, mut pos, mut valid) = (Vec::new(), 0u64, 0u64);
-    for line in BufReader::new(f).split(b'\n') {
-        let line = line?;
+    let mut reader = BufReader::new(f);
+    let mut line = Vec::new();
+    loop {
+        line.clear();
+        if reader.read_until(b'\n', &mut line)? == 0 { break }
+        // A line without its newline is the torn end of an append, even if it reads as a complete change or `C`.
+        if line.pop() != Some(b'\n') { break }
         pos += line.len() as u64 + 1;
-        let Ok(line) = std::str::from_utf8(&line) else { break };
-        if line == "C" { records.push(std::mem::take(&mut cur)); valid = pos; continue }
-        let (c, rest) = match line.split_at_checked(2) {
-            Some(("+ ", r)) => (Change::Insert, r),
-            Some(("- ", r)) => (Change::Delete, r),
-            _ => break,
-        };
-        let parsed = oxttl::NTriplesParser::new().for_slice(rest.as_bytes()).next();
-        match parsed { Some(Ok(t)) => cur.push((c, t)), _ => break }
+        let Ok(text) = std::str::from_utf8(&line) else { break };
+        if text == "C" { records.push(std::mem::take(&mut cur)); valid = pos; continue }
+        match parse_line(text) { Some(change) => cur.push(change), None => break }
     }
     Ok((records, valid))
+}
+
+impl Store {
+    /// Durably commits a dataset update (task #36): the steps apply in order and atomically, as in
+    /// `Overlay::with_dataset_changes`, and their net effect is one WAL record. Returns the number of triples changed.
+    /// The first record that touches a named graph first fences CURRENT (see the module docs).
+    pub fn commit_dataset(&self, changes: &[DatasetChange]) -> std::io::Result<usize> {
+        let (seq, n) = {
+            let _writer = self.writer.lock().unwrap();
+            self.enqueue_dataset(changes)?
+        };
+        self.flush_until(seq)?;
+        Ok(n)
+    }
+
+    /// `update_with` for dataset updates: `compute` returns the ordered steps against the latest accepted state.
+    pub fn update_dataset_with<E>(
+        &self,
+        text: &str,
+        compute: &dyn Fn(&Overlay, &str) -> Result<Vec<DatasetChange>, E>,
+        storage_error: &dyn Fn(std::io::Error) -> E,
+    ) -> Result<usize, E> {
+        let (seq, n) = {
+            let _writer = self.writer.lock().unwrap();
+            let snap = self.pending.lock().unwrap().latest.clone();
+            let changes = compute(&snap, text)?;
+            self.enqueue_dataset(&changes).map_err(storage_error)?
+        };
+        self.flush_until(seq).map_err(storage_error)?;
+        Ok(n)
+    }
+
+    fn enqueue_dataset(&self, changes: &[DatasetChange]) -> std::io::Result<(u64, usize)> {
+        self.check_poisoned()?;
+        let mut p = self.pending.lock().unwrap();
+        let cur = p.latest.clone();
+        let (next, n, rec) = cur.apply_dataset(changes, true)?;
+        if rec.is_empty() { return Ok((p.seq, n)) }
+        if needs_fence(&rec) && !self.fenced.load(std::sync::atomic::Ordering::SeqCst) {
+            // Durable before any named-graph line can reach the WAL.
+            let generation = self.generation.lock().unwrap();
+            set_current(&self.dir, *generation, true)?;
+            self.fenced.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+        push_record(&mut p.buf, &rec);
+        p.latest = Arc::new(next);
+        p.seq += 1;
+        Ok((p.seq, n))
+    }
 }
 
 impl Store {
@@ -671,5 +836,230 @@ mod directory_lock_tests {
         assert_eq!(err.kind(), std::io::ErrorKind::WouldBlock);
         drop(reopened);
         std::fs::remove_dir_all(dir).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod dataset_wal_tests {
+    use super::*;
+    use triplelight_core::storage::DatasetView;
+    use oxrdf::{BlankNode, Literal, NamedNode};
+    use DatasetChange::{Clear, Create, Drop, Quad};
+
+    fn iri(s: &str) -> NamedNode { NamedNode::new(format!("http://ex/{s}")).unwrap() }
+    fn t(s: &str, o: &str) -> Triple { Triple::new(iri(s), iri("p"), Literal::new_simple_literal(o)) }
+    fn ins(g: &str, tr: Triple) -> DatasetChange { Quad(GraphTarget::Named(iri(g)), Change::Insert, tr) }
+    fn del(g: &str, tr: Triple) -> DatasetChange { Quad(GraphTarget::Named(iri(g)), Change::Delete, tr) }
+    fn ins_default(tr: Triple) -> DatasetChange { Quad(GraphTarget::Default, Change::Insert, tr) }
+
+    struct Dir(PathBuf);
+    impl Dir {
+        fn new(name: &str) -> Dir {
+            let d = std::env::temp_dir().join(format!("rdf-dataset-wal-{name}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&d);
+            Dir(d)
+        }
+        fn open(&self) -> Store { Store::open(&self.0, None, 1).unwrap() }
+        fn current(&self) -> String { std::fs::read_to_string(self.0.join("CURRENT")).unwrap() }
+        fn wal(&self) -> Vec<u8> { std::fs::read(self.0.join("wal.log")).unwrap_or_default() }
+    }
+    impl std::ops::Drop for Dir { fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); } }
+
+    /// The default graph and every named graph, as sorted N-Triples strings keyed by graph IRI.
+    fn state(o: &Overlay) -> (Vec<String>, Vec<(String, Vec<String>)>) {
+        fn rows(view: &dyn Snapshot) -> Vec<String> {
+            let mut v = Vec::new();
+            for b in view.scan(Perm::Spo, &[]) {
+                let b = b.unwrap();
+                let r = |id: TermId| view.resolve(id).unwrap().to_string();
+                for ((&s, &p), &x) in b.cols[0].iter().zip(&b.cols[1]).zip(&b.cols[2]) { v.push(format!("{} {} {}", r(s), r(p), r(x))) }
+            }
+            v.sort();
+            v
+        }
+        let mut named: Vec<(String, Vec<String>)> = o.graph_names().unwrap().into_iter()
+            .map(|g| (o.resolve(g).unwrap().to_string(), rows(o.graph(g).unwrap().unwrap()))).collect();
+        named.sort();
+        (rows(o), named)
+    }
+
+    fn sample() -> Vec<DatasetChange> {
+        let x = BlankNode::new("x").unwrap();
+        vec![ins_default(t("d", "0")), ins("g1", t("a", "1")), ins("g1", Triple::new(x.clone(), iri("p"), x)),
+             Create { graph: iri("empty"), silent: false }, ins("g2", t("b", "2"))]
+    }
+
+    #[test]
+    fn named_graphs_survive_reopen_and_fence_current_once() {
+        let dir = Dir::new("reopen");
+        let store = dir.open();
+        store.commit(&[(Change::Insert, t("plain", "0"))]).unwrap();
+        assert_eq!(dir.current().trim(), "base-0", "default-only commits leave the store readable by older binaries");
+        assert_eq!(store.commit_dataset(&[ins_default(t("plain", "1"))]).unwrap(), 1);
+        assert_eq!(dir.current().trim(), "base-0", "a default-only dataset update needs no fence either");
+        store.commit_dataset(&sample()).unwrap();
+        assert_eq!(dir.current().trim(), "dataset-1 base-0");
+        store.commit_dataset(&[del("g2", t("b", "2")), Drop { target: GraphScope::Graph(iri("g1")), silent: false }]).unwrap();
+        let want = state(&store.snapshot());
+        assert_eq!(want.1.iter().map(|(g, _)| g.as_str()).collect::<Vec<_>>(), ["<http://ex/empty>", "<http://ex/g2>"]);
+        drop(store);
+        let reopened = dir.open();
+        assert_eq!(state(&reopened.snapshot()), want);
+        assert_eq!(dir.current().trim(), "dataset-1 base-0");
+    }
+
+    #[test]
+    fn compaction_carries_named_graphs_and_keeps_the_fence() {
+        let dir = Dir::new("compact");
+        let store = dir.open();
+        store.commit_dataset(&sample()).unwrap();
+        let want = state(&store.snapshot());
+        store.compact().unwrap();
+        assert_eq!(dir.current().trim(), "dataset-1 base-1");
+        assert_eq!(state(&store.snapshot()), want);
+        store.commit_dataset(&[ins("g2", t("after", "3"))]).unwrap();
+        let want = state(&store.snapshot());
+        drop(store);
+        let reopened = dir.open();
+        assert_eq!(state(&reopened.snapshot()), want);
+        // Compacting again with no default-graph changes still carries the graphs.
+        reopened.compact().unwrap();
+        drop(reopened);
+        assert_eq!(state(&dir.open().snapshot()), want);
+    }
+
+    /// The crash windows of a compaction with named graphs: the new WAL is written but CURRENT still names the old
+    /// base, and CURRENT names the new base but the old WAL is still in place.
+    #[test]
+    fn compaction_crash_states_recover() {
+        let dir = Dir::new("crash");
+        let store = dir.open();
+        store.commit_dataset(&sample()).unwrap();
+        store.commit_dataset(&[del("g1", t("a", "1")), ins_default(t("d", "9"))]).unwrap();
+        let want = state(&store.snapshot());
+        let old_wal = dir.wal();
+        store.compact().unwrap();
+        drop(store);
+        // New base, old WAL: the whole history re-applies on top of the base that already contains it.
+        std::fs::write(dir.0.join("wal.log"), &old_wal).unwrap();
+        assert_eq!(state(&dir.open().snapshot()), want);
+        // Old CURRENT target is gone after compaction, so model the other window directly: fenced CURRENT, no WAL.
+        let fresh = Dir::new("crash-fence");
+        drop(fresh.open());
+        std::fs::write(fresh.0.join("CURRENT"), "dataset-1 base-0\n").unwrap();
+        let s = fresh.open();
+        assert!(!s.snapshot().has_named_graphs());
+        s.commit_dataset(&[ins("g", t("a", "1"))]).unwrap();
+        drop(s);
+        assert_eq!(state(&fresh.open().snapshot()).1.len(), 1);
+    }
+
+    #[test]
+    fn torn_and_duplicated_records() {
+        let dir = Dir::new("torn");
+        let store = dir.open();
+        store.commit_dataset(&sample()).unwrap();
+        let want = state(&store.snapshot());
+        drop(store);
+        let good = dir.wal();
+        // A record appended twice changes nothing.
+        let mut twice = good.clone();
+        twice.extend_from_slice(&good);
+        std::fs::write(dir.0.join("wal.log"), &twice).unwrap();
+        assert_eq!(state(&dir.open().snapshot()), want);
+        // A torn named-graph record (no commit line) is dropped and truncated, whatever line it stops at.
+        for tail in ["G+ <http://ex/torn>\n+ <http://ex/s> <http://ex/p> \"v\" <http://ex/torn> .\n", "G+ <http://ex/to", "+ <http://ex/s> <http://ex/p> \"v\" <http://ex/torn"] {
+            let mut torn = good.clone();
+            torn.extend_from_slice(tail.as_bytes());
+            std::fs::write(dir.0.join("wal.log"), &torn).unwrap();
+            assert_eq!(state(&dir.open().snapshot()), want, "{tail}");
+            assert_eq!(dir.wal(), good, "{tail}");
+        }
+    }
+
+    #[test]
+    fn refused_or_empty_updates_write_nothing() {
+        let dir = Dir::new("refused");
+        let store = dir.open();
+        store.commit_dataset(&[ins_default(t("d", "0"))]).unwrap();
+        let wal = dir.wal();
+        let e = store.commit_dataset(&[ins("g", t("a", "1")), Drop { target: GraphScope::Graph(iri("absent")), silent: false }]).unwrap_err();
+        assert_eq!(e.kind(), std::io::ErrorKind::NotFound);
+        assert_eq!(store.commit_dataset(&[Clear { target: GraphScope::Graph(iri("absent")), silent: true }]).unwrap(), 0);
+        assert_eq!((dir.wal(), dir.current().trim().to_string()), (wal, "base-0".to_string()));
+        assert!(!store.snapshot().has_named_graphs());
+    }
+
+    #[test]
+    fn clear_default_is_logged_as_its_net_deletions() {
+        let dir = Dir::new("clear");
+        std::fs::create_dir_all(&dir.0).unwrap();
+        let nt = dir.0.with_extension("nt");
+        std::fs::write(&nt, "<http://ex/b> <http://ex/p> \"base\" .\n").unwrap();
+        let store = Store::open(&dir.0, Some(&nt), 1).unwrap();
+        store.commit_dataset(&[ins_default(t("d", "1")), ins("g", t("a", "1")), Clear { target: GraphScope::Default, silent: false }, ins_default(t("d", "2"))]).unwrap();
+        let want = state(&store.snapshot());
+        assert_eq!(want.0, ["<http://ex/d> <http://ex/p> \"2\""]);
+        drop(store);
+        assert_eq!(state(&dir.open().snapshot()), want);
+        let _ = std::fs::remove_file(nt);
+    }
+
+    /// A failure after CURRENT may have switched poisons the store: no commit is acknowledged on a stale WAL handle
+    /// and no retry runs against a stale generation. Reopening recovers everything acknowledged before.
+    #[test]
+    fn failed_compaction_switch_poisons_until_reopen() {
+        for (point, named) in [("after-wal-rename", true), ("after-current", false)] {
+            let dir = Dir::new(point);
+            let store = dir.open();
+            if named { store.commit_dataset(&sample()).unwrap(); } else { store.commit(&[(Change::Insert, t("d", "0"))]).unwrap(); }
+            let want = state(&store.snapshot());
+            *store.fail_at.lock().unwrap() = Some(point.to_string());
+            assert!(store.compact().is_err(), "{point}");
+            *store.fail_at.lock().unwrap() = None;
+            assert!(store.commit(&[(Change::Insert, t("lost", "1"))]).is_err(), "{point}: commit after a failed switch");
+            assert!(store.commit_dataset(&[ins("g9", t("lost", "2"))]).is_err(), "{point}");
+            assert!(store.compact().is_err(), "{point}: compaction retry after a failed switch");
+            drop(store);
+            let reopened = dir.open();
+            assert_eq!(state(&reopened.snapshot()), want, "{point}");
+            assert!(dir.current().trim().ends_with("base-1"), "{point}: {}", dir.current());
+            reopened.commit_dataset(&[ins_default(t("after", "1"))]).unwrap();
+            let want = state(&reopened.snapshot());
+            drop(reopened);
+            assert_eq!(state(&dir.open().snapshot()), want, "{point}");
+        }
+    }
+
+    /// A final `C` without its newline is a torn record: it is dropped, the file is cut back to the last complete record
+    /// (no padding), and a later append stays readable.
+    #[test]
+    fn commit_marker_needs_its_newline() {
+        let dir = Dir::new("torn-c");
+        let store = dir.open();
+        store.commit_dataset(&sample()).unwrap();
+        let want = state(&store.snapshot());
+        drop(store);
+        let good = dir.wal();
+        let mut torn = good.clone();
+        torn.extend_from_slice(b"G+ <http://ex/torn>\nC");
+        std::fs::write(dir.0.join("wal.log"), &torn).unwrap();
+        let store = dir.open();
+        assert_eq!(state(&store.snapshot()), want);
+        assert_eq!(dir.wal(), good, "cut back exactly, without padding");
+        store.commit_dataset(&[ins("g2", t("next", "1"))]).unwrap();
+        let want = state(&store.snapshot());
+        drop(store);
+        assert_eq!(state(&dir.open().snapshot()), want);
+        assert!(!want.1.iter().any(|(g, _)| g.contains("torn")));
+    }
+
+    #[test]
+    fn current_parsing() {
+        assert_eq!(parse_current("base-7\n"), Some((7, false)));
+        assert_eq!(parse_current("dataset-1 base-12\n"), Some((12, true)));
+        for bad in ["", "base-", "base-+1", "dataset-2 base-1", "dataset-1base-1", "dataset-1 ", "base-1 extra"] {
+            assert_eq!(parse_current(bad), None, "{bad:?}");
+        }
     }
 }
