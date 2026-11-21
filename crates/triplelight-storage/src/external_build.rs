@@ -13,7 +13,9 @@ use std::{
     path::Path,
 };
 const MEMORY: usize = 128 * 1024 * 1024;
-const MAX_TERM: usize = 16 * 1024 * 1024;
+/// The longest N-Triples term text a base can hold (task #45: the WAL refuses longer terms at commit).
+pub(crate) const MAX_TERM: usize = triplelight_core::ntriples::MAX_TOKEN;
+const _: () = assert!(MAX_TERM == 16 * 1024 * 1024, "the base limit is oxttl's 16 MiB token limit");
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 static BUILD_BUDGET_MB: AtomicUsize = AtomicUsize::new(0);
 static FORCE_EXTERNAL: AtomicBool = AtomicBool::new(false);
