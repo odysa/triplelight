@@ -73,6 +73,17 @@ fn build_permutation(dir: &Path, raw: &Path, triples: u64, name: &str, perm: Per
     output.flush()?; output.get_ref().sync_all()?; drop(output);
     Ok(DiskIndex::open(path)?.identity())
 }
+// Test-only failure injection: `checkpoint(n)` fails when the test selected phase `n`. Compiled out in normal builds.
+#[cfg(test)]
+thread_local! { static FAIL_AT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+#[cfg(test)]
+fn checkpoint(n: usize) -> io::Result<()> {
+    if FAIL_AT.with(|f| f.get()) == n { Err(io::Error::other("injected failure")) } else { Ok(()) }
+}
+#[cfg(not(test))]
+#[inline(always)]
+fn checkpoint(_n: usize) -> io::Result<()> { Ok(()) }
+
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, s)
 }
@@ -113,7 +124,7 @@ impl Builder {
     }
     fn finish(mut self, dir: &Path) -> io::Result<()> {
         let sorted = self.terms.finish()?;
-        let mut input = BufReader::new(File::open(sorted)?);
+        let mut input = BufReader::new(File::open(&sorted)?);
         let mut mapping = ExternalSort::new(dir, MEMORY, 17)?;
         let mut dict = BufWriter::new(
             OpenOptions::new()
@@ -165,8 +176,12 @@ impl Builder {
         dict.flush()?;
         dict.get_ref().sync_all()?;
         drop(dict);
+        drop(input);
+        // The merged term file has been fully consumed; free it before the mapping sort and index builds.
+        fs::remove_file(&sorted)?;
+        checkpoint(1)?;
         let assignments = mapping.finish()?;
-        let mut input = BufReader::new(File::open(assignments)?);
+        let mut input = BufReader::new(File::open(&assignments)?);
         let raw = dir.join(".triples.raw");
         let mut triples =
             BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&raw)?);
@@ -191,7 +206,11 @@ impl Builder {
         }
         triples.flush()?;
         drop(triples);
+        drop(input);
+        fs::remove_file(&assignments)?;
+        checkpoint(2)?;
         let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir)?;
+        checkpoint(3)?;
         let mut identities = vec![term_identity, id_identity];
         let jobs: Vec<_> = FILES[1..].iter().copied().zip(Perm::ALL).collect();
         let workers = self.index_workers;
@@ -210,7 +229,6 @@ impl Builder {
         fs::remove_file(raw)?;
         // Finish and remove all scratch before publishing the manifest.
         drop(mapping);
-        drop(input);
         drop(self.terms);
         let mut manifest = BufWriter::new(
             OpenOptions::new()
@@ -474,6 +492,45 @@ mod tests {
         drop(snapshot);
         fs::remove_dir_all(dir).unwrap();
     }
+    fn small_input(dir: &Path) -> std::path::PathBuf {
+        let input = dir.join("input.nt");
+        let mut text = String::new();
+        for i in 0..300 { text += &format!("<urn:s{i}> <urn:p{}> \"v{i}\" .\n<urn:s{i}> <urn:q> _:b{} .\n", i % 7, i % 11); }
+        fs::write(&input, text).unwrap();
+        input
+    }
+
+    #[test]
+    fn early_scratch_deletion_leaves_only_the_published_files() {
+        let dir = std::env::temp_dir().join(format!("rdf-ext-clean-{}", std::process::id()));
+        fs::create_dir(&dir).unwrap();
+        let input = small_input(&dir);
+        let out = dir.join("base");
+        from_nt(&out, Some(&input)).unwrap();
+        let mut names: Vec<_> = fs::read_dir(&out).unwrap().map(|e| e.unwrap().file_name().into_string().unwrap()).collect();
+        names.sort();
+        assert_eq!(names, ["MANIFEST", "dictionary.id", "dictionary.term", "ops", "osp", "pos", "pso", "sop", "spo"]);
+        DiskSnapshot::open(&out).unwrap().verify().unwrap();
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn failure_after_each_early_deletion_publishes_no_manifest() {
+        for phase in 1..=3 {
+            let dir = std::env::temp_dir().join(format!("rdf-ext-fail{phase}-{}", std::process::id()));
+            fs::create_dir(&dir).unwrap();
+            let input = small_input(&dir);
+            let out = dir.join("base");
+            FAIL_AT.with(|f| f.set(phase));
+            let result = from_nt(&out, Some(&input));
+            FAIL_AT.with(|f| f.set(0));
+            assert!(result.is_err(), "phase {phase} should fail");
+            assert!(!out.join("MANIFEST").exists(), "phase {phase} must not publish a manifest");
+            assert!(DiskSnapshot::open(&out).is_err(), "phase {phase} must not open as a snapshot");
+            fs::remove_dir_all(dir).unwrap();
+        }
+    }
+
     #[test]
     fn invalid_input_does_not_publish_a_manifest() {
         let parent = std::env::temp_dir().join(format!("rdf-ext-fail-{}", std::process::id()));
