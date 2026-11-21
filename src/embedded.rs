@@ -226,7 +226,7 @@ impl Database {
         if let Backend::Memory(store) = &self.store {
             let writer = store.writer.lock().unwrap();
             let current = store.current.read().unwrap().clone();
-            if current.count(Perm::Spo, &[])? == 0 {
+            if current.count(Perm::Spo, &[])? == 0 && !current.has_named_graphs() {
                 let reader = std::io::BufReader::new(std::fs::File::open(path)?);
                 let mut scope = BlankScope::default();
                 let built = match ext {
@@ -262,7 +262,7 @@ impl Database {
             Backend::Memory(store) => {
                 let _writer = store.writer.lock().unwrap();
                 let current = store.current.read().unwrap().clone();
-                if current.count(Perm::Spo, &[])? == 0 {
+                if current.count(Perm::Spo, &[])? == 0 && !current.has_named_graphs() {
                     let base = MemorySnapshot::from_triples(triples);
                     let count = base.count(Perm::Spo, &[])?;
                     *store.current.write().unwrap() = Arc::new(Overlay::from_base(Arc::new(base)));
@@ -299,7 +299,10 @@ impl Database {
                     }
                 }
                 let base = MemorySnapshot::from_triples(triples);
-                *store.current.write().unwrap() = Arc::new(Overlay::from_base(Arc::new(base)));
+                let mut fresh = Overlay::from_base(Arc::new(base));
+                // Named graphs carry over, re-interned into the new base's dictionary.
+                if current.has_named_graphs() { fresh = fresh.with_dataset_changes(&current.named_graph_changes()?)?.0 }
+                *store.current.write().unwrap() = Arc::new(fresh);
             }
         }
         self.refresh_stats(); Ok(())

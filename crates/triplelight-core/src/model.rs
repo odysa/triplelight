@@ -31,3 +31,35 @@ impl TripleBatch {
 /// One change of a write: insert or delete a triple.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Change { Insert, Delete }
+
+/// The graph a change applies to (task #36). Named graphs are given as IRIs, not IDs: a graph the dictionary has not
+/// seen yet is interned in the same commit as its first quads.
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum GraphTarget { Default, Named(oxrdf::NamedNode) }
+
+/// The graphs a `DROP` or `CLEAR` applies to, as in SPARQL 1.1 Update.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum GraphScope {
+    Graph(oxrdf::NamedNode),
+    /// The default graph, which always exists: dropping it only empties it.
+    Default,
+    /// Every named graph.
+    Named,
+    /// The default graph and every named graph.
+    All,
+}
+
+/// One step of a dataset update. A list of steps is applied in order and atomically (all or none), against the
+/// state the previous steps left.
+///
+/// Existence rules, checked against that state: `Create` of a graph in the catalog fails unless `silent`;
+/// `Drop`/`Clear` of `GraphScope::Graph` naming an absent graph fails unless `silent` (and then does nothing).
+/// `Clear` keeps the graph in the catalog, `Drop` removes it. Inserting into an absent named graph adds it to the
+/// catalog; deleting its last triple keeps it there.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum DatasetChange {
+    Quad(GraphTarget, Change, oxrdf::Triple),
+    Create { graph: oxrdf::NamedNode, silent: bool },
+    Drop { target: GraphScope, silent: bool },
+    Clear { target: GraphScope, silent: bool },
+}
