@@ -204,6 +204,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             // Which key columns bind new variables, and which must equal an already-bound value (repeated variable).
             for batch in self.snap.scan(perm, &prefix[..n]) {
                 let batch = batch.unwrap_or_else(|e| storage_failure(e));
+                #[allow(clippy::needless_range_loop)] // columnar batch: one row across several columns
                 for i in 0..batch.len() { push_extension(&mut out, row, pat, &order, n, |k| batch.cols[k][i]); }
             }
         }
