@@ -199,7 +199,7 @@ so it does not measure in-memory against on-disk TripleLight. Evidence:
 
 ### Embedded JVM baselines (Java API, no TripleLight row)
 
-TripleLight has no Java binding yet, so this section measures Jena and RDF4J on the same frozen workloads and answer
+This earlier cohort predates TripleLight's Java binding, so this section measures Jena and RDF4J on the same frozen workloads and answer
 checks, as reference points only; it does not rank TripleLight against them. Summed query seconds, pass 1 / pass 2.
 **Lower is better.**
 
@@ -297,10 +297,10 @@ The separate [Virtuoso100M correctness screen](docs/virtuoso100-qualification-v1
 ### Added since the first release notes
 
 Property paths; `DESCRIBE`; the hash functions, `NOW`, `RAND`, `UUID`, `STRUUID` and `BNODE()`; Arrow C stream
-output from the C, Go and Java bindings; persisted optimizer statistics, so a disk store with a saved statistics file has cost-based
-statistics within about a second of opening instead of after a 20–26 s scan
-([measurement](docs/startup36-persisted-stats/README.md)); and an optional HTTP server whose updates are off by
-default and token-protected when enabled.
+output from the C, Go and Java bindings; persisted optimizer statistics (in the
+[startup36 session](docs/startup36-persisted-stats/README.md), statistics were ready 0.74–0.91 s after open
+with a saved statistics file, versus 20.5–25.8 s with a rebuild scan); and an optional HTTP server whose updates are
+off by default and can be enabled with a token or, on loopback only, without one.
 
 ### Not supported yet
 
