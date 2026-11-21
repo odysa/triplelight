@@ -695,7 +695,6 @@ version = "0.1.0"
 dependencies = [
  "md-5",
  "num-bigint",
- "oxiri",
  "oxrdf",
  "rayon",
  "regex",
@@ -703,10 +702,15 @@ dependencies = [
  "sha1",
  "sha2",
  "triplelight-core",
+ "triplelight-iri",
  "triplelight-plan",
  "triplelight-sparql",
  "web-time",
 ]
+
+[[package]]
+name = "triplelight-iri"
+version = "0.1.0"
 
 [[package]]
 name = "triplelight-plan"
@@ -719,8 +723,8 @@ dependencies = [
 name = "triplelight-sparql"
 version = "0.1.0"
 dependencies = [
- "oxiri",
  "triplelight-core",
+ "triplelight-iri",
 ]
 
 [[package]]
