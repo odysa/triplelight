@@ -1,0 +1,543 @@
+{
+  "answer_summaries": 105,
+  "archived_manifest_members": 288,
+  "cells": {
+    "q14 1.5x": {
+      "budget_mb": 6011,
+      "budget_positions": {
+        "1": 2,
+        "2": 2,
+        "3": 1
+      },
+      "cgroup_peak_bytes": [
+        3693412352,
+        4024139776,
+        4024451072
+      ],
+      "control_ids_plus_conversion_ms": [
+        2766.004,
+        2834.243,
+        3069.118
+      ],
+      "control_total_ms": [
+        1890.375,
+        1986.517,
+        2123.712
+      ],
+      "conv_pgmajfault": [
+        0,
+        0.0,
+        0
+      ],
+      "conv_read_bytes": [
+        0,
+        0.0,
+        0
+      ],
+      "dict_by_id_shard_budget_bytes": 131312298,
+      "ids_ms": [
+        846.391,
+        870.5765,
+        1016.914
+      ],
+      "lookup_count": 51876,
+      "other_slots_moved_in_convert": [],
+      "passes": 10,
+      "peak_GiB": [
+        3.44,
+        3.748,
+        3.748
+      ],
+      "phases": 5,
+      "profiled_decode_ms": [
+        872.404963,
+        922.071776,
+        962.970295
+      ],
+      "profiled_total_ms": [
+        1790.405,
+        1905.295,
+        1987.228
+      ],
+      "slot7_min_med_max": {
+        "bytes": [
+          0,
+          0.0,
+          0
+        ],
+        "evictions": [
+          0,
+          0.0,
+          0
+        ],
+        "hits": [
+          51876,
+          51876.0,
+          51876
+        ],
+        "misses": [
+          0,
+          0.0,
+          0
+        ],
+        "reads": [
+          0,
+          0.0,
+          0
+        ]
+      }
+    },
+    "q14 1x": {
+      "budget_mb": 4007,
+      "budget_positions": {
+        "1": 2,
+        "2": 1,
+        "3": 2
+      },
+      "cgroup_peak_bytes": [
+        3178610688,
+        3404742656,
+        3410407424
+      ],
+      "control_ids_plus_conversion_ms": [
+        11220.809000000001,
+        12395.824,
+        14127.157
+      ],
+      "control_total_ms": [
+        10385.359,
+        11474.114,
+        13114.224
+      ],
+      "conv_pgmajfault": [
+        0,
+        0.0,
+        3
+      ],
+      "conv_read_bytes": [
+        0,
+        0.0,
+        655360
+      ],
+      "dict_by_id_shard_budget_bytes": 87534250,
+      "ids_ms": [
+        835.45,
+        937.2755,
+        1012.933
+      ],
+      "lookup_count": 51876,
+      "other_slots_moved_in_convert": [],
+      "passes": 10,
+      "peak_GiB": [
+        2.96,
+        3.171,
+        3.176
+      ],
+      "phases": 5,
+      "profiled_decode_ms": [
+        9469.401238,
+        10147.246008,
+        10529.319694
+      ],
+      "profiled_total_ms": [
+        10513.75,
+        11281.962,
+        11849.726
+      ],
+      "slot7_min_med_max": {
+        "bytes": [
+          243494113,
+          243494113.0,
+          243494113
+        ],
+        "evictions": [
+          50916,
+          50916.0,
+          50916
+        ],
+        "hits": [
+          960,
+          960.0,
+          960
+        ],
+        "misses": [
+          50916,
+          50916.0,
+          50916
+        ],
+        "reads": [
+          50916,
+          50916.0,
+          50916
+        ]
+      }
+    },
+    "q14 2x": {
+      "budget_mb": 8014,
+      "budget_positions": {
+        "1": 1,
+        "2": 2,
+        "3": 2
+      },
+      "cgroup_peak_bytes": [
+        3485855744,
+        3737382912,
+        4024369152
+      ],
+      "control_ids_plus_conversion_ms": [
+        2659.864,
+        2811.617,
+        4200.2029999999995
+      ],
+      "control_total_ms": [
+        1812.602,
+        1964.664,
+        2968.741
+      ],
+      "conv_pgmajfault": [
+        0,
+        0.0,
+        0
+      ],
+      "conv_read_bytes": [
+        0,
+        0.0,
+        0
+      ],
+      "dict_by_id_shard_budget_bytes": 175068501,
+      "ids_ms": [
+        818.838,
+        847.315,
+        1383.98
+      ],
+      "lookup_count": 51876,
+      "other_slots_moved_in_convert": [],
+      "passes": 10,
+      "peak_GiB": [
+        3.246,
+        3.481,
+        3.748
+      ],
+      "phases": 5,
+      "profiled_decode_ms": [
+        884.19479,
+        905.885498,
+        1387.249812
+      ],
+      "profiled_total_ms": [
+        1812.585,
+        1870.388,
+        2908.722
+      ],
+      "slot7_min_med_max": {
+        "bytes": [
+          0,
+          0.0,
+          0
+        ],
+        "evictions": [
+          0,
+          0.0,
+          0
+        ],
+        "hits": [
+          51876,
+          51876.0,
+          51876
+        ],
+        "misses": [
+          0,
+          0.0,
+          0
+        ],
+        "reads": [
+          0,
+          0.0,
+          0
+        ]
+      }
+    },
+    "q9 1.5x": {
+      "budget_mb": 6011,
+      "budget_positions": {
+        "1": 2,
+        "2": 2,
+        "3": 1
+      },
+      "cgroup_peak_bytes": [
+        3939913728,
+        4057149440,
+        4171423744
+      ],
+      "control_ids_plus_conversion_ms": [
+        9273.026999999998,
+        10182.293,
+        15076.35
+      ],
+      "control_total_ms": [
+        8590.701,
+        9423.533,
+        13816.902
+      ],
+      "conv_pgmajfault": [
+        0,
+        0.0,
+        4
+      ],
+      "conv_read_bytes": [
+        0,
+        0.0,
+        655360
+      ],
+      "dict_by_id_shard_budget_bytes": 131312298,
+      "ids_ms": [
+        642.363,
+        744.535,
+        1259.448
+      ],
+      "lookup_count": 54240,
+      "other_slots_moved_in_convert": [],
+      "passes": 10,
+      "peak_GiB": [
+        3.669,
+        3.779,
+        3.885
+      ],
+      "phases": 5,
+      "profiled_decode_ms": [
+        8882.329823,
+        9721.380388,
+        10452.699867
+      ],
+      "profiled_total_ms": [
+        8928.084,
+        9769.38,
+        10512.983
+      ],
+      "slot7_min_med_max": {
+        "bytes": [
+          259835069,
+          259835069.0,
+          259835069
+        ],
+        "evictions": [
+          54230,
+          54230.0,
+          54230
+        ],
+        "hits": [
+          9,
+          9.0,
+          9
+        ],
+        "misses": [
+          54231,
+          54231.0,
+          54231
+        ],
+        "reads": [
+          54231,
+          54231.0,
+          54231
+        ]
+      }
+    },
+    "q9 1x": {
+      "budget_mb": 4007,
+      "budget_positions": {
+        "1": 2,
+        "2": 1,
+        "3": 2
+      },
+      "cgroup_peak_bytes": [
+        2894807040,
+        3077398528,
+        3121971200
+      ],
+      "control_ids_plus_conversion_ms": [
+        10142.506000000001,
+        11542.661,
+        13814.52
+      ],
+      "control_total_ms": [
+        9306.521,
+        10613.114,
+        12734.852
+      ],
+      "conv_pgmajfault": [
+        0,
+        0.0,
+        3
+      ],
+      "conv_read_bytes": [
+        0,
+        0.0,
+        655360
+      ],
+      "dict_by_id_shard_budget_bytes": 87534250,
+      "ids_ms": [
+        747.153,
+        861.6990000000001,
+        1079.668
+      ],
+      "lookup_count": 54240,
+      "other_slots_moved_in_convert": [],
+      "passes": 10,
+      "peak_GiB": [
+        2.696,
+        2.866,
+        2.908
+      ],
+      "phases": 5,
+      "profiled_decode_ms": [
+        9804.245633,
+        10241.138507,
+        10938.05833
+      ],
+      "profiled_total_ms": [
+        9861.512,
+        10295.599,
+        10998.939
+      ],
+      "slot7_min_med_max": {
+        "bytes": [
+          259835069,
+          259835069.0,
+          259835069
+        ],
+        "evictions": [
+          54230,
+          54230.0,
+          54230
+        ],
+        "hits": [
+          9,
+          9.0,
+          9
+        ],
+        "misses": [
+          54231,
+          54231.0,
+          54231
+        ],
+        "reads": [
+          54231,
+          54231.0,
+          54231
+        ]
+      }
+    },
+    "q9 2x": {
+      "budget_mb": 8014,
+      "budget_positions": {
+        "1": 1,
+        "2": 2,
+        "3": 2
+      },
+      "cgroup_peak_bytes": [
+        4358791168,
+        4406247424,
+        4509179904
+      ],
+      "control_ids_plus_conversion_ms": [
+        717.177,
+        820.172,
+        895.716
+      ],
+      "control_total_ms": [
+        155.27,
+        178.631,
+        229.437
+      ],
+      "conv_pgmajfault": [
+        0,
+        0.0,
+        0
+      ],
+      "conv_read_bytes": [
+        0,
+        0.0,
+        0
+      ],
+      "dict_by_id_shard_budget_bytes": 175068501,
+      "ids_ms": [
+        518.383,
+        576.047,
+        729.457
+      ],
+      "lookup_count": 54240,
+      "other_slots_moved_in_convert": [],
+      "passes": 10,
+      "peak_GiB": [
+        4.059,
+        4.104,
+        4.2
+      ],
+      "phases": 5,
+      "profiled_decode_ms": [
+        111.437668,
+        146.487329,
+        197.450354
+      ],
+      "profiled_total_ms": [
+        148.126,
+        186.676,
+        257.212
+      ],
+      "slot7_min_med_max": {
+        "bytes": [
+          0,
+          0.0,
+          0
+        ],
+        "evictions": [
+          0,
+          0.0,
+          0
+        ],
+        "hits": [
+          54240,
+          54240.0,
+          54240
+        ],
+        "misses": [
+          0,
+          0.0,
+          0
+        ],
+        "reads": [
+          0,
+          0.0,
+          0
+        ]
+      }
+    }
+  },
+  "conversion_read_bytes_histogram": {
+    "0": 54,
+    "569344": 1,
+    "655360": 5
+  },
+  "locality_phases": 15,
+  "measured_passes": 60,
+  "outside_cpu_snapshots_tp_live_swe": [
+    {
+      "tp-live-swetmax-tmax9bs500-sr-26903-7": "0.00%",
+      "tp-live-swetmax-tmax9bs500-sr-27092-7": "0.00%",
+      "tp-live-swetmax-tmax9bs500-sr-27165-7": "0.00%",
+      "tp-live-swetmax-tmax9bs500-sr-27982-7": "0.00%"
+    },
+    {
+      "tp-live-swetmax-tmax9bs500-sr-23861-8": "0.00%",
+      "tp-live-swetmax-tmax9bs500-sr-24684-8": "0.00%",
+      "tp-live-swetmax-tmax9bs500-sr-26903-8": "0.00%",
+      "tp-live-swetmax-tmax9bs500-sr-27982-7": "0.00%"
+    }
+  ],
+  "outside_name_overlap": 1,
+  "phases": 30,
+  "registration": "a40674ec9c233c114aff8c22d56fdb2f8ec85c3e2e4fe3ba6f471b9b061d74b1",
+  "summary_matches": true,
+  "unmanifested_appledouble_metadata_members": 0,
+  "window_deltas": 120
+}
