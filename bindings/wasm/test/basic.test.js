@@ -37,6 +37,13 @@ test("updates, incremental loads, Turtle and snapshot isolation", async () => {
   assert.strictEqual(snap.querySync("SELECT * WHERE { ?s ?p ?o }").bindings.length, 2);
 });
 
+test("each update operation gets fresh blank nodes", () => {
+  const db = new Database();
+  db.updateSync("INSERT DATA { _:x <urn:p> 1 }");
+  db.updateSync("INSERT DATA { _:x <urn:p> 1 }");
+  assert.strictEqual(db.size, 2);
+});
+
 test("NOW, UUID and BNODE work without OS clocks or randomness", () => {
   const db = new Database();
   const b = db.querySync("SELECT (NOW() AS ?n) (STRUUID() AS ?u) (isBlank(BNODE()) AS ?b) WHERE {}").bindings[0];
@@ -49,6 +56,8 @@ test("errors carry a kind; a bad load adds nothing", async () => {
   const db = new Database();
   await assert.rejects(db.query("SELEC"), (e) => e.kind === "SyntaxError");
   assert.throws(() => db.querySync("SELECT * WHERE { GRAPH ?g { ?s ?p ?o } }"), (e) => e.kind === "UnsupportedError");
+  // Named-graph writes stay unsupported in WASM until its queries and loads read the dataset (task #36).
+  assert.throws(() => db.updateSync("INSERT DATA { GRAPH <urn:g> { <urn:s> <urn:p> <urn:o> } }"), (e) => e.kind === "UnsupportedError");
   assert.throws(() => db.loadSync("<urn:a> <urn:p> .\n"), (e) => e.kind === "SyntaxError");
   assert.strictEqual(db.size, 0);
   const b = db.querySync('SELECT ("x" AS ?__proto__) ("y" AS ?constructor) WHERE {}').bindings[0];

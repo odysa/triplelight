@@ -1249,6 +1249,9 @@ fn walk_expr(e: &Expression, out: &mut Vec<String>) {
     }
 }
 
+/// Superseded by `parse_update_operations` + `operation_changes` (task #36), which add named graphs, sequential
+/// operation semantics and fresh blank nodes; kept for API compatibility.
+///
 /// The change set of a SPARQL 1.1 Update request, computed against `snap` (task #8). Supports INSERT DATA,
 /// DELETE DATA and DELETE/INSERT ... WHERE on the default graph. Every operation's WHERE clause is evaluated on
 /// `snap` (the state before the request); deletions of an operation precede its insertions.
@@ -1310,6 +1313,93 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
             }
             Op::Management { operation } => return Err(unsupported(operation)),
         }
+    }
+    Ok(out)
+}
+
+/// The operations of a SPARQL 1.1 Update request, in order (task #36).
+pub fn parse_update_operations(text: &str) -> Result<Vec<crate::sparql::GraphUpdateOperation>, QueryError> {
+    Ok(crate::sparql::parse_update(text, None).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?.operations)
+}
+
+/// The dataset changes of one update operation, evaluated on `snap` with `dataset` as its named graphs (task #36).
+/// The caller applies each operation's changes before computing the next one, so every operation sees the effects of
+/// the ones before it (SPARQL 1.1 Update semantics), and commits the concatenated list atomically.
+/// Supports INSERT DATA, DELETE DATA and DELETE/INSERT ... WHERE with GRAPH templates, `WITH` and `USING`. Graph
+/// management (CREATE, DROP, CLEAR, ADD, MOVE, COPY, LOAD) is refused as unsupported for now.
+pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &crate::sparql::GraphUpdateOperation) -> Result<Vec<crate::model::DatasetChange>, QueryError> {
+    use crate::model::{Change, DatasetChange, GraphTarget};
+    use crate::sparql::{GraphName, GraphNamePattern, GroundTermPattern};
+    use crate::sparql::GraphUpdateOperation as Op;
+    use oxrdf::{NamedOrBlankNode, Triple};
+    let unsupported = |what: &str| QueryError::new(QueryErrorKind::Unsupported, format!("{what} is not supported yet"));
+    let target = |g: &GraphName| match g { GraphName::DefaultGraph => GraphTarget::Default, GraphName::NamedNode(n) => GraphTarget::Named(n.clone()) };
+    // Blank nodes in INSERT DATA and INSERT templates are fresh for every operation (and every template solution):
+    // a label is scoped to one operation, so running the same update twice creates new nodes. Occurrences of one
+    // label within that scope, across graphs too, stay one node.
+    let scope = format!("{:016x}{:016x}", expr::random_u64(), expr::random_u64());
+    let fresh = |b: &BlankNode, row: Option<usize>| -> BlankNode {
+        BlankNode::new_unchecked(match row { Some(n) => format!("{}_{scope}r{n}", b.as_str()), None => format!("{}_{scope}", b.as_str()) })
+    };
+    let mut out = Vec::new();
+    match op {
+        Op::InsertData { data } => for q in data {
+            let subject = match &q.subject { NamedOrBlankNode::BlankNode(b) => fresh(b, None).into(), s => s.clone() };
+            let object = match &q.object { Term::BlankNode(b) => fresh(b, None).into(), o => o.clone() };
+            out.push(DatasetChange::Quad(target(&q.graph_name), Change::Insert, Triple::new(subject, q.predicate.clone(), object)));
+        },
+        Op::DeleteData { data } => for q in data {
+            let o: Term = match &q.object { GroundTerm::NamedNode(n) => n.clone().into(), GroundTerm::Literal(l) => l.clone().into() };
+            out.push(DatasetChange::Quad(target(&q.graph_name), Change::Delete, Triple::new(q.subject.clone(), q.predicate.clone(), o)));
+        },
+        Op::DeleteInsert { delete, insert, with, using, pattern } => {
+            // WITH <g> makes <g> the default graph of the WHERE clause (GRAPH patterns inside it still range over the
+            // named graphs) and the target of templates without a GRAPH. USING / USING NAMED replace the dataset.
+            let pattern = match (with, using) {
+                (Some(g), None) => GraphPattern::Graph { name: NamedNodePattern::NamedNode(g.clone()), inner: pattern.clone() },
+                _ => (**pattern).clone(),
+            };
+            let q = Query::Select { dataset: using.clone(), pattern, base_iri: None };
+            let QueryResult::Solutions { vars, rows } = run_query(snap, Some(dataset), &q, &Options::default())? else { unreachable!() };
+            let col: HashMap<&str, usize> = vars.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
+            let default_target = || with.as_ref().map_or(GraphTarget::Default, |g| GraphTarget::Named(g.clone()));
+            for (n, row) in rows.iter().enumerate() {
+                let var = |v: &Variable| col.get(v.as_str()).and_then(|&i| row[i].clone());
+                let ground = |t: &GroundTermPattern| -> Option<Term> { match t {
+                    GroundTermPattern::NamedNode(x) => Some(x.clone().into()),
+                    GroundTermPattern::Literal(x) => Some(x.clone().into()),
+                    GroundTermPattern::Variable(v) => var(v),
+                } };
+                let term = |t: &TermPattern| -> Option<Term> { match t {
+                    TermPattern::NamedNode(x) => Some(x.clone().into()),
+                    TermPattern::Literal(x) => Some(x.clone().into()),
+                    TermPattern::BlankNode(b) => Some(fresh(b, Some(n)).into()),
+                    TermPattern::Variable(v) => var(v),
+                } };
+                let pred = |p: &NamedNodePattern| -> Option<oxrdf::NamedNode> { match p {
+                    NamedNodePattern::NamedNode(x) => Some(x.clone()),
+                    NamedNodePattern::Variable(v) => match var(v) { Some(Term::NamedNode(x)) => Some(x), _ => None },
+                } };
+                // A template's graph: its GRAPH name, a bound IRI variable, or the WITH / default graph.
+                let graph = |g: &GraphNamePattern| -> Option<GraphTarget> { match g {
+                    GraphNamePattern::DefaultGraph => Some(default_target()),
+                    GraphNamePattern::NamedNode(x) => Some(GraphTarget::Named(x.clone())),
+                    GraphNamePattern::Variable(v) => match var(v) { Some(Term::NamedNode(x)) => Some(GraphTarget::Named(x)), _ => None },
+                } };
+                // Templates with an unbound or ill-typed slot produce no quad for this solution.
+                for d in delete {
+                    if let (Some(s), Some(p), Some(o), Some(g)) = (ground(&d.subject), pred(&d.predicate), ground(&d.object), graph(&d.graph_name))
+                        && let Ok(s) = NamedOrBlankNode::try_from(s) { out.push(DatasetChange::Quad(g, Change::Delete, Triple::new(s, p, o))) }
+                }
+                for i in insert {
+                    if let (Some(s), Some(p), Some(o), Some(g)) = (term(&i.subject), pred(&i.predicate), term(&i.object), graph(&i.graph_name))
+                        && let Ok(s) = NamedOrBlankNode::try_from(s) { out.push(DatasetChange::Quad(g, Change::Insert, Triple::new(s, p, o))) }
+                }
+            }
+            // Deletions of an operation precede its insertions.
+            out.sort_by_key(|c| !matches!(c, DatasetChange::Quad(_, Change::Delete, _)));
+        }
+        Op::Management { operation } => return Err(unsupported(operation)),
     }
     Ok(out)
 }
