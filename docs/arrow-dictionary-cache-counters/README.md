@@ -5,7 +5,7 @@ Arrow is a miss, and evictions nearly equal misses, despite a prior warm-up quer
 process. On LUBM-1000 Q9 the conversion window records 9 hits, 54,231 misses and 54,230 evictions per pass; on Q14,
 960 hits, 50,916 misses and 50,916 evictions. This is consistent with capacity pressure in the dictionary block cache
 for these working sets and meets the registered condition for testing that hypothesis with a cache-budget sweep
-(Phase A2). It does not establish capacity as the cause.
+(Phase A2). It does not establish capacity as the cause. The budget sweep that followed is in [Phase A2](../arrow-dictionary-cache-budget/README.md).
 
 This follows the [conversion stage profile](../arrow-conversion-profile/README.md), where the dictionary-lookup
 stage (`with_terms` plus term copies) took most of the instrumented conversion time.
