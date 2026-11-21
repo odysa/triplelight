@@ -314,6 +314,8 @@ pub struct Store {
     poisoned: std::sync::atomic::AtomicBool,
     /// Held until the other store state is dropped; the persistent file must never be removed on close.
     _directory_lock: File,
+    #[cfg(test)]
+    fail_at: Mutex<Option<String>>,
 }
 
 struct Pending { latest: Arc<Overlay>, buf: String, seq: u64 }
@@ -368,6 +370,8 @@ impl Store {
             writer: Mutex::new(()),
             poisoned: std::sync::atomic::AtomicBool::new(false),
             _directory_lock: directory_lock,
+            #[cfg(test)]
+            fail_at: Mutex::new(None),
         })
     }
 
@@ -448,6 +452,8 @@ impl Store {
     /// blocked (they keep their snapshot); writers wait.
     pub fn compact(&self) -> std::io::Result<()> {
         let _writer = self.writer.lock().unwrap();
+        // After a failed switch the on-disk generation may differ from `generation`; only a reopen can tell.
+        self.check_poisoned()?;
         let seq = self.pending.lock().unwrap().seq;
         self.flush_until(seq)?;
         let mut w = self.wal.lock().unwrap();
@@ -474,24 +480,28 @@ impl Store {
             let mut buf = String::new();
             push_record(&mut buf, &rec);
             let tmp = self.dir.join("wal.log.tmp");
+            // This handle (positioned at its end) becomes the live WAL: after the rename it is `wal.log`.
             let mut f = File::create(&tmp)?;
             f.write_all(buf.as_bytes())?;
             f.sync_all()?;
-            set_current(&self.dir, next, fenced)?;
-            std::fs::rename(&tmp, self.dir.join("wal.log"))?;
-            sync_dir(&self.dir)?;
-            let mut file = OpenOptions::new().read(true).write(true).open(self.dir.join("wal.log"))?;
-            use std::io::Seek;
-            file.seek(std::io::SeekFrom::End(0))?;
-            w.file = file;
+            self.publish(|| {
+                set_current(&self.dir, next, fenced)?;
+                std::fs::rename(&tmp, self.dir.join("wal.log"))?;
+                self.fail_point("after-wal-rename")?;
+                sync_dir(&self.dir)
+            })?;
+            w.file = f;
             fresh = moved;
         } else {
-            set_current(&self.dir, next, fenced)?;
-            // The new base is durable and current; only now drop the log.
-            w.file.set_len(0)?;
-            w.file.sync_all()?;
-            use std::io::Seek;
-            w.file.seek(std::io::SeekFrom::Start(0))?;
+            self.publish(|| {
+                set_current(&self.dir, next, fenced)?;
+                self.fail_point("after-current")?;
+                // The new base is durable and current; only now drop the log.
+                w.file.set_len(0)?;
+                w.file.sync_all()?;
+                use std::io::Seek;
+                w.file.seek(std::io::SeekFrom::Start(0)).map(|_| ())
+            })?;
         }
         let fresh = Arc::new(fresh);
         p.latest = fresh.clone();
@@ -499,6 +509,24 @@ impl Store {
         *generation = next;
         Ok(())
     }
+}
+
+impl Store {
+    /// Runs the steps that switch the store to a new base. If one fails, CURRENT may already name the new base while
+    /// the WAL handle, `generation` and the published overlay still describe the old one, so the store is poisoned:
+    /// commits and compaction are refused until a reopen recovers from what is on disk.
+    fn publish(&self, steps: impl FnOnce() -> std::io::Result<()>) -> std::io::Result<()> {
+        steps().inspect_err(|_| self.poisoned.store(true, std::sync::atomic::Ordering::SeqCst))
+    }
+
+    /// Test-only fault injection: fails at the named point when a test armed it.
+    #[cfg(test)]
+    fn fail_point(&self, point: &str) -> std::io::Result<()> {
+        if *self.fail_at.lock().unwrap() == Some(point.to_string()) { return Err(std::io::Error::other(format!("injected failure at {point}"))) }
+        Ok(())
+    }
+    #[cfg(not(test))]
+    fn fail_point(&self, _point: &str) -> std::io::Result<()> { Ok(()) }
 }
 
 /// CURRENT's content: `base-<n>`, or `dataset-1 base-<n>` once fenced. `None` if it is neither.
@@ -641,12 +669,17 @@ fn read_wal(path: &Path) -> std::io::Result<(Vec<Vec<DatasetChange>>, u64)> {
     let Ok(f) = File::open(path) else { return Ok((Vec::new(), 0)) };
     let mut records = Vec::new();
     let (mut cur, mut pos, mut valid) = (Vec::new(), 0u64, 0u64);
-    for line in BufReader::new(f).split(b'\n') {
-        let line = line?;
+    let mut reader = BufReader::new(f);
+    let mut line = Vec::new();
+    loop {
+        line.clear();
+        if reader.read_until(b'\n', &mut line)? == 0 { break }
+        // A line without its newline is the torn end of an append, even if it reads as a complete change or `C`.
+        if line.pop() != Some(b'\n') { break }
         pos += line.len() as u64 + 1;
-        let Ok(line) = std::str::from_utf8(&line) else { break };
-        if line == "C" { records.push(std::mem::take(&mut cur)); valid = pos; continue }
-        match parse_line(line) { Some(change) => cur.push(change), None => break }
+        let Ok(text) = std::str::from_utf8(&line) else { break };
+        if text == "C" { records.push(std::mem::take(&mut cur)); valid = pos; continue }
+        match parse_line(text) { Some(change) => cur.push(change), None => break }
     }
     Ok((records, valid))
 }
@@ -970,6 +1003,55 @@ mod dataset_wal_tests {
         drop(store);
         assert_eq!(state(&dir.open().snapshot()), want);
         let _ = std::fs::remove_file(nt);
+    }
+
+    /// A failure after CURRENT may have switched poisons the store: no commit is acknowledged on a stale WAL handle
+    /// and no retry runs against a stale generation. Reopening recovers everything acknowledged before.
+    #[test]
+    fn failed_compaction_switch_poisons_until_reopen() {
+        for (point, named) in [("after-wal-rename", true), ("after-current", false)] {
+            let dir = Dir::new(point);
+            let store = dir.open();
+            if named { store.commit_dataset(&sample()).unwrap(); } else { store.commit(&[(Change::Insert, t("d", "0"))]).unwrap(); }
+            let want = state(&store.snapshot());
+            *store.fail_at.lock().unwrap() = Some(point.to_string());
+            assert!(store.compact().is_err(), "{point}");
+            *store.fail_at.lock().unwrap() = None;
+            assert!(store.commit(&[(Change::Insert, t("lost", "1"))]).is_err(), "{point}: commit after a failed switch");
+            assert!(store.commit_dataset(&[ins("g9", t("lost", "2"))]).is_err(), "{point}");
+            assert!(store.compact().is_err(), "{point}: compaction retry after a failed switch");
+            drop(store);
+            let reopened = dir.open();
+            assert_eq!(state(&reopened.snapshot()), want, "{point}");
+            assert!(dir.current().trim().ends_with("base-1"), "{point}: {}", dir.current());
+            reopened.commit_dataset(&[ins_default(t("after", "1"))]).unwrap();
+            let want = state(&reopened.snapshot());
+            drop(reopened);
+            assert_eq!(state(&dir.open().snapshot()), want, "{point}");
+        }
+    }
+
+    /// A final `C` without its newline is a torn record: it is dropped, the file is cut back to the last complete record
+    /// (no padding), and a later append stays readable.
+    #[test]
+    fn commit_marker_needs_its_newline() {
+        let dir = Dir::new("torn-c");
+        let store = dir.open();
+        store.commit_dataset(&sample()).unwrap();
+        let want = state(&store.snapshot());
+        drop(store);
+        let good = dir.wal();
+        let mut torn = good.clone();
+        torn.extend_from_slice(b"G+ <http://ex/torn>\nC");
+        std::fs::write(dir.0.join("wal.log"), &torn).unwrap();
+        let store = dir.open();
+        assert_eq!(state(&store.snapshot()), want);
+        assert_eq!(dir.wal(), good, "cut back exactly, without padding");
+        store.commit_dataset(&[ins("g2", t("next", "1"))]).unwrap();
+        let want = state(&store.snapshot());
+        drop(store);
+        assert_eq!(state(&dir.open().snapshot()), want);
+        assert!(!want.1.iter().any(|(g, _)| g.contains("torn")));
     }
 
     #[test]
