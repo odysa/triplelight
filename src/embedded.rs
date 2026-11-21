@@ -207,9 +207,8 @@ impl Database {
             Backend::Memory(store) => {
                 let _writer = store.writer.lock().unwrap();
                 let current = store.current.read().unwrap().clone();
-                let changes = exec::update_changes(&*current, sparql)?;
-                let (next, count) = current.with_changes(&changes)?;
-                *store.current.write().unwrap() = Arc::new(next);
+                let (next, _, count) = crate::store::dataset_update(&current, sparql)?;
+                if let Some(next) = next { *store.current.write().unwrap() = Arc::new(next) }
                 Ok(count)
             }
         }
@@ -332,7 +331,7 @@ impl ReadSnapshot {
     pub fn query(&self, sparql: &str) -> Result<QueryResult, DatabaseError> {
         let stats = self.applicable_stats();
         let opts = exec::Options { stats: stats.as_deref(), ..Default::default() };
-        Ok(exec::query_with(&*self.snapshot, sparql, &opts)?)
+        Ok(exec::query_dataset_with(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
     }
     fn applicable_stats(&self) -> Option<Arc<Stats>> {
         if self.snapshot.delta_len() != 0 { return None; }
@@ -342,7 +341,7 @@ impl ReadSnapshot {
     pub fn query_ids(&self, sparql: &str) -> Result<QueryResult, DatabaseError> {
         let stats = self.applicable_stats();
         let opts = exec::Options { stats: stats.as_deref(), raw_ids: true, ..Default::default() };
-        Ok(exec::query_with(&*self.snapshot, sparql, &opts)?)
+        Ok(exec::query_dataset_with(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
     }
     /// Decodes stored term IDs returned by `query_ids` on this snapshot in one batched dictionary pass, calling
     /// `f(i, term)` for `ids[i]` (in any order). Computed terms are not stored: look them up in
