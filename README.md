@@ -199,7 +199,7 @@ so it does not measure in-memory against on-disk TripleLight. Evidence:
 
 ### Embedded JVM baselines (Java API, no TripleLight row)
 
-TripleLight has no Java binding yet, so this section measures Jena and RDF4J on the same frozen workloads and answer
+This earlier cohort predates TripleLight's Java binding, so this section measures Jena and RDF4J on the same frozen workloads and answer
 checks, as reference points only; it does not rank TripleLight against them. Summed query seconds, pass 1 / pass 2.
 **Lower is better.**
 
@@ -291,16 +291,25 @@ The separate [Virtuoso100M correctness screen](docs/virtuoso100-qualification-v1
   with a shared cache, write-ahead log with group commit, snapshot reads, and compaction.
 - **Query engine**: cost-based join ordering from statistics, worst-case-optimal (leapfrog) and bind joins,
   filter pushdown, hash aggregation and top-k on term IDs.
-- **W3C SPARQL 1.1 test suite**: 281 pass, 6 fail, 44 unsupported ([details](bench/results/w3c-sparql11)).
+- **W3C SPARQL 1.1 test suite**: CI requires at least 323 passing tests, the current result on main
+  ([floor](ci/w3c_floor.json), [older detailed runs](bench/results/w3c-sparql11)).
+
+### Added since the first release notes
+
+Property paths; `DESCRIBE`; the hash functions, `NOW`, `RAND`, `UUID`, `STRUUID` and `BNODE()`; Arrow C stream
+output from the C, Go and Java bindings; persisted optimizer statistics (in the
+[startup36 session](docs/startup36-persisted-stats/README.md), statistics were ready 0.74–0.91 s after open
+with a saved statistics file, versus 20.5–25.8 s with a rebuild scan); and an optional HTTP server whose updates are
+off by default and can be enabled with a token or, on loopback only, without one.
 
 ### Not supported yet
 
-- Property paths, named graphs (`GRAPH`, `FROM`, N-Quads/TriG), `SERVICE`, `DESCRIBE`, and some functions (hashes, `NOW`,
-  `UUID`, …). These return an "unsupported" error.
-- Results are fully materialized in memory; there is no streaming or Arrow output yet.
+- Stored named graphs. The query engine evaluates `GRAPH`, `FROM` and `FROM NAMED` over a dataset, but the stores
+  hold only the default graph, so N-Quads/TriG loading and updates into named graphs (`GRAPH` in `INSERT`/`DELETE`,
+  `WITH`, `USING`) return an "unsupported" error.
+- `SERVICE`, `BNODE(string)`, and `GRAPH` inside `EXISTS`.
+- Results are materialized before output; Arrow output then streams that result in batches.
 - One process per store directory (enforced by a file lock).
-- Opening a large store takes seconds until optimizer statistics are ready (42.8 s for a 100M-triple store);
-  queries work before that with simpler plans.
 
 ## Learn more
 
