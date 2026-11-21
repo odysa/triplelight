@@ -568,6 +568,15 @@ pub(super) fn write_index(
     order: Order,
     rows: impl Iterator<Item = io::Result<(TermId, Term)>>,
 ) -> io::Result<()> {
+    write_index_checked(path, order, rows, true)
+}
+/// `check_text` is false only in tests that need a unified file whose text order is broken.
+fn write_index_checked(
+    path: &Path,
+    order: Order,
+    rows: impl Iterator<Item = io::Result<(TermId, Term)>>,
+    check_text: bool,
+) -> io::Result<()> {
     let mut out =
         std::io::BufWriter::new(OpenOptions::new().write(true).create_new(true).open(path)?);
     let header = order.magic();
@@ -616,7 +625,7 @@ pub(super) fn write_index(
                 if id_kind(pid.0) != id_kind(id.0) {
                     flush(&mut out, &mut block, order, &mut meta, &mut offset)?;
                     bytes_estimate = 0;
-                } else if *ptext >= text {
+                } else if check_text && *ptext >= text {
                     return Err(bad("dictionary keys not unique and sorted"));
                 }
             }
@@ -1041,6 +1050,28 @@ mod tests {
     }
 
     #[test]
+    fn broken_text_order_fails_verify_but_id_lookups_still_work() {
+        let dir = std::env::temp_dir().join(format!("rdf-unified-order-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        // Valid IDs, kinds and last text, but the text order inside the block is broken.
+        let rows: Vec<io::Result<(TermId, Term)>> = [(1u64, "urn:c"), (2, "urn:a"), (3, "urn:b")]
+            .iter()
+            .map(|(n, iri)| Ok((TermId((1 << 60) | n), oxrdf::NamedNode::new(*iri).unwrap().into())))
+            .collect();
+        let path = dir.join(UNIFIED_FILE);
+        write_index_checked(&path, Order::Unified, rows.into_iter(), false).unwrap();
+        let u = LazyIndex::open(&path, Order::Unified).unwrap();
+        // The cheap load-time guard (kind, IDs, last text) holds, so ID lookups still answer.
+        let mut seen = None;
+        u.with_id(TermId((1 << 60) | 2), &mut |t| seen = Some(t.to_string())).unwrap();
+        assert_eq!(seen.as_deref(), Some("<urn:a>"));
+        // The exhaustive check, used by `verify`, rejects it.
+        assert!(u.check_text_order().is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn unified_dictionary_reports_a_corrupt_directory_or_block() {
         let dir = std::env::temp_dir().join(format!("rdf-unified-corrupt-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
@@ -1116,6 +1147,14 @@ mod tests {
             for text in &texts { find(text.as_bytes()); }
             t.elapsed().as_nanos() as f64 / texts.len() as f64
         };
+        // Blocks read and bytes read per cold by-ID pass (needs TRIPLELIGHT_TRACE_BLOCK_CACHE=1); slot 7 serves both.
+        for (name, ix) in [("two-file", &old_id), ("unified", &unified)] {
+            ix.clear_cache().unwrap();
+            let before = super::super::disk_index::cache_trace_snapshot()[7];
+            for chunk in ids.chunks(4096) { ix.with_ids(chunk, &mut |_, t| { std::hint::black_box(t); }).unwrap(); }
+            let after = super::super::disk_index::cache_trace_snapshot()[7];
+            eprintln!("cold by-ID pass, {name}: block misses {}, bytes read {} (trace slot 7)", after[1] - before[1], after[3] - before[3]);
+        }
         let mut rows: Vec<(&str, Vec<f64>, Vec<f64>)> = vec![("by ID cold", vec![], vec![]), ("by ID warm", vec![], vec![]), ("by term cold", vec![], vec![]), ("by term warm", vec![], vec![])];
         for round in 0..5 {
             for variant in if round % 2 == 0 { [0, 1] } else { [1, 0] } {
