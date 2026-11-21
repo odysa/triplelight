@@ -98,6 +98,11 @@ The [COTTAS adapter qualification](cottas-tiny-qualification-v1/README.md) prese
 in the raw Parquet rows and in typed RDFLib reads with normalization disabled. The separate FILTER(false)
 diagnostic returns nine rows rather than zero. No workload timing was collected.
 
+The [RDFLib-HDT read qualification](rdflib-hdt-qualification-v1/README.md) uses the released Python adapter
+to read a retained Jena/HDT fixture. Native and Graph counts are 11 across the file. Nine selected terms are
+exact in native iteration and in typed iteration with literal normalization disabled. The separate diagnostic
+records the shared RDFLib evaluator result. This fixture run contributes no workload timing.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.
