@@ -130,11 +130,19 @@ impl ExternalSort {
             let mut next = Vec::new();
             for group in old.chunks(self.fan_in) {
                 let path = self.path();
-                merge(group, &path, self.max_record)?;
+                if let [only] = group {
+                    // A lone run is already sorted; move it instead of copying it through a merge.
+                    fs::rename(only, &path)?;
+                } else {
+                    merge(group, &path, self.max_record)?;
+                    // Free this group's inputs now, not after the whole round: the round's inputs plus its outputs
+                    // would otherwise coexist (about twice the data). A failure leaves files only in the private
+                    // scratch directory, which `Drop` removes.
+                    for input in group {
+                        fs::remove_file(input)?;
+                    }
+                }
                 next.push(path);
-            }
-            for path in old {
-                fs::remove_file(path)?;
             }
             self.runs = next;
         }
@@ -222,6 +230,31 @@ mod tests {
             assert_eq!(actual, expected);
         }
         assert!(!scratch.exists());
+    }
+    #[test]
+    fn each_merge_group_frees_its_inputs_and_a_lone_run_is_moved() {
+        let parent = std::env::temp_dir();
+        let mut sort = ExternalSort::new(&parent, 60_000, 1000).unwrap();
+        sort.run_budget = 128;
+        sort.fan_in = 3;
+        // 10 small runs: groups of 3, 3, 3 and a lone run, then another round.
+        let mut expected = Vec::new();
+        for i in (0..400u32).rev() {
+            let record = (i % 97).to_be_bytes().to_vec();
+            sort.push(record.clone()).unwrap();
+            expected.push(record);
+        }
+        let path = sort.finish().unwrap();
+        // Only the final merged run remains in the scratch directory.
+        let files = fs::read_dir(&sort.dir).unwrap().count();
+        assert_eq!(files, 1, "intermediate runs must be gone after finish");
+        let mut reader = BufReader::new(File::open(path).unwrap());
+        let mut actual = Vec::new();
+        while let Some(r) = read_record(&mut reader, 1000).unwrap() {
+            actual.push(r);
+        }
+        expected.sort_unstable();
+        assert_eq!(actual, expected);
     }
     #[test]
     fn truncated_and_oversized_records_fail() {
