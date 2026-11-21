@@ -4,7 +4,7 @@ use crate::model::TermId;
 use oxrdf::Term;
 use sha2::{Digest, Sha256};
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::HashMap,
     fs::{File, OpenOptions},
     io::{self, ErrorKind, Write},
     os::unix::fs::FileExt,
@@ -42,10 +42,101 @@ struct Meta {
     length: usize,
     hash: [u8; 32],
 }
+/// One cached decoded block: its rows, its charged size, its position in `Cache::keys`, and a reference bit set by
+/// hits and cleared by eviction sampling.
+struct Entry {
+    rows: Arc<Vec<(TermId, Term)>>,
+    size: usize,
+    pos: usize,
+    referenced: bool,
+}
+/// One cache shard. Eviction is scan-resistant: a miss into a full shard is admitted only with probability
+/// 1/`ADMIT_ONE_IN`, and room is made by sampling `EVICTION_SAMPLE` residents and evicting an unreferenced one
+/// (clearing the reference bits it passes). FIFO or LRU miss on every access of a repeated pass larger than the
+/// shard; this keeps roughly capacity/working-set of such a pass while a hit-protected hot set survives. The
+/// generator has a fixed per-shard seed, so a single reader replays the same decisions.
 struct Cache {
-    entries: HashMap<(usize, usize), (Arc<Vec<(TermId, Term)>>, usize)>,
-    order: VecDeque<(usize, usize)>,
+    entries: HashMap<(usize, usize), Entry>,
+    keys: Vec<(usize, usize)>,
     used: usize,
+    seed: u64,
+    rng: u64,
+}
+const ADMIT_ONE_IN: u64 = 4;
+const EVICTION_SAMPLE: usize = 8;
+impl Cache {
+    fn new(shard: usize) -> Self {
+        let seed = (0x9e37_79b9_7f4a_7c15 ^ (shard as u64).wrapping_mul(0xbf58_476d_1ce4_e5b9)) | 1;
+        Self { entries: HashMap::new(), keys: Vec::new(), used: 0, seed, rng: seed }
+    }
+    /// xorshift64*: cheap, deterministic, and good enough for sampling and admission coin flips.
+    fn next(&mut self) -> u64 {
+        let mut x = self.rng;
+        x ^= x >> 12;
+        x ^= x << 25;
+        x ^= x >> 27;
+        self.rng = x;
+        x.wrapping_mul(0x2545_f491_4f6c_dd1d)
+    }
+    fn get(&mut self, key: (usize, usize)) -> Option<Arc<Vec<(TermId, Term)>>> {
+        let entry = self.entries.get_mut(&key)?;
+        entry.referenced = true;
+        Some(Arc::clone(&entry.rows))
+    }
+    // An inconsistent cache is reported as an I/O error, as before B2, rather than panicking under the shard lock
+    // (which would poison it and hide the cause behind "lock poisoned").
+    fn remove_at(&mut self, pos: usize) -> io::Result<usize> {
+        let key = self.keys.swap_remove(pos);
+        if let Some(&moved) = self.keys.get(pos) {
+            self.entries.get_mut(&moved).ok_or_else(|| bad("dictionary cache invariant"))?.pos = pos;
+        }
+        Ok(self.entries.remove(&key).ok_or_else(|| bad("dictionary cache invariant"))?.size)
+    }
+    /// Evicts one block chosen by reference-bit sampling; returns its charged size.
+    fn evict_one(&mut self) -> io::Result<usize> {
+        let mut victim = None;
+        let mut last = 0;
+        // A block whose bit this sweep cleared is not eligible again in the same sweep: one sweep costs a referenced
+        // block its bit, not its place.
+        let mut cleared = [usize::MAX; EVICTION_SAMPLE];
+        for n in 0..EVICTION_SAMPLE {
+            let pos = (self.next() % self.keys.len() as u64) as usize;
+            last = pos;
+            let entry = self.entries.get_mut(&self.keys[pos]).ok_or_else(|| bad("dictionary cache invariant"))?;
+            if entry.referenced {
+                entry.referenced = false;
+                cleared[n] = pos;
+            } else if victim.is_none() && !cleared.contains(&pos) {
+                victim = Some(pos);
+            }
+        }
+        self.remove_at(victim.unwrap_or(last))
+    }
+    /// Caches `rows` if admitted; returns the number of evicted blocks. Never exceeds `budget`.
+    fn insert(&mut self, key: (usize, usize), rows: &Arc<Vec<(TermId, Term)>>, size: usize, budget: usize) -> io::Result<u64> {
+        if size > budget || self.entries.contains_key(&key) {
+            return Ok(0);
+        }
+        if self.used + size > budget && !self.next().is_multiple_of(ADMIT_ONE_IN) {
+            return Ok(0);
+        }
+        let mut evicted = 0;
+        while self.used + size > budget {
+            if self.keys.is_empty() { return Err(bad("dictionary cache invariant")); }
+            self.used -= self.evict_one()?;
+            evicted += 1;
+        }
+        self.used += size;
+        self.entries.insert(key, Entry { rows: Arc::clone(rows), size, pos: self.keys.len(), referenced: false });
+        self.keys.push(key);
+        Ok(evicted)
+    }
+    fn clear(&mut self) {
+        self.entries.clear();
+        self.keys.clear();
+        self.used = 0;
+        self.rng = self.seed;
+    }
 }
 pub(super) struct DictionaryCache {
     shards: Vec<Mutex<Cache>>,
@@ -55,7 +146,7 @@ impl DictionaryCache {
     pub(super) fn new() -> Arc<Self> {
         Arc::new(Self {
             shard_budget: super::disk_index::cache_budget_mb().saturating_mul(1024 * 1024) / 3 / 16,
-            shards: (0..16).map(|_| Mutex::new(Cache { entries: HashMap::new(), order: VecDeque::new(), used: 0 })).collect(),
+            shards: (0..16).map(|i| Mutex::new(Cache::new(i))).collect(),
         })
     }
 }
@@ -203,9 +294,9 @@ impl LazyIndex {
             Order::Term => 6,
             Order::Id => 7,
         };
-        if let Some((value, _)) = cache.entries.get(&(slot, index)) {
+        if let Some(value) = cache.get((slot, index)) {
             super::disk_index::trace_dictionary(slot, 0, 1);
-            return Ok(Arc::clone(value));
+            return Ok(value);
         }
         super::disk_index::trace_dictionary(slot, 1, 1);
         let meta = self
@@ -230,20 +321,9 @@ impl LazyIndex {
             .saturating_add(keys.iter().map(Vec::len).sum::<usize>())
             .saturating_add(rows.len() * 128);
         let rows = Arc::new(rows);
-        if size <= self.cache.shard_budget {
-            while cache.used.saturating_add(size) > self.cache.shard_budget {
-                let old = cache
-                    .order
-                    .pop_front()
-                    .ok_or_else(|| bad("dictionary cache invariant"))?;
-                if let Some((_, n)) = cache.entries.remove(&old) {
-                    cache.used -= n;
-                    super::disk_index::trace_dictionary(slot, 4, 1);
-                }
-            }
-            cache.used += size;
-            cache.entries.insert((slot, index), (Arc::clone(&rows), size));
-            cache.order.push_back((slot, index));
+        let evicted = cache.insert((slot, index), &rows, size, self.cache.shard_budget)?;
+        if evicted > 0 {
+            super::disk_index::trace_dictionary(slot, 4, evicted);
         }
         Ok(rows)
     }
@@ -252,9 +332,7 @@ impl LazyIndex {
             let mut cache = shard
                 .lock()
                 .map_err(|_| io::Error::other("dictionary cache lock poisoned"))?;
-            cache.entries.clear();
-            cache.order.clear();
-            cache.used = 0;
+            cache.clear();
         }
         Ok(())
     }
@@ -788,5 +866,170 @@ mod tests {
         assert!(terms.find(entries[0].1.to_string().as_bytes()).is_err());
         drop(terms);
         std::fs::remove_dir_all(dir).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod admission_cache_tests {
+    use super::*;
+    fn rows() -> Arc<Vec<(TermId, Term)>> { Arc::new(Vec::new()) }
+
+    #[test]
+    fn budget_is_never_exceeded_and_full_shards_admit_about_one_in_four() {
+        let mut c = Cache::new(3);
+        let r = rows();
+        for i in 0..10 { c.insert((7, i), &r, 10, 100).unwrap(); }
+        assert_eq!((c.used, c.keys.len()), (100, 10), "a shard with room admits every miss");
+        let mut admitted = 0;
+        for i in 10..4010 {
+            let before = c.entries.contains_key(&(7, i));
+            assert!(!before);
+            c.insert((7, i), &r, 10, 100).unwrap();
+            admitted += u32::from(c.entries.contains_key(&(7, i)));
+            assert!(c.used <= 100 && c.keys.len() == c.entries.len());
+            for (pos, key) in c.keys.iter().enumerate() { assert_eq!(c.entries[key].pos, pos) }
+        }
+        assert!((850..=1150).contains(&admitted), "admitted {admitted} of 4000, expected about 1000");
+        assert_eq!(c.insert((7, 99_999), &r, 101, 100).unwrap(), 0, "a block larger than the shard is never cached");
+    }
+
+    #[test]
+    fn a_referenced_block_survives_an_eviction_sample_sweep() {
+        let mut c = Cache::new(0);
+        let r = rows();
+        for i in 0..8 { c.insert((7, i), &r, 10, 80).unwrap(); }
+        assert!(c.get((7, 0)).is_some());
+        // Every resident except block 0 is unreferenced, so one eviction never picks block 0 unless all eight
+        // samples land on it, in which case its bit is cleared and it is the fallback victim.
+        let mut survived = 0;
+        for trial in 0..200 {
+            let mut d = Cache::new(trial);
+            for i in 0..8 { d.insert((7, i), &r, 10, 80).unwrap(); }
+            d.get((7, 0));
+            d.used -= d.evict_one().unwrap();
+            survived += u32::from(d.entries.contains_key(&(7, 0)));
+        }
+        assert!(survived >= 199, "referenced block evicted in {} of 200 sweeps", 200 - survived);
+    }
+
+    #[test]
+    fn clear_resets_contents_and_the_generator() {
+        let mut c = Cache::new(5);
+        let r = rows();
+        for i in 0..50 { c.insert((6, i), &r, 10, 100).unwrap(); }
+        let first: Vec<_> = (0..20).map(|_| c.next()).collect();
+        c.clear();
+        assert!(c.entries.is_empty() && c.keys.is_empty() && c.used == 0);
+        let again: Vec<_> = (0..20).map(|_| c.next()).collect();
+        assert_ne!(first, again, "the generator advanced before the first sample");
+        c.clear();
+        let mut fresh = Cache::new(5);
+        assert_eq!((0..20).map(|_| c.next()).collect::<Vec<_>>(), (0..20).map(|_| fresh.next()).collect::<Vec<_>>());
+    }
+}
+
+/// B2 hit-path microbenchmark (ignored; run with
+/// `cargo test --release -p triplelight-storage b2_hit_path -- --ignored --nocapture`). Same process, same keys, same
+/// resident set, interleaved old/new rounds: the pre-B2 FIFO shard (copied verbatim from main dda13fb5) against the
+/// reference-bit shard, timing only `get` on blocks that are all resident (the all-hit case).
+#[cfg(test)]
+mod b2_hit_bench {
+    use super::*;
+    use std::collections::VecDeque;
+    struct OldCache {
+        entries: HashMap<(usize, usize), (Arc<Vec<(TermId, Term)>>, usize)>,
+        order: VecDeque<(usize, usize)>,
+        used: usize,
+    }
+    impl OldCache {
+        fn get(&self, key: (usize, usize)) -> Option<Arc<Vec<(TermId, Term)>>> {
+            self.entries.get(&key).map(|(v, _)| Arc::clone(v))
+        }
+    }
+    #[test]
+    #[ignore]
+    fn b2_hit_path() {
+        const BLOCKS: usize = 3_400; // ~54,231 Q9 blocks / 16 shards
+        const LOOKUPS: usize = 2_000_000;
+        let rows = Arc::new(Vec::new());
+        let mut old = OldCache { entries: HashMap::new(), order: VecDeque::new(), used: 0 };
+        let mut new = Cache::new(7);
+        for i in 0..BLOCKS {
+            old.entries.insert((7, i), (Arc::clone(&rows), 10));
+            old.order.push_back((7, i));
+            old.used += 10;
+            new.insert((7, i), &rows, 10, usize::MAX).unwrap();
+        }
+        // Fixed pseudo-random key sequence shared by both.
+        let mut x = 0x2545_f491_4f6c_dd1du64;
+        let keys: Vec<(usize, usize)> = (0..LOOKUPS).map(|_| { x ^= x << 13; x ^= x >> 7; x ^= x << 17; (7, (x % BLOCKS as u64) as usize) }).collect();
+        let mut times = (Vec::new(), Vec::new());
+        let mut sink = 0usize;
+        for round in 0..20 {
+            for which in if round % 2 == 0 { [0, 1] } else { [1, 0] } {
+                let t = std::time::Instant::now();
+                for &k in &keys {
+                    let v = if which == 0 { old.get(k) } else { new.get(k) };
+                    sink = sink.wrapping_add(v.map_or(0, |r| Arc::strong_count(&r)));
+                }
+                let ns = t.elapsed().as_nanos() as f64 / LOOKUPS as f64;
+                if which == 0 { times.0.push(ns) } else { times.1.push(ns) }
+            }
+        }
+        let med = |v: &mut Vec<f64>| { v.sort_by(|a, b| a.partial_cmp(b).unwrap()); v[v.len() / 2] };
+        let (o, n) = (med(&mut times.0), med(&mut times.1));
+        println!("b2 hit path: old FIFO get {o:.2} ns/lookup, new ref-bit get {n:.2} ns/lookup, delta {:+.2} ns ({:+.1}%), sink {sink}", n - o, 100.0 * (n - o) / o);
+    }
+
+    /// Gate D item 3 (Kaiming 33733518): the miss path into a full shard. Old: FIFO pop_front + remove + insert (the
+    /// pre-B2 code path). New: `Cache::insert` with admission coin and 8-sample reference-bit sweep. Every lookup is a
+    /// miss on a key not resident; both shards are full at the same capacity. Reports ns per miss (cache bookkeeping
+    /// only; the decode a miss also pays is excluded and measured separately in a38).
+    #[test]
+    #[ignore]
+    fn b2_miss_path() {
+        const CAP: usize = 3_400;
+        const MISSES: usize = 1_000_000;
+        let rows = Arc::new(Vec::new());
+        let budget = CAP * 10;
+        let mut old = OldCache { entries: HashMap::new(), order: VecDeque::new(), used: 0 };
+        let mut new = Cache::new(7);
+        for i in 0..CAP {
+            old.entries.insert((7, i), (Arc::clone(&rows), 10)); old.order.push_back((7, i)); old.used += 10;
+            new.insert((7, i), &rows, 10, budget).unwrap();
+        }
+        // Half the residents referenced, so the sweep does real bit clearing.
+        for i in (0..CAP).step_by(2) { new.get((7, i)); }
+        let mut times = (Vec::new(), Vec::new());
+        let mut next_key = CAP;
+        let mut admitted_r0 = 0u64;
+        for round in 0..10 {
+            for which in if round % 2 == 0 { [0, 1] } else { [1, 0] } {
+                let t = std::time::Instant::now();
+                for _ in 0..MISSES {
+                    let key = (7, next_key); next_key += 1;
+                    if which == 0 {
+                        // Verbatim pre-B2 insertion: evict FIFO until it fits, then insert.
+                        while old.used + 10 > budget {
+                            let k = old.order.pop_front().unwrap();
+                            if let Some((_, n)) = old.entries.remove(&k) { old.used -= n; }
+                        }
+                        old.used += 10; old.entries.insert(key, (Arc::clone(&rows), 10)); old.order.push_back(key);
+                    } else {
+                        new.insert(key, &rows, 10, budget).unwrap();
+                        if which == 1 && round == 0 && new.entries.contains_key(&key) { admitted_r0 += 1; }
+                    }
+                }
+                let ns = t.elapsed().as_nanos() as f64 / MISSES as f64;
+                if which == 0 { times.0.push(ns) } else { times.1.push(ns) }
+            }
+        }
+        let med = |v: &mut Vec<f64>| { v.sort_by(|a, b| a.partial_cmp(b).unwrap()); v[v.len() / 2] };
+        let (o, n) = (med(&mut times.0), med(&mut times.1));
+        // Equal block sizes: each admission into a full shard evicts exactly one block; old samples nothing, new
+        // samples EVICTION_SAMPLE residents per eviction. Old admits every miss; new about 1 in ADMIT_ONE_IN.
+        let new_admit_frac = admitted_r0 as f64 / MISSES as f64;
+        let per_admission_new = if new_admit_frac > 0.0 { n / new_admit_frac } else { f64::NAN };
+        println!("b2 miss path (full shard, {MISSES} misses/round, 10 interleaved rounds): old FIFO {o:.1} ns/miss = {o:.1} ns/admission (admits 1.000, sweep steps 0); new {n:.1} ns/miss, admits {new_admit_frac:.3} -> {per_admission_new:.1} ns/admission, sweep steps {} per admission; added cost per miss {:+.1} ns = {:.4}% of ~180,000 ns decode per miss (a38 scope: conversion-window decode_ms / slot-7 misses, Q9 and Q14 at 1x); frozen ceiling 9,000 ns/miss", EVICTION_SAMPLE, n - o, 100.0 * (n - o).max(0.0) / 180_000.0);
     }
 }

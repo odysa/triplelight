@@ -1,0 +1,292 @@
+{
+ "by_cell_budget": {
+  "q9 1x": {
+   "pos1_hit_rate_median": 0.6214417404129794,
+   "pos1_hit_rate_range": [
+    0.6214417404129794,
+    0.6214417404129794
+   ],
+   "pos2_hit_rate_median": 0.6127396755162242,
+   "pos2_hit_rate_range": [
+    0.6127396755162242,
+    0.6127396755162242
+   ],
+   "lookups_a38": [
+    54240
+   ],
+   "lookups_a37": [
+    54240
+   ],
+   "misses_median": [
+    54231.0,
+    20769.0
+   ],
+   "evictions_median": [
+    54230.0,
+    5238.0
+   ],
+   "profiled_decode_ms_median": [
+    10241.138507,
+    4042.44808
+   ],
+   "control_total_ms_median": [
+    10613.114,
+    4049.32
+   ],
+   "query_window_hits_median": [
+    7.0,
+    7.5
+   ],
+   "ids_ms_median": [
+    861.6990000000001,
+    904.6335
+   ],
+   "anon_convert_end_GiB_median": [
+    2.203,
+    2.172
+   ],
+   "outside_cpu_max_pct": 98.94,
+   "outside_unavailable_samples": 0
+  },
+  "q9 1.5x": {
+   "pos1_hit_rate_median": 0.9765302359882005,
+   "pos1_hit_rate_range": [
+    0.9765302359882005,
+    0.9765302359882005
+   ],
+   "pos2_hit_rate_median": 0.9764564896755162,
+   "pos2_hit_rate_range": [
+    0.9764564896755162,
+    0.9764564896755162
+   ],
+   "lookups_a38": [
+    54240
+   ],
+   "lookups_a37": [
+    54240
+   ],
+   "misses_median": [
+    54231.0,
+    1275.0
+   ],
+   "evictions_median": [
+    54230.0,
+    313.5
+   ],
+   "profiled_decode_ms_median": [
+    9721.380388,
+    466.228363
+   ],
+   "control_total_ms_median": [
+    9423.533,
+    526.726
+   ],
+   "query_window_hits_median": [
+    7.0,
+    9.0
+   ],
+   "ids_ms_median": [
+    744.535,
+    761.6795
+   ],
+   "anon_convert_end_GiB_median": [
+    3.124,
+    3.113
+   ],
+   "outside_cpu_max_pct": 0.56,
+   "outside_unavailable_samples": 0
+  },
+  "q9 2x": {
+   "pos1_hit_rate_median": 1.0,
+   "pos1_hit_rate_range": [
+    1.0,
+    1.0
+   ],
+   "pos2_hit_rate_median": 1.0,
+   "pos2_hit_rate_range": [
+    1.0,
+    1.0
+   ],
+   "lookups_a38": [
+    54240
+   ],
+   "lookups_a37": [
+    54240
+   ],
+   "misses_median": [
+    0.0,
+    0.0
+   ],
+   "evictions_median": [
+    0.0,
+    0.0
+   ],
+   "profiled_decode_ms_median": [
+    146.487329,
+    119.374674
+   ],
+   "control_total_ms_median": [
+    178.631,
+    197.998
+   ],
+   "query_window_hits_median": [
+    9.0,
+    9.0
+   ],
+   "ids_ms_median": [
+    576.047,
+    557.3634999999999
+   ],
+   "anon_convert_end_GiB_median": [
+    3.411,
+    3.4
+   ],
+   "outside_cpu_max_pct": 99.52,
+   "outside_unavailable_samples": 0
+  },
+  "q14 1x": {
+   "pos1_hit_rate_median": 0.6702135862441206,
+   "pos1_hit_rate_range": [
+    0.6702135862441206,
+    0.6702135862441206
+   ],
+   "pos2_hit_rate_median": 0.6640257537204102,
+   "pos2_hit_rate_range": [
+    0.6640257537204102,
+    0.6640257537204102
+   ],
+   "lookups_a38": [
+    51876
+   ],
+   "lookups_a37": [
+    51876
+   ],
+   "misses_median": [
+    50916.0,
+    17268.5
+   ],
+   "evictions_median": [
+    50916.0,
+    4350.0
+   ],
+   "profiled_decode_ms_median": [
+    10147.246008,
+    3994.051706
+   ],
+   "control_total_ms_median": [
+    11474.114,
+    5062.689
+   ],
+   "query_window_hits_median": [
+    0.0,
+    1.0
+   ],
+   "ids_ms_median": [
+    937.2755,
+    824.7435
+   ],
+   "anon_convert_end_GiB_median": [
+    1.865,
+    1.839
+   ],
+   "outside_cpu_max_pct": 20.85,
+   "outside_unavailable_samples": 0
+  },
+  "q14 1.5x": {
+   "pos1_hit_rate_median": 1.0,
+   "pos1_hit_rate_range": [
+    1.0,
+    1.0
+   ],
+   "pos2_hit_rate_median": 1.0,
+   "pos2_hit_rate_range": [
+    1.0,
+    1.0
+   ],
+   "lookups_a38": [
+    51876
+   ],
+   "lookups_a37": [
+    51876
+   ],
+   "misses_median": [
+    0.0,
+    0.0
+   ],
+   "evictions_median": [
+    0.0,
+    0.0
+   ],
+   "profiled_decode_ms_median": [
+    922.071776,
+    904.425382
+   ],
+   "control_total_ms_median": [
+    1986.517,
+    2010.067
+   ],
+   "query_window_hits_median": [
+    2.0,
+    2.0
+   ],
+   "ids_ms_median": [
+    870.5765,
+    878.2284999999999
+   ],
+   "anon_convert_end_GiB_median": [
+    2.485,
+    2.487
+   ],
+   "outside_cpu_max_pct": 0.5,
+   "outside_unavailable_samples": 0
+  },
+  "q14 2x": {
+   "pos1_hit_rate_median": 1.0,
+   "pos1_hit_rate_range": [
+    1.0,
+    1.0
+   ],
+   "pos2_hit_rate_median": 1.0,
+   "pos2_hit_rate_range": [
+    1.0,
+    1.0
+   ],
+   "lookups_a38": [
+    51876
+   ],
+   "lookups_a37": [
+    51876
+   ],
+   "misses_median": [
+    0.0,
+    0.0
+   ],
+   "evictions_median": [
+    0.0,
+    0.0
+   ],
+   "profiled_decode_ms_median": [
+    905.885498,
+    917.332249
+   ],
+   "control_total_ms_median": [
+    1964.664,
+    1939.235
+   ],
+   "query_window_hits_median": [
+    2.0,
+    2.0
+   ],
+   "ids_ms_median": [
+    847.315,
+    845.956
+   ],
+   "anon_convert_end_GiB_median": [
+    2.485,
+    2.487
+   ],
+   "outside_cpu_max_pct": 41.75,
+   "outside_unavailable_samples": 0
+  }
+ }
+}
