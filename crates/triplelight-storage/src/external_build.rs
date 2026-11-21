@@ -222,6 +222,7 @@ impl Builder {
         let mut identities = vec![term_identity, id_identity];
         let jobs: Vec<_> = FILES[1..].iter().copied().zip(Perm::ALL).collect();
         let workers = self.index_workers;
+        eprintln!("permutation sorts: {workers} at a time");
         let run_budget = (budget_mb().saturating_mul(1_048_576) / workers).min(MEMORY);
         for batch in jobs.chunks(workers) {
             let results = std::thread::scope(|scope| {
