@@ -541,20 +541,22 @@ pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
         &term_path,
         Order::Term,
         Rows {
-            input: std::io::BufReader::new(File::open(term_run)?),
+            input: std::io::BufReader::new(File::open(&term_run)?),
             order: Order::Term,
             done: false,
         },
     )?;
+    std::fs::remove_file(&term_run)?;
     write_index(
         &id_path,
         Order::Id,
         Rows {
-            input: std::io::BufReader::new(File::open(id_run)?),
+            input: std::io::BufReader::new(File::open(&id_run)?),
             order: Order::Id,
             done: false,
         },
     )?;
+    std::fs::remove_file(&id_run)?;
     let identities = (
         LazyIndex::open(&term_path, Order::Term)?.identity(),
         LazyIndex::open(&id_path, Order::Id)?.identity(),
