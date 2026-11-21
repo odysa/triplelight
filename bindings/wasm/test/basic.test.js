@@ -88,7 +88,7 @@ test("named graphs: updates, management, quad loads and dataset queries", () => 
   const shared = db.querySync("SELECT ?y WHERE { GRAPH <urn:k> { ?b <urn:q> \"x\" } GRAPH <urn:g> { ?b <urn:q> ?y } }");
   assert.strictEqual(shared.bindings[0].y.value, "y");
   assert.deepStrictEqual(db.querySync("SELECT ?g WHERE { GRAPH ?g { } }").bindings.map((b) => b.g.value).sort(), ["urn:g", "urn:h", "urn:k", "urn:t"]);
-  assert.throws(() => db.loadSync("<urn:a> <urn:p> 1 _:g .\n", "nquads"), (e) => e.kind === "UnsupportedError");
+  assert.throws(() => db.loadSync("<urn:a> <urn:p> \"1\" _:g .\n", "nquads"), (e) => e.kind === "UnsupportedError");
   assert.throws(() => db.updateSync("CREATE GRAPH <urn:g>"), (e) => e.kind === "GraphStateError");
   // A snapshot keeps the dataset as it was.
   const snap = db.read();
