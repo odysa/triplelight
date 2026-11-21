@@ -298,7 +298,7 @@ The separate [Virtuoso100M correctness screen](docs/virtuoso100-qualification-v1
 
 Property paths; `DESCRIBE`; the hash functions, `NOW`, `RAND`, `UUID`, `STRUUID` and `BNODE()`; Arrow C stream
 output from the C, Go and Java bindings; persisted optimizer statistics (in the
-[startup36 session](docs/startup36-persisted-stats/README.md), statistics were ready 0.74–0.91 s after open
+[startup36 session](docs/startup36-persisted-stats/README.md), statistics were ready 0.74–0.91 s from the start of open
 with a saved statistics file, versus 20.5–25.8 s with a rebuild scan); and an optional HTTP server whose updates are
 off by default and can be enabled with a token or, on loopback only, without one.
 
