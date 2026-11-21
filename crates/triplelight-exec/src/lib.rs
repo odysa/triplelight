@@ -1288,7 +1288,7 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                 if delete.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph))
                     || insert.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph)) { return Err(unsupported("named graphs")) }
                 let q = Query::Select { dataset: None, pattern: (**pattern).clone(), base_iri: None };
-                let QueryResult::Solutions { vars, rows } = run_query(snap, None, &q, &Options::default())? else { unreachable!() };
+                let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, None, &q, &Options::default()))? else { unreachable!() };
                 let col: HashMap<&str, usize> = vars.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
                 for (n, row) in rows.iter().enumerate() {
                     let var = |v: &Variable| col.get(v.as_str()).and_then(|&i| row[i].clone());
@@ -1373,7 +1373,7 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
                 _ => (**pattern).clone(),
             };
             let q = Query::Select { dataset: using.clone(), pattern, base_iri: None };
-            let QueryResult::Solutions { vars, rows } = run_query(snap, Some(dataset), &q, &Options::default())? else { unreachable!() };
+            let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, Some(dataset), &q, &Options::default()))? else { unreachable!() };
             let col: HashMap<&str, usize> = vars.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
             let default_target = || with.as_ref().map_or(GraphTarget::Default, |g| GraphTarget::Named(g.clone()));
             for (n, row) in rows.iter().enumerate() {
@@ -1419,12 +1419,13 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
         Op::Transfer { kind, silent, from, to } => {
             // SPARQL 1.1 Update §3.2.3-3.2.5: an absent source graph fails the request unless SILENT (and then nothing
             // happens); a transfer from a graph to itself does nothing. COPY and MOVE replace the destination, ADD
-            // keeps it; MOVE then drops the source. The default graph always exists.
+            // keeps it; MOVE then drops the source. The default graph always exists. The self-transfer check comes first,
+            // so a transfer of an absent graph to itself is a no-op too.
+            if from == to { return Ok(out) }
             if let GraphName::NamedNode(g) = from && !graph_exists(snap, dataset, g)? {
                 if *silent { return Ok(out) }
                 return Err(QueryError::new(QueryErrorKind::GraphState, format!("graph {g} does not exist")));
             }
-            if from == to { return Ok(out) }
             let triples = graph_triples(snap, dataset, from)?;
             let dest = target(to);
             match (kind, to) {
@@ -1468,7 +1469,7 @@ fn graph_triples<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &crate::sp
         GraphName::NamedNode(n) => GraphPattern::Graph { name: NamedNodePattern::NamedNode(n.clone()), inner: Box::new(bgp) },
     };
     let q = Query::Select { dataset: None, pattern, base_iri: None };
-    let QueryResult::Solutions { vars, rows } = run_query(snap, Some(dataset), &q, &Options::default())? else { unreachable!() };
+    let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, Some(dataset), &q, &Options::default()))? else { unreachable!() };
     let col = |name: &str| vars.iter().position(|x| x.as_str() == name).expect("projected variable");
     let (s, p, o) = (col("s"), col("p"), col("o"));
     Ok(rows.into_iter().filter_map(|r| match (r[s].clone(), r[p].clone(), r[o].clone()) {

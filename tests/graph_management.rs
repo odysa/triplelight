@@ -118,9 +118,12 @@ fn transfer_from_an_absent_graph_fails_unless_silent_and_to_itself_does_nothing(
             assert!(matches!(fails(db, &format!("{op} :absent TO :g")), DatabaseError::GraphState(_)), "{op}");
             update(db, &format!("{op} SILENT :absent TO :g"));
             update(db, &format!("{op} :g TO :g"));
+            // A self-transfer does nothing even when the graph is absent (the no-op is checked before the source).
+            update(db, &format!("{op} :absent TO :absent"));
+            update(db, &format!("{op} DEFAULT TO DEFAULT"));
             assert_eq!(objects(db, Some(":g")), vec![lit(1)], "{op}");
         }
-        assert_eq!(graphs(db), g(&["g"]));
+        assert_eq!(graphs(db), g(&["g"]), "self-transfers of an absent graph must not create it");
         // An empty source graph exists: COPY from it empties the destination.
         update(db, "CREATE GRAPH :e ; COPY :e TO :g");
         assert_eq!(objects(db, Some(":g")), NONE);
