@@ -433,7 +433,8 @@ impl Store {
     /// Validates and appends a change set to the pending state; returns the sequence number to wait for.
     fn enqueue(&self, changes: &[(Change, Triple)]) -> std::io::Result<(u64, usize)> {
         self.check_poisoned()?;
-        for (_, t) in changes { check_triple_size(t)? }
+        // Only what adds data is checked: deleting an oversized term from a legacy record must stay possible.
+        for (c, t) in changes { if *c == Change::Insert { check_triple_size(t)? } }
         let mut p = self.pending.lock().unwrap();
         let cur = p.latest.clone();
         let (next, _, rec) = cur.apply_dataset(&default_changes(changes), true)?;
@@ -712,14 +713,15 @@ impl Store {
 
     fn enqueue_dataset(&self, changes: &[DatasetChange]) -> std::io::Result<(u64, usize)> {
         self.check_poisoned()?;
+        // Only what adds data is checked (inserts and CREATE): deleting an oversized term, or dropping or clearing a
+        // graph named by one, which a legacy WAL record can have put in the store, must stay possible.
         for change in changes {
             match change {
-                DatasetChange::Quad(g, _, t) => {
+                DatasetChange::Quad(g, Change::Insert, t) => {
                     check_triple_size(t)?;
                     if let GraphTarget::Named(g) = g { check_term_size(oxrdf::TermRef::NamedNode(g.as_ref()))? }
                 }
-                DatasetChange::Create { graph, .. } | DatasetChange::Drop { target: GraphScope::Graph(graph), .. }
-                | DatasetChange::Clear { target: GraphScope::Graph(graph), .. } => check_term_size(oxrdf::TermRef::NamedNode(graph.as_ref()))?,
+                DatasetChange::Create { graph, .. } => check_term_size(oxrdf::TermRef::NamedNode(graph.as_ref()))?,
                 _ => {}
             }
         }
@@ -1186,9 +1188,11 @@ mod dataset_wal_tests {
     /// A WAL record with a term over the streaming parsers' 16 MiB token limit, which older binaries accepted on replay
     /// (`oxttl`'s `for_slice` had no limit), still replays, and so does the record after it (task #45, PR #94 review).
     #[test]
+    #[cfg(unix)]
     fn oversized_wal_records_survive_reopen() {
         let dir = Dir::new("wal-oversized");
-        let store = dir.open();
+        let open = || Store::open_with(&dir.0, None, Box::new(crate::DiskBase { workers: 1 })).unwrap();
+        let store = open();
         let big = "x".repeat(triplelight_core::ntriples::MAX_TOKEN + 1024);
         // Commits now refuse such a term (#95), so the legacy record is written as an older binary wrote it.
         store.commit(&[(Change::Insert, t("before", "0"))]).unwrap();
@@ -1198,13 +1202,23 @@ mod dataset_wal_tests {
         let mut wal = dir.wal();
         wal.extend_from_slice(legacy.as_bytes());
         std::fs::write(dir.0.join("wal.log"), &wal).unwrap();
-        let store = dir.open();
+        let store = open();
         store.commit_dataset(&[ins_default(t("after", "1")), ins("g", t("after", "2"))]).unwrap();
         let before = state(&store.snapshot());
         drop(store);
         assert!(dir.wal().len() > triplelight_core::ntriples::MAX_TOKEN);
-        assert_eq!(state(&dir.open().snapshot()), before);
-        assert_eq!(state(&dir.open().snapshot()).0.len(), 3);
+        let store = open();
+        assert_eq!(state(&store.snapshot()), before);
+        assert_eq!(state(&store.snapshot()).0.len(), 3);
+        // No base can hold the term, so compaction fails and changes nothing; deleting it (allowed, unlike inserting
+        // it) makes the store compactable again.
+        assert!(store.compact().is_err());
+        assert_eq!(state(&store.snapshot()), before);
+        store.commit(&[(Change::Delete, t("big", &big))]).unwrap();
+        store.compact().unwrap();
+        assert_eq!(state(&store.snapshot()).0.len(), 2);
+        drop(store);
+        assert_eq!(state(&open().snapshot()).0.len(), 2);
     }
 
     /// A term longer than a base can hold is refused at commit, before anything reaches the WAL, on both commit paths;
@@ -1227,6 +1241,14 @@ mod dataset_wal_tests {
         assert!(store.commit(&[(Change::Insert, escaped)]).is_err());
         assert!(store.commit_dataset(&[Create { graph: NamedNode::new(format!("http://ex/{}", "g".repeat(limit))).unwrap(), silent: false }]).is_err());
         assert_eq!(dir.wal(), wal, "nothing of a refused update reaches the WAL");
+        // Removing data is never refused: deleting an oversized triple, or dropping a graph with an oversized name, is
+        // allowed (here a no-op), since a legacy WAL record may have put such a term in the store.
+        assert_eq!(store.commit(&[(Change::Delete, big.clone())]).unwrap(), 0);
+        let long_graph = NamedNode::new(format!("http://ex/{}", "g".repeat(limit))).unwrap();
+        assert_eq!(store.commit_dataset(&[Drop { target: GraphScope::Graph(long_graph.clone()), silent: true },
+                                         Clear { target: GraphScope::Graph(long_graph), silent: true },
+                                         Quad(GraphTarget::Named(iri("g")), Change::Delete, big.clone())]).unwrap(), 0);
+        assert_eq!(dir.wal(), wal, "no-op removals write nothing");
         let fits = Triple::new(iri("s"), iri("p"), Literal::new_simple_literal("y".repeat(limit - 16)));
         store.commit(&[(Change::Insert, fits.clone())]).unwrap();
         let want = state(&store.snapshot());
