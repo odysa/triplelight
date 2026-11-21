@@ -213,26 +213,39 @@ impl DiskSnapshot {
             indexes,
         })
     }
-    /// Re-read every block, check dictionary references, then verify the exact permutation sets.
+    /// Exhaustive, exact verification. The phases run in this order because the later ones rely on the earlier:
+    /// 1. Dictionary: every term-order entry `(id, term)` must equal `by_id[id]`, adjacent term-order terms must
+    ///    differ, and both indexes must hold the same number of entries. The term index is strictly sorted, so its
+    ///    N terms are distinct and map injectively into the ID index; with equal counts the two are one bijection,
+    ///    and no reverse lookup is needed.
+    /// 2. Indexes (in parallel): every block re-read and validated (strictly sorted, so no duplicate rows), and all
+    ///    six indexes have the same row count.
+    /// 3. Permutations (in parallel): every row of every order is in SPO. With phase 2 (no duplicates, equal counts)
+    ///    this makes all six orders the same triple set.
+    /// 4. References: every ID in SPO resolves in the dictionary. Because of phases 2 and 3 this covers every ID in
+    ///    every order. Do not reorder these phases.
     pub fn verify(&self) -> io::Result<()> {
+        use rayon::prelude::*;
         if let DictionaryBackend::Lazy { by_term, by_id } = &self.dictionary {
             by_term.clear_cache()?;
             by_id.clear_cache()?;
             let mut term_count = 0u64;
-            let mut id_count = 0u64;
+            let mut previous: Option<Term> = None;
             by_term.for_each(&mut |id, term| {
+                if previous.as_ref() == Some(term) {
+                    return Err(bad("dictionary term index repeats a term"));
+                }
                 let mut found = None;
                 by_id.with_id(id, &mut |v| found = Some(v.into_owned()))?;
                 if found.as_ref() != Some(term) {
                     return Err(bad("dictionary index disagreement"));
                 }
+                previous = Some(term.clone());
                 term_count += 1;
                 Ok(())
             })?;
-            by_id.for_each(&mut |id, term| {
-                if by_term.find(term.to_string().as_bytes())?.map(|v| v.0) != Some(id) {
-                    return Err(bad("dictionary index disagreement"));
-                }
+            let mut id_count = 0u64;
+            by_id.for_each(&mut |_, _| {
                 id_count += 1;
                 Ok(())
             })?;
@@ -240,22 +253,37 @@ impl DiskSnapshot {
                 return Err(bad("dictionary index count mismatch"));
             }
         }
-        for index in &self.indexes {
+        // Phase 2.
+        self.indexes.par_iter().try_for_each(|index| -> io::Result<()> {
             index.clear_cache()?;
-            index.validate()?;
-            for i in 0..index.len() {
-                for id in index.get(i)? {
+            index.validate()
+        })?;
+        let rows = self.index(Perm::Spo).len();
+        if self.indexes.iter().any(|index| index.len() != rows) {
+            return Err(bad("permutation row counts differ"));
+        }
+        // Phase 3.
+        self.verify_permutations()?;
+        // Phase 4: SPO only, skipping an ID equal to the previous row's in the same column.
+        let spo = self.index(Perm::Spo);
+        let mut last = [None; 3];
+        for i in 0..spo.len() {
+            for (k, id) in spo.get(i)?.into_iter().enumerate() {
+                if last[k] != Some(id) {
                     self.with_term(id, &mut |_| ())?;
+                    last[k] = Some(id);
                 }
             }
         }
-        self.verify_permutations()
+        Ok(())
     }
-    /// Exhaustively check that all permutations describe the same triple set.
+    /// Exhaustively check that every row of every permutation is in SPO (the six orders in parallel). Together with
+    /// strictly sorted indexes of equal length (`verify` phase 2) this means all permutations hold the same set.
     /// This can be expensive; open() does not perform it.
     pub fn verify_permutations(&self) -> io::Result<()> {
+        use rayon::prelude::*;
         let base = self.index(Perm::Spo);
-        for perm in Perm::ALL {
+        Perm::ALL.par_iter().try_for_each(|&perm| -> io::Result<()> {
             let index = self.index(perm);
             let order = perm.order();
             for i in 0..index.len() {
@@ -269,8 +297,8 @@ impl DiskSnapshot {
                     return Err(bad("permutation contents disagree"));
                 }
             }
-        }
-        Ok(())
+            Ok(())
+        })
     }
     fn index(&self, perm: Perm) -> &DiskIndex {
         &self.indexes[Perm::ALL.iter().position(|x| *x == perm).unwrap()]
@@ -500,6 +528,101 @@ mod tests {
         let disk = DiskSnapshot::open(&dir).unwrap();
         assert!(disk.verify_permutations().is_err());
         drop(disk);
+        fs::remove_dir_all(dir).unwrap();
+    }
+    /// Three triples whose IDs are all in the dictionary, written as a fresh snapshot in `dir`.
+    fn three_triple_snapshot(dir: &Path) -> MemorySnapshot {
+        let p = NamedNode::new("urn:p").unwrap();
+        let source = MemorySnapshot::from_triples((0..3).map(|i| {
+            Triple::new(NamedNode::new(format!("urn:s{i}")).unwrap(), p.clone(), Literal::new_simple_literal(format!("value number {i}")))
+        }));
+        DiskSnapshot::create(dir, &source).unwrap();
+        source
+    }
+    /// Replace one manifest slot's file: slot 0 term dictionary, 1 ID dictionary, 2.. the six orders of `Perm::ALL`.
+    fn replace_manifest_identity(dir: &Path, slot: usize, identity: [u8; 32]) {
+        let mut manifest = fs::read(dir.join("MANIFEST")).unwrap();
+        manifest[8 + slot * 32..8 + (slot + 1) * 32].copy_from_slice(&identity);
+        fs::write(dir.join("MANIFEST"), manifest).unwrap();
+    }
+    fn rewrite_order(dir: &Path, perm: Perm, mut rows: Vec<[TermId; 3]>) {
+        rows.sort_unstable();
+        let name = FILES[1 + Perm::ALL.iter().position(|x| *x == perm).unwrap()];
+        fs::remove_file(dir.join(name)).unwrap();
+        let mut out = File::create(dir.join(name)).unwrap();
+        write_index(&mut out, rows.into_iter()).unwrap();
+        drop(out);
+        let slot = 2 + Perm::ALL.iter().position(|x| *x == perm).unwrap();
+        replace_manifest_identity(dir, slot, DiskIndex::open(dir.join(name)).unwrap().identity());
+    }
+    fn verify_error(dir: &Path) -> String {
+        let disk = DiskSnapshot::open(dir).unwrap();
+        let err = disk.verify().expect_err("verify must fail").to_string();
+        drop(disk);
+        fs::remove_dir_all(dir).unwrap();
+        err
+    }
+    #[test]
+    fn verify_rejects_a_non_spo_order_with_one_triple_swapped_for_another_valid_triple() {
+        // Same count, still sorted, every ID valid, but one row is a triple SPO does not contain (Kaiming 0b631830):
+        // exactly the case the SPO-only reference check depends on the permutation phase to catch.
+        let dir = std::env::temp_dir().join(format!("rdf-verify-swap-{}", std::process::id()));
+        let source = three_triple_snapshot(&dir);
+        let spo: Vec<[TermId; 3]> = source.index_rows(0).collect();
+        let order = Perm::Osp.order();
+        let mut osp: Vec<_> = spo.iter().map(|r| [r[order[0]], r[order[1]], r[order[2]]]).collect();
+        let foreign = [spo[0][0], spo[0][1], spo[1][2]]; // s0 p o1: valid IDs, not a stored triple
+        osp[2] = [foreign[order[0]], foreign[order[1]], foreign[order[2]]];
+        rewrite_order(&dir, Perm::Osp, osp);
+        assert!(verify_error(&dir).contains("permutation contents disagree"));
+    }
+    #[test]
+    fn verify_rejects_an_id_missing_from_the_dictionary_that_only_a_non_spo_order_contains() {
+        let dir = std::env::temp_dir().join(format!("rdf-verify-unknown-{}", std::process::id()));
+        let source = three_triple_snapshot(&dir);
+        let spo: Vec<[TermId; 3]> = source.index_rows(0).collect();
+        let order = Perm::Pos.order();
+        let mut pos: Vec<_> = spo.iter().map(|r| [r[order[0]], r[order[1]], r[order[2]]]).collect();
+        let unknown = TermId((1 << 60) | 0x0fff_ffff_ffff_fff0);
+        let foreign = [unknown, spo[0][1], spo[0][2]];
+        pos[1] = [foreign[order[0]], foreign[order[1]], foreign[order[2]]];
+        rewrite_order(&dir, Perm::Pos, pos);
+        assert!(verify_error(&dir).contains("permutation contents disagree"));
+    }
+    #[test]
+    fn verify_rejects_a_term_index_that_disagrees_with_the_id_index() {
+        let dir = std::env::temp_dir().join(format!("rdf-verify-dict-swap-{}", std::process::id()));
+        three_triple_snapshot(&dir);
+        let by_term = super::super::lazy_dictionary::LazyIndex::open(&dir.join("dictionary.term"), super::super::lazy_dictionary::Order::Term).unwrap();
+        let mut rows = Vec::new();
+        by_term.for_each(&mut |id, term| { rows.push((id, term.clone())); Ok(()) }).unwrap();
+        drop(by_term);
+        // Swap the IDs of the first two terms: still a valid, sorted term index, but it disagrees with the ID index.
+        let (a, b) = (rows[0].0, rows[1].0);
+        rows[0].0 = b;
+        rows[1].0 = a;
+        rows.sort_by(|x, y| x.1.to_string().cmp(&y.1.to_string()).then(x.0.cmp(&y.0)));
+        fs::remove_file(dir.join("dictionary.term")).unwrap();
+        super::super::lazy_dictionary::write_index(&dir.join("dictionary.term"), super::super::lazy_dictionary::Order::Term, rows.into_iter().map(Ok)).unwrap();
+        let identity = super::super::lazy_dictionary::LazyIndex::open(&dir.join("dictionary.term"), super::super::lazy_dictionary::Order::Term).unwrap().identity();
+        replace_manifest_identity(&dir, 0, identity);
+        assert!(verify_error(&dir).contains("dictionary index disagreement"));
+    }
+    #[test]
+    fn a_term_index_cannot_repeat_a_term_under_two_ids() {
+        // Term-order keys are the term text alone, and both the writer and every block decode require strictly
+        // increasing keys, so a repeated term is unrepresentable; `verify` keeps an explicit guard as well.
+        let dir = std::env::temp_dir().join(format!("rdf-verify-dict-dup-{}", std::process::id()));
+        three_triple_snapshot(&dir);
+        let by_term = super::super::lazy_dictionary::LazyIndex::open(&dir.join("dictionary.term"), super::super::lazy_dictionary::Order::Term).unwrap();
+        let mut rows = Vec::new();
+        by_term.for_each(&mut |id, term| { rows.push((id, term.clone())); Ok(()) }).unwrap();
+        drop(by_term);
+        rows[1].1 = rows[0].1.clone();
+        rows.sort_by(|x, y| x.1.to_string().cmp(&y.1.to_string()).then(x.0.cmp(&y.0)));
+        let path = dir.join("dictionary.term.dup");
+        let err = super::super::lazy_dictionary::write_index(&path, super::super::lazy_dictionary::Order::Term, rows.into_iter().map(Ok)).unwrap_err();
+        assert!(err.to_string().contains("not unique"), "{err}");
         fs::remove_dir_all(dir).unwrap();
     }
     #[test]
