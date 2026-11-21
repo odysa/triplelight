@@ -4,16 +4,16 @@ Raising the storage cache budget turned the Id-order dictionary block cache from
 during Arrow conversion to hitting on every lookup, at a threshold that differs by query. On LUBM-1000 Q9 the
 conversion window records 54,231 misses per pass at 1× and 1.5× the default budget and none at 2×; on Q14, 50,916
 misses at 1× and none at 1.5× or 2×. The number of lookups does not change (54,240 for Q9, 51,876 for Q14); only
-their outcome does. The profiled dictionary-decode stage falls with the misses. Whole-process memory peaks rise
-with the budget.
+their outcome does. The profiled dictionary-decode stage falls with the misses. The container memory peak (cgroup,
+including file cache) rises with the budget for Q9; for Q14 its median is highest at 1.5×.
 
 This follows the [default-budget counters](../arrow-dictionary-cache-counters/README.md) (Phase A1), which found
 near-total misses with evictions about equal to misses, consistent with capacity pressure.
 
 ## What was varied
 
-`disk_index::set_cache_budget_mb(B)` before open, with B = 4,007 MB (the derived default, 1×), 6,011 MB (1.5×) and
-8,014 MB (2×). The budget is shared: it sets the dictionary caches and the six index caches together. A probe-only
+`disk_index::set_cache_budget_mb(B)` before open, with B = 4,007 MiB (the derived default, 1×), 6,011 MiB (1.5×) and
+8,014 MiB (2×). The budget is shared: it sets the dictionary caches and the six index caches together. A probe-only
 accessor (in the measurement worktree, never merged) reported the capacities the caches were actually constructed
 with, and the gates required them to equal the library formulas for each budget (Id-order dictionary
 87,534,250 / 131,312,298 / 175,068,501 bytes per shard; see the packet for every capacity). Everything else is the
@@ -62,8 +62,8 @@ occupancy are not in these records; Phase B2 measures them before any policy cha
 
 ## Shared machine (disclosed)
 
-Another workload outside the benchmark lock (`tp-live-swe-*` containers) ran on the same VM throughout. Container
-snapshots before and after the run show four such containers each time, three of them with different names; their
+Another workload outside the benchmark lock (`tp-live-swe-*` containers) was present on the same VM at both
+snapshots; the snapshots alone do not show whether it was active in between. Container snapshots before and after the run show four such containers each time, three of them with different names; their
 CPU was 0% at both snapshots, and CPU between the snapshots was not recorded. All timings are therefore
 shared-machine measurements. The counters are deterministic in every cell.
 
