@@ -62,9 +62,25 @@ fn each_operation_sees_the_effects_of_the_previous_ones() {
 fn deletions_of_one_operation_precede_its_insertions() {
     let db = Database::in_memory();
     update(&db, "INSERT DATA { :a :p 1 . :b :p 1 }");
-    // Solution order must not matter: the template deletes and re-inserts the same triple for different rows.
-    update(&db, "DELETE { :a :p 1 } INSERT { :a :p 1 } WHERE { ?s :p 1 }");
+    // Row (a, b) deletes :a and inserts :b; row (b, a) deletes :b and inserts :a. Applying rows one by one would leave
+    // only one of them; deleting first (the SPARQL semantics) keeps both.
+    update(&db, "DELETE { ?s :p 1 } INSERT { ?t :p 1 } WHERE { ?s :p 1 . ?t :p 1 FILTER(?s != ?t) }");
     assert_eq!(rows(&db, "SELECT ?s { ?s :p 1 }"), vec![vec!["<http://ex/a>".to_string()], vec!["<http://ex/b>".to_string()]]);
+}
+
+#[test]
+fn blank_nodes_are_fresh_per_operation_and_shared_within_one() {
+    let db = Database::in_memory();
+    let ins = "INSERT DATA { GRAPH :g { _:x :p 1 } GRAPH :h { _:x :p 2 } }";
+    update(&db, ins);
+    update(&db, ins);
+    // Two runs: two distinct nodes in :g; within one run, _:x in :g and :h is one node.
+    assert_eq!(rows(&db, "SELECT (COUNT(DISTINCT ?x) AS ?n) { GRAPH :g { ?x :p 1 } }"), one("\"2\"^^<http://www.w3.org/2001/XMLSchema#integer>"));
+    assert_eq!(rows(&db, "SELECT (COUNT(*) AS ?n) { GRAPH :g { ?x :p 1 } GRAPH :h { ?x :p 2 } }"), one("\"2\"^^<http://www.w3.org/2001/XMLSchema#integer>"));
+    // Templates: a fresh node per solution and per operation.
+    update(&db, "INSERT { GRAPH :t { _:y :of ?x } } WHERE { GRAPH :g { ?x :p 1 } }");
+    update(&db, "INSERT { GRAPH :t { _:y :of ?x } } WHERE { GRAPH :g { ?x :p 1 } }");
+    assert_eq!(rows(&db, "SELECT (COUNT(DISTINCT ?y) AS ?n) { GRAPH :t { ?y :of ?x } }"), one("\"4\"^^<http://www.w3.org/2001/XMLSchema#integer>"));
 }
 
 #[test]
@@ -82,5 +98,16 @@ fn persistent_store_refuses_named_graphs_but_runs_sequential_updates() {
     let db = Database::open(&dir).unwrap();
     assert_eq!(rows(&db, "SELECT ?o { :a :q ?o }"), one(ONE));
     drop(db);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn reported_count_is_the_sum_of_the_operations_on_both_backends() {
+    let dir = std::env::temp_dir().join(format!("tl-dataset-count-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    for db in [Database::in_memory(), Database::open(&dir).unwrap()] {
+        assert_eq!(update(&db, "INSERT DATA { :x :p 1 } ; DELETE DATA { :x :p 1 }"), 2);
+        assert_eq!(rows(&db, "SELECT ?s { ?s :p 1 }"), Vec::<Vec<String>>::new());
+    }
     std::fs::remove_dir_all(dir).unwrap();
 }

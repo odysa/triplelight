@@ -1249,6 +1249,9 @@ fn walk_expr(e: &Expression, out: &mut Vec<String>) {
     }
 }
 
+/// Superseded by `parse_update_operations` + `operation_changes` (task #36), which add named graphs, sequential
+/// operation semantics and fresh blank nodes; kept for API compatibility.
+///
 /// The change set of a SPARQL 1.1 Update request, computed against `snap` (task #8). Supports INSERT DATA,
 /// DELETE DATA and DELETE/INSERT ... WHERE on the default graph. Every operation's WHERE clause is evaluated on
 /// `snap` (the state before the request); deletions of an operation precede its insertions.
@@ -1331,10 +1334,19 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
     use oxrdf::{NamedOrBlankNode, Triple};
     let unsupported = |what: &str| QueryError::new(QueryErrorKind::Unsupported, format!("{what} is not supported yet"));
     let target = |g: &GraphName| match g { GraphName::DefaultGraph => GraphTarget::Default, GraphName::NamedNode(n) => GraphTarget::Named(n.clone()) };
+    // Blank nodes in INSERT DATA and INSERT templates are fresh for every operation (and every template solution):
+    // a label is scoped to one operation, so running the same update twice creates new nodes. Occurrences of one
+    // label within that scope, across graphs too, stay one node.
+    let scope = format!("{:016x}{:016x}", expr::random_u64(), expr::random_u64());
+    let fresh = |b: &BlankNode, row: Option<usize>| -> BlankNode {
+        BlankNode::new_unchecked(match row { Some(n) => format!("{}_{scope}r{n}", b.as_str()), None => format!("{}_{scope}", b.as_str()) })
+    };
     let mut out = Vec::new();
     match op {
         Op::InsertData { data } => for q in data {
-            out.push(DatasetChange::Quad(target(&q.graph_name), Change::Insert, Triple::new(q.subject.clone(), q.predicate.clone(), q.object.clone())));
+            let subject = match &q.subject { NamedOrBlankNode::BlankNode(b) => fresh(b, None).into(), s => s.clone() };
+            let object = match &q.object { Term::BlankNode(b) => fresh(b, None).into(), o => o.clone() };
+            out.push(DatasetChange::Quad(target(&q.graph_name), Change::Insert, Triple::new(subject, q.predicate.clone(), object)));
         },
         Op::DeleteData { data } => for q in data {
             let o: Term = match &q.object { GroundTerm::NamedNode(n) => n.clone().into(), GroundTerm::Literal(l) => l.clone().into() };
@@ -1361,7 +1373,7 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
                 let term = |t: &TermPattern| -> Option<Term> { match t {
                     TermPattern::NamedNode(x) => Some(x.clone().into()),
                     TermPattern::Literal(x) => Some(x.clone().into()),
-                    TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(format!("{}u{n}", b.as_str())).into()),
+                    TermPattern::BlankNode(b) => Some(fresh(b, Some(n)).into()),
                     TermPattern::Variable(v) => var(v),
                 } };
                 let pred = |p: &NamedNodePattern| -> Option<oxrdf::NamedNode> { match p {

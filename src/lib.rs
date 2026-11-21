@@ -27,8 +27,15 @@ pub mod store {
     impl StoreUpdate for Store {
         fn update(&self, text: &str) -> Result<usize, crate::exec::QueryError> {
             use crate::exec::{QueryError, QueryErrorKind};
-            self.update_with(text, &|snap, text| default_graph_changes(&dataset_update(snap, text)?.1),
-                &|e| QueryError::new(QueryErrorKind::Storage, e.to_string()))
+            // Report the sum of the operations' changed triples, as the in-memory database does (not the net effect
+            // of the concatenated list, which is what the WAL records).
+            let changed = std::cell::Cell::new(0);
+            self.update_with(text, &|snap, text| {
+                let (_, changes, n) = dataset_update(snap, text)?;
+                changed.set(n);
+                default_graph_changes(&changes)
+            }, &|e| QueryError::new(QueryErrorKind::Storage, e.to_string()))?;
+            Ok(changed.get())
         }
     }
 

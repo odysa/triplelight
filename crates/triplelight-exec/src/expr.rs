@@ -635,7 +635,7 @@ fn split_timezone(time: &str) -> (&str, &str) {
 
 /// A random 64-bit value from the standard library's randomly keyed hasher (no RNG dependency); good enough for
 /// RAND() and UUID(), not for cryptography.
-fn random_u64() -> u64 {
+pub(crate) fn random_u64() -> u64 {
     use std::hash::{BuildHasher, Hasher};
     use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
     static COUNTER: AtomicU64 = AtomicU64::new(0);
