@@ -7,8 +7,18 @@ use std::io::BufRead;
 
 const RDF_LANG_STRING: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString";
 
+/// Why a line was refused.
+enum LineError { Syntax(String), TooLarge }
+impl From<String> for LineError { fn from(m: String) -> Self { LineError::Syntax(m) } }
+impl From<&str> for LineError { fn from(m: &str) -> Self { LineError::Syntax(m.to_owned()) } }
+impl std::fmt::Display for LineError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self { LineError::Syntax(m) => f.write_str(m), LineError::TooLarge => write!(f, "token larger than {MAX_TOKEN} bytes") }
+    }
+}
+
 /// One parsed line: nothing (blank or comment), or a statement.
-type LineResult = Result<Option<Quad>, String>;
+type LineResult = Result<Option<Quad>, LineError>;
 
 struct Line<'a> { data: &'a [u8], pos: usize, with_graph: bool }
 
@@ -76,7 +86,7 @@ impl<'a> Line<'a> {
     }
 
     /// `IRIREF`: `<`, then any bytes but `>` with `\u`/`\U` escapes, then `>`; the result must be an absolute IRI.
-    fn iri(&mut self) -> Result<String, String> {
+    fn iri(&mut self) -> Result<String, LineError> {
         let mut bytes = Vec::new();
         let mut i = self.pos + 1;
         loop {
@@ -90,6 +100,7 @@ impl<'a> Line<'a> {
             bytes.extend_from_slice(c.encode_utf8(&mut buf).as_bytes());
             i += len;
         }
+        if i + 1 - self.pos > MAX_TOKEN { return Err(LineError::TooLarge) }
         self.pos = i + 1;
         let iri = String::from_utf8(bytes).map_err(|e| format!("Invalid UTF-8: {e}"))?;
         triplelight_iri::Iri::validate(&iri).map_err(|e| format!("Invalid IRI <{iri}>: {e}"))?;
@@ -97,23 +108,24 @@ impl<'a> Line<'a> {
     }
 
     /// `BLANK_NODE_LABEL`: `_:` (PN_CHARS_U | digit) ((PN_CHARS | '.')* PN_CHARS)?; trailing dots are not part of it.
-    fn blank_node(&mut self) -> Result<String, String> {
+    fn blank_node(&mut self) -> Result<String, LineError> {
         let start = self.pos + 2;
         let mut i = start;
         loop {
-            let (c, len) = match utf8_char(&self.data[i..]) { Ok(Some(r)) => r, Ok(None) => break, Err(e) => return Err(e) };
+            let (c, len) = match utf8_char(&self.data[i..]) { Ok(Some(r)) => r, Ok(None) => break, Err(e) => return Err(e.into()) };
             let ok = if i == start { pn_chars_u(c) || c.is_ascii_digit() } else { pn_chars(c) || c == '.' };
             if !ok { break }
             i += len;
         }
         while i > start && self.data[i - 1] == b'.' { i -= 1 }
         if i == start { return Err("A blank node ID cannot be empty".into()) }
+        if i - self.pos > MAX_TOKEN { return Err(LineError::TooLarge) }
         self.pos = i;
         Ok(std::str::from_utf8(&self.data[start..i]).map_err(|e| format!("Invalid UTF-8: {e}"))?.to_owned())
     }
 
     /// `STRING_LITERAL_QUOTE`, with `ECHAR` and `UCHAR` escapes; raw line breaks are not allowed.
-    fn string(&mut self) -> Result<String, String> {
+    fn string(&mut self) -> Result<String, LineError> {
         let mut out = String::new();
         let mut i = self.pos + 1;
         loop {
@@ -122,7 +134,7 @@ impl<'a> Line<'a> {
             out.push_str(std::str::from_utf8(&rest[..end]).map_err(|e| format!("Invalid UTF-8: {e}"))?);
             i += end;
             match self.data[i] {
-                b'"' => { self.pos = i + 1; return Ok(out) }
+                b'"' => { if i + 1 - self.pos > MAX_TOKEN { return Err(LineError::TooLarge) } self.pos = i + 1; return Ok(out) }
                 b'\\' => { let (c, len) = escape(&self.data[i..], true)?; out.push(c); i += len }
                 _ => return Err("Line jumps are not allowed in string literals, use \\n".into()),
             }
@@ -131,7 +143,7 @@ impl<'a> Line<'a> {
 
     /// `LANGTAG` after a string, scanned as `oxttl` does: letters, then `-`-separated alphanumeric blocks. The tag
     /// must be well-formed BCP 47; a `--` base direction is RDF 1.2 and refused.
-    fn lang_tag(&mut self) -> Result<String, String> {
+    fn lang_tag(&mut self) -> Result<String, LineError> {
         let data = &self.data[self.pos..];
         let mut is_last_block_empty = true;
         let mut digits_allowed = false;
@@ -156,9 +168,9 @@ impl<'a> Line<'a> {
         if is_last_block_empty { self.finish_lang(&data[1..i], i) } else { self.finish_lang(&data[1..=i], i + 1) }
     }
 
-    fn finish_lang(&mut self, tag: &[u8], consumed: usize) -> Result<String, String> {
+    fn finish_lang(&mut self, tag: &[u8], consumed: usize) -> Result<String, LineError> {
         let tag = std::str::from_utf8(tag).map_err(|e| format!("Invalid UTF-8: {e}"))?;
-        if !crate::langtag::is_well_formed(tag) { return Err(format!("Invalid language tag {tag:?}")) }
+        if !crate::langtag::is_well_formed(tag) { return Err(format!("Invalid language tag {tag:?}").into()) }
         self.pos += consumed;
         Ok(tag.to_owned())
     }
@@ -229,27 +241,52 @@ pub fn parse_nquads_line(line: &str) -> Option<Quad> {
     found
 }
 
-/// Streams the statements of an N-Triples (`with_graph = false`) or N-Quads document, line by line. A syntax error
-/// is reported with its line number and ends the stream.
-pub struct StatementReader<R> {
-    input: R,
-    with_graph: bool,
-    line: u64,
-    buf: Vec<u8>,
-    /// Statements of a read line that holds `\r` breaks, in order (rare; most lines hold one statement).
-    pending: std::collections::VecDeque<Result<Quad, ReadError>>,
-    done: bool,
+/// The largest token `oxttl` 0.2 buffers (16 MiB); a longer one is an I/O error (`OutOfMemory`) there and here.
+const MAX_TOKEN: usize = 4096 * 4096;
+/// The longest line read into memory. Bounded so input that never breaks a line cannot exhaust memory; four tokens of
+/// the maximum size fit. (Unlike `oxttl`, a longer line made only of whitespace or a comment is refused too.)
+const MAX_LINE: usize = 5 * MAX_TOKEN;
+
+fn too_large(what: &str) -> ReadError {
+    ReadError::Io(std::io::Error::new(std::io::ErrorKind::OutOfMemory, format!("{what} larger than {MAX_TOKEN} bytes")))
 }
 
+/// Streams the statements of an N-Triples (`with_graph = false`) or N-Quads document, line by line, with lines broken
+/// at `\n`, `\r` or `\r\n` as they are read. A syntax error is reported with its line number and ends the stream.
+pub struct StatementReader<R> { input: R, with_graph: bool, line: u64, buf: Vec<u8>, done: bool }
+
 impl<R: BufRead> StatementReader<R> {
-    pub fn new(input: R, with_graph: bool) -> Self {
-        Self { input, with_graph, line: 0, buf: Vec::new(), pending: Default::default(), done: false }
-    }
-    fn parse(&mut self, piece_start: usize, piece_end: usize) -> Option<Result<Quad, ReadError>> {
-        self.line += 1;
-        match parse_line(&self.buf[piece_start..piece_end], self.with_graph) {
-            Ok(q) => q.map(Ok),
-            Err(e) => { self.done = true; Some(Err(ReadError::Syntax(format!("line {}: {e}", self.line)))) }
+    pub fn new(input: R, with_graph: bool) -> Self { Self { input, with_graph, line: 0, buf: Vec::new(), done: false } }
+
+    /// Reads the next line into `buf` (without its break). `Ok(false)` at the end of the input.
+    fn read_line(&mut self) -> Result<bool, ReadError> {
+        self.buf.clear();
+        let mut any = false;
+        loop {
+            let available = match self.input.fill_buf() { Ok(b) => b, Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue, Err(e) => return Err(ReadError::Io(e)) };
+            if available.is_empty() { return Ok(any) }
+            any = true;
+            if let Some(i) = available.iter().position(|&b| b == b'\n' || b == b'\r') {
+                let cr = available[i] == b'\r';
+                if self.buf.len() + i > MAX_LINE { return Err(too_large("line")) }
+                self.buf.extend_from_slice(&available[..i]);
+                self.input.consume(i + 1);
+                // `\r\n` is one line break.
+                if cr {
+                    loop {
+                        match self.input.fill_buf() {
+                            Ok(b) => { if b.first() == Some(&b'\n') { self.input.consume(1) } break }
+                            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                            Err(e) => return Err(ReadError::Io(e)),
+                        }
+                    }
+                }
+                return Ok(true);
+            }
+            let n = available.len();
+            if self.buf.len() + n > MAX_LINE { return Err(too_large("line")) }
+            self.buf.extend_from_slice(available);
+            self.input.consume(n);
         }
     }
 }
@@ -257,29 +294,22 @@ impl<R: BufRead> StatementReader<R> {
 impl<R: BufRead> Iterator for StatementReader<R> {
     type Item = Result<Quad, ReadError>;
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(r) = self.pending.pop_front() { return Some(r) }
-            if self.done { return None }
-            self.buf.clear();
-            match self.input.read_until(b'\n', &mut self.buf) {
-                Ok(0) => { self.done = true; return None }
-                Ok(n) => {
-                    let end = if self.buf[n - 1] == b'\n' { n - 1 } else { n };
-                    if !self.buf[..end].contains(&b'\r') {
-                        if let Some(r) = self.parse(0, end) { return Some(r) }
-                        continue;
-                    }
-                    // `\r` is a line break of its own, and `\r\n` one break (an empty piece is an empty line).
-                    let mut start = 0;
-                    for cut in (0..end).filter(|&i| self.buf[i] == b'\r').chain(std::iter::once(end)).collect::<Vec<_>>() {
-                        if self.done { break }
-                        if let Some(r) = self.parse(start, cut) { self.pending.push_back(r) }
-                        start = cut + 1;
+        while !self.done {
+            match self.read_line() {
+                Ok(false) => self.done = true,
+                Ok(true) => {
+                    self.line += 1;
+                    match parse_line(&self.buf, self.with_graph) {
+                        Ok(Some(q)) => return Some(Ok(q)),
+                        Ok(None) => {}
+                        Err(LineError::Syntax(e)) => { self.done = true; return Some(Err(ReadError::Syntax(format!("line {}: {e}", self.line)))) }
+                        Err(LineError::TooLarge) => { self.done = true; return Some(Err(too_large("token"))) }
                     }
                 }
-                Err(e) => { self.done = true; return Some(Err(ReadError::Io(e))) }
+                Err(e) => { self.done = true; return Some(Err(e)) }
             }
         }
+        None
     }
 }
 
@@ -291,19 +321,34 @@ pub fn read_ntriples<R: BufRead>(input: R) -> impl Iterator<Item = Result<Triple
 /// The quads of an N-Quads document.
 pub fn read_nquads<R: BufRead>(input: R) -> impl Iterator<Item = Result<Quad, ReadError>> { StatementReader::new(input, true) }
 
-/// Splits an N-Triples file into at most `parts` readers at line boundaries (`\n`), for parallel parsing. Their
-/// triples, concatenated in order, are the file's.
-pub fn split_ntriples_file(path: &std::path::Path, parts: usize) -> std::io::Result<Vec<impl Iterator<Item = Result<Triple, ReadError>>>> {
+/// The offset just after the first line break (`\n`, `\r` or `\r\n`) at or after `from`, or the file size. Scans with
+/// a fixed 4 KiB buffer, so a file without breaks is not read into memory.
+fn next_line_start(file: &mut std::fs::File, from: u64, size: u64) -> std::io::Result<u64> {
+    use std::io::{Read, Seek, SeekFrom};
+    file.seek(SeekFrom::Start(from))?;
+    let mut buf = [0u8; 4096];
+    let mut pos = from;
+    let mut after_cr = false;
+    loop {
+        let n = file.read(&mut buf)?;
+        if n == 0 { return Ok(size) }
+        for (i, &b) in buf[..n].iter().enumerate() {
+            if after_cr { return Ok(if b == b'\n' { pos + i as u64 + 1 } else { pos + i as u64 }) }
+            match b { b'\n' => return Ok(pos + i as u64 + 1), b'\r' => after_cr = true, _ => {} }
+        }
+        pos += n as u64;
+    }
+}
+
+/// Splits an N-Triples file into at most `parts` readers at line breaks, for parallel parsing. Their triples,
+/// concatenated in order, are the file's.
+pub fn split_ntriples_file(path: &std::path::Path, parts: usize) -> std::io::Result<Vec<impl Iterator<Item = Result<Triple, ReadError>> + use<>>> {
     use std::io::{Read, Seek, SeekFrom};
     let size = std::fs::metadata(path)?.len();
+    let mut file = std::fs::File::open(path)?;
     let mut bounds = vec![0u64];
     for i in 1..parts.max(1) as u64 {
-        let target = size * i / parts as u64;
-        let mut file = std::fs::File::open(path)?;
-        file.seek(SeekFrom::Start(target))?;
-        let mut skipped = Vec::new();
-        std::io::BufReader::new(file).read_until(b'\n', &mut skipped)?;
-        let at = (target + skipped.len() as u64).min(size);
+        let at = next_line_start(&mut file, size * i / parts as u64, size)?;
         if at > *bounds.last().unwrap() && at < size { bounds.push(at) }
     }
     bounds.push(size);
@@ -318,6 +363,45 @@ pub fn split_ntriples_file(path: &std::path::Path, parts: usize) -> std::io::Res
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// Line breaks across buffer edges: every small buffer size, for `\n`, `\r` and `\r\n` documents, gives the
+    /// same statements and the same line number for a trailing error.
+    #[test]
+    fn line_breaks_across_buffer_edges() {
+        let line = "<http://a> <http://b> \"x\" .";
+        for brk in ["\n", "\r", "\r\n"] {
+            let doc = format!("{line}{brk}{line}{brk}# c{brk}{brk}<bad>{brk}");
+            for cap in 1..40 {
+                let r = std::io::BufReader::with_capacity(cap, doc.as_bytes());
+                let got: Vec<_> = StatementReader::new(r, false).collect();
+                assert_eq!(got.len(), 3, "{brk:?} cap {cap}");
+                assert!(got[..2].iter().all(Result::is_ok));
+                match &got[2] { Err(ReadError::Syntax(m)) => assert!(m.starts_with("line 5:"), "{brk:?} cap {cap}: {m}"), e => panic!("{e:?}") }
+            }
+        }
+    }
+    /// The shard planner cuts only at line breaks, including `\r` and `\r\n`, and the shards together are the file.
+    #[test]
+    fn shards_cut_at_line_breaks() {
+        let dir = std::env::temp_dir().join(format!("tl-nt-shards-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for brk in ["\n", "\r", "\r\n"] {
+            let doc: String = (0..500).map(|i| format!("<http://a/{i}> <http://b> \"{i}\" .{brk}")).collect();
+            let path = dir.join("doc.nt");
+            std::fs::write(&path, &doc).unwrap();
+            let whole: Vec<Triple> = read_ntriples(doc.as_bytes()).map(Result::unwrap).collect();
+            for parts in [1, 2, 3, 7, 64] {
+                let shards: Vec<Triple> = split_ntriples_file(&path, parts).unwrap().into_iter().flatten().map(Result::unwrap).collect();
+                assert_eq!(shards, whole, "{brk:?} parts {parts}");
+            }
+        }
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn oversized_tokens_are_refused_like_oxttl() {
+        let big = "a".repeat(MAX_TOKEN);
+        let doc = format!("<http://a> <http://b> \"{big}\" .\n");
+        assert!(matches!(read_ntriples(doc.as_bytes()).next(), Some(Err(ReadError::Io(e))) if e.kind() == std::io::ErrorKind::OutOfMemory));
+    }
     #[test]
     fn statements_and_errors() {
         let ok = |s: &str, g| parse_line(s.as_bytes(), g).unwrap_or_else(|e| panic!("{s:?}: {e}"));

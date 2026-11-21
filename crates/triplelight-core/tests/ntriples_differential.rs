@@ -128,17 +128,24 @@ fn files_agree() {
     for path in std::env::split_paths(&files) {
         let quads = path.extension().is_some_and(|e| e == "nq");
         let open = || std::io::BufReader::with_capacity(1 << 20, std::fs::File::open(&path).unwrap());
-        let mut a: Box<dyn Iterator<Item = Option<Quad>>> = if quads { Box::new(read_nquads(open()).map(|r| r.ok())) } else {
-            Box::new(read_ntriples(open()).map(|r| r.ok().map(|t| t.in_graph(oxrdf::GraphName::DefaultGraph))))
+        // Both sides must succeed on every statement: an error on either side fails, it never compares equal.
+        let ours_it: Box<dyn Iterator<Item = Quad>> = if quads {
+            Box::new(read_nquads(open()).map(|r| r.unwrap_or_else(|e| panic!("ours failed: {e}"))))
+        } else {
+            Box::new(read_ntriples(open()).map(|r| r.unwrap_or_else(|e| panic!("ours failed: {e}")).in_graph(oxrdf::GraphName::DefaultGraph)))
         };
-        let mut b: Box<dyn Iterator<Item = Option<Quad>>> = if quads { Box::new(oxttl::NQuadsParser::new().for_reader(open()).map(|r| r.ok())) } else {
-            Box::new(oxttl::NTriplesParser::new().for_reader(open()).map(|r| r.ok().map(|t| t.in_graph(oxrdf::GraphName::DefaultGraph))))
+        let theirs_it: Box<dyn Iterator<Item = Quad>> = if quads {
+            Box::new(oxttl::NQuadsParser::new().for_reader(open()).map(|r| r.unwrap_or_else(|e| panic!("oxttl failed: {e}"))))
+        } else {
+            Box::new(oxttl::NTriplesParser::new().for_reader(open()).map(|r| r.unwrap_or_else(|e| panic!("oxttl failed: {e}")).in_graph(oxrdf::GraphName::DefaultGraph)))
         };
+        let (mut a, mut b) = (ours_it, theirs_it);
         let mut n = 0u64;
         loop {
             match (a.next(), b.next()) {
                 (None, None) => break,
-                (x, y) => { assert_eq!(x, y, "{} statement {n}", path.display()); n += 1 }
+                (Some(x), Some(y)) => { assert_eq!(x, y, "{} statement {n}", path.display()); n += 1 }
+                (x, y) => panic!("{}: one side ended at statement {n}: ours {x:?}, oxttl {y:?}", path.display()),
             }
         }
         eprintln!("{}: {n} statements identical", path.display());
