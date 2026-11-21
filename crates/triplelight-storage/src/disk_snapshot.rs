@@ -678,7 +678,7 @@ mod tests {
         let mut out = File::create(dir.join(name)).unwrap();
         write_index(&mut out, rows.into_iter()).unwrap();
         drop(out);
-        replace_identity4(dir, 1 + pos, DiskIndex::open(dir.join(name)).unwrap().identity());
+        replace_identity4(dir, 1 + pos, DiskIndex::<3>::open(dir.join(name)).unwrap().identity());
     }
     #[test]
     fn unified_verify_rejects_a_non_spo_order_with_one_triple_swapped() {
