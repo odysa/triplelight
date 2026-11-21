@@ -177,6 +177,21 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
                 continue;
             }
             let order = perm.order();
+            // Compact layout: rows without their first key column; `t[k - 1]` is key position `k` (k >= n >= 1).
+            if let Some(tails) = self.snap.matching_tail(perm, &prefix[..n]) {
+                'mtails: for t in tails {
+                    let start = out.len();
+                    out.extend_from_slice(row);
+                    for (k, &pos) in order.iter().enumerate().skip(n) {
+                        if let Slot::Var(v) = pat[pos] {
+                            let val = t[k - 1];
+                            let cell = &mut out[start + v];
+                            if *cell == UNBOUND { *cell = val } else if *cell != val { out.truncate(start); continue 'mtails }
+                        }
+                    }
+                }
+                continue;
+            }
             if let Some(rows) = self.snap.matching_rows(perm, &prefix[..n]) {
                 'mrows: for t in rows {
                     let start = out.len();
