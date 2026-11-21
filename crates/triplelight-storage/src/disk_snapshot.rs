@@ -147,6 +147,8 @@ impl DiskSnapshot {
             identities.push(index.identity());
         }
         let mut manifest = BufWriter::new(File::create(dir.join("MANIFEST"))?);
+        // Deliberately RDFSNAP3: this path writes a legacy dictionary in memory-ID order, which is not term-text
+        // order, so it cannot become the unified layout without a sort. Production builds (external) write RDFSNAP4.
         manifest.write_all(b"RDFSNAP3")?;
         for identity in identities {
             manifest.write_all(&identity)?;
@@ -647,6 +649,112 @@ mod tests {
         let path = dir.join("dictionary.term.dup");
         let err = super::super::lazy_dictionary::write_index(&path, super::super::lazy_dictionary::Order::Term, rows.into_iter().map(Ok)).unwrap_err();
         assert!(err.to_string().contains("not unique"), "{err}");
+        fs::remove_dir_all(dir).unwrap();
+    }
+    // ---- RDFSNAP4 (external-build) stores: the verify corruption cases of the RDFSNAP3 tests above ----
+    /// Builds a three-triple store through the external build (manifest RDFSNAP4) and returns its SPO rows.
+    fn unified_snapshot(dir: &Path) -> Vec<[TermId; 3]> {
+        let nt = dir.with_extension("nt");
+        let text: String = (0..3).map(|i| format!("<urn:s{i}> <urn:p> \"value number {i}\" .\n")).collect();
+        fs::write(&nt, text).unwrap();
+        super::super::external_build::from_nt(dir, Some(&nt)).unwrap();
+        fs::remove_file(&nt).unwrap();
+        let disk = DiskSnapshot::open(dir).unwrap();
+        assert_eq!(&fs::read(dir.join("MANIFEST")).unwrap()[..8], b"RDFSNAP4");
+        let spo = disk.index(Perm::Spo);
+        (0..spo.len()).map(|i| spo.get(i).unwrap()).collect()
+    }
+    /// RDFSNAP4 manifest slots: 0 the unified dictionary, 1.. the six orders of `Perm::ALL`.
+    fn replace_identity4(dir: &Path, slot: usize, identity: [u8; 32]) {
+        let mut manifest = fs::read(dir.join("MANIFEST")).unwrap();
+        manifest[8 + slot * 32..8 + (slot + 1) * 32].copy_from_slice(&identity);
+        fs::write(dir.join("MANIFEST"), manifest).unwrap();
+    }
+    fn rewrite_order4(dir: &Path, perm: Perm, mut rows: Vec<[TermId; 3]>) {
+        rows.sort_unstable();
+        let pos = Perm::ALL.iter().position(|x| *x == perm).unwrap();
+        let name = FILES[1 + pos];
+        fs::remove_file(dir.join(name)).unwrap();
+        let mut out = File::create(dir.join(name)).unwrap();
+        write_index(&mut out, rows.into_iter()).unwrap();
+        drop(out);
+        replace_identity4(dir, 1 + pos, DiskIndex::open(dir.join(name)).unwrap().identity());
+    }
+    #[test]
+    fn unified_verify_rejects_a_non_spo_order_with_one_triple_swapped() {
+        let dir = std::env::temp_dir().join(format!("rdf-verify4-swap-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let spo = unified_snapshot(&dir);
+        let order = Perm::Osp.order();
+        let mut osp: Vec<_> = spo.iter().map(|r| [r[order[0]], r[order[1]], r[order[2]]]).collect();
+        let foreign = [spo[0][0], spo[0][1], spo[1][2]];
+        osp[2] = [foreign[order[0]], foreign[order[1]], foreign[order[2]]];
+        rewrite_order4(&dir, Perm::Osp, osp);
+        assert!(verify_error(&dir).contains("permutation contents disagree"));
+    }
+    #[test]
+    fn unified_verify_rejects_an_id_missing_from_the_dictionary() {
+        let dir = std::env::temp_dir().join(format!("rdf-verify4-unknown-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let spo = unified_snapshot(&dir);
+        let order = Perm::Pos.order();
+        let mut pos: Vec<_> = spo.iter().map(|r| [r[order[0]], r[order[1]], r[order[2]]]).collect();
+        let unknown = TermId((1 << 60) | 0x0fff_ffff_ffff_fff0);
+        let foreign = [unknown, spo[0][1], spo[0][2]];
+        pos[1] = [foreign[order[0]], foreign[order[1]], foreign[order[2]]];
+        rewrite_order4(&dir, Perm::Pos, pos);
+        assert!(verify_error(&dir).contains("permutation contents disagree"));
+    }
+    #[test]
+    fn unified_dictionary_byte_flips_fail_open_or_verify() {
+        let dir = std::env::temp_dir().join(format!("rdf-verify4-flip-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        unified_snapshot(&dir);
+        let path = dir.join("dictionary.unified");
+        let good = fs::read(&path).unwrap();
+        // A flipped byte inside the first block: the directory (and manifest identity) are untouched, so open works and
+        // verify reads the block and fails its checksum.
+        let mut bad_block = good.clone();
+        bad_block[12] ^= 0xff;
+        fs::write(&path, &bad_block).unwrap();
+        let disk = DiskSnapshot::open(&dir).unwrap();
+        assert!(disk.verify().is_err(), "a corrupt block must fail verify");
+        drop(disk);
+        // A flipped byte in the directory changes the directory identity: open fails against the manifest.
+        let mut bad_dir = good.clone();
+        let n = bad_dir.len();
+        bad_dir[n - 50] ^= 0xff;
+        fs::write(&path, &bad_dir).unwrap();
+        assert!(DiskSnapshot::open(&dir).is_err(), "a corrupt directory must fail open");
+        fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn unified_verify_rejects_broken_text_order_that_open_and_id_lookups_accept() {
+        use super::super::lazy_dictionary::{LazyIndex, Order, UNIFIED_FILE, write_unified_without_text_check};
+        let dir = std::env::temp_dir().join(format!("rdf-verify4-order-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        unified_snapshot(&dir);
+        let path = dir.join(UNIFIED_FILE);
+        let u = LazyIndex::open(&path, Order::Unified).unwrap();
+        let mut rows = Vec::new();
+        u.for_each(&mut |id, term| { rows.push((id, term.clone())); Ok(()) }).unwrap();
+        drop(u);
+        // Keep every ID and kind, but swap the terms of two neighbouring IRIs: the text order is broken.
+        let iris: Vec<usize> = rows.iter().enumerate().filter(|(_, (_, t))| matches!(t, Term::NamedNode(_))).map(|(i, _)| i).collect();
+        let (a, b) = (iris[1], iris[2]);
+        let (ta, tb) = (rows[a].1.clone(), rows[b].1.clone());
+        rows[a].1 = tb;
+        rows[b].1 = ta;
+        fs::remove_file(&path).unwrap();
+        write_unified_without_text_check(&path, rows.into_iter().map(Ok)).unwrap();
+        replace_identity4(&dir, 0, LazyIndex::open(&path, Order::Unified).unwrap().identity());
+        // Open works and an ID lookup answers (the cheap load guard holds) ...
+        let disk = DiskSnapshot::open(&dir).unwrap();
+        disk.with_term(TermId((1 << 60) | 1), &mut |_| ()).unwrap();
+        // ... and verify rejects the broken order.
+        let err = disk.verify().expect_err("verify must fail").to_string();
+        assert!(err.contains("not strictly sorted"), "{err}");
+        drop(disk);
         fs::remove_dir_all(dir).unwrap();
     }
     #[test]

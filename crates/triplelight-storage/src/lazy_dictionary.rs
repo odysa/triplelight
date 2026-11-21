@@ -668,6 +668,11 @@ fn write_index_checked(
     out.get_ref().sync_all()
 }
 
+/// Test-only: writes a unified dictionary without checking the text order inside a kind.
+#[cfg(test)]
+pub(super) fn write_unified_without_text_check(path: &Path, rows: impl Iterator<Item = io::Result<(TermId, Term)>>) -> io::Result<()> {
+    write_index_checked(path, Order::Unified, rows, false)
+}
 /// Sorted-run reader that decodes `(id, term)` rows from an external sorter's output.
 struct Rows {
     input: std::io::BufReader<File>,
