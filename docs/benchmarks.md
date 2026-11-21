@@ -127,6 +127,8 @@ The [Grafeo embedded fixture](grafeo-embedded-qualification-v1/README.md) passed
 
 The [goRDFlib embedded fixture](gordflib-embedded-qualification-v1/README.md) passed 40 typed query checks across memory, Badger and SQLite, including fresh-process reopen of both disk stores. The native parser and all five query routes preserved the nine exact triples. No workload timing.
 
+The [dotNetRDF embedded fixture](dotnetrdf-embedded-qualification-v1/README.md) passed 24 typed query checks across memory, whole-graph file write and fresh-process reparse. Each route preserved the nine exact triples. This was a serialized graph round trip without workload timing.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.
