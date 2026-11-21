@@ -27,12 +27,9 @@ impl From<ReadError> for std::io::Error {
 pub fn read_quads(reader: impl std::io::Read, format: QuadFormat) -> Result<Vec<Quad>, ReadError> {
     let quads = match format {
         QuadFormat::NQuads => return crate::ntriples::read_nquads(std::io::BufReader::new(reader)).collect(),
-        QuadFormat::TriG => oxttl::TriGParser::new().for_reader(reader).collect::<Result<Vec<_>, _>>(),
+        QuadFormat::TriG => crate::turtle::read_trig(std::io::BufReader::new(reader)).collect(),
     };
-    quads.map_err(|e| match e {
-        oxttl::TurtleParseError::Io(e) => ReadError::Io(e),
-        oxttl::TurtleParseError::Syntax(e) => ReadError::Syntax(e.to_string()),
-    })
+    quads
 }
 
 /// RDF text formats TripleLight reads.
@@ -50,6 +47,6 @@ impl Format {
 pub fn parse_triples(data: &[u8], format: Format) -> Result<Vec<Triple>, String> {
     match format {
         Format::NTriples => crate::ntriples::read_ntriples_slice(data).collect::<Result<_, _>>().map_err(|e| e.to_string()),
-        Format::Turtle => oxttl::TurtleParser::new().for_slice(data).collect::<Result<_, _>>().map_err(|e| e.to_string()),
+        Format::Turtle => crate::turtle::read_turtle_slice(data).collect::<Result<_, _>>().map_err(|e| e.to_string()),
     }
 }

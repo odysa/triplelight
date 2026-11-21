@@ -7,10 +7,11 @@ rust-version.workspace = true
 
 [dependencies]
 oxrdf.workspace = true
-# Turtle and TriG only (task #45 step 3 replaces it); N-Triples and N-Quads use `ntriples`. The differential tests
-# use it as the comparator.
-oxttl.workspace = true
 triplelight-iri.workspace = true
+
+[dev-dependencies]
+# Comparator only (task #45): the differential tests check `ntriples` and `turtle` against oxttl.
+oxttl.workspace = true
 
 [lints]
 workspace = true

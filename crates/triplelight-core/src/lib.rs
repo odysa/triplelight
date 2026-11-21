@@ -4,4 +4,5 @@ pub mod langtag;
 pub mod model;
 pub mod ntriples;
 pub mod rdf;
+pub mod turtle;
 pub mod storage;

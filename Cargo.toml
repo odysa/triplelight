@@ -62,7 +62,6 @@ triplelight-sparql.workspace = true
 triplelight-plan.workspace = true
 triplelight-exec.workspace = true
 oxrdf.workspace = true
-oxttl.workspace = true
 sha2.workspace = true
 tiny_http = { version = "0.12.0", optional = true }
 

@@ -123,6 +123,14 @@ fn curated_validation_agrees() {
     for s in CURATED { assert_eq!(ours_parse(s), theirs_parse(s), "parse {s:?}") }
 }
 
+/// `path()` as `oxiri` reports it (the Turtle parser uses it to decide when a prefixed name needs revalidation).
+#[test]
+fn paths_agree() {
+    for s in CURATED.iter().chain(BASES) {
+        if let (Ok(a), Ok(b)) = (Iri::parse(s), oxiri::Iri::parse(s.to_string())) { assert_eq!(a.path(), b.path(), "{s:?}") }
+    }
+}
+
 #[test]
 fn curated_resolution_agrees() {
     let mut oxiri_differs = Vec::new();

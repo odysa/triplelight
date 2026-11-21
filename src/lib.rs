@@ -2,7 +2,7 @@
 //!
 //! This crate is the public face of the workspace: it re-exports the component crates under stable paths and adds
 //! the embedded database API.
-pub use triplelight_core::{model, ntriples, rdf};
+pub use triplelight_core::{model, ntriples, rdf, turtle};
 pub use triplelight_exec as exec;
 pub use triplelight_plan as opt;
 pub use triplelight_sparql as sparql;
