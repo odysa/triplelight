@@ -57,6 +57,8 @@ test("typed errors: syntax, unsupported, locked", async () => {
   await assert.rejects(db.query("SELECT * WHERE { SERVICE <urn:remote> { ?s ?p ?o } }"), tl.UnsupportedError);
   assert.throws(() => db.querySync("SELEC"), tl.TripleLightError);
   assert.throws(() => new tl.Database(dir), tl.LockedError);
+  await db.update("CREATE GRAPH <urn:g>");
+  await assert.rejects(db.update("CREATE GRAPH <urn:g>"), (e) => e instanceof tl.GraphStateError && e.kind === "GraphStateError");
   db.close();
 });
 

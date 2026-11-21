@@ -13,6 +13,7 @@ create_exception!(_triplelight, SyntaxError, TripleLightError);
 create_exception!(_triplelight, UnsupportedError, TripleLightError);
 create_exception!(_triplelight, StorageError, TripleLightError);
 create_exception!(_triplelight, LockedError, TripleLightError);
+create_exception!(_triplelight, GraphStateError, TripleLightError);
 
 fn err(e: DatabaseError) -> PyErr {
     match e {
@@ -20,6 +21,7 @@ fn err(e: DatabaseError) -> PyErr {
         DatabaseError::Unsupported(m) => UnsupportedError::new_err(m),
         DatabaseError::Storage(e) => StorageError::new_err(e.to_string()),
         DatabaseError::Locked => LockedError::new_err("database directory is already open by another instance"),
+        DatabaseError::GraphState(m) => GraphStateError::new_err(m),
     }
 }
 
@@ -151,6 +153,7 @@ fn _triplelight(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("TripleLightError", m.py().get_type::<TripleLightError>())?;
     m.add("SyntaxError", m.py().get_type::<SyntaxError>())?;
     m.add("UnsupportedError", m.py().get_type::<UnsupportedError>())?;
+    m.add("GraphStateError", m.py().get_type::<GraphStateError>())?;
     m.add("StorageError", m.py().get_type::<StorageError>())?;
     m.add("LockedError", m.py().get_type::<LockedError>())?;
     Ok(())

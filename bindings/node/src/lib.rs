@@ -19,6 +19,7 @@ fn err(e: DatabaseError) -> Error {
         DatabaseError::Unsupported(_) => "UnsupportedError",
         DatabaseError::Storage(_) => "StorageError",
         DatabaseError::Locked => "LockedError",
+        DatabaseError::GraphState(_) => "GraphStateError",
     };
     Error::new(Status::GenericFailure, format!("{kind}: {e}"))
 }
