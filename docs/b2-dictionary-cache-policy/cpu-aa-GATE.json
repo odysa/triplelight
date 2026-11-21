@@ -1,0 +1,453 @@
+{
+ "mode": "aa",
+ "verdict": "FAIL (answers/completion)",
+ "failures": [
+  "34-lubm-old-r5 (CPU to stats_ready 534.854 ms > 500: a statistics scan may have run)"
+ ],
+ "families": {
+  "bi": {
+   "q1": {
+    "old_cpu_median_ms": 306.04,
+    "new_cpu_median_ms": 301.09,
+    "cpu_ratio": 0.9838,
+    "wall_ratio_descriptive": 0.9911,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.961,
+     "new_then_old": 0.9983
+    },
+    "aa_in_band": true
+   },
+   "q2": {
+    "old_cpu_median_ms": 68.15,
+    "new_cpu_median_ms": 68.05,
+    "cpu_ratio": 0.9984,
+    "wall_ratio_descriptive": 0.9982,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9558,
+     "new_then_old": 1.0374
+    },
+    "aa_in_band": true
+   },
+   "q3": {
+    "old_cpu_median_ms": 1010.8,
+    "new_cpu_median_ms": 979.23,
+    "cpu_ratio": 0.9688,
+    "wall_ratio_descriptive": 0.972,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9467,
+     "new_then_old": 1.0066
+    },
+    "aa_in_band": false
+   },
+   "q4": {
+    "old_cpu_median_ms": 3294.75,
+    "new_cpu_median_ms": 3308.31,
+    "cpu_ratio": 1.0041,
+    "wall_ratio_descriptive": 1.0022,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9535,
+     "new_then_old": 1.0238
+    },
+    "aa_in_band": true
+   },
+   "q5": {
+    "old_cpu_median_ms": 1037.63,
+    "new_cpu_median_ms": 1044.18,
+    "cpu_ratio": 1.0063,
+    "wall_ratio_descriptive": 1.0045,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9937,
+     "new_then_old": 1.0018
+    },
+    "aa_in_band": true
+   },
+   "q6": {
+    "old_cpu_median_ms": 75.63,
+    "new_cpu_median_ms": 77.69,
+    "cpu_ratio": 1.0272,
+    "wall_ratio_descriptive": 1.0266,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9248,
+     "new_then_old": 1.0888
+    },
+    "aa_in_band": false
+   },
+   "q7": {
+    "old_cpu_median_ms": 329.85,
+    "new_cpu_median_ms": 336.1,
+    "cpu_ratio": 1.019,
+    "wall_ratio_descriptive": 1.0164,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9608,
+     "new_then_old": 1.0535
+    },
+    "aa_in_band": true
+   },
+   "q8": {
+    "old_cpu_median_ms": 87.95,
+    "new_cpu_median_ms": 88.08,
+    "cpu_ratio": 1.0015,
+    "wall_ratio_descriptive": 0.9762,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9764,
+     "new_then_old": 1.0591
+    },
+    "aa_in_band": true
+   },
+   "TOTAL": {
+    "old_cpu_median_ms": 6222.67,
+    "new_cpu_median_ms": 6164.9,
+    "cpu_ratio": 0.9907,
+    "wall_ratio_descriptive": 0.9946,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9575,
+     "new_then_old": 1.0137
+    },
+    "aa_in_band": true
+   }
+  },
+  "lubm": {
+   "all_q1": {
+    "old_cpu_median_ms": 0.48,
+    "new_cpu_median_ms": 0.52,
+    "cpu_ratio": 1.0904,
+    "wall_ratio_descriptive": 1.1008,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.2706,
+     "new_then_old": 1.163
+    },
+    "aa_in_band": null
+   },
+   "all_q10": {
+    "old_cpu_median_ms": 0.3,
+    "new_cpu_median_ms": 2.22,
+    "cpu_ratio": 7.4747,
+    "wall_ratio_descriptive": 4.1035,
+    "order_split_cpu_ratio": {
+     "old_then_new": 10.5213,
+     "new_then_old": 1.6117
+    },
+    "aa_in_band": null
+   },
+   "all_q11": {
+    "old_cpu_median_ms": 0.67,
+    "new_cpu_median_ms": 0.18,
+    "cpu_ratio": 0.2659,
+    "wall_ratio_descriptive": 0.6521,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.7371,
+     "new_then_old": 0.5547
+    },
+    "aa_in_band": null
+   },
+   "all_q12": {
+    "old_cpu_median_ms": 0.72,
+    "new_cpu_median_ms": 0.33,
+    "cpu_ratio": 0.4561,
+    "wall_ratio_descriptive": 0.5216,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.4146,
+     "new_then_old": 0.4368
+    },
+    "aa_in_band": null
+   },
+   "all_q13": {
+    "old_cpu_median_ms": 0.48,
+    "new_cpu_median_ms": 0.48,
+    "cpu_ratio": 0.9948,
+    "wall_ratio_descriptive": 0.9759,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.0474,
+     "new_then_old": 0.9711
+    },
+    "aa_in_band": null
+   },
+   "all_q14": {
+    "old_cpu_median_ms": 0.08,
+    "new_cpu_median_ms": 0.1,
+    "cpu_ratio": 1.1377,
+    "wall_ratio_descriptive": 1.1449,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.2038,
+     "new_then_old": 1.0889
+    },
+    "aa_in_band": null
+   },
+   "all_q2": {
+    "old_cpu_median_ms": 7.71,
+    "new_cpu_median_ms": 7.78,
+    "cpu_ratio": 1.0095,
+    "wall_ratio_descriptive": 1.1596,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9783,
+     "new_then_old": 1.003
+    },
+    "aa_in_band": null
+   },
+   "all_q3": {
+    "old_cpu_median_ms": 0.13,
+    "new_cpu_median_ms": 0.15,
+    "cpu_ratio": 1.0974,
+    "wall_ratio_descriptive": 1.0791,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.1011,
+     "new_then_old": 1.0902
+    },
+    "aa_in_band": null
+   },
+   "all_q4": {
+    "old_cpu_median_ms": 0.16,
+    "new_cpu_median_ms": 0.15,
+    "cpu_ratio": 0.9627,
+    "wall_ratio_descriptive": 0.94,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.0065,
+     "new_then_old": 0.9311
+    },
+    "aa_in_band": null
+   },
+   "all_q5": {
+    "old_cpu_median_ms": 0.26,
+    "new_cpu_median_ms": 0.27,
+    "cpu_ratio": 1.0114,
+    "wall_ratio_descriptive": 1.012,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.0249,
+     "new_then_old": 0.9889
+    },
+    "aa_in_band": null
+   },
+   "all_q6": {
+    "old_cpu_median_ms": 0.07,
+    "new_cpu_median_ms": 0.07,
+    "cpu_ratio": 0.98,
+    "wall_ratio_descriptive": 1.0074,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9733,
+     "new_then_old": 1.1241
+    },
+    "aa_in_band": null
+   },
+   "all_q7": {
+    "old_cpu_median_ms": 0.14,
+    "new_cpu_median_ms": 0.14,
+    "cpu_ratio": 0.9819,
+    "wall_ratio_descriptive": 0.9997,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9716,
+     "new_then_old": 0.9816
+    },
+    "aa_in_band": null
+   },
+   "all_q8": {
+    "old_cpu_median_ms": 8.02,
+    "new_cpu_median_ms": 8.7,
+    "cpu_ratio": 1.0848,
+    "wall_ratio_descriptive": 1.1234,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.2224,
+     "new_then_old": 0.837
+    },
+    "aa_in_band": null
+   },
+   "all_q9": {
+    "old_cpu_median_ms": 65.97,
+    "new_cpu_median_ms": 67.82,
+    "cpu_ratio": 1.0281,
+    "wall_ratio_descriptive": 1.0122,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.036,
+     "new_then_old": 1.009
+    },
+    "aa_in_band": false
+   },
+   "distinct_q1": {
+    "old_cpu_median_ms": 0.2,
+    "new_cpu_median_ms": 0.2,
+    "cpu_ratio": 1.0026,
+    "wall_ratio_descriptive": 1.0076,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9615,
+     "new_then_old": 1.0102
+    },
+    "aa_in_band": null
+   },
+   "distinct_q10": {
+    "old_cpu_median_ms": 0.12,
+    "new_cpu_median_ms": 0.13,
+    "cpu_ratio": 1.0329,
+    "wall_ratio_descriptive": 1.1187,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9807,
+     "new_then_old": 1.0681
+    },
+    "aa_in_band": null
+   },
+   "distinct_q11": {
+    "old_cpu_median_ms": 0.11,
+    "new_cpu_median_ms": 0.12,
+    "cpu_ratio": 1.048,
+    "wall_ratio_descriptive": 1.1429,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.0087,
+     "new_then_old": 1.0837
+    },
+    "aa_in_band": null
+   },
+   "distinct_q12": {
+    "old_cpu_median_ms": 0.34,
+    "new_cpu_median_ms": 0.35,
+    "cpu_ratio": 1.0402,
+    "wall_ratio_descriptive": 1.0467,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.0145,
+     "new_then_old": 1.0432
+    },
+    "aa_in_band": null
+   },
+   "distinct_q13": {
+    "old_cpu_median_ms": 0.51,
+    "new_cpu_median_ms": 0.54,
+    "cpu_ratio": 1.05,
+    "wall_ratio_descriptive": 1.0306,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.0115,
+     "new_then_old": 1.0659
+    },
+    "aa_in_band": null
+   },
+   "distinct_q14": {
+    "old_cpu_median_ms": 0.09,
+    "new_cpu_median_ms": 0.1,
+    "cpu_ratio": 1.0914,
+    "wall_ratio_descriptive": 1.0772,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.0495,
+     "new_then_old": 1.1029
+    },
+    "aa_in_band": null
+   },
+   "distinct_q2": {
+    "old_cpu_median_ms": 6.68,
+    "new_cpu_median_ms": 6.79,
+    "cpu_ratio": 1.0165,
+    "wall_ratio_descriptive": 0.9863,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9245,
+     "new_then_old": 1.2274
+    },
+    "aa_in_band": null
+   },
+   "distinct_q3": {
+    "old_cpu_median_ms": 0.15,
+    "new_cpu_median_ms": 0.15,
+    "cpu_ratio": 1.0238,
+    "wall_ratio_descriptive": 1.0173,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.8811,
+     "new_then_old": 1.1698
+    },
+    "aa_in_band": null
+   },
+   "distinct_q4": {
+    "old_cpu_median_ms": 0.18,
+    "new_cpu_median_ms": 0.21,
+    "cpu_ratio": 1.1671,
+    "wall_ratio_descriptive": 1.1218,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.0758,
+     "new_then_old": 1.2341
+    },
+    "aa_in_band": null
+   },
+   "distinct_q5": {
+    "old_cpu_median_ms": 0.38,
+    "new_cpu_median_ms": 0.42,
+    "cpu_ratio": 1.1058,
+    "wall_ratio_descriptive": 1.0077,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.1343,
+     "new_then_old": 1.7584
+    },
+    "aa_in_band": null
+   },
+   "distinct_q6": {
+    "old_cpu_median_ms": 0.1,
+    "new_cpu_median_ms": 0.11,
+    "cpu_ratio": 1.1337,
+    "wall_ratio_descriptive": 1.0394,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.0591,
+     "new_then_old": 5.1422
+    },
+    "aa_in_band": null
+   },
+   "distinct_q7": {
+    "old_cpu_median_ms": 0.18,
+    "new_cpu_median_ms": 0.19,
+    "cpu_ratio": 1.0881,
+    "wall_ratio_descriptive": 1.0926,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.4247,
+     "new_then_old": 3.5804
+    },
+    "aa_in_band": null
+   },
+   "distinct_q8": {
+    "old_cpu_median_ms": 7.11,
+    "new_cpu_median_ms": 6.69,
+    "cpu_ratio": 0.9417,
+    "wall_ratio_descriptive": 1.0103,
+    "order_split_cpu_ratio": {
+     "old_then_new": 0.9073,
+     "new_then_old": 0.9647
+    },
+    "aa_in_band": null
+   },
+   "distinct_q9": {
+    "old_cpu_median_ms": 69.52,
+    "new_cpu_median_ms": 73.26,
+    "cpu_ratio": 1.0537,
+    "wall_ratio_descriptive": 1.0559,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.0803,
+     "new_then_old": 1.0132
+    },
+    "aa_in_band": false
+   },
+   "group_advisors": {
+    "old_cpu_median_ms": 388.75,
+    "new_cpu_median_ms": 390.2,
+    "cpu_ratio": 1.0037,
+    "wall_ratio_descriptive": 0.9998,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.0109,
+     "new_then_old": 1.0031
+    },
+    "aa_in_band": true
+   },
+   "group_type": {
+    "old_cpu_median_ms": 38.0,
+    "new_cpu_median_ms": 38.83,
+    "cpu_ratio": 1.0217,
+    "wall_ratio_descriptive": 0.9175,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.02,
+     "new_then_old": 1.0495
+    },
+    "aa_in_band": null
+   },
+   "TOTAL": {
+    "old_cpu_median_ms": 597.88,
+    "new_cpu_median_ms": 616.49,
+    "cpu_ratio": 1.0311,
+    "wall_ratio_descriptive": 1.0084,
+    "order_split_cpu_ratio": {
+     "old_then_new": 1.0267,
+     "new_then_old": 1.0245
+    },
+    "aa_in_band": false
+   }
+  }
+ }
+}
