@@ -103,6 +103,11 @@ to read a retained Jena/HDT fixture. Native and Graph counts are 11 across the f
 exact in native iteration and in typed iteration with literal normalization disabled. The separate diagnostic
 records the shared RDFLib evaluator result. This fixture run contributes no workload timing.
 
+The [RDFLib LevelDB storage qualification](rdflib-leveldb-qualification-v1/README.md) retains all nine
+fixture triples across load and fresh-process reopen. With normalization disabled, all nine terms match the
+reference. Both default storage reads match the already-normalized parsed bag. Both reopens recover the
+write-ahead log. This Linux ARM64 fixture run contributes no workload timing.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.
