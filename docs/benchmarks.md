@@ -88,6 +88,10 @@ The [Oxrdflib disk qualification](oxrdflib-disk-qualification-v1/README.md) retu
 groups against nine expected across four parser and normalization profiles, at load and after
 fresh-process reopen. It has no workload timing.
 
+The [RDFLib SQLAlchemy / SQLite qualification](rdflib-sqlite-qualification-v1/README.md) preserves all nine
+typed reference triples across BrickSchema load and reopen with normalization disabled. The original plugin
+stopped at import in its declared-dependency environment. No workload timing was collected.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.
