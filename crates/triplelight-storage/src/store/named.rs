@@ -246,8 +246,10 @@ impl Work<'_> {
         let mut del_in: Vec<[TermId; 3]> = Vec::new();
         let mut del_out: Vec<[TermId; 3]> = Vec::new();
         for (spo, visible) in std::mem::take(&mut self.pending) {
-            if self.visible_in_delta(spo)? == visible { continue } // flipped back to where the delta already is
-            match (visible, self.base.count(Perm::Spo, &spo)? > 0) {
+            let in_base = self.base.count(Perm::Spo, &spo)? > 0;
+            let in_delta = if in_base { self.d.dels[0].binary_search(&spo).is_err() } else { self.d.adds[0].binary_search(&spo).is_ok() };
+            if in_delta == visible { continue } // flipped back to where the delta already is
+            match (visible, in_base) {
                 (true, true) => del_out.push(spo),
                 (true, false) => add_in.push(spo),
                 (false, true) => del_in.push(spo),
@@ -261,9 +263,11 @@ impl Work<'_> {
                 let (mut a, mut r) = (add.into_iter().peekable(), remove.into_iter().peekable());
                 for &row in old {
                     while a.peek().is_some_and(|&x| x < row) { out.push(a.next().unwrap()) }
+                    debug_assert!(r.peek().is_none_or(|&x| x >= row), "a row leaving the delta is not in it");
                     while r.peek().is_some_and(|&x| x < row) { r.next(); }
                     if r.peek() == Some(&row) { r.next(); } else { out.push(row) }
                 }
+                debug_assert!(r.next().is_none(), "a row leaving the delta is not in it");
                 out.extend(a);
                 out
             };
