@@ -117,6 +117,8 @@ nine triples across load and fresh-process reopen on Linux ARM64 and Java 21. Wi
 all nine exact terms match in direct iteration and SELECT. FILTER(false) and false ASK pass in both profiles.
 This contributes no workload timing.
 
+The [Blazegraph streaming COUNT fixture](blazegraph-embedded-count-fixture-v1/README.md) records an explicit-only fast range-count assertion and the matching typed count with all statements visible on a fixture containing nine explicit triples. It includes no workload timing.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.
