@@ -267,3 +267,54 @@ fn from_merge_with_shared_blank_nodes_is_refused() {
     assert_eq!(rows.len(), 2);
     assert!(rows.iter().any(|r| r[0] == "<http://ex/iri>") && rows.iter().any(|r| r[0].starts_with("_:")), "{rows:?}");
 }
+
+#[test]
+fn graph_inside_exists_with_an_inner_only_variable() {
+    // ?g appears only inside EXISTS; the default graph holds :a :p "d", and only g2 holds :a :p "2".
+    assert_eq!(run(&format!("{P} SELECT ?s {{ ?s :p ?o FILTER EXISTS {{ GRAPH ?g {{ ?s :p \"2\" }} }} }}")), v(&[&["<http://ex/a>"]]));
+    assert_eq!(run(&format!("{P} SELECT ?s {{ ?s :p ?o FILTER NOT EXISTS {{ GRAPH ?g {{ ?s :p \"2\" }} }} }}")), v(&[]));
+}
+
+#[test]
+fn graph_inside_exists_with_an_outer_bound_graph_variable() {
+    // GRAPH ?g {} binds every catalog graph; EXISTS then evaluates in that same graph only.
+    assert_eq!(run(&format!("{P} SELECT ?g {{ GRAPH ?g {{ }} FILTER EXISTS {{ GRAPH ?g {{ :b :p \"1\" }} }} }}")), v(&[&["<http://ex/g1>"]]));
+    assert_eq!(run(&format!("{P} SELECT ?g {{ GRAPH ?g {{ }} FILTER NOT EXISTS {{ GRAPH ?g {{ :a :p ?x }} }} }}")),
+               v(&[&["<http://ex/g3>"], &["<http://ex/g4>"], &["<http://ex/g5>"]]));
+}
+
+#[test]
+fn graph_inside_exists_with_constant_absent_and_empty_graphs() {
+    assert_eq!(run(&format!("{P} SELECT ?s {{ ?s :p \"d\" FILTER EXISTS {{ GRAPH :g2 {{ ?s :p \"2\" }} }} }}")), v(&[&["<http://ex/a>"]]));
+    assert_eq!(run(&format!("{P} SELECT ?s {{ ?s :p \"d\" FILTER EXISTS {{ GRAPH :g1 {{ ?s :p \"2\" }} }} }}")), v(&[]));
+    // An absent graph and an empty graph both make EXISTS false.
+    assert_eq!(run(&format!("{P} SELECT ?s {{ ?s :p \"d\" FILTER EXISTS {{ GRAPH :absent {{ ?x ?y ?z }} }} }}")), v(&[]));
+    assert_eq!(run(&format!("{P} SELECT ?s {{ ?s :p \"d\" FILTER EXISTS {{ GRAPH :g3 {{ ?x ?y ?z }} }} }}")), v(&[]));
+}
+
+#[test]
+fn graph_inside_exists_is_still_refused_without_a_dataset() {
+    let store = MemorySnapshot::from_triples([t("a", "d")]);
+    let err = triplelight::exec::query(&store, &format!("{P} SELECT ?s {{ ?s :p ?o FILTER EXISTS {{ GRAPH ?g {{ ?s :p ?o }} }} }}"))
+        .unwrap_err();
+    assert_eq!(err.kind, triplelight::exec::QueryErrorKind::Unsupported);
+}
+
+#[test]
+fn graph_variable_only_inside_exists_in_order_by_and_aggregates() {
+    // ?h appears only inside EXISTS in ORDER BY / an aggregate argument; it must still get a variable slot.
+    assert_eq!(run(&format!("{P} SELECT ?s {{ ?s :p ?o }} ORDER BY DESC(EXISTS {{ GRAPH ?h {{ ?s :p \"2\" }} }})")),
+               v(&[&["<http://ex/a>"]]));
+    assert_eq!(run(&format!("{P} SELECT (SUM(IF(EXISTS {{ GRAPH ?h {{ ?s :p \"2\" }} }}, 1, 0)) AS ?n) {{ ?s :p ?o }}")),
+               v(&[&["\"1\"^^<http://www.w3.org/2001/XMLSchema#integer>"]]));
+}
+
+#[test]
+fn graph_variable_only_in_a_sort_inside_a_nested_exists_subquery() {
+    // ?h appears only in an ORDER BY key of a subquery inside FILTER EXISTS.
+    assert_eq!(run(&format!("{P} SELECT ?s {{ ?s :p ?o FILTER EXISTS {{ SELECT ?s {{ ?s :p ?x }} ORDER BY DESC(EXISTS {{ GRAPH ?h {{ ?s :p \"2\" }} }}) }} }}")),
+               v(&[&["<http://ex/a>"]]));
+    // Same inside BIND and OPTIONAL's filter.
+    assert_eq!(run(&format!("{P} SELECT ?s ?b {{ ?s :p ?o BIND(EXISTS {{ SELECT ?s {{ ?s :p ?x }} ORDER BY (EXISTS {{ GRAPH ?h {{ ?s :p \"2\" }} }}) }} AS ?b) }}")),
+               v(&[&["<http://ex/a>", "\"true\"^^<http://www.w3.org/2001/XMLSchema#boolean>"]]));
+}
