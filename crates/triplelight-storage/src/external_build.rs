@@ -428,7 +428,7 @@ mod tests {
         fs::write(&file, "# comment\r\n<urn:s> <urn:p> \"é\"@fr .\r\n\n_:a <urn:p> <urn:o> .\n<urn:s> <urn:p> \"é\"@fr .\n<urn:last> <urn:p> \"x\" .").unwrap();
         let a = root.join("serial"); let b = root.join("parallel");
         from_nt(&a, Some(&file)).unwrap(); from_nt_parallel(&b, Some(&file), 8).unwrap();
-        for name in FILES[1..].iter().copied().chain(["dictionary.id", "dictionary.term"]) { assert_eq!(fs::read(a.join(name)).unwrap(), fs::read(b.join(name)).unwrap(), "{name}"); }
+        for name in FILES[1..].iter().copied().chain(["dictionary.unified"]) { assert_eq!(fs::read(a.join(name)).unwrap(), fs::read(b.join(name)).unwrap(), "{name}"); }
         assert_eq!(fs::read(a.join("MANIFEST")).unwrap(), fs::read(b.join("MANIFEST")).unwrap());
         let snap = DiskSnapshot::open(&b).unwrap(); snap.verify().unwrap(); drop(snap);
         fs::remove_dir_all(root).unwrap();
@@ -510,7 +510,7 @@ mod tests {
         from_nt(&out, Some(&input)).unwrap();
         let mut names: Vec<_> = fs::read_dir(&out).unwrap().map(|e| e.unwrap().file_name().into_string().unwrap()).collect();
         names.sort();
-        assert_eq!(names, ["MANIFEST", "dictionary.id", "dictionary.term", "ops", "osp", "pos", "pso", "sop", "spo"]);
+        assert_eq!(names, ["MANIFEST", "dictionary.unified", "ops", "osp", "pos", "pso", "sop", "spo"]);
         DiskSnapshot::open(&out).unwrap().verify().unwrap();
         fs::remove_dir_all(dir).unwrap();
     }

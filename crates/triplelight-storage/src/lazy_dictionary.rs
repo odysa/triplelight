@@ -656,7 +656,7 @@ impl Iterator for Rows {
         };
         let parsed = (|| {
             let (id, text) = match self.order {
-                Order::Id => {
+                Order::Id | Order::Unified => {
                     if value.len() < 8 {
                         return Err(bad("short ID sort record"));
                     }
