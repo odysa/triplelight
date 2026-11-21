@@ -18,6 +18,21 @@ pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
     pub w: usize,
 }
 
+/// Appends `row` extended by one matching index row, where `value(k)` is that row's value at key position `k`.
+/// A variable bound by the row must equal the index value (repeated variable); otherwise the candidate is dropped.
+#[inline(always)]
+fn push_extension(out: &mut Vec<TermId>, row: &[TermId], pat: &[Slot; 3], order: &[usize; 3], n: usize, value: impl Fn(usize) -> TermId) {
+    let start = out.len();
+    out.extend_from_slice(row);
+    for (k, &pos) in order.iter().enumerate().skip(n) {
+        if let Slot::Var(v) = pat[pos] {
+            let val = value(k);
+            let cell = &mut out[start + v];
+            if *cell == UNBOUND { *cell = val } else if *cell != val { out.truncate(start); return }
+        }
+    }
+}
+
 impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     fn count(&self, perm: Perm, prefix: &[TermId]) -> u64 { self.snap.count(perm, prefix).unwrap_or_else(|e| storage_failure(e)) }
     fn seek(&self, perm: Perm, prefix: &[TermId], t: TermId) -> Option<TermId> {
@@ -179,48 +194,18 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             let order = perm.order();
             // Compact layout: rows without their first key column; `t[k - 1]` is key position `k` (k >= n >= 1).
             if let Some(tails) = self.snap.matching_tail(perm, &prefix[..n]) {
-                'mtails: for t in tails {
-                    let start = out.len();
-                    out.extend_from_slice(row);
-                    for (k, &pos) in order.iter().enumerate().skip(n) {
-                        if let Slot::Var(v) = pat[pos] {
-                            let val = t[k - 1];
-                            let cell = &mut out[start + v];
-                            if *cell == UNBOUND { *cell = val } else if *cell != val { out.truncate(start); continue 'mtails }
-                        }
-                    }
-                }
+                for t in tails { push_extension(&mut out, row, pat, &order, n, |k| t[k - 1]); }
                 continue;
             }
             if let Some(rows) = self.snap.matching_rows(perm, &prefix[..n]) {
-                'mrows: for t in rows {
-                    let start = out.len();
-                    out.extend_from_slice(row);
-                    for (k, &pos) in order.iter().enumerate().skip(n) {
-                        if let Slot::Var(v) = pat[pos] {
-                            let val = t[k];
-                            let cell = &mut out[start + v];
-                            if *cell == UNBOUND { *cell = val } else if *cell != val { out.truncate(start); continue 'mrows }
-                        }
-                    }
-                }
+                for t in rows { push_extension(&mut out, row, pat, &order, n, |k| t[k]); }
                 continue;
             }
             // Which key columns bind new variables, and which must equal an already-bound value (repeated variable).
             for batch in self.snap.scan(perm, &prefix[..n]) {
                 let batch = batch.unwrap_or_else(|e| storage_failure(e));
                 #[allow(clippy::needless_range_loop)] // columnar batch: one row across several columns
-                'rows: for i in 0..batch.len() {
-                    let start = out.len();
-                    out.extend_from_slice(row);
-                    for (k, &pos) in order.iter().enumerate().skip(n) {
-                        if let Slot::Var(v) = pat[pos] {
-                            let val = batch.cols[k][i];
-                            let cell = &mut out[start + v];
-                            if *cell == UNBOUND { *cell = val } else if *cell != val { out.truncate(start); continue 'rows }
-                        }
-                    }
-                }
+                for i in 0..batch.len() { push_extension(&mut out, row, pat, &order, n, |k| batch.cols[k][i]); }
             }
         }
         out
@@ -480,4 +465,69 @@ fn lf_plan(pats: &[[Slot; 3]], counts: &[u64], given: Option<Vec<usize>>) -> (Ve
         (perm, [p[pos[0]], p[pos[1]], p[pos[2]]])
     }).collect();
     (order, plans)
+}
+
+#[cfg(test)]
+mod extension_bench {
+    use super::*;
+    use std::time::Instant;
+
+    /// The previous `extend_seq` row loop for the `matching_rows` layout, kept here only as the microbenchmark baseline.
+    fn old_rows(out: &mut Vec<TermId>, row: &[TermId], pat: &[Slot; 3], order: &[usize; 3], n: usize, rows: &[[TermId; 3]]) {
+        'mrows: for t in rows {
+            let start = out.len();
+            out.extend_from_slice(row);
+            for (k, &pos) in order.iter().enumerate().skip(n) {
+                if let Slot::Var(v) = pat[pos] {
+                    let val = t[k];
+                    let cell = &mut out[start + v];
+                    if *cell == UNBOUND { *cell = val } else if *cell != val { out.truncate(start); continue 'mrows }
+                }
+            }
+        }
+    }
+    fn new_rows(out: &mut Vec<TermId>, row: &[TermId], pat: &[Slot; 3], order: &[usize; 3], n: usize, rows: &[[TermId; 3]]) {
+        for t in rows { push_extension(out, row, pat, order, n, |k| t[k]); }
+    }
+    fn input() -> (Vec<[TermId; 3]>, Vec<Vec<TermId>>) {
+        // Index rows sorted on the first column; every 7th row shares its object with the pre-bound variable so the
+        // conflict (truncate) path runs too.
+        let rows: Vec<[TermId; 3]> = (0..5000u64).map(|i| [TermId(1 + i / 5), TermId(10 + i % 13), TermId(100 + i % 7)]).collect();
+        let outer: Vec<Vec<TermId>> = (0..200u64).map(|j| vec![TermId(1 + j), UNBOUND, if j % 2 == 0 { TermId(100 + j % 7) } else { UNBOUND }]).collect();
+        (rows, outer)
+    }
+
+    /// `cargo test --release -p triplelight-exec extension_bench -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn push_extension_is_not_slower_than_the_inlined_loop() {
+        let (rows, outer) = input();
+        let pat = [Slot::Var(0), Slot::Var(1), Slot::Var(2)];
+        let order = [0, 1, 2];
+        let n = 1;
+        // Same output first.
+        let (mut a, mut b) = (Vec::new(), Vec::new());
+        for row in &outer { old_rows(&mut a, row, &pat, &order, n, &rows); new_rows(&mut b, row, &pat, &order, n, &rows); }
+        assert_eq!(a, b, "the helper must produce identical rows");
+        let per_round = (outer.len() * rows.len()) as f64;
+        let (mut old_ns, mut new_ns) = (Vec::new(), Vec::new());
+        for round in 0..9 {
+            // Alternate which variant goes first so order effects cancel.
+            for variant in if round % 2 == 0 { [0, 1] } else { [1, 0] } {
+                let mut out = Vec::with_capacity(a.len());
+                let t = Instant::now();
+                for row in &outer {
+                    if variant == 0 { old_rows(&mut out, row, &pat, &order, n, &rows) } else { new_rows(&mut out, row, &pat, &order, n, &rows) }
+                }
+                let ns = t.elapsed().as_nanos() as f64 / per_round;
+                std::hint::black_box(&out);
+                if variant == 0 { old_ns.push(ns) } else { new_ns.push(ns) }
+            }
+        }
+        old_ns.sort_by(f64::total_cmp);
+        new_ns.sort_by(f64::total_cmp);
+        let (o, nw) = (old_ns[old_ns.len() / 2], new_ns[new_ns.len() / 2]);
+        eprintln!("extend loop, ns per index row (median of 9, interleaved): old {o:.2}, new {nw:.2}, ratio {:.3}", nw / o);
+        assert!(nw <= o * 1.05, "new is more than 5% slower");
+    }
 }
