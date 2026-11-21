@@ -132,7 +132,7 @@ impl DiskSnapshot {
         let dir = dir.as_ref();
         fs::create_dir(dir)?;
         write_dictionary(source, &dir.join(FILES[0]))?;
-        let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir)?;
+        let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir, false)?;
         let mut identities = vec![term_identity, id_identity];
         for (i, name) in FILES[1..].iter().enumerate() {
             let file = File::create(dir.join(name))?;
