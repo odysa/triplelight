@@ -56,7 +56,7 @@ fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'
     } })();
     if let Some(before) = before {
         let after = triplelight::storage::disk_index::cache_trace_snapshot();
-        for (i,name) in ["spo","sop","pso","pos","osp","ops","dictionary.term","dictionary.id"].iter().enumerate() {
+        for (i,name) in ["spo","sop","pso","pos","osp","ops","dictionary.term","dictionary.id","quads"].iter().enumerate() {
             let d: Vec<u64> = (0..5).map(|j|after[i][j].saturating_sub(before[i][j])).collect();
             eprintln!("block_cache {name} hits={} misses={} pread_calls={} pread_bytes={} evictions={}",d[0],d[1],d[2],d[3],d[4]);
         }

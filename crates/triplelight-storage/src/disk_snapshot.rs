@@ -11,6 +11,10 @@ use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::Path;
 
 pub(super) const FILES: [&str; 7] = ["dictionary", "spo", "sop", "pso", "pos", "osp", "ops"];
+/// The graph-first quad orders of an `RDFSNAP5` base (task #36), in `Perm::ALL` order of their triple part.
+pub(super) const QUAD_FILES: [&str; 6] = ["gspo", "gsop", "gpso", "gpos", "gosp", "gops"];
+/// The graph catalog of an `RDFSNAP5` base: every named graph's ID and triple count, empty graphs included.
+pub(super) const CATALOG_FILE: &str = "graphs";
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, s)
 }
@@ -26,6 +30,37 @@ pub(super) fn digest(path: &Path) -> io::Result<[u8; 32]> {
         hash.update(&buf[..n]);
     }
     Ok(hash.finalize().into())
+}
+/// Reads and checks the graph catalog: checksum equal to the manifest identity, strictly ascending nonzero IDs,
+/// and counts that add up to the quad orders' row count.
+fn read_catalog(path: &Path, identity: [u8; 32], quads: u64) -> io::Result<Vec<(TermId, u64)>> {
+    let bytes = fs::read(path)?;
+    if bytes.len() < 48 || &bytes[..8] != b"RDFGRA01" {
+        return Err(bad("bad graph catalog"));
+    }
+    let (body, sum) = bytes.split_at(bytes.len() - 32);
+    if Sha256::digest(body).as_slice() != sum || sum != identity {
+        return Err(bad("graph catalog checksum mismatch"));
+    }
+    let n = u64::from_le_bytes(body[8..16].try_into().unwrap());
+    if (body.len() as u64 - 16) != n.checked_mul(16).ok_or_else(|| bad("bad graph catalog"))? {
+        return Err(bad("bad graph catalog length"));
+    }
+    let mut out: Vec<(TermId, u64)> = Vec::with_capacity(n as usize);
+    let mut total = 0u64;
+    for entry in body[16..].as_chunks::<16>().0 {
+        let g = TermId(u64::from_le_bytes(entry[..8].try_into().unwrap()));
+        let count = u64::from_le_bytes(entry[8..].try_into().unwrap());
+        if g.0 == 0 || out.last().is_some_and(|&(prev, _)| prev >= g) {
+            return Err(bad("graph catalog IDs not ascending"));
+        }
+        total = total.checked_add(count).ok_or_else(|| bad("bad graph catalog"))?;
+        out.push((g, count));
+    }
+    if total != quads {
+        return Err(bad("graph catalog counts disagree with the quad orders"));
+    }
+    Ok(out)
 }
 fn number(r: &mut impl Read) -> io::Result<u64> {
     let mut b = [0; 8];
@@ -84,6 +119,11 @@ fn read_dictionary(path: &Path) -> io::Result<(HashMap<Term, TermId>, HashMap<Te
 pub fn write_disk_snapshot(dir: impl AsRef<Path>, source: &dyn Snapshot) -> io::Result<()> {
     super::external_build::from_snapshot(dir.as_ref(), source)
 }
+/// Build a base of a whole dataset (task #36): the default graph plus every named graph as `RDFSNAP5`, or a plain
+/// `RDFSNAP4` base when there are no named graphs.
+pub fn write_disk_dataset(dir: impl AsRef<Path>, source: &dyn triplelight_core::storage::DatasetView) -> io::Result<()> {
+    super::external_build::from_dataset(dir.as_ref(), source)
+}
 /// Build a new immutable disk snapshot from N-Triples using scratch-backed sorting.
 pub fn build_disk_snapshot(dir: impl AsRef<Path>, source: Option<&Path>) -> io::Result<()> {
     super::external_build::adaptive(
@@ -127,6 +167,13 @@ enum DictionaryBackend {
 pub struct DiskSnapshot {
     dictionary: DictionaryBackend,
     indexes: Vec<DiskIndex>,
+    /// Named graphs (`RDFSNAP5` only): the six graph-first quad orders and the catalog `(graph ID, triples)`,
+    /// ascending by ID.
+    named: Option<NamedBase>,
+}
+struct NamedBase {
+    quads: Vec<DiskIndex<4>>,
+    catalog: Vec<(TermId, u64)>,
 }
 impl DiskSnapshot {
     /// Writes a new snapshot; the manifest is written last and old paths are never replaced.
@@ -176,9 +223,11 @@ impl DiskSnapshot {
             b"RDFSNAP2" => 2,
             b"RDFSNAP3" => 3,
             b"RDFSNAP4" => 4,
+            b"RDFSNAP5" => 5,
             _ => return Err(bad("bad snapshot manifest or version")),
         };
-        let mut expected = vec![[0u8; 32]; if version == 3 { 8 } else { 7 }];
+        // RDFSNAP5: the RDFSNAP4 identities, then six quad orders and the catalog.
+        let mut expected = vec![[0u8; 32]; match version { 3 => 8, 5 => 14, _ => 7 }];
         for item in &mut expected {
             manifest.read_exact(item)?;
         }
@@ -186,9 +235,10 @@ impl DiskSnapshot {
         if manifest.read(&mut extra)? != 0 {
             return Err(bad("manifest trailing bytes"));
         }
-        let (dictionary, index_offset) = if version == 4 {
+        let (dictionary, index_offset) = if version >= 4 {
             use super::lazy_dictionary::{DictionaryCache, LazyIndex, Order, UNIFIED_FILE};
-            let unified = LazyIndex::open_shared(&dir.join(UNIFIED_FILE), Order::Unified, DictionaryCache::new())?;
+            let shares = if version == 5 { super::disk_index::DATASET_SHARES } else { super::disk_index::DEFAULT_SHARES };
+            let unified = LazyIndex::open_shared(&dir.join(UNIFIED_FILE), Order::Unified, DictionaryCache::with_shares(shares))?;
             if unified.identity() != expected[0] {
                 return Err(bad("dictionary directory checksum mismatch"));
             }
@@ -210,8 +260,10 @@ impl DiskSnapshot {
             (DictionaryBackend::Legacy { forward, reverse }, 1)
         };
         let mut indexes = Vec::new();
+        // With the six quad orders, every index takes a smaller share so the snapshot stays within its cache budget.
+        let shares = if version == 5 { super::disk_index::DATASET_SHARES } else { super::disk_index::DEFAULT_SHARES };
         for (i, name) in FILES[1..].iter().enumerate() {
-            let index = DiskIndex::<3>::open(dir.join(name))?;
+            let index = DiskIndex::<3>::open_with_share(dir.join(name), shares)?;
             if index.identity() != expected[i + index_offset] {
                 return Err(bad("index directory checksum mismatch"));
             }
@@ -221,9 +273,27 @@ impl DiskSnapshot {
         if indexes.iter().any(|index| index.len() != rows) {
             return Err(bad("index counts differ"));
         }
+        let named = if version == 5 {
+            let mut quads = Vec::new();
+            for (i, name) in QUAD_FILES.iter().enumerate() {
+                let index = DiskIndex::<4>::open_with_share(dir.join(name), super::disk_index::DATASET_SHARES)?;
+                if index.identity() != expected[7 + i] {
+                    return Err(bad("quad index directory checksum mismatch"));
+                }
+                quads.push(index);
+            }
+            if quads.iter().any(|q| q.len() != quads[0].len()) {
+                return Err(bad("quad index counts differ"));
+            }
+            let catalog = read_catalog(&dir.join(CATALOG_FILE), expected[13], quads[0].len())?;
+            Some(NamedBase { quads, catalog })
+        } else {
+            None
+        };
         Ok(Self {
             dictionary,
             indexes,
+            named,
         })
     }
     /// Exhaustive, exact verification. The phases run in this order because the later ones rely on the earlier:
@@ -298,7 +368,60 @@ impl DiskSnapshot {
                 }
             }
         }
+        self.verify_named()
+    }
+    /// Phases 2-4 for the named graphs (`RDFSNAP5`): every quad block, every quad order's rows in G+SPO, every ID
+    /// of G+SPO in the dictionary, every catalog ID an IRI with the triple count G+SPO holds for it.
+    fn verify_named(&self) -> io::Result<()> {
+        use rayon::prelude::*;
+        let Some(named) = &self.named else { return Ok(()) };
+        named.quads.par_iter().try_for_each(|index| -> io::Result<()> {
+            index.clear_cache()?;
+            index.validate()
+        })?;
+        let base = &named.quads[0];
+        Perm::ALL.par_iter().enumerate().try_for_each(|(slot, &perm)| -> io::Result<()> {
+            let index = &named.quads[slot];
+            let order = perm.order();
+            for i in 0..index.len() {
+                let row = index.get(i)?;
+                let mut gspo = [row[0], TermId(0), TermId(0), TermId(0)];
+                for k in 0..3 { gspo[1 + order[k]] = row[1 + k] }
+                let matching = base.range(&gspo)?;
+                if matching.end - matching.start != 1 {
+                    return Err(bad("quad order contents disagree"));
+                }
+            }
+            Ok(())
+        })?;
+        let mut last = [None; 4];
+        for i in 0..base.len() {
+            for (k, id) in base.get(i)?.into_iter().enumerate() {
+                if last[k] != Some(id) {
+                    self.with_term(id, &mut |_| ())?;
+                    last[k] = Some(id);
+                }
+            }
+        }
+        for &(g, count) in &named.catalog {
+            let mut iri = false;
+            self.with_term(g, &mut |t| iri = matches!(t, oxrdf::TermRef::NamedNode(_)))?;
+            let range = base.range(&[g])?;
+            if !iri || range.end - range.start != count {
+                return Err(bad("graph catalog disagrees with the quad orders"));
+            }
+        }
         Ok(())
+    }
+    /// The named graphs of this base, ascending by ID, empty graphs included (none unless `RDFSNAP5`).
+    pub fn graph_names(&self) -> Vec<TermId> {
+        self.named.as_ref().map_or_else(Vec::new, |n| n.catalog.iter().map(|&(g, _)| g).collect())
+    }
+    /// A read view of named graph `g`, or `None` if the catalog does not list it.
+    pub fn graph_view(self: &std::sync::Arc<Self>, g: TermId) -> Option<DiskGraph> {
+        let named = self.named.as_ref()?;
+        named.catalog.binary_search_by_key(&g, |&(id, _)| id).ok()?;
+        Some(DiskGraph { snap: std::sync::Arc::clone(self), g })
     }
     /// Exhaustively check that every row of every permutation is in SPO (the six orders in parallel). Together with
     /// strictly sorted indexes of equal length (`verify` phase 2) this means all permutations hold the same set.
@@ -452,10 +575,210 @@ impl Snapshot for DiskSnapshot {
     }
 }
 
+/// One named graph of an `RDFSNAP5` base: the graph-first quad orders with `g` bound, over the base's dictionary.
+pub struct DiskGraph {
+    snap: std::sync::Arc<DiskSnapshot>,
+    g: TermId,
+}
+impl DiskGraph {
+    fn index(&self, perm: Perm) -> &DiskIndex<4> {
+        &self.snap.named.as_ref().expect("a graph view exists only for RDFSNAP5").quads[Perm::ALL.iter().position(|x| *x == perm).unwrap()]
+    }
+    fn key(&self, prefix: &[TermId]) -> Vec<TermId> {
+        let mut key = Vec::with_capacity(prefix.len() + 1);
+        key.push(self.g);
+        key.extend_from_slice(prefix);
+        key
+    }
+}
+impl Dictionary for DiskGraph {
+    fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { self.snap.lookup(term) }
+    fn resolve(&self, id: TermId) -> Result<Term, StorageError> { self.snap.resolve(id) }
+    fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> Result<(), StorageError> { self.snap.with_term(id, f) }
+    fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, oxrdf::TermRef<'_>)) -> Result<(), StorageError> {
+        self.snap.with_terms(ids, f)
+    }
+}
+impl Snapshot for DiskGraph {
+    fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+        let index = self.index(perm);
+        match index.range(&self.key(prefix)) {
+            Err(e) => Box::new(std::iter::once(Err(e))),
+            Ok(range) => {
+                let mut pos = range.start;
+                Box::new(std::iter::from_fn(move || {
+                    if pos >= range.end { return None }
+                    let end = pos.saturating_add(4096).min(range.end);
+                    let mut batch = TripleBatch::default();
+                    while pos < end {
+                        match index.block_slice(pos, end) {
+                            Ok(rows) => {
+                                pos += rows.len() as u64;
+                                for row in rows {
+                                    for (col, &value) in batch.cols.iter_mut().zip(&row[1..]) { col.push(value) }
+                                }
+                            }
+                            Err(e) => { pos = range.end; return Some(Err(e)) }
+                        }
+                    }
+                    Some(Ok(batch))
+                }))
+            }
+        }
+    }
+    fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
+        let r = self.index(perm).range(&self.key(prefix))?;
+        Ok(r.end - r.start)
+    }
+    fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
+        if prefix.len() >= 3 { return Ok(None) }
+        self.index(perm).seek_value(&self.key(prefix), target)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use oxrdf::{Literal, NamedNode, Triple};
+    /// A dataset base (`RDFSNAP5`): every named graph view answers like the overlay it was written from (by term)
+    /// and like a row model of its quad rows (by ID) for every order, prefix and seek; the catalog keeps empty graphs.
+    #[test]
+    fn dataset_base_matches_its_source_and_a_row_model() {
+        use crate::model::{Change, DatasetChange, GraphTarget};
+        use triplelight_core::storage::DatasetView;
+        let iri = |s: &str| NamedNode::new(format!("http://ex/{s}")).unwrap();
+        let mut changes = Vec::new();
+        for i in 0..400u32 {
+            let t = Triple::new(iri(&format!("s{}", i % 23)), iri(&format!("p{}", i % 4)), Literal::new_simple_literal(format!("{}", i % 31)));
+            let g = ["g1", "g2", "g3"][(i % 3) as usize];
+            changes.push(DatasetChange::Quad(GraphTarget::Named(iri(g)), Change::Insert, t.clone()));
+            if i % 5 == 0 { changes.push(DatasetChange::Quad(GraphTarget::Default, Change::Insert, t)) }
+        }
+        changes.push(DatasetChange::Create { graph: iri("empty"), silent: false });
+        let source = crate::store::Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([]))).with_dataset_changes(&changes).unwrap().0;
+        let parent = std::env::temp_dir().join(format!("rdf-dataset-base-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&parent);
+        fs::create_dir(&parent).unwrap();
+        let dir = parent.join("base");
+        write_disk_dataset(&dir, &source).unwrap();
+        assert_eq!(&fs::read(dir.join("MANIFEST")).unwrap()[..8], b"RDFSNAP5");
+        let disk = std::sync::Arc::new(DiskSnapshot::open(&dir).unwrap());
+        disk.verify().unwrap();
+        let rows_as_text = |view: &dyn Snapshot, perm: Perm| -> Vec<String> {
+            let mut v = Vec::new();
+            for b in view.scan(perm, &[]) {
+                let b = b.unwrap();
+                let r = |id: TermId| view.resolve(id).unwrap().to_string();
+                for ((&s, &p), &o) in b.cols[0].iter().zip(&b.cols[1]).zip(&b.cols[2]) { v.push(format!("{} {} {}", r(s), r(p), r(o))) }
+            }
+            v.sort();
+            v
+        };
+        for p in Perm::ALL { assert_eq!(rows_as_text(&*disk, p), rows_as_text(&source, p), "default {p:?}") }
+        let names = |ids: Vec<TermId>, d: &dyn Dictionary| -> Vec<String> { let mut v: Vec<String> = ids.into_iter().map(|g| d.resolve(g).unwrap().to_string()).collect(); v.sort(); v };
+        assert_eq!(names(disk.graph_names(), &*disk), names(source.graph_names().unwrap(), &source));
+        assert_eq!(disk.graph_names().len(), 4, "the empty graph is in the catalog");
+        for g in disk.graph_names() {
+            let view = disk.graph_view(g).unwrap();
+            let src = source.graph(source.lookup(&disk.resolve(g).unwrap()).unwrap().unwrap()).unwrap().unwrap();
+            let mut spo: Vec<[TermId; 3]> = Vec::new();
+            for b in view.scan(Perm::Spo, &[]) { let b = b.unwrap(); spo.extend((0..b.len()).map(|i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]])) }
+            for p in Perm::ALL {
+                assert_eq!(rows_as_text(&view, p), rows_as_text(src, p), "graph {g:?} {p:?}");
+                let order = p.order();
+                let mut rows: Vec<[TermId; 3]> = spo.iter().map(|r| [r[order[0]], r[order[1]], r[order[2]]]).collect();
+                rows.sort();
+                let mut prefixes: Vec<Vec<TermId>> = vec![vec![], vec![TermId(1)]];
+                for r in rows.iter().step_by(7) { for k in 1..=3 { prefixes.push(r[..k].to_vec()) } }
+                for prefix in &prefixes {
+                    let want: Vec<[TermId; 3]> = rows.iter().filter(|r| r[..prefix.len()] == prefix[..]).copied().collect();
+                    let mut got = Vec::new();
+                    for b in view.scan(p, prefix) { let b = b.unwrap(); got.extend((0..b.len()).map(|i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]])) }
+                    assert_eq!(got, want, "{p:?} {prefix:?}");
+                    assert_eq!(view.count(p, prefix).unwrap(), want.len() as u64);
+                    if prefix.len() < 3 {
+                        for target in want.iter().map(|r| r[prefix.len()]).chain([TermId(0), TermId(u64::MAX)]) {
+                            let expect = want.iter().map(|r| r[prefix.len()]).filter(|&v| v >= target).min();
+                            assert_eq!(view.seek(p, prefix, target).unwrap(), expect);
+                        }
+                    }
+                }
+            }
+        }
+        assert!(disk.graph_view(TermId(1)).is_none());
+        // Without named graphs the dataset writer gives exactly the RDFSNAP4 base of the default graph.
+        let plain = crate::store::Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([]))).with_changes(
+            &changes.iter().filter_map(|c| match c { DatasetChange::Quad(GraphTarget::Default, ch, t) => Some((*ch, t.clone())), _ => None }).collect::<Vec<_>>()).unwrap().0;
+        let (a, b) = (parent.join("a"), parent.join("b"));
+        write_disk_dataset(&a, &plain).unwrap();
+        write_disk_snapshot(&b, &plain).unwrap();
+        for entry in fs::read_dir(&b).unwrap() {
+            let name = entry.unwrap().file_name();
+            assert_eq!(fs::read(a.join(&name)).unwrap(), fs::read(b.join(&name)).unwrap(), "{name:?}");
+        }
+        assert_eq!(&fs::read(a.join("MANIFEST")).unwrap()[..8], b"RDFSNAP4");
+        // Corruption: a catalog byte fails open; a quad row swapped in one order fails verify.
+        drop(disk);
+        let catalog = fs::read(dir.join(CATALOG_FILE)).unwrap();
+        let mut bad_catalog = catalog.clone();
+        bad_catalog[20] ^= 1;
+        fs::write(dir.join(CATALOG_FILE), &bad_catalog).unwrap();
+        assert!(DiskSnapshot::open(&dir).is_err());
+        fs::write(dir.join(CATALOG_FILE), &catalog).unwrap();
+        let gpos = DiskIndex::<4>::open(dir.join("gpos")).unwrap();
+        let mut rows: Vec<[TermId; 4]> = (0..gpos.len()).map(|i| gpos.get(i).unwrap()).collect();
+        drop(gpos);
+        let last = rows.len() - 1;
+        rows[last][3] = TermId(rows[last][3].0 + 1); // a row that is in no other order
+        rows.sort();
+        rows.dedup();
+        let mut out = Vec::new();
+        crate::disk_index::write_index(&mut out, rows.into_iter()).unwrap();
+        fs::write(dir.join("gpos"), &out).unwrap();
+        // Keep the manifest's identity in step, so only verify can notice.
+        let mut manifest = fs::read(dir.join("MANIFEST")).unwrap();
+        let slot = 7 + 3;
+        manifest[8 + slot * 32..8 + slot * 32 + 32].copy_from_slice(&DiskIndex::<4>::open(dir.join("gpos")).unwrap().identity());
+        fs::write(dir.join("MANIFEST"), &manifest).unwrap();
+        let reopened = DiskSnapshot::open(&dir).unwrap();
+        assert!(reopened.verify().is_err());
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    /// A dataset whose named graphs are all empty (only `CREATE GRAPH`): the base builds with empty quad orders,
+    /// lists every graph, verifies, and each view is empty.
+    #[test]
+    fn dataset_base_with_only_empty_named_graphs() {
+        use crate::model::{Change, DatasetChange, GraphTarget};
+        let iri = |s: &str| NamedNode::new(format!("http://ex/{s}")).unwrap();
+        let changes = vec![
+            DatasetChange::Quad(GraphTarget::Default, Change::Insert, Triple::new(iri("s"), iri("p"), Literal::new_simple_literal("o"))),
+            DatasetChange::Create { graph: iri("e1"), silent: false },
+            DatasetChange::Create { graph: iri("e2"), silent: false },
+        ];
+        let source = crate::store::Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([]))).with_dataset_changes(&changes).unwrap().0;
+        let dir = std::env::temp_dir().join(format!("rdf-dataset-empty-graphs-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        write_disk_dataset(&dir, &source).unwrap();
+        assert_eq!(&fs::read(dir.join("MANIFEST")).unwrap()[..8], b"RDFSNAP5");
+        let disk = std::sync::Arc::new(DiskSnapshot::open(&dir).unwrap());
+        disk.verify().unwrap();
+        let mut names: Vec<String> = disk.graph_names().into_iter().map(|g| disk.resolve(g).unwrap().to_string()).collect();
+        names.sort();
+        assert_eq!(names, ["<http://ex/e1>", "<http://ex/e2>"]);
+        for g in disk.graph_names() {
+            let view = disk.graph_view(g).unwrap();
+            for p in Perm::ALL {
+                assert_eq!(view.count(p, &[]).unwrap(), 0);
+                assert!(view.scan(p, &[]).next().is_none());
+                assert_eq!(view.seek(p, &[], TermId(0)).unwrap(), None);
+            }
+        }
+        assert_eq!(disk.count(Perm::Spo, &[]).unwrap(), 1);
+        assert!(!dir.join(".quads.raw").exists(), "no scratch is left behind");
+        fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn generic_snapshot_writer_reopens_and_refuses_overwrite() {
         let source = MemorySnapshot::from_triples([Triple::new(
