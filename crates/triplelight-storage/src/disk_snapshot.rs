@@ -739,6 +739,7 @@ mod tests {
         let mut rows = Vec::new();
         u.for_each(&mut |id, term| { rows.push((id, term.clone())); Ok(()) }).unwrap();
         drop(u);
+        let first_id = rows[0].0;
         // Keep every ID and kind, but swap the terms of two neighbouring IRIs: the text order is broken.
         let iris: Vec<usize> = rows.iter().enumerate().filter(|(_, (_, t))| matches!(t, Term::NamedNode(_))).map(|(i, _)| i).collect();
         let (a, b) = (iris[1], iris[2]);
@@ -750,7 +751,7 @@ mod tests {
         replace_identity4(&dir, 0, LazyIndex::open(&path, Order::Unified).unwrap().identity());
         // Open works and an ID lookup answers (the cheap load guard holds) ...
         let disk = DiskSnapshot::open(&dir).unwrap();
-        disk.with_term(TermId((1 << 60) | 1), &mut |_| ()).unwrap();
+        disk.with_term(first_id, &mut |_| ()).unwrap();
         // ... and verify rejects the broken order.
         let err = disk.verify().expect_err("verify must fail").to_string();
         assert!(err.contains("not strictly sorted"), "{err}");
