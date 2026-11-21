@@ -31,6 +31,11 @@ pub fn set_build_budget_mb(mb: usize) -> io::Result<()> {
 pub fn force_external_build() {
     FORCE_EXTERNAL.store(true, Ordering::Relaxed);
 }
+/// Permutation sorts that may run at once: each holds one run buffer plus merge heads and read buffers, so allow one
+/// per `2 * MEMORY` of the advisory budget, at least one and at most the six permutations.
+fn index_workers_for(budget_mb: usize) -> usize {
+    (budget_mb.saturating_mul(1_048_576) / (2 * MEMORY)).clamp(1, Perm::ALL.len())
+}
 fn budget_mb() -> usize {
     let n = BUILD_BUDGET_MB.load(Ordering::Relaxed);
     if n != 0 {
@@ -99,7 +104,7 @@ impl Builder {
         Ok(Self {
             terms: ExternalSort::new(dir, bytes, MAX_TERM + 10)?,
             triples: 0,
-            index_workers: 1,
+            index_workers: index_workers_for(budget_mb()),
         })
     }
     fn add(&mut self, terms: [String; 3]) -> io::Result<()> {
@@ -371,7 +376,6 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
     let mut combined = Builder::new(dir)?;
     combined.terms.import_sorted(&paths)?;
     combined.triples = count;
-    combined.index_workers = shards.min(3);
     drop(builders);
     combined.finish(dir)
 }
@@ -529,6 +533,17 @@ mod tests {
             assert!(DiskSnapshot::open(&out).is_err(), "phase {phase} must not open as a snapshot");
             fs::remove_dir_all(dir).unwrap();
         }
+    }
+
+    #[test]
+    fn index_workers_follow_the_advisory_budget() {
+        assert_eq!(index_workers_for(0), 1);
+        assert_eq!(index_workers_for(255), 1);
+        assert_eq!(index_workers_for(256), 1);
+        assert_eq!(index_workers_for(768), 3);
+        assert_eq!(index_workers_for(1024), 4);
+        assert_eq!(index_workers_for(1536), 6);
+        assert_eq!(index_workers_for(1 << 20), 6);
     }
 
     #[test]
