@@ -49,7 +49,7 @@ impl Format {
 /// Parses a whole document; on the first syntax error returns its message and no triples.
 pub fn parse_triples(data: &[u8], format: Format) -> Result<Vec<Triple>, String> {
     match format {
-        Format::NTriples => crate::ntriples::read_ntriples(data).collect::<Result<_, _>>().map_err(|e| e.to_string()),
+        Format::NTriples => crate::ntriples::read_ntriples_slice(data).collect::<Result<_, _>>().map_err(|e| e.to_string()),
         Format::Turtle => oxttl::TurtleParser::new().for_slice(data).collect::<Result<_, _>>().map_err(|e| e.to_string()),
     }
 }

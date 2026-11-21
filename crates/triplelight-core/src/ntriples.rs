@@ -20,7 +20,8 @@ impl std::fmt::Display for LineError {
 /// One parsed line: nothing (blank or comment), or a statement.
 type LineResult = Result<Option<Quad>, LineError>;
 
-struct Line<'a> { data: &'a [u8], pos: usize, with_graph: bool }
+/// `capped`: tokens over `MAX_TOKEN` are refused, as `oxttl`'s streaming readers did; its slice parsers had no cap.
+struct Line<'a> { data: &'a [u8], pos: usize, with_graph: bool, capped: bool }
 
 impl<'a> Line<'a> {
     fn peek(&self) -> u8 { self.data.get(self.pos).copied().unwrap_or(b'\n') }
@@ -100,7 +101,7 @@ impl<'a> Line<'a> {
             bytes.extend_from_slice(c.encode_utf8(&mut buf).as_bytes());
             i += len;
         }
-        if i + 1 - self.pos > MAX_TOKEN { return Err(LineError::TooLarge) }
+        if self.capped && i + 1 - self.pos > MAX_TOKEN { return Err(LineError::TooLarge) }
         self.pos = i + 1;
         let iri = String::from_utf8(bytes).map_err(|e| format!("Invalid UTF-8: {e}"))?;
         triplelight_iri::Iri::validate(&iri).map_err(|e| format!("Invalid IRI <{iri}>: {e}"))?;
@@ -119,7 +120,7 @@ impl<'a> Line<'a> {
         }
         while i > start && self.data[i - 1] == b'.' { i -= 1 }
         if i == start { return Err("A blank node ID cannot be empty".into()) }
-        if i - self.pos > MAX_TOKEN { return Err(LineError::TooLarge) }
+        if self.capped && i - self.pos > MAX_TOKEN { return Err(LineError::TooLarge) }
         self.pos = i;
         Ok(std::str::from_utf8(&self.data[start..i]).map_err(|e| format!("Invalid UTF-8: {e}"))?.to_owned())
     }
@@ -134,7 +135,7 @@ impl<'a> Line<'a> {
             out.push_str(std::str::from_utf8(&rest[..end]).map_err(|e| format!("Invalid UTF-8: {e}"))?);
             i += end;
             match self.data[i] {
-                b'"' => { if i + 1 - self.pos > MAX_TOKEN { return Err(LineError::TooLarge) } self.pos = i + 1; return Ok(out) }
+                b'"' => { if self.capped && i + 1 - self.pos > MAX_TOKEN { return Err(LineError::TooLarge) } self.pos = i + 1; return Ok(out) }
                 b'\\' => { let (c, len) = escape(&self.data[i..], true)?; out.push(c); i += len }
                 _ => return Err("Line jumps are not allowed in string literals, use \\n".into()),
             }
@@ -170,6 +171,7 @@ impl<'a> Line<'a> {
 
     fn finish_lang(&mut self, tag: &[u8], consumed: usize) -> Result<String, LineError> {
         let tag = std::str::from_utf8(tag).map_err(|e| format!("Invalid UTF-8: {e}"))?;
+        if self.capped && consumed > MAX_TOKEN { return Err(LineError::TooLarge) }
         if !crate::langtag::is_well_formed(tag) { return Err(format!("Invalid language tag {tag:?}").into()) }
         self.pos += consumed;
         Ok(tag.to_owned())
@@ -225,14 +227,15 @@ fn pn_chars(c: char) -> bool {
 
 /// Parses one line (without its terminator) of N-Quads (`with_graph`) or N-Triples. Reading past the end of the
 /// line sees a line terminator, as in the original stream.
-fn parse_line(line: &[u8], with_graph: bool) -> LineResult { Line { data: line, pos: 0, with_graph }.statement() }
+fn parse_line(line: &[u8], with_graph: bool, capped: bool) -> LineResult { Line { data: line, pos: 0, with_graph, capped }.statement() }
 
 /// Parses one N-Quads statement line, as the WAL stores them (task #36): `None` if it is not exactly one valid quad.
 pub fn parse_nquads_line(line: &str) -> Option<Quad> {
     // `\r` and `\n` break lines as in a document: the text must hold exactly one statement and nothing invalid.
     let mut found = None;
     for piece in line.as_bytes().split(|&b| matches!(b, b'\n' | b'\r')) {
-        match parse_line(piece, true) {
+        // Uncapped, as `oxttl`'s `for_slice` was: the WAL may hold large records the old binary accepted.
+        match parse_line(piece, true, false) {
             Ok(Some(q)) if found.is_none() => found = Some(q),
             Ok(None) => {}
             _ => return None,
@@ -253,10 +256,13 @@ fn too_large(what: &str) -> ReadError {
 
 /// Streams the statements of an N-Triples (`with_graph = false`) or N-Quads document, line by line, with lines broken
 /// at `\n`, `\r` or `\r\n` as they are read. A syntax error is reported with its line number and ends the stream.
-pub struct StatementReader<R> { input: R, with_graph: bool, line: u64, buf: Vec<u8>, done: bool }
+pub struct StatementReader<R> { input: R, with_graph: bool, capped: bool, line: u64, buf: Vec<u8>, done: bool }
 
 impl<R: BufRead> StatementReader<R> {
-    pub fn new(input: R, with_graph: bool) -> Self { Self { input, with_graph, line: 0, buf: Vec::new(), done: false } }
+    /// A streaming reader, with `oxttl`'s 16 MiB token limit and a line limit that bounds memory.
+    pub fn new(input: R, with_graph: bool) -> Self { Self { input, with_graph, capped: true, line: 0, buf: Vec::new(), done: false } }
+    /// A reader over input already in memory: no token or line limit, as `oxttl`'s slice parsers.
+    fn uncapped(input: R, with_graph: bool) -> Self { Self { input, with_graph, capped: false, line: 0, buf: Vec::new(), done: false } }
 
     /// Reads the next line into `buf` (without its break). `Ok(false)` at the end of the input.
     fn read_line(&mut self) -> Result<bool, ReadError> {
@@ -268,7 +274,7 @@ impl<R: BufRead> StatementReader<R> {
             any = true;
             if let Some(i) = available.iter().position(|&b| b == b'\n' || b == b'\r') {
                 let cr = available[i] == b'\r';
-                if self.buf.len() + i > MAX_LINE { return Err(too_large("line")) }
+                if self.capped && self.buf.len() + i > MAX_LINE { return Err(too_large("line")) }
                 self.buf.extend_from_slice(&available[..i]);
                 self.input.consume(i + 1);
                 // `\r\n` is one line break.
@@ -284,7 +290,7 @@ impl<R: BufRead> StatementReader<R> {
                 return Ok(true);
             }
             let n = available.len();
-            if self.buf.len() + n > MAX_LINE { return Err(too_large("line")) }
+            if self.capped && self.buf.len() + n > MAX_LINE { return Err(too_large("line")) }
             self.buf.extend_from_slice(available);
             self.input.consume(n);
         }
@@ -299,7 +305,7 @@ impl<R: BufRead> Iterator for StatementReader<R> {
                 Ok(false) => self.done = true,
                 Ok(true) => {
                     self.line += 1;
-                    match parse_line(&self.buf, self.with_graph) {
+                    match parse_line(&self.buf, self.with_graph, self.capped) {
                         Ok(Some(q)) => return Some(Ok(q)),
                         Ok(None) => {}
                         Err(LineError::Syntax(e)) => { self.done = true; return Some(Err(ReadError::Syntax(format!("line {}: {e}", self.line)))) }
@@ -316,6 +322,11 @@ impl<R: BufRead> Iterator for StatementReader<R> {
 /// The triples of an N-Triples document.
 pub fn read_ntriples<R: BufRead>(input: R) -> impl Iterator<Item = Result<Triple, ReadError>> {
     StatementReader::new(input, false).map(|q| q.map(|q| Triple::new(q.subject, q.predicate, q.object)))
+}
+
+/// The triples of an N-Triples document held in memory, without the streaming limits (as `oxttl`'s `for_slice`).
+pub fn read_ntriples_slice(data: &[u8]) -> impl Iterator<Item = Result<Triple, ReadError>> + '_ {
+    StatementReader::uncapped(data, false).map(|q| q.map(|q| Triple::new(q.subject, q.predicate, q.object)))
 }
 
 /// The quads of an N-Quads document.
@@ -396,15 +407,20 @@ mod tests {
         }
         std::fs::remove_dir_all(dir).unwrap();
     }
+    /// Streaming readers refuse tokens over 16 MiB as `oxttl`'s did; slice parsing and WAL lines accept them, as
+    /// `oxttl`'s `for_slice` did, so a WAL written by an older binary still replays.
     #[test]
-    fn oversized_tokens_are_refused_like_oxttl() {
+    fn oversized_tokens_follow_oxttl_by_path() {
         let big = "a".repeat(MAX_TOKEN);
         let doc = format!("<http://a> <http://b> \"{big}\" .\n");
         assert!(matches!(read_ntriples(doc.as_bytes()).next(), Some(Err(ReadError::Io(e))) if e.kind() == std::io::ErrorKind::OutOfMemory));
+        assert!(matches!(read_ntriples_slice(doc.as_bytes()).next(), Some(Ok(_))));
+        assert!(parse_nquads_line(doc.trim_end()).is_some());
+        assert!(matches!(oxttl::NTriplesParser::new().for_slice(doc.as_bytes()).next(), Some(Ok(_))));
     }
     #[test]
     fn statements_and_errors() {
-        let ok = |s: &str, g| parse_line(s.as_bytes(), g).unwrap_or_else(|e| panic!("{s:?}: {e}"));
+        let ok = |s: &str, g| parse_line(s.as_bytes(), g, true).unwrap_or_else(|e| panic!("{s:?}: {e}"));
         assert!(ok("", false).is_none());
         assert!(ok("  # just a comment \u{ff}", false).is_none());
         assert_eq!(ok("<http://a> <http://b> \"x\"@EN-us . # c", false).unwrap().object.to_string(), "\"x\"@en-us");
@@ -412,7 +428,7 @@ mod tests {
         for bad in ["<a> <http://b> <http://c> .", "<http://a> <http://b> <http://c>", "<http://a> <http://b> <http://c> . <http://a> <http://b> <http://c> .",
             "<http://a> <http://b> \"x\"^^<http://www.w3.org/1999/02/22-rdf-syntax-ns#langString> .", "<http://a> <http://b> \"x\"@en--ltr .",
             "<http://a> <http://b> \"x\"@1 .", "_: <http://b> <http://c> .", "<http://a> <http://b> \"x\n\" ."] {
-            assert!(parse_line(bad.as_bytes(), false).is_err(), "{bad:?}");
+            assert!(parse_line(bad.as_bytes(), false, true).is_err(), "{bad:?}");
         }
     }
 }

@@ -1147,6 +1147,22 @@ mod dataset_wal_tests {
         }
     }
 
+    /// A WAL record with a term over the streaming parsers' 16 MiB token limit, which older binaries accepted on replay
+    /// (`oxttl`'s `for_slice` had no limit), still replays, and so does the record after it (task #45, PR #94 review).
+    #[test]
+    fn oversized_wal_records_survive_reopen() {
+        let dir = Dir::new("wal-oversized");
+        let store = dir.open();
+        let big = "x".repeat(triplelight_core::ntriples::MAX_TOKEN + 1024);
+        store.commit_dataset(&[ins_default(t("big", &big))]).unwrap();
+        store.commit_dataset(&[ins_default(t("after", "1")), ins("g", t("after", "2"))]).unwrap();
+        let before = state(&store.snapshot());
+        drop(store);
+        assert!(dir.wal().len() > triplelight_core::ntriples::MAX_TOKEN);
+        assert_eq!(state(&dir.open().snapshot()), before);
+        assert_eq!(state(&dir.open().snapshot()).0.len(), 2);
+    }
+
     #[test]
     fn current_parsing() {
         assert_eq!(parse_current("base-7\n"), Some((7, false)));
