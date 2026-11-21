@@ -194,7 +194,10 @@ impl<'a> Parser<'a> {
             if self.eat_kw("BASE") {
                 let Tok::Iri(i) = self.next() else { return self.err("expected an IRI after BASE") };
                 let iri = self.resolve(&i)?;
-                self.base_parsed = Some(triplelight_iri::Iri::parse(iri.as_str()).map_err(|e| Self::error_at("", 0, e.to_string()))?);
+                self.base_parsed = match triplelight_iri::Iri::parse(iri.as_str()) {
+                    Ok(b) => Some(b),
+                    Err(e) => return self.err(format!("invalid BASE IRI <{}>: {e}", iri.as_str())),
+                };
                 self.base = Some(iri.into_string());
             } else if self.eat_kw("PREFIX") {
                 let Tok::PName(p, l) = self.next() else { return self.err("expected a prefix name after PREFIX") };
