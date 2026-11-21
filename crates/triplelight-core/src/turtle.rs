@@ -9,6 +9,8 @@ use std::io::BufRead;
 use triplelight_iri::Iri;
 
 const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+/// The most input appended to the buffer per refill.
+const REFILL: usize = 64 * 1024;
 const XSD: &str = "http://www.w3.org/2001/XMLSchema#";
 
 #[derive(Debug, Clone, PartialEq)]
@@ -43,8 +45,10 @@ impl<I: BufRead> Src<I> {
             if self.capped && self.buf.len() - self.token_start >= MAX_TOKEN { return Err(Fail::TooLarge) }
             let chunk = match self.input.fill_buf() { Ok(c) => c, Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue, Err(e) => return Err(Fail::Io(e)) };
             if chunk.is_empty() { self.eof = true; return Ok(None) }
-            let n = chunk.len();
-            self.buf.extend_from_slice(chunk);
+            // Append a bounded piece, so a reader that exposes a whole document (a slice) is not copied at once and
+            // the token limit is checked at a fine grain.
+            let n = chunk.len().min(REFILL);
+            self.buf.extend_from_slice(&chunk[..n]);
             self.input.consume(n);
         }
         Ok(Some(self.buf[self.pos + i]))
@@ -130,10 +134,6 @@ impl<I: BufRead> Lexer<I> {
                 _ => return Ok(()),
             }
         }
-    }
-    fn peek(&mut self) -> R<&Tok> {
-        if self.peeked.is_none() { let t = self.lex()?; self.peeked = Some(t) }
-        Ok(self.peeked.as_ref().unwrap())
     }
     fn next(&mut self) -> R<Tok> { match self.peeked.take() { Some(t) => Ok(t), None => self.lex() } }
 
@@ -360,8 +360,7 @@ impl<I: BufRead> Lexer<I> {
         let mut i = 0;
         let mut might_be_invalid = false;
         let mut trailing_dots = 0usize;
-        loop {
-            let Some((c, len)) = char_at(&mut self.src, i)? else { break };
+        while let Some((c, len)) = char_at(&mut self.src, i)? {
             if c == '%' {
                 let a = self.src.at(i + 1)?.ok_or("Incomplete escape")?;
                 let b = self.src.at(i + 2)?.ok_or("Incomplete escape")?;
@@ -406,19 +405,68 @@ impl<I: BufRead> Lexer<I> {
 }
 
 /// The Turtle / TriG grammar over the lexer, emitting statements as `oxttl` does.
-/// `oxttl` hands back the statements produced while processing one token last-first (its results are a stack), so
-/// statements are batched per token, the most recently lexed one (peeked or consumed), and released in reverse.
-struct Parser<I> { lex: Lexer<I>, prefixes: HashMap<String, Iri>, with_graph: bool, graph: GraphName, batch: Vec<Quad>, out: VecDeque<Quad> }
+/// The Turtle / TriG grammar as `oxttl`'s token-driven state machine (`terse.rs`, RDF 1.1 states): grammar state
+/// lives on heap stacks, so nesting depth is bounded by memory, not the call stack, and each token is processed on
+/// its own. The statements one token produces are released last-first, as `oxttl` returns them (its results are a
+/// stack), as soon as that token is processed.
+#[derive(Debug)]
+enum State {
+    TriGDoc,
+    ExpectDot,
+    BaseExpectIri,
+    PrefixExpectPrefix,
+    PrefixExpectIri { name: String },
+    TriplesOrGraph,
+    WrappedGraphBlankNodePropertyListCurrent,
+    SubjectBlankNodePropertyListEnd,
+    SubjectBlankNodePropertyListAfter,
+    SubjectCollectionBeginning,
+    SubjectCollectionPossibleEnd,
+    WrappedGraphOrPredicateObjectList { term: NamedOrBlankNode },
+    WrappedGraph,
+    WrappedGraphPossibleEnd,
+    GraphName,
+    GraphNameAnonEnd,
+    Triples,
+    TriplesBlankNodePropertyListCurrent,
+    PredicateObjectList,
+    PredicateObjectListEnd,
+    PredicateObjectListPossibleContinuation,
+    ObjectsList,
+    AnnotationBlock,
+    Verb,
+    Object,
+    ObjectBlankNodePropertyListCurrent,
+    ObjectBlankNodePropertyListEnd,
+    ObjectCollectionBeginning,
+    ObjectCollectionPossibleEnd,
+    LiteralPossibleSuffix { value: String },
+    LiteralExpectDatatype { value: String },
+}
 
 fn rdf(local: &str) -> NamedNode { NamedNode::new_unchecked(format!("{RDF}{local}")) }
+fn xsd(local: &str) -> NamedNode { NamedNode::new_unchecked(format!("{XSD}{local}")) }
 
-impl<I: BufRead> Parser<I> {
-    fn emit(&mut self, s: &NamedOrBlankNode, p: &NamedNode, o: Term) { self.batch.push(Quad::new(s.clone(), p.clone(), o, self.graph.clone())) }
-    fn flush(&mut self) { while let Some(q) = self.batch.pop() { self.out.push_back(q) } }
-    /// The next token; a newly lexed token starts a new batch.
-    fn next(&mut self) -> R<Tok> { if self.lex.peeked.is_none() { self.flush() } self.lex.next() }
-    fn peek(&mut self) -> R<&Tok> { if self.lex.peeked.is_none() { self.flush() } self.lex.peek() }
+struct Parser {
+    stack: Vec<State>,
+    subjects: Vec<NamedOrBlankNode>,
+    predicates: Vec<NamedNode>,
+    objects: Vec<Term>,
+    graph: GraphName,
+    prefixes: HashMap<String, Iri>,
+    with_graph: bool,
+    /// The statements of the token being processed, in production order.
+    batch: Vec<Quad>,
+}
 
+impl Parser {
+    fn new(with_graph: bool) -> Self {
+        Parser { stack: vec![State::TriGDoc], subjects: Vec::new(), predicates: Vec::new(), objects: Vec::new(), graph: GraphName::DefaultGraph, prefixes: HashMap::new(), with_graph, batch: Vec::new() }
+    }
+    fn emit(&mut self) {
+        let q = Quad::new(self.subjects.last().unwrap().clone(), self.predicates.last().unwrap().clone(), self.objects.last().unwrap().clone(), self.graph.clone());
+        self.batch.push(q);
+    }
     fn resolve_pname(&self, prefix: &str, local: &str, might_be_invalid: bool) -> R<NamedNode> {
         let Some(start) = self.prefixes.get(prefix) else { return Err(Fail::Syntax(format!("The prefix {prefix}: has not been declared"))) };
         let iri = format!("{start}{local}");
@@ -427,7 +475,7 @@ impl<I: BufRead> Parser<I> {
         }
         Ok(NamedNode::new_unchecked(iri))
     }
-    /// An IRI token (`IRIREF` or prefixed name), if `t` is one.
+    /// `IRIREF` or prefixed name, if `t` is one.
     fn iri_of(&self, t: &Tok) -> Option<R<NamedNode>> {
         match t {
             Tok::Iri(i) => Some(Ok(NamedNode::new_unchecked(i.clone()))),
@@ -435,228 +483,287 @@ impl<I: BufRead> Parser<I> {
             _ => None,
         }
     }
-    fn expect(&mut self, p: &'static str, message: &str) -> R<()> {
-        if self.next()? == Tok::Punct(p) { Ok(()) } else { Err(Fail::Syntax(message.to_owned())) }
-    }
 
-    /// One top-level statement (directive, triples or graph block); `false` at the end of the document.
-    fn statement(&mut self) -> R<bool> {
-        self.graph = GraphName::DefaultGraph;
-        let t = self.next()?;
-        match &t {
-            Tok::Eof => { self.flush(); return Ok(false) }
-            Tok::Keyword(k) if k.eq_ignore_ascii_case("base") => self.base()?,
-            Tok::Keyword(k) if k.eq_ignore_ascii_case("prefix") => self.prefix()?,
-            Tok::Lang(l) if l == "prefix" => { self.prefix()?; self.expect(".", "A dot is expected at the end of statements")? }
-            Tok::Lang(l) if l == "base" => { self.base()?; self.expect(".", "A dot is expected at the end of statements")? }
-            Tok::Keyword(k) if k.eq_ignore_ascii_case("graph") && self.with_graph => { self.graph_name()?; self.wrapped_graph()? }
-            Tok::Punct("{") if self.with_graph => { self.lex.peeked = Some(t); self.wrapped_graph()? }
-            _ => self.triples_or_graph(t)?,
-        }
-        self.flush();
-        Ok(true)
-    }
-    fn base(&mut self) -> R<()> {
-        match self.next()? {
-            Tok::Iri(i) => { self.lex.base = Some(Iri::parse(&i).map_err(|e| e.to_string())?); Ok(()) }
-            _ => Err("The BASE keyword should be followed by an IRI".into()),
-        }
-    }
-    fn prefix(&mut self) -> R<()> {
-        let name = match self.next()? {
-            Tok::PName { prefix, local, .. } if local.is_empty() => prefix,
-            _ => return Err("The PREFIX keyword should be followed by a prefix like 'ex:'".into()),
-        };
-        match self.next()? {
-            Tok::Iri(i) => { self.prefixes.insert(name, Iri::parse(&i).map_err(|e| e.to_string())?); Ok(()) }
-            _ => Err("The PREFIX declaration should be followed by a prefix and its value as an IRI".into()),
-        }
-    }
-
-    fn triples_or_graph(&mut self, t: Tok) -> R<()> {
-        let term: NamedOrBlankNode = match &t {
-            Tok::BNode(l) => BlankNode::new_unchecked(l.clone()).into(),
-            Tok::Punct("[") => {
-                if self.peek()? == &Tok::Punct("]") {
-                    self.next()?;
-                    BlankNode::default().into()
-                } else {
-                    let s: NamedOrBlankNode = BlankNode::default().into();
-                    self.predicate_object_list(&s)?;
-                    if self.peek()? == &Tok::Punct("]") { self.next()?; } else { return Err("blank node property lists should end with a ']'".into()) }
-                    if !matches!(self.peek()?, Tok::Punct("." | "}")) { self.predicate_object_list(&s)? }
-                    return self.expect(".", "A dot is expected at the end of statements");
+    /// Processes one token (`oxttl`'s `recognize_next`, with its re-dispatches as a loop). `base` receives a new base
+    /// IRI from BASE / @base, which the lexer applies to the following tokens.
+    fn recognize(&mut self, token: Tok, base: &mut Option<Iri>) -> R<()> {
+        let mut pending = Some(token);
+        while let Some(token) = pending.take() {
+            let Some(state) = self.stack.pop() else { return Err("Unexpected token after an error".into()) };
+            // `again` re-dispatches the same token to the new top state.
+            let again = |p: &mut Option<Tok>, t: Tok| *p = Some(t);
+            match state {
+                State::TriGDoc => {
+                    self.graph = GraphName::DefaultGraph;
+                    self.stack.push(State::TriGDoc);
+                    match &token {
+                        Tok::Keyword(k) if k.eq_ignore_ascii_case("base") => self.stack.push(State::BaseExpectIri),
+                        Tok::Keyword(k) if k.eq_ignore_ascii_case("prefix") => self.stack.push(State::PrefixExpectPrefix),
+                        Tok::Lang(l) if l == "prefix" => { self.stack.push(State::ExpectDot); self.stack.push(State::PrefixExpectPrefix) }
+                        Tok::Lang(l) if l == "base" => { self.stack.push(State::ExpectDot); self.stack.push(State::BaseExpectIri) }
+                        Tok::Keyword(k) if k.eq_ignore_ascii_case("graph") && self.with_graph => { self.stack.push(State::WrappedGraph); self.stack.push(State::GraphName) }
+                        Tok::Punct("{") if self.with_graph => { self.stack.push(State::WrappedGraph); again(&mut pending, token) }
+                        _ => { self.stack.push(State::TriplesOrGraph); again(&mut pending, token) }
+                    }
                 }
+                State::ExpectDot => {
+                    self.subjects.pop();
+                    if token != Tok::Punct(".") { return Err("A dot is expected at the end of statements".into()) }
+                }
+                State::BaseExpectIri => match token {
+                    Tok::Iri(i) => *base = Some(Iri::parse(&i).map_err(|e| e.to_string())?),
+                    _ => return Err("The BASE keyword should be followed by an IRI".into()),
+                },
+                State::PrefixExpectPrefix => match token {
+                    Tok::PName { prefix, local, .. } if local.is_empty() => self.stack.push(State::PrefixExpectIri { name: prefix }),
+                    _ => return Err("The PREFIX keyword should be followed by a prefix like 'ex:'".into()),
+                },
+                State::PrefixExpectIri { name } => match token {
+                    Tok::Iri(i) => { self.prefixes.insert(name, Iri::parse(&i).map_err(|e| e.to_string())?); }
+                    _ => return Err("The PREFIX declaration should be followed by a prefix and its value as an IRI".into()),
+                },
+                State::TriplesOrGraph => match &token {
+                    Tok::BNode(l) => self.stack.push(State::WrappedGraphOrPredicateObjectList { term: BlankNode::new_unchecked(l.clone()).into() }),
+                    Tok::Punct("[") => self.stack.push(State::WrappedGraphBlankNodePropertyListCurrent),
+                    Tok::Punct("(") => { self.stack.push(State::ExpectDot); self.stack.push(State::PredicateObjectList); self.stack.push(State::SubjectCollectionBeginning) }
+                    t => match self.iri_of(t) {
+                        Some(i) => self.stack.push(State::WrappedGraphOrPredicateObjectList { term: i?.into() }),
+                        None => return Err("TOKEN is not a valid subject or graph name".into()),
+                    },
+                },
+                State::WrappedGraphOrPredicateObjectList { term } => {
+                    if token == Tok::Punct("{") && self.with_graph {
+                        self.graph = match term { NamedOrBlankNode::NamedNode(n) => GraphName::NamedNode(n), NamedOrBlankNode::BlankNode(b) => GraphName::BlankNode(b) };
+                        self.stack.push(State::WrappedGraph);
+                    } else {
+                        self.subjects.push(term);
+                        self.stack.push(State::ExpectDot);
+                        self.stack.push(State::PredicateObjectList);
+                    }
+                    again(&mut pending, token);
+                }
+                State::WrappedGraphBlankNodePropertyListCurrent => {
+                    if token == Tok::Punct("]") {
+                        self.stack.push(State::WrappedGraphOrPredicateObjectList { term: BlankNode::default().into() });
+                    } else {
+                        self.subjects.push(BlankNode::default().into());
+                        self.stack.push(State::ExpectDot);
+                        self.stack.push(State::SubjectBlankNodePropertyListEnd);
+                        self.stack.push(State::PredicateObjectList);
+                        again(&mut pending, token);
+                    }
+                }
+                State::SubjectBlankNodePropertyListEnd => {
+                    if token != Tok::Punct("]") { return Err("blank node property lists should end with a ']'".into()) }
+                    self.stack.push(State::SubjectBlankNodePropertyListAfter);
+                }
+                State::SubjectBlankNodePropertyListAfter => {
+                    if !matches!(token, Tok::Punct("." | "}")) { self.stack.push(State::PredicateObjectList) }
+                    again(&mut pending, token);
+                }
+                State::SubjectCollectionBeginning => {
+                    if token == Tok::Punct(")") {
+                        self.subjects.push(rdf("nil").into());
+                    } else {
+                        let root = BlankNode::default();
+                        self.subjects.push(root.clone().into());
+                        self.subjects.push(root.into());
+                        self.predicates.push(rdf("first"));
+                        self.stack.push(State::SubjectCollectionPossibleEnd);
+                        self.stack.push(State::Object);
+                        again(&mut pending, token);
+                    }
+                }
+                // `oxttl` continues a subject collection with the object-collection state too.
+                State::SubjectCollectionPossibleEnd | State::ObjectCollectionPossibleEnd => {
+                    let old = self.subjects.pop().unwrap();
+                    self.objects.pop();
+                    if token == Tok::Punct(")") {
+                        self.predicates.pop();
+                        self.batch.push(Quad::new(old, rdf("rest"), rdf("nil"), self.graph.clone()));
+                    } else {
+                        let new = BlankNode::default();
+                        self.batch.push(Quad::new(old, rdf("rest"), new.clone(), self.graph.clone()));
+                        self.subjects.push(new.into());
+                        self.stack.push(State::ObjectCollectionPossibleEnd);
+                        self.stack.push(State::Object);
+                        again(&mut pending, token);
+                    }
+                }
+                State::WrappedGraph => {
+                    if token != Tok::Punct("{") { return Err("The GRAPH keyword should be followed by a graph name and a value in '{'".into()) }
+                    self.stack.push(State::WrappedGraphPossibleEnd);
+                    self.stack.push(State::Triples);
+                }
+                State::WrappedGraphPossibleEnd => {
+                    self.subjects.pop();
+                    match token {
+                        Tok::Punct("}") => {}
+                        Tok::Punct(".") => { self.stack.push(State::WrappedGraphPossibleEnd); self.stack.push(State::Triples) }
+                        _ => return Err("A '}' or a '.' is expected at the end of a graph block".into()),
+                    }
+                }
+                State::Triples => match &token {
+                    Tok::Punct("}") => again(&mut pending, token),
+                    Tok::Punct("[") => { self.subjects.push(BlankNode::default().into()); self.stack.push(State::TriplesBlankNodePropertyListCurrent) }
+                    Tok::BNode(l) => { self.subjects.push(BlankNode::new_unchecked(l.clone()).into()); self.stack.push(State::PredicateObjectList) }
+                    Tok::Punct("(") => { self.stack.push(State::PredicateObjectList); self.stack.push(State::SubjectCollectionBeginning) }
+                    t => match self.iri_of(t) {
+                        Some(i) => { self.subjects.push(i?.into()); self.stack.push(State::PredicateObjectList) }
+                        None => return Err("TOKEN is not a valid RDF subject".into()),
+                    },
+                },
+                State::TriplesBlankNodePropertyListCurrent => {
+                    if token == Tok::Punct("]") {
+                        self.stack.push(State::PredicateObjectList);
+                    } else {
+                        self.stack.push(State::SubjectBlankNodePropertyListEnd);
+                        self.stack.push(State::PredicateObjectList);
+                        again(&mut pending, token);
+                    }
+                }
+                State::GraphName => match &token {
+                    Tok::BNode(l) => self.graph = GraphName::BlankNode(BlankNode::new_unchecked(l.clone())),
+                    Tok::Punct("[") => self.stack.push(State::GraphNameAnonEnd),
+                    t => match self.iri_of(t) {
+                        Some(i) => self.graph = GraphName::NamedNode(i?),
+                        None => return Err("TOKEN is not a valid graph name".into()),
+                    },
+                },
+                State::GraphNameAnonEnd => {
+                    if token != Tok::Punct("]") { return Err("Anonymous blank node with a property list are not allowed as graph name".into()) }
+                    self.graph = GraphName::BlankNode(BlankNode::default());
+                }
+                State::PredicateObjectList => {
+                    self.stack.push(State::PredicateObjectListEnd);
+                    self.stack.push(State::ObjectsList);
+                    self.stack.push(State::Verb);
+                    again(&mut pending, token);
+                }
+                State::PredicateObjectListEnd => {
+                    self.predicates.pop();
+                    if token == Tok::Punct(";") { self.stack.push(State::PredicateObjectListPossibleContinuation) } else { again(&mut pending, token) }
+                }
+                State::PredicateObjectListPossibleContinuation => {
+                    if token == Tok::Punct(";") {
+                        self.stack.push(State::PredicateObjectListPossibleContinuation);
+                    } else if matches!(token, Tok::Punct("." | "}" | "]" | "|}")) {
+                        again(&mut pending, token);
+                    } else {
+                        self.stack.push(State::PredicateObjectListEnd);
+                        self.stack.push(State::ObjectsList);
+                        self.stack.push(State::Verb);
+                        again(&mut pending, token);
+                    }
+                }
+                State::ObjectsList => {
+                    self.stack.push(State::AnnotationBlock);
+                    self.stack.push(State::Object);
+                    again(&mut pending, token);
+                }
+                State::AnnotationBlock => {
+                    self.objects.pop();
+                    if token == Tok::Punct(",") {
+                        self.stack.push(State::AnnotationBlock);
+                        self.stack.push(State::Object);
+                    } else {
+                        again(&mut pending, token);
+                    }
+                }
+                State::Verb => {
+                    if token == Tok::Keyword("a".into()) {
+                        self.predicates.push(rdf("type"));
+                    } else {
+                        match self.iri_of(&token) { Some(i) => self.predicates.push(i?), None => return Err("TOKEN is not a valid predicate".into()) }
+                    }
+                }
+                State::Object => match token {
+                    Tok::BNode(l) => { self.objects.push(BlankNode::new_unchecked(l).into()); self.emit() }
+                    Tok::Punct("[") => self.stack.push(State::ObjectBlankNodePropertyListCurrent),
+                    Tok::Punct("(") => self.stack.push(State::ObjectCollectionBeginning),
+                    Tok::Str(value) => self.stack.push(State::LiteralPossibleSuffix { value }),
+                    Tok::Integer(v) => { self.objects.push(Literal::new_typed_literal(v, xsd("integer")).into()); self.emit() }
+                    Tok::Decimal(v) => { self.objects.push(Literal::new_typed_literal(v, xsd("decimal")).into()); self.emit() }
+                    Tok::Double(v) => { self.objects.push(Literal::new_typed_literal(v, xsd("double")).into()); self.emit() }
+                    Tok::Keyword(k) if k == "true" || k == "false" => { self.objects.push(Literal::new_typed_literal(k, xsd("boolean")).into()); self.emit() }
+                    t => match self.iri_of(&t) {
+                        Some(i) => { self.objects.push(i?.into()); self.emit() }
+                        None => return Err("TOKEN is not a valid RDF object".into()),
+                    },
+                },
+                State::ObjectBlankNodePropertyListCurrent => {
+                    if token == Tok::Punct("]") {
+                        self.objects.push(BlankNode::default().into());
+                        self.emit();
+                    } else {
+                        self.subjects.push(BlankNode::default().into());
+                        self.stack.push(State::ObjectBlankNodePropertyListEnd);
+                        self.stack.push(State::PredicateObjectList);
+                        again(&mut pending, token);
+                    }
+                }
+                State::ObjectBlankNodePropertyListEnd => {
+                    if token != Tok::Punct("]") { return Err("blank node property lists should end with a ']'".into()) }
+                    let b = self.subjects.pop().unwrap();
+                    self.objects.push(b.into());
+                    self.emit();
+                }
+                State::ObjectCollectionBeginning => {
+                    if token == Tok::Punct(")") {
+                        self.objects.push(rdf("nil").into());
+                        self.emit();
+                    } else {
+                        let root = BlankNode::default();
+                        self.objects.push(root.clone().into());
+                        self.emit();
+                        self.subjects.push(root.into());
+                        self.predicates.push(rdf("first"));
+                        self.stack.push(State::ObjectCollectionPossibleEnd);
+                        self.stack.push(State::Object);
+                        again(&mut pending, token);
+                    }
+                }
+                State::LiteralPossibleSuffix { value } => match token {
+                    Tok::Lang(l) => { self.objects.push(Literal::new_language_tagged_literal_unchecked(value, l.to_ascii_lowercase()).into()); self.emit() }
+                    Tok::Punct("^^") => self.stack.push(State::LiteralExpectDatatype { value }),
+                    t => { self.objects.push(Literal::new_simple_literal(value).into()); self.emit(); again(&mut pending, t) }
+                },
+                State::LiteralExpectDatatype { value } => match self.iri_of(&token) {
+                    Some(d) => {
+                        let d = d?;
+                        if d.as_str() == format!("{RDF}langString") { return Err("The datatype of a literal without a language tag must not be rdf:langString".into()) }
+                        self.objects.push(Literal::new_typed_literal(value, d).into());
+                        self.emit();
+                    }
+                    None => return Err("Expecting a datatype IRI after ^^, found TOKEN".into()),
+                },
             }
-            Tok::Punct("(") => {
-                let s = self.collection_subject()?;
-                self.predicate_object_list(&s)?;
-                return self.expect(".", "A dot is expected at the end of statements");
-            }
-            t => match self.iri_of(t) { Some(i) => i?.into(), None => return Err("TOKEN is not a valid subject or graph name".into()) },
-        };
-        if self.with_graph && self.peek()? == &Tok::Punct("{") {
-            self.graph = match term { NamedOrBlankNode::NamedNode(n) => GraphName::NamedNode(n), NamedOrBlankNode::BlankNode(b) => GraphName::BlankNode(b) };
-            return self.wrapped_graph();
         }
-        self.predicate_object_list(&term)?;
-        self.expect(".", "A dot is expected at the end of statements")
-    }
-
-    fn graph_name(&mut self) -> R<()> {
-        let t = self.next()?;
-        self.graph = match &t {
-            Tok::BNode(l) => GraphName::BlankNode(BlankNode::new_unchecked(l.clone())),
-            Tok::Punct("[") => {
-                if self.next()? != Tok::Punct("]") { return Err("Anonymous blank node with a property list are not allowed as graph name".into()) }
-                GraphName::BlankNode(BlankNode::default())
-            }
-            t => match self.iri_of(t) { Some(i) => GraphName::NamedNode(i?), None => return Err("TOKEN is not a valid graph name".into()) },
-        };
         Ok(())
     }
 
-    fn wrapped_graph(&mut self) -> R<()> {
-        if self.next()? != Tok::Punct("{") { return Err("The GRAPH keyword should be followed by a graph name and a value in '{'".into()) }
-        loop {
-            self.triples()?;
-            match self.next()? {
-                Tok::Punct("}") => return Ok(()),
-                Tok::Punct(".") => continue,
-                _ => return Err("A '}' or a '.' is expected at the end of a graph block".into()),
-            }
-        }
-    }
-
-    /// `triples` inside a graph block; returns at once before a `}`.
-    fn triples(&mut self) -> R<()> {
-        let t = self.next()?;
-        match &t {
-            Tok::Punct("}") => { self.lex.peeked = Some(t); Ok(()) }
-            Tok::Punct("[") => {
-                let s: NamedOrBlankNode = BlankNode::default().into();
-                if self.peek()? == &Tok::Punct("]") {
-                    self.next()?;
-                    return self.predicate_object_list(&s);
-                }
-                self.predicate_object_list(&s)?;
-                if self.peek()? == &Tok::Punct("]") { self.next()?; } else { return Err("blank node property lists should end with a ']'".into()) }
-                if !matches!(self.peek()?, Tok::Punct("." | "}")) { self.predicate_object_list(&s)? }
-                Ok(())
-            }
-            Tok::BNode(l) => { let s = BlankNode::new_unchecked(l.clone()).into(); self.predicate_object_list(&s) }
-            Tok::Punct("(") => { let s = self.collection_subject()?; self.predicate_object_list(&s) }
-            t => match self.iri_of(t) { Some(i) => { let s = i?.into(); self.predicate_object_list(&s) } None => Err("TOKEN is not a valid RDF subject".into()) },
-        }
-    }
-
-    fn predicate_object_list(&mut self, s: &NamedOrBlankNode) -> R<()> {
-        loop {
-            let p = self.verb()?;
-            self.objects_list(s, &p)?;
-            if self.peek()? != &Tok::Punct(";") { return Ok(()) }
-            while self.peek()? == &Tok::Punct(";") { self.next()?; }
-            if matches!(self.peek()?, Tok::Punct("." | "}" | "]" | "|}")) { return Ok(()) }
-        }
-    }
-    fn verb(&mut self) -> R<NamedNode> {
-        let t = self.next()?;
-        if t == Tok::Keyword("a".into()) { return Ok(rdf("type")) }
-        match self.iri_of(&t) { Some(i) => i, None => Err("TOKEN is not a valid predicate".into()) }
-    }
-    fn objects_list(&mut self, s: &NamedOrBlankNode, p: &NamedNode) -> R<()> {
-        loop {
-            self.object(s, p)?;
-            if self.peek()? != &Tok::Punct(",") { return Ok(()) }
-            self.next()?;
-        }
-    }
-
-    /// Reads one object and emits `(s, p, object)`, with any nested statements in `oxttl`'s order: a property list's
-    /// own statements before the triple that uses it, a collection's head triple before its list statements.
-    fn object(&mut self, s: &NamedOrBlankNode, p: &NamedNode) -> R<()> {
-        let t = self.next()?;
-        let o: Term = match t {
-            Tok::BNode(l) => BlankNode::new_unchecked(l).into(),
-            Tok::Punct("[") => {
-                if self.peek()? == &Tok::Punct("]") {
-                    self.next()?;
-                    BlankNode::default().into()
-                } else {
-                    let b: NamedOrBlankNode = BlankNode::default().into();
-                    self.predicate_object_list(&b)?;
-                    if self.next()? != Tok::Punct("]") { return Err("blank node property lists should end with a ']'".into()) }
-                    Term::from(b)
-                }
-            }
-            Tok::Punct("(") => {
-                if self.peek()? == &Tok::Punct(")") {
-                    self.next()?;
-                    rdf("nil").into()
-                } else {
-                    let root = BlankNode::default();
-                    self.emit(s, p, root.clone().into());
-                    return self.collection_items(root);
-                }
-            }
-            Tok::Str(v) => self.literal_suffix(v)?,
-            Tok::Integer(v) => Literal::new_typed_literal(v, NamedNode::new_unchecked(format!("{XSD}integer"))).into(),
-            Tok::Decimal(v) => Literal::new_typed_literal(v, NamedNode::new_unchecked(format!("{XSD}decimal"))).into(),
-            Tok::Double(v) => Literal::new_typed_literal(v, NamedNode::new_unchecked(format!("{XSD}double"))).into(),
-            Tok::Keyword(k) if k == "true" || k == "false" => Literal::new_typed_literal(k, NamedNode::new_unchecked(format!("{XSD}boolean"))).into(),
-            t => match self.iri_of(&t) { Some(i) => i?.into(), None => return Err("TOKEN is not a valid RDF object".into()) },
-        };
-        self.emit(s, p, o);
-        Ok(())
-    }
-
-    /// The items of a collection whose first node is `node`, as `rdf:first` / `rdf:rest` statements.
-    fn collection_items(&mut self, mut node: BlankNode) -> R<()> {
-        let first = rdf("first");
-        let rest = rdf("rest");
-        loop {
-            let n: NamedOrBlankNode = node.clone().into();
-            self.object(&n, &first)?;
-            if self.peek()? == &Tok::Punct(")") {
-                self.next()?;
-                self.emit(&n, &rest, rdf("nil").into());
-                return Ok(());
-            }
-            let next = BlankNode::default();
-            self.emit(&n, &rest, next.clone().into());
-            node = next;
-        }
-    }
-    /// A collection used as a subject: its list statements, and its head node (or `rdf:nil`).
-    fn collection_subject(&mut self) -> R<NamedOrBlankNode> {
-        if self.peek()? == &Tok::Punct(")") { self.next()?; return Ok(rdf("nil").into()) }
-        let root = BlankNode::default();
-        self.collection_items(root.clone())?;
-        Ok(root.into())
-    }
-
-    fn literal_suffix(&mut self, value: String) -> R<Term> {
-        match self.peek()? {
-            Tok::Lang(_) => { let Tok::Lang(l) = self.next()? else { unreachable!() }; Ok(Literal::new_language_tagged_literal_unchecked(value, l.to_ascii_lowercase()).into()) }
-            Tok::Punct("^^") => {
-                self.next()?;
-                let t = self.next()?;
-                let d = match self.iri_of(&t) { Some(i) => i?, None => return Err("A literal datatype must be an IRI".into()) };
-                if d.as_str() == format!("{RDF}langString") { return Err("The datatype of a literal without a language tag must not be rdf:langString".into()) }
-                Ok(Literal::new_typed_literal(value, d).into())
-            }
-            _ => Ok(Literal::new_simple_literal(value).into()),
-        }
+    /// The end of the input: only a complete document (the state stack back to the document level) is accepted.
+    fn end(&self) -> R<()> {
+        match self.stack.as_slice() { [] | [State::TriGDoc] => Ok(()), _ => Err("Unexpected end of the document".into()) }
     }
 }
 
-/// Streams the statements of a Turtle (`with_graph = false`) or TriG document. The first error ends the stream.
-pub struct TurtleReader<I> { parser: Parser<I>, done: bool }
+/// Streams the statements of a Turtle (`with_graph = false`) or TriG document, token by token. On an error the
+/// statements of earlier tokens have been yielded; the error ends the stream.
+pub struct TurtleReader<I> { lex: Lexer<I>, parser: Parser, out: VecDeque<Quad>, done: bool }
 
 impl<I: BufRead> TurtleReader<I> {
     fn new(input: I, with_graph: bool, capped: bool) -> Self {
         let src = Src { input, buf: Vec::new(), pos: 0, eof: false, capped, token_start: 0 };
-        TurtleReader { parser: Parser { lex: Lexer { src, base: None, peeked: None }, prefixes: HashMap::new(), with_graph, graph: GraphName::DefaultGraph, batch: Vec::new(), out: VecDeque::new() }, done: false }
+        TurtleReader { lex: Lexer { src, base: None, peeked: None }, parser: Parser::new(with_graph), out: VecDeque::new(), done: false }
+    }
+    fn step(&mut self) -> R<bool> {
+        let token = self.lex.next()?;
+        if token == Tok::Eof { self.parser.end()?; return Ok(false) }
+        self.parser.recognize(token, &mut self.lex.base)?;
+        // Released last-first, as `oxttl` pops its results.
+        while let Some(q) = self.parser.batch.pop() { self.out.push_back(q) }
+        Ok(true)
     }
 }
 
@@ -664,22 +771,19 @@ impl<I: BufRead> Iterator for TurtleReader<I> {
     type Item = Result<Quad, ReadError>;
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Some(q) = self.parser.out.pop_front() { return Some(Ok(q)) }
+            if let Some(q) = self.out.pop_front() { return Some(Ok(q)) }
             if self.done { return None }
-            match self.parser.statement() {
+            match self.step() {
                 Ok(true) => {}
                 Ok(false) => self.done = true,
                 Err(e) => {
                     self.done = true;
-                    // Statements completed before the error are still yielded first, as `oxttl` does.
-                    let e = match e {
+                    self.parser.batch.clear();
+                    return Some(Err(match e {
                         Fail::Syntax(m) => ReadError::Syntax(m),
                         Fail::Io(e) => ReadError::Io(e),
                         Fail::TooLarge => ReadError::Io(std::io::Error::new(std::io::ErrorKind::OutOfMemory, format!("token larger than {MAX_TOKEN} bytes"))),
-                    };
-                    self.parser.out.clear();
-                    self.parser.batch.clear();
-                    return Some(Err(e));
+                    }));
                 }
             }
         }
@@ -696,3 +800,44 @@ pub fn read_turtle_slice(data: &[u8]) -> impl Iterator<Item = Result<crate::rdf:
 }
 /// The quads of a streamed TriG document.
 pub fn read_trig<I: BufRead>(input: I) -> impl Iterator<Item = Result<Quad, ReadError>> { TurtleReader::new(input, true, true) }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    /// Statements are yielded as their tokens arrive: the first quads of a graph block come out before the rest of
+    /// the block can be read (the reader fails after the first part).
+    #[test]
+    fn graph_blocks_stream() {
+        struct Part { data: &'static [u8], served: bool }
+        impl std::io::Read for Part { fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> { unreachable!() } }
+        impl BufRead for Part {
+            fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
+                if self.served && self.data.is_empty() { return Err(std::io::Error::other("the rest of the block is not readable yet")) }
+                self.served = true;
+                Ok(self.data)
+            }
+            fn consume(&mut self, n: usize) { self.data = &self.data[n..] }
+        }
+        let input = Part { data: b"@prefix : <http://ex/> . GRAPH :g { :a :b :c . :a :b :d , :e . ", served: false };
+        let got: Vec<_> = read_trig(input).collect();
+        assert!(got.len() >= 3, "{got:?}");
+        assert!(got[..got.len() - 1].iter().all(Result::is_ok));
+        assert!(matches!(got.last(), Some(Err(ReadError::Io(_)))));
+    }
+    /// Deep nesting is limited by memory, not the call stack: 100,000 nested property lists and collections parse,
+    /// on a thread with a small (512 KiB) stack.
+    #[test]
+    fn deep_nesting_does_not_use_the_call_stack() {
+        let depth = 100_000;
+        let lists = format!("@prefix : <http://ex/> . :s :p {} :o {} .", "[ :p ".repeat(depth), "]".repeat(depth));
+        let collections = format!("@prefix : <http://ex/> . :s :p {} :o {} .", "( ".repeat(depth), ")".repeat(depth));
+        let handle = std::thread::Builder::new().stack_size(512 * 1024).spawn(move || {
+            let a = read_turtle_slice(lists.as_bytes()).collect::<Result<Vec<_>, _>>().unwrap().len();
+            let b = read_turtle_slice(collections.as_bytes()).collect::<Result<Vec<_>, _>>().unwrap().len();
+            (a, b)
+        }).unwrap();
+        let (a, b) = handle.join().expect("no stack overflow");
+        assert_eq!(a, depth + 1);
+        assert_eq!(b, 2 * depth + 1);
+    }
+}

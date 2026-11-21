@@ -25,11 +25,10 @@ impl From<ReadError> for std::io::Error {
 
 /// Every quad of an N-Quads or TriG document, in document order.
 pub fn read_quads(reader: impl std::io::Read, format: QuadFormat) -> Result<Vec<Quad>, ReadError> {
-    let quads = match format {
-        QuadFormat::NQuads => return crate::ntriples::read_nquads(std::io::BufReader::new(reader)).collect(),
+    match format {
+        QuadFormat::NQuads => crate::ntriples::read_nquads(std::io::BufReader::new(reader)).collect(),
         QuadFormat::TriG => crate::turtle::read_trig(std::io::BufReader::new(reader)).collect(),
-    };
-    quads
+    }
 }
 
 /// RDF text formats TripleLight reads.
