@@ -1311,7 +1311,7 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                     }
                 }
             }
-            Op::Management { operation } => return Err(unsupported(operation)),
+            _ => return Err(unsupported("graph management")),
         }
     }
     Ok(out)
@@ -1325,15 +1325,21 @@ pub fn parse_update_operations(text: &str) -> Result<Vec<crate::sparql::GraphUpd
 /// The dataset changes of one update operation, evaluated on `snap` with `dataset` as its named graphs (task #36).
 /// The caller applies each operation's changes before computing the next one, so every operation sees the effects of
 /// the ones before it (SPARQL 1.1 Update semantics), and commits the concatenated list atomically.
-/// Supports INSERT DATA, DELETE DATA and DELETE/INSERT ... WHERE with GRAPH templates, `WITH` and `USING`. Graph
-/// management (CREATE, DROP, CLEAR, ADD, MOVE, COPY, LOAD) is refused as unsupported for now.
+/// Supports INSERT DATA, DELETE DATA, DELETE/INSERT ... WHERE with GRAPH templates, `WITH` and `USING`, and graph
+/// management (CREATE, DROP, CLEAR, ADD, MOVE, COPY); LOAD is refused as unsupported (nothing is fetched).
 pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &crate::sparql::GraphUpdateOperation) -> Result<Vec<crate::model::DatasetChange>, QueryError> {
-    use crate::model::{Change, DatasetChange, GraphTarget};
-    use crate::sparql::{GraphName, GraphNamePattern, GroundTermPattern};
+    use crate::model::{Change, DatasetChange, GraphScope, GraphTarget};
+    use crate::sparql::{ClearTarget, GraphName, GraphNamePattern, GroundTermPattern, TransferKind};
     use crate::sparql::GraphUpdateOperation as Op;
     use oxrdf::{NamedOrBlankNode, Triple};
     let unsupported = |what: &str| QueryError::new(QueryErrorKind::Unsupported, format!("{what} is not supported yet"));
     let target = |g: &GraphName| match g { GraphName::DefaultGraph => GraphTarget::Default, GraphName::NamedNode(n) => GraphTarget::Named(n.clone()) };
+    let scope_of = |g: &ClearTarget| match g {
+        ClearTarget::NamedNode(n) => GraphScope::Graph(n.clone()),
+        ClearTarget::DefaultGraph => GraphScope::Default,
+        ClearTarget::NamedGraphs => GraphScope::Named,
+        ClearTarget::AllGraphs => GraphScope::All,
+    };
     // Blank nodes in INSERT DATA and INSERT templates are fresh for every operation (and every template solution):
     // a label is scoped to one operation, so running the same update twice creates new nodes. Occurrences of one
     // label within that scope, across graphs too, stay one node.
@@ -1399,9 +1405,69 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
             // Deletions of an operation precede its insertions.
             out.sort_by_key(|c| !matches!(c, DatasetChange::Quad(_, Change::Delete, _)));
         }
-        Op::Management { operation } => return Err(unsupported(operation)),
+        Op::Load { .. } => return Err(unsupported("LOAD")),
+        Op::Create { silent, graph } => out.push(DatasetChange::Create { graph: graph.clone(), silent: *silent }),
+        Op::Clear { silent, graph } => out.push(DatasetChange::Clear { target: scope_of(graph), silent: *silent }),
+        Op::Drop { silent, graph } => out.push(DatasetChange::Drop { target: scope_of(graph), silent: *silent }),
+        Op::Transfer { kind, silent, from, to } => {
+            // SPARQL 1.1 Update §3.2.3-3.2.5: an absent source graph fails the request unless SILENT (and then nothing
+            // happens); a transfer from a graph to itself does nothing. COPY and MOVE replace the destination, ADD
+            // keeps it; MOVE then drops the source. The default graph always exists.
+            if let GraphName::NamedNode(g) = from && !graph_exists(snap, dataset, g)? {
+                if *silent { return Ok(out) }
+                return Err(QueryError::new(QueryErrorKind::Storage, format!("graph {g} does not exist")));
+            }
+            if from == to { return Ok(out) }
+            let triples = graph_triples(snap, dataset, from)?;
+            let dest = target(to);
+            match (kind, to) {
+                (TransferKind::Add, GraphName::NamedNode(g)) => out.push(DatasetChange::Create { graph: g.clone(), silent: true }),
+                (TransferKind::Add, GraphName::DefaultGraph) => {}
+                (_, GraphName::NamedNode(g)) => {
+                    out.push(DatasetChange::Drop { target: GraphScope::Graph(g.clone()), silent: true });
+                    out.push(DatasetChange::Create { graph: g.clone(), silent: true });
+                }
+                (_, GraphName::DefaultGraph) => out.push(DatasetChange::Clear { target: GraphScope::Default, silent: true }),
+            }
+            out.extend(triples.into_iter().map(|t| DatasetChange::Quad(dest.clone(), Change::Insert, t)));
+            if *kind == TransferKind::Move {
+                out.push(match from {
+                    GraphName::NamedNode(g) => DatasetChange::Drop { target: GraphScope::Graph(g.clone()), silent: false },
+                    GraphName::DefaultGraph => DatasetChange::Clear { target: GraphScope::Default, silent: false },
+                });
+            }
+        }
     }
     Ok(out)
+}
+
+/// Whether the named graph `g` is in the catalog of `dataset` (empty graphs included).
+fn graph_exists<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &oxrdf::NamedNode) -> Result<bool, QueryError> {
+    let storage = |e: crate::storage::StorageError| QueryError::new(QueryErrorKind::Storage, e.to_string());
+    match snap.lookup(&Term::NamedNode(g.clone())).map_err(storage)? {
+        Some(id) => Ok(dataset.graph(id).map_err(storage)?.is_some()),
+        None => Ok(false),
+    }
+}
+
+/// Every triple of the default graph or of the named graph `g`.
+fn graph_triples<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &crate::sparql::GraphName) -> Result<Vec<oxrdf::Triple>, QueryError> {
+    use crate::sparql::GraphName;
+    let v = |n: &str| TermPattern::Variable(Variable::new_unchecked(n));
+    let bgp = GraphPattern::Bgp { patterns: vec![TriplePattern {
+        subject: v("s"), predicate: NamedNodePattern::Variable(Variable::new_unchecked("p")), object: v("o") }] };
+    let pattern = match g {
+        GraphName::DefaultGraph => bgp,
+        GraphName::NamedNode(n) => GraphPattern::Graph { name: NamedNodePattern::NamedNode(n.clone()), inner: Box::new(bgp) },
+    };
+    let q = Query::Select { dataset: None, pattern, base_iri: None };
+    let QueryResult::Solutions { vars, rows } = run_query(snap, Some(dataset), &q, &Options::default())? else { unreachable!() };
+    let col = |name: &str| vars.iter().position(|x| x.as_str() == name).expect("projected variable");
+    let (s, p, o) = (col("s"), col("p"), col("o"));
+    Ok(rows.into_iter().filter_map(|r| match (r[s].clone(), r[p].clone(), r[o].clone()) {
+        (Some(s), Some(Term::NamedNode(p)), Some(o)) => oxrdf::NamedOrBlankNode::try_from(s).ok().map(|s| oxrdf::Triple::new(s, p, o)),
+        _ => None,
+    }).collect())
 }
 
 fn conjuncts(e: &Expression) -> Vec<&Expression> {

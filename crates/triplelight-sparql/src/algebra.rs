@@ -38,8 +38,28 @@ pub enum GraphUpdateOperation {
         using: Option<QueryDataset>,
         pattern: Box<GraphPattern>,
     },
-    /// Graph management (`LOAD`, `CLEAR`, `CREATE`, `DROP`, `ADD`, `MOVE`, `COPY`), parsed for validity only.
-    Management { operation: &'static str },
+    /// `LOAD [SILENT] <source> [INTO GRAPH <g>]`.
+    Load { silent: bool, source: NamedNode, destination: GraphName },
+    /// `CLEAR [SILENT] (GRAPH <g> | DEFAULT | NAMED | ALL)`.
+    Clear { silent: bool, graph: ClearTarget },
+    /// `CREATE [SILENT] GRAPH <g>`.
+    Create { silent: bool, graph: NamedNode },
+    /// `DROP [SILENT] (GRAPH <g> | DEFAULT | NAMED | ALL)`.
+    Drop { silent: bool, graph: ClearTarget },
+    /// `ADD`, `MOVE` or `COPY [SILENT] (DEFAULT | [GRAPH] <g>) TO (DEFAULT | [GRAPH] <g>)`.
+    Transfer { kind: TransferKind, silent: bool, from: GraphName, to: GraphName },
+}
+
+/// The graphs a `CLEAR` or `DROP` applies to.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ClearTarget { NamedNode(NamedNode), DefaultGraph, NamedGraphs, AllGraphs }
+
+/// The kind of a graph-to-graph management operation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TransferKind { Add, Move, Copy }
+
+impl TransferKind {
+    pub fn keyword(self) -> &'static str { match self { TransferKind::Add => "ADD", TransferKind::Move => "MOVE", TransferKind::Copy => "COPY" } }
 }
 
 /// A data quad of `INSERT DATA`.

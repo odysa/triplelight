@@ -1114,23 +1114,39 @@ impl<'a> Parser<'a> {
     // ---------- updates ----------
 
     fn update_operation(&mut self) -> R<GraphUpdateOperation> {
-        for (kw, name) in [("LOAD", "LOAD"), ("CLEAR", "CLEAR"), ("DROP", "DROP"), ("CREATE", "CREATE"), ("ADD", "ADD"), ("MOVE", "MOVE"), ("COPY", "COPY")] {
+        if self.eat_kw("LOAD") {
+            let silent = self.eat_kw("SILENT");
+            let source = self.iri()?;
+            let destination = if self.eat_kw("INTO") { self.expect_kw("GRAPH")?; GraphName::NamedNode(self.iri()?) } else { GraphName::DefaultGraph };
+            return Ok(GraphUpdateOperation::Load { silent, source, destination });
+        }
+        for kw in ["CLEAR", "DROP"] {
             if self.eat_kw(kw) {
-                self.eat_kw("SILENT");
-                match name {
-                    "LOAD" => { self.iri()?; if self.eat_kw("INTO") { self.expect_kw("GRAPH")?; self.iri()?; } }
-                    "CLEAR" | "DROP" => {
-                        if !(self.eat_kw("DEFAULT") || self.eat_kw("NAMED") || self.eat_kw("ALL")) { self.expect_kw("GRAPH")?; self.iri()?; }
-                    }
-                    "CREATE" => { self.expect_kw("GRAPH")?; self.iri()?; }
-                    _ => {
-                        let graph_or_default = |p: &mut Self| -> R<()> { if !p.eat_kw("DEFAULT") { p.eat_kw("GRAPH"); p.iri()?; } Ok(()) };
-                        graph_or_default(self)?;
-                        self.expect_kw("TO")?;
-                        graph_or_default(self)?;
-                    }
-                }
-                return Ok(GraphUpdateOperation::Management { operation: name });
+                let silent = self.eat_kw("SILENT");
+                let graph = if self.eat_kw("DEFAULT") { ClearTarget::DefaultGraph }
+                    else if self.eat_kw("NAMED") { ClearTarget::NamedGraphs }
+                    else if self.eat_kw("ALL") { ClearTarget::AllGraphs }
+                    else { self.expect_kw("GRAPH")?; ClearTarget::NamedNode(self.iri()?) };
+                return Ok(if kw == "CLEAR" { GraphUpdateOperation::Clear { silent, graph } } else { GraphUpdateOperation::Drop { silent, graph } });
+            }
+        }
+        if self.eat_kw("CREATE") {
+            let silent = self.eat_kw("SILENT");
+            self.expect_kw("GRAPH")?;
+            return Ok(GraphUpdateOperation::Create { silent, graph: self.iri()? });
+        }
+        for kind in [TransferKind::Add, TransferKind::Move, TransferKind::Copy] {
+            if self.eat_kw(kind.keyword()) {
+                let silent = self.eat_kw("SILENT");
+                let graph_or_default = |p: &mut Self| -> R<GraphName> {
+                    if p.eat_kw("DEFAULT") { return Ok(GraphName::DefaultGraph) }
+                    p.eat_kw("GRAPH");
+                    Ok(GraphName::NamedNode(p.iri()?))
+                };
+                let from = graph_or_default(self)?;
+                self.expect_kw("TO")?;
+                let to = graph_or_default(self)?;
+                return Ok(GraphUpdateOperation::Transfer { kind, silent, from, to });
             }
         }
         if self.is_kw("INSERT") && self.is_kw_n(1, "DATA") {
