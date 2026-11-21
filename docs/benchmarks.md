@@ -80,6 +80,10 @@ The [RDFLib Memory tiny qualification](rdflib-tiny-qualification-v1/README.md) r
 and lexical-preserving profiles separately. Both fail the fixed empty-result control; no workload timing
 is reported, and their lexical-form results are documented without transferring earlier cohort scores.
 
+The [Oxrdflib disk qualification](oxrdflib-disk-qualification-v1/README.md) returns eight triples and eight
+groups against nine expected across four parser and normalization profiles, at load and after
+fresh-process reopen. It has no workload timing.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.
