@@ -402,6 +402,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn register_all(&mut self, p: &GraphPattern) {
         let mut names = Vec::new();
         walk_vars(p, &mut names);
+        // Also register variables mentioned only in ORDER BY expressions and aggregate arguments (for example a GRAPH
+        // variable inside EXISTS there): they are evaluated but are not in-scope solution variables, so `walk_vars`,
+        // which also serves SELECT * visibility, does not report them.
+        walk_sort_and_aggregate_exprs(p, &mut names);
         for n in names { self.var_name(&n); }
     }
     fn register_triple(&mut self, t: &TriplePattern) {
@@ -1193,6 +1197,26 @@ fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
             for v in variables { let s = v.as_str().to_string(); if !out.contains(&s) { out.push(s) } }
             for (v, _) in aggregates { let s = v.as_str().to_string(); if !out.contains(&s) { out.push(s) } }
         }
+    }
+}
+
+/// Variables mentioned in ORDER BY expressions and aggregate arguments anywhere in `p` (for registration only).
+fn walk_sort_and_aggregate_exprs(p: &GraphPattern, out: &mut Vec<String>) {
+    match p {
+        GraphPattern::OrderBy { inner, expression } => {
+            for o in expression { match o { OrderExpression::Asc(e) | OrderExpression::Desc(e) => walk_expr(e, out) } }
+            walk_sort_and_aggregate_exprs(inner, out)
+        }
+        GraphPattern::Group { inner, aggregates, .. } => {
+            for (_, a) in aggregates { if let AggregateExpression::FunctionCall { expr, .. } = a { walk_expr(expr, out) } }
+            walk_sort_and_aggregate_exprs(inner, out)
+        }
+        GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right }
+        | GraphPattern::LeftJoin { left, right, .. } => { walk_sort_and_aggregate_exprs(left, out); walk_sort_and_aggregate_exprs(right, out) }
+        GraphPattern::Filter { inner, .. } | GraphPattern::Extend { inner, .. } | GraphPattern::Distinct { inner }
+        | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. } | GraphPattern::Service { inner, .. }
+        | GraphPattern::Graph { inner, .. } | GraphPattern::Project { inner, .. } => walk_sort_and_aggregate_exprs(inner, out),
+        GraphPattern::Bgp { .. } | GraphPattern::Path { .. } | GraphPattern::Values { .. } => {}
     }
 }
 

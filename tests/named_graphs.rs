@@ -299,3 +299,12 @@ fn graph_inside_exists_is_still_refused_without_a_dataset() {
         .unwrap_err();
     assert_eq!(err.kind, triplelight::exec::QueryErrorKind::Unsupported);
 }
+
+#[test]
+fn graph_variable_only_inside_exists_in_order_by_and_aggregates() {
+    // ?h appears only inside EXISTS in ORDER BY / an aggregate argument; it must still get a variable slot.
+    assert_eq!(run(&format!("{P} SELECT ?s {{ ?s :p ?o }} ORDER BY DESC(EXISTS {{ GRAPH ?h {{ ?s :p \"2\" }} }})")),
+               v(&[&["<http://ex/a>"]]));
+    assert_eq!(run(&format!("{P} SELECT (SUM(IF(EXISTS {{ GRAPH ?h {{ ?s :p \"2\" }} }}, 1, 0)) AS ?n) {{ ?s :p ?o }}")),
+               v(&[&["\"1\"^^<http://www.w3.org/2001/XMLSchema#integer>"]]));
+}
