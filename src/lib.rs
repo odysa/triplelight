@@ -67,16 +67,24 @@ pub mod store {
         Ok((owned, all, changed))
     }
 
-    /// The default-graph triple changes of `changes`, for a backend that cannot hold named graphs (the WASM
-    /// binding, whose queries and loads do not yet read the dataset). Any named-graph step is refused.
-    pub fn default_graph_changes(changes: &[crate::model::DatasetChange])
-        -> Result<Vec<(Change, oxrdf::Triple)>, crate::exec::QueryError> {
+    /// The inserts of a loaded N-Quads or TriG document, as one dataset change list (task #36). Blank-node labels are
+    /// scoped to the document and shared across its graphs, so `_:b` in two loads is two nodes. A quad whose graph
+    /// name is a blank node is refused as unsupported.
+    pub fn quad_load_changes(quads: Vec<crate::rdf::Quad>) -> Result<Vec<crate::model::DatasetChange>, crate::exec::QueryError> {
         use crate::exec::{QueryError, QueryErrorKind};
         use crate::model::{DatasetChange, GraphTarget};
-        changes.iter().map(|c| match c {
-            DatasetChange::Quad(GraphTarget::Default, change, t) => Ok((*change, t.clone())),
-            _ => Err(QueryError::new(QueryErrorKind::Unsupported,
-                "named graphs are not supported by this backend yet")),
+        use crate::rdf::{BlankNode, GraphName, NamedOrBlankNode, Term, Triple};
+        let mut scope: std::collections::HashMap<BlankNode, BlankNode> = std::collections::HashMap::new();
+        let mut fresh = |b: &BlankNode| scope.entry(b.clone()).or_default().clone();
+        quads.into_iter().map(|q| {
+            let graph = match q.graph_name {
+                GraphName::DefaultGraph => GraphTarget::Default,
+                GraphName::NamedNode(n) => GraphTarget::Named(n),
+                GraphName::BlankNode(_) => return Err(QueryError::new(QueryErrorKind::Unsupported, "blank-node graph names are not supported")),
+            };
+            let subject = match q.subject { NamedOrBlankNode::BlankNode(b) => NamedOrBlankNode::BlankNode(fresh(&b)), s => s };
+            let object = match q.object { Term::BlankNode(b) => Term::BlankNode(fresh(&b)), o => o };
+            Ok(DatasetChange::Quad(graph, Change::Insert, Triple::new(subject, q.predicate, object)))
         }).collect()
     }
 }

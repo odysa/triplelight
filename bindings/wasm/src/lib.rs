@@ -5,13 +5,14 @@
 use std::sync::Arc;
 
 use js_sys::{Array, Object, Promise, Reflect};
-use triplelight::rdf::{Format, Literal, Term, Triple};
+use triplelight::rdf::{Format, Literal, QuadFormat, ReadError, Term, Triple};
 use triplelight::exec::{self, QueryErrorKind, QueryResult};
 use triplelight::storage::MemorySnapshot;
 use triplelight::store::{Change, Overlay};
 use wasm_bindgen::prelude::*;
 
-/// A JS `Error` whose `name` and `kind` say what went wrong: `SyntaxError`, `UnsupportedError` or `StorageError`.
+/// A JS `Error` whose `name` and `kind` say what went wrong: `SyntaxError`, `UnsupportedError`, `StorageError` or
+/// `GraphStateError` (an update names a graph in the wrong state).
 fn error(kind: &str, message: &str) -> JsValue {
     let e = js_sys::Error::new(message);
     e.set_name(kind);
@@ -113,6 +114,11 @@ fn fresh_blank_nodes(triples: Vec<Triple>) -> Vec<Triple> {
     }).collect()
 }
 
+/// Runs a query over the whole dataset: the default graph plus the named graphs (`GRAPH`, `FROM`, `FROM NAMED`).
+fn run(cur: &Overlay, sparql: &str) -> Result<QueryResult, JsValue> {
+    exec::query_dataset_with(cur, cur, sparql, &exec::Options::default()).map_err(query_error)
+}
+
 fn settle(r: Result<JsValue, JsValue>) -> Promise {
     match r { Ok(v) => Promise::resolve(&v), Err(e) => Promise::reject(&e) }
 }
@@ -128,16 +134,29 @@ impl Database {
         Database { cur: Arc::new(Overlay::from_base(Arc::new(MemorySnapshot::from_triples(Vec::new())))) }
     }
 
-    /// Parses N-Triples (`format` = "ntriples", the default) or Turtle ("turtle") and adds every triple, atomically:
-    /// on a syntax error nothing is added. Returns the number of triples added.
+    /// Parses N-Triples (`format` = "ntriples", the default), Turtle ("turtle"), N-Quads ("nquads") or TriG ("trig")
+    /// and adds every triple or quad, atomically: on an error nothing is added. Quads go into their named graphs;
+    /// blank-node graph names are refused. Returns the number of triples added.
     #[wasm_bindgen(js_name = loadSync)]
     pub fn load_sync(&mut self, data: &str, format: Option<String>) -> Result<f64, JsValue> {
         let name = format.as_deref().unwrap_or("ntriples");
-        let format = Format::from_name(name)
-            .ok_or_else(|| error("UnsupportedError", &format!("unknown format {name:?}: use \"ntriples\" or \"turtle\"")))?;
+        let quads = match name { "nquads" | "nq" => Some(QuadFormat::NQuads), "trig" => Some(QuadFormat::TriG), _ => None };
+        if let Some(format) = quads {
+            let quads = triplelight::rdf::read_quads(data.as_bytes(), format).map_err(|e| match e {
+                ReadError::Io(e) => error("StorageError", &e.to_string()),
+                ReadError::Syntax(m) => error("SyntaxError", &m),
+            })?;
+            let changes = triplelight::store::quad_load_changes(quads).map_err(query_error)?;
+            let (next, n) = self.cur.with_dataset_changes(&changes).map_err(|e| query_error(triplelight::store::storage_error(e)))?;
+            self.cur = Arc::new(next);
+            return Ok(n as f64);
+        }
+        let format = Format::from_name(name).ok_or_else(|| error("UnsupportedError",
+            &format!("unknown format {name:?}: use \"ntriples\", \"turtle\", \"nquads\" or \"trig\"")))?;
         let triples = triplelight::rdf::parse_triples(data.as_bytes(), format).map_err(|e| error("SyntaxError", &e))?;
         let triples = fresh_blank_nodes(triples);
-        if self.cur.delta_len() == 0 && self.is_empty()? {
+        // The bulk path replaces the base, so it applies only while the database holds nothing, named graphs included.
+        if self.cur.delta_len() == 0 && !self.cur.has_named_graphs() && self.is_empty()? {
             // Bulk path: build sorted indexes once instead of inserting triple by triple.
             let base = MemorySnapshot::from_triples(triples);
             let added = base_len(&base); // duplicates in the input count once
@@ -158,9 +177,7 @@ impl Database {
     /// Applies a SPARQL Update atomically. Returns the number of triples changed.
     #[wasm_bindgen(js_name = updateSync)]
     pub fn update_sync(&mut self, sparql: &str) -> Result<f64, JsValue> {
-        let (next, changes, n) = triplelight::store::dataset_update(&self.cur, sparql).map_err(query_error)?;
-        // Named graphs stay unsupported here until the WASM query and load paths read the dataset too.
-        triplelight::store::default_graph_changes(&changes).map_err(query_error)?;
+        let (next, _, n) = triplelight::store::dataset_update(&self.cur, sparql).map_err(query_error)?;
         if let Some(next) = next { self.cur = Arc::new(next) }
         Ok(n as f64)
     }
@@ -170,7 +187,7 @@ impl Database {
     /// Runs a SPARQL SELECT / ASK / CONSTRUCT / DESCRIBE query.
     #[wasm_bindgen(js_name = querySync)]
     pub fn query_sync(&self, sparql: &str) -> Result<JsValue, JsValue> {
-        convert(exec::query(&*self.cur, sparql).map_err(query_error)?)
+        convert(run(&self.cur, sparql)?)
     }
 
     pub fn query(&self, sparql: &str) -> Promise { settle(self.query_sync(sparql)) }
@@ -178,7 +195,7 @@ impl Database {
     /// SPARQL 1.1 Query Results JSON for SELECT and ASK, as a string.
     #[wasm_bindgen(js_name = queryJsonSync)]
     pub fn query_json_sync(&self, sparql: &str) -> Result<String, JsValue> {
-        results_json(exec::query(&*self.cur, sparql).map_err(query_error)?)
+        results_json(run(&self.cur, sparql)?)
     }
 
     #[wasm_bindgen(js_name = queryJson)]
@@ -187,7 +204,7 @@ impl Database {
     /// A consistent view for several queries; later updates do not change it.
     pub fn read(&self) -> Snapshot { Snapshot { cur: Arc::clone(&self.cur) } }
 
-    /// Number of triples currently stored.
+    /// Number of triples in the default graph (named graphs are not counted).
     #[wasm_bindgen(getter)]
     pub fn size(&self) -> Result<f64, JsValue> {
         match exec::query(&*self.cur, "SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }").map_err(query_error)? {
@@ -215,11 +232,11 @@ pub struct Snapshot { cur: Arc<Overlay> }
 impl Snapshot {
     #[wasm_bindgen(js_name = querySync)]
     pub fn query_sync(&self, sparql: &str) -> Result<JsValue, JsValue> {
-        convert(exec::query(&*self.cur, sparql).map_err(query_error)?)
+        convert(run(&self.cur, sparql)?)
     }
     pub fn query(&self, sparql: &str) -> Promise { settle(self.query_sync(sparql)) }
     #[wasm_bindgen(js_name = queryJson)]
     pub fn query_json(&self, sparql: &str) -> Promise {
-        settle(exec::query(&*self.cur, sparql).map_err(query_error).and_then(results_json).map(JsValue::from))
+        settle(run(&self.cur, sparql).and_then(results_json).map(JsValue::from))
     }
 }
