@@ -209,7 +209,7 @@ impl Builder {
         drop(input);
         fs::remove_file(&assignments)?;
         checkpoint(2)?;
-        let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir)?;
+        let (term_identity, id_identity) = super::lazy_dictionary::convert_legacy(dir, true)?;
         checkpoint(3)?;
         let mut identities = vec![term_identity, id_identity];
         let jobs: Vec<_> = FILES[1..].iter().copied().zip(Perm::ALL).collect();

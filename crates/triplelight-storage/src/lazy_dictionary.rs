@@ -421,10 +421,174 @@ pub(super) fn write_index(
     out.get_ref().sync_all()
 }
 
+/// Sorted-run reader that decodes `(id, term)` rows from an external sorter's output.
+struct Rows {
+    input: std::io::BufReader<File>,
+    order: Order,
+    done: bool,
+}
+impl Iterator for Rows {
+    type Item = io::Result<(TermId, Term)>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+        let value = match super::external_sort::read_record(&mut self.input, 16 * 1024 * 1024 + 9) {
+            Ok(Some(v)) => v,
+            Ok(None) => {
+                self.done = true;
+                return None;
+            }
+            Err(e) => {
+                self.done = true;
+                return Some(Err(e));
+            }
+        };
+        let parsed = (|| {
+            let (id, text) = match self.order {
+                Order::Id => {
+                    if value.len() < 8 {
+                        return Err(bad("short ID sort record"));
+                    }
+                    (
+                        u64::from_be_bytes(value[..8].try_into().unwrap()),
+                        &value[8..],
+                    )
+                }
+                Order::Term => {
+                    if value.len() < 9 || value[value.len() - 9] != 0 {
+                        return Err(bad("short term sort record"));
+                    }
+                    (
+                        u64::from_be_bytes(value[value.len() - 8..].try_into().unwrap()),
+                        &value[..value.len() - 9],
+                    )
+                }
+            };
+            let term = std::str::from_utf8(text)
+                .map_err(|_| bad("invalid term UTF-8"))?
+                .parse()
+                .map_err(|_| bad("invalid RDF term"))?;
+            Ok((TermId(id), term))
+        })();
+        if parsed.is_err() {
+            self.done = true;
+        }
+        Some(parsed)
+    }
+}
+
+
+/// Single-pass variant for a legacy dictionary already in strictly increasing `Order::Term` key order (the external
+/// build writes it that way). The term index is written straight from the file; `write_index` still rejects any
+/// out-of-order or duplicate key. Only the ID-ordered copy needs a sort.
+fn convert_term_sorted(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
+    use super::external_sort::ExternalSort;
+    use std::io::{BufReader, Read};
+    let mut input = BufReader::new(File::open(dir.join("dictionary"))?);
+    let mut header = [0u8; 8];
+    input.read_exact(&mut header)?;
+    if &header != b"RDFDIC01" {
+        return Err(bad("invalid legacy dictionary"));
+    }
+    input.read_exact(&mut header)?;
+    let count = u64::from_le_bytes(header);
+    if count > 100_000_000 {
+        return Err(bad("dictionary count too large"));
+    }
+    let mut by_id = ExternalSort::new(dir, 128 * 1024 * 1024, 16 * 1024 * 1024 + 8)?;
+    struct Legacy<'a> {
+        input: BufReader<File>,
+        remaining: u64,
+        by_id: &'a mut ExternalSort,
+        done: bool,
+    }
+    impl Legacy<'_> {
+        fn one(&mut self) -> io::Result<Option<(TermId, Term)>> {
+            let mut header = [0u8; 8];
+            if self.remaining == 0 {
+                let mut extra = [0u8; 1];
+                if self.input.read(&mut extra)? != 0 {
+                    return Err(bad("dictionary trailing bytes"));
+                }
+                return Ok(None);
+            }
+            self.input.read_exact(&mut header)?;
+            let id = u64::from_le_bytes(header);
+            if id == 0 {
+                return Err(bad("zero dictionary ID"));
+            }
+            self.input.read_exact(&mut header)?;
+            let len = usize::try_from(u64::from_le_bytes(header)).map_err(|_| bad("dictionary term length"))?;
+            if len > 16 * 1024 * 1024 {
+                return Err(bad("dictionary term too long"));
+            }
+            let mut text = vec![0; len];
+            self.input.read_exact(&mut text)?;
+            if text.contains(&0) {
+                return Err(bad("invalid dictionary text"));
+            }
+            let term: Term = std::str::from_utf8(&text)
+                .map_err(|_| bad("invalid dictionary UTF-8"))?
+                .parse()
+                .map_err(|_| bad("invalid dictionary term"))?;
+            if term.to_string().as_bytes() != text {
+                return Err(bad("noncanonical dictionary term"));
+            }
+            let mut id_key = Vec::with_capacity(len + 8);
+            id_key.extend_from_slice(&id.to_be_bytes());
+            id_key.extend_from_slice(&text);
+            self.by_id.push(id_key)?;
+            self.remaining -= 1;
+            Ok(Some((TermId(id), term)))
+        }
+    }
+    impl Iterator for Legacy<'_> {
+        type Item = io::Result<(TermId, Term)>;
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.done {
+                return None;
+            }
+            match self.one() {
+                Ok(Some(row)) => Some(Ok(row)),
+                Ok(None) => {
+                    self.done = true;
+                    None
+                }
+                Err(e) => {
+                    self.done = true;
+                    Some(Err(e))
+                }
+            }
+        }
+    }
+    let term_path = dir.join("dictionary.term");
+    let id_path = dir.join("dictionary.id");
+    write_index(&term_path, Order::Term, Legacy { input, remaining: count, by_id: &mut by_id, done: false })?;
+    let id_run = by_id.finish()?;
+    write_index(
+        &id_path,
+        Order::Id,
+        Rows { input: BufReader::new(File::open(&id_run)?), order: Order::Id, done: false },
+    )?;
+    std::fs::remove_file(&id_run)?;
+    let identities = (
+        LazyIndex::open(&term_path, Order::Term)?.identity(),
+        LazyIndex::open(&id_path, Order::Id)?.identity(),
+    );
+    drop(by_id);
+    std::fs::remove_file(dir.join("dictionary"))?;
+    Ok(identities)
+}
+
 /// Convert a freshly written legacy dictionary into two immutable indexes.
 /// Caller owns manifest publication and scratch directory durability.
-pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
-    use super::external_sort::{ExternalSort, read_record};
+/// `term_sorted` declares that the legacy dictionary is already in strictly increasing term-text order.
+pub(super) fn convert_legacy(dir: &Path, term_sorted: bool) -> io::Result<([u8; 32], [u8; 32])> {
+    if term_sorted {
+        return convert_term_sorted(dir);
+    }
+    use super::external_sort::ExternalSort;
     use std::io::{BufReader, Read};
     let mut input = BufReader::new(File::open(dir.join("dictionary"))?);
     let mut header = [0u8; 8];
@@ -478,61 +642,6 @@ pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
         return Err(bad("dictionary trailing bytes"));
     }
     drop(input);
-    struct Rows {
-        input: std::io::BufReader<File>,
-        order: Order,
-        done: bool,
-    }
-    impl Iterator for Rows {
-        type Item = io::Result<(TermId, Term)>;
-        fn next(&mut self) -> Option<Self::Item> {
-            if self.done {
-                return None;
-            }
-            let value = match read_record(&mut self.input, 16 * 1024 * 1024 + 9) {
-                Ok(Some(v)) => v,
-                Ok(None) => {
-                    self.done = true;
-                    return None;
-                }
-                Err(e) => {
-                    self.done = true;
-                    return Some(Err(e));
-                }
-            };
-            let parsed = (|| {
-                let (id, text) = match self.order {
-                    Order::Id => {
-                        if value.len() < 8 {
-                            return Err(bad("short ID sort record"));
-                        }
-                        (
-                            u64::from_be_bytes(value[..8].try_into().unwrap()),
-                            &value[8..],
-                        )
-                    }
-                    Order::Term => {
-                        if value.len() < 9 || value[value.len() - 9] != 0 {
-                            return Err(bad("short term sort record"));
-                        }
-                        (
-                            u64::from_be_bytes(value[value.len() - 8..].try_into().unwrap()),
-                            &value[..value.len() - 9],
-                        )
-                    }
-                };
-                let term = std::str::from_utf8(text)
-                    .map_err(|_| bad("invalid term UTF-8"))?
-                    .parse()
-                    .map_err(|_| bad("invalid RDF term"))?;
-                Ok((TermId(id), term))
-            })();
-            if parsed.is_err() {
-                self.done = true;
-            }
-            Some(parsed)
-        }
-    }
     let term_run = by_term.finish()?;
     let id_run = by_id.finish()?;
     let term_path = dir.join("dictionary.term");
@@ -571,6 +680,55 @@ pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
 mod tests {
     use super::*;
     use oxrdf::{Literal, NamedNode};
+    fn legacy_dictionary(dir: &std::path::Path, entries: &[(u64, &str)]) {
+        let mut bytes = b"RDFDIC01".to_vec();
+        bytes.extend_from_slice(&(entries.len() as u64).to_le_bytes());
+        for (id, text) in entries {
+            bytes.extend_from_slice(&id.to_le_bytes());
+            bytes.extend_from_slice(&(text.len() as u64).to_le_bytes());
+            bytes.extend_from_slice(text.as_bytes());
+        }
+        std::fs::write(dir.join("dictionary"), bytes).unwrap();
+    }
+
+    #[test]
+    fn single_pass_conversion_matches_the_sorting_conversion() {
+        let root = std::env::temp_dir().join(format!("rdf-lazy-conv-{}", std::process::id()));
+        let (a, b) = (root.join("sorting"), root.join("single"));
+        std::fs::create_dir_all(&a).unwrap();
+        std::fs::create_dir_all(&b).unwrap();
+        // Term-text order: literals ('"') before IRIs ('<'); IDs rise within each kind and kinds differ in the top bits.
+        let mut texts: Vec<String> = (0..700).map(|i| format!("<urn:t{i:04}>")).collect();
+        texts.extend((0..300).map(|i| format!("\"lit{i:04}\"")));
+        texts.sort();
+        let entries: Vec<(u64, &str)> = texts
+            .iter()
+            .enumerate()
+            .map(|(n, t)| (((if t.starts_with('<') { 1u64 } else { 3 }) << 60) | n as u64, t.as_str()))
+            .collect();
+        legacy_dictionary(&a, &entries);
+        legacy_dictionary(&b, &entries);
+        let left = convert_legacy(&a, false).unwrap();
+        let right = convert_legacy(&b, true).unwrap();
+        assert_eq!(left, right);
+        for name in ["dictionary.term", "dictionary.id"] {
+            assert_eq!(std::fs::read(a.join(name)).unwrap(), std::fs::read(b.join(name)).unwrap(), "{name}");
+        }
+        assert!(!b.join("dictionary").exists());
+        assert_eq!(std::fs::read_dir(&b).unwrap().count(), 2, "no scratch left behind");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn single_pass_conversion_rejects_an_unsorted_legacy_dictionary() {
+        let dir = std::env::temp_dir().join(format!("rdf-lazy-unsorted-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        legacy_dictionary(&dir, &[((1 << 60) | 1, "<urn:b>"), ((1 << 60) | 2, "<urn:a>")]);
+        assert!(convert_legacy(&dir, true).is_err());
+        assert!(!dir.join("dictionary.term").exists() || !dir.join("dictionary.id").exists());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn dual_indexes_roundtrip_cross_blocks_and_report_corruption() {
         let dir = std::env::temp_dir().join(format!("rdf-lazy-dict-{}", std::process::id()));
