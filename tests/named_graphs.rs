@@ -118,7 +118,16 @@ fn store_dataset(in_base: bool) -> Overlay {
         changes.push(DatasetChange::Create { graph: iri(n), silent: false });
         changes.extend(g.iter().map(|t| DatasetChange::Quad(GraphTarget::Named(iri(n)), Change::Insert, t.clone())));
     }
-    Overlay::from_base(std::sync::Arc::new(base)).with_dataset_changes(&changes).unwrap().0
+    // As in the double, `:absent` is a known IRI that is not a graph: interned by a default-graph triple that the same
+    // update deletes again, so it is in the dictionary but in no graph view.
+    let mention = Triple::new(iri("absent"), iri("name"), iri("absent"));
+    changes.push(DatasetChange::Quad(GraphTarget::Default, Change::Insert, mention.clone()));
+    changes.push(DatasetChange::Quad(GraphTarget::Default, Change::Delete, mention));
+    let store = Overlay::from_base(std::sync::Arc::new(base)).with_dataset_changes(&changes).unwrap().0;
+    let absent = store.lookup(&iri("absent").into()).unwrap().expect(":absent is known to the store dictionary");
+    assert!(store.graph(absent).unwrap().is_none() && !store.graph_names().unwrap().contains(&absent));
+    assert_eq!(store.count(Perm::Spo, &[]).unwrap(), default.len() as u64, "the mention left no triple behind");
+    store
 }
 
 /// The answer (sorted rows, or the error kind and message) of `q` on the test double and on both store layouts,
