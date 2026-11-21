@@ -164,3 +164,13 @@ fn parse_time() {
         }
     }
 }
+
+/// Invalid UTF-8 in a token is a syntax error, as with `oxttl` (so loads report `Syntax`, not `Storage`).
+#[test]
+fn invalid_utf8_is_a_syntax_error() {
+    use triplelight_core::rdf::ReadError;
+    for doc in [&b"<http://a\xff> <http://b> <http://c> .\n"[..], b"<http://a> <http://b> \"\xff\" .\n", b"_:a\xff <http://b> <http://c> .\n"] {
+        assert!(matches!(read_ntriples(doc).find_map(Result::err), Some(ReadError::Syntax(_))), "{doc:?}");
+        assert!(oxttl::NTriplesParser::new().for_slice(doc).any(|r| r.is_err()), "{doc:?}");
+    }
+}
