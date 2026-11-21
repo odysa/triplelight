@@ -21,6 +21,10 @@ pub(super) struct ExternalSort {
     used: usize,
     run_budget: usize,
     max_record: usize,
+    /// Memory the merge heads may use (the `memory_bytes` given at construction).
+    merge_budget: usize,
+    /// Largest record pushed or imported so far; merge heads are sized from it, not from `max_record`.
+    observed_max: usize,
     fan_in: usize,
     next: u64,
     runs: Vec<PathBuf>,
@@ -54,6 +58,8 @@ impl ExternalSort {
             used: 0,
             run_budget: memory_bytes,
             max_record,
+            merge_budget: memory_bytes,
+            observed_max: 0,
             fan_in,
             next: 0,
             runs: Vec::new(),
@@ -78,6 +84,7 @@ impl ExternalSort {
         if !self.pending.is_empty() && self.used.saturating_add(cost) > self.run_budget {
             self.flush()?;
         }
+        self.observed_max = self.observed_max.max(record.len());
         self.used += cost;
         self.pending.push(record);
         Ok(())
@@ -107,14 +114,25 @@ impl ExternalSort {
     }
     /// Adopt sorted files from other private sorters on the same filesystem.
     /// Each successful rename transfers cleanup ownership to this sorter.
-    pub(super) fn import_sorted(&mut self, paths: &[PathBuf]) -> io::Result<()> {
+    /// `observed_max` is the largest record in those files (their sorter's `observed_max()`).
+    pub(super) fn import_sorted(&mut self, paths: &[PathBuf], observed_max: usize) -> io::Result<()> {
         if !self.pending.is_empty() || !self.runs.is_empty() { return Err(bad("import requires an empty sorter")); }
         for source in paths {
             let path = self.path();
             fs::rename(source, &path)?;
             self.runs.push(path);
         }
+        self.observed_max = self.observed_max.max(observed_max);
         Ok(())
+    }
+    pub(super) fn observed_max(&self) -> usize {
+        self.observed_max
+    }
+    /// Merge width: heads are sized for the largest record actually seen, never narrower than the construction-time
+    /// width (which assumed `max_record`).
+    fn merge_width(&self) -> usize {
+        let per_head = self.observed_max.saturating_add(BUF + 128).max(1);
+        (self.merge_budget / per_head).min(FAN_IN).max(self.fan_in)
     }
     /// Returns a private scratch file containing sorted length-prefixed records.
     /// It remains valid until this sorter is dropped.
@@ -125,10 +143,11 @@ impl ExternalSort {
             File::create(&path)?;
             self.runs.push(path);
         }
+        let width = self.merge_width();
         while self.runs.len() > 1 {
             let old = std::mem::take(&mut self.runs);
             let mut next = Vec::new();
-            for group in old.chunks(self.fan_in) {
+            for group in old.chunks(width) {
                 let path = self.path();
                 if let [only] = group {
                     // A lone run is already sorted; move it instead of copying it through a merge.
@@ -256,6 +275,21 @@ mod tests {
         expected.sort_unstable();
         assert_eq!(actual, expected);
     }
+    #[test]
+    fn merge_width_follows_the_largest_record_seen() {
+        let parent = std::env::temp_dir();
+        let mut sort = ExternalSort::new(&parent, 128 * 1024 * 1024, 16 * 1024 * 1024 + 10).unwrap();
+        assert_eq!(sort.fan_in, 7, "construction assumes the worst-case record");
+        sort.push(vec![1; 100]).unwrap();
+        assert_eq!(sort.merge_width(), FAN_IN, "small records allow the full width");
+        sort.push(vec![2; 15 * 1024 * 1024]).unwrap();
+        assert_eq!(sort.merge_width(), 8, "a 15 MiB record needs wider heads");
+        // Imported runs carry the largest record their sorter saw.
+        let mut other = ExternalSort::new(&parent, 128 * 1024 * 1024, 16 * 1024 * 1024 + 10).unwrap();
+        other.import_sorted(&[], 14 * 1024 * 1024).unwrap();
+        assert_eq!(other.observed_max(), 14 * 1024 * 1024);
+    }
+
     #[test]
     fn truncated_and_oversized_records_fail() {
         assert!(read_record(&mut &[1u8, 0][..], 10).is_err());

@@ -363,13 +363,15 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
     });
     let builders = results.into_iter().collect::<io::Result<Vec<_>>>()?;
     let mut paths = Vec::with_capacity(builders.len());
+    let mut observed = 0usize;
     let mut count = 0u64;
     for (b, path) in &builders {
         count = count.checked_add(b.triples).ok_or_else(|| bad("too many triples"))?;
         paths.push(path.clone());
+        observed = observed.max(b.terms.observed_max());
     }
     let mut combined = Builder::new(dir)?;
-    combined.terms.import_sorted(&paths)?;
+    combined.terms.import_sorted(&paths, observed)?;
     combined.triples = count;
     combined.index_workers = shards.min(3);
     drop(builders);
