@@ -213,7 +213,7 @@ impl Database {
     pub fn update(&self, sparql: String) -> Result<AsyncTask<WriteTask>> {
         Ok(AsyncTask::new(WriteTask { db: self.db()?, op: Write::Update(sparql) }))
     }
-    /// Atomically imports an N-Triples (.nt) or Turtle (.ttl) file. Resolves to the number of triples added.
+    /// Atomically imports an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file. Resolves to the number of triples added.
     #[napi(ts_return_type = "Promise<number>")]
     pub fn load(&self, path: String) -> Result<AsyncTask<WriteTask>> {
         Ok(AsyncTask::new(WriteTask { db: self.db()?, op: Write::Load(path) }))

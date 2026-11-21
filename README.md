@@ -286,6 +286,7 @@ The separate [Virtuoso100M correctness screen](docs/virtuoso100-qualification-v1
 - **Named graphs** (Rust, Python, Node.js and the C, Go and Java bindings): `GRAPH`, `FROM` and `FROM NAMED` in
   queries; updates into named graphs (`GRAPH` in `INSERT`/`DELETE`, `WITH`, `USING`); and graph management with
   `CREATE`, `DROP`, `CLEAR`, `ADD`, `MOVE` and `COPY`. A request's operations apply in order and commit together.
+  `load` also reads N-Quads (`.nq`) and TriG (`.trig`) files into their named graphs.
 - **Exact numbers, within a range**: `xsd:decimal` arithmetic is exact within 96 bits and 28 fractional digits, and
   `xsd:integer` within 64 bits; results outside that range are query errors (Jena uses arbitrary precision).
   Non-terminating decimal quotients such as 1/3 are rounded to 28 digits. Decimal underflow is an error, which is
@@ -307,8 +308,8 @@ off by default and can be enabled with a token or, on loopback only, without one
 
 ### Not supported yet
 
-- Loading named graphs from files (N-Quads, TriG) and `LOAD`. Named graphs are written only by SPARQL Update, and
-  a persistent store keeps them in its write-ahead log until a later release stores them in its base files.
+- `LOAD`; blank-node graph names in N-Quads and TriG files; empty TriG graph blocks (they add no graph). A persistent store keeps named graphs in its
+  write-ahead log until a later release stores them in its base files.
 - Named graphs in the WebAssembly package (named-graph updates return an "unsupported" error there).
 - `SERVICE` and `BNODE(string)`.
 - Results are materialized before output; Arrow output then streams that result in batches.
