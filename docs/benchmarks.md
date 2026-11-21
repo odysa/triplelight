@@ -129,6 +129,8 @@ The [goRDFlib embedded fixture](gordflib-embedded-qualification-v1/README.md) pa
 
 The [dotNetRDF embedded fixture](dotnetrdf-embedded-qualification-v1/README.md) passed 24 typed query checks across memory, whole-graph file write and fresh-process reparse. Each route preserved the nine exact triples. This was a serialized graph round trip without workload timing.
 
+The [Mulgara 2.1.13 build and startup check](mulgara-embedded-startup-v1/README.md) built the embedded JAR on macOS ARM64 with Zulu 8u514. The local database constructor stopped when the network-deny sandbox blocked a JOTM RMI bind during system-graph bootstrap. The fixture was never loaded, so no query or workload scores were collected.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.
