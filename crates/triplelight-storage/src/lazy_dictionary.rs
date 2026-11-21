@@ -436,10 +436,11 @@ impl LazyIndex {
             if text_kind(text.as_bytes()) != Some(kind) {
                 return Err(bad("dictionary term disagrees with its kind"));
             }
-            if let Some((pk, ptext)) = &previous {
-                if *pk == kind && *ptext >= text {
-                    return Err(bad("dictionary terms not strictly sorted inside a kind"));
-                }
+            if let Some((pk, ptext)) = &previous
+                && *pk == kind
+                && *ptext >= text
+            {
+                return Err(bad("dictionary terms not strictly sorted inside a kind"));
             }
             previous = Some((kind, text));
             Ok(())
@@ -1118,7 +1119,7 @@ mod tests {
         // A deterministic sample of IDs and their texts, in scrambled order like a join result.
         let mut ids = Vec::new();
         let mut n = 0u64;
-        old_id.for_each(&mut |id, _| { n += 1; if n % 13 == 0 { ids.push(id); } Ok(()) }).unwrap();
+        old_id.for_each(&mut |id, _| { n += 1; if n.is_multiple_of(13) { ids.push(id); } Ok(()) }).unwrap();
         let mut x = 0x9e37_79b9_7f4a_7c15u64;
         for i in (1..ids.len()).rev() {
             x ^= x << 13; x ^= x >> 7; x ^= x << 17;
