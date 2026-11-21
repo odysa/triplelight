@@ -242,7 +242,7 @@ pub fn parse_nquads_line(line: &str) -> Option<Quad> {
 }
 
 /// The largest token `oxttl` 0.2 buffers (16 MiB); a longer one is an I/O error (`OutOfMemory`) there and here.
-const MAX_TOKEN: usize = 4096 * 4096;
+pub const MAX_TOKEN: usize = 4096 * 4096;
 /// The longest line read into memory. Bounded so input that never breaks a line cannot exhaust memory; four tokens of
 /// the maximum size fit. (Unlike `oxttl`, a longer line made only of whitespace or a comment is refused too.)
 const MAX_LINE: usize = 5 * MAX_TOKEN;
