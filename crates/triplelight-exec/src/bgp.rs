@@ -39,6 +39,21 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         self.snap.seek(perm, prefix, t).unwrap_or_else(|e| storage_failure(e))
     }
 
+    /// Variables bound in every row of `rows`.
+    fn bound_in_every_row(&self, rows: &[TermId]) -> HashSet<usize> {
+        let w = self.w;
+        (0..w).filter(|&i| rows.chunks(w).all(|r| r[i] != UNBOUND)).collect()
+    }
+
+    /// One join step shared by both evaluation orders: extend `rows` by pattern `pat`, mark its variables bound, then
+    /// let `post` apply whatever has become evaluable.
+    fn join_step(&self, pat: &[Slot; 3], rows: &[TermId], bound: &mut HashSet<usize>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>)) -> Vec<TermId> {
+        let mut out = self.extend(pat, rows);
+        for s in pat { if let Slot::Var(v) = s { bound.insert(*v); } }
+        post(&mut out, bound);
+        out
+    }
+
     /// Greedy order with exact index counts, evaluated by index nested-loop joins.
     /// `post` runs after every join step with the set of variables bound so far (used to apply filters as early as
     /// their variables are bound).
@@ -46,28 +61,22 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         let w = self.w;
         if rows.is_empty() { return rows }
         let mut remaining: Vec<usize> = (0..pats.len()).collect();
-        // Variables bound in every input row.
-        let mut bound: HashSet<usize> = (0..w).filter(|&i| rows.chunks(w).all(|r| r[i] != UNBOUND)).collect();
+        let mut bound = self.bound_in_every_row(&rows);
         while !remaining.is_empty() && !rows.is_empty() {
             let sample = rows[..w].to_vec();
             let (k, _) = remaining.iter().enumerate().map(|(k, &pi)| (k, self.estimate(&pats[pi], &bound, &sample)))
                 .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap()).unwrap();
             let pi = remaining.remove(k);
-            rows = self.extend(&pats[pi], &rows);
-            for s in &pats[pi] { if let Slot::Var(v) = s { bound.insert(*v); } }
-            post(&mut rows, &bound);
+            rows = self.join_step(&pats[pi], &rows, &mut bound, post);
         }
         rows
     }
 
     pub fn eval_order(&self, pats: &[[Slot; 3]], order: &[usize], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>)) -> Vec<TermId> {
-        let w = self.w;
-        let mut bound: HashSet<usize> = if rows.is_empty() { HashSet::new() } else { (0..w).filter(|&i| rows.chunks(w).all(|r| r[i] != UNBOUND)).collect() };
+        let mut bound = if rows.is_empty() { HashSet::new() } else { self.bound_in_every_row(&rows) };
         for &pi in order {
             if rows.is_empty() { break }
-            rows = self.extend(&pats[pi], &rows);
-            for s in &pats[pi] { if let Slot::Var(v) = s { bound.insert(*v); } }
-            post(&mut rows, &bound);
+            rows = self.join_step(&pats[pi], &rows, &mut bound, post);
         }
         rows
     }
