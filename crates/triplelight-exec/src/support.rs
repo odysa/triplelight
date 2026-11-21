@@ -29,16 +29,16 @@ pub(super) fn pattern_unsupported(p: &GraphPattern, ds: bool) -> Option<String> 
         }
         GraphPattern::LeftJoin { left, right, expression } => pattern_unsupported(left, ds)
             .or_else(|| pattern_unsupported(right, ds))
-            .or_else(|| expression.as_ref().and_then(expr_unsupported)),
-        GraphPattern::Filter { expr, inner } => expr_unsupported(expr).or_else(|| pattern_unsupported(inner, ds)),
-        GraphPattern::Extend { inner, expression, .. } => pattern_unsupported(inner, ds).or_else(|| expr_unsupported(expression)),
+            .or_else(|| expression.as_ref().and_then(|e| expr_unsupported(e, ds))),
+        GraphPattern::Filter { expr, inner } => expr_unsupported(expr, ds).or_else(|| pattern_unsupported(inner, ds)),
+        GraphPattern::Extend { inner, expression, .. } => pattern_unsupported(inner, ds).or_else(|| expr_unsupported(expression, ds)),
         GraphPattern::OrderBy { inner, expression } => pattern_unsupported(inner, ds).or_else(|| expression.iter().find_map(|o| match o {
-            OrderExpression::Asc(e) | OrderExpression::Desc(e) => expr_unsupported(e),
+            OrderExpression::Asc(e) | OrderExpression::Desc(e) => expr_unsupported(e, ds),
         })),
         GraphPattern::Group { inner, aggregates, .. } => pattern_unsupported(inner, ds).or_else(|| aggregates.iter().find_map(|(_, a)| match a {
             AggregateExpression::FunctionCall { expr, name, .. } => match name {
                 crate::sparql::AggregateFunction::Custom(f) => Some(format!("custom aggregate <{}> is not supported", f.as_str())),
-                _ => expr_unsupported(expr),
+                _ => expr_unsupported(expr, ds),
             },
             AggregateExpression::CountSolutions { .. } => None,
         })),
@@ -51,13 +51,13 @@ pub(super) fn pattern_unsupported(p: &GraphPattern, ds: bool) -> Option<String> 
 /// XSD constructor casts implemented by `expr::xsd_cast`.
 const XSD_CASTS: &[&str] = &["string", "double", "float", "decimal", "integer", "int", "long", "short", "byte", "boolean", "dateTime", "date", "time"];
 
-fn expr_unsupported(e: &Expression) -> Option<String> {
+/// `ds`: the query runs against a `DatasetView`, so GRAPH is evaluated, including inside EXISTS.
+fn expr_unsupported(e: &Expression, ds: bool) -> Option<String> {
     match e {
-        // Conservative: GRAPH inside EXISTS is rejected even for dataset queries (not yet covered by fixtures).
-        Expression::Exists(p) => pattern_unsupported(p, false),
+        Expression::Exists(p) => pattern_unsupported(p, ds),
         Expression::FunctionCall(Function::BNode, args) if !args.is_empty() => Some("BNODE(string) is not supported".into()),
-        Expression::FunctionCall(f, args) => function_unsupported(f).or_else(|| args.iter().find_map(expr_unsupported)),
-        e => e.children().find_map(expr_unsupported),
+        Expression::FunctionCall(f, args) => function_unsupported(f).or_else(|| args.iter().find_map(|a| expr_unsupported(a, ds))),
+        e => e.children().find_map(|c| expr_unsupported(c, ds)),
     }
 }
 
