@@ -1,5 +1,6 @@
 //! RFC 3987 absolute IRI validation and RFC 3986 reference resolution (task #45). Used by the SPARQL parser and the
 //! `IRI()` function; `tests/differential.rs` qualifies it against `oxiri`, which is a dev-only comparator.
+//! Derived in part from oxiri (MIT); see THIRD_PARTY_NOTICES.md.
 use std::{fmt, net::Ipv6Addr, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

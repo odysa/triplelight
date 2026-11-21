@@ -1,6 +1,7 @@
 //! RFC 5646 language-tag well-formedness (task #45), with exactly the acceptance of `oxilangtag` 0.1, which the
 //! N-Triples parser used before: grandfathered tags, private use (`x-…`), and the langtag production. Validity only;
 //! the parser lowercases the tag itself.
+//! Derived in part from oxilangtag (MIT); see THIRD_PARTY_NOTICES.md.
 
 const GRANDFATHERED: [&str; 26] = [
     "art-lojban", "cel-gaulish", "en-GB-oed", "i-ami", "i-bnn", "i-default", "i-enochian", "i-hak", "i-klingon",

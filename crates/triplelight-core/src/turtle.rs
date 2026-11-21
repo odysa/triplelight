@@ -2,6 +2,7 @@
 //! parsers do and emits the same statements in the same order; blank nodes for `[]` and collections are fresh, as
 //! there. Input is read through a refillable buffer: a statement is parsed as soon as its tokens are available, and a
 //! streaming reader refuses a token longer than `oxttl`'s 16 MiB buffer, as it did (slices have no limit).
+//! Derived in part from oxttl (MIT); see THIRD_PARTY_NOTICES.md.
 use crate::ntriples::MAX_TOKEN;
 use crate::rdf::{BlankNode, GraphName, Literal, NamedNode, NamedOrBlankNode, Quad, ReadError, Term};
 use std::collections::{HashMap, VecDeque};
