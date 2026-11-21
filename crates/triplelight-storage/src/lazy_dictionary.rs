@@ -392,32 +392,59 @@ impl LazyIndex {
         }
         Ok(rows)
     }
-    /// Unified blocks hold one kind, in strictly increasing term text, ending at the directory's last text and
-    /// continuing the previous block of the same kind.
+    /// Cheap checks on every unified block load: one kind (by the term variant, no text rendering), the last term
+    /// equal to the directory's last text, and continuation of the previous block of the same kind. The strictly
+    /// increasing text order inside a block is checked exhaustively by `check_text_order` (used by `verify`), not on
+    /// every load, so the ID lookup path does not render each term back to text.
     fn check_unified_block(&self, index: usize, meta: &Meta, rows: &[(TermId, Term)]) -> io::Result<()> {
         let kind = id_kind(rows[0].0 .0);
-        let mut previous: Option<String> = None;
         for (id, term) in rows {
-            let text = term.to_string();
-            if id_kind(id.0) != kind || text_kind(text.as_bytes()) != Some(kind) {
+            let variant = match term {
+                Term::NamedNode(_) => 1,
+                Term::BlankNode(_) => 2,
+                Term::Literal(_) => 3,
+            };
+            if id_kind(id.0) != kind || variant != kind {
                 return Err(bad("dictionary block mixes kinds or a term disagrees with its kind"));
             }
-            if previous.as_ref().is_some_and(|p| *p >= text) {
-                return Err(bad("invalid dictionary block order"));
-            }
-            previous = Some(text);
         }
-        if previous.as_deref().map(str::as_bytes) != Some(meta.last_text.as_slice()) {
+        if rows.last().map(|(_, t)| t.to_string().into_bytes()).as_deref() != Some(meta.last_text.as_slice()) {
             return Err(bad("invalid dictionary block order"));
         }
         if index > 0 {
             let prev = &self.entries[index - 1];
-            let first = rows[0].1.to_string();
-            if id_kind(u64::from_be_bytes(prev.last.as_slice().try_into().unwrap())) == kind && first.as_bytes() <= prev.last_text.as_slice() {
+            if id_kind(u64::from_be_bytes(prev.last.as_slice().try_into().unwrap())) == kind
+                && rows[0].1.to_string().as_bytes() <= prev.last_text.as_slice()
+            {
                 return Err(bad("invalid dictionary block order"));
             }
         }
         Ok(())
+    }
+    /// Unified order only: every term's text must be strictly greater than the previous term's of the same kind and
+    /// start with that kind's byte. Together with the per-load checks this makes `find_term` exact.
+    pub(super) fn check_text_order(&self) -> io::Result<u64> {
+        if !matches!(self.order, Order::Unified) {
+            return Err(bad("wrong dictionary index"));
+        }
+        let mut previous: Option<(u64, String)> = None;
+        let mut count = 0u64;
+        self.for_each(&mut |id, term| {
+            count += 1;
+            let text = term.to_string();
+            let kind = id_kind(id.0);
+            if text_kind(text.as_bytes()) != Some(kind) {
+                return Err(bad("dictionary term disagrees with its kind"));
+            }
+            if let Some((pk, ptext)) = &previous {
+                if *pk == kind && *ptext >= text {
+                    return Err(bad("dictionary terms not strictly sorted inside a kind"));
+                }
+            }
+            previous = Some((kind, text));
+            Ok(())
+        })?;
+        Ok(count)
     }
     pub(super) fn clear_cache(&self) -> io::Result<()> {
         for shard in &self.cache.shards {

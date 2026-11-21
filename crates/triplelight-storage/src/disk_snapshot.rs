@@ -242,12 +242,8 @@ impl DiskSnapshot {
             // strictly increasing term text that agrees with the kind. That makes (ID <-> term) one bijection and
             // `find_term` exact, so a single pass over all blocks is the whole dictionary check.
             unified.clear_cache()?;
-            let mut count = 0u64;
-            unified.for_each(&mut |_, _| {
-                count += 1;
-                Ok(())
-            })?;
-            if count == 0 && self.indexes[0].len() != 0 {
+            let count = unified.check_text_order()?;
+            if count == 0 && !self.indexes[0].is_empty() {
                 return Err(bad("dictionary is empty but the indexes are not"));
             }
         }
