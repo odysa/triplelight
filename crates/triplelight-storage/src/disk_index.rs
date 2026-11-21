@@ -15,17 +15,21 @@ const MAGIC_V3: &[u8; 8] = b"RDFIDX03";
 /// Graph-first quad indexes (task #36): four IDs per row, otherwise the `RDFIDX03` layout.
 const MAGIC_QUAD_V1: &[u8; 8] = b"RDFQIX01";
 const HEADER: u64 = 24;
+/// Cache shares of a triple-only snapshot (see `DiskIndex::open_with_share`).
+pub const DEFAULT_SHARES: usize = 9;
+/// Cache shares when a base also has the six quad orders.
+pub const DATASET_SHARES: usize = 15;
 const ROW: u64 = 24;
 const BLOCK_ROWS: u64 = 256;
 const META: u64 = 56;
 // Instrumentation branch only: counters are process-wide and include concurrent
 // work; a single-query run after background statistics has finished isolates it.
 static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
-static HITS: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
-static MISSES: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
-static READS: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
-static BYTES: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
-static EVICTIONS: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
+static HITS: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
+static MISSES: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
+static READS: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
+static BYTES: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
+static EVICTIONS: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
 pub fn cache_trace_enabled() -> bool {
     *TRACE_ENABLED.get_or_init(|| std::env::var_os("TRIPLELIGHT_TRACE_BLOCK_CACHE").is_some())
 }
@@ -43,7 +47,12 @@ pub(super) fn trace_dictionary(slot: usize, metric: usize, value: u64) {
     };
     counters[slot].fetch_add(value, Ordering::Relaxed);
 }
-pub fn cache_trace_snapshot() -> [[u64; 5]; 8] {
+/// Trace slots: 0-5 the triple orders (`Perm::ALL`), 6 and 7 the dictionary lookups (by term, by ID), 8 the six
+/// graph-first quad orders of a named-graph base together.
+pub const TRACE_SLOTS: usize = 9;
+/// The trace slot shared by the quad orders.
+pub const QUAD_TRACE_SLOT: usize = 8;
+pub fn cache_trace_snapshot() -> [[u64; 5]; TRACE_SLOTS] {
     std::array::from_fn(|i| {
         [
             HITS[i].load(Ordering::Relaxed),
@@ -282,6 +291,11 @@ where
     Width<N>: SupportedWidth<N>,
 {
     pub fn open(path: impl AsRef<Path>) -> io::Result<Self> {
+        Self::open_with_share(path, DEFAULT_SHARES)
+    }
+    /// Opens with a block cache of `1 / shares` of the snapshot budget (the dictionary takes three shares; a
+    /// triple-only snapshot's six orders one each, so 9; with the six quad orders of a named-graph base, 15).
+    pub fn open_with_share(path: impl AsRef<Path>, shares: usize) -> io::Result<Self> {
         let trace_slot = match path.as_ref().file_name().and_then(|v| v.to_str()) {
             Some("spo") => Some(0),
             Some("sop") => Some(1),
@@ -289,6 +303,8 @@ where
             Some("pos") => Some(3),
             Some("osp") => Some(4),
             Some("ops") => Some(5),
+            // All six graph-first quad orders share one slot (task #36).
+            Some("gspo" | "gsop" | "gpso" | "gpos" | "gosp" | "gops") => Some(QUAD_TRACE_SLOT),
             _ => None,
         };
         let file = File::open(path)?;
@@ -391,7 +407,7 @@ where
                 .collect(),
             shard_capacity: cache_budget_mb()
                 .saturating_mul(1024 * 1024)
-                .checked_div(9 * 16 * BLOCK_ROWS as usize * row_bytes(N) as usize)
+                .checked_div(shares.max(1) * 16 * BLOCK_ROWS as usize * row_bytes(N) as usize)
                 .unwrap_or(1)
                 .max(1),
         })

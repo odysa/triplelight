@@ -2,7 +2,7 @@
 use super::{
     Snapshot,
     disk_index::{DiskIndex, write_index_stream},
-    disk_snapshot::FILES,
+    disk_snapshot::{CATALOG_FILE, FILES, QUAD_FILES},
     external_sort::{ExternalSort, read_record},
 };
 use crate::model::{Perm, TermId};
@@ -53,25 +53,45 @@ pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io:
     from_nt_parallel(dir, source, workers.max(1))
 }
 fn build_permutation(dir: &Path, raw: &Path, triples: u64, name: &str, perm: Perm, run_budget: usize) -> io::Result<[u8; 32]> {
-    let mut sorter = ExternalSort::new(dir, run_budget, 24)?;
+    // Triple rows are (s, p, o); the key is the order's permutation of them.
+    let order = perm.order();
+    build_index::<3>(dir, raw, triples, name, run_budget, &|row: &[u8], key: &mut Vec<u8>| {
+        for i in order { key.extend_from_slice(&row[i * 8..i * 8 + 8]) }
+    })
+}
+/// One graph-first quad order (task #36): raw rows are (g, s, p, o) and the key is g followed by the triple order.
+fn build_quad_permutation(dir: &Path, raw: &Path, quads: u64, name: &str, perm: Perm, run_budget: usize) -> io::Result<[u8; 32]> {
+    let order = perm.order();
+    build_index::<4>(dir, raw, quads, name, run_budget, &|row: &[u8], key: &mut Vec<u8>| {
+        key.extend_from_slice(&row[..8]);
+        for i in order { key.extend_from_slice(&row[8 + i * 8..16 + i * 8]) }
+    })
+}
+/// Sorts `count` raw rows of `N` big-endian IDs by `key_of`, drops duplicates and writes them as index `name`.
+fn build_index<const N: usize>(dir: &Path, raw: &Path, count: u64, name: &str, run_budget: usize, key_of: &(dyn Fn(&[u8], &mut Vec<u8>) + Sync)) -> io::Result<[u8; 32]>
+where
+    super::disk_index::Width<N>: super::disk_index::SupportedWidth<N>,
+{
+    let width = N * 8;
+    let mut sorter = ExternalSort::new(dir, run_budget, width)?;
     let mut input = BufReader::new(File::open(raw)?);
-    for _ in 0..triples {
-        let mut triple = [0u8; 24];
-        input.read_exact(&mut triple)?;
-        let mut key = Vec::with_capacity(24);
-        for i in perm.order() { key.extend_from_slice(&triple[i * 8..i * 8 + 8]); }
+    let mut row = vec![0u8; width];
+    for _ in 0..count {
+        input.read_exact(&mut row)?;
+        let mut key = Vec::with_capacity(width);
+        key_of(&row, &mut key);
         sorter.push(key)?;
     }
     let sorted = sorter.finish()?;
-    let mut reader = UniqueRows::open(&sorted)?;
-    let mut count = 0u64;
-    while reader.next().transpose()?.is_some() { count += 1; }
-    let rows = UniqueRows::open(&sorted)?;
+    let mut reader = UniqueRows::<N>::open(&sorted)?;
+    let mut unique = 0u64;
+    while reader.next().transpose()?.is_some() { unique += 1; }
+    let rows = UniqueRows::<N>::open(&sorted)?;
     let path = dir.join(name);
     let mut output = BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&path)?);
-    write_index_stream(&mut output, count, rows)?;
+    write_index_stream(&mut output, unique, rows)?;
     output.flush()?; output.get_ref().sync_all()?; drop(output);
-    Ok(DiskIndex::<3>::open(path)?.identity())
+    Ok(DiskIndex::<N>::open(path)?.identity())
 }
 // Test-only failure injection: `checkpoint(n)` fails when the test selected phase `n`. Compiled out in normal builds.
 #[cfg(test)]
@@ -91,6 +111,10 @@ fn bad(s: &'static str) -> io::Error {
 pub(super) struct Builder {
     terms: ExternalSort,
     triples: u64,
+    /// Named-graph rows (task #36), added after every triple: quads (s, p, o, g), then the name of every graph in
+    /// the catalog (so empty graphs get an ID too). Row IDs run triples, then quads, then graph names.
+    quads: u64,
+    graph_names: u64,
     index_workers: usize,
 }
 impl Builder {
@@ -99,6 +123,8 @@ impl Builder {
         Ok(Self {
             terms: ExternalSort::new(dir, bytes, MAX_TERM + 10)?,
             triples: 0,
+            quads: 0,
+            graph_names: 0,
             index_workers: 1,
         })
     }
@@ -106,6 +132,33 @@ impl Builder {
         self.add_with_id(terms, self.triples)
     }
     fn add_with_id(&mut self, terms: [String; 3], triple_id: u64) -> io::Result<()> {
+        if self.quads + self.graph_names != 0 {
+            return Err(bad("triples must be added before named-graph rows"));
+        }
+        self.push_terms(terms, triple_id)?;
+        self.triples = self
+            .triples
+            .checked_add(1)
+            .ok_or_else(|| bad("too many triples"))?;
+        Ok(())
+    }
+    /// A triple of named graph `g`, as the terms `[s, p, o, g]`.
+    fn add_quad(&mut self, terms: [String; 4]) -> io::Result<()> {
+        if self.graph_names != 0 {
+            return Err(bad("quads must be added before graph names"));
+        }
+        self.push_terms(terms, self.triples + self.quads)?;
+        self.quads += 1;
+        Ok(())
+    }
+    /// A graph of the catalog (each once), whether or not it has triples.
+    fn add_graph_name(&mut self, name: String) -> io::Result<()> {
+        self.push_terms([name], self.triples + self.quads + self.graph_names)?;
+        self.graph_names += 1;
+        Ok(())
+    }
+    fn push_terms<const K: usize>(&mut self, terms: [String; K], row_id: u64) -> io::Result<()> {
+        let triple_id = row_id;
         for (pos, term) in terms.into_iter().enumerate() {
             if term.len() > MAX_TERM || term.as_bytes().contains(&0) {
                 return Err(bad("invalid or oversized encoded RDF term"));
@@ -116,10 +169,6 @@ impl Builder {
             r.push(pos as u8);
             self.terms.push(r)?;
         }
-        self.triples = self
-            .triples
-            .checked_add(1)
-            .ok_or_else(|| bad("too many triples"))?;
         Ok(())
     }
     fn finish(mut self, dir: &Path) -> io::Result<()> {
@@ -182,12 +231,22 @@ impl Builder {
         let assignments = mapping.finish()?;
         let mut input = BufReader::new(File::open(&assignments)?);
         let raw = dir.join(".triples.raw");
+        let quad_raw = dir.join(".quads.raw");
         let mut triples =
             BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&raw)?);
+        let mut quads = if self.quads > 0 {
+            Some(BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&quad_raw)?))
+        } else {
+            None
+        };
+        let mut graph_ids: Vec<u64> = Vec::new();
         let mut previous_id = None;
-        for _ in 0..self.triples {
+        let rows = self.triples + self.quads + self.graph_names;
+        for row in 0..rows {
+            let arity = if row < self.triples { 3 } else if row < self.triples + self.quads { 4 } else { 1 };
             let mut current_id = None;
-            for pos in 0..3u8 {
+            let mut ids = [[0u8; 8]; 4];
+            for pos in 0..arity as u8 {
                 let r =
                     read_record(&mut input, 17)?.ok_or_else(|| bad("missing term assignment"))?;
                 if r.len() != 17 || r[8] != pos { return Err(bad("invalid term assignment")); }
@@ -196,10 +255,21 @@ impl Builder {
                     if previous_id.is_some_and(|prev| id <= prev) { return Err(bad("unordered term assignment")); }
                     current_id = Some(id);
                 } else if current_id != Some(id) { return Err(bad("invalid term assignment")); }
-                triples.write_all(&r[9..17])?;
+                ids[pos as usize].copy_from_slice(&r[9..17]);
             }
             previous_id = current_id;
+            match arity {
+                3 => for id in &ids[..3] { triples.write_all(id)? },
+                // Quad rows are stored graph first: (g, s, p, o).
+                4 => {
+                    let out = quads.as_mut().expect("quad rows exist");
+                    out.write_all(&ids[3])?;
+                    for id in &ids[..3] { out.write_all(id)? }
+                }
+                _ => graph_ids.push(u64::from_be_bytes(ids[0])),
+            }
         }
+        if let Some(mut q) = quads.take() { q.flush()?; }
         if read_record(&mut input, 17)?.is_some() {
             return Err(bad("extra term assignment"));
         }
@@ -226,6 +296,24 @@ impl Builder {
             for result in results { identities.push(result?); }
         }
         fs::remove_file(raw)?;
+        // Named graphs: six graph-first quad orders and the catalog, only when the dataset has named graphs, so a
+        // default-only base stays byte-identical to an RDFSNAP4 base.
+        let named = self.quads + self.graph_names > 0;
+        if named {
+            let quad_jobs: Vec<_> = QUAD_FILES.iter().copied().zip(Perm::ALL).collect();
+            for batch in quad_jobs.chunks(workers) {
+                let results = std::thread::scope(|scope| {
+                    let handles: Vec<_> = batch.iter().map(|&(name, perm)| {
+                        let raw = &quad_raw; let quads = self.quads;
+                        scope.spawn(move || build_quad_permutation(dir, raw, quads, name, perm, run_budget))
+                    }).collect();
+                    handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(io::Error::other("permutation build worker panicked")))).collect::<Vec<_>>()
+                });
+                for result in results { identities.push(result?); }
+            }
+            if self.quads > 0 { fs::remove_file(&quad_raw)?; }
+            identities.push(write_catalog(dir, graph_ids)?);
+        }
         // Finish and remove all scratch before publishing the manifest.
         drop(mapping);
         drop(self.terms);
@@ -235,7 +323,8 @@ impl Builder {
                 .create_new(true)
                 .open(dir.join("MANIFEST"))?,
         );
-        manifest.write_all(b"RDFSNAP4")?;
+        // RDFSNAP5 (task #36) = RDFSNAP4 plus six quad orders and the graph catalog.
+        manifest.write_all(if named { b"RDFSNAP5" } else { b"RDFSNAP4" })?;
         for identity in identities {
             manifest.write_all(&identity)?;
         }
@@ -252,12 +341,47 @@ impl Builder {
         Ok(())
     }
 }
-struct UniqueRows {
+/// Writes the graph catalog: every named graph's ID (ascending, each once) with its triple count from the G+SPO
+/// order, empty graphs included. Layout: magic `RDFGRA01`, count, then `(id, triples)` pairs (little-endian), then
+/// the SHA-256 of everything before it, which is also the file's identity in the manifest.
+fn write_catalog(dir: &Path, mut graph_ids: Vec<u64>) -> io::Result<[u8; 32]> {
+    use sha2::{Digest, Sha256};
+    let gspo = DiskIndex::<4>::open(dir.join(QUAD_FILES[0]))?;
+    graph_ids.sort_unstable();
+    let before = graph_ids.len();
+    graph_ids.dedup();
+    if graph_ids.len() != before || graph_ids.contains(&0) {
+        return Err(bad("graph catalog names a graph twice"));
+    }
+    let mut body = Vec::with_capacity(16 + graph_ids.len() * 16);
+    body.extend_from_slice(b"RDFGRA01");
+    body.extend_from_slice(&(graph_ids.len() as u64).to_le_bytes());
+    let mut total = 0u64;
+    for &g in &graph_ids {
+        let range = gspo.range(&[TermId(g)])?;
+        let n = range.end - range.start;
+        total += n;
+        body.extend_from_slice(&g.to_le_bytes());
+        body.extend_from_slice(&n.to_le_bytes());
+    }
+    if total != gspo.len() {
+        return Err(bad("a quad names a graph outside the catalog"));
+    }
+    let identity: [u8; 32] = Sha256::digest(&body).into();
+    let path = dir.join(CATALOG_FILE);
+    let mut out = BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&path)?);
+    out.write_all(&body)?;
+    out.write_all(&identity)?;
+    out.flush()?;
+    out.get_ref().sync_all()?;
+    Ok(identity)
+}
+struct UniqueRows<const N: usize> {
     input: BufReader<File>,
-    previous: Option<[u8; 24]>,
+    previous: Option<Vec<u8>>,
     done: bool,
 }
-impl UniqueRows {
+impl<const N: usize> UniqueRows<N> {
     fn open(path: &Path) -> io::Result<Self> {
         Ok(Self {
             input: BufReader::new(File::open(path)?),
@@ -266,31 +390,29 @@ impl UniqueRows {
         })
     }
 }
-impl Iterator for UniqueRows {
-    type Item = io::Result<[TermId; 3]>;
+impl<const N: usize> Iterator for UniqueRows<N> {
+    type Item = io::Result<[TermId; N]>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.done {
             return None;
         }
         loop {
-            match read_record(&mut self.input, 24) {
-                Ok(Some(r)) => {
-                    let bytes: [u8; 24] = match r.try_into() {
-                        Ok(v) => v,
-                        Err(_) => {
-                            self.done = true;
-                            return Some(Err(bad("bad triple run")));
-                        }
-                    };
-                    if self.previous == Some(bytes) {
+            match read_record(&mut self.input, N * 8) {
+                Ok(Some(bytes)) => {
+                    if bytes.len() != N * 8 {
+                        self.done = true;
+                        return Some(Err(bad("bad triple run")));
+                    }
+                    if self.previous.as_deref() == Some(&bytes[..]) {
                         continue;
                     }
-                    self.previous = Some(bytes);
-                    return Some(Ok(std::array::from_fn(|i| {
+                    let row = std::array::from_fn(|i| {
                         TermId(u64::from_be_bytes(
                             bytes[i * 8..i * 8 + 8].try_into().unwrap(),
                         ))
-                    })));
+                    });
+                    self.previous = Some(bytes);
+                    return Some(Ok(row));
                 }
                 Ok(None) => {
                     self.done = true;
@@ -391,6 +513,38 @@ pub(super) fn from_nt(dir: &Path, path: Option<&Path>) -> io::Result<()> {
             ])?;
         }
     }
+    builder.finish(dir)
+}
+/// A base of the default graph and every named graph of `source` (task #36): `RDFSNAP5` if it has named graphs,
+/// otherwise exactly `from_snapshot` of its default graph.
+pub(super) fn from_dataset(dir: &Path, source: &dyn triplelight_core::storage::DatasetView) -> io::Result<()> {
+    let names = source.graph_names()?;
+    if names.is_empty() { return from_snapshot(dir, source.default_graph()) }
+    fs::create_dir(dir)?;
+    let mut builder = Builder::new(dir)?;
+    let text = |view: &dyn Snapshot, id: TermId| -> io::Result<String> {
+        let mut out = String::new();
+        view.with_term(id, &mut |v| out = v.to_string())?;
+        Ok(out)
+    };
+    let default = source.default_graph();
+    for batch in default.scan(Perm::Spo, &[]) {
+        let batch = batch?;
+        for i in 0..batch.len() {
+            builder.add([text(default, batch.cols[0][i])?, text(default, batch.cols[1][i])?, text(default, batch.cols[2][i])?])?;
+        }
+    }
+    for &g in &names {
+        let view = source.graph(g)?.ok_or_else(|| bad("graph listed but absent"))?;
+        let name = text(default, g)?;
+        for batch in view.scan(Perm::Spo, &[]) {
+            let batch = batch?;
+            for i in 0..batch.len() {
+                builder.add_quad([text(view, batch.cols[0][i])?, text(view, batch.cols[1][i])?, text(view, batch.cols[2][i])?, name.clone()])?;
+            }
+        }
+    }
+    for &g in &names { builder.add_graph_name(text(default, g)?)?; }
     builder.finish(dir)
 }
 pub(super) fn from_snapshot(dir: &Path, source: &dyn Snapshot) -> io::Result<()> {
