@@ -924,3 +924,57 @@ mod admission_cache_tests {
         assert_eq!((0..20).map(|_| c.next()).collect::<Vec<_>>(), (0..20).map(|_| fresh.next()).collect::<Vec<_>>());
     }
 }
+
+/// B2 hit-path microbenchmark (ignored; run with
+/// `cargo test --release -p triplelight-storage b2_hit_path -- --ignored --nocapture`). Same process, same keys, same
+/// resident set, interleaved old/new rounds: the pre-B2 FIFO shard (copied verbatim from main dda13fb5) against the
+/// reference-bit shard, timing only `get` on blocks that are all resident (the all-hit case).
+#[cfg(test)]
+mod b2_hit_bench {
+    use super::*;
+    use std::collections::VecDeque;
+    struct OldCache {
+        entries: HashMap<(usize, usize), (Arc<Vec<(TermId, Term)>>, usize)>,
+        order: VecDeque<(usize, usize)>,
+        used: usize,
+    }
+    impl OldCache {
+        fn get(&self, key: (usize, usize)) -> Option<Arc<Vec<(TermId, Term)>>> {
+            self.entries.get(&key).map(|(v, _)| Arc::clone(v))
+        }
+    }
+    #[test]
+    #[ignore]
+    fn b2_hit_path() {
+        const BLOCKS: usize = 3_400; // ~54,231 Q9 blocks / 16 shards
+        const LOOKUPS: usize = 2_000_000;
+        let rows = Arc::new(Vec::new());
+        let mut old = OldCache { entries: HashMap::new(), order: VecDeque::new(), used: 0 };
+        let mut new = Cache::new(7);
+        for i in 0..BLOCKS {
+            old.entries.insert((7, i), (Arc::clone(&rows), 10));
+            old.order.push_back((7, i));
+            old.used += 10;
+            new.insert((7, i), &rows, 10, usize::MAX);
+        }
+        // Fixed pseudo-random key sequence shared by both.
+        let mut x = 0x2545_f491_4f6c_dd1du64;
+        let keys: Vec<(usize, usize)> = (0..LOOKUPS).map(|_| { x ^= x << 13; x ^= x >> 7; x ^= x << 17; (7, (x % BLOCKS as u64) as usize) }).collect();
+        let mut times = (Vec::new(), Vec::new());
+        let mut sink = 0usize;
+        for round in 0..20 {
+            for which in if round % 2 == 0 { [0, 1] } else { [1, 0] } {
+                let t = std::time::Instant::now();
+                for &k in &keys {
+                    let v = if which == 0 { old.get(k) } else { new.get(k) };
+                    sink = sink.wrapping_add(v.map_or(0, |r| Arc::strong_count(&r)));
+                }
+                let ns = t.elapsed().as_nanos() as f64 / LOOKUPS as f64;
+                if which == 0 { times.0.push(ns) } else { times.1.push(ns) }
+            }
+        }
+        let med = |v: &mut Vec<f64>| { v.sort_by(|a, b| a.partial_cmp(b).unwrap()); v[v.len() / 2] };
+        let (o, n) = (med(&mut times.0), med(&mut times.1));
+        println!("b2 hit path: old FIFO get {o:.2} ns/lookup, new ref-bit get {n:.2} ns/lookup, delta {:+.2} ns ({:+.1}%), sink {sink}", n - o, 100.0 * (n - o) / o);
+    }
+}
