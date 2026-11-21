@@ -84,19 +84,19 @@ fn blank_nodes_are_fresh_per_operation_and_shared_within_one() {
 }
 
 #[test]
-fn persistent_store_refuses_named_graphs_but_runs_sequential_updates() {
+fn persistent_store_keeps_named_graph_updates_across_reopen() {
     let dir = std::env::temp_dir().join(format!("tl-dataset-updates-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let db = Database::open(&dir).unwrap();
-    match db.update(&format!("{P}INSERT DATA {{ GRAPH :g {{ :a :p 1 }} }}")) {
-        Err(DatabaseError::Unsupported(_)) => {}
-        other => panic!("expected Unsupported, got {other:?}"),
-    }
-    assert_eq!(rows(&db, "SELECT ?o { GRAPH ?g { ?s ?p ?o } }"), Vec::<Vec<String>>::new());
-    update(&db, "INSERT DATA { :a :p 1 } ; INSERT { :a :q ?o } WHERE { :a :p ?o }");
+    update(&db, "INSERT DATA { GRAPH :g { :a :p 1 } } ; INSERT DATA { :a :p 1 }");
+    update(&db, "INSERT { GRAPH :h { ?s :q ?o } } WHERE { GRAPH :g { ?s :p ?o } }");
+    update(&db, "DELETE DATA { :a :p 1 } ; INSERT { :a :r ?o } WHERE { GRAPH :h { :a :q ?o } }");
     drop(db);
     let db = Database::open(&dir).unwrap();
-    assert_eq!(rows(&db, "SELECT ?o { :a :q ?o }"), one(ONE));
+    assert_eq!(rows(&db, "SELECT ?o { GRAPH :g { :a :p ?o } }"), one(ONE));
+    assert_eq!(rows(&db, "SELECT ?o { GRAPH :h { :a :q ?o } }"), one(ONE));
+    assert_eq!(rows(&db, "SELECT ?o { :a :r ?o }"), one(ONE));
+    assert_eq!(rows(&db, "SELECT ?o { :a :p ?o }"), Vec::<Vec<String>>::new());
     drop(db);
     std::fs::remove_dir_all(dir).unwrap();
 }
