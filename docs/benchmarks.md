@@ -94,6 +94,10 @@ stopped at import in its declared-dependency environment. A [separate original-p
 setuptools](rdflib-sqlite-upstream-qualification-v1/README.md) reproduced the BrickSchema result. No workload
 timing was collected.
 
+The [COTTAS adapter qualification](cottas-tiny-qualification-v1/README.md) preserves nine exact reference terms
+in the raw Parquet rows and in typed RDFLib reads with normalization disabled. The separate FILTER(false)
+diagnostic returns nine rows rather than zero. No workload timing was collected.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.
