@@ -157,7 +157,9 @@ impl Database {
     /// Applies a SPARQL Update atomically. Returns the number of triples changed.
     #[wasm_bindgen(js_name = updateSync)]
     pub fn update_sync(&mut self, sparql: &str) -> Result<f64, JsValue> {
-        let (next, _, n) = triplelight::store::dataset_update(&self.cur, sparql).map_err(query_error)?;
+        let (next, changes, n) = triplelight::store::dataset_update(&self.cur, sparql).map_err(query_error)?;
+        // Named graphs stay unsupported here until the WASM query and load paths read the dataset too.
+        triplelight::store::default_graph_changes(&changes).map_err(query_error)?;
         if let Some(next) = next { self.cur = Arc::new(next) }
         Ok(n as f64)
     }
