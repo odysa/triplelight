@@ -1,10 +1,10 @@
 //! Named graphs over an overlay (task #36, step 1): the catalog, graph views, and ordered dataset updates.
 //!
-//! Every named graph is kept in memory as six sorted full-row permutations over the overlay's dictionary (base terms
-//! plus delta terms), so a term has one ID in every graph. The default graph is the overlay itself and is unchanged.
-//! The disk base does not hold named graphs yet (step 3), and the WAL does not record them yet (step 2): until then
-//! only the in-memory store accepts named-graph updates.
-use super::{DictRef, Delta, Overlay, DELTA_TAG, key, range, slot};
+//! Every named graph is its rows in the base (if the base holds it, step 3c) plus its changes since, in all six key
+//! orders, over the overlay's dictionary (base terms plus delta terms), so a term has one ID in every graph. The
+//! default graph is the overlay itself. Updates to any graph are batched the same way: a map of changed rows, merged
+//! into the sorted changes once per order.
+use super::{DictRef, Delta, Overlay, DELTA_TAG, key, merged_count, merged_scan, merged_seek, range, slot};
 use crate::model::{Change, DatasetChange, GraphScope, GraphTarget, Perm, TermId, TripleBatch};
 use crate::storage::{Dictionary, Snapshot, StorageError};
 use oxrdf::{NamedNode, Term, TermRef, Triple};
@@ -45,33 +45,39 @@ impl GraphStateError {
     }
 }
 
-/// One graph's triples in all six key orders (index `slot(perm)`), each sorted and deduplicated.
-#[derive(Default)]
-struct Rows([Vec<[TermId; 3]>; 6]);
-
-impl Rows {
-    fn from_spo(spo: &BTreeSet<[TermId; 3]>) -> Rows {
-        let mut rows: [Vec<[TermId; 3]>; 6] = Default::default();
-        for p in Perm::ALL {
-            let mut v: Vec<[TermId; 3]> = spo.iter().map(|&t| key(p, t)).collect();
-            v.sort_unstable();
-            rows[slot(p)] = v;
-        }
-        Rows(rows)
-    }
-    fn len(&self) -> usize { self.0[0].len() }
+/// Changes to one named graph relative to its stored rows (all of its rows when it has none), in every key order
+/// (index `slot(perm)`), each sorted: `adds` are absent from the stored rows, `dels` present in them.
+#[derive(Default, Clone)]
+struct RowDelta {
+    adds: [Vec<[TermId; 3]>; 6],
+    dels: [Vec<[TermId; 3]>; 6],
 }
 
-/// A read view of one named graph: a `Snapshot` over the shared dictionary.
+impl RowDelta {
+    fn is_empty(&self) -> bool { self.adds[0].is_empty() && self.dels[0].is_empty() }
+}
+
+/// A read view of one named graph: its rows in the base (`stored`, if the base holds the graph) with its changes
+/// since then, over the overlay's shared dictionary.
 pub struct NamedGraph {
     base: Arc<dyn Snapshot>,
     delta: Arc<Delta>,
-    rows: Arc<Rows>,
+    stored: Option<Arc<dyn Snapshot>>,
+    rows: Arc<RowDelta>,
 }
 
 impl NamedGraph {
     fn dict(&self) -> DictRef<'_> { DictRef { base: &*self.base, delta: &self.delta } }
-    fn rows(&self, perm: Perm) -> &[[TermId; 3]] { &self.rows.0[slot(perm)] }
+    /// Exactly the base's rows for this graph (nothing changed since the base was written).
+    fn pristine(&self) -> bool { self.stored.is_some() && self.rows.is_empty() }
+    fn spo_rows(&self) -> std::io::Result<Vec<[TermId; 3]>> {
+        let mut v = Vec::new();
+        for b in self.scan(Perm::Spo, &[]) {
+            let b = b?;
+            v.extend((0..b.len()).map(|i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]));
+        }
+        Ok(v)
+    }
 }
 
 impl Dictionary for NamedGraph {
@@ -85,63 +91,97 @@ impl Dictionary for NamedGraph {
 
 impl Snapshot for NamedGraph {
     fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
-        let mut chunks = range(self.rows(perm), prefix).chunks(4096);
-        Box::new(std::iter::from_fn(move || {
-            let chunk = chunks.next()?;
-            let mut b = TripleBatch::default();
-            for r in chunk {
-                for (column, &value) in b.cols.iter_mut().zip(r) { column.push(value) }
+        let i = slot(perm);
+        match &self.stored {
+            Some(s) if self.rows.is_empty() => s.scan(perm, prefix),
+            Some(s) => merged_scan(&**s, &self.rows.adds[i], &self.rows.dels[i], perm, prefix),
+            None => {
+                let mut chunks = range(&self.rows.adds[i], prefix).chunks(4096);
+                Box::new(std::iter::from_fn(move || {
+                    let chunk = chunks.next()?;
+                    let mut b = TripleBatch::default();
+                    for r in chunk {
+                        for (column, &value) in b.cols.iter_mut().zip(r) { column.push(value) }
+                    }
+                    Some(Ok(b))
+                }))
             }
-            Some(Ok(b))
-        }))
+        }
     }
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
-        Ok(range(self.rows(perm), prefix).len() as u64)
+        let i = slot(perm);
+        match &self.stored {
+            Some(s) => merged_count(&**s, &self.rows.adds[i], &self.rows.dels[i], perm, prefix),
+            None => Ok(range(&self.rows.adds[i], prefix).len() as u64),
+        }
     }
     fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
-        let k = prefix.len();
-        if k >= 3 { return Ok(None) }
-        let rows = range(self.rows(perm), prefix);
-        Ok(rows.get(rows.partition_point(|r| r[k] < target)).map(|r| r[k]))
+        let i = slot(perm);
+        match &self.stored {
+            Some(s) if self.rows.is_empty() => s.seek(perm, prefix, target),
+            Some(s) => merged_seek(&**s, &self.rows.adds[i], &self.rows.dels[i], perm, prefix, target),
+            None => {
+                let k = prefix.len();
+                if k >= 3 { return Ok(None) }
+                let rows = range(&self.rows.adds[i], prefix);
+                Ok(rows.get(rows.partition_point(|r| r[k] < target)).map(|r| r[k]))
+            }
+        }
     }
     fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> {
-        Some(range(self.rows(perm), prefix))
+        match &self.stored {
+            None => Some(range(&self.rows.adds[slot(perm)], prefix)),
+            Some(s) if self.rows.is_empty() => s.matching_rows(perm, prefix),
+            Some(_) => None,
+        }
+    }
+    fn matching_tail(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 2]]> {
+        match &self.stored {
+            Some(s) if self.rows.is_empty() => s.matching_tail(perm, prefix),
+            _ => None,
+        }
     }
 }
 
-/// The named graphs of one overlay, by graph-name ID.
+/// The named graphs of one overlay, by graph-name ID, and how many graphs its base holds.
 #[derive(Default)]
-pub struct Catalog(BTreeMap<TermId, NamedGraph>);
+pub struct Catalog {
+    graphs: BTreeMap<TermId, NamedGraph>,
+    stored_graphs: usize,
+}
 
 impl Catalog {
-    pub fn is_empty(&self) -> bool { self.0.is_empty() }
+    pub fn is_empty(&self) -> bool { self.graphs.is_empty() }
 }
 
 impl DatasetView for Overlay {
     fn default_graph(&self) -> &dyn Snapshot { self }
     fn graph(&self, name: TermId) -> Result<Option<&dyn Snapshot>, StorageError> {
-        Ok(self.named.0.get(&name).map(|g| g as &dyn Snapshot))
+        Ok(self.named.graphs.get(&name).map(|g| g as &dyn Snapshot))
     }
-    fn graph_names(&self) -> Result<Vec<TermId>, StorageError> { Ok(self.named.0.keys().copied().collect()) }
+    fn graph_names(&self) -> Result<Vec<TermId>, StorageError> { Ok(self.named.graphs.keys().copied().collect()) }
     fn shares_blank_nodes(&self, graphs: &[TermId]) -> Result<Option<bool>, StorageError> {
         let mut graphs: Vec<TermId> = graphs.to_vec();
         graphs.sort_unstable();
         graphs.dedup();
-        let views: Vec<&NamedGraph> = graphs.iter().filter_map(|g| self.named.0.get(g)).collect();
-        if views.iter().map(|v| v.rows.len()).sum::<usize>() > BLANK_CHECK_LIMIT { return Ok(None) }
+        let views: Vec<&NamedGraph> = graphs.iter().filter_map(|g| self.named.graphs.get(g)).collect();
+        let mut total = 0u64;
+        for v in &views { total += v.count(Perm::Spo, &[])? }
+        if total > BLANK_CHECK_LIMIT as u64 { return Ok(None) }
         let mut kind: HashMap<TermId, bool> = HashMap::new();
         let mut owner: HashMap<TermId, usize> = HashMap::new();
         for (i, view) in views.iter().enumerate() {
             // Blank nodes occur only as subjects and objects.
-            for r in view.rows(Perm::Spo) {
-                for id in [r[0], r[2]] {
+            for b in view.scan(Perm::Spo, &[]) {
+                let b = b?;
+                for id in b.cols[0].iter().chain(&b.cols[2]).copied() {
                     let blank = match kind.get(&id) {
-                        Some(&b) => b,
+                        Some(&k) => k,
                         None => {
-                            let mut b = false;
-                            self.with_term(id, &mut |t| b = matches!(t, TermRef::BlankNode(_)))?;
-                            kind.insert(id, b);
-                            b
+                            let mut k = false;
+                            self.with_term(id, &mut |t| k = matches!(t, TermRef::BlankNode(_)))?;
+                            kind.insert(id, k);
+                            k
                         }
                     };
                     if blank && *owner.entry(id).or_insert(i) != i { return Ok(Some(true)) }
@@ -166,19 +206,85 @@ fn diff(before: &[[TermId; 3]], after: &[[TermId; 3]], f: &mut dyn FnMut([TermId
     }
 }
 
-/// A named graph being updated: still shared with the old overlay, or copied out as a set of SPO rows.
-enum Pending {
-    Shared(Arc<Rows>),
-    Owned(BTreeSet<[TermId; 3]>),
+/// Whether `spo` is visible given the stored rows (if any) and the row changes `adds`/`dels` (SPO order).
+fn visible_in(stored: Option<&dyn Snapshot>, adds: &[[TermId; 3]], dels: &[[TermId; 3]], spo: [TermId; 3]) -> Result<(bool, bool), StorageError> {
+    let in_stored = match stored { Some(s) => s.count(Perm::Spo, &spo)? > 0, None => false };
+    Ok((in_stored, if in_stored { dels.binary_search(&spo).is_err() } else { adds.binary_search(&spo).is_ok() }))
 }
 
-impl Pending {
-    fn len(&self) -> usize { match self { Pending::Shared(r) => r.len(), Pending::Owned(s) => s.len() } }
-    fn owned(&mut self) -> &mut BTreeSet<[TermId; 3]> {
-        if let Pending::Shared(rows) = self {
-            *self = Pending::Owned(rows.0[slot(Perm::Spo)].iter().copied().collect());
+/// Brings `adds`/`dels` up to date with `pending` (each row's wanted visibility): per order, one merge of the sorted
+/// changes with the rows that leave them. Additions stay absent from the stored rows, deletions present in them.
+fn flush_rows(stored: Option<&dyn Snapshot>, adds: &mut [Vec<[TermId; 3]>; 6], dels: &mut [Vec<[TermId; 3]>; 6], pending: HashMap<[TermId; 3], bool>) -> Result<(), StorageError> {
+    if pending.is_empty() { return Ok(()) }
+    let (mut add_in, mut add_out, mut del_in, mut del_out) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    for (spo, visible) in pending {
+        let (in_stored, now) = visible_in(stored, &adds[0], &dels[0], spo)?;
+        if now == visible { continue } // flipped back to where the rows already are
+        match (visible, in_stored) {
+            (true, true) => del_out.push(spo),
+            (true, false) => add_in.push(spo),
+            (false, true) => del_in.push(spo),
+            (false, false) => add_out.push(spo),
         }
-        match self { Pending::Owned(s) => s, Pending::Shared(_) => unreachable!() }
+    }
+    for p in Perm::ALL {
+        let order = |v: &[[TermId; 3]]| { let mut k: Vec<[TermId; 3]> = v.iter().map(|&r| key(p, r)).collect(); k.sort_unstable(); k };
+        let merged = |old: &[[TermId; 3]], add: Vec<[TermId; 3]>, remove: Vec<[TermId; 3]>| -> Vec<[TermId; 3]> {
+            let mut out = Vec::with_capacity(old.len() + add.len());
+            let (mut a, mut r) = (add.into_iter().peekable(), remove.into_iter().peekable());
+            for &row in old {
+                while a.peek().is_some_and(|&x| x < row) { out.push(a.next().unwrap()) }
+                debug_assert!(r.peek().is_none_or(|&x| x >= row), "a row leaving the delta is not in it");
+                while r.peek().is_some_and(|&x| x < row) { r.next(); }
+                if r.peek() == Some(&row) { r.next(); } else { out.push(row) }
+            }
+            debug_assert!(r.next().is_none(), "a row leaving the delta is not in it");
+            out.extend(a);
+            out
+        };
+        let i = slot(p);
+        adds[i] = merged(&adds[i], order(&add_in), order(&add_out));
+        dels[i] = merged(&dels[i], order(&del_in), order(&del_out));
+    }
+    Ok(())
+}
+
+/// One named graph being updated. Its row changes stay shared with the old overlay until first modified.
+struct GraphWork {
+    stored: Option<Arc<dyn Snapshot>>,
+    rows: Arc<RowDelta>,
+    /// Rows whose visibility changed since `rows` was last brought up to date, with their current visibility.
+    pending: HashMap<[TermId; 3], bool>,
+    /// Rows whose visibility changed at some step, with their visibility before the update.
+    touched: HashMap<[TermId; 3], bool>,
+    /// The graph was emptied or replaced during the update (its record then rewrites it whole).
+    reset: bool,
+}
+
+impl GraphWork {
+    fn fresh(reset: bool) -> GraphWork {
+        GraphWork { stored: None, rows: Arc::default(), pending: HashMap::new(), touched: HashMap::new(), reset }
+    }
+    fn change(&mut self, spo: [TermId; 3], insert: bool) -> Result<bool, StorageError> {
+        let visible = match self.pending.get(&spo) {
+            Some(&v) => v,
+            None => visible_in(self.stored.as_deref(), &self.rows.adds[0], &self.rows.dels[0], spo)?.1,
+        };
+        if visible == insert { return Ok(false) }
+        self.touched.entry(spo).or_insert(visible);
+        self.pending.insert(spo, insert);
+        Ok(true)
+    }
+    fn flush(&mut self) -> Result<(), StorageError> {
+        if self.pending.is_empty() { return Ok(()) }
+        let pending = std::mem::take(&mut self.pending);
+        let rows = Arc::make_mut(&mut self.rows);
+        flush_rows(self.stored.as_deref(), &mut rows.adds, &mut rows.dels, pending)
+    }
+    fn len(&mut self) -> Result<u64, StorageError> {
+        self.flush()?;
+        let (adds, dels) = (self.rows.adds[0].len() as u64, self.rows.dels[0].len() as u64);
+        Ok(match &self.stored { Some(s) => s.count(Perm::Spo, &[])? - dels + adds, None => adds })
     }
 }
 
@@ -186,15 +292,16 @@ impl Pending {
 struct Work<'a> {
     base: &'a Arc<dyn Snapshot>,
     d: Delta,
-    named: BTreeMap<TermId, Pending>,
+    /// The catalog before the update (to tell a re-created graph from a new one).
+    old: &'a BTreeMap<TermId, NamedGraph>,
+    named: BTreeMap<TermId, GraphWork>,
     changed: usize,
     /// Default-graph rows whose visibility changed at some step, with their visibility before the update.
     touched: HashMap<[TermId; 3], bool>,
     /// Whether the default graph was emptied (then the net change is found by comparing whole scans).
     cleared: bool,
     /// Default-graph rows whose visibility changed since the delta was last brought up to date, with their current
-    /// visibility. Applied to the delta in one sorted merge per order (`flush_default`), so a large update costs
-    /// O(n log n) instead of one sorted-vector insertion per triple.
+    /// visibility. Applied in one sorted merge per order (`flush_rows`), so a large update costs O(n log n).
     pending: HashMap<[TermId; 3], bool>,
 }
 
@@ -223,59 +330,21 @@ impl Work<'_> {
         Ok(self.lookup(&g.clone().into())?.filter(|id| self.named.contains_key(id)))
     }
 
-    /// The default graph, updated in place in the delta (same rules as `apply`).
-    /// Whether `spo` is in the default graph as of the delta (ignoring `pending`).
-    fn visible_in_delta(&self, spo: [TermId; 3]) -> Result<bool, StorageError> {
-        Ok(if self.base.count(Perm::Spo, &spo)? > 0 { self.d.dels[0].binary_search(&spo).is_err() } else { self.d.adds[0].binary_search(&spo).is_ok() })
-    }
     fn default_change(&mut self, c: Change, t: &Triple) -> Result<(), StorageError> {
         let Some(spo) = self.ids(t, c == Change::Insert)? else { return Ok(()) };
-        let visible = match self.pending.get(&spo) { Some(&v) => v, None => self.visible_in_delta(spo)? };
+        let visible = match self.pending.get(&spo) {
+            Some(&v) => v,
+            None => visible_in(Some(&**self.base), &self.d.adds[0], &self.d.dels[0], spo)?.1,
+        };
         if visible == (c == Change::Insert) { return Ok(()) }
         self.changed += 1;
         self.touched.entry(spo).or_insert(visible);
         self.pending.insert(spo, c == Change::Insert);
         Ok(())
     }
-    /// Brings the delta up to date with `pending`: per order, one merge of the sorted additions and deletions with
-    /// the rows that leave them (same rules as `apply`: additions are absent from the base, deletions present in it).
     fn flush_default(&mut self) -> Result<(), StorageError> {
-        if self.pending.is_empty() { return Ok(()) }
-        let mut add_in: Vec<[TermId; 3]> = Vec::new();
-        let mut add_out: Vec<[TermId; 3]> = Vec::new();
-        let mut del_in: Vec<[TermId; 3]> = Vec::new();
-        let mut del_out: Vec<[TermId; 3]> = Vec::new();
-        for (spo, visible) in std::mem::take(&mut self.pending) {
-            let in_base = self.base.count(Perm::Spo, &spo)? > 0;
-            let in_delta = if in_base { self.d.dels[0].binary_search(&spo).is_err() } else { self.d.adds[0].binary_search(&spo).is_ok() };
-            if in_delta == visible { continue } // flipped back to where the delta already is
-            match (visible, in_base) {
-                (true, true) => del_out.push(spo),
-                (true, false) => add_in.push(spo),
-                (false, true) => del_in.push(spo),
-                (false, false) => add_out.push(spo),
-            }
-        }
-        for p in Perm::ALL {
-            let order = |v: &[[TermId; 3]]| { let mut k: Vec<[TermId; 3]> = v.iter().map(|&r| key(p, r)).collect(); k.sort_unstable(); k };
-            let merged = |old: &[[TermId; 3]], add: Vec<[TermId; 3]>, remove: Vec<[TermId; 3]>| -> Vec<[TermId; 3]> {
-                let mut out = Vec::with_capacity(old.len() + add.len());
-                let (mut a, mut r) = (add.into_iter().peekable(), remove.into_iter().peekable());
-                for &row in old {
-                    while a.peek().is_some_and(|&x| x < row) { out.push(a.next().unwrap()) }
-                    debug_assert!(r.peek().is_none_or(|&x| x >= row), "a row leaving the delta is not in it");
-                    while r.peek().is_some_and(|&x| x < row) { r.next(); }
-                    if r.peek() == Some(&row) { r.next(); } else { out.push(row) }
-                }
-                debug_assert!(r.next().is_none(), "a row leaving the delta is not in it");
-                out.extend(a);
-                out
-            };
-            let i = slot(p);
-            self.d.adds[i] = merged(&self.d.adds[i], order(&add_in), order(&add_out));
-            self.d.dels[i] = merged(&self.d.dels[i], order(&del_in), order(&del_out));
-        }
-        Ok(())
+        let pending = std::mem::take(&mut self.pending);
+        flush_rows(Some(&**self.base), &mut self.d.adds, &mut self.d.dels, pending)
     }
     /// Empties the default graph: every base row becomes a deletion, and the additions go.
     fn clear_default(&mut self) -> Result<(), StorageError> {
@@ -301,8 +370,9 @@ impl Work<'_> {
         };
         let Some(spo) = self.ids(t, insert)? else { return Ok(()) };
         // Inserting into an absent graph adds it to the catalog.
-        let rows = self.named.entry(gid).or_insert_with(|| Pending::Owned(BTreeSet::new())).owned();
-        if if insert { rows.insert(spo) } else { rows.remove(&spo) } { self.changed += 1 }
+        let existed = self.old.contains_key(&gid);
+        let graph = self.named.entry(gid).or_insert_with(|| GraphWork::fresh(existed));
+        if graph.change(spo, insert)? { self.changed += 1 }
         Ok(())
     }
     fn create(&mut self, g: &NamedNode, silent: bool) -> Result<(), StorageError> {
@@ -310,7 +380,8 @@ impl Work<'_> {
             return if silent { Ok(()) } else { Err(GraphStateError::AlreadyExists(g.clone()).into_io()) };
         }
         let gid = self.intern(g.clone().into())?;
-        self.named.insert(gid, Pending::Owned(BTreeSet::new()));
+        let existed = self.old.contains_key(&gid);
+        self.named.insert(gid, GraphWork::fresh(existed));
         Ok(())
     }
     /// `DROP` (`remove`) or `CLEAR` of `target`.
@@ -320,24 +391,42 @@ impl Work<'_> {
                 let Some(gid) = self.graph_id(g)? else {
                     return if silent { Ok(()) } else { Err(GraphStateError::NotFound(g.clone()).into_io()) };
                 };
-                self.empty_named(gid, remove);
+                self.empty_named(gid, remove)?;
             }
             GraphScope::Default => self.clear_default()?,
-            GraphScope::Named => for gid in self.named.keys().copied().collect::<Vec<_>>() { self.empty_named(gid, remove) },
+            GraphScope::Named => for gid in self.named.keys().copied().collect::<Vec<_>>() { self.empty_named(gid, remove)? },
             GraphScope::All => {
                 self.clear_default()?;
-                for gid in self.named.keys().copied().collect::<Vec<_>>() { self.empty_named(gid, remove) }
+                for gid in self.named.keys().copied().collect::<Vec<_>>() { self.empty_named(gid, remove)? }
             }
         }
         Ok(())
     }
-    fn empty_named(&mut self, gid: TermId, remove: bool) {
-        self.changed += self.named.get(&gid).map_or(0, Pending::len);
-        if remove { self.named.remove(&gid); } else { self.named.insert(gid, Pending::Owned(BTreeSet::new())); }
+    /// Empties a named graph in O(1) of its size: it forgets its stored rows instead of deleting them one by one.
+    fn empty_named(&mut self, gid: TermId, remove: bool) -> Result<(), StorageError> {
+        if let Some(graph) = self.named.get_mut(&gid) { self.changed += graph.len()? as usize }
+        if remove { self.named.remove(&gid); } else { self.named.insert(gid, GraphWork::fresh(true)); }
+        Ok(())
     }
 }
 
 impl Overlay {
+    /// A read snapshot over a base that holds named graphs (task #36, step 3c): `named` lists each stored graph's ID
+    /// with its view in the base, which shares the base's dictionary.
+    pub fn from_dataset_base(base: Arc<dyn Snapshot>, named: Vec<(TermId, Arc<dyn Snapshot>)>) -> Overlay {
+        let delta = Arc::new(Delta::default());
+        let stored_graphs = named.len();
+        let graphs = named.into_iter().map(|(g, view)| {
+            (g, NamedGraph { base: base.clone(), delta: delta.clone(), stored: Some(view), rows: Arc::default() })
+        }).collect();
+        Overlay { base, delta, named: Arc::new(Catalog { graphs, stored_graphs }) }
+    }
+
+    /// Whether the named graphs are exactly those of the base (none created, dropped or changed since).
+    pub fn named_graphs_match_base(&self) -> bool {
+        self.named.graphs.len() == self.named.stored_graphs && self.named.graphs.values().all(NamedGraph::pristine)
+    }
+
     /// This snapshot with the dataset update `changes` applied in order, in memory and without a WAL, plus the number
     /// of triples that changed (in any graph). All or nothing: a refused step (see `GraphStateError`) leaves `self`
     /// as the only state.
@@ -347,13 +436,17 @@ impl Overlay {
     }
 
     /// `with_dataset_changes`, plus (with `record`) the update's net effect as a WAL record: graph creations, then
-    /// triple insertions and deletions in any graph, then graph removals. Re-applying a record (or a sequence of them)
-    /// to a state that already contains it changes nothing, which recovery after compaction relies on.
+    /// triple insertions and deletions in any graph (a graph that was emptied or replaced is rewritten whole: `G-`,
+    /// `G+`, then its rows), then graph removals. Re-applying a record (or a sequence of them) to a state that already
+    /// contains it changes nothing, which recovery after compaction relies on.
     pub(super) fn apply_dataset(&self, changes: &[DatasetChange], record: bool) -> std::io::Result<(Overlay, usize, Vec<DatasetChange>)> {
         let mut w = Work {
             base: &self.base,
             d: (*self.delta).clone(),
-            named: self.named.0.iter().map(|(&g, v)| (g, Pending::Shared(v.rows.clone()))).collect(),
+            old: &self.named.graphs,
+            named: self.named.graphs.iter().map(|(&g, v)| (g, GraphWork {
+                stored: v.stored.clone(), rows: v.rows.clone(), pending: HashMap::new(), touched: HashMap::new(), reset: false,
+            })).collect(),
             changed: 0,
             touched: HashMap::new(),
             cleared: false,
@@ -369,20 +462,22 @@ impl Overlay {
             }
         }
         w.flush_default()?;
-        let (touched, cleared) = (std::mem::take(&mut w.touched), w.cleared);
+        for graph in w.named.values_mut() { graph.flush()? }
+        let (touched, cleared, changed) = (std::mem::take(&mut w.touched), w.cleared, w.changed);
         let delta = Arc::new(w.d);
-        let named: BTreeMap<TermId, NamedGraph> = w.named.into_iter().map(|(g, p)| {
-            let rows = match p { Pending::Shared(r) => r, Pending::Owned(s) => Arc::new(Rows::from_spo(&s)) };
-            (g, NamedGraph { base: self.base.clone(), delta: delta.clone(), rows })
+        let mut changes_of: HashMap<TermId, (HashMap<[TermId; 3], bool>, bool)> = HashMap::new();
+        let graphs: BTreeMap<TermId, NamedGraph> = w.named.into_iter().map(|(g, gw)| {
+            if gw.reset || !gw.touched.is_empty() { changes_of.insert(g, (gw.touched, gw.reset)); }
+            (g, NamedGraph { base: self.base.clone(), delta: delta.clone(), stored: gw.stored, rows: gw.rows })
         }).collect();
-        let next = Overlay { base: self.base.clone(), delta, named: Arc::new(Catalog(named)) };
-        let rec = if record { self.net_record(&next, touched, cleared)? } else { Vec::new() };
-        Ok((next, w.changed, rec))
+        let next = Overlay { base: self.base.clone(), delta, named: Arc::new(Catalog { graphs, stored_graphs: self.named.stored_graphs }) };
+        let rec = if record { self.net_record(&next, touched, cleared, changes_of)? } else { Vec::new() };
+        Ok((next, changed, rec))
     }
 
     /// The net difference from `self` to `next` (see `apply_dataset`). Terms are resolved in `next`, whose dictionary
     /// extends this one.
-    fn net_record(&self, next: &Overlay, touched: HashMap<[TermId; 3], bool>, cleared: bool) -> std::io::Result<Vec<DatasetChange>> {
+    fn net_record(&self, next: &Overlay, touched: HashMap<[TermId; 3], bool>, cleared: bool, named_changes: HashMap<TermId, (HashMap<[TermId; 3], bool>, bool)>) -> std::io::Result<Vec<DatasetChange>> {
         let triple = |r: [TermId; 3]| -> std::io::Result<Triple> {
             let invalid = |what| StorageError::new(std::io::ErrorKind::InvalidData, what);
             let subject: oxrdf::NamedOrBlankNode = next.resolve(r[0])?.try_into().map_err(|_| invalid("invalid RDF subject"))?;
@@ -395,10 +490,17 @@ impl Overlay {
                 _ => Err(StorageError::new(std::io::ErrorKind::InvalidData, "graph name is not an IRI")),
             }
         };
+        let flips_of = |touched: HashMap<[TermId; 3], bool>, now: &dyn Snapshot| -> std::io::Result<Vec<([TermId; 3], Change)>> {
+            let mut flips = Vec::new();
+            for (spo, was) in touched {
+                if (now.count(Perm::Spo, &spo)? > 0) != was { flips.push((spo, if was { Change::Delete } else { Change::Insert })) }
+            }
+            flips.sort_unstable_by_key(|&(r, _)| r);
+            Ok(flips)
+        };
         let (mut creates, mut quads, mut drops) = (Vec::new(), Vec::new(), Vec::new());
         // Default graph.
-        let mut flips: Vec<([TermId; 3], Change)> = Vec::new();
-        if cleared {
+        let flips = if cleared {
             let all = |o: &Overlay| -> std::io::Result<Vec<[TermId; 3]>> {
                 let mut v = Vec::new();
                 for b in o.scan(Perm::Spo, &[]) {
@@ -408,33 +510,34 @@ impl Overlay {
                 Ok(v)
             };
             let (before, after) = (all(self)?, all(next)?);
+            let mut flips = Vec::new();
             diff(&before, &after, &mut |r, c| flips.push((r, c)));
+            flips
         } else {
-            for (spo, was) in touched {
-                if next.contains(spo)? != was { flips.push((spo, if was { Change::Delete } else { Change::Insert })) }
-            }
-            flips.sort_unstable_by_key(|&(r, _)| r);
-        }
+            flips_of(touched, next)?
+        };
         for (r, c) in flips { quads.push(DatasetChange::Quad(GraphTarget::Default, c, triple(r)?)) }
         // Named graphs.
-        let gids: BTreeSet<TermId> = self.named.0.keys().chain(next.named.0.keys()).copied().collect();
+        let gids: BTreeSet<TermId> = self.named.graphs.keys().chain(next.named.graphs.keys()).copied().collect();
+        let mut named_changes = named_changes;
         for g in gids {
-            match (self.named.0.get(&g), next.named.0.get(&g)) {
+            match (self.named.graphs.get(&g), next.named.graphs.get(&g)) {
                 (Some(_), None) => drops.push(DatasetChange::Drop { target: GraphScope::Graph(graph_name(g)?), silent: true }),
-                (old, Some(new)) => {
-                    if old.is_some_and(|old| Arc::ptr_eq(&old.rows, &new.rows)) { continue }
+                (None, Some(new)) => {
                     let name = graph_name(g)?;
-                    if old.is_none() { creates.push(DatasetChange::Create { graph: name.clone(), silent: true }) }
-                    let before = old.map_or(&[][..], |o| o.rows(Perm::Spo));
-                    let mut err = None;
-                    diff(before, new.rows(Perm::Spo), &mut |r, c| {
-                        if err.is_some() { return }
-                        match triple(r) {
-                            Ok(t) => quads.push(DatasetChange::Quad(GraphTarget::Named(name.clone()), c, t)),
-                            Err(e) => err = Some(e),
-                        }
-                    });
-                    if let Some(e) = err { return Err(e) }
+                    creates.push(DatasetChange::Create { graph: name.clone(), silent: true });
+                    for r in new.spo_rows()? { quads.push(DatasetChange::Quad(GraphTarget::Named(name.clone()), Change::Insert, triple(r)?)) }
+                }
+                (Some(_), Some(new)) => {
+                    let Some((touched, reset)) = named_changes.remove(&g) else { continue };
+                    let name = graph_name(g)?;
+                    if reset {
+                        quads.push(DatasetChange::Drop { target: GraphScope::Graph(name.clone()), silent: true });
+                        quads.push(DatasetChange::Create { graph: name.clone(), silent: true });
+                        for r in new.spo_rows()? { quads.push(DatasetChange::Quad(GraphTarget::Named(name.clone()), Change::Insert, triple(r)?)) }
+                    } else {
+                        for (r, c) in flips_of(touched, new)? { quads.push(DatasetChange::Quad(GraphTarget::Named(name.clone()), c, triple(r)?)) }
+                    }
                 }
                 (None, None) => {}
             }
@@ -448,12 +551,12 @@ impl Overlay {
     /// base: the new base has its own IDs, so the graphs are re-interned there.
     pub fn named_graph_changes(&self) -> std::io::Result<Vec<DatasetChange>> {
         let mut out = Vec::new();
-        for (&gid, view) in &self.named.0 {
+        for (&gid, view) in &self.named.graphs {
             let Term::NamedNode(graph) = self.resolve(gid)? else {
                 return Err(StorageError::new(std::io::ErrorKind::InvalidData, "graph name is not an IRI"));
             };
             out.push(DatasetChange::Create { graph: graph.clone(), silent: false });
-            for r in view.rows(Perm::Spo) {
+            for r in view.spo_rows()? {
                 let invalid = |what| StorageError::new(std::io::ErrorKind::InvalidData, what);
                 let subject: oxrdf::NamedOrBlankNode = self.resolve(r[0])?.try_into().map_err(|_| invalid("invalid RDF subject"))?;
                 let predicate: NamedNode = self.resolve(r[1])?.try_into().map_err(|_| invalid("invalid RDF predicate"))?;

@@ -77,12 +77,6 @@ impl Overlay {
     /// Identity of the base (stable across overlays sharing it).
     pub fn base_id(&self) -> usize { Arc::as_ptr(&self.base).cast::<()>() as usize }
 
-    fn visible_in_base(&self, spo: [TermId; 3]) -> Result<bool, StorageError> {
-        Ok(self.base.count(Perm::Spo, &spo)? > 0 && self.delta.dels[0].binary_search(&spo).is_err())
-    }
-    fn contains(&self, spo: [TermId; 3]) -> Result<bool, StorageError> {
-        Ok(self.delta.adds[0].binary_search(&spo).is_ok() || self.visible_in_base(spo)?)
-    }
 }
 
 impl Overlay {
@@ -139,8 +133,7 @@ impl Snapshot for Overlay {
 
     fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
         if self.delta.is_empty() { return self.base.scan(perm, prefix) }
-        let (adds, dels) = (range(&self.delta.adds[slot(perm)], prefix), range(&self.delta.dels[slot(perm)], prefix));
-        Box::new(MergeScan { base: self.base.scan(perm, prefix), cur: None, at: 0, adds, ai: 0, dels, done: false })
+        merged_scan(&*self.base, &self.delta.adds[slot(perm)], &self.delta.dels[slot(perm)], perm, prefix)
     }
 
     fn scan_for_stats(&self) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + '_> {
@@ -150,28 +143,41 @@ impl Snapshot for Overlay {
     }
 
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
-        let base = self.base.count(perm, prefix)?;
-        if self.delta.is_empty() { return Ok(base) }
-        let (adds, dels) = (range(&self.delta.adds[slot(perm)], prefix).len(), range(&self.delta.dels[slot(perm)], prefix).len());
-        Ok(base - dels as u64 + adds as u64)
+        merged_count(&*self.base, &self.delta.adds[slot(perm)], &self.delta.dels[slot(perm)], perm, prefix)
     }
 
     fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
         if self.delta.is_empty() { return self.base.seek(perm, prefix, target) }
-        let k = prefix.len();
-        // Smallest base value >= target that still has a visible triple under prefix + [value].
-        let mut t = target;
-        let from_base = loop {
-            let Some(v) = self.base.seek(perm, prefix, t)? else { break None };
-            let mut p = prefix.to_vec(); p.push(v);
-            if self.base.count(perm, &p)? > range(&self.delta.dels[slot(perm)], &p).len() as u64 { break Some(v) }
-            if v.0 == u64::MAX { break None }
-            t = TermId(v.0 + 1);
-        };
-        let adds = range(&self.delta.adds[slot(perm)], prefix);
-        let from_adds = adds[adds.partition_point(|r| r[k] < target)..].first().map(|r| r[k]);
-        Ok(match (from_base, from_adds) { (Some(a), Some(b)) => Some(a.min(b)), (a, b) => a.or(b) })
+        merged_seek(&*self.base, &self.delta.adds[slot(perm)], &self.delta.dels[slot(perm)], perm, prefix, target)
     }
+}
+
+/// `base` with the sorted rows `adds` added and `dels` removed (one order; `adds` absent from `base`, `dels` present
+/// in it): the scan, count and seek that the default graph and every stored named graph share.
+fn merged_scan<'a>(base: &'a dyn Snapshot, adds: &'a [[TermId; 3]], dels: &'a [[TermId; 3]], perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+    let (adds, dels) = (range(adds, prefix), range(dels, prefix));
+    Box::new(MergeScan { base: base.scan(perm, prefix), cur: None, at: 0, adds, ai: 0, dels, done: false })
+}
+fn merged_count(base: &dyn Snapshot, adds: &[[TermId; 3]], dels: &[[TermId; 3]], perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
+    let n = base.count(perm, prefix)?;
+    if adds.is_empty() && dels.is_empty() { return Ok(n) }
+    Ok(n - range(dels, prefix).len() as u64 + range(adds, prefix).len() as u64)
+}
+fn merged_seek(base: &dyn Snapshot, adds: &[[TermId; 3]], dels: &[[TermId; 3]], perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
+    let k = prefix.len();
+    if k >= 3 { return Ok(None) }
+    // Smallest base value >= target that still has a visible triple under prefix + [value].
+    let mut t = target;
+    let from_base = loop {
+        let Some(v) = base.seek(perm, prefix, t)? else { break None };
+        let mut p = prefix.to_vec(); p.push(v);
+        if base.count(perm, &p)? > range(dels, &p).len() as u64 { break Some(v) }
+        if v.0 == u64::MAX { break None }
+        t = TermId(v.0 + 1);
+    };
+    let adds = range(adds, prefix);
+    let from_adds = adds[adds.partition_point(|r| r[k] < target)..].first().map(|r| r[k]);
+    Ok(match (from_base, from_adds) { (Some(a), Some(b)) => Some(a.min(b)), (a, b) => a.or(b) })
 }
 
 /// Lazy merge of a base scan (minus deleted keys) with the delta's added keys, batch by batch: memory stays at about
@@ -236,6 +242,17 @@ pub trait BaseFormat: Send + Sync {
     /// Same contract as `write`, creating the first base from an N-Triples file (or empty).
     fn import(&self, dir: &Path, ntriples: Option<&Path>) -> std::io::Result<()>;
     fn open(&self, dir: &Path) -> std::io::Result<Arc<dyn Snapshot>>;
+    /// Whether this format's bases can hold named graphs (task #36, step 3c). If not, compaction carries them into
+    /// the new WAL instead.
+    fn holds_named_graphs(&self) -> bool { false }
+    /// `write` for a whole dataset: the default graph and every named graph of `src`.
+    fn write_dataset(&self, _dir: &Path, _src: &Overlay) -> std::io::Result<()> {
+        Err(std::io::Error::new(std::io::ErrorKind::Unsupported, "this base format does not hold named graphs"))
+    }
+    /// `open`, plus the base's named graphs: each graph's ID with its view, sharing the base's dictionary.
+    fn open_dataset(&self, dir: &Path) -> std::io::Result<(Arc<dyn Snapshot>, Vec<(TermId, Arc<dyn Snapshot>)>)> {
+        Ok((self.open(dir)?, Vec::new()))
+    }
 }
 
 /// Base = `base.nt` in the directory, loaded into a `MemorySnapshot`.
@@ -351,8 +368,8 @@ impl Store {
             let name = entry?.file_name().to_string_lossy().into_owned();
             if name.starts_with("base-") && name != format!("base-{generation}") { std::fs::remove_dir_all(dir.join(&name))?; }
         }
-        let base = format.open(&dir.join(format!("base-{generation}")))?;
-        let mut overlay = Overlay::from_base(base);
+        let (base, named) = format.open_dataset(&dir.join(format!("base-{generation}")))?;
+        let mut overlay = Overlay::from_dataset_base(base, named);
         let wal_path = dir.join("wal.log");
         let (records, valid_len) = read_wal(&wal_path)?;
         for rec in records { overlay = overlay.with_dataset_changes(&rec)?.0; }
@@ -458,19 +475,21 @@ impl Store {
         let mut w = self.wal.lock().unwrap();
         let mut p = self.pending.lock().unwrap(); // no new commits while we switch
         let cur = p.latest.clone();
-        if cur.delta.is_empty() && !cur.has_named_graphs() { return Ok(()) }
+        if cur.delta.is_empty() && cur.named_graphs_match_base() { return Ok(()) }
         let mut generation = self.generation.lock().unwrap();
         let next = *generation + 1;
         let new_dir = self.dir.join(format!("base-{next}"));
         // Not named by CURRENT, so at most an abandoned earlier attempt in this process.
         if new_dir.exists() { std::fs::remove_dir_all(&new_dir)?; }
-        self.format.write(&new_dir, &*cur)?;
+        // Named graphs go into the base when the format holds them (step 3c), otherwise into the new WAL below.
+        let into_base = cur.has_named_graphs() && self.format.holds_named_graphs();
+        if into_base { self.format.write_dataset(&new_dir, &cur)? } else { self.format.write(&new_dir, &*cur)? }
         // Open (and so validate) the new base before committing to it: if this fails, CURRENT, the WAL and the
         // in-memory state all still describe the old base.
-        let base = self.format.open(&new_dir)?;
+        let (base, named) = self.format.open_dataset(&new_dir)?;
         let fenced = self.fenced.load(std::sync::atomic::Ordering::SeqCst);
-        let mut fresh = Overlay::from_base(base);
-        if cur.has_named_graphs() {
+        let mut fresh = Overlay::from_dataset_base(base, named);
+        if cur.has_named_graphs() && !into_base {
             // Bases do not hold named graphs yet, so they move into the new WAL as its first record. That WAL is
             // durable before CURRENT switches; a crash before the rename leaves the old WAL, whose full history
             // re-applies idempotently on the new base.
@@ -1006,6 +1025,87 @@ mod dataset_wal_tests {
         drop(store);
         assert_eq!(state(&dir.open().snapshot()), want);
         assert!(!want.1.iter().any(|(g, _)| g.contains("torn")));
+    }
+
+    /// The disk store with named graphs in its base (step 3c): random updates to the default graph and four named
+    /// graphs (inserts, deletes, CREATE, CLEAR, DROP, CLEAR DEFAULT), with compactions and reopens in between, always
+    /// match a set model. After a compaction the named graphs are in an RDFSNAP5 base and the WAL is empty.
+    #[cfg(unix)]
+    #[test]
+    fn disk_store_named_graphs_in_the_base_match_a_model() {
+        use std::collections::{BTreeMap, BTreeSet};
+        let dir = Dir::new("named-base-model");
+        let open = || Store::open_with(&dir.0, None, Box::new(crate::DiskBase { workers: 1 })).unwrap();
+        let mut store = open();
+        let mut default: BTreeSet<String> = BTreeSet::new();
+        let mut graphs: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        let mut rng = 0x9e3779b97f4a7c15u64;
+        let mut next = move || { rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17; rng };
+        let model_state = |default: &BTreeSet<String>, graphs: &BTreeMap<String, BTreeSet<String>>| -> (Vec<String>, Vec<(String, Vec<String>)>) {
+            (default.iter().cloned().collect(), graphs.iter().map(|(g, rows)| (format!("<http://ex/{g}>"), rows.iter().cloned().collect())).collect())
+        };
+        let row = |tr: &Triple| tr.to_string().trim_end_matches(" .").to_string();
+        for round in 0..60 {
+            let mut steps = Vec::new();
+            for _ in 0..(1 + next() % 12) {
+                let r = next();
+                let g = format!("g{}", r % 4);
+                let tr = t(&format!("s{}", (r >> 8) % 9), &format!("{}", (r >> 16) % 5));
+                match (r >> 24) % 20 {
+                    0 => { steps.push(Clear { target: GraphScope::Graph(iri(&g)), silent: true }); if let Some(rows) = graphs.get_mut(&g) { rows.clear() } }
+                    1 => { steps.push(Drop { target: GraphScope::Graph(iri(&g)), silent: true }); graphs.remove(&g); }
+                    2 => { steps.push(Create { graph: iri(&g), silent: true }); graphs.entry(g).or_default(); }
+                    3 if round % 7 == 0 => { steps.push(Clear { target: GraphScope::Default, silent: false }); default.clear(); }
+                    4..=6 => { steps.push(ins_default(tr.clone())); default.insert(row(&tr)); }
+                    7..=8 => { steps.push(Quad(GraphTarget::Default, Change::Delete, tr.clone())); default.remove(&row(&tr)); }
+                    9..=11 => { steps.push(del(&g, tr.clone())); if let Some(rows) = graphs.get_mut(&g) { rows.remove(&row(&tr)); } }
+                    _ => { steps.push(ins(&g, tr.clone())); graphs.entry(g).or_default().insert(row(&tr)); }
+                }
+            }
+            store.commit_dataset(&steps).unwrap();
+            assert_eq!(state(&store.snapshot()), model_state(&default, &graphs), "round {round}");
+            if round % 10 == 9 {
+                store.compact().unwrap();
+                if !graphs.is_empty() {
+                    assert_eq!(dir.wal(), Vec::<u8>::new(), "round {round}: compaction left the named graphs in the WAL");
+                    let base = format!("base-{}", dir.current().trim().rsplit("base-").next().unwrap());
+                    assert_eq!(&std::fs::read(dir.0.join(base).join("MANIFEST")).unwrap()[..8], b"RDFSNAP5");
+                }
+                assert_eq!(state(&store.snapshot()), model_state(&default, &graphs), "round {round} after compaction");
+            }
+            if round % 6 == 5 {
+                drop(store);
+                store = open();
+                assert_eq!(state(&store.snapshot()), model_state(&default, &graphs), "round {round} after reopen");
+            }
+        }
+    }
+
+    /// A store from step 2 (named graphs only in the WAL, over an RDFSNAP4 base) moves them into the base at its next
+    /// compaction; the crash window between the CURRENT switch and the WAL truncation recovers from the old WAL.
+    #[cfg(unix)]
+    #[test]
+    fn named_graphs_move_from_the_wal_into_the_base() {
+        let dir = Dir::new("named-wal-to-base");
+        let open = || Store::open_with(&dir.0, None, Box::new(crate::DiskBase { workers: 1 })).unwrap();
+        let store = open();
+        store.commit_dataset(&sample()).unwrap();
+        store.commit_dataset(&[del("g1", t("a", "1")), ins("g2", t("c", "3"))]).unwrap();
+        let want = state(&store.snapshot());
+        let old_wal = dir.wal();
+        assert!(!old_wal.is_empty());
+        store.compact().unwrap();
+        assert_eq!(dir.wal(), Vec::<u8>::new());
+        assert_eq!(state(&store.snapshot()), want);
+        assert!(store.snapshot().named_graphs_match_base());
+        // Nothing changed: a second compaction is a no-op.
+        store.compact().unwrap();
+        assert_eq!(dir.current().trim(), "dataset-1 base-1");
+        drop(store);
+        assert_eq!(state(&open().snapshot()), want);
+        // New base with the old WAL (crash before truncation): replaying the history again changes nothing.
+        std::fs::write(dir.0.join("wal.log"), &old_wal).unwrap();
+        assert_eq!(state(&open().snapshot()), want);
     }
 
     #[test]

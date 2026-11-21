@@ -151,6 +151,18 @@ impl crate::store::BaseFormat for DiskBase {
     fn open(&self, dir: &Path) -> io::Result<std::sync::Arc<dyn Snapshot>> {
         Ok(std::sync::Arc::new(DiskSnapshot::open(dir)?))
     }
+    fn holds_named_graphs(&self) -> bool { true }
+    fn write_dataset(&self, dir: &Path, src: &crate::store::Overlay) -> io::Result<()> {
+        write_disk_dataset(dir, src)
+    }
+    fn open_dataset(&self, dir: &Path) -> io::Result<(std::sync::Arc<dyn Snapshot>, Vec<(TermId, std::sync::Arc<dyn Snapshot>)>)> {
+        let snap = std::sync::Arc::new(DiskSnapshot::open(dir)?);
+        let named = snap.graph_names().into_iter().map(|g| {
+            let view = snap.graph_view(g).expect("a listed graph has a view");
+            (g, std::sync::Arc::new(view) as std::sync::Arc<dyn Snapshot>)
+        }).collect();
+        Ok((snap, named))
+    }
 }
 enum DictionaryBackend {
     Legacy {
