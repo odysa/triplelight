@@ -745,6 +745,40 @@ mod tests {
         fs::remove_dir_all(parent).unwrap();
     }
 
+    /// A dataset whose named graphs are all empty (only `CREATE GRAPH`): the base builds with empty quad orders,
+    /// lists every graph, verifies, and each view is empty.
+    #[test]
+    fn dataset_base_with_only_empty_named_graphs() {
+        use crate::model::{Change, DatasetChange, GraphTarget};
+        let iri = |s: &str| NamedNode::new(format!("http://ex/{s}")).unwrap();
+        let changes = vec![
+            DatasetChange::Quad(GraphTarget::Default, Change::Insert, Triple::new(iri("s"), iri("p"), Literal::new_simple_literal("o"))),
+            DatasetChange::Create { graph: iri("e1"), silent: false },
+            DatasetChange::Create { graph: iri("e2"), silent: false },
+        ];
+        let source = crate::store::Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([]))).with_dataset_changes(&changes).unwrap().0;
+        let dir = std::env::temp_dir().join(format!("rdf-dataset-empty-graphs-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        write_disk_dataset(&dir, &source).unwrap();
+        assert_eq!(&fs::read(dir.join("MANIFEST")).unwrap()[..8], b"RDFSNAP5");
+        let disk = std::sync::Arc::new(DiskSnapshot::open(&dir).unwrap());
+        disk.verify().unwrap();
+        let mut names: Vec<String> = disk.graph_names().into_iter().map(|g| disk.resolve(g).unwrap().to_string()).collect();
+        names.sort();
+        assert_eq!(names, ["<http://ex/e1>", "<http://ex/e2>"]);
+        for g in disk.graph_names() {
+            let view = disk.graph_view(g).unwrap();
+            for p in Perm::ALL {
+                assert_eq!(view.count(p, &[]).unwrap(), 0);
+                assert!(view.scan(p, &[]).next().is_none());
+                assert_eq!(view.seek(p, &[], TermId(0)).unwrap(), None);
+            }
+        }
+        assert_eq!(disk.count(Perm::Spo, &[]).unwrap(), 1);
+        assert!(!dir.join(".quads.raw").exists(), "no scratch is left behind");
+        fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn generic_snapshot_writer_reopens_and_refuses_overwrite() {
         let source = MemorySnapshot::from_triples([Triple::new(

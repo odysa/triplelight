@@ -148,13 +148,13 @@ impl Builder {
             return Err(bad("quads must be added before graph names"));
         }
         self.push_terms(terms, self.triples + self.quads)?;
-        self.quads += 1;
+        self.quads = self.quads.checked_add(1).ok_or_else(|| bad("too many quads"))?;
         Ok(())
     }
     /// A graph of the catalog (each once), whether or not it has triples.
     fn add_graph_name(&mut self, name: String) -> io::Result<()> {
         self.push_terms([name], self.triples + self.quads + self.graph_names)?;
-        self.graph_names += 1;
+        self.graph_names = self.graph_names.checked_add(1).ok_or_else(|| bad("too many graphs"))?;
         Ok(())
     }
     fn push_terms<const K: usize>(&mut self, terms: [String; K], row_id: u64) -> io::Result<()> {
@@ -234,7 +234,9 @@ impl Builder {
         let quad_raw = dir.join(".quads.raw");
         let mut triples =
             BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&raw)?);
-        let mut quads = if self.quads > 0 {
+        // Created whenever there are named graphs, also when all of them are empty (the quad orders are then built
+        // from an empty file).
+        let mut quads = if self.quads + self.graph_names > 0 {
             Some(BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&quad_raw)?))
         } else {
             None
@@ -311,7 +313,7 @@ impl Builder {
                 });
                 for result in results { identities.push(result?); }
             }
-            if self.quads > 0 { fs::remove_file(&quad_raw)?; }
+            fs::remove_file(&quad_raw)?;
             identities.push(write_catalog(dir, graph_ids)?);
         }
         // Finish and remove all scratch before publishing the manifest.
