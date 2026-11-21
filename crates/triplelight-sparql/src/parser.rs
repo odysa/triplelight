@@ -90,7 +90,7 @@ struct Parser<'a> {
     i: usize,
     base: Option<String>,
     /// `base`, parsed once (resolving many relative IRIs against it is the common case).
-    base_parsed: Option<oxiri::Iri<String>>,
+    base_parsed: Option<triplelight_iri::Iri>,
     prefixes: HashMap<String, String>,
     /// Salt for generated blank nodes and variables, so they cannot collide with names written in the query.
     salt: String,
@@ -125,7 +125,7 @@ impl<'a> Parser<'a> {
         h.write_usize(src.len());
         let salt = format!("{:012x}", h.finish() & 0xffff_ffff_ffff);
         let base_parsed = match base {
-            Some(b) => Some(oxiri::Iri::parse(b.to_string()).map_err(|_| Self::error_at(src, 0, format!("invalid base IRI {b}")))?),
+            Some(b) => Some(triplelight_iri::Iri::parse(b).map_err(|_| Self::error_at(src, 0, format!("invalid base IRI {b}")))?),
             None => None,
         };
         Ok(Parser {
@@ -194,7 +194,7 @@ impl<'a> Parser<'a> {
             if self.eat_kw("BASE") {
                 let Tok::Iri(i) = self.next() else { return self.err("expected an IRI after BASE") };
                 let iri = self.resolve(&i)?;
-                self.base_parsed = Some(oxiri::Iri::parse_unchecked(iri.as_str().to_string()));
+                self.base_parsed = Some(triplelight_iri::Iri::parse(iri.as_str()).map_err(|e| Self::error_at("", 0, e.to_string()))?);
                 self.base = Some(iri.into_string());
             } else if self.eat_kw("PREFIX") {
                 let Tok::PName(p, l) = self.next() else { return self.err("expected a prefix name after PREFIX") };
@@ -209,11 +209,11 @@ impl<'a> Parser<'a> {
     fn resolve(&self, iri: &str) -> R<NamedNode> {
         let full = match &self.base_parsed {
             Some(b) => match b.resolve(iri) {
-                Ok(r) => r.into_inner(),
+                Ok(r) => r.into_string(),
                 Err(e) => return self.err(format!("invalid IRI <{iri}>: {e}")),
             },
-            None => match oxiri::Iri::parse(iri.to_string()) {
-                Ok(r) => r.into_inner(),
+            None => match triplelight_iri::Iri::parse(iri) {
+                Ok(r) => r.into_string(),
                 Err(e) => return self.err(format!("invalid IRI <{iri}> (relative IRIs need a BASE): {e}")),
             },
         };
@@ -223,7 +223,7 @@ impl<'a> Parser<'a> {
     fn pname(&self, p: &str, l: &str) -> R<NamedNode> {
         let Some(ns) = self.prefixes.get(p) else { return self.err(format!("undeclared prefix {p}:")) };
         let full = format!("{ns}{l}");
-        match oxiri::Iri::parse(full.clone()) { Ok(_) => Ok(NamedNode::new_unchecked(full)), Err(e) => self.err(format!("invalid IRI {p}:{l}: {e}")) }
+        match triplelight_iri::Iri::parse(&full) { Ok(_) => Ok(NamedNode::new_unchecked(full)), Err(e) => self.err(format!("invalid IRI {p}:{l}: {e}")) }
     }
 
     fn try_iri(&mut self) -> R<Option<NamedNode>> {

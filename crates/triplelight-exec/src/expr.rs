@@ -306,7 +306,7 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             Term::NamedNode(n) => Some(n.into()),
             t => {
                 let x = plain(0).or_else(|| strlit(&t).filter(|l| l.language().is_none()).map(|l| l.value().to_string()))?;
-                let resolved = match base { Some(b) => oxiri::Iri::parse(b.to_string()).ok()?.resolve(&x).ok()?.into_inner(), None => x };
+                let resolved = match base { Some(b) => triplelight_iri::Iri::parse(b).ok()?.resolve(&x).ok()?.into_string(), None => x };
                 NamedNode::new(resolved).ok().map(Into::into)
             }
         },

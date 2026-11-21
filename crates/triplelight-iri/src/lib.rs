@@ -1,5 +1,5 @@
-//! Independent RFC 3987 absolute IRI validation and reference resolution.
-//! This work-in-progress crate is not integrated into TripleLight.
+//! RFC 3987 absolute IRI validation and RFC 3986 reference resolution (task #45). Used by the SPARQL parser and the
+//! `IRI()` function; `tests/differential.rs` qualifies it against `oxiri`, which is a dev-only comparator.
 use std::{fmt, net::Ipv6Addr, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -18,7 +18,10 @@ impl Iri {
         Ok(Self(input.to_owned()))
     }
     pub fn as_str(&self) -> &str { &self.0 }
-    /// Resolve an IRI reference against this absolute base (RFC 3986 section 5.2).
+    pub fn into_string(self) -> String { self.0 }
+    /// Resolve an IRI reference against this absolute base (RFC 3986 section 5.2). The reference must itself be a valid
+    /// IRI reference. One deliberate departure, shared with `oxiri`: a reference with a scheme or an authority keeps
+    /// its path as written (`x:/../g` stays `x:/../g`), where the RFC would remove its dot segments.
     pub fn resolve(&self, reference: &str) -> Result<Self, InvalidIri> {
         resolve_reference(self.as_str(), reference)
     }
@@ -120,15 +123,25 @@ fn parts(input: &str) -> Result<Parts<'_>, InvalidIri> {
 fn remove_last_segment(out: &mut String) {
     if let Some(i) = out.rfind('/') { out.truncate(i) } else { out.clear() }
 }
-fn remove_dot_segments(mut input: &str) -> String {
+/// RFC 3986 section 5.2.4, with one rule shared with `oxiri` so answers stay identical: without an authority, a `..`
+/// that empties a rootless output also drops the slash that follows, so `urn:a:b` + `/../g` is `urn:g` (the RFC
+/// gives `urn:/g`). A rooted path keeps its root.
+fn remove_dot_segments(mut input: &str, has_authority: bool) -> String {
     let mut output = String::new();
+    let pop = |output: &mut String, rest: &'static str| -> &'static str {
+        let rooted = output.starts_with('/');
+        remove_last_segment(output);
+        if !has_authority && !rooted && output.is_empty() { "" } else { rest }
+    };
     while !input.is_empty() {
         if let Some(rest) = input.strip_prefix("../") { input = rest; }
         else if let Some(rest) = input.strip_prefix("./") { input = rest; }
-        else if let Some(rest) = input.strip_prefix("/./") { input = &input[2..]; debug_assert!(input.starts_with('/')); let _ = rest; }
+        else if input.starts_with("/./") { input = &input[2..]; }
         else if input == "/." { input = "/"; }
-        else if input.starts_with("/../") { input = &input[3..]; remove_last_segment(&mut output); }
-        else if input == "/.." { input = "/"; remove_last_segment(&mut output); }
+        else if let Some(rest) = input.strip_prefix("/../") {
+            input = if pop(&mut output, "/").is_empty() { rest } else { &input[3..] };
+        }
+        else if input == "/.." { input = pop(&mut output, "/"); }
         else if input == "." || input == ".." { input = ""; }
         else {
             let after_initial_slash = usize::from(input.starts_with('/'));
@@ -138,24 +151,37 @@ fn remove_dot_segments(mut input: &str) -> String {
     }
     output
 }
+/// Validate an IRI reference (RFC 3987 `IRI-reference`): an absolute IRI, or a relative reference whose parts use
+/// only their allowed characters. Checked before resolution, because removing dot segments can drop invalid text.
+fn validate_reference(reference: &str, r: &Parts<'_>) -> Result<(), InvalidIri> {
+    if r.scheme.is_some() { return validate_absolute(reference) }
+    if let Some(auth) = r.authority { authority(auth)? }
+    component(r.path, |c| unreserved(c) || sub_delim(c) || ":@/".contains(c))?;
+    if let Some(query) = r.query { component(query, |c| unreserved(c) || iprivate(c) || sub_delim(c) || ":@/?".contains(c))? }
+    if let Some(fragment) = r.fragment { component(fragment, |c| unreserved(c) || sub_delim(c) || ":@/?".contains(c))? }
+    Ok(())
+}
 fn resolve_reference(base: &str, reference: &str) -> Result<Iri, InvalidIri> {
     let b = parts(base)?;
     let r = parts(reference)?;
+    validate_reference(reference, &r)?;
     let scheme = r.scheme.or(b.scheme).ok_or(InvalidIri)?;
-    let (auth, path, query) = if r.scheme.is_some() {
-        (r.authority, remove_dot_segments(r.path), r.query)
-    } else if r.authority.is_some() {
-        (r.authority, remove_dot_segments(r.path), r.query)
+    // A reference with a scheme or an authority keeps its path as written (as `oxiri` does, so answers stay identical
+    // after the switch); RFC 3986 section 5.2.2 would remove its dot segments too.
+    let (auth, path, query) = if r.scheme.is_some() || r.authority.is_some() {
+        (r.authority, r.path.to_owned(), r.query)
     } else if r.path.is_empty() {
         (b.authority, b.path.to_owned(), r.query.or(b.query))
     } else if r.path.starts_with('/') {
-        (b.authority, remove_dot_segments(r.path), r.query)
+        (b.authority, remove_dot_segments(r.path, b.authority.is_some()), r.query)
     } else {
         let merged = if b.authority.is_some() && b.path.is_empty() { format!("/{}", r.path) }
             else if let Some(i) = b.path.rfind('/') { format!("{}{}", &b.path[..=i], r.path) }
             else { r.path.to_owned() };
-        (b.authority, remove_dot_segments(&merged), r.query)
+        (b.authority, remove_dot_segments(&merged, b.authority.is_some()), r.query)
     };
+    // Without an authority, a path starting with "//" would be read back as one (RFC 3986 section 3.3): refuse it.
+    if auth.is_none() && path.starts_with("//") { return Err(InvalidIri) }
     let mut out = format!("{scheme}:");
     if let Some(auth) = auth { out.push_str("//"); out.push_str(auth); }
     out.push_str(&path);

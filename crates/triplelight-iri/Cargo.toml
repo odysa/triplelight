@@ -1,5 +1,14 @@
 [package]
 name = "triplelight-iri"
-version = "0.1.0"
-edition = "2024"
+description = "TripleLight's RFC 3987 IRI validation and RFC 3986 reference resolution"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 publish = false
+
+[dev-dependencies]
+# Comparator only (task #45): the differential tests check this crate against oxiri; it is not a runtime dependency.
+oxiri.workspace = true
+
+[lints]
+workspace = true
