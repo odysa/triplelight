@@ -1,5 +1,5 @@
 //! SPARQL Update over named graphs and sequential operation semantics (task #36).
-use triplelight::embedded::{Database, DatabaseError};
+use triplelight::embedded::Database;
 use triplelight::exec::QueryResult;
 
 const P: &str = "PREFIX : <http://ex/> ";
