@@ -308,7 +308,7 @@ off by default and can be enabled with a token or, on loopback only, without one
 
 ### Not supported yet
 
-- `LOAD`, and blank-node graph names in N-Quads and TriG files. A persistent store keeps named graphs in its
+- `LOAD`; blank-node graph names in N-Quads and TriG files; empty TriG graph blocks (they add no graph). A persistent store keeps named graphs in its
   write-ahead log until a later release stores them in its base files.
 - Named graphs in the WebAssembly package (named-graph updates return an "unsupported" error there).
 - `SERVICE` and `BNODE(string)`.

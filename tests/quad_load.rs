@@ -26,8 +26,10 @@ const NQ: &str = "<http://ex/a> <http://ex/p> \"1\" <http://ex/g> .\n\
 const TRIG: &str = "@prefix : <http://ex/> .\n\
                     :a :p \"2\" .\n\
                     :g { :a :p \"1\" . _:b :p \"3\" }\n\
-                    GRAPH :h { _:b :q \"4\" }\n";
+                    GRAPH :h { _:b :q \"4\" }\n\
+                    :empty { }\n";
 
+/// The TriG source also has an empty block `:empty { }`: the parser yields no quad for it, so it adds no graph.
 fn check(db: &Database) {
     assert_eq!(rows(db, "SELECT ?g { GRAPH ?g { } }"), vec![vec!["<http://ex/g>".to_string()], vec!["<http://ex/h>".to_string()]]);
     assert_eq!(rows(db, "SELECT ?o { :a :p ?o }"), vec![vec!["\"2\"".to_string()]]);

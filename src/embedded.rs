@@ -226,7 +226,8 @@ impl Database {
     pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> { self.read().query_json(sparql) }
 
     /// Atomically imports an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file into this database.
-    /// Quads in a named graph go into that graph; blank-node graph names are refused as unsupported.
+    /// Quads in a named graph go into that graph; a quad with a blank-node graph name is refused as unsupported, and an
+    /// empty TriG graph block adds no graph.
     /// Parsing and indexing complete before committing; failures leave the database unchanged.
     pub fn load(&self, path: impl AsRef<Path>) -> Result<usize, DatabaseError> {
         let path = path.as_ref();
@@ -289,8 +290,9 @@ impl Database {
     }
 
     /// Loads an N-Quads or TriG file as one atomic dataset change (task #36): one WAL record on disk. Blank-node
-    /// labels are scoped to the file, as for N-Triples and Turtle, and shared across its graphs. A TriG graph block
-    /// with no triples adds no graph (an RDF dataset has no empty graphs).
+    /// labels are scoped to the file, as for N-Triples and Turtle, and shared across its graphs. The parser yields
+    /// quads only, so a TriG graph block with no triples adds no graph to the catalog (RDF datasets can hold empty
+    /// named graphs; this path does not create them). A parsed quad whose graph name is a blank node is refused.
     fn load_quads(&self, path: &Path, ext: &str) -> Result<usize, DatabaseError> {
         use crate::model::{DatasetChange, GraphTarget};
         use crate::rdf::GraphName;
