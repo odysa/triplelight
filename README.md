@@ -307,7 +307,7 @@ off by default and can be enabled with a token or, on loopback only, without one
 - Stored named graphs. The query engine evaluates `GRAPH`, `FROM` and `FROM NAMED` over a dataset, but the stores
   hold only the default graph, so N-Quads/TriG loading and updates into named graphs (`GRAPH` in `INSERT`/`DELETE`,
   `WITH`, `USING`) return an "unsupported" error.
-- `SERVICE`, `BNODE(string)`, and `GRAPH` inside `EXISTS`.
+- `SERVICE` and `BNODE(string)`.
 - Results are materialized before output; Arrow output then streams that result in batches.
 - One process per store directory (enforced by a file lock).
 
