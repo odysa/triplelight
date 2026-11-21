@@ -21,6 +21,14 @@ impl Iri {
     pub fn validate(input: &str) -> Result<(), InvalidIri> { validate_absolute(input) }
     pub fn as_str(&self) -> &str { &self.0 }
     pub fn into_string(self) -> String { self.0 }
+    /// The path component (RFC 3986 section 3.3): after the scheme and any authority, before `?` or `#`.
+    pub fn path(&self) -> &str {
+        let s = self.as_str();
+        let rest = &s[s.find(':').map_or(0, |i| i + 1)..];
+        let end = rest.find(['?', '#']).unwrap_or(rest.len());
+        let rest = &rest[..end];
+        match rest.strip_prefix("//") { Some(r) => r.find('/').map_or("", |i| &r[i..]), None => rest }
+    }
     /// Resolve an IRI reference against this absolute base (RFC 3986 section 5.2). The reference must itself be a valid
     /// IRI reference. Resolution follows `oxiri` exactly so answers stay identical, which departs from RFC 3986 in
     /// three ways: a reference with a scheme or an authority keeps its path as written (`x:/../g`); dot segments

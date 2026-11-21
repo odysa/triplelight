@@ -735,7 +735,6 @@ version = "0.1.0"
 dependencies = [
  "mimalloc",
  "oxrdf",
- "oxttl",
  "rayon",
  "sha2",
  "tiny_http",

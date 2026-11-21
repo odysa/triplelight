@@ -241,7 +241,7 @@ impl Database {
                 let mut scope = BlankScope::default();
                 let built = match ext {
                     "nt" => MemorySnapshot::try_from_triples(crate::ntriples::read_ntriples(reader).map(|t| t.map(|t| scope.rewrite(t)))),
-                    "ttl" => MemorySnapshot::try_from_triples(oxttl::TurtleParser::new().for_reader(reader).map(|t| t.map(|t| scope.rewrite(t)).map_err(turtle_error))),
+                    "ttl" => MemorySnapshot::try_from_triples(crate::turtle::read_turtle(reader).map(|t| t.map(|t| scope.rewrite(t)))),
                     _ => return Err(DatabaseError::Unsupported("load requires an .nt, .ttl, .nq or .trig file".into())),
                 }.map_err(read_error)?;
                 let count = built.count(Perm::Spo, &[])?;
@@ -254,7 +254,7 @@ impl Database {
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
         let triples = match ext {
             "nt" => crate::ntriples::read_ntriples(reader).collect::<Result<Vec<_>, _>>(),
-            "ttl" => oxttl::TurtleParser::new().for_reader(reader).map(|t| t.map_err(turtle_error)).collect::<Result<Vec<_>, _>>(),
+            "ttl" => crate::turtle::read_turtle(reader).collect::<Result<Vec<_>, _>>(),
             _ => return Err(DatabaseError::Unsupported("load requires an .nt, .ttl, .nq or .trig file".into())),
         }.map_err(read_error)?;
         let triples = scope_blank_nodes(triples);
@@ -338,10 +338,6 @@ impl Database {
 }
 
 // Blank node labels are local to each imported document.
-/// A Turtle parse error as the reader error the N-Triples parser uses (oxttl stays for Turtle until #45 step 3).
-fn turtle_error(e: oxttl::TurtleParseError) -> crate::rdf::ReadError {
-    match e { oxttl::TurtleParseError::Io(e) => crate::rdf::ReadError::Io(e), oxttl::TurtleParseError::Syntax(e) => crate::rdf::ReadError::Syntax(e.to_string()) }
-}
 fn read_error(e: crate::rdf::ReadError) -> DatabaseError {
     match e { crate::rdf::ReadError::Io(e) => DatabaseError::Storage(e), crate::rdf::ReadError::Syntax(m) => DatabaseError::Syntax(m) }
 }
