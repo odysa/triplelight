@@ -66,6 +66,10 @@ count controls; SQLite rejects 10 of 13 unmodified DuckDB-dialect queries. The t
 auxiliary discriminator preserve all nine terms. Neither profile qualifies for a timing total. The packet retains
 the setup failure and the disclosed shared-machine lock/cache incident; these are not additional timing rows.
 
+The [RDFLib BerkeleyDB storage qualification](berkeleydb-storage-qualification-v1/README.md) preserves all nine
+reference triples through fresh-process reopen with literal normalization disabled. A separate shared RDFLib
+evaluator diagnostic reproduces the earlier FILTER(false) failure. No workload timing was collected.
+
 The [Oxilite SQLite-store tiny qualification](oxilite-tiny-qualification-v1/README.md) passes all 24
 observations across memory, disk-load and separate-process disk-reopen. It has no workload timing
 or full-workload admission; compiler explain output is retained separately from runtime-tracing claims.
