@@ -54,7 +54,7 @@ test("typed errors: syntax, unsupported, locked", async () => {
   const dir = path.join(tmp(), "db");
   const db = new tl.Database(dir);
   await assert.rejects(db.query("SELEC nonsense"), (e) => e instanceof tl.SyntaxError && e.kind === "SyntaxError");
-  await assert.rejects(db.query("SELECT * WHERE { GRAPH ?g { ?s ?p ?o } }"), tl.UnsupportedError);
+  await assert.rejects(db.query("SELECT * WHERE { SERVICE <urn:remote> { ?s ?p ?o } }"), tl.UnsupportedError);
   assert.throws(() => db.querySync("SELEC"), tl.TripleLightError);
   assert.throws(() => new tl.Database(dir), tl.LockedError);
   db.close();
