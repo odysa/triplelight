@@ -19,7 +19,7 @@ async function example(): Promise<string[]> {
   }
   const json: string = await db.queryJson("ASK {}");
   out.push(json, String(db.statsReady()));
-  try { db.querySync("SELECT * WHERE { GRAPH ?g { ?s ?p ?o } }"); } catch (e) { if (e instanceof UnsupportedError) out.push(e.kind); }
+  try { db.querySync("SELECT * WHERE { SERVICE <urn:remote> { ?s ?p ?o } }"); } catch (e) { if (e instanceof UnsupportedError) out.push(e.kind); }
   db.read().querySync("ASK {}");
   await db.compact();
   db.close();
