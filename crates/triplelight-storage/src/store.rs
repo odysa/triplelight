@@ -574,7 +574,8 @@ fn sync_dir(dir: &Path) -> std::io::Result<()> { File::open(dir)?.sync_all() }
 /// Without this, the commit would be acknowledged, but no compaction could ever write the store's next base.
 /// Checked before anything is applied, so a refused update changes nothing.
 fn check_term_size(term: oxrdf::TermRef<'_>) -> std::io::Result<()> {
-    let limit = crate::external_build::MAX_TERM;
+    // The same limit as the base writer (`external_build::MAX_TERM`, Unix only) and the streaming parsers.
+    let limit = triplelight_core::ntriples::MAX_TOKEN;
     // Cheap upper bound first: escaping turns one byte into at most six (`\u0000`), plus quotes and the suffix.
     let bound = match term {
         oxrdf::TermRef::NamedNode(n) => n.as_str().len() + 2,
