@@ -102,6 +102,9 @@ impl Snapshot for Overlay {
     fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> {
         if self.delta.is_empty() { self.base.matching_rows(perm, prefix) } else { None }
     }
+    fn matching_tail(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 2]]> {
+        if self.delta.is_empty() { self.base.matching_tail(perm, prefix) } else { None }
+    }
 
     fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
         if self.delta.is_empty() { return self.base.scan(perm, prefix) }
@@ -601,16 +604,18 @@ mod borrowed_overlay_tests {
         let a = Triple::new(NamedNode::new("urn:a").unwrap(), NamedNode::new("urn:p").unwrap(), NamedNode::new("urn:o").unwrap());
         let b = Triple::new(NamedNode::new("urn:b").unwrap(), NamedNode::new("urn:p").unwrap(), NamedNode::new("urn:o").unwrap());
         let base = Arc::new(MemorySnapshot::from_triples([a.clone()]));
+        let p = base.lookup(&a.predicate.clone().into()).unwrap().unwrap();
         let original = Overlay::from_base(base);
-        assert_eq!(original.matching_rows(Perm::Spo, &[]).unwrap().len(), 1);
+        assert_eq!(original.matching_tail(Perm::Pso, &[p]).unwrap().len(), 1);
+        assert!(original.matching_tail(Perm::Pso, &[]).is_none(), "an empty prefix has no tail view");
         let (added, _) = original.with_changes(&[(Change::Insert, b.clone())]).unwrap();
-        assert!(added.matching_rows(Perm::Spo, &[]).is_none());
+        assert!(added.matching_tail(Perm::Pso, &[p]).is_none());
         assert_eq!(added.count(Perm::Spo, &[]).unwrap(), 2);
         let (deleted, _) = original.with_changes(&[(Change::Delete, a)]).unwrap();
-        assert!(deleted.matching_rows(Perm::Spo, &[]).is_none());
+        assert!(deleted.matching_tail(Perm::Pso, &[p]).is_none());
         assert_eq!(deleted.count(Perm::Spo, &[]).unwrap(), 0);
         let (restored, _) = added.with_changes(&[(Change::Delete, b)]).unwrap();
-        assert_eq!(restored.matching_rows(Perm::Spo, &[]).unwrap().len(), 1);
+        assert_eq!(restored.matching_tail(Perm::Pso, &[p]).unwrap().len(), 1);
     }
 }
 

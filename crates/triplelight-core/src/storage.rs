@@ -49,6 +49,10 @@ pub trait Snapshot: Dictionary + Send + Sync {
     /// Zero-copy view of the rows `scan` would yield (key order of `perm`), for stores that keep the permutation as one
     /// in-memory sorted array. Lets an index nested-loop join probe without allocating a batch per input row.
     fn matching_rows(&self, _perm: Perm, _prefix: &[TermId]) -> Option<&[[TermId; 3]]> { None }
+    /// Zero-copy view of the rows matching a non-empty `prefix` without their first key column (which equals
+    /// `prefix[0]`): element `t[k - 1]` is key position `k` of `perm`. For stores that keep each permutation's leading
+    /// column only once per distinct value. `None` for an empty prefix or when the store has no such layout.
+    fn matching_tail(&self, _perm: Perm, _prefix: &[TermId]) -> Option<&[[TermId; 2]]> { None }
 }
 
 

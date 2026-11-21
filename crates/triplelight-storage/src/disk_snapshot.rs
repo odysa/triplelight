@@ -137,7 +137,7 @@ impl DiskSnapshot {
         for (i, name) in FILES[1..].iter().enumerate() {
             let file = File::create(dir.join(name))?;
             let mut out = BufWriter::new(file);
-            write_index(&mut out, source.indexes[i].iter().copied())?;
+            write_index(&mut out, source.index_rows(i))?;
             out.flush()?;
             out.get_ref().sync_all()?;
             let index = DiskIndex::open(dir.join(name))?;
@@ -490,7 +490,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("rdf-disk-perms-{}", std::process::id()));
         DiskSnapshot::create(&dir, &source).unwrap();
         let mut out = File::create(dir.join("sop")).unwrap();
-        write_index(&mut out, source.indexes[0].iter().copied()).unwrap();
+        write_index(&mut out, source.index_rows(0)).unwrap();
         drop(out);
         let mut manifest = fs::read(dir.join("MANIFEST")).unwrap();
         let offset = 8 + 3 * 32;
