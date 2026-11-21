@@ -112,6 +112,11 @@ The [RDFLib Kyoto Cabinet report](rdflib-kyotocabinet-qualification-v1/README.md
 packaging failure and a separate archival RDFLib 4.2.2 check with a Debian binding. The archival profile
 retains nine triples across load and reopen. It contributes no workload timing.
 
+The [Blazegraph embedded fixture qualification](blazegraph-embedded-qualification-v1/README.md) retains
+nine triples across load and fresh-process reopen on Linux ARM64 and Java 21. With XSD inlining disabled,
+all nine exact terms match in direct iteration and SELECT. FILTER(false) and false ASK pass in both profiles.
+This contributes no workload timing.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.
