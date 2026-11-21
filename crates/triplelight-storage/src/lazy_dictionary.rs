@@ -977,4 +977,56 @@ mod b2_hit_bench {
         let (o, n) = (med(&mut times.0), med(&mut times.1));
         println!("b2 hit path: old FIFO get {o:.2} ns/lookup, new ref-bit get {n:.2} ns/lookup, delta {:+.2} ns ({:+.1}%), sink {sink}", n - o, 100.0 * (n - o) / o);
     }
+
+    /// Gate D item 3 (Kaiming 33733518): the miss path into a full shard. Old: FIFO pop_front + remove + insert (the
+    /// pre-B2 code path). New: `Cache::insert` with admission coin and 8-sample reference-bit sweep. Every lookup is a
+    /// miss on a key not resident; both shards are full at the same capacity. Reports ns per miss (cache bookkeeping
+    /// only; the decode a miss also pays is excluded and measured separately in a38).
+    #[test]
+    #[ignore]
+    fn b2_miss_path() {
+        const CAP: usize = 3_400;
+        const MISSES: usize = 1_000_000;
+        let rows = Arc::new(Vec::new());
+        let budget = CAP * 10;
+        let mut old = OldCache { entries: HashMap::new(), order: VecDeque::new(), used: 0 };
+        let mut new = Cache::new(7);
+        for i in 0..CAP {
+            old.entries.insert((7, i), (Arc::clone(&rows), 10)); old.order.push_back((7, i)); old.used += 10;
+            new.insert((7, i), &rows, 10, budget);
+        }
+        // Half the residents referenced, so the sweep does real bit clearing.
+        for i in (0..CAP).step_by(2) { new.get((7, i)); }
+        let mut times = (Vec::new(), Vec::new());
+        let mut next_key = CAP;
+        let mut admitted_r0 = 0u64;
+        for round in 0..10 {
+            for which in if round % 2 == 0 { [0, 1] } else { [1, 0] } {
+                let t = std::time::Instant::now();
+                for _ in 0..MISSES {
+                    let key = (7, next_key); next_key += 1;
+                    if which == 0 {
+                        // Verbatim pre-B2 insertion: evict FIFO until it fits, then insert.
+                        while old.used + 10 > budget {
+                            let k = old.order.pop_front().unwrap();
+                            if let Some((_, n)) = old.entries.remove(&k) { old.used -= n; }
+                        }
+                        old.used += 10; old.entries.insert(key, (Arc::clone(&rows), 10)); old.order.push_back(key);
+                    } else {
+                        new.insert(key, &rows, 10, budget);
+                        if which == 1 && round == 0 && new.entries.contains_key(&key) { admitted_r0 += 1; }
+                    }
+                }
+                let ns = t.elapsed().as_nanos() as f64 / MISSES as f64;
+                if which == 0 { times.0.push(ns) } else { times.1.push(ns) }
+            }
+        }
+        let med = |v: &mut Vec<f64>| { v.sort_by(|a, b| a.partial_cmp(b).unwrap()); v[v.len() / 2] };
+        let (o, n) = (med(&mut times.0), med(&mut times.1));
+        // Equal block sizes: each admission into a full shard evicts exactly one block; old samples nothing, new
+        // samples EVICTION_SAMPLE residents per eviction. Old admits every miss; new about 1 in ADMIT_ONE_IN.
+        let new_admit_frac = admitted_r0 as f64 / MISSES as f64;
+        let per_admission_new = if new_admit_frac > 0.0 { n / new_admit_frac } else { f64::NAN };
+        println!("b2 miss path (full shard, {MISSES} misses/round, 10 interleaved rounds): old FIFO {o:.1} ns/miss = {o:.1} ns/admission (admits 1.000, sweep steps 0); new {n:.1} ns/miss, admits {new_admit_frac:.3} -> {per_admission_new:.1} ns/admission, sweep steps {} per admission; added cost per miss {:+.1} ns = {:.4}% of ~180,000 ns decode per miss (a38 scope: conversion-window decode_ms / slot-7 misses, Q9 and Q14 at 1x); frozen ceiling 9,000 ns/miss", EVICTION_SAMPLE, n - o, 100.0 * (n - o).max(0.0) / 180_000.0);
+    }
 }
