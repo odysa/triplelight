@@ -32,6 +32,9 @@ impl Snapshot for Backend {
     fn matching_rows(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> {
         match self { Self::Memory(s) => s.matching_rows(p, prefix), Self::Disk(s) => s.matching_rows(p, prefix) }
     }
+    fn matching_tail(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 2]]> {
+        match self { Self::Memory(s) => s.matching_tail(p, prefix), Self::Disk(s) => s.matching_tail(p, prefix) }
+    }
 }
 use std::time::Instant;
 

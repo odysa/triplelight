@@ -855,3 +855,59 @@ fn construct_template_labels_unchanged_without_collision() {
     labels.sort();
     assert_eq!(labels, vec!["_:tr0", "_:tr1", "_:tr2"]);
 }
+
+/// The BGP loop's compact-tail fast path (`matching_tail`, key position `k` at `t[k - 1]`) gives the same answers as
+/// the `scan` path for one and two bound key columns over every permutation, including repeated variables.
+#[test]
+fn matching_tail_path_matches_scan_path() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use triplelight::model::{Perm, TermId, TripleBatch};
+    use triplelight::storage::{Dictionary, Snapshot, StorageError};
+    struct View(MemorySnapshot, bool, AtomicUsize);
+    impl Dictionary for View {
+        fn lookup(&self, t: &oxrdf::Term) -> Result<Option<TermId>, StorageError> { self.0.lookup(t) }
+        fn resolve(&self, id: TermId) -> Result<oxrdf::Term, StorageError> { self.0.resolve(id) }
+        fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
+    }
+    impl Snapshot for View {
+        fn scan<'a>(&'a self, p: Perm, pre: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> { self.0.scan(p, pre) }
+        fn count(&self, p: Perm, pre: &[TermId]) -> Result<u64, StorageError> { self.0.count(p, pre) }
+        fn seek(&self, p: Perm, pre: &[TermId], t: TermId) -> Result<Option<TermId>, StorageError> { self.0.seek(p, pre, t) }
+        fn matching_tail(&self, p: Perm, pre: &[TermId]) -> Option<&[[TermId; 2]]> {
+            if !self.1 { return None }
+            let r = self.0.matching_tail(p, pre);
+            if r.is_some() { self.2.fetch_add(1, Ordering::Relaxed); }
+            r
+        }
+    }
+    let data = "<urn:a> <urn:p> <urn:b> .\n<urn:a> <urn:p> <urn:a> .\n<urn:b> <urn:p> <urn:c> .\n<urn:b> <urn:q> <urn:b> .\n\
+                <urn:c> <urn:q> <urn:a> .\n<urn:c> <urn:p> <urn:a> .\n<urn:a> <urn:q> \"1\" .\n<urn:b> <urn:a> <urn:a> .\n";
+    let sorted = |s: &View, q: &str| match query(s, q).unwrap() {
+        QueryResult::Solutions { rows, .. } => {
+            let mut v: Vec<String> = rows.into_iter().map(|r| format!("{r:?}")).collect();
+            v.sort();
+            v
+        }
+        r => panic!("{r:?}"),
+    };
+    let tail = View(MemorySnapshot::from_ntriples(data.as_bytes()).unwrap(), true, AtomicUsize::new(0));
+    let scan = View(MemorySnapshot::from_ntriples(data.as_bytes()).unwrap(), false, AtomicUsize::new(0));
+    let queries = [
+        "SELECT * WHERE { ?x <urn:p> ?y . ?y <urn:p> ?z }",
+        "SELECT * WHERE { ?x <urn:p> ?y . ?y ?r ?z }",
+        "SELECT * WHERE { ?x <urn:p> ?y . ?z ?r ?y }",
+        "SELECT * WHERE { ?x <urn:p> ?y . ?z ?y ?w }",
+        "SELECT * WHERE { ?x <urn:p> ?y . ?y ?r ?y }",
+        "SELECT * WHERE { ?x <urn:p> ?y . ?x ?r ?y }",
+        "SELECT * WHERE { ?x <urn:p> ?y . ?y ?x ?z }",
+        "SELECT * WHERE { ?x <urn:p> ?y . ?z ?x ?y }",
+        "SELECT * WHERE { ?x <urn:q> ?y . ?x <urn:p> ?z . ?z ?r ?z }",
+        "SELECT * WHERE { ?x ?r <urn:a> . ?x ?r ?y }",
+    ];
+    for q in queries {
+        let want = sorted(&scan, q);
+        assert!(!want.is_empty(), "{q} must have answers");
+        assert_eq!(sorted(&tail, q), want, "{q}");
+    }
+    assert!(tail.2.load(Ordering::Relaxed) > 0, "the tail path must be exercised");
+}
