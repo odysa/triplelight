@@ -418,12 +418,11 @@ impl Store {
         self.check_poisoned()?;
         let mut p = self.pending.lock().unwrap();
         let cur = p.latest.clone();
-        let rec = net_changes(&cur, changes)?;
+        let (next, _, rec) = cur.apply_dataset(&default_changes(changes), true)?;
         // Even a no-op must wait for earlier accepted changes it may have observed.
         if rec.is_empty() { return Ok((p.seq, 0)) }
-        for (c, t) in &rec { push_quad(&mut p.buf, *c, t, None) }
-        p.buf.push_str("C\n");
-        p.latest = Arc::new(apply(&cur, &rec)?);
+        push_record(&mut p.buf, &rec);
+        p.latest = Arc::new(next);
         p.seq += 1;
         Ok((p.seq, rec.len()))
     }
@@ -550,27 +549,9 @@ fn set_current(dir: &Path, n: u64, fenced: bool) -> std::io::Result<()> {
 
 fn sync_dir(dir: &Path) -> std::io::Result<()> { File::open(dir)?.sync_all() }
 
-fn ids_if_known(o: &Overlay, t: &Triple) -> Result<Option<[TermId; 3]>, StorageError> {
-    let (Some(s), Some(p), Some(x)) = (o.lookup(&t.subject.clone().into())?, o.lookup(&t.predicate.clone().into())?, o.lookup(&t.object)?)
-        else { return Ok(None) };
-    Ok(Some([s, p, x]))
-}
-
-/// New overlay = `cur` + one committed record (copy-on-write delta).
-/// The changes of `changes` that actually change `cur`: inserting a present triple or deleting an absent one is
-/// dropped. Presence is tracked through the set, which may insert and later delete the same triple.
-fn net_changes(cur: &Overlay, changes: &[(Change, Triple)]) -> std::io::Result<Vec<(Change, Triple)>> {
-    let mut rec = Vec::new();
-    let mut state: HashMap<Triple, bool> = HashMap::new();
-    for (c, t) in changes {
-        let present = match state.get(t) {
-            Some(&v) => v,
-            None => match ids_if_known(cur, t)? { Some(spo) => cur.contains(spo)?, None => false },
-        };
-        if (*c == Change::Insert) != present { rec.push((*c, t.clone())) }
-        state.insert(t.clone(), *c == Change::Insert);
-    }
-    Ok(rec)
+/// Default-graph triple changes as dataset steps.
+fn default_changes(changes: &[(Change, Triple)]) -> Vec<DatasetChange> {
+    changes.iter().map(|(c, t)| DatasetChange::Quad(GraphTarget::Default, *c, t.clone())).collect()
 }
 
 impl Overlay {
@@ -581,39 +562,12 @@ impl Overlay {
     /// This snapshot with `changes` applied, in memory and without a WAL, plus the number of triples that actually
     /// changed.
     pub fn with_changes(&self, changes: &[(Change, Triple)]) -> std::io::Result<(Overlay, usize)> {
-        let rec = net_changes(self, changes)?;
-        Ok((apply(self, &rec)?, rec.len()))
+        // The count is the net change (the WAL record's length), as before the dataset path existed.
+        let (next, _, rec) = self.apply_dataset(&default_changes(changes), true)?;
+        Ok((next, rec.len()))
     }
 }
 
-fn apply(cur: &Overlay, rec: &[(Change, Triple)]) -> std::io::Result<Overlay> {
-    let mut d: Delta = (*cur.delta).clone();
-    let intern = |d: &mut Delta, term: Term| -> std::io::Result<TermId> {
-        if let Some(id) = cur.base.lookup(&term)?.or_else(|| d.terms.get(&term).copied()) { return Ok(id) }
-        let id = TermId((DELTA_TAG << 60) | d.rev.len() as u64);
-        d.terms.insert(term.clone(), id);
-        d.rev.push(term);
-        Ok(id)
-    };
-    for (c, t) in rec {
-        let spo = [intern(&mut d, t.subject.clone().into())?, intern(&mut d, t.predicate.clone().into())?, intern(&mut d, t.object.clone())?];
-        let in_base = cur.base.count(Perm::Spo, &spo)? > 0;
-        for p in Perm::ALL {
-            let k = key(p, spo);
-            let (adds, dels) = (&mut d.adds[slot(p)], &mut d.dels[slot(p)]);
-            match (c, in_base) {
-                (Change::Insert, true) => if let Ok(i) = dels.binary_search(&k) { dels.remove(i); },
-                (Change::Insert, false) => if let Err(i) = adds.binary_search(&k) { adds.insert(i, k) },
-                (Change::Delete, true) => if let Err(i) = dels.binary_search(&k) { dels.insert(i, k) },
-                (Change::Delete, false) => if let Ok(i) = adds.binary_search(&k) { adds.remove(i); },
-            }
-        }
-    }
-    let delta = Arc::new(d);
-    // Named graph views share the dictionary, so they follow the new delta (their rows are unchanged).
-    let named = cur.named.rebound(&cur.base, &delta);
-    Ok(Overlay { base: cur.base.clone(), delta, named })
-}
 
 /// One WAL line for a triple change, in the default graph (`graph == None`) or a named graph.
 fn push_quad(buf: &mut String, c: Change, t: &Triple, graph: Option<&oxrdf::NamedNode>) {

@@ -115,12 +115,6 @@ pub struct Catalog(BTreeMap<TermId, NamedGraph>);
 
 impl Catalog {
     pub fn is_empty(&self) -> bool { self.0.is_empty() }
-    /// The same graphs over a newer dictionary (`delta` extends the one they were built with).
-    pub(super) fn rebound(&self, base: &Arc<dyn Snapshot>, delta: &Arc<Delta>) -> Arc<Catalog> {
-        Arc::new(Catalog(self.0.iter().map(|(&g, v)| {
-            (g, NamedGraph { base: base.clone(), delta: delta.clone(), rows: v.rows.clone() })
-        }).collect()))
-    }
 }
 
 impl DatasetView for Overlay {
@@ -198,6 +192,10 @@ struct Work<'a> {
     touched: HashMap<[TermId; 3], bool>,
     /// Whether the default graph was emptied (then the net change is found by comparing whole scans).
     cleared: bool,
+    /// Default-graph rows whose visibility changed since the delta was last brought up to date, with their current
+    /// visibility. Applied to the delta in one sorted merge per order (`flush_default`), so a large update costs
+    /// O(n log n) instead of one sorted-vector insertion per triple.
+    pending: HashMap<[TermId; 3], bool>,
 }
 
 impl Work<'_> {
@@ -226,27 +224,62 @@ impl Work<'_> {
     }
 
     /// The default graph, updated in place in the delta (same rules as `apply`).
+    /// Whether `spo` is in the default graph as of the delta (ignoring `pending`).
+    fn visible_in_delta(&self, spo: [TermId; 3]) -> Result<bool, StorageError> {
+        Ok(if self.base.count(Perm::Spo, &spo)? > 0 { self.d.dels[0].binary_search(&spo).is_err() } else { self.d.adds[0].binary_search(&spo).is_ok() })
+    }
     fn default_change(&mut self, c: Change, t: &Triple) -> Result<(), StorageError> {
         let Some(spo) = self.ids(t, c == Change::Insert)? else { return Ok(()) };
-        let in_base = self.base.count(Perm::Spo, &spo)? > 0;
-        let visible = if in_base { self.d.dels[0].binary_search(&spo).is_err() } else { self.d.adds[0].binary_search(&spo).is_ok() };
+        let visible = match self.pending.get(&spo) { Some(&v) => v, None => self.visible_in_delta(spo)? };
         if visible == (c == Change::Insert) { return Ok(()) }
         self.changed += 1;
         self.touched.entry(spo).or_insert(visible);
-        for p in Perm::ALL {
-            let k = key(p, spo);
-            let (adds, dels) = (&mut self.d.adds[slot(p)], &mut self.d.dels[slot(p)]);
-            match (c, in_base) {
-                (Change::Insert, true) => if let Ok(i) = dels.binary_search(&k) { dels.remove(i); },
-                (Change::Insert, false) => if let Err(i) = adds.binary_search(&k) { adds.insert(i, k) },
-                (Change::Delete, true) => if let Err(i) = dels.binary_search(&k) { dels.insert(i, k) },
-                (Change::Delete, false) => if let Ok(i) = adds.binary_search(&k) { adds.remove(i); },
+        self.pending.insert(spo, c == Change::Insert);
+        Ok(())
+    }
+    /// Brings the delta up to date with `pending`: per order, one merge of the sorted additions and deletions with
+    /// the rows that leave them (same rules as `apply`: additions are absent from the base, deletions present in it).
+    fn flush_default(&mut self) -> Result<(), StorageError> {
+        if self.pending.is_empty() { return Ok(()) }
+        let mut add_in: Vec<[TermId; 3]> = Vec::new();
+        let mut add_out: Vec<[TermId; 3]> = Vec::new();
+        let mut del_in: Vec<[TermId; 3]> = Vec::new();
+        let mut del_out: Vec<[TermId; 3]> = Vec::new();
+        for (spo, visible) in std::mem::take(&mut self.pending) {
+            let in_base = self.base.count(Perm::Spo, &spo)? > 0;
+            let in_delta = if in_base { self.d.dels[0].binary_search(&spo).is_err() } else { self.d.adds[0].binary_search(&spo).is_ok() };
+            if in_delta == visible { continue } // flipped back to where the delta already is
+            match (visible, in_base) {
+                (true, true) => del_out.push(spo),
+                (true, false) => add_in.push(spo),
+                (false, true) => del_in.push(spo),
+                (false, false) => add_out.push(spo),
             }
+        }
+        for p in Perm::ALL {
+            let order = |v: &[[TermId; 3]]| { let mut k: Vec<[TermId; 3]> = v.iter().map(|&r| key(p, r)).collect(); k.sort_unstable(); k };
+            let merged = |old: &[[TermId; 3]], add: Vec<[TermId; 3]>, remove: Vec<[TermId; 3]>| -> Vec<[TermId; 3]> {
+                let mut out = Vec::with_capacity(old.len() + add.len());
+                let (mut a, mut r) = (add.into_iter().peekable(), remove.into_iter().peekable());
+                for &row in old {
+                    while a.peek().is_some_and(|&x| x < row) { out.push(a.next().unwrap()) }
+                    debug_assert!(r.peek().is_none_or(|&x| x >= row), "a row leaving the delta is not in it");
+                    while r.peek().is_some_and(|&x| x < row) { r.next(); }
+                    if r.peek() == Some(&row) { r.next(); } else { out.push(row) }
+                }
+                debug_assert!(r.next().is_none(), "a row leaving the delta is not in it");
+                out.extend(a);
+                out
+            };
+            let i = slot(p);
+            self.d.adds[i] = merged(&self.d.adds[i], order(&add_in), order(&add_out));
+            self.d.dels[i] = merged(&self.d.dels[i], order(&del_in), order(&del_out));
         }
         Ok(())
     }
     /// Empties the default graph: every base row becomes a deletion, and the additions go.
     fn clear_default(&mut self) -> Result<(), StorageError> {
+        self.flush_default()?; // the count below reads the delta
         let visible = self.base.count(Perm::Spo, &[])? as usize - self.d.dels[0].len() + self.d.adds[0].len();
         self.changed += visible;
         self.cleared = true;
@@ -324,6 +357,7 @@ impl Overlay {
             changed: 0,
             touched: HashMap::new(),
             cleared: false,
+            pending: HashMap::new(),
         };
         for change in changes {
             match change {
@@ -334,6 +368,7 @@ impl Overlay {
                 DatasetChange::Clear { target, silent } => w.empty(target, *silent, false)?,
             }
         }
+        w.flush_default()?;
         let (touched, cleared) = (std::mem::take(&mut w.touched), w.cleared);
         let delta = Arc::new(w.d);
         let named: BTreeMap<TermId, NamedGraph> = w.named.into_iter().map(|(g, p)| {
@@ -604,6 +639,70 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+
+    /// Random default-graph inserts, deletes and clears over a base, in one update and split over several: the
+    /// state, the changed-triple count and every order agree with a plain set model.
+    #[test]
+    fn batched_default_changes_match_a_set_model() {
+        let mut rng = 0x853c49e6748fea9bu64;
+        let mut next = move || { rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17; rng };
+        let tr = |i: u64| t(&format!("s{}", i % 13), &format!("{}", i % 7));
+        let base: Vec<Triple> = (0..40).map(|i| tr(i * 3)).collect();
+        for round in 0..30 {
+            let o = with_base(base.clone());
+            let mut model: BTreeSet<String> = base.iter().map(|t| t.to_string()).collect();
+            let (mut flips, mut steps) = (0usize, Vec::new());
+            for _ in 0..200 {
+                let r = next();
+                if r % 50 == 0 {
+                    flips += model.len();
+                    model.clear();
+                    steps.push(Clear { target: GraphScope::Default, silent: false });
+                    continue;
+                }
+                let triple = tr(r >> 8);
+                let insert = r & 1 == 0;
+                let changed = if insert { model.insert(triple.to_string()) } else { model.remove(&triple.to_string()) };
+                if changed { flips += 1 }
+                steps.push(Quad(GraphTarget::Default, if insert { Change::Insert } else { Change::Delete }, triple));
+            }
+            let (one, n) = apply(&o, &steps);
+            assert_eq!(n, flips, "round {round}: changed-triple count");
+            // The same steps in several updates end in the same state.
+            let mut split = o.with_dataset_changes(&[]).unwrap().0;
+            for chunk in steps.chunks(1 + round % 17) { split = apply(&split, chunk).0 }
+            for got in [&one, &split] {
+                let mut rows = Vec::new();
+                for b in got.scan(Perm::Spo, &[]) {
+                    let b = b.unwrap();
+                    let r = |id: TermId| got.resolve(id).unwrap().to_string();
+                    for ((&s, &p), &x) in b.cols[0].iter().zip(&b.cols[1]).zip(&b.cols[2]) {
+                        rows.push(format!("{} {} {}", r(s), r(p), r(x)));
+                    }
+                }
+                rows.sort();
+                assert_eq!(rows, model.iter().cloned().collect::<Vec<_>>(), "round {round}");
+                for p in Perm::ALL { assert_eq!(got.count(p, &[]).unwrap(), model.len() as u64, "round {round} {p:?}") }
+            }
+        }
+    }
+
+    /// Descriptive timing for a large single update (run with `--ignored --nocapture`).
+    #[test]
+    #[ignore]
+    fn large_default_update_time() {
+        for n in [100_000u64, 1_000_000] {
+            let steps: Vec<DatasetChange> = (0..n).map(|i| ins_default(Triple::new(iri(&format!("s{}", i * 7919 % n)), iri("p"), Literal::new_simple_literal(i.to_string())))).collect();
+            let start = std::time::Instant::now();
+            let (o, changed) = apply(&empty(), &steps);
+            println!("{n} default-graph quads in one update: {:.2} s ({changed} changed, {} rows)", start.elapsed().as_secs_f64(), o.count(Perm::Spo, &[]).unwrap());
+            // Reference: the same triples as a bulk build (the `.nt`-into-empty-memory-store path).
+            let triples: Vec<Triple> = steps.iter().map(|c| match c { Quad(_, _, t) => t.clone(), _ => unreachable!() }).collect();
+            let start = std::time::Instant::now();
+            let bulk = MemorySnapshot::from_triples(triples);
+            println!("{n} triples as a bulk build: {:.2} s ({} rows)", start.elapsed().as_secs_f64(), bulk.count(Perm::Spo, &[]).unwrap());
         }
     }
 
