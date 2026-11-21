@@ -184,10 +184,65 @@ impl TermArena {
     }
 }
 
+/// One sorted permutation stored without its leading column: each distinct first key appears once in `keys`, with the
+/// offset of its group in `tails`, so a row costs 16 bytes instead of 24.
+#[derive(Default)]
+struct PermIndex {
+    keys: Vec<(TermId, usize)>,
+    tails: Vec<[TermId; 2]>,
+}
+impl PermIndex {
+    /// From rows sorted by the full key (and deduplicated).
+    fn from_sorted(rows: &[[TermId; 3]]) -> Self {
+        let mut keys: Vec<(TermId, usize)> = Vec::new();
+        let mut tails = Vec::with_capacity(rows.len());
+        for row in rows {
+            if keys.last().is_none_or(|&(k, _)| k != row[0]) {
+                keys.push((row[0], tails.len()));
+            }
+            tails.push([row[1], row[2]]);
+        }
+        keys.shrink_to_fit();
+        Self { keys, tails }
+    }
+    fn len(&self) -> usize {
+        self.tails.len()
+    }
+    fn group_end(&self, group: usize) -> usize {
+        self.keys.get(group + 1).map_or(self.tails.len(), |&(_, start)| start)
+    }
+    /// Every group as (first key, its tails), in key order.
+    fn groups(&self) -> impl Iterator<Item = (TermId, &[[TermId; 2]])> + '_ {
+        self.keys.iter().enumerate().map(|(g, &(k, start))| (k, &self.tails[start..self.group_end(g)]))
+    }
+    /// All rows in key order.
+    fn rows(&self) -> impl Iterator<Item = [TermId; 3]> + '_ {
+        self.groups().flat_map(|(k, tails)| tails.iter().map(move |t| [k, t[0], t[1]]))
+    }
+    /// The tails of the rows that start with `prefix` (1 to 3 IDs), still sorted.
+    fn tail(&self, prefix: &[TermId]) -> &[[TermId; 2]] {
+        let Some((&first, rest)) = prefix.split_first() else { return &self.tails };
+        if rest.len() > 2 {
+            return &[];
+        }
+        let Ok(group) = self.keys.binary_search_by_key(&first, |&(k, _)| k) else { return &[] };
+        let tails = &self.tails[self.keys[group].1..self.group_end(group)];
+        if rest.is_empty() {
+            return tails;
+        }
+        // Pad to full tails so each probe is a fixed-size array comparison.
+        let (mut low, mut high) = ([TermId(0); 2], [TermId(u64::MAX); 2]);
+        low[..rest.len()].copy_from_slice(rest);
+        high[..rest.len()].copy_from_slice(rest);
+        let lo = tails.partition_point(|t| *t < low);
+        let hi = lo + tails[lo..].partition_point(|t| *t <= high);
+        &tails[lo..hi]
+    }
+}
+
 pub struct MemorySnapshot {
     arena: TermArena,
-    pub(super) indexes: [Vec<[TermId; 3]>; 6],
-    first_keys: [Vec<(TermId, usize)>; 6],
+    indexes: [PermIndex; 6],
 }
 impl MemorySnapshot {
     /// Parse N-Triples and construct a snapshot only if the entire input is valid.
@@ -247,7 +302,7 @@ impl MemorySnapshot {
         }
     }
     fn try_build_triples<E>(triples: impl IntoIterator<Item = Result<Triple, E>>, parallel_sort: bool) -> Result<Self, E> {
-        let mut store = Self { arena: TermArena::default(), indexes: Default::default(), first_keys: Default::default() };
+        let mut store = Self { arena: TermArena::default(), indexes: Default::default() };
         // Only the subject-predicate-object rows grow during the load; the other five orders are derived once the
         // deduplicated triple count is known, so no permutation carries growth slack or duplicates.
         let mut spo = Vec::new();
@@ -260,11 +315,12 @@ impl MemorySnapshot {
             ]);
         }
         store.arena.shrink();
+        // Each derived order is sorted in a temporary full-row vector, then kept only in its compact form.
         let permute = |spo: &[[TermId; 3]], perm: Perm| {
             let order = perm.order();
             let mut rows: Vec<_> = spo.iter().map(|r| [r[order[0]], r[order[1]], r[order[2]]]).collect();
             rows.sort_unstable();
-            rows
+            PermIndex::from_sorted(&rows)
         };
         debug_assert_eq!(Perm::Spo.order(), [0, 1, 2]);
         if parallel_sort {
@@ -284,19 +340,30 @@ impl MemorySnapshot {
                 store.indexes[slot(perm)] = permute(&spo, perm);
             }
         }
-        store.indexes[slot(Perm::Spo)] = spo;
-        store.rebuild_first_keys();
+        store.indexes[slot(Perm::Spo)] = PermIndex::from_sorted(&spo);
         Ok(store)
     }
-    fn rebuild_first_keys(&mut self) {
-        for (idx, keys) in self.indexes.iter().zip(&mut self.first_keys) {
-            keys.clear();
-            for (offset, row) in idx.iter().enumerate() {
-                if keys.last().is_none_or(|entry| entry.0 != row[0]) {
-                    keys.push((row[0], offset));
-                }
+    /// The rows of permutation `index` (in `Perm::ALL` order), sorted by its full key.
+    pub(super) fn index_rows(&self, index: usize) -> impl ExactSizeIterator<Item = [TermId; 3]> + '_ {
+        /// A row iterator that knows how many rows remain (writers record the count up front).
+        struct Counted<I> {
+            rows: I,
+            left: usize,
+        }
+        impl<I: Iterator<Item = [TermId; 3]>> Iterator for Counted<I> {
+            type Item = [TermId; 3];
+            fn next(&mut self) -> Option<[TermId; 3]> {
+                let row = self.rows.next()?;
+                self.left -= 1;
+                Some(row)
+            }
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                (self.left, Some(self.left))
             }
         }
+        impl<I: Iterator<Item = [TermId; 3]>> ExactSizeIterator for Counted<I> {}
+        let index = &self.indexes[index];
+        Counted { rows: index.rows(), left: index.len() }
     }
     /// Writes a portable snapshot stream, including dictionary IDs and all six indexes.
     /// The caller owns atomic file replacement and durability (flush/fsync).
@@ -311,7 +378,7 @@ impl MemorySnapshot {
         }
         for index in &self.indexes {
             out.write_all(&(index.len() as u64).to_le_bytes())?;
-            for row in index {
+            for row in index.rows() {
                 for id in row {
                     out.write_all(&id.0.to_le_bytes())?;
                 }
@@ -335,7 +402,8 @@ impl MemorySnapshot {
         if &magic != b"RDFSNP01" {
             return Err(bad());
         }
-        let mut snapshot = Self { arena: TermArena::default(), indexes: Default::default(), first_keys: Default::default() };
+        let mut snapshot = Self { arena: TermArena::default(), indexes: Default::default() };
+        let mut full: [Vec<[TermId; 3]>; 6] = Default::default();
         let n = num(&mut input)?;
         // An explicit safety cap limits allocation when reading corrupt/untrusted files.
         if n > 100_000_000 {
@@ -371,7 +439,7 @@ impl MemorySnapshot {
                 return Err(bad());
             }
         }
-        for index in &mut snapshot.indexes {
+        for index in &mut full {
             let count = num(&mut input)?;
             if count > 100_000_000 {
                 return Err(bad());
@@ -391,7 +459,7 @@ impl MemorySnapshot {
             }
         }
         // Ensure every permutation represents exactly the same RDF triple set.
-        let base = &snapshot.indexes[0];
+        let base = &full[0];
         for perm in Perm::ALL {
             let order = perm.order();
             let mut expected: Vec<_> = base
@@ -399,7 +467,7 @@ impl MemorySnapshot {
                 .map(|r| [r[order[0]], r[order[1]], r[order[2]]])
                 .collect();
             expected.sort_unstable();
-            if expected != snapshot.indexes[slot(perm)] {
+            if expected != full[slot(perm)] {
                 return Err(bad());
             }
         }
@@ -408,7 +476,9 @@ impl MemorySnapshot {
             return Err(bad());
         }
         snapshot.arena.shrink();
-        snapshot.rebuild_first_keys();
+        for (index, rows) in snapshot.indexes.iter_mut().zip(full) {
+            *index = PermIndex::from_sorted(&rows);
+        }
         Ok(snapshot)
     }
     fn intern(&mut self, term: oxrdf::TermRef<'_>) -> TermId {
@@ -432,32 +502,8 @@ impl MemorySnapshot {
     pub(super) fn terms(&self) -> Vec<(TermId, oxrdf::TermRef<'_>)> {
         self.arena.sorted_entries()
     }
-    fn matching<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> &'a [[TermId; 3]] {
-        if prefix.len() > 3 {
-            return &[];
-        }
-        let order = slot(perm);
-        let index = &self.indexes[order];
-        if prefix.is_empty() {
-            return index;
-        }
-        let keys = &self.first_keys[order];
-        let Ok(group) = keys.binary_search_by_key(&prefix[0], |entry| entry.0) else {
-            return &[];
-        };
-        let start = keys[group].1;
-        let end = keys.get(group + 1).map_or(index.len(), |entry| entry.1);
-        let index = &index[start..end];
-        if prefix.len() == 1 {
-            return index;
-        }
-        // Pad the prefix to full keys so each probe is a fixed-size array comparison, not a slice comparison.
-        let (mut low, mut high) = ([TermId(0); 3], [TermId(u64::MAX); 3]);
-        low[..prefix.len()].copy_from_slice(prefix);
-        high[..prefix.len()].copy_from_slice(prefix);
-        let lo = index.partition_point(|row| *row < low);
-        let hi = lo + index[lo..].partition_point(|row| *row <= high);
-        &index[lo..hi]
+    fn index(&self, perm: Perm) -> &PermIndex {
+        &self.indexes[slot(perm)]
     }
 }
 impl Dictionary for MemorySnapshot {
@@ -489,26 +535,30 @@ impl Snapshot for MemorySnapshot {
         perm: Perm,
         prefix: &[TermId],
     ) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
-        Box::new(self.matching(perm, prefix).chunks(4096).map(|rows| {
+        let index = self.index(perm);
+        let mut rows: Box<dyn Iterator<Item = [TermId; 3]> + 'a> = match prefix.first() {
+            None => Box::new(index.rows()),
+            Some(&first) => Box::new(index.tail(prefix).iter().map(move |t| [first, t[0], t[1]])),
+        };
+        Box::new(std::iter::from_fn(move || {
             let mut b = TripleBatch::default();
-            for r in rows {
+            for r in rows.by_ref().take(4096) {
                 for (column, value) in b.cols.iter_mut().zip(r) {
-                    column.push(*value);
+                    column.push(value);
                 }
             }
-            Ok(b)
+            (!b.is_empty()).then_some(Ok(b))
         }))
     }
-    fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> { Some(self.matching(perm, prefix)) }
+    fn matching_tail(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 2]]> {
+        (!prefix.is_empty()).then(|| self.index(perm).tail(prefix))
+    }
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
+        let index = self.index(perm);
         if let [a, b, c] = prefix {
-            return Ok(u64::from(
-                self.matching(perm, &[*a])
-                    .binary_search(&[*a, *b, *c])
-                    .is_ok(),
-            ));
+            return Ok(u64::from(index.tail(&[*a]).binary_search(&[*b, *c]).is_ok()));
         }
-        Ok(self.matching(perm, prefix).len() as u64)
+        Ok(index.tail(prefix).len() as u64)
     }
     fn seek(
         &self,
@@ -516,12 +566,20 @@ impl Snapshot for MemorySnapshot {
         prefix: &[TermId],
         target: TermId,
     ) -> Result<Option<TermId>, StorageError> {
-        if prefix.len() >= 3 {
-            return Ok(None);
-        }
-        let rows = self.matching(perm, prefix);
-        let i = rows.partition_point(|row| row[prefix.len()] < target);
-        Ok(rows.get(i).map(|row| row[prefix.len()]))
+        let index = self.index(perm);
+        Ok(match prefix.len() {
+            0 => {
+                let i = index.keys.partition_point(|&(k, _)| k < target);
+                index.keys.get(i).map(|&(k, _)| k)
+            }
+            1 | 2 => {
+                let tails = index.tail(prefix);
+                let col = prefix.len() - 1;
+                let i = tails.partition_point(|t| t[col] < target);
+                tails.get(i).map(|t| t[col])
+            }
+            _ => None,
+        })
     }
 }
 
@@ -594,7 +652,7 @@ mod tests {
         });
         let store = MemorySnapshot::from_triples(triples);
         for perm in Perm::ALL {
-            let all: Vec<[TermId; 3]> = store.indexes[slot(perm)].clone();
+            let all: Vec<[TermId; 3]> = store.index_rows(slot(perm)).collect();
             for row in all.iter().step_by(11) {
                 for n in 0..=3 {
                     let prefix = &row[..n];
@@ -795,5 +853,31 @@ mod tests {
             bytes.extend(0u64.to_le_bytes());
         }
         assert!(MemorySnapshot::read_snapshot(bytes.as_slice()).is_err());
+    }
+    #[test]
+    fn tail_view_count_and_seek_match_a_full_row_model() {
+        let triples = (0..1500).map(|i| triple(&format!("urn:s{}", i % 41), &format!("urn:p{}", i % 5), &format!("value {}", i % 29)));
+        let store = MemorySnapshot::from_triples(triples);
+        for perm in Perm::ALL {
+            let all: Vec<[TermId; 3]> = store.index_rows(slot(perm)).collect();
+            assert!(all.windows(2).all(|w| w[0] < w[1]), "rows stay sorted and distinct");
+            assert!(store.matching_tail(perm, &[]).is_none());
+            for row in all.iter().step_by(7) {
+                for n in 1..=3 {
+                    let prefix = &row[..n];
+                    let expected: Vec<[TermId; 2]> = all.iter().filter(|r| r[..n] == *prefix).map(|r| [r[1], r[2]]).collect();
+                    assert_eq!(store.matching_tail(perm, prefix).unwrap(), expected.as_slice());
+                    assert_eq!(store.count(perm, prefix).unwrap(), expected.len() as u64);
+                }
+                for n in 0..3 {
+                    let prefix = &row[..n];
+                    for target in [TermId(0), row[n], TermId(row[n].0 + 1), TermId(u64::MAX)] {
+                        let expected = all.iter().filter(|r| r[..n] == *prefix && r[n] >= target).map(|r| r[n]).min();
+                        assert_eq!(store.seek(perm, prefix, target).unwrap(), expected, "{perm:?} n={n}");
+                    }
+                }
+            }
+            assert_eq!(store.count(perm, &[TermId(1), TermId(2), TermId(3)]).unwrap(), 0);
+        }
     }
 }
