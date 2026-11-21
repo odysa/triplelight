@@ -547,19 +547,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "oxttl"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2f5a5c0e82734bb66c9e2a82839bafca5cc129531c51b92f428a4f43405793d"
-dependencies = [
- "memchr",
- "oxilangtag",
- "oxiri",
- "oxrdf",
- "thiserror",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -901,7 +888,6 @@ version = "0.1.0"
 dependencies = [
  "mimalloc",
  "oxrdf",
- "oxttl",
  "sha2",
  "triplelight-core",
  "triplelight-exec",
@@ -924,7 +910,6 @@ name = "triplelight-core"
 version = "0.1.0"
 dependencies = [
  "oxrdf",
- "oxttl",
  "triplelight-iri",
 ]
 
@@ -972,7 +957,6 @@ version = "0.1.0"
 dependencies = [
  "hashbrown",
  "oxrdf",
- "oxttl",
  "rayon",
  "sha2",
  "triplelight-core",

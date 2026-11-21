@@ -8,12 +8,13 @@ rust-version.workspace = true
 [dependencies]
 triplelight-core.workspace = true
 oxrdf.workspace = true
-oxttl.workspace = true
 rayon.workspace = true
 hashbrown.workspace = true
 sha2.workspace = true
 
 [dev-dependencies]
+# Comparator only (task #45): the WAL parity test checks the parser against oxttl.
+oxttl.workspace = true
 triplelight-exec.workspace = true
 
 [lints]

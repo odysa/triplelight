@@ -253,13 +253,7 @@ impl MemorySnapshot {
     }
     /// Parse Turtle and reject the entire load on syntax or I/O errors.
     pub fn from_turtle(reader: impl std::io::Read) -> std::io::Result<Self> {
-        let triples = oxttl::TurtleParser::new()
-            .for_reader(reader)
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| match e {
-                oxttl::TurtleParseError::Io(e) => e,
-                oxttl::TurtleParseError::Syntax(e) => std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()),
-            })?;
+        let triples = triplelight_core::turtle::read_turtle(std::io::BufReader::new(reader)).collect::<Result<Vec<_>, _>>()?;
         Ok(Self::from_triples(triples))
     }
     /// Parse an N-Triples file in bounded worker threads, then sort the six indexes in parallel.
