@@ -308,3 +308,13 @@ fn graph_variable_only_inside_exists_in_order_by_and_aggregates() {
     assert_eq!(run(&format!("{P} SELECT (SUM(IF(EXISTS {{ GRAPH ?h {{ ?s :p \"2\" }} }}, 1, 0)) AS ?n) {{ ?s :p ?o }}")),
                v(&[&["\"1\"^^<http://www.w3.org/2001/XMLSchema#integer>"]]));
 }
+
+#[test]
+fn graph_variable_only_in_a_sort_inside_a_nested_exists_subquery() {
+    // ?h appears only in an ORDER BY key of a subquery inside FILTER EXISTS.
+    assert_eq!(run(&format!("{P} SELECT ?s {{ ?s :p ?o FILTER EXISTS {{ SELECT ?s {{ ?s :p ?x }} ORDER BY DESC(EXISTS {{ GRAPH ?h {{ ?s :p \"2\" }} }}) }} }}")),
+               v(&[&["<http://ex/a>"]]));
+    // Same inside BIND and OPTIONAL's filter.
+    assert_eq!(run(&format!("{P} SELECT ?s ?b {{ ?s :p ?o BIND(EXISTS {{ SELECT ?s {{ ?s :p ?x }} ORDER BY (EXISTS {{ GRAPH ?h {{ ?s :p \"2\" }} }}) }} AS ?b) }}")),
+               v(&[&["<http://ex/a>", "\"true\"^^<http://www.w3.org/2001/XMLSchema#boolean>"]]));
+}

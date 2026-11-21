@@ -1200,23 +1200,44 @@ fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
     }
 }
 
-/// Variables mentioned in ORDER BY expressions and aggregate arguments anywhere in `p` (for registration only).
+/// Variables mentioned in ORDER BY expressions and aggregate arguments anywhere in `p`, including inside EXISTS
+/// patterns nested in any expression (for registration only).
 fn walk_sort_and_aggregate_exprs(p: &GraphPattern, out: &mut Vec<String>) {
     match p {
         GraphPattern::OrderBy { inner, expression } => {
-            for o in expression { match o { OrderExpression::Asc(e) | OrderExpression::Desc(e) => walk_expr(e, out) } }
+            for o in expression {
+                let (OrderExpression::Asc(e) | OrderExpression::Desc(e)) = o;
+                walk_expr(e, out);
+                sort_and_aggregate_in_expr(e, out);
+            }
             walk_sort_and_aggregate_exprs(inner, out)
         }
         GraphPattern::Group { inner, aggregates, .. } => {
-            for (_, a) in aggregates { if let AggregateExpression::FunctionCall { expr, .. } = a { walk_expr(expr, out) } }
+            for (_, a) in aggregates {
+                if let AggregateExpression::FunctionCall { expr, .. } = a { walk_expr(expr, out); sort_and_aggregate_in_expr(expr, out) }
+            }
             walk_sort_and_aggregate_exprs(inner, out)
         }
+        GraphPattern::LeftJoin { left, right, expression } => {
+            if let Some(e) = expression { sort_and_aggregate_in_expr(e, out) }
+            walk_sort_and_aggregate_exprs(left, out); walk_sort_and_aggregate_exprs(right, out)
+        }
+        GraphPattern::Filter { expr, inner } => { sort_and_aggregate_in_expr(expr, out); walk_sort_and_aggregate_exprs(inner, out) }
+        GraphPattern::Extend { inner, expression, .. } => { sort_and_aggregate_in_expr(expression, out); walk_sort_and_aggregate_exprs(inner, out) }
         GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right }
-        | GraphPattern::LeftJoin { left, right, .. } => { walk_sort_and_aggregate_exprs(left, out); walk_sort_and_aggregate_exprs(right, out) }
-        GraphPattern::Filter { inner, .. } | GraphPattern::Extend { inner, .. } | GraphPattern::Distinct { inner }
-        | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. } | GraphPattern::Service { inner, .. }
-        | GraphPattern::Graph { inner, .. } | GraphPattern::Project { inner, .. } => walk_sort_and_aggregate_exprs(inner, out),
+        => { walk_sort_and_aggregate_exprs(left, out); walk_sort_and_aggregate_exprs(right, out) }
+        GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. }
+        | GraphPattern::Service { inner, .. } | GraphPattern::Graph { inner, .. } | GraphPattern::Project { inner, .. }
+        => walk_sort_and_aggregate_exprs(inner, out),
         GraphPattern::Bgp { .. } | GraphPattern::Path { .. } | GraphPattern::Values { .. } => {}
+    }
+}
+
+/// Follows EXISTS patterns inside `e` into `walk_sort_and_aggregate_exprs`.
+fn sort_and_aggregate_in_expr(e: &Expression, out: &mut Vec<String>) {
+    match e {
+        Expression::Exists(p) => walk_sort_and_aggregate_exprs(p, out),
+        e => for c in e.children() { sort_and_aggregate_in_expr(c, out) },
     }
 }
 
