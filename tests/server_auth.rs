@@ -148,3 +148,15 @@ fn an_unauthorized_update_with_a_full_body_is_not_applied() {
     assert!(post(s.1, "/update", "application/sparql-update", UPDATE, Some("Bearer s3cret")).contains(" 200 "));
     assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("true"));
 }
+
+/// A graph-management update that names a graph in the wrong state is the client's error (400), not the server's.
+#[test]
+fn graph_state_errors_are_client_errors() {
+    let s = start("graph-state", &["--allow-unauthenticated-updates"], None);
+    let update = |body: &str| post(s.1, "/update", "application/sparql-update", body, None);
+    assert!(update("CREATE GRAPH <urn:g>").contains(" 200 "));
+    assert!(update("CREATE GRAPH <urn:g>").contains(" 400 "));
+    assert!(update("DROP GRAPH <urn:absent>").contains(" 400 "));
+    assert!(update("COPY <urn:absent> TO <urn:g>").contains(" 400 "));
+    assert!(update("DROP SILENT GRAPH <urn:absent>").contains(" 200 "));
+}

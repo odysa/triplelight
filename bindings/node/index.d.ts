@@ -57,8 +57,9 @@ export class Snapshot {
   queryJson(sparql: string): Promise<string>;
 }
 
-export class TripleLightError extends Error { kind: "SyntaxError" | "UnsupportedError" | "StorageError" | "LockedError" }
+export class TripleLightError extends Error { kind: "SyntaxError" | "UnsupportedError" | "StorageError" | "LockedError" | "GraphStateError" }
 export class SyntaxError extends TripleLightError {}
 export class UnsupportedError extends TripleLightError {}
+export class GraphStateError extends TripleLightError {}
 export class StorageError extends TripleLightError {}
 export class LockedError extends TripleLightError {}

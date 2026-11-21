@@ -32,6 +32,7 @@ const (
 	ErrLocked          ErrorKind = C.TL_ERR_LOCKED
 	ErrInvalidArgument ErrorKind = C.TL_ERR_INVALID_ARGUMENT
 	ErrInternal        ErrorKind = C.TL_ERR_INTERNAL
+	ErrGraphState      ErrorKind = C.TL_ERR_GRAPH_STATE
 )
 
 func (k ErrorKind) String() string {
@@ -48,6 +49,8 @@ func (k ErrorKind) String() string {
 		return "invalid argument"
 	case ErrInternal:
 		return "internal"
+	case ErrGraphState:
+		return "graph state"
 	}
 	return fmt.Sprintf("error(%d)", int(k))
 }

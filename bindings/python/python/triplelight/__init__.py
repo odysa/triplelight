@@ -14,10 +14,10 @@ from dataclasses import dataclass
 from typing import Iterator, Optional
 
 from . import _triplelight
-from ._triplelight import LockedError, TripleLightError, StorageError, SyntaxError, UnsupportedError
+from ._triplelight import GraphStateError, LockedError, TripleLightError, StorageError, SyntaxError, UnsupportedError
 
 __all__ = ["Database", "Snapshot", "IRI", "BNode", "Literal", "Result",
-           "TripleLightError", "SyntaxError", "UnsupportedError", "StorageError", "LockedError"]
+           "TripleLightError", "SyntaxError", "UnsupportedError", "StorageError", "LockedError", "GraphStateError"]
 
 
 
