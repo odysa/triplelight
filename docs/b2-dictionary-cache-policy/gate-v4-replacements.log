@@ -1,0 +1,8 @@
+1 bi old r1 invalidated (contended host at 2026-11-21T08:17:56Z: outside 202.2% of one core)
+7 bi old r1 invalidated (contended docker at 2026-11-21T08:20:43Z: max 12.0)
+10 lubm old r2 invalidated (contended docker at 2026-11-21T08:21:56Z: max 9.88)
+10 lubm old r2 invalidated (contended docker at 2026-11-21T08:22:08Z: max 11.57)
+11 bi new r2 invalidated (contended docker at 2026-11-21T08:22:57Z: max 11.62)
+11 bi new r2 invalidated (contended host at 2026-11-21T08:23:26Z: outside 476.0% of one core)
+11 bi new r2 invalidated (contended docker at 2026-11-21T08:23:58Z: max 11.36)
+slot 11 exhausted replacements: merge waits for a quiet window (frozen)
