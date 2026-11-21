@@ -969,6 +969,12 @@ mod tests {
             assert!(unified.find_term(absent.as_bytes()).unwrap().is_none(), "{absent:?}");
         }
         assert!(unified.with_id(TermId((1 << 60) | 99_999), &mut |_| ()).is_err());
+        // IDs outside every dictionary run, such as the inline kind (15), are errors in both layouts: inline IDs never
+        // reach the disk dictionary, they are resolved before it is consulted.
+        for odd in [(15u64 << 60) | 5, 7, u64::MAX] {
+            assert!(unified.with_id(TermId(odd), &mut |_| ()).is_err(), "{odd:#x}");
+            assert!(by_id.with_id(TermId(odd), &mut |_| ()).is_err(), "{odd:#x}");
+        }
         std::fs::remove_dir_all(root).unwrap();
     }
 

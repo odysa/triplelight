@@ -533,6 +533,35 @@ mod tests {
     }
 
     #[test]
+    fn snapshot_format_fence_refuses_mismatched_manifests() {
+        let dir = std::env::temp_dir().join(format!("rdf-ext-fence-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir(&dir).unwrap();
+        let input = small_input(&dir);
+        let out = dir.join("base");
+        from_nt(&out, Some(&input)).unwrap();
+        let manifest = fs::read(out.join("MANIFEST")).unwrap();
+        assert_eq!(&manifest[..8], b"RDFSNAP4");
+        assert_eq!(manifest.len(), 8 + 7 * 32, "one dictionary identity and six indexes");
+        DiskSnapshot::open(&out).unwrap().verify().unwrap();
+        // A reader that only knows RDFSNAP3 would expect eight identities and two dictionary files; the current code
+        // path for 3 must refuse this store rather than misread it.
+        let mut as_v3 = manifest.clone();
+        as_v3[..8].copy_from_slice(b"RDFSNAP3");
+        fs::write(out.join("MANIFEST"), &as_v3).unwrap();
+        assert!(DiskSnapshot::open(&out).is_err(), "a v4 store read as v3 must be refused");
+        // Unknown future versions are refused.
+        let mut future = manifest.clone();
+        future[..8].copy_from_slice(b"RDFSNAP9");
+        fs::write(out.join("MANIFEST"), &future).unwrap();
+        assert!(DiskSnapshot::open(&out).is_err());
+        // Restoring the manifest makes it open again.
+        fs::write(out.join("MANIFEST"), &manifest).unwrap();
+        DiskSnapshot::open(&out).unwrap();
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn invalid_input_does_not_publish_a_manifest() {
         let parent = std::env::temp_dir().join(format!("rdf-ext-fail-{}", std::process::id()));
         fs::create_dir(&parent).unwrap();
