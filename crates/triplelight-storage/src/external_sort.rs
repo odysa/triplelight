@@ -136,15 +136,10 @@ impl ExternalSort {
     }
     /// Returns a private scratch file containing sorted length-prefixed records.
     /// It remains valid until this sorter is dropped.
-    pub(super) fn finish(&mut self) -> io::Result<PathBuf> {
-        self.flush()?;
-        if self.runs.is_empty() {
-            let path = self.path();
-            File::create(&path)?;
-            self.runs.push(path);
-        }
+    /// Merge rounds until at most `limit` runs remain (`limit` of at least 1).
+    fn reduce_runs(&mut self, limit: usize) -> io::Result<()> {
         let width = self.merge_width();
-        while self.runs.len() > 1 {
+        while self.runs.len() > limit.max(1) {
             let old = std::mem::take(&mut self.runs);
             let mut next = Vec::new();
             for group in old.chunks(width) {
@@ -154,9 +149,9 @@ impl ExternalSort {
                     fs::rename(only, &path)?;
                 } else {
                     merge(group, &path, self.max_record)?;
-                    // Free this group's inputs now, not after the whole round: the round's inputs plus its outputs
-                    // would otherwise coexist (about twice the data). A failure leaves files only in the private
-                    // scratch directory, which `Drop` removes.
+                    // Free this group's inputs now, not after the whole round, so a round does not hold both its
+                    // inputs and its outputs. A failure leaves files only in the private scratch directory, which
+                    // `Drop` removes.
                     for input in group {
                         fs::remove_file(input)?;
                     }
@@ -165,7 +160,62 @@ impl ExternalSort {
             }
             self.runs = next;
         }
+        Ok(())
+    }
+    pub(super) fn finish(&mut self) -> io::Result<PathBuf> {
+        self.flush()?;
+        if self.runs.is_empty() {
+            let path = self.path();
+            File::create(&path)?;
+            self.runs.push(path);
+        }
+        self.reduce_runs(1)?;
         Ok(self.runs[0].clone())
+    }
+    /// Like `finish`, but the last merge is not written out: the returned stream yields the sorted records straight
+    /// from at most one merge width of runs. The stream borrows the sorter, so the scratch directory outlives it.
+    pub(super) fn finish_stream(&mut self) -> io::Result<SortedStream<'_>> {
+        self.flush()?;
+        let width = self.merge_width();
+        self.reduce_runs(width)?;
+        let max = self.max_record;
+        let mut readers = self
+            .runs
+            .iter()
+            .map(|p| File::open(p).map(|f| BufReader::with_capacity(BUF, f)))
+            .collect::<io::Result<Vec<_>>>()?;
+        let mut heap = BinaryHeap::new();
+        for (i, r) in readers.iter_mut().enumerate() {
+            if let Some(record) = read_record(r, max)? {
+                heap.push(Reverse((record, i)));
+            }
+        }
+        Ok(SortedStream { sort: self, readers, heap })
+    }
+}
+/// Sorted records read lazily from the final runs. Records equal as bytes are indistinguishable, so the order is the
+/// same as that of the file `finish` would write.
+pub(super) struct SortedStream<'a> {
+    sort: &'a mut ExternalSort,
+    readers: Vec<BufReader<File>>,
+    heap: BinaryHeap<Reverse<(Vec<u8>, usize)>>,
+}
+impl SortedStream<'_> {
+    pub(super) fn next_record(&mut self) -> io::Result<Option<Vec<u8>>> {
+        let Some(Reverse((record, i))) = self.heap.pop() else { return Ok(None) };
+        if let Some(next) = read_record(&mut self.readers[i], self.sort.max_record)? {
+            self.heap.push(Reverse((next, i)));
+        }
+        Ok(Some(record))
+    }
+    /// Remove the run files once the stream has been fully consumed.
+    pub(super) fn discard(self) -> io::Result<()> {
+        let SortedStream { sort, readers, .. } = self;
+        drop(readers);
+        for path in std::mem::take(&mut sort.runs) {
+            fs::remove_file(path)?;
+        }
+        Ok(())
     }
 }
 impl Drop for ExternalSort {
@@ -275,6 +325,56 @@ mod tests {
         expected.sort_unstable();
         assert_eq!(actual, expected);
     }
+    fn drain(stream: &mut SortedStream<'_>) -> Vec<Vec<u8>> {
+        let mut out = Vec::new();
+        while let Some(r) = stream.next_record().unwrap() {
+            out.push(r);
+        }
+        out
+    }
+    fn push_all(sort: &mut ExternalSort, count: u32) -> Vec<Vec<u8>> {
+        let mut expected = Vec::new();
+        for i in (0..count).rev() {
+            let record = (i % 53).to_be_bytes().to_vec();
+            sort.push(record.clone()).unwrap();
+            expected.push(record);
+        }
+        expected.sort_unstable();
+        expected
+    }
+
+    #[test]
+    fn stream_yields_the_same_records_as_finish() {
+        for count in [0u32, 1, 40, 700] {
+            let parent = std::env::temp_dir();
+            let mut a = ExternalSort::new(&parent, 60_000, 1000).unwrap();
+            let mut b = ExternalSort::new(&parent, 60_000, 1000).unwrap();
+            a.run_budget = 96;
+            b.run_budget = 96;
+            a.fan_in = 3;
+            b.fan_in = 3;
+            a.merge_budget = 0; // keep the narrow width so more than one round is needed
+            b.merge_budget = 0;
+            let expected = push_all(&mut a, count);
+            push_all(&mut b, count);
+            let path = a.finish().unwrap();
+            let mut reader = BufReader::new(File::open(path).unwrap());
+            let mut from_file = Vec::new();
+            while let Some(r) = read_record(&mut reader, 1000).unwrap() {
+                from_file.push(r);
+            }
+            let mut stream = b.finish_stream().unwrap();
+            let streamed = drain(&mut stream);
+            assert_eq!(streamed, from_file, "count {count}");
+            assert_eq!(streamed, expected, "count {count}");
+            let scratch = stream.sort.dir.clone();
+            stream.discard().unwrap();
+            assert_eq!(fs::read_dir(&scratch).unwrap().count(), 0, "runs are removed after discard");
+            drop(b);
+            assert!(!scratch.exists());
+        }
+    }
+
     #[test]
     fn merge_width_follows_the_largest_record_seen() {
         let parent = std::env::temp_dir();
