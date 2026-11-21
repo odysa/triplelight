@@ -140,7 +140,7 @@ impl DiskSnapshot {
             write_index(&mut out, source.index_rows(i))?;
             out.flush()?;
             out.get_ref().sync_all()?;
-            let index = DiskIndex::open(dir.join(name))?;
+            let index = DiskIndex::<3>::open(dir.join(name))?;
             index.validate()?;
             identities.push(index.identity());
         }
@@ -198,7 +198,7 @@ impl DiskSnapshot {
         };
         let mut indexes = Vec::new();
         for (i, name) in FILES[1..].iter().enumerate() {
-            let index = DiskIndex::open(dir.join(name))?;
+            let index = DiskIndex::<3>::open(dir.join(name))?;
             if index.identity() != expected[i + index_offset] {
                 return Err(bad("index directory checksum mismatch"));
             }
@@ -523,7 +523,7 @@ mod tests {
         let mut manifest = fs::read(dir.join("MANIFEST")).unwrap();
         let offset = 8 + 3 * 32;
         manifest[offset..offset + 32]
-            .copy_from_slice(&DiskIndex::open(dir.join("sop")).unwrap().identity());
+            .copy_from_slice(&DiskIndex::<3>::open(dir.join("sop")).unwrap().identity());
         fs::write(dir.join("MANIFEST"), manifest).unwrap();
         let disk = DiskSnapshot::open(&dir).unwrap();
         assert!(disk.verify_permutations().is_err());
@@ -553,7 +553,7 @@ mod tests {
         write_index(&mut out, rows.into_iter()).unwrap();
         drop(out);
         let slot = 2 + Perm::ALL.iter().position(|x| *x == perm).unwrap();
-        replace_manifest_identity(dir, slot, DiskIndex::open(dir.join(name)).unwrap().identity());
+        replace_manifest_identity(dir, slot, DiskIndex::<3>::open(dir.join(name)).unwrap().identity());
     }
     fn verify_error(dir: &Path) -> String {
         let disk = DiskSnapshot::open(dir).unwrap();
