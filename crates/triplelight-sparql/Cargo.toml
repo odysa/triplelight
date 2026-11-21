@@ -7,7 +7,7 @@ rust-version.workspace = true
 
 [dependencies]
 triplelight-core.workspace = true
-oxiri.workspace = true
+triplelight-iri.workspace = true
 
 [lints]
 workspace = true

@@ -18,6 +18,7 @@ large_enum_variant = "allow"
 
 [workspace.dependencies]
 triplelight-core = { path = "crates/triplelight-core" }
+triplelight-iri = { path = "crates/triplelight-iri" }
 triplelight-storage = { path = "crates/triplelight-storage" }
 triplelight-sparql = { path = "crates/triplelight-sparql" }
 triplelight-plan = { path = "crates/triplelight-plan" }
