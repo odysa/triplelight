@@ -121,6 +121,8 @@ The [Blazegraph streaming COUNT fixture](blazegraph-embedded-count-fixture-v1/RE
 
 The [Blazegraph LUBM-100 qualification](blazegraph-lubm100-qualification-v1/README.md) reports 13,409,395 total and explicit triples at load and reopen, plus 30 exact typed answer passes on the registered aggregate queries. It uses the separate all-statements profile and collects no scored latency.
 
+The [sparq-rdf embedded fixture](sparq-embedded-qualification-v1/README.md) passed 24 typed query checks across memory, the saved graph in the loader process, and a fresh read-only indexed reopen. No workload timing.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.
