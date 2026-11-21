@@ -12,6 +12,8 @@ use std::sync::{Arc, OnceLock, RwLock};
 
 const MAGIC_V2: &[u8; 8] = b"RDFIDX02";
 const MAGIC_V3: &[u8; 8] = b"RDFIDX03";
+/// Graph-first quad indexes (task #36): four IDs per row, otherwise the `RDFIDX03` layout.
+const MAGIC_QUAD_V1: &[u8; 8] = b"RDFQIX01";
 const HEADER: u64 = 24;
 const ROW: u64 = 24;
 const BLOCK_ROWS: u64 = 256;
@@ -83,7 +85,27 @@ pub(super) fn cache_budget_mb() -> usize {
 fn invalid(reason: &'static str) -> io::Error {
     io::Error::new(ErrorKind::InvalidData, reason)
 }
-fn decode_row(row: &[u8]) -> [TermId; 3] {
+/// A row width the index supports: 3 (triples, `RDFIDX02`/`RDFIDX03`) or 4 (graph-first quads, `RDFQIX01`). Each
+/// width has its own per-thread block memo, so the triple index's hot path is unchanged.
+pub struct Width<const N: usize>;
+pub trait SupportedWidth<const N: usize> {
+    #[doc(hidden)]
+    const MAGIC: &'static [u8; 8];
+    #[doc(hidden)]
+    fn memo() -> &'static std::thread::LocalKey<std::cell::RefCell<[MemoEntry<N>; MEMO_SLOTS]>>;
+}
+impl SupportedWidth<3> for Width<3> {
+    const MAGIC: &'static [u8; 8] = MAGIC_V3;
+    fn memo() -> &'static std::thread::LocalKey<std::cell::RefCell<[MemoEntry<3>; MEMO_SLOTS]>> { &BLOCK_MEMO }
+}
+impl SupportedWidth<4> for Width<4> {
+    const MAGIC: &'static [u8; 8] = MAGIC_QUAD_V1;
+    fn memo() -> &'static std::thread::LocalKey<std::cell::RefCell<[MemoEntry<4>; MEMO_SLOTS]>> { &BLOCK_MEMO_QUAD }
+}
+/// Bytes of one uncompressed row of width `N`.
+const fn row_bytes(n: usize) -> u64 { n as u64 * 8 }
+
+fn decode_row<const N: usize>(row: &[u8]) -> [TermId; N] {
     std::array::from_fn(|i| {
         TermId(u64::from_le_bytes(
             row[i * 8..i * 8 + 8].try_into().unwrap(),
@@ -137,22 +159,28 @@ fn write_index_v2(
     Ok(())
 }
 /// Writes compressed, independently checksummed blocks and a checksummed directory.
-pub fn write_index(
+pub fn write_index<const N: usize>(
     out: impl Write,
-    rows: impl ExactSizeIterator<Item = [TermId; 3]>,
-) -> io::Result<()> {
+    rows: impl ExactSizeIterator<Item = [TermId; N]>,
+) -> io::Result<()>
+where
+    Width<N>: SupportedWidth<N>,
+{
     let count = rows.len() as u64;
     write_index_stream(out, count, rows.map(Ok))
 }
 
 /// Write a sorted stream whose exact row count is known; propagate source read errors.
-pub fn write_index_stream(
+pub fn write_index_stream<const N: usize>(
     mut out: impl Write,
     count: u64,
-    rows: impl Iterator<Item = io::Result<[TermId; 3]>>,
-) -> io::Result<()> {
+    rows: impl Iterator<Item = io::Result<[TermId; N]>>,
+) -> io::Result<()>
+where
+    Width<N>: SupportedWidth<N>,
+{
     let mut header = [0u8; 24];
-    header[..8].copy_from_slice(MAGIC_V3);
+    header[..8].copy_from_slice(<Width<N> as SupportedWidth<N>>::MAGIC);
     header[8..16].copy_from_slice(&count.to_le_bytes());
     header[16..].copy_from_slice(&BLOCK_ROWS.to_le_bytes());
     out.write_all(&header)?;
@@ -161,7 +189,7 @@ pub fn write_index_stream(
     let mut previous = None;
     let mut written = 0u64;
     let flush =
-        |block: &mut Vec<[TermId; 3]>, out: &mut dyn Write, meta: &mut Vec<u8>| -> io::Result<()> {
+        |block: &mut Vec<[TermId; N]>, out: &mut dyn Write, meta: &mut Vec<u8>| -> io::Result<()> {
             if block.is_empty() {
                 return Ok(());
             }
@@ -199,53 +227,60 @@ pub fn write_index_stream(
     Ok(())
 }
 #[derive(Clone, Copy)]
-struct BlockMeta {
-    last: [TermId; 3],
+struct BlockMeta<const N: usize> {
+    last: [TermId; N],
     checksum: [u8; 32],
     offset: u64,
     length: usize,
 }
-struct CacheShard {
+struct CacheShard<const N: usize> {
     /// Block id -> (rows, CLOCK referenced bit). The bit is atomic so hits need only the shard's read lock.
-    entries: HashMap<u64, (Arc<Vec<[TermId; 3]>>, AtomicBool)>,
+    entries: HashMap<u64, (Arc<Vec<[TermId; N]>>, AtomicBool)>,
     clock: VecDeque<u64>,
     /// Bumped by `clear_cache`; a block read from disk is inserted only if no clear happened since its lookup began.
     generation: u64,
 }
-const MEMO_SLOTS: usize = 8;
+#[doc(hidden)]
+pub const MEMO_SLOTS: usize = 8;
 /// (index instance, cache epoch, block id, rows). Up to `MEMO_SLOTS` decoded blocks per long-lived thread stay
 /// pinned outside the cache budget (about 6 KB each), also after the index is dropped, until the slot is reused.
 /// Memo hits are not counted by the shared-cache trace counters.
-type MemoEntry = Option<(u64, u64, u64, Arc<Vec<[TermId; 3]>>)>;
+#[doc(hidden)]
+pub type MemoEntry<const N: usize> = Option<(u64, u64, u64, Arc<Vec<[TermId; N]>>)>;
 thread_local! {
-    static BLOCK_MEMO: std::cell::RefCell<[MemoEntry; MEMO_SLOTS]> = const { std::cell::RefCell::new([const { None }; MEMO_SLOTS]) };
+    static BLOCK_MEMO: std::cell::RefCell<[MemoEntry<3>; MEMO_SLOTS]> = const { std::cell::RefCell::new([const { None }; MEMO_SLOTS]) };
+    static BLOCK_MEMO_QUAD: std::cell::RefCell<[MemoEntry<4>; MEMO_SLOTS]> = const { std::cell::RefCell::new([const { None }; MEMO_SLOTS]) };
 }
 #[cfg(test)]
 thread_local! {
     /// Test-only: runs in `block_shared` after a miss's disk read, before it takes the write lock to insert.
-    static MISS_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce(&DiskIndex)>>> = const { std::cell::RefCell::new(None) };
+    static MISS_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce(&dyn std::any::Any)>>> = const { std::cell::RefCell::new(None) };
 }
 #[cfg(test)]
 thread_local! {
     /// Test-only: runs inside `clear_cache` between emptying the shards and bumping the epoch.
-    static CLEAR_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce(&DiskIndex)>>> = const { std::cell::RefCell::new(None) };
+    static CLEAR_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce(&dyn std::any::Any)>>> = const { std::cell::RefCell::new(None) };
 }
 /// Unique per opened index, so a thread's block memo can never confuse two indexes (no address reuse).
 static NEXT_INSTANCE: AtomicU64 = AtomicU64::new(1);
-pub struct DiskIndex {
+/// An immutable sorted index of `N`-ID rows (3 for triples, 4 for graph-first quads).
+pub struct DiskIndex<const N: usize = 3> {
     instance: u64,
     /// Bumped by `clear_cache`; memo entries from an older epoch are ignored, so verification re-reads from disk.
     epoch: AtomicU64,
     file: File,
     rows: u64,
     identity: [u8; 32],
-    blocks: Vec<BlockMeta>,
+    blocks: Vec<BlockMeta<N>>,
     compressed: bool,
-    cache: Vec<RwLock<CacheShard>>,
+    cache: Vec<RwLock<CacheShard<N>>>,
     shard_capacity: usize,
     trace_slot: Option<usize>,
 }
-impl DiskIndex {
+impl<const N: usize> DiskIndex<N>
+where
+    Width<N>: SupportedWidth<N>,
+{
     pub fn open(path: impl AsRef<Path>) -> io::Result<Self> {
         let trace_slot = match path.as_ref().file_name().and_then(|v| v.to_str()) {
             Some("spo") => Some(0),
@@ -260,8 +295,8 @@ impl DiskIndex {
         let mut header = [0; 24];
         read_exact_at(&file, &mut header, 0)?;
         let compressed = match &header[..8] {
-            m if m == MAGIC_V2 => false,
-            m if m == MAGIC_V3 => true,
+            m if N == 3 && m == MAGIC_V2 => false,
+            m if m == <Width<N> as SupportedWidth<N>>::MAGIC => true,
             _ => return Err(invalid("bad index magic or version")),
         };
         let rows = u64::from_le_bytes(header[8..16].try_into().unwrap());
@@ -269,7 +304,7 @@ impl DiskIndex {
             return Err(invalid("bad block size"));
         }
         let blocks = rows.div_ceil(BLOCK_ROWS);
-        let entry_size = if compressed { 64 } else { META };
+        let entry_size = if compressed { row_bytes(N) + 40 } else { META };
         let meta_len = blocks
             .checked_mul(entry_size)
             .ok_or_else(|| invalid("index length overflow"))?;
@@ -283,7 +318,7 @@ impl DiskIndex {
             && offset
                 != HEADER
                     .checked_add(
-                        rows.checked_mul(ROW)
+                        rows.checked_mul(row_bytes(N))
                             .ok_or_else(|| invalid("index length overflow"))?,
                     )
                     .ok_or_else(|| invalid("index length overflow"))?
@@ -304,19 +339,21 @@ impl DiskIndex {
         let mut entries = Vec::new();
         let mut data_pos = HEADER;
         for (i, item) in raw.chunks_exact(entry_size as usize).enumerate() {
-            let last = decode_row(&item[..24]);
-            let checksum = item[24..56].try_into().unwrap();
+            let w = row_bytes(N) as usize;
+            let last = decode_row::<N>(&item[..w]);
+            let checksum = item[w..w + 32].try_into().unwrap();
             if last.iter().any(|x| x.0 == 0)
-                || entries.last().is_some_and(|b: &BlockMeta| b.last >= last)
+                || entries.last().is_some_and(|b: &BlockMeta<N>| b.last >= last)
             {
                 return Err(invalid("invalid block directory"));
             }
             let len = if compressed {
-                u64::from_le_bytes(item[56..64].try_into().unwrap())
+                u64::from_le_bytes(item[w + 32..w + 40].try_into().unwrap())
             } else {
                 (rows - (i as u64) * BLOCK_ROWS).min(BLOCK_ROWS) * ROW
             };
-            if compressed && !(27..=27 + BLOCK_ROWS * ROW).contains(&len) {
+            let codec_header = super::block_codec::header_len(N) as u64;
+            if compressed && !(codec_header..=codec_header + BLOCK_ROWS * row_bytes(N)).contains(&len) {
                 return Err(invalid("invalid compressed block length"));
             }
             let next = data_pos
@@ -354,7 +391,7 @@ impl DiskIndex {
                 .collect(),
             shard_capacity: cache_budget_mb()
                 .saturating_mul(1024 * 1024)
-                .checked_div(9 * 16 * BLOCK_ROWS as usize * ROW as usize)
+                .checked_div(9 * 16 * BLOCK_ROWS as usize * row_bytes(N) as usize)
                 .unwrap_or(1)
                 .max(1),
         })
@@ -372,7 +409,7 @@ impl DiskIndex {
             cache.generation += 1;
         }
         #[cfg(test)]
-        if let Some(hook) = CLEAR_HOOK.with(|h| h.borrow_mut().take()) { hook(self) }
+        if let Some(hook) = CLEAR_HOOK.with(|h| h.borrow_mut().take()) { hook(self as &dyn std::any::Any) }
         // Then invalidate every thread's memo entries (they are keyed by epoch). Order matters under concurrent
         // reads: a reader memoizes under the epoch it loaded *before* its lookup. A reader that saw the old epoch
         // can only memoize under the old epoch (invalid after this bump), whatever it fetched. A reader that sees
@@ -387,24 +424,25 @@ impl DiskIndex {
     pub fn is_empty(&self) -> bool {
         self.rows == 0
     }
-    fn block(&self, id: u64) -> io::Result<Arc<Vec<[TermId; 3]>>> {
+    fn block(&self, id: u64) -> io::Result<Arc<Vec<[TermId; N]>>> {
         // Per-thread memo of recently used blocks: leapfrog seeks and index nested-loop probes hit the same few
         // blocks back to back from every rayon worker, and taking the shard mutex each time serialized them
         // (mutex waits dominated a disk LUBM-1000 Q2 profile). Blocks are immutable for an index instance, so a
         // memo entry keyed by (instance, block) never goes stale.
         let epoch = self.epoch.load(Ordering::Acquire);
-        if let Some(rows) = BLOCK_MEMO.with(|m| m.borrow().iter().flatten().find(|e| e.0 == self.instance && e.1 == epoch && e.2 == id).map(|e| Arc::clone(&e.3))) {
+        let memo = <Width<N> as SupportedWidth<N>>::memo();
+        if let Some(rows) = memo.with(|m| m.borrow().iter().flatten().find(|e| e.0 == self.instance && e.1 == epoch && e.2 == id).map(|e| Arc::clone(&e.3))) {
             return Ok(rows);
         }
         let rows = self.block_shared(id)?;
-        BLOCK_MEMO.with(|m| {
+        memo.with(|m| {
             let mut m = m.borrow_mut();
             let slot = m.iter().position(Option::is_none).unwrap_or_else(|| { m.rotate_left(1); MEMO_SLOTS - 1 });
             m[slot] = Some((self.instance, epoch, id, Arc::clone(&rows)));
         });
         Ok(rows)
     }
-    fn block_shared(&self, id: u64) -> io::Result<Arc<Vec<[TermId; 3]>>> {
+    fn block_shared(&self, id: u64) -> io::Result<Arc<Vec<[TermId; N]>>> {
         let shard = &self.cache[(id as usize) % self.cache.len()];
         let poisoned = || io::Error::other("index cache lock poisoned");
         // Hit: shared read lock only, so concurrent readers of hot blocks don't serialize.
@@ -426,7 +464,7 @@ impl DiskIndex {
         // decode it (first insert wins), so decoded blocks can transiently exceed the nominal cache budget.
         let r = Arc::new(self.read_block(id)?);
         #[cfg(test)]
-        if let Some(hook) = MISS_HOOK.with(|h| h.borrow_mut().take()) { hook(self) }
+        if let Some(hook) = MISS_HOOK.with(|h| h.borrow_mut().take()) { hook(self as &dyn std::any::Any) }
         let mut cache = shard.write().map_err(|_| poisoned())?;
         if let Some((value, referenced)) = cache.entries.get(&id) {
             referenced.store(true, Ordering::Relaxed);
@@ -453,7 +491,7 @@ impl DiskIndex {
         Ok(r)
     }
     /// Reads, checksums, decodes and validates one block from the file (no caching).
-    fn read_block(&self, id: u64) -> io::Result<Vec<[TermId; 3]>> {
+    fn read_block(&self, id: u64) -> io::Result<Vec<[TermId; N]>> {
         let start = id
             .checked_mul(BLOCK_ROWS)
             .ok_or_else(|| invalid("block overflow"))?;
@@ -471,9 +509,9 @@ impl DiskIndex {
             return Err(invalid("index block checksum mismatch"));
         }
         let rows: Vec<_> = if self.compressed {
-            super::block_codec::decode(&bytes, n)?
+            super::block_codec::decode::<N>(&bytes, n)?
         } else {
-            bytes.as_chunks::<24>().0.iter().map(|r| decode_row(r)).collect()
+            bytes.chunks_exact(row_bytes(N) as usize).map(decode_row::<N>).collect()
         };
         if rows.iter().any(|r| r.iter().any(|id| id.0 == 0))
             || rows.windows(2).any(|w| w[0] >= w[1])
@@ -484,7 +522,7 @@ impl DiskIndex {
         }
         Ok(rows)
     }
-    fn row(&self, i: u64) -> io::Result<[TermId; 3]> {
+    fn row(&self, i: u64) -> io::Result<[TermId; N]> {
         if i >= self.rows {
             return Err(io::Error::new(
                 ErrorKind::UnexpectedEof,
@@ -493,7 +531,7 @@ impl DiskIndex {
         }
         Ok(self.block(i / BLOCK_ROWS)?[(i % BLOCK_ROWS) as usize])
     }
-    fn bound(&self, key: [TermId; 3], upper: bool) -> io::Result<u64> {
+    fn bound(&self, key: [TermId; N], upper: bool) -> io::Result<u64> {
         let block = self
             .blocks
             .partition_point(|m| m.last < key || (upper && m.last == key));
@@ -505,19 +543,19 @@ impl DiskIndex {
         Ok(block as u64 * BLOCK_ROWS + offset as u64)
     }
     pub fn range(&self, prefix: &[TermId]) -> io::Result<std::ops::Range<u64>> {
-        if prefix.len() > 3 {
+        if prefix.len() > N {
             return Err(io::Error::new(
                 ErrorKind::InvalidInput,
-                "prefix exceeds three terms",
+                "prefix longer than the index rows",
             ));
         }
-        let (mut low, mut high) = ([TermId(0); 3], [TermId(u64::MAX); 3]);
+        let (mut low, mut high) = ([TermId(0); N], [TermId(u64::MAX); N]);
         low[..prefix.len()].copy_from_slice(prefix);
         high[..prefix.len()].copy_from_slice(prefix);
         Ok(self.bound(low, false)?..self.bound(high, true)?)
     }
     /// Copies at most one decoded block from the given position.
-    pub fn block_slice(&self, start: u64, end: u64) -> io::Result<Vec<[TermId; 3]>> {
+    pub fn block_slice(&self, start: u64, end: u64) -> io::Result<Vec<[TermId; N]>> {
         if start >= end || end > self.rows {
             return Err(invalid("invalid block slice"));
         }
@@ -527,7 +565,7 @@ impl DiskIndex {
         Ok(rows[from..from + count].to_vec())
     }
     /// Read a full-scan block without populating the shared query cache.
-    pub fn block_slice_uncached(&self, start: u64, end: u64) -> io::Result<Vec<[TermId; 3]>> {
+    pub fn block_slice_uncached(&self, start: u64, end: u64) -> io::Result<Vec<[TermId; N]>> {
         if start >= end || end > self.rows { return Err(invalid("invalid block slice")); }
         let rows = self.read_block(start / BLOCK_ROWS)?;
         let from = (start % BLOCK_ROWS) as usize;
@@ -536,10 +574,10 @@ impl DiskIndex {
     }
 
     pub fn seek_value(&self, prefix: &[TermId], target: TermId) -> io::Result<Option<TermId>> {
-        if prefix.len() >= 3 {
+        if prefix.len() >= N {
             return Ok(None);
         }
-        let mut key = [TermId(0); 3];
+        let mut key = [TermId(0); N];
         key[..prefix.len()].copy_from_slice(prefix);
         key[prefix.len()] = target;
         let id = self.blocks.partition_point(|m| m.last < key);
@@ -557,7 +595,7 @@ impl DiskIndex {
             Ok(None)
         }
     }
-    pub fn get(&self, i: u64) -> io::Result<[TermId; 3]> {
+    pub fn get(&self, i: u64) -> io::Result<[TermId; N]> {
         self.row(i)
     }
     /// Read and verify every data block; can be expensive for large indexes.
@@ -658,7 +696,7 @@ mod tests {
         let mut bytes = Vec::new();
         write_index(&mut bytes, rows.clone().into_iter()).unwrap();
         std::fs::write(&path, &bytes).unwrap();
-        let index = DiskIndex::open(&path).unwrap();
+        let index = DiskIndex::<3>::open(&path).unwrap();
         for n in [1, 255, 256, 257, 512, 513, 700, 701] {
             let start = (n - 1).min(700);
             assert_eq!(
@@ -669,7 +707,7 @@ mod tests {
         // Cached blocks remain usable by design; a miss after external truncation reports an error.
         drop(index);
         std::fs::write(&path, &bytes).unwrap();
-        let index = DiskIndex::open(&path).unwrap();
+        let index = DiskIndex::<3>::open(&path).unwrap();
         let cut = index.blocks[2].offset as usize + index.blocks[2].length / 2;
         std::fs::write(&path, &bytes[..cut]).unwrap();
         assert!(index.get(699).is_err());
@@ -682,7 +720,7 @@ mod tests {
         let mut bytes = Vec::new();
         write_index(&mut bytes, rows.clone().into_iter()).unwrap();
         std::fs::write(&path, &bytes).unwrap();
-        let index = DiskIndex::open(&path).unwrap();
+        let index = DiskIndex::<3>::open(&path).unwrap();
         assert_eq!(index.block_slice_uncached(256, 512).unwrap(), rows[256..512]);
         assert!(index.cache.iter().all(|shard| shard.read().unwrap().entries.is_empty()));
         let mut bad = bytes;
@@ -699,7 +737,7 @@ mod tests {
         let mut bytes = Vec::new();
         write_index(&mut bytes, rows.into_iter()).unwrap();
         std::fs::write(&path, &bytes).unwrap();
-        let index = DiskIndex::open(&path).unwrap();
+        let index = DiskIndex::<3>::open(&path).unwrap();
         assert!(index.get(300).is_ok());
         let mut bad = bytes.clone();
         let pos = index.blocks[1].offset as usize + 3;
@@ -719,12 +757,13 @@ mod tests {
         let mut bytes = Vec::new();
         write_index(&mut bytes, rows.into_iter()).unwrap();
         std::fs::write(&path, &bytes).unwrap();
-        let index = DiskIndex::open(&path).unwrap();
+        let index = DiskIndex::<3>::open(&path).unwrap();
         assert!(index.get(300).is_ok());
         let mut bad = bytes.clone();
         bad[index.blocks[1].offset as usize + 3] ^= 0xff;
         std::fs::write(&path, &bad).unwrap();
-        CLEAR_HOOK.with(|h| *h.borrow_mut() = Some(Box::new(|ix: &DiskIndex| {
+        CLEAR_HOOK.with(|h| *h.borrow_mut() = Some(Box::new(|ix: &dyn std::any::Any| {
+            let ix = ix.downcast_ref::<DiskIndex>().unwrap();
             let _ = ix.get(300); // old-epoch reader inside the window (may be served from its old memo)
             let _ = ix.get(301);
         })));
@@ -740,8 +779,8 @@ mod tests {
         let mut bytes = Vec::new();
         write_index(&mut bytes, rows.into_iter()).unwrap();
         std::fs::write(&path, &bytes).unwrap();
-        let index = DiskIndex::open(&path).unwrap();
-        MISS_HOOK.with(|h| *h.borrow_mut() = Some(Box::new(|ix: &DiskIndex| ix.clear_cache().unwrap())));
+        let index = DiskIndex::<3>::open(&path).unwrap();
+        MISS_HOOK.with(|h| *h.borrow_mut() = Some(Box::new(|ix: &dyn std::any::Any| ix.downcast_ref::<DiskIndex>().unwrap().clear_cache().unwrap())));
         assert!(index.block_shared(1).is_ok());
         let shard = index.cache[1 % index.cache.len()].read().unwrap();
         assert!(!shard.entries.contains_key(&1), "pre-clear read must not repopulate the cleared shard");
@@ -749,6 +788,61 @@ mod tests {
         // Without a concurrent clear, a miss is cached as usual.
         assert!(index.block_shared(2).is_ok());
         assert!(index.cache[2 % index.cache.len()].read().unwrap().entries.contains_key(&2));
+        std::fs::remove_file(path).unwrap();
+    }
+    /// A graph-first quad index answers `range`, `seek_value`, `get` and block reads like a sorted row model, across
+    /// block boundaries, and each width refuses the other's files.
+    #[test]
+    fn quad_index_matches_a_row_model_and_widths_do_not_mix() {
+        let path = std::env::temp_dir().join(format!("rdf-quad-index-{}", std::process::id()));
+        let mut rows: Vec<[TermId; 4]> = Vec::new();
+        for g in 1..=4u64 {
+            for s in 1..=12u64 {
+                for p in 1..=4u64 {
+                    for o in 1..=(1 + (g * s + p) % 5) { rows.push([TermId(g * 10), TermId(s), TermId(p), TermId(o * 7)]) }
+                }
+            }
+        }
+        assert!(rows.len() > 2 * BLOCK_ROWS as usize, "spans several blocks: {}", rows.len());
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.clone().into_iter()).unwrap();
+        assert_eq!(&bytes[..8], MAGIC_QUAD_V1);
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::<4>::open(&path).unwrap();
+        index.validate().unwrap();
+        assert_eq!(index.len(), rows.len() as u64);
+        let mut prefixes: Vec<Vec<TermId>> = vec![vec![], vec![TermId(5)], vec![TermId(20), TermId(100)], vec![TermId(u64::MAX)]];
+        for r in rows.iter().step_by(13) { for k in 1..=4 { prefixes.push(r[..k].to_vec()) } }
+        for prefix in &prefixes {
+            let want: Vec<usize> = (0..rows.len()).filter(|&i| rows[i][..prefix.len()] == prefix[..]).collect();
+            let range = index.range(prefix).unwrap();
+            match (want.first(), want.last()) {
+                (Some(&a), Some(&b)) => assert_eq!(range, a as u64..b as u64 + 1, "{prefix:?}"),
+                _ => assert!(range.is_empty(), "{prefix:?}"),
+            }
+            if prefix.len() < 4 {
+                for target in [TermId(0), TermId(3), TermId(7), TermId(30), TermId(u64::MAX)] {
+                    let expect = want.iter().map(|&i| rows[i][prefix.len()]).filter(|&v| v >= target).min();
+                    assert_eq!(index.seek_value(prefix, target).unwrap(), expect, "{prefix:?} {target:?}");
+                }
+            }
+        }
+        for i in [0, 255, 256, rows.len() - 1] { assert_eq!(index.get(i as u64).unwrap(), rows[i]) }
+        assert_eq!(index.block_slice(250, 260).unwrap(), rows[250..256]);
+        assert!(index.range(&[TermId(1); 5]).is_err());
+        // Widths do not mix: a quad file is not a triple index and vice versa.
+        assert!(DiskIndex::<3>::open(&path).is_err());
+        let triples: Vec<[TermId; 3]> = (1..=10).map(|i| [TermId(i), TermId(1), TermId(2)]).collect();
+        let mut tbytes = Vec::new();
+        write_index(&mut tbytes, triples.into_iter()).unwrap();
+        std::fs::write(&path, &tbytes).unwrap();
+        assert!(DiskIndex::<4>::open(&path).is_err());
+        // Block corruption is detected on read.
+        let mut bad = bytes.clone();
+        bad[index.blocks[1].offset as usize + 5] ^= 0xff;
+        std::fs::write(&path, &bad).unwrap();
+        let corrupt = DiskIndex::<4>::open(&path).unwrap();
+        assert!(corrupt.validate().is_err());
         std::fs::remove_file(path).unwrap();
     }
     #[test]
@@ -766,7 +860,7 @@ mod tests {
         let mut data = Vec::new();
         write_index_v2(&mut data, rows.clone().into_iter()).unwrap();
         std::fs::write(&path, &data).unwrap();
-        let index = DiskIndex::open(&path).unwrap();
+        let index = DiskIndex::<3>::open(&path).unwrap();
         index.validate().unwrap();
         assert_eq!(index.range(&[]).unwrap(), 0..3);
         assert_eq!(index.range(&[TermId(1)]).unwrap(), 0..2);
@@ -780,7 +874,7 @@ mod tests {
         assert!(index.range(&[TermId(1); 4]).is_err());
         drop(index);
         std::fs::write(&path, &data[..data.len() - 1]).unwrap();
-        assert!(DiskIndex::open(&path).is_err());
+        assert!(DiskIndex::<3>::open(&path).is_err());
         std::fs::remove_file(path).unwrap();
         assert!(write_index(Vec::new(), [rows[0], rows[0]].into_iter()).is_err());
     }

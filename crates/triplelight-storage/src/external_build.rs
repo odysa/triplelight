@@ -71,7 +71,7 @@ fn build_permutation(dir: &Path, raw: &Path, triples: u64, name: &str, perm: Per
     let mut output = BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&path)?);
     write_index_stream(&mut output, count, rows)?;
     output.flush()?; output.get_ref().sync_all()?; drop(output);
-    Ok(DiskIndex::open(path)?.identity())
+    Ok(DiskIndex::<3>::open(path)?.identity())
 }
 // Test-only failure injection: `checkpoint(n)` fails when the test selected phase `n`. Compiled out in normal builds.
 #[cfg(test)]
