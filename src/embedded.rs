@@ -288,8 +288,9 @@ impl Database {
         }
     }
 
-    /// Loads an N-Quads or TriG file as one atomic dataset change (task #36). Blank-node labels are scoped to the
-    /// file, as for N-Triples and Turtle, and shared across its graphs.
+    /// Loads an N-Quads or TriG file as one atomic dataset change (task #36): one WAL record on disk. Blank-node
+    /// labels are scoped to the file, as for N-Triples and Turtle, and shared across its graphs. A TriG graph block
+    /// with no triples adds no graph (an RDF dataset has no empty graphs).
     fn load_quads(&self, path: &Path, ext: &str) -> Result<usize, DatabaseError> {
         use crate::model::{DatasetChange, GraphTarget};
         use crate::rdf::GraphName;
@@ -311,10 +312,7 @@ impl Database {
             changes.push(DatasetChange::Quad(graph, Change::Insert, t));
         }
         match &self.store {
-            Backend::Disk(store) => {
-                let pending = std::cell::RefCell::new(Some(changes));
-                Ok(store.update_dataset_with("", &|_, _| Ok(pending.borrow_mut().take().unwrap_or_default()), &crate::store::storage_error)?)
-            }
+            Backend::Disk(store) => Ok(store.commit_dataset(&changes).map_err(crate::store::storage_error)?),
             Backend::Memory(store) => {
                 let _writer = store.writer.lock().unwrap();
                 let current = store.current.read().unwrap().clone();
