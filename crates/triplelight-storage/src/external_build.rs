@@ -32,9 +32,12 @@ pub fn force_external_build() {
     FORCE_EXTERNAL.store(true, Ordering::Relaxed);
 }
 /// Permutation sorts that may run at once: each holds one run buffer plus merge heads and read buffers, so allow one
-/// per `2 * MEMORY` of the advisory budget, at least one and at most the six permutations.
-fn index_workers_for(budget_mb: usize) -> usize {
-    (budget_mb.saturating_mul(1_048_576) / (2 * MEMORY)).clamp(1, Perm::ALL.len())
+/// per `2 * MEMORY` of the advisory budget, never more than the CPUs available or the six permutations, and at least one.
+fn index_workers_for(budget_mb: usize, cpus: usize) -> usize {
+    (budget_mb.saturating_mul(1_048_576) / (2 * MEMORY)).min(cpus).clamp(1, Perm::ALL.len())
+}
+fn index_workers() -> usize {
+    index_workers_for(budget_mb(), std::thread::available_parallelism().map_or(1, |n| n.get()))
 }
 fn budget_mb() -> usize {
     let n = BUILD_BUDGET_MB.load(Ordering::Relaxed);
@@ -104,7 +107,7 @@ impl Builder {
         Ok(Self {
             terms: ExternalSort::new(dir, bytes, MAX_TERM + 10)?,
             triples: 0,
-            index_workers: index_workers_for(budget_mb()),
+            index_workers: index_workers(),
         })
     }
     fn add(&mut self, terms: [String; 3]) -> io::Result<()> {
@@ -536,14 +539,19 @@ mod tests {
     }
 
     #[test]
-    fn index_workers_follow_the_advisory_budget() {
-        assert_eq!(index_workers_for(0), 1);
-        assert_eq!(index_workers_for(255), 1);
-        assert_eq!(index_workers_for(256), 1);
-        assert_eq!(index_workers_for(768), 3);
-        assert_eq!(index_workers_for(1024), 4);
-        assert_eq!(index_workers_for(1536), 6);
-        assert_eq!(index_workers_for(1 << 20), 6);
+    fn index_workers_follow_the_advisory_budget_and_the_cpus() {
+        assert_eq!(index_workers_for(0, 16), 1);
+        assert_eq!(index_workers_for(255, 16), 1);
+        assert_eq!(index_workers_for(256, 16), 1);
+        assert_eq!(index_workers_for(768, 16), 3);
+        assert_eq!(index_workers_for(1024, 16), 4);
+        assert_eq!(index_workers_for(1536, 16), 6);
+        assert_eq!(index_workers_for(1 << 20, 16), 6);
+        // Never more sorts than CPUs, and never fewer than one.
+        assert_eq!(index_workers_for(1 << 20, 4), 4);
+        assert_eq!(index_workers_for(1 << 20, 1), 1);
+        assert_eq!(index_workers_for(1536, 2), 2);
+        assert_eq!(index_workers_for(1536, 0), 1);
     }
 
     #[test]
