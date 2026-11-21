@@ -1106,6 +1106,47 @@ mod dataset_wal_tests {
         assert_eq!(state(&open().snapshot()), want);
     }
 
+    /// Task #45 step 2: every line the current binary writes to the WAL parses exactly as `oxttl` parsed it, and the
+    /// store replays to the same state; malformed complete lines are refused by both parsers.
+    #[test]
+    fn wal_lines_parse_as_oxttl_did() {
+        let oxttl_line = |rest: &str| {
+            let mut q = oxttl::NQuadsParser::new().for_slice(rest.as_bytes());
+            match (q.next(), q.next()) { (Some(Ok(quad)), None) => Some(quad), _ => None }
+        };
+        let dir = Dir::new("wal-parser-parity");
+        let store = dir.open();
+        let x = BlankNode::new("x").unwrap();
+        let lit = |l: Literal| Triple::new(iri("s"), iri("p"), l);
+        store.commit_dataset(&sample()).unwrap();
+        store.commit_dataset(&[
+            ins_default(lit(Literal::new_simple_literal("tab\tnew\nline \"quote\" back\\slash é \u{1F600} \u{0}"))),
+            ins_default(lit(Literal::new_language_tagged_literal("hello", "en-GB").unwrap())),
+            ins_default(lit(Literal::new_typed_literal("0042", NamedNode::new("http://www.w3.org/2001/XMLSchema#integer").unwrap()))),
+            ins("g3", Triple::new(x.clone(), NamedNode::new("http://ex/é/%20?q#f").unwrap(), x.clone())),
+            del("g1", t("a", "1")),
+            Drop { target: GraphScope::Graph(iri("empty")), silent: false },
+        ]).unwrap();
+        let before = state(&store.snapshot());
+        drop(store);
+        let wal = String::from_utf8(dir.wal()).unwrap();
+        let mut quad_lines = 0;
+        for line in wal.lines() {
+            if let Some(rest) = line.strip_prefix("+ ").or_else(|| line.strip_prefix("- ")) {
+                assert_eq!(triplelight_core::ntriples::parse_nquads_line(rest), oxttl_line(rest), "{line:?}");
+                assert!(parse_line(line).is_some(), "{line:?}");
+                quad_lines += 1;
+            }
+        }
+        assert!(quad_lines >= 8, "only {quad_lines} quad lines");
+        assert_eq!(state(&dir.open().snapshot()), before);
+        for bad in ["<http://a> <http://b> <http://c>", "<http://a> <http://b> \"x", "<http://a> <http://b> <http://c> . extra", "_:a <http://b> <http://c> _:g ."] {
+            let ours = triplelight_core::ntriples::parse_nquads_line(bad);
+            assert_eq!(ours, oxttl_line(bad), "{bad:?}");
+            if bad.ends_with("_:g .") { assert!(parse_line(&format!("+ {bad}")).is_none()) } else { assert!(ours.is_none(), "{bad:?}") }
+        }
+    }
+
     #[test]
     fn current_parsing() {
         assert_eq!(parse_current("base-7\n"), Some((7, false)));
