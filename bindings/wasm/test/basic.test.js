@@ -96,3 +96,23 @@ test("named graphs: updates, management, quad loads and dataset queries", () => 
   assert.strictEqual(snap.querySync("ASK { GRAPH <urn:t> { ?s ?p ?o } }").boolean, true);
   assert.strictEqual(db.querySync("ASK { GRAPH ?g { ?s ?p ?o } }").boolean, false);
 });
+
+test("a triple load into a named-only database keeps its graphs", async () => {
+  // Only named graphs, the default graph empty: the bulk path must not replace the base.
+  for (const setup of [
+    (db) => db.loadSync("<urn:a> <urn:p> \"1\" <urn:g> .\n", "nquads"),
+    (db) => db.updateSync("CREATE GRAPH <urn:g>"),
+  ]) {
+    const db = new Database();
+    setup(db);
+    assert.strictEqual(db.size, 0);
+    assert.strictEqual(db.loadSync("<urn:a> <urn:p> \"2\" .\n"), 1);
+    assert.strictEqual(db.size, 1);
+    assert.deepStrictEqual(db.querySync("SELECT ?g WHERE { GRAPH ?g { } }").bindings.map((b) => b.g.value), ["urn:g"]);
+  }
+  const db = new Database();
+  db.loadSync("<urn:a> <urn:p> \"1\" <urn:g> .\n", "nquads");
+  const json = JSON.parse(await db.read().queryJson("SELECT ?o WHERE { GRAPH <urn:g> { <urn:a> <urn:p> ?o } }"));
+  assert.strictEqual(json.results.bindings[0].o.value, "1");
+  assert.strictEqual(JSON.parse(db.queryJsonSync("ASK { GRAPH <urn:g> { ?s ?p ?o } }")).boolean, true);
+});
