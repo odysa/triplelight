@@ -65,6 +65,15 @@ impl<I: BufRead> Src<I> {
             i += span.len();
         }
     }
+    /// Advances `pos` past bytes matching `skip`, releasing them as it goes (no token limit applies).
+    fn skip_while(&mut self, skip: impl Fn(u8) -> bool) -> R<()> {
+        loop {
+            self.compact();
+            if self.at(0)?.is_none() { return Ok(()) }
+            let span = &self.buf[self.pos..];
+            match span.iter().position(|&b| !skip(b)) { Some(k) => { self.pos += k; return Ok(()) } None => self.pos += span.len() }
+        }
+    }
     /// Drops consumed input once enough has accumulated.
     fn compact(&mut self) {
         if self.pos > (1 << 20) { self.buf.drain(..self.pos); self.pos = 0; }
@@ -123,14 +132,15 @@ fn escape<I: BufRead>(s: &mut Src<I>, echar: bool) -> R<(char, usize)> {
 struct Lexer<I> { src: Src<I>, base: Option<Iri>, peeked: Option<Tok> }
 
 impl<I: BufRead> Lexer<I> {
+    /// Skips whitespace and comments, releasing the skipped input as it goes (as `oxttl` advances past it), so a long
+    /// run of whitespace is neither held in memory nor counted against the next token's size limit.
     fn skip_ws(&mut self) -> R<()> {
         loop {
+            self.src.compact();
             match self.src.at(0)? {
-                Some(b' ' | b'\t' | b'\r' | b'\n') => self.src.pos += 1,
-                Some(b'#') => {
-                    // Comment bytes are not decoded.
-                    loop { match self.src.at(0)? { None => break, Some(b'\n' | b'\r') => break, Some(_) => self.src.pos += 1 } }
-                }
+                Some(b' ' | b'\t' | b'\r' | b'\n') => self.src.skip_while(|b| matches!(b, b' ' | b'\t' | b'\r' | b'\n'))?,
+                // Comment bytes are not decoded.
+                Some(b'#') => self.src.skip_while(|b| b != b'\n' && b != b'\r')?,
                 _ => return Ok(()),
             }
         }
@@ -823,6 +833,19 @@ mod tests {
         assert!(got.len() >= 3, "{got:?}");
         assert!(got[..got.len() - 1].iter().all(Result::is_ok));
         assert!(matches!(got.last(), Some(Err(ReadError::Io(_)))));
+    }
+    /// More than 16 MiB of whitespace and comments between two tokens is skipped, not counted as one token, in a
+    /// streamed document, and the buffer stays small while skipping.
+    #[test]
+    fn long_whitespace_runs_stream() {
+        let gap = format!("{}# comment\n{}", " ".repeat(9 << 20), "\t\n".repeat(5 << 20));
+        let doc = format!("<http://a> <http://b> {gap} <http://c> .");
+        let r = std::io::BufReader::with_capacity(1 << 16, doc.as_bytes());
+        let mut reader = TurtleReader::new(r, false, true);
+        let q = reader.next().expect("a statement").expect("parsed");
+        assert_eq!(q.object.to_string(), "<http://c>");
+        assert!(reader.lex.src.buf.len() < 4 << 20, "buffer grew to {}", reader.lex.src.buf.len());
+        assert!(reader.next().is_none());
     }
     /// Deep nesting is limited by memory, not the call stack: 100,000 nested property lists and collections parse,
     /// on a thread with a small (512 KiB) stack.
