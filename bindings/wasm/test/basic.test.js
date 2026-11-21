@@ -55,9 +55,8 @@ test("NOW, UUID and BNODE work without OS clocks or randomness", () => {
 test("errors carry a kind; a bad load adds nothing", async () => {
   const db = new Database();
   await assert.rejects(db.query("SELEC"), (e) => e.kind === "SyntaxError");
-  assert.throws(() => db.querySync("SELECT * WHERE { GRAPH ?g { ?s ?p ?o } }"), (e) => e.kind === "UnsupportedError");
-  // Named-graph writes stay unsupported in WASM until its queries and loads read the dataset (task #36).
-  assert.throws(() => db.updateSync("INSERT DATA { GRAPH <urn:g> { <urn:s> <urn:p> <urn:o> } }"), (e) => e.kind === "UnsupportedError");
+  assert.throws(() => db.querySync("SELECT * WHERE { SERVICE <urn:remote> { ?s ?p ?o } }"), (e) => e.kind === "UnsupportedError");
+  assert.throws(() => db.updateSync("DROP GRAPH <urn:absent>"), (e) => e.kind === "GraphStateError");
   assert.throws(() => db.loadSync("<urn:a> <urn:p> .\n"), (e) => e.kind === "SyntaxError");
   assert.strictEqual(db.size, 0);
   const b = db.querySync('SELECT ("x" AS ?__proto__) ("y" AS ?constructor) WHERE {}').bindings[0];
@@ -74,4 +73,46 @@ test("queryJson rejects graph results; blank-node labels are scoped per load", a
   assert.throws(() => db.queryJsonSync("CONSTRUCT WHERE { ?s ?p ?o }"), (e) => e.kind === "UnsupportedError");
   await assert.rejects(db.read().queryJson("DESCRIBE <urn:x>"), (e) => e.kind === "UnsupportedError");
   await assert.rejects(db.queryJson("CONSTRUCT WHERE { ?s ?p ?o }"), (e) => e.kind === "UnsupportedError");
+});
+
+test("named graphs: updates, management, quad loads and dataset queries", () => {
+  const db = new Database();
+  db.updateSync("INSERT DATA { GRAPH <urn:g> { <urn:a> <urn:p> 1 } <urn:a> <urn:p> 2 } ; COPY <urn:g> TO <urn:h>");
+  const graphs = db.querySync("SELECT ?g WHERE { GRAPH ?g { } }").bindings.map((b) => b.g.value).sort();
+  assert.deepStrictEqual(graphs, ["urn:g", "urn:h"]);
+  assert.strictEqual(db.size, 1); // the default graph only
+  assert.strictEqual(db.querySync("SELECT ?o FROM <urn:h> WHERE { <urn:a> <urn:p> ?o }").bindings[0].o.value, "1");
+  // A quad load into a database that already has named graphs keeps them (no bulk base replacement).
+  assert.strictEqual(db.loadSync("_:b <urn:q> \"x\" <urn:k> .\n_:b <urn:q> \"y\" <urn:g> .\n", "nquads"), 2);
+  assert.strictEqual(db.loadSync("@prefix : <urn:> . :t { :a :p 3 }", "trig"), 1);
+  const shared = db.querySync("SELECT ?y WHERE { GRAPH <urn:k> { ?b <urn:q> \"x\" } GRAPH <urn:g> { ?b <urn:q> ?y } }");
+  assert.strictEqual(shared.bindings[0].y.value, "y");
+  assert.deepStrictEqual(db.querySync("SELECT ?g WHERE { GRAPH ?g { } }").bindings.map((b) => b.g.value).sort(), ["urn:g", "urn:h", "urn:k", "urn:t"]);
+  assert.throws(() => db.loadSync("<urn:a> <urn:p> \"1\" _:g .\n", "nquads"), (e) => e.kind === "UnsupportedError");
+  assert.throws(() => db.updateSync("CREATE GRAPH <urn:g>"), (e) => e.kind === "GraphStateError");
+  // A snapshot keeps the dataset as it was.
+  const snap = db.read();
+  db.updateSync("DROP ALL");
+  assert.strictEqual(snap.querySync("ASK { GRAPH <urn:t> { ?s ?p ?o } }").boolean, true);
+  assert.strictEqual(db.querySync("ASK { GRAPH ?g { ?s ?p ?o } }").boolean, false);
+});
+
+test("a triple load into a named-only database keeps its graphs", async () => {
+  // Only named graphs, the default graph empty: the bulk path must not replace the base.
+  for (const setup of [
+    (db) => db.loadSync("<urn:a> <urn:p> \"1\" <urn:g> .\n", "nquads"),
+    (db) => db.updateSync("CREATE GRAPH <urn:g>"),
+  ]) {
+    const db = new Database();
+    setup(db);
+    assert.strictEqual(db.size, 0);
+    assert.strictEqual(db.loadSync("<urn:a> <urn:p> \"2\" .\n"), 1);
+    assert.strictEqual(db.size, 1);
+    assert.deepStrictEqual(db.querySync("SELECT ?g WHERE { GRAPH ?g { } }").bindings.map((b) => b.g.value), ["urn:g"]);
+  }
+  const db = new Database();
+  db.loadSync("<urn:a> <urn:p> \"1\" <urn:g> .\n", "nquads");
+  const json = JSON.parse(await db.read().queryJson("SELECT ?o WHERE { GRAPH <urn:g> { <urn:a> <urn:p> ?o } }"));
+  assert.strictEqual(json.results.bindings[0].o.value, "1");
+  assert.strictEqual(JSON.parse(db.queryJsonSync("ASK { GRAPH <urn:g> { ?s ?p ?o } }")).boolean, true);
 });

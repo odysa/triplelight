@@ -10,7 +10,7 @@ import init, { Database } from "./pkg/triplelight_wasm.js";
 await init();
 
 const db = new Database();
-await db.load(await (await fetch("/data.nt")).text());           // or db.load(text, "turtle")
+await db.load(await (await fetch("/data.nt")).text());           // or db.load(text, "turtle" | "nquads" | "trig")
 const r = await db.query("SELECT ?s (COUNT(?o) AS ?n) WHERE { ?s ?p ?o } GROUP BY ?s");
 for (const b of r.bindings) console.log(b.s.value, b.n.value);
 ```

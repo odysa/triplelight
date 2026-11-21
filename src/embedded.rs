@@ -294,25 +294,13 @@ impl Database {
     /// quads only, so a TriG graph block with no triples adds no graph to the catalog (RDF datasets can hold empty
     /// named graphs; this path does not create them). A parsed quad whose graph name is a blank node is refused.
     fn load_quads(&self, path: &Path, ext: &str) -> Result<usize, DatabaseError> {
-        use crate::model::{DatasetChange, GraphTarget};
-        use crate::rdf::GraphName;
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
         let format = if ext == "nq" { crate::rdf::QuadFormat::NQuads } else { crate::rdf::QuadFormat::TriG };
         let quads = crate::rdf::read_quads(reader, format).map_err(|e| match e {
             crate::rdf::ReadError::Io(e) => DatabaseError::Storage(e),
             crate::rdf::ReadError::Syntax(m) => DatabaseError::Syntax(m),
         })?;
-        let mut scope = BlankScope::default();
-        let mut changes = Vec::with_capacity(quads.len());
-        for q in quads {
-            let graph = match q.graph_name {
-                GraphName::DefaultGraph => GraphTarget::Default,
-                GraphName::NamedNode(n) => GraphTarget::Named(n),
-                GraphName::BlankNode(_) => return Err(DatabaseError::Unsupported("blank-node graph names are not supported".into())),
-            };
-            let t = scope.rewrite(crate::rdf::Triple::new(q.subject, q.predicate, q.object));
-            changes.push(DatasetChange::Quad(graph, Change::Insert, t));
-        }
+        let changes = crate::store::quad_load_changes(quads)?;
         match &self.store {
             Backend::Disk(store) => Ok(store.commit_dataset(&changes).map_err(crate::store::storage_error)?),
             Backend::Memory(store) => {
