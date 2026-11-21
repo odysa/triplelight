@@ -17,6 +17,8 @@ impl Iri {
         validate_absolute(input)?;
         Ok(Self(input.to_owned()))
     }
+    /// `parse` without building the value: whether `input` is a valid absolute IRI.
+    pub fn validate(input: &str) -> Result<(), InvalidIri> { validate_absolute(input) }
     pub fn as_str(&self) -> &str { &self.0 }
     pub fn into_string(self) -> String { self.0 }
     /// Resolve an IRI reference against this absolute base (RFC 3986 section 5.2). The reference must itself be a valid
@@ -42,17 +44,26 @@ fn ucschar(c: char) -> bool {
         || (0x10000..=0xdfffd).contains(&n) && (n & 0xffff) <= 0xfffd
 }
 fn iprivate(c: char) -> bool { matches!(c as u32, 0xe000..=0xf8ff | 0xf0000..=0xffffd | 0x100000..=0x10fffd) }
-fn unreserved(c: char) -> bool { c.is_ascii_alphanumeric() || "-._~".contains(c) || ucschar(c) }
-fn sub_delim(c: char) -> bool { "!$&'()*+,;=".contains(c) }
+fn unreserved(c: char) -> bool { c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_' | '~') || (!c.is_ascii() && ucschar(c)) }
+fn sub_delim(c: char) -> bool { matches!(c, '!' | '$' | '&' | '\'' | '(' | ')' | '*' | '+' | ',' | ';' | '=') }
 
 /// Validate a component and its percent escapes in one pass.
 fn component(input: &str, allowed: impl Fn(char) -> bool) -> Result<(), InvalidIri> {
-    let mut chars = input.chars();
-    while let Some(c) = chars.next() {
-        if c == '%' {
-            if !chars.next().is_some_and(|c| c.is_ascii_hexdigit()) ||
-               !chars.next().is_some_and(|c| c.is_ascii_hexdigit()) { return Err(InvalidIri) }
-        } else if !allowed(c) { return Err(InvalidIri) }
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b == b'%' {
+            if !(bytes.get(i + 1).is_some_and(u8::is_ascii_hexdigit) && bytes.get(i + 2).is_some_and(u8::is_ascii_hexdigit)) { return Err(InvalidIri) }
+            i += 3;
+        } else if b.is_ascii() {
+            if !allowed(char::from(b)) { return Err(InvalidIri) }
+            i += 1;
+        } else {
+            let c = input[i..].chars().next().ok_or(InvalidIri)?;
+            if !allowed(c) { return Err(InvalidIri) }
+            i += c.len_utf8();
+        }
     }
     Ok(())
 }

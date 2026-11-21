@@ -626,9 +626,7 @@ fn parse_line(line: &str) -> Option<DatasetChange> {
         Some(("- ", r)) => (Change::Delete, r),
         _ => return None,
     };
-    let mut quads = oxttl::NQuadsParser::new().for_slice(rest.as_bytes());
-    let quad = quads.next()?.ok()?;
-    if quads.next().is_some() { return None }
+    let quad = triplelight_core::ntriples::parse_nquads_line(rest)?;
     let target = match quad.graph_name {
         oxrdf::GraphName::DefaultGraph => GraphTarget::Default,
         oxrdf::GraphName::NamedNode(g) => GraphTarget::Named(g),
