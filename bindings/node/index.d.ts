@@ -39,7 +39,7 @@ export class Database {
   queryJson(sparql: string): Promise<string>;
   /** Applies a SPARQL Update atomically and durably; resolves to the number of triples changed. */
   update(sparql: string): Promise<number>;
-  /** Atomically imports an N-Triples (.nt) or Turtle (.ttl) file; resolves to the number of triples added. */
+  /** Atomically imports an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file; resolves to the number of triples added. */
   load(path: string): Promise<number>;
   /** Merges updates into a new immutable base; open snapshots keep their view. */
   compact(): Promise<void>;

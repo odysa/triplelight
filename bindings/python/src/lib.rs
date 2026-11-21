@@ -117,7 +117,7 @@ impl PyDatabase {
         let db = Arc::clone(&self.db);
         py.allow_threads(|| db.query_json(sparql)).map_err(err)
     }
-    /// Atomically imports an N-Triples (.nt) or Turtle (.ttl) file; returns triples added.
+    /// Atomically imports an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file; returns triples added.
     fn load(&self, py: Python<'_>, path: std::path::PathBuf) -> PyResult<usize> {
         let db = Arc::clone(&self.db);
         py.allow_threads(|| db.load(&path)).map_err(err)
