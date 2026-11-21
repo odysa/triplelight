@@ -225,11 +225,14 @@ impl Database {
     /// Serializes SELECT or ASK as SPARQL Results JSON with batched term decoding.
     pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> { self.read().query_json(sparql) }
 
-    /// Atomically imports an N-Triples (.nt) or Turtle (.ttl) file into this database.
-    /// Parsing and indexing complete before committing; failures leave the graph unchanged.
+    /// Atomically imports an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file into this database.
+    /// Quads in a named graph go into that graph; a quad with a blank-node graph name is refused as unsupported, and an
+    /// empty TriG graph block adds no graph.
+    /// Parsing and indexing complete before committing; failures leave the database unchanged.
     pub fn load(&self, path: impl AsRef<Path>) -> Result<usize, DatabaseError> {
         let path = path.as_ref();
         let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
+        if ext == "nq" || ext == "trig" { return self.load_quads(path, ext) }
         if let Backend::Memory(store) = &self.store {
             let writer = store.writer.lock().unwrap();
             let current = store.current.read().unwrap().clone();
@@ -239,7 +242,7 @@ impl Database {
                 let built = match ext {
                     "nt" => MemorySnapshot::try_from_triples(oxttl::NTriplesParser::new().for_reader(reader).map(|t| t.map(|t| scope.rewrite(t)))),
                     "ttl" => MemorySnapshot::try_from_triples(oxttl::TurtleParser::new().for_reader(reader).map(|t| t.map(|t| scope.rewrite(t)))),
-                    _ => return Err(DatabaseError::Unsupported("load requires an .nt or .ttl file".into())),
+                    _ => return Err(DatabaseError::Unsupported("load requires an .nt, .ttl, .nq or .trig file".into())),
                 }.map_err(|e| match e {
                     oxttl::TurtleParseError::Io(e) => DatabaseError::Storage(e),
                     oxttl::TurtleParseError::Syntax(e) => DatabaseError::Syntax(e.to_string()),
@@ -255,7 +258,7 @@ impl Database {
         let triples = match ext {
             "nt" => oxttl::NTriplesParser::new().for_reader(reader).collect::<Result<Vec<_>, _>>(),
             "ttl" => oxttl::TurtleParser::new().for_reader(reader).collect::<Result<Vec<_>, _>>(),
-            _ => return Err(DatabaseError::Unsupported("load requires an .nt or .ttl file".into())),
+            _ => return Err(DatabaseError::Unsupported("load requires an .nt, .ttl, .nq or .trig file".into())),
         }.map_err(|e| match e {
             oxttl::TurtleParseError::Io(e) => DatabaseError::Storage(e),
             oxttl::TurtleParseError::Syntax(e) => DatabaseError::Syntax(e.to_string()),
@@ -282,6 +285,42 @@ impl Database {
                     *store.current.write().unwrap() = Arc::new(next);
                     Ok(count)
                 }
+            }
+        }
+    }
+
+    /// Loads an N-Quads or TriG file as one atomic dataset change (task #36): one WAL record on disk. Blank-node
+    /// labels are scoped to the file, as for N-Triples and Turtle, and shared across its graphs. The parser yields
+    /// quads only, so a TriG graph block with no triples adds no graph to the catalog (RDF datasets can hold empty
+    /// named graphs; this path does not create them). A parsed quad whose graph name is a blank node is refused.
+    fn load_quads(&self, path: &Path, ext: &str) -> Result<usize, DatabaseError> {
+        use crate::model::{DatasetChange, GraphTarget};
+        use crate::rdf::GraphName;
+        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
+        let format = if ext == "nq" { crate::rdf::QuadFormat::NQuads } else { crate::rdf::QuadFormat::TriG };
+        let quads = crate::rdf::read_quads(reader, format).map_err(|e| match e {
+            crate::rdf::ReadError::Io(e) => DatabaseError::Storage(e),
+            crate::rdf::ReadError::Syntax(m) => DatabaseError::Syntax(m),
+        })?;
+        let mut scope = BlankScope::default();
+        let mut changes = Vec::with_capacity(quads.len());
+        for q in quads {
+            let graph = match q.graph_name {
+                GraphName::DefaultGraph => GraphTarget::Default,
+                GraphName::NamedNode(n) => GraphTarget::Named(n),
+                GraphName::BlankNode(_) => return Err(DatabaseError::Unsupported("blank-node graph names are not supported".into())),
+            };
+            let t = scope.rewrite(crate::rdf::Triple::new(q.subject, q.predicate, q.object));
+            changes.push(DatasetChange::Quad(graph, Change::Insert, t));
+        }
+        match &self.store {
+            Backend::Disk(store) => Ok(store.commit_dataset(&changes).map_err(crate::store::storage_error)?),
+            Backend::Memory(store) => {
+                let _writer = store.writer.lock().unwrap();
+                let current = store.current.read().unwrap().clone();
+                let (next, count) = current.with_dataset_changes(&changes)?;
+                *store.current.write().unwrap() = Arc::new(next);
+                Ok(count)
             }
         }
     }

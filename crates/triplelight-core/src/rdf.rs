@@ -1,7 +1,27 @@
 //! RDF terms and text formats as used by TripleLight's public API. Bindings (Python, Node, WASM) import these from
 //! here instead of depending on the underlying parsing and term crates, so those can be replaced without changing
 //! any binding.
-pub use oxrdf::{BlankNode, Literal, NamedNode, NamedOrBlankNode, Term, TermRef, Triple, Variable};
+pub use oxrdf::{BlankNode, GraphName, Literal, NamedNode, NamedOrBlankNode, Quad, Term, TermRef, Triple, Variable};
+
+/// RDF dataset text formats TripleLight reads (task #36).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum QuadFormat { NQuads, TriG }
+
+/// A failure reading an RDF document: the reader's own error, or invalid syntax.
+#[derive(Debug)]
+pub enum ReadError { Io(std::io::Error), Syntax(String) }
+
+/// Every quad of an N-Quads or TriG document, in document order.
+pub fn read_quads(reader: impl std::io::Read, format: QuadFormat) -> Result<Vec<Quad>, ReadError> {
+    let quads = match format {
+        QuadFormat::NQuads => oxttl::NQuadsParser::new().for_reader(reader).collect::<Result<Vec<_>, _>>(),
+        QuadFormat::TriG => oxttl::TriGParser::new().for_reader(reader).collect::<Result<Vec<_>, _>>(),
+    };
+    quads.map_err(|e| match e {
+        oxttl::TurtleParseError::Io(e) => ReadError::Io(e),
+        oxttl::TurtleParseError::Syntax(e) => ReadError::Syntax(e.to_string()),
+    })
+}
 
 /// RDF text formats TripleLight reads.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
