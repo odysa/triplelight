@@ -123,8 +123,8 @@ impl Builder {
         Ok(())
     }
     fn finish(mut self, dir: &Path) -> io::Result<()> {
-        let sorted = self.terms.finish()?;
-        let mut input = BufReader::new(File::open(&sorted)?);
+        // The last merge is not written out: records stream straight from the runs into the dictionary pass.
+        let mut stream = self.terms.finish_stream()?;
         let mut mapping = ExternalSort::new(dir, MEMORY, 17)?;
         let mut dict = BufWriter::new(
             OpenOptions::new()
@@ -138,7 +138,7 @@ impl Builder {
         let mut previous = Vec::new();
         let mut current = TermId(0);
         let mut unique = 0u64;
-        while let Some(r) = read_record(&mut input, MAX_TERM + 10)? {
+        while let Some(r) = stream.next_record()? {
             if r.len() < 10 || r[r.len() - 10] != 0 {
                 return Err(bad("malformed term run"));
             }
@@ -176,9 +176,8 @@ impl Builder {
         dict.flush()?;
         dict.get_ref().sync_all()?;
         drop(dict);
-        drop(input);
-        // The merged term file has been fully consumed; free it before the mapping sort and index builds.
-        fs::remove_file(&sorted)?;
+        // The term runs have been fully consumed; free them before the mapping sort and index builds.
+        stream.discard()?;
         checkpoint(1)?;
         let assignments = mapping.finish()?;
         let mut input = BufReader::new(File::open(&assignments)?);
@@ -363,13 +362,15 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
     });
     let builders = results.into_iter().collect::<io::Result<Vec<_>>>()?;
     let mut paths = Vec::with_capacity(builders.len());
+    let mut observed = 0usize;
     let mut count = 0u64;
     for (b, path) in &builders {
         count = count.checked_add(b.triples).ok_or_else(|| bad("too many triples"))?;
         paths.push(path.clone());
+        observed = observed.max(b.terms.observed_max());
     }
     let mut combined = Builder::new(dir)?;
-    combined.terms.import_sorted(&paths)?;
+    combined.terms.import_sorted(&paths, observed)?;
     combined.triples = count;
     combined.index_workers = shards.min(3);
     drop(builders);
