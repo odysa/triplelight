@@ -752,6 +752,7 @@ version = "0.1.0"
 dependencies = [
  "oxrdf",
  "oxttl",
+ "triplelight-iri",
 ]
 
 [[package]]

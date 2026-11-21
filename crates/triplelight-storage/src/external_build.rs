@@ -472,8 +472,8 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
                 let mut b = Builder::with_budget(dir, worker_budget)?;
                 let mut file = File::open(path)?; file.seek(SeekFrom::Start(start))?;
                 let input = BufReader::new(file.take(end - start));
-                for t in oxttl::NTriplesParser::new().for_reader(input) {
-                    let t: Triple = t.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                for t in triplelight_core::ntriples::read_ntriples(input) {
+                    let t: Triple = t?;
                     if b.triples >= (1u64 << 56) { return Err(bad("too many triples in shard")); }
                     let id = ((shard as u64) << 56) | b.triples;
                     b.add_with_id([t.subject.to_string(), t.predicate.to_string(), t.object.to_string()], id)?;
@@ -506,8 +506,8 @@ pub(super) fn from_nt(dir: &Path, path: Option<&Path>) -> io::Result<()> {
     let mut builder = Builder::new(dir)?;
     if let Some(path) = path {
         let input = BufReader::new(File::open(path)?);
-        for t in oxttl::NTriplesParser::new().for_reader(input) {
-            let t: Triple = t.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        for t in triplelight_core::ntriples::read_ntriples(input) {
+            let t: Triple = t?;
             builder.add([
                 t.subject.to_string(),
                 t.predicate.to_string(),

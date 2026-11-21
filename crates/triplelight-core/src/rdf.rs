@@ -11,10 +11,22 @@ pub enum QuadFormat { NQuads, TriG }
 #[derive(Debug)]
 pub enum ReadError { Io(std::io::Error), Syntax(String) }
 
+impl std::fmt::Display for ReadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self { ReadError::Io(e) => e.fmt(f), ReadError::Syntax(m) => f.write_str(m) }
+    }
+}
+impl std::error::Error for ReadError {}
+impl From<ReadError> for std::io::Error {
+    fn from(e: ReadError) -> Self {
+        match e { ReadError::Io(e) => e, ReadError::Syntax(m) => std::io::Error::new(std::io::ErrorKind::InvalidData, m) }
+    }
+}
+
 /// Every quad of an N-Quads or TriG document, in document order.
 pub fn read_quads(reader: impl std::io::Read, format: QuadFormat) -> Result<Vec<Quad>, ReadError> {
     let quads = match format {
-        QuadFormat::NQuads => oxttl::NQuadsParser::new().for_reader(reader).collect::<Result<Vec<_>, _>>(),
+        QuadFormat::NQuads => return crate::ntriples::read_nquads(std::io::BufReader::new(reader)).collect(),
         QuadFormat::TriG => oxttl::TriGParser::new().for_reader(reader).collect::<Result<Vec<_>, _>>(),
     };
     quads.map_err(|e| match e {
@@ -37,7 +49,7 @@ impl Format {
 /// Parses a whole document; on the first syntax error returns its message and no triples.
 pub fn parse_triples(data: &[u8], format: Format) -> Result<Vec<Triple>, String> {
     match format {
-        Format::NTriples => oxttl::NTriplesParser::new().for_slice(data).collect::<Result<_, _>>().map_err(|e| e.to_string()),
+        Format::NTriples => crate::ntriples::read_ntriples_slice(data).collect::<Result<_, _>>().map_err(|e| e.to_string()),
         Format::Turtle => oxttl::TurtleParser::new().for_slice(data).collect::<Result<_, _>>().map_err(|e| e.to_string()),
     }
 }

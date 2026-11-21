@@ -247,17 +247,19 @@ pub struct MemorySnapshot {
 }
 impl MemorySnapshot {
     /// Parse N-Triples and construct a snapshot only if the entire input is valid.
-    pub fn from_ntriples(reader: impl std::io::Read) -> Result<Self, oxttl::TurtleParseError> {
-        let triples = oxttl::NTriplesParser::new()
-            .for_reader(reader)
-            .collect::<Result<Vec<_>, _>>()?;
+    pub fn from_ntriples(reader: impl std::io::Read) -> std::io::Result<Self> {
+        let triples = triplelight_core::ntriples::read_ntriples(std::io::BufReader::new(reader)).collect::<Result<Vec<_>, _>>()?;
         Ok(Self::from_triples(triples))
     }
     /// Parse Turtle and reject the entire load on syntax or I/O errors.
-    pub fn from_turtle(reader: impl std::io::Read) -> Result<Self, oxttl::TurtleParseError> {
+    pub fn from_turtle(reader: impl std::io::Read) -> std::io::Result<Self> {
         let triples = oxttl::TurtleParser::new()
             .for_reader(reader)
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| match e {
+                oxttl::TurtleParseError::Io(e) => e,
+                oxttl::TurtleParseError::Syntax(e) => std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()),
+            })?;
         Ok(Self::from_triples(triples))
     }
     /// Parse an N-Triples file in bounded worker threads, then sort the six indexes in parallel.
@@ -273,8 +275,7 @@ impl MemorySnapshot {
                 "workers must be nonzero",
             ));
         }
-        let readers =
-            oxttl::NTriplesParser::new().split_file_for_parallel_parsing(path, workers)?;
+        let readers = triplelight_core::ntriples::split_ntriples_file(path.as_ref(), workers)?;
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(workers)
             .build()
@@ -284,7 +285,7 @@ impl MemorySnapshot {
                 .into_par_iter()
                 .map(|reader| reader.collect())
                 .collect();
-            let chunks = chunks.map_err(std::io::Error::other)?;
+            let chunks = chunks.map_err(std::io::Error::from)?;
             Ok(Self::build_triples(chunks.into_iter().flatten(), true))
         })
     }
