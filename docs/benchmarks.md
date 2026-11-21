@@ -123,6 +123,8 @@ The [Blazegraph LUBM-100 qualification](blazegraph-lubm100-qualification-v1/READ
 
 The [sparq-rdf embedded fixture](sparq-embedded-qualification-v1/README.md) passed 24 typed query checks across memory, the saved graph in the loader process, and a fresh read-only indexed reopen. No workload timing.
 
+The [Grafeo embedded fixture](grafeo-embedded-qualification-v1/README.md) passed 24 typed query checks across memory, disk load and fresh-process reopen. Both loads added nine triples, and the reopened graph returned nine in SPARQL COUNT. No workload timing.
+
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
 nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.

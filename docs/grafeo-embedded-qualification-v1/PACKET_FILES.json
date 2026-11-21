@@ -1,0 +1,43 @@
+{
+  "files": {
+    "AUDIT.json": "0c94463ef7c9384eedc3c2bc787ea4b3beb64bffa5e501571a5fde40a7689fc5",
+    "LOCK_RELEASE.json": "aa3fee934a2a832ca5c16be3d24730d8898a80de67edf64b684c17a9961cdeb1",
+    "replay.py": "3b0e4127a2c1b591b1bb737143125bc3679198c215bacf397b8ac9e42f585241",
+    "run/RUNTIME.json": "82162655db1aa32d1e50220a68061b0e526086e720e23fe558bd2d2ebbc7e760",
+    "run/SETUP.json": "529b7202e3c3f3b2917051ac474d43c4703f95fc7012b9c842b38c85b27ca5da",
+    "run/fixture/RECEIPT.json": "d06c949f6690170b34546246d793885569812e21ad39eaa937be31b10448bfb9",
+    "run/fixture/RUNTIME-AFTER.json": "82162655db1aa32d1e50220a68061b0e526086e720e23fe558bd2d2ebbc7e760",
+    "run/fixture/RUNTIME-BEFORE.json": "82162655db1aa32d1e50220a68061b0e526086e720e23fe558bd2d2ebbc7e760",
+    "run/fixture/load.json": "9466e4fc5a7aafc0eea5d8785ee41b72945e9fd3aead5f1bb5b5a1acfe548a4b",
+    "run/fixture/load.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "run/fixture/load.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "run/fixture/memory.json": "905e522196c7c9cee90d95e98b402fff12675468fe53b9a6dfd4022ebf478560",
+    "run/fixture/memory.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "run/fixture/memory.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "run/fixture/reopen.json": "d045ce4ca690a495d9195f028c7eb084f823ea16c32c1c95e7ba24802fcf045b",
+    "run/fixture/reopen.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "run/fixture/reopen.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "run/fixture/runtime-after.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "run/fixture/runtime-before.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "run/fixture/store/fixture.grafeo": "9bf410a59bf02fd17ebf43be3bd80e45adbe9448f53e682e765d3e73015384ad",
+    "run/install.stdout": "ca49a344d60ed3c27352d8b7f3aab0325d8845c34fba91e31078ca7968cb921c",
+    "run/pip-check.stdout": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+    "source/DEPENDENCIES.json": "29dd3fea2961604471cdbd78ac9f182c239b5fee97a6f194fdb9b834a745b4d2",
+    "source/EXECUTION.md": "f5046e92d6f0c25e2576deeef9b739861a1678c7a64d7890c292e38f5704ef8a",
+    "source/FREEZE.json": "055330af035a94a0135ca09cb4ee07039ba6b8a2766a14482e7bf0c1405261af",
+    "source/OFFLINE.json": "cc3c7c57f35f41d365bc3b089464a23e9f918bd47d876f3b1dc10589ff1499eb",
+    "source/check_answers.py": "8ccc1fffceee0707a40f26168c96d4f3c34a1c5d81e031c5bcd4d0a3771ab2c1",
+    "source/consumer-fixture-jena.json": "b8b6e0bf2ae822a6b354d2846a440ae572516a73cc08d6432df93b8008cab5bd",
+    "source/consumer-fixture.nt": "419291c55eb34af3bdc59a43ddcda019436ade3e1075ca034c3505247d8e9266",
+    "source/consumer-fixture.rq": "c09c8b5bb1b2deca899383d71e89963908536cb231b0494a56e3664be528756d",
+    "source/supervise.py": "905f6d4810ff701da8ddf09e9e2cf1c4de8e4065308648e15b0de3e865f9e707",
+    "source/worker.py": "99c17f61c7e2fdec4f1cb040358cb0229cb6914947434b9e7ff2a8a7393ddd63",
+    "v2/RECEIPT.json": "491f6ba4c66eb9e6c5587f7f77163f7b6421530489ef9c5cd66c0ebd2d5c5b5c",
+    "v2/load.stderr": "2f4cd1bc4030ec6bc1f6f8681fc5166de1efe43c550a50df4bdbcfc7e15664b4",
+    "v2/memory.json": "905e522196c7c9cee90d95e98b402fff12675468fe53b9a6dfd4022ebf478560"
+  },
+  "packet": {
+    "bytes": 18404,
+    "sha256": "429673e3fd08ef9230c756b900eb97c385049bbd7b0076192087d2b9f72763c6"
+  }
+}
