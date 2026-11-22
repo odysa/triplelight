@@ -68,12 +68,13 @@ dataset without named graphs writes exactly the `RDFSNAP4` base. Compaction move
 base; a model test runs 60 rounds of random updates, compactions and reopens against a set model. Still different from the full
 standard: `LOAD`, blank-node graph names and empty TriG graph blocks are not supported (section 4).
 
-**Own parsers (#45).** TripleLight no longer depends on Oxigraph's parsers at run time. Its own IRI resolver
-(`triplelight-iri`), N-Triples/N-Quads parser and Turtle/TriG parser accept and reject exactly what the previous
-`oxiri`/`oxttl` code did and emit the same statements. Parity is checked by differential tests against those crates:
+**Own parsers and term types (#45).** TripleLight no longer depends on any Oxigraph crate at run time. Its own IRI
+resolver (`triplelight-iri`), N-Triples/N-Quads parser, Turtle/TriG parser and RDF term types (`triplelight-rdf`)
+accept, reject and produce exactly what the previous `oxiri`/`oxttl`/`oxrdf` code did. Parity is checked by differential tests against those crates:
 the W3C RDF 1.1 N-Triples, N-Quads, Turtle and TriG suites (161 and 992 files), curated edge cases, and
 hundreds of thousands of random documents, plus every statement of LUBM-100, BSBM-10M and WatDiv-100. Stores built
-with the old and new N-Triples parser are byte-identical. On BSBM-10M, N-Triples parsing takes 8.4–9.2 s against
+with the old and new code are byte-identical, including named-graph stores, and each version verifies the other's
+stores. On BSBM-10M, N-Triples parsing takes 8.4–9.2 s against
 10.1–10.5 s for the old parser, and Turtle is at parity (11.6–11.9 s against 11.4–11.9 s). The old crates remain as test-only comparators, and
 `THIRD_PARTY_NOTICES.md` records the MIT notices for the code the parsers are derived from.
 
@@ -108,6 +109,9 @@ and then blocking every compaction (#95). `verify` is 3.4–3.7× faster and sti
 
 ## 5. Where to go next
 
-The measured gaps point to three jobs: a parallel, lower-scratch disk build; a smaller resident footprint for the
-BI templates where QLever wins; and moving the remaining Oxigraph-derived term types onto TripleLight's own
-(step 4 of #45).
+The measured gaps and a survey of recent database research (#74) point to five experiments, each registered and
+tested before any build-out: sizing the block cache to the working set (memory tracks the configured budget, not the
+data); streaming results with batched decoding (two LUBM-1000 queries returning 7.9M rows each take 5.5 of the 6.4 s
+total); numbers stored inside the ID in value order, so numeric range filters become index range scans; a parallel
+external build that derives orders in pairs; and building only four of the six orders by default (#73: the 54
+benchmark queries never use SOP or OPS, and dropping them makes stores 17–36% smaller).
