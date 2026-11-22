@@ -111,3 +111,46 @@ fn reported_count_is_the_sum_of_the_operations_on_both_backends() {
     }
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+/// `Quads ::= TriplesTemplate? (QuadsNotTriples '.'? TriplesTemplate?)*`: a dot may end the triples before a
+/// GRAPH block and may follow the block, with or without triples after it.
+#[test]
+fn a_dot_may_precede_and_follow_a_graph_block() {
+    let two = "\"2\"^^<http://www.w3.org/2001/XMLSchema#integer>";
+    for data in [
+        "INSERT DATA { :a :p 2 . GRAPH :g { :a :p 1 } }",
+        "INSERT DATA { :a :p 2 . GRAPH :g { :a :p 1 } . }",
+        "INSERT DATA { :a :p 2 . GRAPH :g { :a :p 1 . } . }",
+        "INSERT DATA { :a :p 2 GRAPH :g { :a :p 1 } }",
+        "INSERT DATA { GRAPH :g { :a :p 1 } . :a :p 2 }",
+        "INSERT DATA { GRAPH :g { :a :p 1 } :a :p 2 . }",
+        "INSERT DATA { :a :p 2 . GRAPH :g { :a :p 1 } . GRAPH :h { } }",
+    ] {
+        let db = Database::in_memory();
+        update(&db, data);
+        assert_eq!(rows(&db, "SELECT ?o { GRAPH :g { :a :p ?o } }"), one(ONE), "{data}");
+        assert_eq!(rows(&db, "SELECT ?o { :a :p ?o }"), one(two), "{data}");
+    }
+}
+
+#[test]
+fn a_dot_before_a_graph_block_in_delete_data_and_templates() {
+    let db = Database::in_memory();
+    update(&db, "INSERT DATA { :a :p 2 . GRAPH :g { :a :p 1 } . :b :p 3 }");
+    // DELETE DATA with a default-graph triple, a dot, then a GRAPH block.
+    update(&db, "DELETE DATA { :b :p 3 . GRAPH :g { :a :p 1 } }");
+    assert_eq!(rows(&db, "SELECT ?o { GRAPH :g { :a :p ?o } }"), Vec::<Vec<String>>::new());
+    assert_eq!(rows(&db, "SELECT ?s { ?s :p 3 }"), Vec::<Vec<String>>::new());
+    // DELETE/INSERT templates.
+    update(&db, "DELETE { ?s :p ?o . GRAPH :g { ?s :p ?o } } INSERT { ?s :q ?o . GRAPH :h { ?s :q ?o } } WHERE { ?s :p ?o }");
+    assert_eq!(rows(&db, "SELECT ?s { :a :p ?o }"), Vec::<Vec<String>>::new());
+    assert_eq!(rows(&db, "SELECT ?o { :a :q ?o }").len(), 1);
+    assert_eq!(rows(&db, "SELECT ?o { GRAPH :h { :a :q ?o } }").len(), 1);
+}
+
+#[test]
+fn graph_still_needs_a_term_or_close_after_a_dot() {
+    let db = Database::in_memory();
+    assert!(db.update(&format!("{P}INSERT DATA {{ :a :p 1 . GRAPH }}")).is_err());
+    assert!(db.update(&format!("{P}INSERT DATA {{ :a :p 1 . . }}")).is_err());
+}
