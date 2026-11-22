@@ -108,6 +108,11 @@ fn main() {
                 std::process::exit(2);
             }
             if args[2].ends_with(".ttl") {
+                // Turtle takes the in-memory path, which writes all six orders, so a smaller order set can't be honoured.
+                if args.iter().any(|a| a.starts_with("--orders=") && a != "--orders=6") {
+                    eprintln!("--orders=4 needs N-Triples input; Turtle builds keep all six orders");
+                    std::process::exit(2);
+                }
                 let Backend::Memory(source) = load(&args[2], &args) else { unreachable!() };
                 DiskSnapshot::create(&args[3], &source).expect("create disk snapshot");
             } else {

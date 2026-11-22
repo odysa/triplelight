@@ -279,6 +279,9 @@ impl DiskSnapshot {
         };
         let kept = |slot: usize| orders & (1 << slot) != 0;
         let order_count = orders.count_ones() as usize;
+        // Cache shares: three for the dictionary and one per kept order file (9, or 15 with the six quad orders, for
+        // a six-order base), so a base that keeps fewer orders gives the rest more cache instead of leaving it unused.
+        let shares = 3 + order_count + if named_graphs { order_count } else { 0 };
         // RDFSNAP5: the RDFSNAP4 identities, then six quad orders and the catalog.
         let mut expected = vec![[0u8; 32]; if version == 3 { 2 } else { 1 } + order_count + if named_graphs { order_count + 1 } else { 0 }];
         for item in &mut expected {
@@ -290,7 +293,6 @@ impl DiskSnapshot {
         }
         let (dictionary, index_offset) = if version >= 4 {
             use super::lazy_dictionary::{DictionaryCache, LazyIndex, Order, UNIFIED_FILE};
-            let shares = if named_graphs { super::disk_index::DATASET_SHARES } else { super::disk_index::DEFAULT_SHARES };
             let unified = LazyIndex::open_shared(&dir.join(UNIFIED_FILE), Order::Unified, DictionaryCache::with_shares(shares))?;
             if unified.identity() != expected[0] {
                 return Err(bad("dictionary directory checksum mismatch"));
@@ -314,7 +316,6 @@ impl DiskSnapshot {
         };
         let mut indexes = Vec::new();
         // With the six quad orders, every index takes a smaller share so the snapshot stays within its cache budget.
-        let shares = if named_graphs { super::disk_index::DATASET_SHARES } else { super::disk_index::DEFAULT_SHARES };
         let mut identities = expected[index_offset..].iter();
         for (i, name) in FILES[1..].iter().enumerate() {
             if !kept(i) { indexes.push(None); continue }
@@ -332,7 +333,7 @@ impl DiskSnapshot {
             let mut quads = Vec::new();
             for (i, name) in QUAD_FILES.iter().enumerate() {
                 if !kept(i) { quads.push(None); continue }
-                let index = DiskIndex::<4>::open_with_share(dir.join(name), super::disk_index::DATASET_SHARES)?;
+                let index = DiskIndex::<4>::open_with_share(dir.join(name), shares)?;
                 if Some(&index.identity()) != identities.next() {
                     return Err(bad("quad index directory checksum mismatch"));
                 }
@@ -792,6 +793,11 @@ mod tests {
         let full = std::sync::Arc::new(DiskSnapshot::open(&six).unwrap());
         let derived = std::sync::Arc::new(DiskSnapshot::open(&four).unwrap());
         derived.verify().unwrap();
+        // Cache shares follow the kept files: 3 + 6 + 6 = 15 for the six-order dataset base, 3 + 4 + 4 = 11 for the
+        // four-order one, so each kept index of the smaller base gets a larger share.
+        let capacity = |shares: usize| (super::disk_index::cache_budget_mb() * 1024 * 1024 / (shares * 16 * 256 * 24)).max(1);
+        assert_eq!(full.index(Perm::Spo).shard_capacity(), capacity(15));
+        assert_eq!(derived.index(Perm::Spo).shard_capacity(), capacity(11));
         let rows = |view: &dyn Snapshot, perm: Perm, prefix: &[TermId]| -> Vec<[TermId; 3]> {
             let mut v = Vec::new();
             for b in view.scan(perm, prefix) {
