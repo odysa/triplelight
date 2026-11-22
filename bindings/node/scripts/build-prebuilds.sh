@@ -1,8 +1,8 @@
 #!/bin/bash
 # Builds the addon for every platform the npm package supports into prebuilds/<platform>-<arch>/triplelight.node.
 # Run on an Apple Silicon Mac with Docker: macOS arm64 natively, Linux arm64 in a container, Linux x64 cross-compiled
-# in the same container. The Linux addons are built on Debian 11 (bullseye, glibc 2.31) so they load on glibc 2.31 or
-# newer; the script prints the glibc symbol version each addon actually needs.
+# in the same container. The Linux addons are built on Debian 11 (bullseye, glibc 2.31) with the pinned toolchain, so they
+# load on glibc 2.31 or newer; the script prints the glibc symbol version each addon actually needs.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT=$(cd ../.. && pwd)
@@ -11,8 +11,11 @@ mkdir -p prebuilds/darwin-arm64 prebuilds/linux-arm64 prebuilds/linux-x64
 cargo build --release --locked
 cp target/release/libtriplelight_node.dylib prebuilds/darwin-arm64/triplelight.node
 docker run --rm --platform linux/arm64 -v "$ROOT:/src" -w /src/bindings/node \
-  -e CARGO_TARGET_DIR=/tmp/target "rust:$TOOLCHAIN-bullseye" bash -ec "
-    apt-get update -qq && apt-get install -y -qq gcc-x86-64-linux-gnu binutils-multiarch >/dev/null
+  -e CARGO_TARGET_DIR=/tmp/target debian:bullseye bash -ec "
+    apt-get update -qq
+    apt-get install -y -qq build-essential curl ca-certificates gcc-x86-64-linux-gnu binutils-multiarch >/dev/null
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none --profile minimal >/dev/null 2>&1
+    . /root/.cargo/env
     rustup toolchain install $TOOLCHAIN --profile minimal -t x86_64-unknown-linux-gnu >/dev/null 2>&1
     cargo +$TOOLCHAIN build --release --locked
     cp /tmp/target/release/libtriplelight_node.so prebuilds/linux-arm64/triplelight.node
