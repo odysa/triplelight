@@ -293,6 +293,9 @@ where
     pub fn open(path: impl AsRef<Path>) -> io::Result<Self> {
         Self::open_with_share(path, DEFAULT_SHARES)
     }
+    /// Blocks one cache shard holds (tests check the share a snapshot gave this index).
+    #[cfg(test)]
+    pub(super) fn shard_capacity(&self) -> usize { self.shard_capacity }
     /// Opens with a block cache of `1 / shares` of the snapshot budget (the dictionary takes three shares; a
     /// triple-only snapshot's six orders one each, so 9; with the six quad orders of a named-graph base, 15).
     pub fn open_with_share(path: impl AsRef<Path>, shares: usize) -> io::Result<Self> {

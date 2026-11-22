@@ -21,10 +21,21 @@ const TERM_SORT_RECORD_MAX: usize = MAX_TERM + 10;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
 static BUILD_BUDGET_MB: AtomicUsize = AtomicUsize::new(0);
 static FORCE_EXTERNAL: AtomicBool = AtomicBool::new(false);
-static KEPT_ORDERS: AtomicU8 = AtomicU8::new(super::disk_snapshot::ALL_ORDERS);
-/// Which orders this process's external builds (imports and compaction) write, as bits of `Perm::ALL` positions
-/// (task #73). The default, `ALL_ORDERS`, writes the six-order `RDFSNAP4`/`RDFSNAP5` layout byte for byte; any
-/// smaller set writes an `RDFSNAP6` base. The set must contain `REQUIRED_ORDERS` (SPO, PSO, POS, OSP).
+static KEPT_ORDERS: AtomicU8 = AtomicU8::new(super::disk_snapshot::REQUIRED_ORDERS);
+#[cfg(test)]
+thread_local! { static TEST_ORDERS: std::cell::Cell<Option<u8>> = const { std::cell::Cell::new(None) }; }
+/// Tests run in parallel, so a test that needs another order set than the default sets it for its own thread.
+#[cfg(test)]
+pub(crate) fn keep_orders_on_this_thread(orders: u8) { TEST_ORDERS.with(|c| c.set(Some(orders))) }
+fn kept_orders_setting() -> u8 {
+    #[cfg(test)]
+    if let Some(orders) = TEST_ORDERS.with(|c| c.get()) { return orders }
+    KEPT_ORDERS.load(Ordering::Relaxed)
+}
+/// Which orders this process's new bases (imports and `build-disk`) keep, as bits of `Perm::ALL` positions (task
+/// #73). The default, `REQUIRED_ORDERS` (SPO, PSO, POS, OSP), writes an `RDFSNAP6` base; `ALL_ORDERS` writes the
+/// six-order `RDFSNAP4`/`RDFSNAP5` layout byte for byte, which older binaries can open. Compaction keeps the order set
+/// of the base it replaces instead. The set must contain `REQUIRED_ORDERS`.
 pub fn set_kept_orders(orders: u8) -> io::Result<()> {
     use super::disk_snapshot::{ALL_ORDERS, REQUIRED_ORDERS};
     if orders & !ALL_ORDERS != 0 || orders & REQUIRED_ORDERS != REQUIRED_ORDERS {
@@ -58,7 +69,9 @@ pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io:
     if let Some(path) = source {
         let bytes = fs::metadata(path)?.len();
         let budget = (budget_mb() as u128) * 1_048_576;
-        if !FORCE_EXTERNAL.load(Ordering::Relaxed) && (bytes as u128) * 3 <= budget {
+        // The in-memory path writes all six orders (RDFSNAP3), so any smaller order set takes the external builder.
+        let six = kept_orders_setting() == super::disk_snapshot::ALL_ORDERS;
+        if six && !FORCE_EXTERNAL.load(Ordering::Relaxed) && (bytes as u128) * 3 <= budget {
             eprintln!("disk build strategy: in-memory (estimated 3x input; not an RSS limit)");
             let snapshot =
                 super::MemorySnapshot::from_ntriples_parallel_file(path, workers.max(1))?;
@@ -144,7 +157,7 @@ impl Builder {
             quads: 0,
             graph_names: 0,
             index_workers: 1,
-            orders: KEPT_ORDERS.load(Ordering::Relaxed),
+            orders: kept_orders_setting(),
         })
     }
     fn add(&mut self, terms: [String; 3]) -> io::Result<()> {
@@ -547,7 +560,7 @@ pub(super) fn from_nt(dir: &Path, path: Option<&Path>) -> io::Result<()> {
 /// A base of the default graph and every named graph of `source` (task #36): `RDFSNAP5` if it has named graphs,
 /// otherwise exactly `from_snapshot` of its default graph.
 pub(super) fn from_dataset(dir: &Path, source: &dyn triplelight_core::storage::DatasetView) -> io::Result<()> {
-    from_dataset_keeping(dir, source, KEPT_ORDERS.load(Ordering::Relaxed))
+    from_dataset_keeping(dir, source, kept_orders_setting())
 }
 /// `from_dataset` writing the orders `orders` (bits of `Perm::ALL` positions) instead of the process setting.
 pub(super) fn from_dataset_keeping(dir: &Path, source: &dyn triplelight_core::storage::DatasetView, orders: u8) -> io::Result<()> {
@@ -582,7 +595,7 @@ pub(super) fn from_dataset_keeping(dir: &Path, source: &dyn triplelight_core::st
     builder.finish(dir)
 }
 pub(super) fn from_snapshot(dir: &Path, source: &dyn Snapshot) -> io::Result<()> {
-    from_snapshot_keeping(dir, source, KEPT_ORDERS.load(Ordering::Relaxed))
+    from_snapshot_keeping(dir, source, kept_orders_setting())
 }
 pub(super) fn from_snapshot_keeping(dir: &Path, source: &dyn Snapshot, orders: u8) -> io::Result<()> {
     fs::create_dir(dir)?;
@@ -614,6 +627,7 @@ mod tests {
     };
     #[test]
     fn sharded_nt_preserves_terms_across_boundaries() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
         let root = std::env::temp_dir().join(format!("rdf-shards-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root); fs::create_dir(&root).unwrap();
         let file = root.join("input.nt");
@@ -693,8 +707,28 @@ mod tests {
         input
     }
 
+    /// Task #73: by default a new base keeps SPO, PSO, POS and OSP as `RDFSNAP6`, from the external builder and from
+    /// the adaptive one, which then skips its six-order in-memory path even for a small input.
+    #[test]
+    fn default_builds_keep_four_orders() {
+        let dir = std::env::temp_dir().join(format!("rdf-ext-four-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir(&dir).unwrap();
+        let input = small_input(&dir);
+        for (label, out) in [("external", dir.join("external")), ("adaptive", dir.join("adaptive"))] {
+            if label == "external" { from_nt(&out, Some(&input)).unwrap() } else { adaptive(&out, Some(&input), 1).unwrap() }
+            let mut names: Vec<_> = fs::read_dir(&out).unwrap().map(|e| e.unwrap().file_name().into_string().unwrap()).collect();
+            names.sort();
+            assert_eq!(names, ["MANIFEST", "dictionary.unified", "osp", "pos", "pso", "spo"], "{label}");
+            assert_eq!(&fs::read(out.join("MANIFEST")).unwrap()[..10], b"RDFSNAP6\x1d\x00", "{label}");
+            DiskSnapshot::open(&out).unwrap().verify().unwrap();
+        }
+        fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn early_scratch_deletion_leaves_only_the_published_files() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
         let dir = std::env::temp_dir().join(format!("rdf-ext-clean-{}", std::process::id()));
         fs::create_dir(&dir).unwrap();
         let input = small_input(&dir);
@@ -726,6 +760,7 @@ mod tests {
 
     #[test]
     fn snapshot_format_fence_refuses_mismatched_manifests() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
         let dir = std::env::temp_dir().join(format!("rdf-ext-fence-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir(&dir).unwrap();

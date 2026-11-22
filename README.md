@@ -99,12 +99,13 @@ checks for each comparison.
   queries; updates into named graphs (`GRAPH` in `INSERT`/`DELETE`, `WITH`, `USING`); and graph management with
   `CREATE`, `DROP`, `CLEAR`, `ADD`, `MOVE` and `COPY`. A request's operations apply in order and commit together.
   `load` also reads N-Quads (`.nq`) and TriG (`.trig`) files into their named graphs. Persistent stores record
-  named-graph changes in the write-ahead log and compact named graphs into an `RDFSNAP5` base.
+  named-graph changes in the write-ahead log and compact named graphs into the base.
 - **Exact numbers, within a range**: `xsd:decimal` arithmetic is exact within 96 bits and 28 fractional digits, and
   `xsd:integer` within 64 bits; results outside that range are query errors (Jena uses arbitrary precision).
   Non-terminating decimal quotients such as 1/3 are rounded to 28 digits. Decimal underflow is an error, which is
   stricter than XPath (XPath returns 0.0), so numeric behavior is not fully SPARQL-conformant.
-- **Storage**: dictionary-encoded 64-bit term IDs, six sorted triple orders, compressed and checksummed blocks
+- **Storage**: dictionary-encoded 64-bit term IDs, four sorted triple orders that also answer the other two (all six
+  with `--orders=6`), compressed and checksummed blocks
   with a shared cache, write-ahead log with group commit, snapshot reads, and compaction.
 - **Query engine**: cost-based join ordering from statistics, worst-case-optimal (leapfrog) and bind joins,
   filter pushdown, hash aggregation and top-k on term IDs.

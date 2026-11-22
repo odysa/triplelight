@@ -8,10 +8,11 @@ the immutable base formats, how bases are built, opened and verified, and the bl
 ## Commands
 
 ```sh
-# Build a base directory from N-Triples (fails if the directory exists).
-triplelight build-disk data.nt ./snapshot --build-external
-# N-Triples only: keep four of the six triple orders (an RDFSNAP6 base; see "Kept orders" below).
-triplelight build-disk data.nt ./snapshot4 --orders=4
+# Build a base directory from N-Triples (fails if the directory exists). By default it keeps four of the six
+# triple orders, an RDFSNAP6 base (see "Kept orders" below).
+triplelight build-disk data.nt ./snapshot
+# Keep all six orders instead, a layout that versions before RDFSNAP6 can open.
+triplelight build-disk data.nt ./snapshot6 --orders=6
 # Query a base, or check every block and cross-index invariant (also prints each file's size).
 triplelight query ./snapshot 'SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }' --disk
 triplelight verify ./snapshot
@@ -100,23 +101,31 @@ When SOP or OPS is absent, the base answers it with the same rows in the same or
   at a time, and each group is sorted. A seek within one group reads the group once and then binary-searches it.
   Only a scan with nothing bound reads and sorts the whole table, one group at a time.
 
-The same rules apply to the quad orders `gsop` and `gops`. `build-disk --orders=4` writes such a base from N-Triples
-(a Turtle input still goes through the in-memory path and gets all six orders); without the flag, builds write all six
-orders in the `RDFSNAP4`/`RDFSNAP5` layout. A base keeps its set across compactions; only
-a new build changes it.
+The same rules apply to the quad orders `gsop` and `gops`. **New bases keep four orders by default:** imports and
+`build-disk` from N-Triples write `RDFSNAP6` with SPO, PSO, POS and OSP. `--orders=6` writes all six in the
+`RDFSNAP4`/`RDFSNAP5` layout, which binaries from before `RDFSNAP6` can open; a four-order base they refuse. Turtle
+input always builds six orders, and `build-disk` exits with an error if it is asked for four. A base keeps its set
+across compactions, so stores created before the four-order default keep six; only a new build changes the set.
+Measured on LUBM-100, WatDiv-100 and BSBM-10M (#73): four-order stores are 36%, 34% and 16% smaller, return the same
+answers on all 54 benchmark queries and three exploration queries, and take 0.2–0.7% longer in total, which is within
+run-to-run noise.
 
 ## Building a base
 
 `build-disk` (and a store's first import) chooses a strategy from the input size. If three times the N-Triples file
 size fits the build budget, an in-memory loader parses it and writes the base; otherwise an external-sort builder
 writes it from sorted scratch runs. The budget is advisory (not a peak-memory limit): `--build-memory-mb=N`, by default
-half of physical memory, or 256 MiB if that cannot be read. `--build-external` forces the external builder, and
-`--orders=4` implies it. Compaction always uses the external builder. Turtle input uses the in-memory loader. The
+half of physical memory, or 256 MiB if that cannot be read. The in-memory path writes all six orders, so it is taken
+only for a six-order build (`--orders=6`); with the default four orders every N-Triples build uses the external
+builder. `--build-external` also forces it. Compaction always uses the external builder. Turtle input uses the
+in-memory loader. The
 external builder writes its scratch files inside the output directory and deletes them before writing the manifest.
 
 The in-memory path writes `RDFSNAP3` with all six orders. Its IDs are assigned in first-seen order, and the unified
 dictionary needs term-text order within each kind, which the external builder produces. Such a base becomes
-`RDFSNAP4` (or `RDFSNAP5`) at its first compaction.
+`RDFSNAP4` (or `RDFSNAP5`) at its first compaction. Since the four-order default, a new small N-Triples store skips
+this path and is a one-dictionary `RDFSNAP6` base from the start; only Turtle input and `--orders=6` builds of small
+inputs still produce `RDFSNAP3`.
 
 A failed build can leave an incomplete directory, but it has no `MANIFEST`, so nothing opens it as a base.
 
@@ -137,8 +146,9 @@ counts. At BSBM-100M it takes 8 min 41 s (#55). It then prints each file in the 
 
 Decoded blocks are cached in memory. The cache target is one quarter of physical memory (macOS `hw.memsize`, Linux
 `MemTotal`), or 256 MiB if that cannot be read; `--cache-mb=N` overrides it on the command line. The target is per
-base, not per process, and is divided into shares: each triple order gets one share and the dictionary three, so a
-base has 9 shares, or 15 with the six quad orders. An absent `RDFSNAP6` order's share stays unused. Memory is
+base, not per process, and is divided into shares: the dictionary gets three, and each order file the base keeps gets
+one. A six-order base has 9 shares (15 with the six quad orders); a four-order base has 7 (11 with four quad orders),
+so each of its indexes gets a larger part of the same target. Memory is
 allocated as blocks are cached. At least one block per cache shard, allocator overhead and metadata fall outside the
 target.
 

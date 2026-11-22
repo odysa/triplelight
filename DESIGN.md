@@ -30,17 +30,17 @@ that way. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 Every term is a 64-bit `TermId`. The top four bits give its kind (IRI, blank node, literal, and inline string). In the
 in-memory store, a plain string of up to seven bytes is encoded in the ID itself, so operators can compare it without
 a lookup; its text is still stored once in the term arena, like every other term. On disk,
-current stores (`RDFSNAP4`/`RDFSNAP5`) keep one front-coded dictionary file in ID order. Within a kind, ID order is
+current stores (`RDFSNAP4` to `RDFSNAP6`) keep one front-coded dictionary file in ID order. Within a kind, ID order is
 term-text order, so the same file serves lookups by ID and by term. Operators compare, join and group IDs; a term is
 decoded only when a filter, a string function or the result needs its text.
 
 ## Storage
 
-A **base snapshot** is immutable. It holds the triples in sorted orders (SPO, SOP, PSO, POS, OSP, OPS) as
-compressed, checksummed blocks, read on demand through decoded-block caches that share one memory
-budget. A dataset with named graphs (`RDFSNAP5`) adds six graph-first quad orders and a catalog of graphs. SOP and
-OPS can be served exactly from OSP, POS and SPO (`derived_order.rs`, task #73), which lets a future `RDFSNAP6` base
-omit them (#119).
+A **base snapshot** is immutable. It holds the triples in sorted orders as compressed, checksummed blocks, read on
+demand through decoded-block caches that share one memory budget. New bases (`RDFSNAP6`) keep SPO, PSO, POS and OSP;
+SOP and OPS are served from them with the same rows in the same order (`derived_order.rs`, task #73), and
+`--orders=6` keeps all six (`RDFSNAP4`/`RDFSNAP5`). A dataset with named graphs adds the matching graph-first quad
+orders and a catalog of graphs.
 
 **Updates** are appended to a write-ahead log with group commit and synced before the call returns. They form an
 **overlay** of inserts and deletes over the base. Readers pin a snapshot (base plus overlay generation), so a query
