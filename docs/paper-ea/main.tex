@@ -15,12 +15,13 @@ in full by the author; they are cited from their abstract or from a source we re
 re-checked before submission. Section~4 holds only the registered predictions and empty tables.
 
 \begin{abstract}
-RDF engines are routinely ranked on LUBM, WatDiv and BSBM. Engines differ in which triple-index orders they store, and
-a ranking therefore mixes the quality of the executor with the choice of indexes. We ask how much of today's ranking is
-the index layout. We rank engines twice on each suite: once in their default configuration and once with the index orders
-aligned across systems, and we register in advance that the claim fails if the two rankings agree at Kendall's
-$\tau \ge 0.8$ on every suite. As a storage arm we study a store that keeps four of the six orders and derives the other
-two exactly. \todo{one sentence with the result once Section 4 is measured}
+RDF engines are routinely ranked on LUBM, WatDiv and BSBM. Engines differ in which triple-index orders they store, so a ranking
+mixes executor quality with index choice. We test whether changing the registered layouts of two engines, TripleLight and QLever,
+moves them among fixed-layout peers (Virtuoso, Jena TDB2, Oxigraph) on each suite. We rank the five HTTP engines twice, under their
+default layouts and under the registered aligned layouts, and register in advance that the claim fails if the two rankings agree at
+Kendall's $\tau_b \ge 0.8$ on every evaluable suite. The test cannot estimate a layout effect for every engine, nor say how much of
+the overall ranking comes from indexes. Embedded cohorts are reported descriptively. As a storage arm we study a store that keeps four
+of the six orders and derives the other two exactly. \todo{one sentence with the result once Section 4 is measured}
 \end{abstract}
 
 \section{Introduction}
@@ -28,7 +29,7 @@ When two RDF engines are compared on a benchmark, the table reports one number p
 report which of the six triple orders (SPO, SOP, PSO, POS, OSP, OPS) each system keeps, although the choice decides
 which access paths are available: a pattern whose bound positions are not a prefix of any stored order falls back to a
 scan or a filter. Hexastore\unread\ stores all six orders; other engines store fewer. The question of this paper is whether
-that choice moves the \emph{ranking}, not only the absolute times.
+changing the registered layout of an engine moves it in a \emph{ranking}, not only in absolute times.
 
 Qualitative evidence that physical layout dominates RDF performance is old: Sidirourgos et al.\ found in 2008 that
 clustering a triple store by PSO instead of SPO changed performance by factors of two to five, and that a triple store with
@@ -38,11 +39,11 @@ change?
 
 \paragraph{Contributions.}
 \begin{enumerate}
-  \item \textbf{A ranking test with a registered kill rule.} For each of LUBM, WatDiv and BSBM we compare the ranking of
-  systems in their default configuration with the ranking under index-aligned configurations, using Kendall's $\tau$. The
-  claim that layout matters fails if $\tau \ge 0.8$ on every suite. The rule, the order set of every arm and the predicted
+  \item \textbf{A ranking test with a registered kill rule.} For each of LUBM, WatDiv and BSBM we compare the ranking of the five
+  HTTP engines under their default layouts with the ranking under registered aligned layouts, using Kendall's $\tau_b$. The
+  claim that registered layout changes move engines among fixed-layout peers fails if $\tau_b \ge 0.8$ on every evaluable suite. The rule, the order set of every arm and the predicted
   direction are fixed before any result exists (Section~4.0).
-  \item \textbf{A layout-aligned protocol} that records each system's index inventory, pins versions, applies one answer gate
+  \item \textbf{A registered-layout protocol} that records each system's index inventory, pins versions, applies one answer gate
   to every reported time, and reports wrong, incomplete and timed-out runs as such instead of timing them
   (Section~3).
   \item \textbf{A storage arm.} A store that keeps SPO, PSO, POS and OSP and derives SOP and OPS exactly is
@@ -110,7 +111,8 @@ and not an arm of the test. Decided by the claims owner (Kaiming He, 2026-11-22,
   \item \textbf{Arms and order sets} (each system: default configuration and closest aligned order set, as measured; list from the \#72 inventory, to be confirmed by its owner):
   TripleLight with four and with six orders; QLever default and two-order mode (the latter may not answer variable-predicate patterns);
   Virtuoso, Jena TDB2 and Oxigraph with fixed layouts, so default and aligned configurations coincide.
-  \item \textbf{Kill rule:} the claim that index layout changes the ranking fails if $\tau \ge 0.8$ on every \emph{evaluable} suite; unevaluable suites do not count towards it.
+  \item \textbf{Layouts in the two rank vectors} (to be fixed in the pre-run amendment; fixed arms included): default vector: TripleLight SPO, PSO, POS, OSP; QLever default (six orders); Virtuoso PSOG, POGS (+ SP, OP, GS); Jena TDB2 and Oxigraph as shipped. Aligned vector: TripleLight six orders; QLever two-order (PSO, POS); the three fixed engines unchanged. \todo{inventory owner to confirm the exact order names for Jena and Oxigraph.}
+  \item \textbf{Kill rule:} the claim that index layout changes the ranking fails if $\tau \ge 0.8$ on every \emph{evaluable} suite; unevaluable suites do not count towards it. If no suite is evaluable, the test is reported as unevaluable and neither supports nor kills the claim.
   \item \textbf{Predicted direction} (registered 2026-11-22 by the claims owner, Kaiming He, task \#96, before any measurement; scoped to the HTTP cohort):
   on the analytical suites (BSBM BI and the WatDiv aggregates) aligning order sets changes the ranking, $\tau < 0.8$;
   on the 14 LUBM queries the ranking holds, $\tau \ge 0.8$. If either prediction is wrong, the paper reports that.
@@ -147,6 +149,7 @@ engineering that follows an existing design, not as a new method.
   \item \textbf{One machine class and synthetic data.} The suites are synthetic benchmark data with nearly fixed structure~\cite{duan2011}.
   \item \textbf{Unsupported cells.} QLever's two-order mode cannot answer patterns with a variable predicate; on suites that contain
   such patterns those cells are \emph{unsupported}, both rank vectors drop the engine, and the test covers fewer engines or suites.
+  \item \textbf{What the test can claim.} Only TripleLight and QLever change layout between the two vectors; Virtuoso, Jena TDB2 and Oxigraph are fixed. The test therefore asks whether the registered layout changes for those two engines move them among fixed-layout peers. It cannot estimate a layout effect for every engine, and it cannot say how much of the overall ranking comes from indexes.
   \item \textbf{Tuning.} We configured the engines; vendor tuning may differ. Jena is the answer reference, not a speed reference.
   \item \textbf{A null result.} If the rankings agree at $\tau \ge 0.8$ on every suite, the central claim fails and the paper reduces to the storage
   arm and the build results.
