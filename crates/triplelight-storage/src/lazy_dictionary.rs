@@ -760,15 +760,10 @@ impl Iterator for Rows {
 }
 
 
-/// Unified conversion for a legacy dictionary already in strictly increasing term-text order (the external build
-/// writes it that way). Term text starts with `"` (literal), `<` (IRI) or `_` (blank node), so each kind is one
-/// contiguous run of the file. The unified file wants ID order, which is kind 1, 2, 3 and, inside a kind, the same
-/// text order: the runs are read back in that order. No sort is involved; `write_index` rejects any term that
-/// breaks the order or its kind.
-pub(super) fn convert_unified(dir: &Path) -> io::Result<[u8; 32]> {
-    use std::io::{BufReader, Read, Seek, SeekFrom};
-    let legacy = dir.join("dictionary");
-    let mut input = BufReader::new(File::open(&legacy)?);
+/// Opens a legacy `RDFDIC01` dictionary (the external build's term file) and returns it with its record count.
+fn open_legacy(path: &Path) -> io::Result<(std::io::BufReader<File>, u64)> {
+    use std::io::Read;
+    let mut input = std::io::BufReader::new(File::open(path)?);
     let mut header = [0u8; 8];
     input.read_exact(&mut header)?;
     if &header != b"RDFDIC01" {
@@ -779,39 +774,51 @@ pub(super) fn convert_unified(dir: &Path) -> io::Result<[u8; 32]> {
     if count > 100_000_000 {
         return Err(bad("dictionary count too large"));
     }
-    /// One decoded legacy record: its ID, canonical text and term.
-    fn read_one(input: &mut BufReader<File>) -> io::Result<(u64, Vec<u8>, Term)> {
-        let mut header = [0u8; 8];
-        input.read_exact(&mut header)?;
-        let id = u64::from_le_bytes(header);
-        if id == 0 {
-            return Err(bad("zero dictionary ID"));
-        }
-        input.read_exact(&mut header)?;
-        let len = usize::try_from(u64::from_le_bytes(header)).map_err(|_| bad("dictionary term length"))?;
-        if len > MAX_TERM {
-            return Err(bad("dictionary term too long"));
-        }
-        let mut text = vec![0; len];
-        input.read_exact(&mut text)?;
-        if text.contains(&0) {
-            return Err(bad("invalid dictionary text"));
-        }
-        let term: Term = std::str::from_utf8(&text)
-            .map_err(|_| bad("invalid dictionary UTF-8"))?
-            .parse()
-            .map_err(|_| bad("invalid dictionary term"))?;
-        if term.to_string().as_bytes() != text {
-            return Err(bad("noncanonical dictionary term"));
-        }
-        Ok((id, text, term))
+    Ok((input, count))
+}
+/// One decoded legacy record: its ID, canonical text and term.
+fn read_legacy_record(input: &mut std::io::BufReader<File>) -> io::Result<(u64, Vec<u8>, Term)> {
+    use std::io::Read;
+    let mut header = [0u8; 8];
+    input.read_exact(&mut header)?;
+    let id = u64::from_le_bytes(header);
+    if id == 0 {
+        return Err(bad("zero dictionary ID"));
     }
+    input.read_exact(&mut header)?;
+    let len = usize::try_from(u64::from_le_bytes(header)).map_err(|_| bad("dictionary term length"))?;
+    if len > MAX_TERM {
+        return Err(bad("dictionary term too long"));
+    }
+    let mut text = vec![0; len];
+    input.read_exact(&mut text)?;
+    if text.contains(&0) {
+        return Err(bad("invalid dictionary text"));
+    }
+    let term: Term = std::str::from_utf8(&text)
+        .map_err(|_| bad("invalid dictionary UTF-8"))?
+        .parse()
+        .map_err(|_| bad("invalid dictionary term"))?;
+    if term.to_string().as_bytes() != text {
+        return Err(bad("noncanonical dictionary term"));
+    }
+    Ok((id, text, term))
+}
+/// Unified conversion for a legacy dictionary already in strictly increasing term-text order (the external build
+/// writes it that way). Term text starts with `"` (literal), `<` (IRI) or `_` (blank node), so each kind is one
+/// contiguous run of the file. The unified file wants ID order, which is kind 1, 2, 3 and, inside a kind, the same
+/// text order: the runs are read back in that order. No sort is involved; `write_index` rejects any term that
+/// breaks the order or its kind.
+pub(super) fn convert_unified(dir: &Path) -> io::Result<[u8; 32]> {
+    use std::io::{BufReader, Read, Seek, SeekFrom};
+    let legacy = dir.join("dictionary");
+    let (mut input, count) = open_legacy(&legacy)?;
     // Pass 1: where each kind's run starts and how many records it holds; every kind must be one run.
     let mut runs: Vec<(u64, u64, u64)> = Vec::new(); // (kind, byte offset, records)
     let mut offset = 16u64;
     for _ in 0..count {
         let at = offset;
-        let (id, text, _) = read_one(&mut input)?;
+        let (id, text, _) = read_legacy_record(&mut input)?;
         offset += 16 + text.len() as u64;
         let kind = id_kind(id);
         if text_kind(&text) != Some(kind) {
@@ -854,7 +861,7 @@ pub(super) fn convert_unified(dir: &Path) -> io::Result<[u8; 32]> {
                 self.left = n;
             }
             self.left -= 1;
-            match read_one(&mut self.input) {
+            match read_legacy_record(&mut self.input) {
                 Ok((id, _, term)) => Some(Ok((TermId(id), term))),
                 Err(e) => {
                     self.failed = true;
@@ -874,50 +881,18 @@ pub(super) fn convert_unified(dir: &Path) -> io::Result<[u8; 32]> {
 /// Caller owns manifest publication and scratch directory durability.
 pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
     use super::external_sort::ExternalSort;
-    use std::io::{BufReader, Read};
-    let mut input = BufReader::new(File::open(dir.join("dictionary"))?);
-    let mut header = [0u8; 8];
-    input.read_exact(&mut header)?;
-    if &header != b"RDFDIC01" {
-        return Err(bad("invalid legacy dictionary"));
-    }
-    input.read_exact(&mut header)?;
-    let count = u64::from_le_bytes(header);
-    if count > 100_000_000 {
-        return Err(bad("dictionary count too large"));
-    }
+    use std::io::Read;
+    let (mut input, count) = open_legacy(&dir.join("dictionary"))?;
     let mut by_term = ExternalSort::new(dir, 128 * 1024 * 1024, TERM_RECORD_MAX)?;
     let mut by_id = ExternalSort::new(dir, 128 * 1024 * 1024, ID_RECORD_MAX)?;
     for _ in 0..count {
-        input.read_exact(&mut header)?;
-        let id = u64::from_le_bytes(header);
-        if id == 0 {
-            return Err(bad("zero dictionary ID"));
-        }
-        input.read_exact(&mut header)?;
-        let len = usize::try_from(u64::from_le_bytes(header))
-            .map_err(|_| bad("dictionary term length"))?;
-        if len > MAX_TERM {
-            return Err(bad("dictionary term too long"));
-        }
-        let mut text = vec![0; len];
-        input.read_exact(&mut text)?;
-        if text.contains(&0) {
-            return Err(bad("invalid dictionary text"));
-        }
-        let term: Term = std::str::from_utf8(&text)
-            .map_err(|_| bad("invalid dictionary UTF-8"))?
-            .parse()
-            .map_err(|_| bad("invalid dictionary term"))?;
-        if term.to_string().as_bytes() != text {
-            return Err(bad("noncanonical dictionary term"));
-        }
-        let mut term_key = Vec::with_capacity(len + 9);
+        let (id, text, _) = read_legacy_record(&mut input)?;
+        let mut term_key = Vec::with_capacity(text.len() + 9);
         term_key.extend_from_slice(&text);
         term_key.push(0);
         term_key.extend_from_slice(&id.to_be_bytes());
         by_term.push(term_key)?;
-        let mut id_key = Vec::with_capacity(len + 8);
+        let mut id_key = Vec::with_capacity(text.len() + 8);
         id_key.extend_from_slice(&id.to_be_bytes());
         id_key.extend_from_slice(&text);
         by_id.push(id_key)?;
