@@ -46,12 +46,58 @@ Four vs six orders; fixed-width sorter on/off; term dedup on/off; ID-level aggre
 4. Write the registration (this file, frozen) and get Alex/Jianlin review.
 Then: rent, provision (script), load datasets to gp3, run, archive raw data + receipts into `docs/eval-v1/`.
 
-## Storage section (owner: Alex, from #92 msg a9c0788c)
-- Memory-constrained runs: cgroup limits 8 and 16 GB on 100M–1B stores (data larger than memory); query time, peak RSS,
-  block-cache hit rate (TRIPLELIGHT_TRACE_BLOCK_CACHE), bytes read.
-- Cold cache via drop_caches, stores on local NVMe.
-- Build comparison after #90/#91 vs QLever and Virtuoso loaders: time, peak RSS, peak scratch.
-- Store size: per-file from verify, four vs six orders, next to each system's on-disk size.
+## Storage, build and memory (owner: Alex)
+
+Supports C2 (four orders) and C3 (bulk build), and tests the disk store where it has to earn its place: data larger
+than memory. Laptop evidence so far: #83 (cache budget), #88 (four against six orders), #90 (fixed-width sorter),
+`docs/persistence.md` (formats and cache).
+
+### S1. Memory-limited queries (data larger than memory)
+- **Limits:** each server process runs in a cgroup v2 scope (`systemd-run --scope -p MemoryMax=… -p MemorySwapMax=0`)
+  at 8 GB and 16 GB, on the 1B-scale stores (LUBM-8000, BSBM-1B, WatDiv-1B; TripleLight four-order stores are
+  estimated at tens of GB, all larger than the limit). Add a smaller curve on LUBM-1000 and BSBM-100M at 2 and 4 GB.
+  Same CPU set for every system.
+- **TripleLight's cache setting:** its default block-cache budget is a quarter of `MemTotal`, which ignores the cgroup
+  limit. Until it reads `memory.max` (a small storage change I'll make before the window), every run passes
+  `--cache-mb` at half the limit, and that value is recorded. The other systems' cache or heap knobs are set to the same
+  budget (WindowsXP's section).
+- **Metrics per query:** cold and warm time, peak memory (`memory.peak` of the scope), bytes read from the device
+  (`/proc/<pid>/io` `read_bytes`) and major faults, and TripleLight's block-cache hits, misses and bytes read per
+  order (`TRIPLELIGHT_TRACE_BLOCK_CACHE`). An OOM kill is recorded as a failure, never as a time.
+- **To register before running:** the predicted warm slowdown at 16 GB and 8 GB per suite against the unlimited run,
+  stated per query class (point lookups, star joins, large scans such as LUBM Q6/Q14).
+
+### S2. Cold cache
+- Stores on the instance's local NVMe (not EBS). Before every cold measurement: `sync`, drop the page cache
+  (`echo 3 > /proc/sys/vm/drop_caches`), start a fresh process, wait until it is ready (TripleLight: statistics
+  loaded), then time the first execution of the query.
+- Also report open-to-ready time, cold and warm (#34's persisted statistics).
+
+### S3. Bulk build
+- **Loaders, same CPUs and memory limit:** `triplelight build-disk` (four orders, default) with `--orders=6` as the
+  ablation; QLever's index builder; Virtuoso's bulk loader (`ld_dir` + `rdf_loader_run`); Jena `tdb2.tdbloader`;
+  Oxigraph `load`. One N-Triples file per dataset, read with a cold page cache.
+- **Metrics:** wall, user and system CPU, peak memory (`memory.peak`), peak scratch (directory sampled every 2 s, plus
+  device `write_bytes`), final on-disk size, and the index orders each system keeps (#72 inventory).
+- **TripleLight variants:** main before and after #90 (fixed-width sorter) and #91 (term dedup), three ABBA repeats on
+  LUBM-1000 and BSBM-100M, one each at 1B. Other systems: three repeats at 100M scale, one at 1B.
+- **Scratch sizing:** measured peak scratch is 1.7–2.1× the N-Triples input (#88), from the parallel shard term sort.
+  Plan 2.1× until #91 lands: about 380 GB for a 1B dataset, plus input and store.
+
+### S4. Store size
+- TripleLight: per-file sizes from `triplelight verify`, four against six orders; every other system: `du -sb` of its
+  data directory after load. Reported next to the orders or indexes each keeps, so size is compared at equal function.
+
+### S5. Updates (optional, if time allows)
+- WAL commit throughput on NVMe at batch sizes 1, 100 and 10,000 triples, with concurrent writers sharing group commit;
+  compaction time and peak scratch on a 1B store with a 1% delta.
+
+### Laptop qualification for this section
+- S3 and S4 scripts for every loader at LUBM-100 and BSBM-10M: the store verifies (TripleLight) or loads and answers the
+  Jena-checked suite (others). Correctness only.
+- S1's cgroup harness inside the Linux Docker VM: LUBM-100 under a 2 GB limit, to check the scope, `memory.peak`,
+  the I/O counters and OOM handling. No timing claims.
+- S2's cache-drop step as a dry run (a no-op on macOS) so the driver path is exercised.
 
 ## Section owners (proposed)
 Storage/build/memory: Alex. Analytical + DuckDB layouts + answer gates: Jianlin. Server suites, QLever/Virtuoso/Jena
