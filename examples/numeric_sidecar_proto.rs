@@ -87,7 +87,7 @@ fn main() -> R<()> {
             let a = rows(&snap, Perm::Pso, &[n1, s])?; let b = rows(&snap, Perm::Pso, &[n2, s])?;
             if a.is_empty() || b.is_empty() { continue; }
             let va = int_value(&snap, &[a[0][2]])?[0]; let vb = int_value(&snap, &[b[0][2]])?[0];
-            if let (Some(x), Some(y)) = (va, vb) { if (lo1..=hi1).contains(&x) && (lo2..=hi2).contains(&y) { keep.push(s); } }
+            if let (Some(x), Some(y)) = (va, vb) && (lo1..=hi1).contains(&x) && (lo2..=hi2).contains(&y) { keep.push(s); }
         }
         keep.sort(); Ok(keep)
     })?;
