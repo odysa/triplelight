@@ -57,6 +57,7 @@ this one copy shrank the BSBM-100M store from 12,533.1\,MB to 7,936.3\,MB (\text
 New bases keep SPO, PSO, POS and OSP; SOP and OPS are served from them with the same rows in the same order. Updates go to a write-ahead log with group commit and form an
 overlay of inserts and deletes over the base; readers pin a snapshot, so a query never sees part of an update, and compaction writes a new base by external sort and
 switches to it atomically. A file lock allows one process per store directory.
+Commits append to the log and fsync before returning, and concurrent commits share one fsync. Compaction publishes the new base by fsyncing it, atomically renaming \texttt{CURRENT}, fsyncing the directory, and only then truncating the log. We test the crash states between these steps (\texttt{compaction\_crash\_states\_recover}, torn log tails); we did not run filesystem fault injection. TripleLight targets read-mostly analytics: updates land in an in-memory delta over an immutable base, compaction rewrites the base ($O$(base)), and we do not evaluate sustained update throughput (statements supplied by the storage owner, task \#100).
 
 \paragraph{Query processing.} A BGP is ordered greedily by exact index-prefix counts, and eligible patterns use a cost-based order from characteristic-set statistics; cyclic patterns use leapfrog triejoin.
 Execution runs on IDs with index nested-loop joins, filter pushdown, hash aggregation, top-$k$ for \texttt{ORDER BY \dots\ LIMIT}, and count shortcuts. Statistics are persisted next to the base:
