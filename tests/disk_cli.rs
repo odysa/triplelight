@@ -99,7 +99,7 @@ fn build_strategy_can_be_forced_and_matches_fast_path() {
     std::fs::create_dir(&root).unwrap();let nt=root.join("data.nt");
     std::fs::write(&nt,"<urn:s> <urn:p> \"x\"@en .\n<urn:s> <urn:p> \"x\"@en .\n_:b <urn:p> \"7\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n").unwrap();
     let exe=env!("CARGO_BIN_EXE_triplelight");let mut answers=Vec::new();
-    for (name,flags,expected) in [("fast",vec!["--build-memory-mb=1024"],"in-memory"),("ext",vec!["--build-external","--build-memory-mb=1024"],"external sort")] {
+    for (name,flags,expected) in [("fast",vec!["--build-memory-mb=1024","--orders=6"],"in-memory"),("ext",vec!["--build-external","--build-memory-mb=1024"],"external sort")] {
         let dir=root.join(name);let result=Command::new(exe).arg("build-disk").arg(&nt).arg(&dir).args(flags).output().unwrap();
         assert!(result.status.success(),"{}",String::from_utf8_lossy(&result.stderr));assert!(String::from_utf8_lossy(&result.stderr).contains(expected));
         let result=Command::new(exe).arg("query").arg(&dir).arg("SELECT ?o WHERE { ?s <urn:p> ?o } ORDER BY ?o").arg("--disk").output().unwrap();
