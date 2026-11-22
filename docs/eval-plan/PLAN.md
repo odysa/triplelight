@@ -153,15 +153,15 @@ configs and the driver: WindowsXP. Claims, ablations, protocol, final registrati
 Built from what `bench/run.py`, `bench/suite.sh` and `docs/report/evaluation.md` already do, and from the problems met in
 tasks #2 and #16.
 
-**Systems, pinned.** The main tables carry TripleLight (commit recorded), QLever (Docker image by digest, run natively
-where possible), Virtuoso 7 open source (image by digest), Jena TDB2 with Fuseki 6.2.0, and Oxigraph 0.5.13 (the closest
-Rust peer). RDF4J 5.3.2 (native and memory stores behind the wrapper in `bench/rdf4j-server`) and DuckDB go in a second
-table. Every server answers the SPARQL 1.1 protocol on one Linux machine, and versions and digests are written into every
+**Systems, pinned.** The main tables carry TripleLight (commit recorded), QLever (Docker image by digest; the W3 control run checks that Docker's
+networking and volume mounts make no difference), Virtuoso 7 open source (image by digest), Jena TDB2 with Fuseki 6.2.0, and Oxigraph 0.5.13 (the closest
+Rust peer). RDF4J (official server image, ranked; see A2), MillenniumDB (A2) and the embedded cohorts are added by Amendment 1;
+the wrapper in `bench/rdf4j-server` serves only the embedded Java cohort. Every server answers the SPARQL 1.1 protocol on one Linux machine, and versions and digests are written into every
 result file.
 
 **Equal resources, two regimes.** Every server gets the same CPUs and the same memory limit through a cgroup, not
 through its own settings alone. (a) Fits in RAM: the limit is larger than the store and each system's cache or heap knob
-is set to the same budget, with the knob and its value listed per system (TripleLight `--cache-mb`, QLever's memory
+follows its vendor's guidance inside that limit (Amendment 1, A9), with the knob and its value listed per system (TripleLight `--cache-mb`, QLever's memory
 options, Virtuoso `NumberOfBuffers`, the JVM heap for Jena and RDF4J). (b) Memory-limited: 8 and 16 GB with stores larger
 than the limit (the storage section); same configurations, only the limit changes.
 
@@ -208,9 +208,10 @@ C1a (embedded) and C1b (HTTP), with the layout ranking test as its "is the compa
 **A2. Added systems (gap B2).**
 - *DuckDB `rdf` extension:* in the Python embedded cohort. `execute_sparql` runs over one frozen R2RML mapping of the same
   graph. Pin a compatible DuckDB and extension pair and record both identities. Typed identity, projection,
-  multiplicity and unbound handling are gated first, and the generated SQL is kept outside timing. Coverage is reported
+  multiplicity and unbound handling are gated first. Diagnostic SQL is captured in a separate untimed run. The timed
+  interval starts at the SPARQL call, includes the translation, and ends at full typed result consumption. Coverage is reported
   and exclusions are stated. It is kept separate from the hand-written SQL layout arms. (Jianlin)
-- *RDF Fusion 0.3.1:* a native Rust in-process cohort with TripleLight, on the release's local disk backend. Load, close
+- *RDF Fusion 0.3.1:* a native Rust in-process cohort with TripleLight, on the release's local DeltaQuads disk backend, so it is distinguishable from the paper's in-memory setup. Load, close
   and reopen are staged separately, with a typed-identity gate. A memory-only run, if needed, is reported separately. (Jianlin)
 - *MillenniumDB:* an HTTP engine with its own loader and server (Docker build from a pinned commit, `mdb import`,
   `mdb server`). Its layout counts as fixed only once its store receipt shows the indexes it builds. Known limits from its
@@ -226,14 +227,18 @@ the query files pinned at upstream `6767ee26`. The full archive is downloaded on
 qualification gate is 30 requests, six per category, chosen by a hash of category and upstream ID before any candidate
 result. Each upstream pattern is wrapped as `SELECT *` with its bytes frozen, and answers are complete typed bags under a
 predeclared output and time budget (a budget stop is reported as incomplete, with no bare `LIMIT`). A full upstream run
-is reported separately from the gate. The laptop gets only a parser test on a streamed prefix of the current truthy dump,
+is reported separately from the gate. The 30-request answer gate runs only on the full archived graph on the rental. The laptop gets only a parser test on a streamed prefix of the current truthy dump,
 recorded with its date and SHA and used for no answer or timing claim. (Jianlin: workload; Alex: load)
 
 **A4. Ranking test (finalizes #96).** The HTTP cohort is TripleLight, QLever, Virtuoso, Jena TDB2, Oxigraph,
 RDF4J and MillenniumDB. Each must pass its store receipt and answer gate.
 - The moving engines are TripleLight (4 and 6 orders), QLever (default and two-order) and RDF4J (default and aligned).
   The others are fixed-layout.
-- The statistic is τ_b with average ranks, computed per suite and per independent block.
+- The statistic is τ_b with average ranks, computed per suite and per independent block. Each engine's rank metric is
+  its complete suite sum. Freeze one common eligible engine and request set per suite, used in both vectors and in
+  every reportable paired block, before timing.
+- Suite reducer: the median of the per-block τ_b values is compared with the threshold, with every block's value
+  shown. A wrong answer, a timeout or a missing arm invalidates the affected full-suite comparison.
 - A suite needs at least four paired engines after dropping unsupported cells from both vectors. Otherwise it is
   unevaluable, and if no suite is evaluable, the test is unevaluable.
 - The claim fails if τ_b ≥ 0.8 on every evaluable suite.
@@ -248,8 +253,10 @@ cache admission and warm-up, and one measured warm pass. There are six blocks by
 - descriptive ranges with six blocks.
 
 Five warm calls in one process estimate within-process variability only. A timeout, mismatch or failed readiness makes
-the comparison incomplete. For practical equivalence (four against six orders), the margin is ±10%, with at least
-12 paired blocks and a paired interval wholly inside the margin; otherwise the effect is reported with its uncertainty.
+the comparison incomplete. For practical equivalence (four against six orders), the margin is ±10%: at least 12 paired
+blocks, a 90% paired t interval on log ratios of complete per-block suite sums (TOST at 5%), exponentiated and wholly
+inside [0.90, 1.10]. If the model is unsuitable or paired coverage is incomplete, estimates are reported with no
+equivalence claim. otherwise the effect is reported with its uncertainty.
 
 **A6. Where the time goes (gap B9), new section S6.** One instrumented TripleLight build records per query: parse, plan,
 the join phases (BGP extension, leapfrog), aggregation, decode and serialization, together with rows decoded against
