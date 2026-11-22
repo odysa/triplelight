@@ -33,16 +33,19 @@ static EVICTIONS: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE
 pub fn cache_trace_enabled() -> bool {
     *TRACE_ENABLED.get_or_init(|| std::env::var_os("TRIPLELIGHT_TRACE_BLOCK_CACHE").is_some())
 }
-/// The trace counters, in the order `cache_trace_snapshot` reports them: hits, misses, reads, bytes, evictions.
-static COUNTERS: [&[AtomicU64; TRACE_SLOTS]; 5] = [&HITS, &MISSES, &READS, &BYTES, &EVICTIONS];
-/// Adds `value` to trace counter `metric` (an index into `COUNTERS`) of `slot`, when tracing is on and there is a slot.
-fn trace(slot: Option<usize>, metric: usize, value: u64) {
-    if cache_trace_enabled() && let Some(i) = slot {
-        COUNTERS[metric][i].fetch_add(value, Ordering::Relaxed);
-    }
-}
 pub(super) fn trace_dictionary(slot: usize, metric: usize, value: u64) {
-    trace(Some(slot), metric, value)
+    if !cache_trace_enabled() {
+        return;
+    }
+    let counters = match metric {
+        0 => &HITS,
+        1 => &MISSES,
+        2 => &READS,
+        3 => &BYTES,
+        4 => &EVICTIONS,
+        _ => unreachable!(),
+    };
+    counters[slot].fetch_add(value, Ordering::Relaxed);
 }
 /// Trace slots: 0-5 the triple orders (`Perm::ALL`), 6 and 7 the dictionary lookups (by term, by ID), 8 the six
 /// graph-first quad orders of a named-graph base together.
@@ -50,7 +53,15 @@ pub const TRACE_SLOTS: usize = 9;
 /// The trace slot shared by the quad orders.
 pub const QUAD_TRACE_SLOT: usize = 8;
 pub fn cache_trace_snapshot() -> [[u64; 5]; TRACE_SLOTS] {
-    std::array::from_fn(|i| std::array::from_fn(|m| COUNTERS[m][i].load(Ordering::Relaxed)))
+    std::array::from_fn(|i| {
+        [
+            HITS[i].load(Ordering::Relaxed),
+            MISSES[i].load(Ordering::Relaxed),
+            READS[i].load(Ordering::Relaxed),
+            BYTES[i].load(Ordering::Relaxed),
+            EVICTIONS[i].load(Ordering::Relaxed),
+        ]
+    })
 }
 
 static CACHE_MB_OVERRIDE: AtomicUsize = AtomicUsize::new(0);
@@ -454,13 +465,17 @@ where
         let generation = {
             let cache = shard.read().map_err(|_| poisoned())?;
             if let Some((value, referenced)) = cache.entries.get(&id) {
-                trace(self.trace_slot, 0, 1);
+                if cache_trace_enabled() && let Some(i) = self.trace_slot {
+                    HITS[i].fetch_add(1, Ordering::Relaxed);
+                }
                 referenced.store(true, Ordering::Relaxed);
                 return Ok(Arc::clone(value));
             }
             cache.generation
         };
-        trace(self.trace_slot, 1, 1);
+        if cache_trace_enabled() && let Some(i) = self.trace_slot {
+            MISSES[i].fetch_add(1, Ordering::Relaxed);
+        }
         // Miss: read, verify and decode without holding the lock. Concurrent misses on one block may each read and
         // decode it (first insert wins), so decoded blocks can transiently exceed the nominal cache budget.
         let r = Arc::new(self.read_block(id)?);
@@ -482,7 +497,9 @@ where
                 cache.clock.push_back(old);
             } else {
                 cache.entries.remove(&old);
-                trace(self.trace_slot, 4, 1);
+                if cache_trace_enabled() && let Some(i) = self.trace_slot {
+                    EVICTIONS[i].fetch_add(1, Ordering::Relaxed);
+                }
             }
         }
         cache.entries.insert(id, (Arc::clone(&r), AtomicBool::new(true)));
@@ -615,11 +632,15 @@ fn read_exact_at_traced(
     slot: Option<usize>,
 ) -> io::Result<()> {
     while !buf.is_empty() {
-        trace(slot, 2, 1);
+        if cache_trace_enabled() && let Some(i) = slot {
+            READS[i].fetch_add(1, Ordering::Relaxed);
+        }
         match file.read_at(buf, offset) {
             Ok(0) => return Err(io::Error::new(ErrorKind::UnexpectedEof, "short index read")),
             Ok(n) => {
-                trace(slot, 3, n as u64);
+                if cache_trace_enabled() && let Some(i) = slot {
+                    BYTES[i].fetch_add(n as u64, Ordering::Relaxed);
+                }
                 offset += n as u64;
                 buf = &mut buf[n..];
             }
