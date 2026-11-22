@@ -116,11 +116,11 @@ class Database:
         return Result(self._db.query(sparql))
 
     def query_json(self, sparql: str) -> str:
-        """SPARQL 1.1 Query Results JSON as a string; the fastest path for large results."""
+        """SPARQL 1.1 Query Results JSON as a string for SELECT and ASK; no Python row objects are created."""
         return self._db.query_json(sparql)
 
     def load(self, path) -> int:
-        """Atomically import an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file. An empty in-memory store builds its indexes as it parses, then sorts them before publishing."""
+        """Atomically import an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file. For N-Triples and Turtle, an empty in-memory store builds its indexes as it parses, then sorts them before publishing; N-Quads and TriG take the dataset-change path."""
         return self._db.load(str(path))
 
     def stats_ready(self) -> bool:

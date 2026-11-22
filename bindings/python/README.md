@@ -25,9 +25,11 @@ for row in db.query("SELECT ?who ?age WHERE { ?who <urn:age> ?age } ORDER BY ?ag
   name graphs (`GRAPH`, `WITH`, `CREATE`, `DROP`, ...).
 - `load(path)` imports a `.nt`, `.ttl`, `.nq` or `.trig` file atomically; quads go to their named graphs.
 - `query` returns a `Result`: iterate it for SELECT rows (a row is a tuple that also takes `row["var"]`), `bool(result)`
-  for ASK, `.triples` for CONSTRUCT. IRIs come back as `IRI`, blank nodes as `BNode`, plain numbers, booleans and
-  strings as Python values, and any other literal as `Literal(value, datatype, lang)`; an unbound variable is `None`.
-- `query_json` returns SPARQL 1.1 Query Results JSON as a string, the fastest path for large results.
+  for ASK, `.triples` for CONSTRUCT. IRIs come back as `IRI` and blank nodes as `BNode`. A literal is a Python `str` (plain strings), an `int` (canonical
+  `xsd:integer` that fits a signed 64-bit integer) or a `bool` (`xsd:boolean` written `true` or `false`); any other
+  literal is `Literal(value, datatype, lang)`. An unbound variable is `None`.
+- `query_json` answers SELECT and ASK and returns SPARQL 1.1 Query Results JSON as a string. It serializes straight
+  from the store without creating Python row objects, which suits large results.
 - `with db.read() as snap:` gives a consistent snapshot for several queries; later updates do not change it.
 - `compact()` merges updates into a new base. `stats_ready()` is true once background optimizer statistics are built
   (queries work before that).
