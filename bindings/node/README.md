@@ -16,6 +16,9 @@ for (const b of r.bindings) console.log(b.who.value, b.age.value); // urn:alice 
 db.close();
 ```
 
+Install: `npm install triplelight`. The package carries a prebuilt addon for macOS arm64, Linux x64 and Linux arm64
+(glibc 2.36 or newer); on another platform, build from source.
+
 Build from source (Rust 1.100, Node 18+, Linux or macOS): `npm run build`, then `npm test`.
 Types are in `index.d.ts`. Errors are `TripleLightError` subclasses: `SyntaxError`, `UnsupportedError`,
 `StorageError`, `LockedError` (the directory is open in another process) and `GraphStateError` (an update names a

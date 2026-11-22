@@ -4,12 +4,46 @@
   "description": "Embedded analytical RDF database with SPARQL 1.1 (Rust core, Node.js binding)",
   "main": "index.js",
   "types": "index.d.ts",
-  "files": ["index.js", "index.d.ts", "triplelight.node", "THIRD_PARTY_NOTICES.md", "LICENSE"],
-  "engines": { "node": ">=18" },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "prebuilds",
+    "triplelight.node",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "cargo build --release && node scripts/copy-native.js release",
     "build:debug": "cargo build && node scripts/copy-native.js debug",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "prepack": "node scripts/check-prebuilds.js",
+    "build:prebuilds": "bash scripts/build-prebuilds.sh"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/odysa/triplelight.git",
+    "directory": "bindings/node"
+  },
+  "homepage": "https://github.com/odysa/triplelight#readme",
+  "bugs": "https://github.com/odysa/triplelight/issues",
+  "keywords": [
+    "rdf",
+    "sparql",
+    "database",
+    "embedded",
+    "triplestore",
+    "semantic-web"
+  ],
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "arm64",
+    "x64"
+  ]
 }
