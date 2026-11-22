@@ -16,7 +16,7 @@ for (const b of r.bindings) console.log(b.who.value, b.age.value); // urn:alice 
 db.close();
 ```
 
-Build from source (Rust 1.89+, Node 18+, Linux or macOS): `npm run build`, then `npm test`.
+Build from source (Rust 1.100, Node 18+, Linux or macOS): `npm run build`, then `npm test`.
 Types are in `index.d.ts`. Errors are `TripleLightError` subclasses: `SyntaxError`, `UnsupportedError`,
 `StorageError`, `LockedError` (the directory is open in another process) and `GraphStateError` (an update names a
 graph in the wrong state, such as `CREATE` of an existing graph).
