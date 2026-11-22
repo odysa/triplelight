@@ -4,7 +4,7 @@
   "description": "Embedded analytical RDF database with SPARQL 1.1 (Rust core, Node.js binding)",
   "main": "index.js",
   "types": "index.d.ts",
-  "files": ["index.js", "index.d.ts", "triplelight.node"],
+  "files": ["index.js", "index.d.ts", "triplelight.node", "THIRD_PARTY_NOTICES.md"],
   "engines": { "node": ">=18" },
   "scripts": {
     "build": "cargo build --release && node scripts/copy-native.js release",
