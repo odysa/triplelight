@@ -141,10 +141,10 @@ Same scanner (`term_dup.py`, single core, read-only, 8 shards), run under the ma
 tab-separated form of WatDiv's `.nt` (subject TAB predicate TAB object ` .`); it still stops on any line it cannot split into three tokens.
 Raw results: `term_dup-bsbm100.json` (431 s), `term_dup-watdiv100.json` (142 s).
 
-| Data | Term occurrences | Distinct terms, whole file | Distinct per shard, summed | Distinct share (whole / per shard) |
-|---|---:|---:|---:|---:|
-| BSBM-100M | 296,584,332 | 23,502,671 | 27,561,370 | 7.9% / 9.3% |
-| WatDiv-100 | 32,992,404 | 1,052,945 | 2,518,185 | 3.2% / 7.6% |
+| Data | Triples | Term occurrences | Distinct terms, whole file | Distinct per shard, summed | Distinct share (whole / per shard) |
+|---|---:|---:|---:|---:|---:|
+| BSBM-100M | 98,861,444 | 296,584,332 | 23,502,671 | 27,561,370 | 7.9% / 9.3% |
+| WatDiv-100 | 10,997,468 | 32,992,404 | 1,052,945 | 2,518,185 | 3.2% / 7.6% |
 
 The per-shard share is what a per-shard deduplication would keep; the whole-file share is the lower bound. The first WatDiv attempt with the old
 scanner failed at the first line (it rejected the tab form) and wrote no result.
