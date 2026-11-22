@@ -48,18 +48,21 @@ labels, sorts and limits to 5 rows. Times in milliseconds, two runs:
 |---|---:|---:|
 | Engine, q010 end to end (5 rows) | 23.9 | 25.5 |
 | Engine, q010 without its numeric patterns and filters (5 rows) | 74.5 | 71.8 |
-| Hand-written plan of q010's shape, as today: for each candidate, probe both numeric values and decode them | 60.4 | 58.7 |
+| Hand-written candidate-and-probe plan of q010's shape (not a trace of the engine's plan): for each candidate, probe both numeric values and decode them | 60.4 | 58.7 |
 | Same plan with the side index: range lookups, then the shared-feature check | 3.8 | 4.3 |
 | Range lookup alone (two binary searches), ns | 37.9 | 38.8 |
 | Reference: decode and filter the whole `productPropertyNumeric1` predicate (284,826 rows) | 47.1 | 46.4 |
 
-The three plans return the same 929 products. The side index is two arrays of (value, subject ID), 284,826 rows each,
+The two hand-written plans return the same sorted set of 929 product IDs (checked in the program). The engine query is checked only by its five output rows, and the whole-predicate reference only by its one-predicate count. The side index is two arrays of (value, subject ID), 284,826 rows each,
 16 bytes per row in this prototype, 9.1 MB in all, built in about 54 ms per predicate.
 
 **Predictions:**
-- **B1** (the range lookup is at least 100× faster than decode-and-filter): true against the whole-predicate reference
-  (38 ns against 47 ms), but that is not q010's baseline. Against the plan shaped like today's, the side-index plan is 14
-  to 16× faster (3.8 ms against 60 ms). The engine itself is faster than my hand-written baseline, at 24 ms end to end.
+- **B1** (the range lookup is at least 100× faster than decode-and-filter): unresolved against the engine's numeric-filter
+  step, which is what it was registered against, because that step could not be isolated (below). The 38 ns figure finds
+  two bounds in one array; it produces neither the matching IDs nor the two-predicate intersection. The 47 ms scan, the
+  3.8 ms prototype plan and the 24 ms complete query measure different work and must not be compared as one speed-up. For the
+  record, the side-index plan is 14 to 16× faster than my hand-written candidate-and-probe plan (3.8 ms against 60 ms), and
+  the engine itself is faster than that hand-written plan, at 24 ms end to end.
 - **B2** (about 12 bytes per row, a few hundred MB in all): missed. The prototype uses 16 bytes per row (64-bit value and
   64-bit subject ID), and BSBM-100M has only 284,826 products, so the side index is 9.1 MB, about 0.15% of the 6.1 GB store.
 
@@ -68,6 +71,12 @@ q010 slower (74 ms against 24 ms), because the filters prune the join early. So 
 read as a difference of the two runs, and nothing here shows how much of the engine's 24 ms the side index would save.
 The 3.8 ms plan produces only the product set, without the label join, the sort or the limit, so it is not comparable
 with the 24 ms end to end.
+
+## Replay
+
+- Query: `bench/bsbm/q010.rq`, sha256 `7bc2dc79cf827b166b428c135d5c536bac05475c1f1bb0f77d1822a1442542d8`. Bound product: `http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer204/Product9890` (constant in the example).
+- Command: `numeric_sidecar_proto SNAPSHOT_DIR bench/bsbm/q010.rq OUT.json`, on a BSBM-100M four-order store built from `bsbm100.nt`.
+- Field names in `raw/proto*.json`: `today_shape_*` is the hand-written candidate-and-probe plan, and `engine_numeric_part_ms` is the difference between two engine runs (q010 minus q010 without its numeric patterns and filters), an ablation difference and not a measurement of numeric cost; it is negative here.
 
 ## Limits
 

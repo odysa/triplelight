@@ -3,11 +3,13 @@
 //!
 //! q010 binds one product, takes its features, finds the other products with a shared feature, and keeps those whose
 //! `productPropertyNumeric1` is within 120 of the bound product's and `productPropertyNumeric2` within 170. This program
-//! (1) times q010 end to end and a copy of it without its numeric patterns and filters, so the difference is what the
-//! numeric part costs inside the engine; (2) times a hand-written plan that does what the engine does today (bind the
-//! candidates from the shared features, then read and decode each candidate's numeric values); (3) builds a value-sorted
+//! (1) times q010 end to end and a copy of it without its numeric patterns and filters (`engine_numeric_part_ms` is the
+//! difference of the two runs, a query-ablation difference, not a measurement of the numeric cost: removing the filters
+//! can make the query slower); (2) times a hand-written candidate-and-probe plan (bind the candidates from the shared
+//! features, then read and decode each candidate's numeric values; its output keys are `today_shape_*`, but it is not a
+//! trace of the engine's plan); (3) builds a value-sorted
 //! side index per numeric predicate, (value, subject ID), and times the plan "range lookup, then check the shared
-//! feature". All three must return the same product set.
+//! feature". The two hand-written plans must return the same product IDs; the engine run is checked only by its row count.
 use std::collections::HashSet;
 use std::time::Instant;
 use triplelight::exec::{Options, QueryResult, query_with};
