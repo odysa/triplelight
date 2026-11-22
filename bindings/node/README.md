@@ -22,7 +22,7 @@ Install: `npm install triplelight`. The package carries one prebuilt addon per p
 | Platform | Requirement |
 |---|---|
 | macOS arm64 (Apple Silicon) | none beyond Node 18+ |
-| Linux x64 and Linux arm64 | glibc 2.36 or newer (Debian 12, Ubuntu 22.04 or newer); older distributions such as Debian 11 and RHEL 8, and musl (Alpine), are not supported |
+| Linux x64 and Linux arm64 | glibc GLIBC_FLOOR or newer; musl (Alpine) is not supported |
 
 The download is 6.6 MB and the unpacked package 18.9 MB (three addons of 5.7 to 6.7 MB each). On any other platform, build from source.
 

@@ -3,11 +3,11 @@
 // this file turns its errors into typed exceptions.
 const native = loadNative();
 
-// A local build (`npm run build`) puts the addon at ./triplelight.node; the published package carries one prebuilt
-// addon per platform under prebuilds/<platform>-<arch>/.
+// The published package carries one prebuilt addon per platform under prebuilds/<platform>-<arch>/. A local build
+// (`npm run build`) puts the addon at ./triplelight.node, which is used when there is no prebuild (development).
 function loadNative() {
   const target = `${process.platform}-${process.arch}`;
-  const candidates = ["./triplelight.node", `./prebuilds/${target}/triplelight.node`];
+  const candidates = [`./prebuilds/${target}/triplelight.node`, "./triplelight.node"];
   let failure = null;
   for (const candidate of candidates) {
     try {
@@ -17,7 +17,7 @@ function loadNative() {
     }
   }
   if (failure) throw failure;
-  throw new Error(`TripleLight has no native addon for ${target}. Supported: darwin-arm64, linux-x64 and linux-arm64 (glibc).`);
+  throw new Error(`TripleLight has no native addon for ${target}. Supported: darwin-arm64, linux-x64 and linux-arm64 (glibc 2.31 or newer).`);
 }
 
 class TripleLightError extends Error {
