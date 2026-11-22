@@ -1,7 +1,8 @@
 # Benchmark overview
 
-Benchmarks compare like with like: **embedded engines in the same process** (no network on any side), and
-**servers over HTTP**. The two kinds of numbers are never mixed in one table.
+Each table describes one workload and session. Embedded measurements use the named language API. Server
+measurements include HTTP and JSON transfer. The [index inventory](embedded-store-inventory.md#index-layouts-in-the-benchmarks)
+records which layouts are established for the tested profiles.
 
 ### Embedded (in-process): Python API
 
@@ -149,18 +150,16 @@ both. Each engine ran two passes (pass 2 in reversed order); both are shown beca
 | **BSBM BI, 98.9M triples** | 45 requests per pass over 8 query templates, end-to-end HTTP | Against Jena; all engines pass a value-only check, TripleLight and DuckDB also pass the datatype check on 60/60 |
 | **Aggregate72** (LUBM-100 13.4M + WatDiv 10.9M triples) | 72 COUNT / GROUP BY / DISTINCT queries per pass, end-to-end HTTP | Against Jena; all engines pass with COUNT `xsd:int` accepted as `xsd:integer` |
 
-**What this shows, honestly:**
+**HTTP observations**
 
 - TripleLight is the fastest of these engines on both workloads in total time: about 2–4× QLever on BI at 98.9M
   triples, and about 8–9× QLever and Virtuoso on the aggregate suite.
 - **QLever uses much less memory** (about a tenth of TripleLight's on BI 100M) and is faster on one BI query
   template (q3). Memory and q3 are our main open gaps.
 - On WatDiv alone, TripleLight and Virtuoso are close (0.26 / 0.23 s vs 0.30 / 0.31 s).
-- **DuckDB does not support RDF or SPARQL**, so it is a SQL baseline here, not an RDF engine. The triples are loaded
-  into one DuckDB table (subject, predicate, and object with its datatype and language). For BSBM BI, each request
-  fills a hand-written SQL template for its query template; for the aggregate suite, a small translator written for
-  that suite turns each SPARQL COUNT query into SQL. In both cases the SQL generation runs inside the timed request.
-  A better SQL layout (integer IDs, one table per predicate) would likely be much faster and has not been measured.
+- DuckDB runs SQL over one typed triples table. BI fills hand-written templates and the aggregate suite uses
+  a workload-specific translator. SQL generation is inside both timers. A planned comparison changes the
+  physical ordering and scan routing within DuckDB while holding the RDF representation and answers fixed.
 - Two passes on a shared machine is a bounded observation, not a significance test.
 
 Full tables, per-query breakdowns, more datasets (LUBM-1000, BSBM, WatDiv), other engines (Jena, RDF4J,

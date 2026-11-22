@@ -1,0 +1,64 @@
+{
+  "scope": "File lengths from retained preparation stores. QLever supervisor intervals cover preparation, before query timing.",
+  "qlever": {
+    "LUBM-100": {
+      "preparation_run": "aggregate72-qlever-build-v1/lubm",
+      "status_sha256": "af706177523bd67b88f130114b4ce1fb52ec1b42152457befb50d6d9f4c8d52e",
+      "order_bytes": {
+        "OPS": 24175768,
+        "OSP": 24079275,
+        "POS": 23025468,
+        "PSO": 24124496,
+        "SOP": 27681997,
+        "SPO": 29208648
+      },
+      "all_file_bytes": 203911326,
+      "supervisor_elapsed_seconds": 52.693
+    },
+    "WatDiv aggregate input": {
+      "preparation_run": "aggregate72-qlever-build-v1/watdiv",
+      "status_sha256": "27d44580fed02a3d8c3172cadade12fef98bffe3c4e044394fc2ba3a4432ea4d",
+      "order_bytes": {
+        "OPS": 50376241,
+        "OSP": 51615854,
+        "POS": 48015015,
+        "PSO": 47567833,
+        "SOP": 31187726,
+        "SPO": 29955623
+      },
+      "all_file_bytes": 300398758,
+      "supervisor_elapsed_seconds": 41.696
+    },
+    "BSBM BI 100M": {
+      "preparation_run": "qlever100-build-v1",
+      "status_sha256": "afe883c09744d0242a159597a6312f87e11bb88c4d5d23684880076c61ac9870",
+      "order_bytes": {
+        "OPS": 224779453,
+        "OSP": 228323910,
+        "POS": 222593528,
+        "PSO": 250692564,
+        "SOP": 221095679,
+        "SPO": 215839228
+      },
+      "all_file_bytes": 3850578856,
+      "supervisor_elapsed_seconds": 516.261
+    }
+  },
+  "jena_tdb2_tiny": {
+    "preparation_run": "jvm37-preparation-v1/tiny-v2/jena-tdb2",
+    "bpt_file_stems": [
+      "GOSP",
+      "GPOS",
+      "GPU",
+      "GSPO",
+      "OSP",
+      "OSPG",
+      "POS",
+      "POSG",
+      "SPO",
+      "SPOG",
+      "nodes",
+      "prefixes"
+    ]
+  }
+}
