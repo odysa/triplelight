@@ -60,7 +60,7 @@ fn union_distinct_group_ask() {
 #[test]
 fn leapfrog_matches_bind_join() {
     let q = "SELECT ?a ?b ?c WHERE { ?a <http://ex/knows> ?b . ?b <http://ex/knows> ?c . ?c <http://ex/knows> ?a }";
-    let run = |wcoj| match triplelight::exec::query_with(&store(), q, &triplelight::exec::Options { stats: None, wcoj, raw_ids: false, general_group: false }).unwrap() {
+    let run = |wcoj| match triplelight::exec::query_with(&store(), q, &triplelight::exec::Options { stats: None, wcoj, raw_ids: false, general_group: false, count_pushdown: true }).unwrap() {
         QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.iter().map(|r| format!("{r:?}")).collect(); v.sort(); v }
         _ => unreachable!(),
     };
@@ -910,4 +910,36 @@ fn matching_tail_path_matches_scan_path() {
         assert_eq!(sorted(&tail, q), want, "{q}");
     }
     assert!(tail.2.load(Ordering::Relaxed) > 0, "the tail path must be exercised");
+}
+
+/// `Options::count_pushdown = false` (the `--ablate=count` benchmark control) answers every count shape the index
+/// shortcuts handle by full enumeration, with identical results: single patterns, joins (last-level counts),
+/// disconnected parts (products), a cyclic pattern (leapfrog counts), DISTINCT and grouped counts.
+#[test]
+fn count_pushdown_off_gives_identical_answers() {
+    let data = r#"<http://ex/a> <http://ex/p> <http://ex/b> .
+<http://ex/b> <http://ex/p> <http://ex/c> .
+<http://ex/c> <http://ex/p> <http://ex/a> .
+<http://ex/a> <http://ex/p> <http://ex/c> .
+<http://ex/a> <http://ex/q> "1" .
+<http://ex/b> <http://ex/q> "1" .
+<http://ex/c> <http://ex/q> "2" .
+<http://ex/d> <http://ex/r> <http://ex/a> .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let run_with = |q: &str, count_pushdown: bool| -> Vec<String> {
+        let opts = triplelight::exec::Options { count_pushdown, ..Default::default() };
+        match triplelight::exec::query_with(&s, q, &opts).unwrap() { QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| format!("{r:?}")).collect(), r => panic!("{r:?}") }
+    };
+    let queries = [
+        "SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }",
+        "SELECT (COUNT(*) AS ?n) WHERE { ?s <http://ex/p> ?o }",
+        "SELECT (COUNT(?o) AS ?n) (COUNT(DISTINCT ?o) AS ?d) WHERE { ?s <http://ex/q> ?o }",
+        "SELECT (COUNT(*) AS ?n) WHERE { ?s <http://ex/p> ?o . ?o <http://ex/q> ?v }",
+        "SELECT (COUNT(*) AS ?n) WHERE { ?s <http://ex/p> ?o . ?x <http://ex/r> ?y }",
+        "SELECT (COUNT(*) AS ?n) WHERE { ?x <http://ex/p> ?y . ?y <http://ex/p> ?z . ?z <http://ex/p> ?x }",
+        "SELECT (COUNT(*) AS ?n) WHERE { ?s <http://ex/none> ?o }",
+        "SELECT ?v (COUNT(*) AS ?n) WHERE { ?s <http://ex/q> ?v } GROUP BY ?v",
+    ];
+    for q in queries { assert_eq!(run_with(q, true), run_with(q, false), "{q}"); }
 }

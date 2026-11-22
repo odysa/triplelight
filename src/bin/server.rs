@@ -70,6 +70,7 @@ fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'
 fn serve_store(args: &[String], auth: &UpdateAuth) {
     let init = args.iter().position(|a| a == "--init").map(|i| std::path::PathBuf::from(&args[i + 1]));
     let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let ablations = ablations(args);
     let t = Instant::now();
     let store = if args.iter().any(|a| a == "--disk") {
         triplelight::store::Store::open_with(&args[2], init.as_deref(), Box::new(triplelight::storage::DiskBase { workers }))
@@ -130,7 +131,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
                         let snap = store.snapshot();
                         let st = stats.read().unwrap().clone();
                         let st = st.filter(|(base, _)| snap.delta_len() == 0 && *base == snap.base_id());
-                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), wcoj: true, raw_ids: true, general_group: false };
+                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), raw_ids: true, ..ablations };
                         answer(&*snap, &q, &opts)
                     }
                 }
@@ -206,6 +207,25 @@ pub(crate) fn run(cmd: &str, args: &[String]) {
     serve_memory(args);
 }
 
+/// Benchmark ablations, all off by default and answer-preserving: `--ablate=wcoj,count,fast-group` disables the
+/// leapfrog triejoin, the exact index-count aggregates and the ID hash-aggregation fast path. (`--no-stats` turns
+/// off the cost-based planner.) Unknown names are refused so a typo cannot silently measure the default.
+fn ablations(args: &[String]) -> Options<'static> {
+    let mut opts = Options::default();
+    for name in args.iter().filter_map(|a| a.strip_prefix("--ablate=")).flat_map(|v| v.split(',')).filter(|n| !n.is_empty()) {
+        match name {
+            "wcoj" => opts.wcoj = false,
+            "count" => opts.count_pushdown = false,
+            "fast-group" => opts.general_group = true,
+            other => { eprintln!("unknown --ablate name {other:?} (expected wcoj, count, fast-group)"); std::process::exit(2) }
+        }
+    }
+    if args.iter().any(|a| a.starts_with("--ablate=")) {
+        eprintln!("ablations: wcoj={} count_pushdown={} fast_group={}", opts.wcoj, opts.count_pushdown, !opts.general_group);
+    }
+    opts
+}
+
 /// `triplelight serve <data> [port]`: load a file into memory and answer queries (no updates).
 fn serve_memory(args: &[String]) {
             let snap = load(&args[2], args);
@@ -216,6 +236,7 @@ fn serve_memory(args: &[String]) {
             let stats: std::sync::RwLock<Option<std::sync::Arc<Stats>>> = std::sync::RwLock::new(None);
             let want_stats = !args.iter().any(|a| a == "--no-stats");
             eprintln!("optimizer statistics: {}", if want_stats { "building in background" } else { "off" });
+            let ablations = ablations(args);
             let server = tiny_http::Server::http(format!("{}:{port}", bind_host())).expect("bind");
             eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql");
             // One worker per core: queries run concurrently against the same immutable snapshot.
@@ -239,7 +260,7 @@ fn serve_memory(args: &[String]) {
                     url.split_once('?').and_then(|(_, qs)| form_param(qs, "query")).or_else(|| form_param(&body, "query"))
                 };
                 let st = stats.read().unwrap().clone();
-                let opts = Options { stats: st.as_deref(), wcoj: true, raw_ids: true, general_group: false };
+                let opts = Options { stats: st.as_deref(), raw_ids: true, ..ablations };
                 let resp = match q { Some(q) => answer(snap, &q, &opts), None => tiny_http::Response::from_string("missing query").with_status_code(400) };
                 let _ = req.respond(resp);
             }
