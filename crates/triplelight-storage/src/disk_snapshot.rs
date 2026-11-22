@@ -736,7 +736,7 @@ mod tests {
             let _ = fs::remove_dir_all(&dir);
             fs::create_dir(&dir).unwrap();
             let empty = Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([])));
-            super::external_build::from_dataset_keeping(&dir.join("base-0"), &empty, orders).unwrap();
+            crate::external_build::from_dataset_keeping(&dir.join("base-0"), &empty, orders).unwrap();
             fs::write(dir.join("CURRENT"), "base-0\n").unwrap();
             let store = Store::open_with(&dir, None, Box::new(DiskBase { workers: 1 })).unwrap();
             let t = |s: &str| Triple::new(iri(s), iri("p"), iri("o"));
@@ -780,7 +780,7 @@ mod tests {
         fs::create_dir(&parent).unwrap();
         let (six, four) = (parent.join("six"), parent.join("four"));
         write_disk_dataset(&six, &source).unwrap();
-        super::external_build::from_dataset_keeping(&four, &source, REQUIRED_ORDERS).unwrap();
+        crate::external_build::from_dataset_keeping(&four, &source, REQUIRED_ORDERS).unwrap();
         // The four-order base is RDFSNAP6 and has no SOP/OPS files; everything it keeps is byte-identical.
         let manifest = fs::read(four.join("MANIFEST")).unwrap();
         assert_eq!(&manifest[..10], b"RDFSNAP6\x1d\x01");
@@ -833,12 +833,13 @@ mod tests {
         }
         // A default-graph-only base keeps the same layout without the quad orders and catalog.
         let plain = parent.join("plain");
-        super::external_build::from_dataset_keeping(&plain, &crate::store::Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([Triple::new(iri("a"), iri("b"), iri("c"))]))), REQUIRED_ORDERS).unwrap();
+        crate::external_build::from_dataset_keeping(&plain, &crate::store::Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([Triple::new(iri("a"), iri("b"), iri("c"))]))), REQUIRED_ORDERS).unwrap();
         let manifest = fs::read(plain.join("MANIFEST")).unwrap();
         assert_eq!((&manifest[..10], manifest.len()), (&b"RDFSNAP6\x1d\x00"[..], 10 + 32 * 5));
         let plain = DiskSnapshot::open(&plain).unwrap();
         plain.verify().unwrap();
-        assert_eq!(rows(&plain, Perm::Sop, &[]), rows(&plain, Perm::Spo, &[]));
+        let [spo] = rows(&plain, Perm::Spo, &[])[..] else { panic!("one triple") };
+        assert_eq!(rows(&plain, Perm::Sop, &[]), [[spo[0], spo[2], spo[1]]]);
         // Order sets that drop a required order, use reserved bits or a bad named-graph flag are refused.
         for (orders, named) in [(REQUIRED_ORDERS & !1, 0u8), (REQUIRED_ORDERS & !(1 << 4), 0), (REQUIRED_ORDERS | 0x40, 0), (REQUIRED_ORDERS, 2)] {
             let mut bad = manifest.clone();
