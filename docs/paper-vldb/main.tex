@@ -60,7 +60,7 @@ switches to it atomically. A file lock allows one process per store directory.
 
 \paragraph{Query processing.} A BGP is ordered greedily by exact index-prefix counts, and eligible patterns use a cost-based order from characteristic-set statistics; cyclic patterns use leapfrog triejoin.
 Execution runs on IDs with index nested-loop joins, filter pushdown, hash aggregation, top-$k$ for \texttt{ORDER BY \dots\ LIMIT}, and count shortcuts. Statistics are persisted next to the base:
-with a saved file they are ready 0.74 to 0.91\,s after open, against 20.5 to 25.8\,s when rebuilt by a scan (\texttt{docs/startup36-persisted-stats}).
+with a saved file they were ready 0.74 to 0.91\,s after open, against 20.5 to 25.8\,s when rebuilt by a scan (\texttt{docs/startup36-persisted-stats}; laptop, single session, preliminary: to be replaced by dedicated-machine numbers).
 Correctness is gated on answers matching Apache Jena under each benchmark's declared checks and on at least 323 passing W3C SPARQL~1.1 query tests in CI (\texttt{DESIGN.md}).
 
 \section{Techniques and Their Sources}
@@ -82,17 +82,19 @@ it replaces the greedy order only when statistics exist, the pattern has two to 
 Its costs are heuristic work units, not calibrated against elapsed time (\texttt{docs/optimizer.md}).
 
 \subsection{Build pipeline}
-A disk store is built by external sort: parallel shard parsing, a term sort, ID assignment and the order builds. On LUBM-1000 a four-order build took 654.8\,s, of which shard parsing and sorting took 38.7\%, the dictionary-side stages 35\% and the order builds 26.4\%
-(\texttt{docs/build-profile-v1}). Fixed-width sort rows were 4--5$\times$ faster than variable-length rows in a microbenchmark (same file). Terms repeat heavily: 7.9\% are distinct in LUBM-1000 and BSBM-100M and 3.2\% in WatDiv-100 over the whole file
+A disk store is built by external sort: parallel shard parsing, a term sort, ID assignment and the order builds. On LUBM-1000 a four-order build took 654.8\,s on the development laptop (preliminary, single session), of which shard parsing and sorting took 38.7\%, the dictionary-side stages 35\% and the order builds 26.4\%
+(\texttt{docs/build-profile-v1}). Fixed-width sort rows were 4--5$\times$ faster than variable-length rows in a laptop microbenchmark (same file; preliminary). Terms repeat heavily: 7.9\% are distinct in LUBM-1000 and BSBM-100M and 3.2\% in WatDiv-100 over the whole file
 (\texttt{docs/parse-phase-v1}), which makes deduplication before sorting attractive; QLever's builder already deduplicates before sorting, so we treat this as engineering that follows an existing design.
 
 \subsection{Memory budget and cooperation}
-The decoded-block caches share one budget. Cache budgets of 2\,GB, 1\,GB and 512\,MB made warm LUBM-1000 queries 3.6, 4.0 and 4.6$\times$ slower than the default (\texttt{docs/cache-budget-sweep-v1}). Cooperating with a host application's resources is one of the embedded requirements~\cite{raasveldt2020};
+The decoded-block caches share one budget. Cache budgets of 2\,GB, 1\,GB and 512\,MB made warm LUBM-1000 queries 3.6, 4.0 and 4.6$\times$ slower than the default on the development laptop (\texttt{docs/cache-budget-sweep-v1}; preliminary, to be replaced by dedicated-machine numbers). Cooperating with a host application's resources is one of the embedded requirements~\cite{raasveldt2020};
 we do not yet claim more than a configurable budget. \todo{cgroup-aware default, once its PR is merged and measured.}
 
 \section{Evaluation}
 \subsection{Setup and answer gates}
-\todo{Systems, versions, dedicated machine, protocol, answer classes and timeout: from \texttt{docs/eval-plan/PLAN.md}.}
+\todo{Systems, versions, dedicated machine, protocol, answer classes and timeout: from \texttt{docs/eval-plan/PLAN.md}.}\\
+Memory rule (decided in task \#100): every system runs in a cgroup with the same \texttt{memory.max}; inside it each system's own memory setting follows its vendor's guidance, stated per system (TripleLight: half of the limit for its block cache).\\
+Commercial engines (GraphDB, Stardog, AllegroGraph) are excluded: we do not accept licence terms on publishing benchmark results on the owner's behalf.
 \subsection{C1a: embedded}\todo{Results after the dedicated-machine run.}
 \subsection{C1b: HTTP}\todo{Results after the dedicated-machine run.}
 \subsection{Build and storage}\todo{Build time, scratch and store size on the dedicated machine; size numbers from Section~3.1 may be repeated.}
@@ -105,7 +107,7 @@ the claim fails if $\tau_b \ge 0.8$ on every evaluable suite. \todo{results tabl
 \paragraph{Limits.} Disk builds parse shards in parallel and overlap index builds (an average of 2.9 of 10 cores busy on LUBM-1000, \texttt{docs/build-profile-v1}) and need scratch disk of 1.7 to 2.1 times the input at the peak (\texttt{docs/build-compare-orders-v1}).
 Results are materialized before output. One process per store directory. \texttt{LOAD}, \texttt{SERVICE}, \texttt{BNODE(string)} and blank-node graph names are unsupported (\texttt{DESIGN.md}).
 The cost of the derived orders on real query logs is not measured. The benchmarks are synthetic and their structure is nearly fixed and unlike real RDF data~\cite{duan2011}.
-\paragraph{Related work.} \emph{Embedded analytics.} DuckDB's requirements for embedded analytical systems~\cite{raasveldt2020} (the system itself is described in a SIGMOD 2019 demonstration paper\unread); Kùzu\unread; pyoxigraph, Blazegraph and DuckDB as embedded comparators.
+\paragraph{Related work.} \emph{Embedded analytics.} DuckDB's requirements for embedded analytical systems~\cite{raasveldt2020} (the system itself is described in a SIGMOD 2019 demonstration paper\unread); Kùzu\unread\ (archived upstream and a Cypher engine, so outside the SPARQL comparison; \todo{verify after reading}); pyoxigraph, Blazegraph and DuckDB as embedded comparators.
 \emph{RDF stores.} RDF-3X~\cite{neumann2008}, Hexastore\unread, QLever~\cite{bast2017}, Virtuoso, Jena TDB2, Oxigraph, RDF4J.
 \emph{Layout and benchmarks.} Sidirourgos et al.\ re-evaluated vertical partitioning on MonetDB/SQL and PostgreSQL and found that clustering (PSO against SPO) changes performance by factors of two to five~\cite{sidirourgos2008};
 Duan et al.\ showed that benchmark data differ from real RDF data in structuredness~\cite{duan2011}.
