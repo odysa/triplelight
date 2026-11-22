@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Load or serve one system on one dataset, with the same CPU and memory budget for every system (docs/eval-plan/PLAN.md).
 #   systems.sh <system> load|serve <dataset> [--mem GB] [--cpus N]
-#   system:  triplelight | qlever | virtuoso | jena-tdb2 | oxigraph
+#   system:  triplelight | qlever | qlever-two-order | virtuoso | jena-tdb2 | oxigraph | rdf4j-native | rdf4j-native-default
 #   dataset: tools/<dataset>.nt must exist (TOOLS=... to use another directory); stores are tools/<system>-<dataset>.
 # `serve` runs in the foreground and prints nothing but the server's own log; the SPARQL endpoint of each system:
 #   triplelight http://127.0.0.1:7979/sparql   qlever http://127.0.0.1:7001/   virtuoso http://127.0.0.1:8890/sparql
 #   jena-tdb2 http://127.0.0.1:3030/ds/sparql  oxigraph http://127.0.0.1:7878/query
+#   rdf4j-native* http://127.0.0.1:3040/sparql  (own endpoint, bench/rdf4j-server; indexes spoc,posc,ospc, or spoc,posc for -default)
 # Budget: Docker systems get --memory and --cpus (cgroup limits); the native ones get the JVM heap (Jena) or nothing, and the
 # script prints "budget not enforced" for them; on the Linux machine the whole process is started under a cgroup instead.
 set -eu
@@ -29,14 +30,17 @@ case $SYS in
              # cache budget: half of the memory limit, as in the frozen plan (S1), recorded in the receipt
              exec "$BIN" serve "$T/triplelight-$D" 7979 --disk --cache-mb "$((MEM * 1024 / 2))" ;;
     esac ;;
-  qlever)
+  qlever|qlever-two-order)
+    QDIR=qlever-$D; QOPT=()
+    # the two-order arm builds only PSO and POS (qlever-index -o); queries with a variable predicate are then unsupported
+    [ "$SYS" = qlever-two-order ] && { QDIR=qlever-two-order-$D; QOPT=(-o); }
     case $MODE in
-      load)  mkdir -p "$T/qlever-$D"
-             docker run --rm "${LIM[@]}" -v "$T":/data -w /data/qlever-$D --entrypoint /qlever/qlever-index "$QLEVER_IMAGE" \
-               -i "$D" -f "/data/$D.nt" -F nt -p true ;;
+      load)  mkdir -p "$T/$QDIR"
+             docker run --rm "${LIM[@]}" -v "$T":/data -w /data/$QDIR --entrypoint /qlever/qlever-index "$QLEVER_IMAGE" \
+               -i "$D" -f "/data/$D.nt" -F nt -p true "${QOPT[@]}" ;;
       # Result cache off (-c/-e/-E 1MB) so repeated runs measure execution, not cache hits.
       serve) docker rm -f bench-qlever >/dev/null 2>&1 || true
-             exec docker run --rm --name bench-qlever "${LIM[@]}" -p 7001:7001 -v "$T":/data -w /data/qlever-$D \
+             exec docker run --rm --name bench-qlever "${LIM[@]}" -p 7001:7001 -v "$T":/data -w /data/$QDIR \
                --entrypoint /qlever/qlever-server "$QLEVER_IMAGE" -i "$D" -p 7001 -m "${MEM}G" -c 1MB -e 1MB -E 1MB ;;
     esac ;;
   virtuoso)
@@ -60,16 +64,32 @@ case $SYS in
     J=$T/apache-jena-$JENA_VERSION; F=$T/apache-jena-fuseki-$FUSEKI_VERSION
     case $MODE in
       load)  echo "budget: JVM heap only (-Xmx${MEM}g); CPUs not enforced" >&2
-             rm -rf "$T/jena-tdb2-$D"; JVM_ARGS="-Xmx${MEM}g" "$J/bin/tdb2.tdbloader" --loc "$T/jena-tdb2-$D" "$NT" ;;
+             rm -rf "$T/jena-tdb2-$D"; JVM_ARGS="-Xmx${MEM}g" "$J/bin/tdb2.tdbloader" --loc "$T/jena-tdb2-$D" "$NT"
+             # optimizer statistics (tdb2.tdbstats): without them TDB2 plans with fixed heuristics. UNTESTED: the target path
+             # (Data-0001/stats.opt) and the tool name must be checked in the qualification rerun
+             "$J/bin/tdb2.tdbstats" --loc "$T/jena-tdb2-$D" > "$T/jena-tdb2-$D/Data-0001/stats.opt" ;;
       serve) echo "budget: JVM heap only (-Xmx${MEM}g); CPUs not enforced" >&2
              JVM_ARGS="-Xmx${MEM}g" exec "$F/fuseki-server" --loc="$T/jena-tdb2-$D" --port=3030 /ds ;;
+    esac ;;
+  rdf4j-native|rdf4j-native-default)
+    # RDF4J NativeStore behind bench/rdf4j-server (build: mvn -q package in bench/rdf4j-server); the created indexes are printed on load
+    export RDF4J_INDEXES=spoc,posc,ospc RDF4J_THREADS="$CPUS"
+    [ "$SYS" = rdf4j-native-default ] && RDF4J_INDEXES=spoc,posc
+    R=$ROOT/bench/rdf4j-server; CP="$R/target/rdf4j-server-1.jar:$R/target/lib/*"; DIR=$T/$SYS-$D
+    case $MODE in
+      load)  echo "budget: JVM heap only (-Xmx${MEM}g); CPUs not enforced" >&2
+             rm -rf "$DIR"; java -Xmx${MEM}g -cp "$CP" Rdf4jServer native "$DIR" "$NT" 0 ;;
+      serve) echo "budget: JVM heap only (-Xmx${MEM}g); CPUs not enforced" >&2
+             exec java -Xmx${MEM}g -cp "$CP" Rdf4jServer native "$DIR" - 3040 ;;
     esac ;;
   oxigraph)
     O=$T/oxigraph
     [ "$("$O" --version | awk '{print $2}')" = "$OXIGRAPH_VERSION" ] || { echo "oxigraph version is not $OXIGRAPH_VERSION" >&2; exit 1; }
     case $MODE in
       load)  echo "budget not enforced for native oxigraph" >&2
-             rm -rf "$T/oxigraph-$D"; "$O" load --location "$T/oxigraph-$D" --file "$NT" ;;
+             rm -rf "$T/oxigraph-$D"; "$O" load --location "$T/oxigraph-$D" --file "$NT"
+             # vendor advice for read-heavy use (printed by the loader itself): compact the store before serving it
+             "$O" optimize --location "$T/oxigraph-$D" ;;
       serve) echo "budget not enforced for native oxigraph" >&2
              exec "$O" serve-read-only --location "$T/oxigraph-$D" --bind 127.0.0.1:7878 ;;
     esac ;;
