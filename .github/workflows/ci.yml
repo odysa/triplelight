@@ -34,6 +34,8 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets --features server,async -- -D warnings
       - name: Test
         run: cargo test --locked --workspace --features server,async
+      - name: Third-party notices are in sync with the binding packages
+        run: python3 ci/check_notices.py
 
   w3c:
     name: W3C SPARQL 1.1 query suite
@@ -86,6 +88,13 @@ jobs:
           pip install -q "maturin>=1.7,<2" pytest
           maturin develop --release --locked
           pytest -q tests
+      - name: Notices ship in the wheel and sdist
+        working-directory: bindings/python
+        run: |
+          . .venv/bin/activate
+          maturin build --release --locked -o dist
+          maturin sdist -o dist
+          python ../../ci/check_notices.py --artifacts dist
 
   node:
     name: Node.js binding
@@ -106,6 +115,11 @@ jobs:
           cargo build --release --locked
           node scripts/copy-native.js release
           npm test
+      - name: Notices ship in the npm package
+        working-directory: bindings/node
+        run: |
+          mkdir -p dist && npm pack --pack-destination dist
+          python3 ../../ci/check_notices.py --artifacts dist
 
   wasm:
     name: WebAssembly build
@@ -129,6 +143,7 @@ jobs:
           cargo build --release --locked --target wasm32-unknown-unknown
           node scripts/bindgen.js
           npm test
+          test -f pkg/THIRD_PARTY_NOTICES.md && test -f pkg-node/THIRD_PARTY_NOTICES.md
 
   c-go-java:
     name: C ABI, Go and Java 25 bindings (${{ matrix.os }})
@@ -171,4 +186,7 @@ jobs:
           cache: maven
       - name: Java binding
         working-directory: bindings/java
-        run: mvn -B test
+        run: |
+          mvn -B test
+          mvn -B -DskipTests package
+          unzip -l target/triplelight-0.1.0.jar | grep -q META-INF/THIRD_PARTY_NOTICES.md

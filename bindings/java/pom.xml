@@ -40,6 +40,14 @@
   </dependencies>
 
   <build>
+    <resources>
+      <!-- The jar carries the third-party notices (META-INF/THIRD_PARTY_NOTICES.md). -->
+      <resource>
+        <directory>${project.basedir}</directory>
+        <includes><include>THIRD_PARTY_NOTICES.md</include></includes>
+        <targetPath>META-INF</targetPath>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
