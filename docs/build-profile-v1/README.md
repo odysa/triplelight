@@ -70,3 +70,57 @@ the shape and, once shifted to a common origin, to within about 15 s.
 - The phase boundaries in the order phase are for the first run only, and the three concurrent orders share the same disk
   and CPUs, so their individual times are not independent.
 - No change to the builder was tried; part 2 (sort microbenchmark) is reported separately.
+
+# Part 2: sort microbenchmark
+
+100M rows of three `u64` (24-byte keys) through four sorters, each in its own process under `/usr/bin/time -l`, on two
+data variants. Source: `sort_bench.rs.txt` (a throwaway test kept out of the tree; run as `SORT_ARM=a|b|c|d|e`).
+Registered before running (task #89), with arm (d) added after review. Every arm folds its sorted output into the same
+count and xor hash and checks the order; the four arms agree on the hash for each variant (`raw/sort/`).
+
+- **a:** the current path: one `Vec<u8>` per row through `ExternalSort` (128 MiB runs, heap merge).
+- **b:** in memory, chunks sorted on 8 threads, then a range-partitioned parallel merge (consumed, not materialized).
+- **c:** in memory, one thread, `sort_unstable` on `Vec<[u64; 3]>`.
+- **d:** external, the same 128 MiB runs as (a), but fixed-width `[u64; 3]` rows sorted with `sort_unstable` and merged
+  with a heap: the design that could ship.
+- **e:** the parse phase's record shape: 100M records of variable-length term text (about 45 to 70 bytes, LUBM-style
+  IRIs and literals) plus an 8-byte ID, through the current `ExternalSort`. A baseline only; no replacement is tested.
+
+Variant A is uniform 60-bit IDs. Variant B is subject-clustered input with a small skewed predicate set, in the key order
+of a POS index. Wall time includes generating the rows. Memory is the maximum resident set size.
+
+| Arm | Variant B wall | Variant A wall | Max RSS |
+|---|---:|---:|---:|
+| a: current `ExternalSort`, `Vec<u8>` keys | 35.6 s | 36.2 s | 162 MB |
+| d: fixed-width rows, same external path and run size | 8.6 s | 7.2 s | 143 MB |
+| c: in memory, one thread | 5.8 s | 4.6 s | 2.40 GB |
+| b: in memory, 8 threads | 1.9 s | 1.3 s | 2.40 GB |
+| e: term-shaped records, current path (100M records, variant-independent) | 61.4 s | 61.4 s | 905 MB |
+
+## Predictions
+
+- **2a (b at least 3× faster than a):** held, by a wide margin: 19× on B and 27× on A. It compares unequal memory
+  (2.4 GB against 0.16 GB), so it is not a design.
+- **2b (c at least 1.5× faster than a, so most of the gain needs no extra threads):** held: 6.1× and 7.8×. Against the
+  external fixed-width arm, which keeps a's memory, the gain is 4.1× on B and 5.0× on A, so most of it comes from the
+  layout and the in-run sort, not from threads or memory. Arm (c) is only 1.5× faster than (d).
+- **2c (the in-memory arms need about 2.4 GB):** held: 2.40 GB.
+
+## What it says for the build
+
+- The current sorter is the cost. The microbenchmark's arm (a) takes 0.36 µs per row, and the lone OSP build in Part 1
+  spent 46.5 s reading and sorting 133.6M rows, about 0.35 µs per row: the same figure measured in two different ways.
+- A fixed-width external sort (arm d) is about 4 to 5× faster on the same 128 MiB run budget and the same memory. If the
+  reading-and-sorting part of the four order builds (about 130 s of the 172.8 s order phase) shrank by 4×, the build would
+  be about 98 s, or 15%, shorter. The mapping sort has the same shape (17-byte records, 77.5 s, 11.8% of the build) and
+  might save a comparable fraction. These are estimates from the microbenchmark, not measurements of a changed builder.
+- The parse and term-merge stages (347.6 s, 53% of the build) use the same sorter on variable-length records, which a
+  fixed-width layout does not fit. Arm (e) puts the current path at 0.61 µs per record; the real parse pushes about three
+  term records per triple, about 400M for LUBM-1000, across up to 8 parallel shards. Whether a better string sort would
+  help is not tested here.
+
+## Limits (part 2)
+
+- Synthetic rows, one host, one run per cell; the real build runs three sorts at once on the same disk and CPUs.
+- The in-memory arms are an upper bound on what extra memory buys, not a design: the real builder must stay external.
+- No change to the builder was made or measured.
