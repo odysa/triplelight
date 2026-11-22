@@ -18,7 +18,15 @@ pub(super) trait KeptOrders {
     fn scan_kept<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a>;
     fn count_kept(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError>;
     fn seek_kept(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError>;
+    /// The memo for one-column-prefix seeks on a derived order.
+    fn seek_memo(&self) -> &SeekMemo;
 }
+
+/// The sorted distinct second-column values of the last group a one-column-prefix seek on a derived order read.
+/// A leapfrog join seeks one group many times with rising targets, so without it each seek would rescan the group
+/// (quadratic in the group size); with it, a group is read once and each seek is a binary search.
+#[derive(Default)]
+pub(super) struct SeekMemo(std::sync::Mutex<Option<(Perm, TermId, std::sync::Arc<Vec<TermId>>)>>);
 
 /// How a missing order is served: `twin` holds the same rows with its first two key columns swapped; `sibling`
 /// shares the first key column, and the other two are swapped.
@@ -57,15 +65,23 @@ pub(super) fn seek<O: KeptOrders>(o: &O, perm: Perm, prefix: &[TermId], target: 
     match prefix.len() {
         // The first key column is the sibling's first column.
         0 => o.seek_kept(sibling, prefix, target),
-        // The second key column is the sibling's third: the smallest value >= target in the group.
+        // The second key column is the sibling's third: the smallest value >= target in the group (memoized).
         1 => {
-            let mut best: Option<TermId> = None;
-            for batch in o.scan_kept(sibling, prefix) {
-                for &v in &batch?.cols[2] {
-                    if v >= target && best.is_none_or(|b| v < b) { best = Some(v) }
+            let memo = &o.seek_memo().0;
+            let cached = memo.lock().unwrap().as_ref().filter(|(p, g, _)| *p == perm && *g == prefix[0]).map(|(.., v)| std::sync::Arc::clone(v));
+            let values = match cached {
+                Some(v) => v,
+                None => {
+                    let mut v = Vec::new();
+                    for batch in o.scan_kept(sibling, prefix) { v.extend_from_slice(&batch?.cols[2]) }
+                    v.sort_unstable();
+                    v.dedup();
+                    let v = std::sync::Arc::new(v);
+                    *memo.lock().unwrap() = Some((perm, prefix[0], std::sync::Arc::clone(&v)));
+                    v
                 }
-            }
-            Ok(best)
+            };
+            Ok(values.get(values.partition_point(|&v| v < target)).copied())
         }
         _ => o.seek_kept(twin, &swapped(prefix, 0, 1), target),
     }

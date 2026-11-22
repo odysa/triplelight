@@ -184,6 +184,7 @@ pub struct DiskSnapshot {
     /// Named graphs (`RDFSNAP5` only): the six graph-first quad orders and the catalog `(graph ID, triples)`,
     /// ascending by ID.
     named: Option<NamedBase>,
+    seek_memo: super::derived_order::SeekMemo,
 }
 struct NamedBase {
     /// The graph-first quad orders, in `Perm::ALL` order of their triple part; `None` as for `indexes`.
@@ -310,6 +311,7 @@ impl DiskSnapshot {
             dictionary,
             indexes,
             named,
+            seek_memo: Default::default(),
         })
     }
     /// Exhaustive, exact verification. The phases run in this order because the later ones rely on the earlier:
@@ -440,7 +442,7 @@ impl DiskSnapshot {
     pub fn graph_view(self: &std::sync::Arc<Self>, g: TermId) -> Option<DiskGraph> {
         let named = self.named.as_ref()?;
         named.catalog.binary_search_by_key(&g, |&(id, _)| id).ok()?;
-        Some(DiskGraph { snap: std::sync::Arc::clone(self), g })
+        Some(DiskGraph { snap: std::sync::Arc::clone(self), g, seek_memo: Default::default() })
     }
     /// Exhaustively check that every row of every permutation is in SPO (the six orders in parallel). Together with
     /// strictly sorted indexes of equal length (`verify` phase 2) this means all permutations hold the same set.
@@ -567,6 +569,7 @@ impl Snapshot for DiskSnapshot {
 }
 impl super::derived_order::KeptOrders for DiskSnapshot {
     fn has(&self, perm: Perm) -> bool { self.kept(perm).is_some() }
+    fn seek_memo(&self) -> &super::derived_order::SeekMemo { &self.seek_memo }
     fn scan_kept<'a>(
         &'a self,
         perm: Perm,
@@ -617,6 +620,7 @@ impl super::derived_order::KeptOrders for DiskSnapshot {
 pub struct DiskGraph {
     snap: std::sync::Arc<DiskSnapshot>,
     g: TermId,
+    seek_memo: super::derived_order::SeekMemo,
 }
 impl DiskGraph {
     fn kept(&self, perm: Perm) -> Option<&DiskIndex<4>> {
@@ -649,6 +653,7 @@ impl Snapshot for DiskGraph {
 }
 impl super::derived_order::KeptOrders for DiskGraph {
     fn has(&self, perm: Perm) -> bool { self.kept(perm).is_some() }
+    fn seek_memo(&self) -> &super::derived_order::SeekMemo { &self.seek_memo }
     fn scan_kept<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
         let index = self.index(perm);
         match index.range(&self.key(prefix)) {
