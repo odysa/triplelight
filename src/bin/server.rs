@@ -36,6 +36,7 @@ fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax
 /// never an empty result in place of a failure.
 fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>) -> Resp {
     let before = triplelight::storage::disk_index::cache_trace_enabled().then(triplelight::storage::disk_index::cache_trace_snapshot);
+    let derived = triplelight::storage::derived_trace::enabled().then(|| { triplelight::storage::derived_trace::take(); Instant::now() });
     let response = (|| { match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| query_with(snap, q, opts))) {
         Ok(Ok(r)) => {
             let (ct, b) = match &r {
@@ -60,6 +61,10 @@ fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'
             let d: Vec<u64> = (0..5).map(|j|after[i][j].saturating_sub(before[i][j])).collect();
             eprintln!("block_cache {name} hits={} misses={} pread_calls={} pread_bytes={} evictions={}",d[0],d[1],d[2],d[3],d[4]);
         }
+    }
+    if let Some(t) = derived {
+        let head: String = q.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
+        eprintln!("derived_trace ms={:.3} {} query={head:?}", t.elapsed().as_secs_f64() * 1e3, triplelight::storage::derived_trace::take());
     }
     response
 }
