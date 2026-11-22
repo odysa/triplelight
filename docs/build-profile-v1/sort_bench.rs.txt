@@ -1,0 +1,186 @@
+//! Task #89 part 2: sort microbenchmark, run by hand as separate processes (`SORT_ARM`, `SORT_VARIANT`, `SORT_ROWS`,
+//! `SORT_DIR`). Not run in CI. Rows are three u64 in key order; every arm folds the sorted rows into the same count and
+//! xor hash and checks the order, so the arms are comparable and checkable.
+//!   a  the current path: one `Vec<u8>` key per row through `ExternalSort` (128 MiB runs, heap merge)
+//!   b  in memory: chunks sorted on all cores, then a range-partitioned parallel merge (consumed, not materialized)
+//!   c  in memory, one thread: `sort_unstable` on `Vec<[u64; 3]>`
+//!   e  the parse phase's record shape: variable-length term text plus an 8-byte ID through `ExternalSort` (baseline only)
+//!   d  external, fixed-width rows: 128 MiB runs of `[u64; 3]` sorted with `sort_unstable`, merged with a heap
+use super::external_sort::ExternalSort;
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
+use std::io::{BufReader, BufWriter, Read, Write};
+use std::path::PathBuf;
+use std::time::Instant;
+
+type Row = [u64; 3];
+const RUN_BYTES: usize = 128 * 1024 * 1024;
+
+fn mix(mut x: u64) -> u64 {
+    x ^= x >> 33; x = x.wrapping_mul(0xff51_afd7_ed55_8ccd); x ^= x >> 33; x = x.wrapping_mul(0xc4ce_b9fe_1a85_ec53); x ^ (x >> 33)
+}
+/// Row `i` of variant `A` (uniform 60-bit IDs) or `B` (subject-clustered input, small skewed predicate set, key order
+/// of a POS index: predicate, object, subject).
+fn row(variant: &str, i: u64) -> Row {
+    const M: u64 = (1 << 60) - 1;
+    match variant {
+        "A" => [mix(i * 3) & M, mix(i * 3 + 1) & M, mix(i * 3 + 2) & M],
+        _ => {
+            let s = (1u64 << 60) | (i / 4);
+            let r = mix(i);
+            let p = (1u64 << 60) | ((r % 18).min((r >> 20) % 18));
+            let o = (1u64 << 60) | (mix(i ^ 0x9e37) % 40_000_000);
+            [p, o, s]
+        }
+    }
+}
+struct Fold { n: u64, hash: u64, prev: Option<Row> }
+impl Fold {
+    fn new() -> Self { Self { n: 0, hash: 0, prev: None } }
+    fn add(&mut self, r: Row) {
+        if let Some(p) = self.prev { assert!(p <= r, "not sorted"); }
+        self.prev = Some(r); self.n += 1;
+        self.hash ^= mix(r[0] ^ mix(r[1] ^ mix(r[2])));
+    }
+}
+fn be(r: &Row) -> [u8; 24] {
+    let mut b = [0u8; 24];
+    for k in 0..3 { b[k * 8..k * 8 + 8].copy_from_slice(&r[k].to_be_bytes()); }
+    b
+}
+fn from_be(b: &[u8]) -> Row { [0, 1, 2].map(|k| u64::from_be_bytes(b[k * 8..k * 8 + 8].try_into().unwrap())) }
+
+fn arm_a(variant: &str, n: u64, dir: &PathBuf) -> Fold {
+    let mut sort = ExternalSort::new(dir, RUN_BYTES, 24).unwrap();
+    for i in 0..n { sort.push(be(&row(variant, i)).to_vec()).unwrap(); }
+    let mut stream = sort.finish_stream().unwrap();
+    let mut f = Fold::new();
+    while let Some(r) = stream.next_record().unwrap() { f.add(from_be(&r)); }
+    f
+}
+/// Term-shaped records as the parse phase pushes them: canonical term text (about 45 to 70 bytes, a few shared prefixes)
+/// followed by an 8-byte big-endian ID. Baseline of the current path on this shape; no alternative is tested.
+fn arm_e(n: u64, dir: &PathBuf) -> (u64, u64) {
+    let mut sort = ExternalSort::new(dir, RUN_BYTES, 256).unwrap();
+    for i in 0..n {
+        let r = mix(i);
+        let text = match r % 4 {
+            0 => format!("<http://www.Department{}.University{}.edu/GraduateStudent{}>", r % 15, (r >> 8) % 1000, (r >> 20) % 400),
+            1 => format!("<http://www.Department{}.University{}.edu/Publication{}>", r % 15, (r >> 8) % 1000, (r >> 20) % 4000),
+            2 => format!("\"{}\"", (r >> 8) % 100_000),
+            _ => format!("<http://www.Department{}.University{}.edu/UndergraduateStudent{}>", r % 15, (r >> 8) % 1000, (r >> 20) % 8000),
+        };
+        let mut rec = text.into_bytes();
+        rec.extend_from_slice(&i.to_be_bytes());
+        sort.push(rec).unwrap();
+    }
+    let mut stream = sort.finish_stream().unwrap();
+    let (mut count, mut hash) = (0u64, 0u64);
+    let mut prev: Option<Vec<u8>> = None;
+    while let Some(r) = stream.next_record().unwrap() {
+        if let Some(p) = &prev { assert!(*p <= r, "not sorted"); }
+        count += 1; hash ^= mix(r.iter().fold(0u64, |h, b| h.wrapping_mul(131).wrapping_add(*b as u64)));
+        prev = Some(r);
+    }
+    (count, hash)
+}
+fn arm_c(variant: &str, n: u64) -> Fold {
+    let mut v: Vec<Row> = (0..n).map(|i| row(variant, i)).collect();
+    v.sort_unstable();
+    let mut f = Fold::new();
+    for r in v { f.add(r); }
+    f
+}
+fn arm_b(variant: &str, n: u64, threads: usize) -> Fold {
+    let mut v: Vec<Row> = (0..n).map(|i| row(variant, i)).collect();
+    let chunk = v.len().div_ceil(threads);
+    std::thread::scope(|s| { for c in v.chunks_mut(chunk) { s.spawn(move || c.sort_unstable()); } });
+    let chunks: Vec<&[Row]> = v.chunks(chunk).collect();
+    // splitters from a regular sample of every chunk
+    let mut sample: Vec<Row> = chunks.iter().flat_map(|c| (0..64).map(move |k| c[k * c.len() / 64])).collect();
+    sample.sort_unstable();
+    let splits: Vec<Row> = (1..threads).map(|t| sample[t * sample.len() / threads]).collect();
+    let ranges: Vec<Vec<&[Row]>> = (0..threads).map(|t| chunks.iter().map(|c| {
+        let lo = if t == 0 { 0 } else { c.partition_point(|r| *r < splits[t - 1]) };
+        let hi = if t == threads - 1 { c.len() } else { c.partition_point(|r| *r < splits[t]) };
+        &c[lo..hi]
+    }).collect()).collect();
+    let parts: Vec<Fold> = std::thread::scope(|s| {
+        let hs: Vec<_> = ranges.iter().map(|rs| s.spawn(move || {
+            let mut heap = BinaryHeap::new();
+            let mut pos = vec![0usize; rs.len()];
+            for (k, r) in rs.iter().enumerate() { if !r.is_empty() { heap.push(Reverse((r[0], k))); } }
+            let mut f = Fold::new();
+            while let Some(Reverse((r, k))) = heap.pop() {
+                f.add(r); pos[k] += 1;
+                if pos[k] < rs[k].len() { heap.push(Reverse((rs[k][pos[k]], k))); }
+            }
+            f
+        })).collect();
+        hs.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    // ranges are consecutive: check the seams, combine
+    for w in parts.windows(2) { if let (Some(a), Some(b)) = (w[0].prev, w[1].prev) { assert!(a <= b); } }
+    let mut f = Fold::new();
+    for p in &parts { f.n += p.n; f.hash ^= p.hash; }
+    f
+}
+fn arm_d(variant: &str, n: u64, dir: &PathBuf) -> Fold {
+    std::fs::create_dir_all(dir).unwrap();
+    let cap = RUN_BYTES / 24;
+    let mut buf: Vec<Row> = Vec::with_capacity(cap);
+    let mut runs: Vec<PathBuf> = Vec::new();
+    let flush = |buf: &mut Vec<Row>, runs: &mut Vec<PathBuf>| {
+        if buf.is_empty() { return; }
+        buf.sort_unstable();
+        let p = dir.join(format!("run-{}", runs.len()));
+        let mut w = BufWriter::with_capacity(1 << 20, std::fs::File::create(&p).unwrap());
+        for r in buf.iter() { w.write_all(&be(r)).unwrap(); }
+        w.flush().unwrap(); runs.push(p); buf.clear();
+    };
+    for i in 0..n { buf.push(row(variant, i)); if buf.len() == cap { flush(&mut buf, &mut runs); } }
+    flush(&mut buf, &mut runs);
+    drop(buf);
+    assert!(runs.len() <= 32, "one merge pass expected");
+    let mut readers: Vec<BufReader<std::fs::File>> = runs.iter().map(|p| BufReader::with_capacity(256 << 10, std::fs::File::open(p).unwrap())).collect();
+    let next = |r: &mut BufReader<std::fs::File>| -> Option<Row> {
+        let mut b = [0u8; 24];
+        match r.read_exact(&mut b) { Ok(()) => Some(from_be(&b)), Err(_) => None }
+    };
+    let mut heap = BinaryHeap::new();
+    for (k, r) in readers.iter_mut().enumerate() { if let Some(x) = next(r) { heap.push(Reverse((x, k))); } }
+    let mut f = Fold::new();
+    while let Some(Reverse((r, k))) = heap.pop() {
+        f.add(r);
+        if let Some(x) = next(&mut readers[k]) { heap.push(Reverse((x, k))); }
+    }
+    for p in runs { let _ = std::fs::remove_file(p); }
+    f
+}
+
+#[test]
+#[ignore = "manual microbenchmark: SORT_ARM=a|b|c|d SORT_VARIANT=A|B SORT_ROWS=100000000 SORT_DIR=/path"]
+fn sort_microbench() {
+    let arm = std::env::var("SORT_ARM").unwrap();
+    let variant = std::env::var("SORT_VARIANT").unwrap_or("B".into());
+    let n: u64 = std::env::var("SORT_ROWS").ok().and_then(|v| v.parse().ok()).unwrap_or(100_000_000);
+    let dir = PathBuf::from(std::env::var("SORT_DIR").unwrap());
+    std::fs::create_dir_all(&dir).unwrap();
+    if arm == "e" {
+        let t = Instant::now();
+        let (count, hash) = arm_e(n, &dir);
+        println!("SORTBENCH arm=e variant=- rows={count} hash={hash:016x} wall_s={:.2}", t.elapsed().as_secs_f64());
+        assert_eq!(count, n);
+        return;
+    }
+    let t = Instant::now();
+    let f = match arm.as_str() {
+        "a" => arm_a(&variant, n, &dir),
+        "b" => arm_b(&variant, n, std::thread::available_parallelism().map(|x| x.get()).unwrap_or(4).min(8)),
+        "c" => arm_c(&variant, n),
+        "d" => arm_d(&variant, n, &dir.join("d")),
+        _ => panic!("arm"),
+    };
+    println!("SORTBENCH arm={arm} variant={variant} rows={} hash={:016x} wall_s={:.2}", f.n, f.hash, t.elapsed().as_secs_f64());
+    assert_eq!(f.n, n);
+}

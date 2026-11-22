@@ -1,0 +1,4 @@
+SORTBENCH arm=d variant=B rows=100000000 hash=3f763807a2b7cef1 wall_s=8.58
+        8.65 real         8.10 user         0.50 sys
+           143196160  maximum resident set size
+            24347320  peak memory footprint
