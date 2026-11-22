@@ -65,9 +65,13 @@ Round 11 ([LUBM-1000](../../bench/results/r11-lubm1000)) and round 12
 | LUBM-1000 fastest on | **11 / 14** | 1 | 2 |
 | BSBM-100M total / geomean (ms) | 260 / **8.32** | **223** / 8.39 | 1,116 / 33.9 |
 | BSBM-100M fastest on | **12 / 20** | 8 | 0 |
+| LUBM-1000 memory in use (round 11) | 9.0 GB | 10.7 GB | **0.4 GB** |
 
 \* Virtuoso's HTTP endpoint stops at 1,048,576 rows despite `ResultSetMaxRows = 10^9`, so its Q6 and Q14 answers
 (7,924,765 rows each) are incomplete and its total is understated; the second row excludes those two queries.
+
+The memory row retains the round-11 observation and its original GB units. The archived query results
+do not specify the memory sampling boundary, so use it only as a reported in-use value.
 
 On the macOS host (round 9, `bench/results/r9-*`), TripleLight in memory answers LUBM-1000 in 3.6 s and BSBM-100M in
 82 ms in total.
