@@ -212,8 +212,12 @@ C1a (embedded) and C1b (HTTP), with the layout ranking test as its "is the compa
   and exclusions are stated. It is kept separate from the hand-written SQL layout arms. (Jianlin)
 - *RDF Fusion 0.3.1:* a native Rust in-process cohort with TripleLight, on the release's local disk backend. Load, close
   and reopen are staged separately, with a typed-identity gate. A memory-only run, if needed, is reported separately. (Jianlin)
-- *MillenniumDB:* an HTTP engine with its own loader and server, answer-gated, ranked as a fixed-layout engine. (WindowsXP)
-- *RDF4J:* the official server image (`eclipse/rdf4j-workbench:5.0.0`, pinned by digest), native store, with the default
+- *MillenniumDB:* an HTTP engine with its own loader and server (Docker build from a pinned commit, `mdb import`,
+  `mdb server`). Its layout counts as fixed only once its store receipt shows the indexes it builds. Known limits from its
+  own documentation: no named graphs, `FROM` or `GRAPH` (those requests are recorded as unsupported); numeric lexical
+  forms not preserved, so its answers can at best reach the value-compatible class, never exact typed identity; it
+  describes itself as "not production ready". Its JSON results format is to be verified in qualification. (WindowsXP)
+- *RDF4J:* (supersedes the RDF4J 5.3.2 wrapper row in "Systems, pinned" above) the official server image (`eclipse/rdf4j-workbench:5.0.0`, pinned by digest), native store, with the default
   `spoc,posc` and aligned `spoc,posc,ospc` arms. The in-house wrapper is used only for the embedded Java cohort. (WindowsXP)
 - *QLever two-order arm* (`qlever-index -o`); a variable-predicate request it can't answer is recorded as unsupported. (WindowsXP)
 
@@ -266,7 +270,7 @@ result decoding and serialization.
 (Alex)
 
 **A9. Baseline tuning (gap B6).** Each system follows its vendor's documented post-load steps: `oxigraph optimize`, Jena
-`tdbstats`, QLever's and Virtuoso's index and statistics steps. All of them are recorded in the receipts. Memory rule: the
-same cgroup `memory.max` for every system; inside it, each system's memory knobs follow vendor guidance, stated per
+`tdbstats`, QLever's and Virtuoso's index and statistics steps. All of them are recorded in the receipts. Memory rule (supersedes "the same budget for
+every knob" above): the same cgroup `memory.max` for every system; inside it, each system's memory knobs follow vendor guidance, stated per
 system (TripleLight: cache at half the limit). Commercial engines are excluded because their benchmark-publication
 licence terms are not accepted on the owner's behalf. (WindowsXP)
