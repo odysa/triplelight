@@ -4,9 +4,13 @@ Goal: every number in a research paper comes from one dedicated Linux machine, m
 in advance, reproducible from an archived artifact. Scripts and answer checks are qualified on the laptop first; the
 machine is rented only for the measurement window.
 
-## Claims the evaluation must support (draft)
-- C1 Embedded analytical SPARQL: in-process analytical queries (joins + aggregation on term IDs) are faster than
-  embedded RDF stores and a triples-table SQL engine, and competitive with the fastest servers.
+## Claims the evaluation must support
+- C1a Embedded: through each language's in-process API (Python cohort; Java cohort), TripleLight answers the analytical
+  suites faster than the embedded RDF stores and DuckDB, timed through full typed result materialization.
+- C1b HTTP: as a SPARQL server, TripleLight is competitive with QLever and Virtuoso on the same suites, timed from
+  request to complete response body. C1a and C1b are separate comparisons and are never mixed in one figure.
+- DuckDB layout effects (single table against six sorted copies, fixed against routed) are contrasts within DuckDB
+  only; a comparison with TripleLight is between registered configurations and states each one's order set.
 - C2 Four index orders suffice: SPO, PSO, POS, OSP serve all benchmark queries; SOP/OPS are derived exactly; stores
   16–36% smaller with unchanged query time.
 - C3 Bulk build: fixed-width sorting (#90) and duplicate-free term sorting (#91) reduce build time and scratch.
@@ -30,8 +34,9 @@ aggregate suites), large-result queries (LUBM Q6/Q14), bulk build, open-to-ready
 - One system at a time; machine otherwise idle; CPU governor and frequency recorded.
 - Cold: drop the OS page cache before each process (`echo 3 > /proc/sys/vm/drop_caches`), fresh process.
   Warm: one warm-up pass, then 5 measured runs. Report median and min–max (or IQR) per query; geomean per suite.
-- Every answer checked against the frozen Jena reference (canonical multiset; ORDER BY/projection where declared).
-  A wrong or incomplete answer is reported as such, never timed.
+- Every answer checked against the frozen Jena reference. The exact typed check is recorded for every result; the BI
+  numeric and aggregate COUNT compatibility policies are declared separately and used only for ranking. Every figure
+  names the gate it uses. A wrong or incomplete answer is reported as such, never timed (details: Jianlin's section).
 - Timeouts registered per suite; timeouts reported, not dropped.
 - Build: wall, CPU, peak RSS, peak scratch, store size; 3 repeats ABBA where comparing variants.
 
@@ -136,7 +141,7 @@ than memory. Laptop evidence so far: #83 (cache budget), #88 (four against six o
   the I/O counters and OOM handling. No timing claims.
 - S2's cache-drop step as a dry run (a no-op on macOS) so the driver path is exercised.
 
-## Section owners (proposed)
+## Section owners
 Storage/build/memory: Alex. Analytical + DuckDB layouts + answer gates: Jianlin. Server suites, QLever/Virtuoso/Jena
 configs and the driver: WindowsXP. Claims, ablations, protocol, final registration: Kaiming.
 
