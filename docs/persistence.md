@@ -55,7 +55,9 @@ and new bases can exist on disk at the same time. Compaction keeps the order set
 ## Base formats
 
 A base directory holds a `MANIFEST`, written last, and the files it names. The manifest starts with an 8-byte
-version and lists a 32-byte SHA-256 identity (of the block directory) for each file, which `open` checks.
+version and lists a 32-byte SHA-256 identity for each file, which `open` checks. For a block-indexed file (the triple
+and quad orders and the `RDFSNAP3`+ dictionaries) the identity covers its header and block directory; for the
+`RDFSNAP2` legacy dictionary and the graph catalog it is a SHA-256 of the whole file's contents.
 
 | Manifest | Dictionary | Triple orders | Named graphs |
 | --- | --- | --- | --- |
@@ -63,7 +65,7 @@ version and lists a 32-byte SHA-256 identity (of the block directory) for each f
 | `RDFSNAP3` | `dictionary.term` and `dictionary.id` | six | no |
 | `RDFSNAP4` | `dictionary.unified` | six | no |
 | `RDFSNAP5` | `dictionary.unified` | six | six quad orders and `graphs` |
-| `RDFSNAP6` | `dictionary.unified` | the kept set (at least four) | the kept quad orders and `graphs` |
+| `RDFSNAP6` | `dictionary.unified` | the kept set (at least four) | if its named-graph flag is set: the kept quad orders and `graphs` |
 
 - **Triple orders** are the files `spo`, `sop`, `pso`, `pos`, `osp`, `ops` (format `RDFIDX03`; `RDFIDX02` is still
   read). Each holds the triples sorted by its key, in blocks of 256 rows. A block is compressed (the first column is
