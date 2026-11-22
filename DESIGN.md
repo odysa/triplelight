@@ -1,48 +1,95 @@
-# TripleLight: a single-machine RDF store in Rust (design v0)
+# TripleLight architecture
 
-Goal (chengxu-bian, (internal discussion) b8e35e0d): a SPARQL store in the class of Apache Jena (TDB2) and Eclipse RDF4J,
-built with current database techniques, in Rust, single machine first, benchmarked against existing products.
+TripleLight is an embedded RDF database for analytical SPARQL on one machine. An application opens a directory (or an
+in-memory database) through a library call, and every query runs in the application's process. This document
+describes the current design; the measured results are in [docs/report/evaluation.md](docs/report/evaluation.md)
+and [docs/benchmark-overview.md](docs/benchmark-overview.md).
 
-## 1. What the state of the art does (what we borrow)
+## Crates
 
-| System | Key ideas we take |
+| Crate | Role |
 |---|---|
-| RDF-3X (Neumann & Weikum, VLDB'08/VLDBJ'10) | dictionary-encode every term to an integer ID; store all 6 SPO permutations as sorted, delta-compressed runs; aggregated (2-col, 1-col) count indexes; merge joins on sorted runs; DP join ordering |
-| Hexastore (Weiss et al., VLDB'08) | 6 indexes make every triple pattern a range scan |
-| QLever (Bast & Buchhold, CIKM'17) | read-optimized compressed permutations as flat column blocks with a small block index; very fast bulk load; delta-triple overlay for updates |
-| Oxigraph (Rust) | inline small literals/numbers into the ID (no dictionary lookup); reuse its parsers (`oxttl`, `oxrdfio`) and SPARQL algebra (`spargebra`) |
-| Leapfrog Triejoin (Veldhuizen, ICDT'14); MillenniumDB (Vrgoč et al., 2022); Free Join (Wang et al., SIGMOD'23) | worst-case-optimal joins for cyclic / many-way star patterns, mixed with binary joins where cheaper |
-| Characteristic sets (Neumann & Moerkotte, ICDE'11) | cardinality estimates for star joins — the dominant SPARQL shape |
-| MonetDB/X100, HyPer morsels, DuckDB | vectorized (batch-at-a-time) execution over ID columns; morsel-driven parallelism over 10 cores |
-| FSST (Boncz et al., VLDB'20) | compress the string dictionary while allowing random access |
+| `triplelight-rdf` | RDF term types (IRIs, blank nodes, literals, variables, triples, quads) and their text parser. A port of `oxrdf` 0.3.5 with identical behaviour. |
+| `triplelight-iri` | IRI validation and relative-reference resolution, matching `oxiri`. |
+| `triplelight-core` | Term IDs and permutations (`model`), the `Snapshot`/`Dictionary` traits the engine is written against (`storage`), and the N-Triples/N-Quads and Turtle/TriG parsers. |
+| `triplelight-sparql` | SPARQL 1.1 query and update parser and algebra. |
+| `triplelight-plan` | Statistics (characteristic sets, predicate counts, sketches) and join-order search. |
+| `triplelight-exec` | The query executor: joins, filters, aggregation, property paths, result serialization. |
+| `triplelight-storage` | The in-memory snapshot, the on-disk snapshot and its builders, the write-ahead log, overlays and compaction. |
+| `triplelight` (root) | The embedded API (`embedded`, `async_embedded`), the CLI and the optional SPARQL HTTP server. |
 
-What Jena TDB2 / RDF4J native do *not* do (where we expect to win): tuple-at-a-time iterators,
-B+trees on 3 (TDB2: SPO/POS/OSP + quads) or fewer orders, no WCOJ, weak cardinality estimation, single-threaded queries.
+The language bindings (`bindings/python`, `node`, `wasm`, `c`, `go`, `java`) wrap the embedded API. The WebAssembly
+build is in-memory only; the others open persistent stores (Unix).
 
-## 2. Architecture
+No Oxigraph crate is a runtime dependency. The parsers and term types were written to accept and produce exactly
+what `oxttl`, `oxiri` and `oxrdf` did, and differential tests against those crates (dev-dependencies only) keep it
+that way. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-```
-SPARQL text --spargebra--> algebra --> logical plan --> optimizer (char. sets + DP/greedy, WCOJ choice)
-           --> vectorized physical plan (scan/merge-join/hash-join/leapfrog/filter/agg/sort) --> decode IDs --> results
-Storage:  term dictionary (ID <-> term, inline literals)  +  6 permutations (SPO SOP PSO POS OSP OPS)
-          base = immutable sorted compressed column blocks (mmap)  +  delta = in-memory sorted insert/delete sets, WAL
-          snapshot isolation: readers pin (base version, delta epoch); single writer; periodic merge delta -> new base
-```
+## Terms and IDs
 
-- **IDs**: u64. Top bits tag the kind (IRI, blank, inline int/decimal/date/bool/short string, dictionary literal).
-- **Permutation blocks**: ~64K triples per block, columns delta + bit-packed; block index of first keys in RAM.
-- **Named graphs**: phase 2 (add G as a fourth column: GSPO/GPOS/GOSP + default-graph union views).
+Every term is a 64-bit `TermId`. The top four bits give its kind (IRI, blank node, literal, and inline string). In the
+in-memory store, a plain string of up to seven bytes is encoded in the ID itself, so operators can compare it without
+a lookup; its text is still stored once in the term arena, like every other term. On disk,
+current stores (`RDFSNAP4`/`RDFSNAP5`) keep one front-coded dictionary file in ID order. Within a kind, ID order is
+term-text order, so the same file serves lookups by ID and by term. Operators compare, join and group IDs; a term is
+decoded only when a filter, a string function or the result needs its text.
 
-## 3. Scope by phase
+## Storage
 
-- **P1 (MVP):** N-Triples/Turtle bulk load, BGP + FILTER + OPTIONAL + UNION + LIMIT/ORDER/DISTINCT, SELECT/ASK, CLI + SPARQL HTTP endpoint (SPARQL 1.1 protocol, JSON results) so the benchmark drivers can hit it unchanged.
-- **P2:** aggregates/GROUP BY, property paths, SPARQL Update (INSERT/DELETE DATA), named graphs, WCOJ.
-- **P3:** full SPARQL 1.1 test-suite pass rate, compression tuning, parallel execution.
+A **base snapshot** is immutable. It holds the triples in sorted orders (SPO, SOP, PSO, POS, OSP, OPS) as
+compressed, checksummed blocks, read on demand through decoded-block caches that share one memory
+budget. A dataset with named graphs (`RDFSNAP5`) adds six graph-first quad orders and a catalog of graphs. SOP and
+OPS can be served exactly from OSP, POS and SPO (`derived_order.rs`, task #73), which lets a future `RDFSNAP6` base
+omit them (#119).
 
-## 4. Benchmark plan
+**Updates** are appended to a write-ahead log with group commit and synced before the call returns. They form an
+**overlay** of inserts and deletes over the base. Readers pin a snapshot (base plus overlay generation), so a query
+never sees part of an update. **Compaction** writes a new base by external sort and switches to it atomically;
+readers keep their old snapshot until they drop it.
 
-- **Systems:** Jena TDB2 (Fuseki), RDF4J native store (and LMDB store), Oxigraph (Rust, same parsers — the honest same-language baseline); QLever optional.
-- **Workloads:** LUBM (scale 100/1000), WatDiv (10M/100M; stress mixes of star/linear/snowflake/complex), BSBM explore (with updates), SP2Bench.
-- **Metrics:** bulk-load time and on-disk size; per-query latency (cold and warm, median of 5); throughput under BSBM mixes; peak RSS.
-- **Correctness:** every benchmark query's result multiset must equal Jena's; W3C SPARQL 1.1 test suite pass rate reported.
-- **Hygiene:** same machine (10-core Apple M-series, 64 GB), one system at a time, fixed JVM heap, page cache dropped for cold runs, report all queries (no cherry-picking), scripts + raw numbers committed.
+**Building** a disk store from N-Triples uses an external-sort builder (`--build-external`, or automatically when
+the input is large). Small inputs take an in-memory path that writes the older two-file dictionary (`RDFSNAP3`) until
+the first compaction. `triplelight verify` checks a base: block checksums, that every order holds the same triples,
+that every ID resolves, and the dictionary and graph catalog.
+
+Details and formats: [docs/persistence.md](docs/persistence.md).
+
+## Query processing
+
+1. **Parse** SPARQL into an algebra (`triplelight-sparql`). Features the engine does not implement (`SERVICE`,
+   `LOAD`, `BNODE(string)`) are refused with an "unsupported" error rather than answered partially.
+2. **Encode** constants through the dictionary. A constant that is not in the data makes its pattern empty.
+3. **Order joins.** By default the executor orders a basic graph pattern greedily: at each step it takes the
+   pattern with the smallest exact index-prefix count for the current (sampled) binding, and penalizes patterns not
+   connected to those already chosen. Eligible cyclic patterns use leapfrog triejoin with its own variable-order
+   choice. The planner's cost-based binary order replaces the greedy one only when statistics are available, the
+   pattern has two to seven triples, its input is a single all-unbound row in the default data context, and the
+   estimated greedy work is at least 100,000. The planner uses characteristic sets and predicate counts
+   (Neumann and Moerkotte, ICDE 2011), subset dynamic programming,
+   and a cost-based variable order for trie joins. Disk stores persist the statistics next to the base, so a reopened
+   store has them at once; otherwise they are built in the background.
+4. **Execute** on IDs: leapfrog triejoin for cyclic patterns, index nested-loop (bind) joins, filter pushdown, hash
+   aggregation, top-k for `ORDER BY ... LIMIT`, and index-count shortcuts for `COUNT`. Property paths, `OPTIONAL`,
+   `MINUS`, `EXISTS`, subqueries and named graphs (`GRAPH`, `FROM`, `FROM NAMED`) are supported.
+5. **Return** results, which are materialized before output: SPARQL JSON, owned rows in each binding's types, or
+   Arrow C streams from the C, Go and Java bindings.
+
+Optimizer details: [docs/optimizer.md](docs/optimizer.md).
+
+## Correctness
+
+- Every benchmark compares TripleLight's answers with Apache Jena under that benchmark's declared checks (for
+  example canonical multisets, or projected columns and `ORDER BY` where the benchmark registers them).
+- CI requires at least 323 passing tests from the W3C SPARQL 1.1 query suite ([ci/w3c_floor.json](ci/w3c_floor.json)).
+- Numbers: `xsd:decimal` arithmetic is exact within 96 bits and `xsd:integer` within 64 bits; results outside that
+  range are errors.
+- Storage changes are gated on byte-identical stores and on reading stores written by earlier versions.
+
+## Known limits
+
+- Building a disk store is mostly single-threaded and needs tens of gigabytes of scratch disk at 100M triples.
+- Results are materialized before output.
+- One process per store directory, enforced by a file lock.
+- `LOAD`, `SERVICE`, `BNODE(string)` and blank-node graph names are not supported.
+
+The original design plan (v0) is preserved in git history.
