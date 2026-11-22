@@ -71,11 +71,17 @@ and we report them as benchmark results only.
 \paragraph{Methodology.} \todo{SPARQL log studies (Bonifati et al.\unread, Arias et al.\unread) and the real-query-log coverage of the derived orders; read before writing.}
 
 \section{Methodology}
-\paragraph{Systems.} Versions are pinned in \texttt{docs/eval-plan/PLAN.md} (frozen plan). Server cohort (HTTP):
-TripleLight, QLever, Jena TDB2/Fuseki, Oxigraph and RDF4J (native) are in the ranking test, each with the arm named in
-Section~4.0. Virtuoso~7 is measured and reported in the HTTP cohort but is \emph{outside the ranking test}: \todo{reason or arm, to be confirmed by the inventory owner; the inventory has no registered alternate layout for it}.
-Embedded cohort (language API): TripleLight bindings and DuckDB are in the ranking test; pyoxigraph, Blazegraph and rdflib backends
-are reported but outside it for the same reason (no registered default/aligned pair). \todo{confirm per system.}
+\paragraph{Systems.} Versions are pinned in \texttt{docs/eval-plan/PLAN.md} (frozen plan). Dispositions follow the inventory
+(\texttt{docs/embedded-store-inventory.md} and its receipt supplement); fixed-layout systems have no alternate configuration, so their
+default and aligned arms coincide.
+\emph{Server cohort (HTTP):} TripleLight (four and six orders), QLever (default; two-order mode), RDF4J native (three orders, \texttt{spoc, posc, ospc}),
+Jena TDB2/Fuseki and Oxigraph (fixed layouts), and Virtuoso~7 (fixed layout: full quad indexes PSOG and POGS plus partial indexes SP, OP and GS as vendor defaults).
+Virtuoso enters the ranking only if the new run's receipt captures its index catalog and its suites pass the answer gate.
+\emph{Embedded cohort (language API):} TripleLight bindings (four and six orders) and DuckDB (single table; six copies fixed and routed, within-engine contrasts) are the registered
+arms. pyoxigraph (fixed SPO, POS, OSP for triples) and Blazegraph~2.1.5 (fixed SPO, POS, OSP) are candidate fixed-layout comparators whose admission is decided per suite at the registered
+scale: pyoxigraph's BI qualification timed out and Blazegraph has no admitted full-scale comparison yet. RDFLib backends are listed as supporting evidence only, because
+the inventory registers no full-workload ranking profile or common order set for any of them.
+\todo{Open decision for the claims owner: with the proposed minimum of four paired engines, the embedded cohort is unevaluable unless enough fixed-layout comparators are admitted; otherwise the embedded comparisons are descriptive and the ranking test is defined on the HTTP cohort.}
 The embedded and the HTTP cohort are compared within themselves and never in one figure.
 
 \paragraph{Index inventory.} For every system we record the orders it stores in its measured configuration
