@@ -14,7 +14,7 @@ order instead of two). Single session, one host, no other jobs (the shared bench
 
 | | old (`d9a47980`) | new (`3ce08bd8`) |
 |---|---|---|
-| Store size (two builds each) | 12,533.1 MB (12.24 GiB) | 7,936.3 MB (7.75 GiB), −36.7% |
+| Store size (two builds each) | 12,533.1 MB (11.67 GiB) | 7,936.3 MB (7.39 GiB), −36.7% |
 | Dictionary files | `dictionary.term` 4.62 GB + `dictionary.id` 4.60 GB | `dictionary.unified` 4.62 GB |
 | Dictionary conversion phase | 190.9 s, 195.9 s | 131.0 s, 139.5 s |
 | Wall time | 684.3 s, 775.5 s | 706.3 s, 704.3 s |

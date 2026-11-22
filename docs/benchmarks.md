@@ -1,32 +1,23 @@
 # Benchmarks
 
-Earlier versions of TripleLight were developed as `TripleLight`; some evidence files and paths from that period keep the old
-name. They refer to the same engine.
+Older evidence uses the name `rdfdb` for earlier versions of TripleLight.
 
-**How to read these numbers**
+- HTTP timings run from query submission through receipt of the complete JSON response. Embedded timings run
+  through materialization in the named binding. The tables give the boundary and the aggregation method.
+- Where two passes are reported, the second reverses the registered order. Both values describe that session.
+- Container `memory.peak` includes page cache and kernel memory. Tables that use process RSS or another measure
+  label it in the corresponding section.
+- Apache Jena supplies the reference answers. The BI primary check preserves datatypes and allows registered
+  numeric rounding. The aggregate primary check compares exact RDF terms. The COUNT-compatible check accepts
+  `xsd:int` and `xsd:integer` as equivalent for COUNT results.
 
-- **Time** is wall-clock time for the HTTP request (send query, receive the full JSON result), unless a table says
-  otherwise. "Total" sums the per-request times of one pass; "geometric mean" is per query. **Lower is better.**
-- **Pass 1 / Pass 2**: each benchmark runs twice, the second time with the engine order reversed, to expose
-  drift on the shared machine. We report both rather than averaging them.
-- **Memory** is the container's cgroup `memory.peak`, which includes page cache and kernel memory. It is not
-  process RSS. **Lower is better.**
-- **Answer checks** (`60 / 60` = 60 of 60 requests correct) compare every engine's results against Apache Jena.
-  "Primary" requires the expected datatypes (on BSBM BI it allows registered numeric rounding
-  bounds; on the aggregate suite it requires exact RDF terms); "value-only" compares numeric values within
-  registered rounding bounds and ignores datatype; "COUNT int = integer" accepts `xsd:int` for COUNT results.
-- **The measured DuckDB baseline uses explicit SQL mappings.** The triples are loaded into one DuckDB table
-  (subject, predicate, and an object struct with kind, value, datatype and language), with no per-predicate tables,
-  extra indexes or precomputed joins. On BSBM BI, a small HTTP adapter fills a hand-written SQL template for each
-  query template with that request's parameters (`bi_sql.py`); on the aggregate suite, a translator written only for
-  that suite's flat COUNT / GROUP BY queries turns each SPARQL query into SQL (`aggregate_sql.py`). SQL generation,
-  execution and JSON encoding all run inside the timed request; the time to write the templates is not counted.
-  DuckDB's answers go through the same Jena checks.
-- Each section links its raw evidence (queries, configs, per-request timings, answers).
+The DuckDB baseline stores one triples table with a typed object struct and automatic zonemaps. BI requests use
+hand-written SQL templates. The aggregate suite uses a translator for its flat COUNT and GROUP BY queries. The
+timed HTTP requests include SQL generation, execution and JSON encoding.
 
-
-All comparisons run every system on the same machine in the same session, with each system's answers checked
-against Apache Jena. Numbers are sums of per-query medians unless stated. Lower is better.
+Each table describes a named cohort with its own engines, indexes and storage layouts. Differences in total query
+time describe those configurations together. The [index inventory](embedded-store-inventory.md#index-layouts-in-the-benchmarks)
+records the available layout evidence.
 
 ## Embedded startup with persisted statistics
 
@@ -519,16 +510,16 @@ costs, every query, and the earlier pure-column limitation and q023 ordering fai
 - BI q3 against QLever, at 10M and at 100M. q1 is also slower at 10M; at 100M its winner changes between passes.
 - Memory, measured two ways: on the 10M BI run, peak server memory (process) is about 4× QLever's; on the 100M BI
   run, peak cgroup memory (which includes page cache) is 3.7–4.1 GiB against QLever's 0.4–0.5 GiB.
-- Loading: building the LUBM-1000 disk store took 1,035 s against QLever's 425 s in round 9. A parallel loader has
-  been merged since, but its speedup is not established and it has not been compared at that scale.
-- Numeric range: `xsd:decimal` is exact within 96 bits and 28 fractional digits and `xsd:integer` within 64 bits;
-  results outside that range are query errors (Jena uses arbitrary precision). This includes decimal underflow,
-  which is stricter than XPath (XPath returns 0.0 on underflow, and only overflow is an error), so this is not full
-  SPARQL numeric conformance. Non-terminating decimal quotients are rounded to 28 digits.
-- SPARQL coverage: property paths, named graphs (`GRAPH`, `FROM`), `SERVICE` and some functions (hashes, `NOW`,
-  `UUID`, …) are rejected as unsupported. W3C SPARQL 1.1 query suite: 281 pass, 6 fail, 44 unsupported
-  ([details](../bench/results/w3c-sparql11)).
-- Store open: statistics take seconds to become ready after opening a store (42.8 s for the 100M BSBM store).
+- Loading: the historical LUBM-1000 disk build took 1,035 s against QLever's 425 s in round 9.
+  The [BSBM-100M dictionary comparison](unified-dictionary-100m-v1/README.md) measures later external builds
+  on a different dataset.
+- Numeric range: the fixed-width `xsd:integer` and `xsd:decimal` limits are documented in the
+  [engine README](../README.md#features).
+- SPARQL coverage: the current executor rejects `SERVICE`. The [CI floor](../ci/w3c_floor.json) names
+  323 required W3C SPARQL 1.1 query tests. The [archived suite runs](../bench/results/w3c-sparql11)
+  describe their recorded revisions.
+- Store open: in the [persisted statistics session](startup36-persisted-stats/README.md), statistics were
+  ready 0.74–0.91 s from open start with the saved file and 20.5–25.8 s with a rebuild scan.
 
 Full method and earlier rounds (8–12, so some totals differ from the later rounds above):
 [report/evaluation.md](report/evaluation.md) and
