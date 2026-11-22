@@ -1,7 +1,16 @@
 # Parallel N-Triples loading
 
-`triplelight serve data.nt 7878` uses the number of CPUs reported by `available_parallelism` to parse N-Triples chunks and sort the six indexes. The term dictionary is still constructed serially. Parsed chunks and all indexes are held in memory, so this is not an external-memory loader. The final available parallelism and memory use depend on the host.
+**In memory.** `triplelight serve data.nt 7878` and `triplelight query data.nt ...` load N-Triples into memory with
+one worker per CPU (`available_parallelism`). The file is split at line boundaries and the chunks are parsed in
+parallel. Terms then enter the dictionary serially, deduplicated triples go into SPO, and the other five orders are
+derived from SPO with a parallel sort. Everything is held in memory, so this is not an external-memory loader.
+`--parallel-load=N` sets the worker count, and `--parallel-load=1` takes the serial path. Turtle is parsed serially,
+and asking for more than one worker with a `.ttl` input exits with an error. The code is
+`MemorySnapshot::from_ntriples_parallel_file` in `crates/triplelight-storage/src/memory.rs`.
 
-Use `triplelight serve data.nt 7878 --parallel-load=1` for the original serial path, or `--parallel-load=4` to set a specific positive worker count. `triplelight query` accepts the same option. Turtle continues on its serial parser; requesting more than one worker explicitly with a `.ttl` input exits with an error.
+**Disk builds.** `triplelight build-disk` uses the same loader when it takes the in-memory path (see
+[persistence.md](persistence.md#building-a-base)). The external builder parses the file in parallel with at most 8
+workers and builds the triple orders with at most 3 workers at a time; `--parallel-load=N` caps the parse workers.
 
-The benchmark harness accepts `bench/suite.sh lubm100 triplelight-parallel` to select four workers. Its post-query RSS sample is not a peak-memory measurement.
+**Benchmarks.** `bench/suite.sh lubm100 triplelight-parallel` runs the server with `--parallel-load=4`. Its RSS figure
+is a sample taken after the queries, not a peak.
