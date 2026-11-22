@@ -10,31 +10,21 @@ use triplelight_rdf::{Term, TermRef};
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 pub(crate) enum Backend { Memory(MemorySnapshot), Disk(DiskSnapshot) }
+/// Forwards a call to whichever snapshot the CLI opened.
+macro_rules! each { ($self:ident, $s:ident => $e:expr) => { match $self { Backend::Memory($s) => $e, Backend::Disk($s) => $e } } }
 impl Dictionary for Backend {
-    fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { match self { Self::Memory(s) => s.lookup(term), Self::Disk(s) => s.lookup(term) } }
-    fn resolve(&self, id: TermId) -> Result<Term, StorageError> { match self { Self::Memory(s) => s.resolve(id), Self::Disk(s) => s.resolve(id) } }
-    fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> { match self { Self::Memory(s) => s.with_term(id, f), Self::Disk(s) => s.with_term(id, f) } }
-    fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, TermRef<'_>)) -> Result<(), StorageError> { match self { Self::Memory(s) => s.with_terms(ids, f), Self::Disk(s) => s.with_terms(ids, f) } }
+    fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { each!(self, s => s.lookup(term)) }
+    fn resolve(&self, id: TermId) -> Result<Term, StorageError> { each!(self, s => s.resolve(id)) }
+    fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> { each!(self, s => s.with_term(id, f)) }
+    fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, TermRef<'_>)) -> Result<(), StorageError> { each!(self, s => s.with_terms(ids, f)) }
 }
 impl Snapshot for Backend {
-    fn scan<'a>(&'a self, p: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + 'a> {
-        match self { Self::Memory(s) => s.scan(p,prefix), Self::Disk(s) => s.scan(p,prefix) }
-    }
-    fn scan_for_stats(&self) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + '_> {
-        match self { Self::Memory(s) => s.scan_for_stats(), Self::Disk(s) => s.scan_for_stats() }
-    }
-    fn count(&self, p: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
-        match self { Self::Memory(s) => s.count(p,prefix), Self::Disk(s) => s.count(p,prefix) }
-    }
-    fn seek(&self, p: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
-        match self { Self::Memory(s) => s.seek(p,prefix,target), Self::Disk(s) => s.seek(p,prefix,target) }
-    }
-    fn matching_rows(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> {
-        match self { Self::Memory(s) => s.matching_rows(p, prefix), Self::Disk(s) => s.matching_rows(p, prefix) }
-    }
-    fn matching_tail(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 2]]> {
-        match self { Self::Memory(s) => s.matching_tail(p, prefix), Self::Disk(s) => s.matching_tail(p, prefix) }
-    }
+    fn scan<'a>(&'a self, p: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + 'a> { each!(self, s => s.scan(p, prefix)) }
+    fn scan_for_stats(&self) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + '_> { each!(self, s => s.scan_for_stats()) }
+    fn count(&self, p: Perm, prefix: &[TermId]) -> Result<u64, StorageError> { each!(self, s => s.count(p, prefix)) }
+    fn seek(&self, p: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> { each!(self, s => s.seek(p, prefix, target)) }
+    fn matching_rows(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> { each!(self, s => s.matching_rows(p, prefix)) }
+    fn matching_tail(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 2]]> { each!(self, s => s.matching_tail(p, prefix)) }
 }
 use std::time::Instant;
 
