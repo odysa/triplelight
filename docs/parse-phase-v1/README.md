@@ -12,8 +12,14 @@ scored below. One instrumented build, one scan, one host; descriptive.
   **This run is much faster than the Part 1 build of the same file (654.8 s, peak 46.7 GB at 244 s) and I have no
   explanation for the difference** (same command and inputs, same exclusive lock, different main by docs and a server
   change): the two builds have different absolute times, so only ratios are compared between them below.
-- **Scan:** `term_dup.py`, one process, over the same file with the builder's 8-way byte split, counting term tokens
-  (subject, predicate, object as written in the file).
+- **Scan:** `term_dup.py`, one process, over the same file with the builder's 8-way byte split, counting raw term tokens
+  (subject, predicate, object as written in the file). The counts are raw-token estimates, not canonical terms, and use
+  Python's 64-bit hash, which gives about 2.9 × 10⁻⁵ expected colliding pairs for 32.9M distinct terms. The version in this
+  PR stops on a comment, a blank line, a tab-separated line or any line that is not three space-separated tokens ending in
+  ` .`; the scan that produced the LUBM numbers did not have those checks (it silently skipped short lines), but its
+  per-shard triple and occurrence counts equal the builder's own timing counters in all eight shards (for example 17,405,039
+  triples in shard 0 and 17,273,643 in shard 1; 138,318,414 in all, three term occurrences each), so nothing but triples
+  was counted for LUBM.
 
 ## Measurement 1: where a shard's time goes
 
@@ -74,7 +80,7 @@ Because each record carries the triple ID, equal terms are never equal records, 
 
 **Option A: deduplicate in a per-shard hash map before sorting.** In each shard thread, look each term up in a
 `HashMap<term, local id>`, and write the triple as three 8-byte local IDs to a per-shard rows file instead of pushing
-three records. At the end of the shard, sort only the shard's distinct terms (4.1M, about 300 MB, which fits in memory) and
+three records (all 138,318,414 parsed triples, duplicates included, before any deduplication: 3.32 GB of rows at 24 bytes each). At the end of the shard, sort only the shard's distinct terms (4.1M, about 300 MB, which fits in memory) and
 write them as one sorted run with their local IDs. The term merge then merges 8 sorted lists of distinct terms (32.9M
 records, 2.4 GB) and assigns global IDs exactly as today, in global text order, so the dictionary and the IDs come out
 unchanged. It writes, for each shard, an array local ID to global ID (4.1M × 8 B = 33 MB). The triples are then remapped by
@@ -82,9 +88,9 @@ a sequential pass over each shard's rows file with that array in memory, produci
 read today. That pass replaces the mapping sort and the 17-byte mapping records.
 
 - **Time (estimate):** per shard, parsing (40.1 s) and formatting (8.0 s) stay; the run sorts, run writes and merge (57.9 s)
-  are replaced by 17.3M × 3 hash lookups (about 8 s at 150 ns each), writing 417 MB of rows (about 1 s), and an in-memory
+  are replaced by 17.3M × 3 hash lookups (about 8 s at 150 ns each), writing the shard's 415 MB of rows (about 1 s), and an in-memory
   sort of 4.1M terms (about 5 s). That takes a shard from about 111 s to about 66 s, 40% less. The term merge sorts 12.6×
-  fewer records (32.9M against 415M) and the mapping sort disappears into a remap pass over 133.6M rows. Applied to Part 1's
+  fewer records (32.9M against 415M) and the mapping sort disappears into a remap pass over all 138.3M parsed rows. Applied to Part 1's
   breakdown (parse stage 38.7%, term merge 14.4%, mapping sort 11.8% of the wall time): about −15%, −12% and −10%, so
   roughly 35% of the build, within a plausible range of 25 to 40%.
 - **Scratch (estimate):** the shard runs, 27.4 GB today and the reason for the 41 to 47 GB peak, become about 2.4 GB of
@@ -98,6 +104,9 @@ read today. That pass replaces the mapping sort and the 17-byte mapping records.
   clear it, and continue with a new run number. Row IDs then carry (run, local ID), the term merge assigns a global ID per
   (run, local ID), and the remap arrays are per run. A dataset of mostly unique terms makes every run nearly as large as
   today's records but without the triple ID and position, so it should not be slower than today, only no longer faster.
+- **Open question:** how Option A behaves on a mostly unique input. Every term then goes through a hash lookup and an insert,
+  the rows file and the remap pass are pure additions, and the saving on the sorts shrinks with the duplicate share; only
+  the BSBM and WatDiv scans, and then a prototype, can say.
 - **Risks:** the first pass must also keep the order of triples inside a shard (the triple IDs, `shard << 56 | n`); the
   global ID assignment must stay byte-identical (gate: identical stores against main, four and six orders, as for
   #90); a term over 16 MiB must still be refused; and the sorted run of a partial map reuses the unique-ID rule for kinds.

@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """#91: term occurrences vs distinct terms in an N-Triples file, per shard (same byte split as the builder: 8 shards cut at
-the next line boundary), globally, and per kind. Terms are the raw tokens of the line (IRI, blank node, literal); hash64
-stands in for the term, so a collision (about 1e-12 per pair) could undercount distinct terms by one.
+the next line boundary), globally, and per kind. Terms are the raw tokens of the line (IRI, blank node, literal), so the
+counts are raw-token estimates, not canonical terms. Python's 64-bit hash stands in for the term: under uniform hashing a
+file with 32.9M distinct terms has about 2.9e-5 expected colliding pairs (n^2 / 2^65), so a collision is very unlikely but
+would undercount distinct terms by one.
+The scanner supports only plain space-separated N-Triples, one triple per line, each ending in " .". A comment, a blank
+line, a tab-separated line or a line that does not split into three tokens makes it stop with an error, so a count never
+silently includes something that is not a triple. Per-shard triple counts are printed so they can be checked against the
+builder's own.
 usage: term_dup.py file.nt out.json [shards]"""
 import sys, json, os, time, collections
 path, out = sys.argv[1], sys.argv[2]
@@ -25,11 +31,13 @@ with open(path, "rb") as f:
             line = f.readline()
             if not line: break
             parts = line.split(b" ", 2)
-            if len(parts) < 3: continue
+            if line[:1] in (b"#", b"\n", b"\r") or len(parts) < 3 or (line.rstrip(b"\r\n")[-2:] != b" ."):
+                sys.exit(f"unsupported input in shard {s} near byte {f.tell()}: {line[:80]!r}")
             triples += 1
             o = parts[2]
             if o.endswith(b" .\n"): o = o[:-3]
             elif o.endswith(b" ."): o = o[:-2]
+            elif o.endswith(b" .\r\n"): o = o[:-4]
             for tok in (parts[0], parts[1], o):
                 h = hash(tok); n = len(tok)
                 occ += 1; occ_bytes += n + 10
