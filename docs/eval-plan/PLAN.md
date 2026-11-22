@@ -93,8 +93,8 @@ peak scratch and the final index size, and the index orders each system keeps (t
 **Query sets and scales.** LUBM (14 queries, no inference) at 1000 and 8000; WatDiv basic templates at 100M and 1B; BSBM
 Explore (20 queries) at 100M and 1B, with the BI templates in the analytical section. The BSBM constants must be
 regenerated for the scale of the data. Disk: the planned machine (`i4i.4xlarge`, 3.75 TB of local NVMe) holds the LUBM-8000
-input (about 180 GB of N-Triples) plus about 0.4 TB of build scratch (measured peak scratch is 1.8 to 2.1 times the
-input across the #88 and #90 builds, so plan with 2.1×, about 380 GB for 1B triples); the gp3 volume holds the inputs only.
+input (about 180 GB of N-Triples) plus about 0.4 TB of build scratch (measured peak scratch in the #88 builds is 1.8 to 2.1 times the
+input for six LUBM-1000 builds and 1.7 to 1.9 times for four BSBM-100M builds, so plan with 2.1×, about 380 GB for 1B triples); the gp3 volume holds the inputs only.
 
 **Known pitfalls to design around:** Virtuoso's row cap; QLever's result typing and its result cache (disabled with
 `-c 1MB -e 1MB -E 1MB` in the earlier rounds); TDB2's reliance on the OS page cache, which makes "cold" depend on the cache
