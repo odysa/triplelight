@@ -1,16 +1,17 @@
 //! Differential qualification of the N-Triples / N-Quads parser against `oxttl` 0.2 (task #45, step 2): a document
 //! is accepted by both or by neither, and an accepted document yields the same statements in the same order.
 use triplelight_core::ntriples::{parse_nquads_line, read_nquads, read_ntriples};
-use triplelight_core::rdf::Quad;
+use triplelight_core::rdf::{GraphName, Quad};
+mod ox;
 
 fn ours(data: &[u8], quads: bool) -> Option<Vec<Quad>> {
     if quads { read_nquads(data).collect::<Result<Vec<_>, _>>().ok() } else {
-        read_ntriples(data).map(|t| t.map(|t| t.in_graph(oxrdf::GraphName::DefaultGraph))).collect::<Result<Vec<_>, _>>().ok()
+        read_ntriples(data).map(|t| t.map(|t| t.in_graph(GraphName::DefaultGraph))).collect::<Result<Vec<_>, _>>().ok()
     }
 }
 fn theirs(data: &[u8], quads: bool) -> Option<Vec<Quad>> {
-    if quads { oxttl::NQuadsParser::new().for_slice(data).collect::<Result<Vec<_>, _>>().ok() } else {
-        oxttl::NTriplesParser::new().for_slice(data).map(|t| t.map(|t| t.in_graph(oxrdf::GraphName::DefaultGraph))).collect::<Result<Vec<_>, _>>().ok()
+    if quads { oxttl::NQuadsParser::new().for_slice(data).map(|q| q.map(ox::quad)).collect::<Result<Vec<_>, _>>().ok() } else {
+        oxttl::NTriplesParser::new().for_slice(data).map(|t| t.map(|t| ox::triple(t).in_graph(GraphName::DefaultGraph))).collect::<Result<Vec<_>, _>>().ok()
     }
 }
 fn check(data: &[u8], quads: bool) {
@@ -115,7 +116,7 @@ fn wal_lines_agree() {
         "<http://a> <http://b> <http://c> .\n<bad>",
     ] {
         let mut q = oxttl::NQuadsParser::new().for_slice(line.as_bytes());
-        let theirs = match (q.next(), q.next()) { (Some(Ok(quad)), None) => Some(quad), _ => None };
+        let theirs = match (q.next(), q.next()) { (Some(Ok(quad)), None) => Some(ox::quad(quad)), _ => None };
         assert_eq!(parse_nquads_line(line), theirs, "{line:?}");
     }
 }
@@ -132,12 +133,12 @@ fn files_agree() {
         let ours_it: Box<dyn Iterator<Item = Quad>> = if quads {
             Box::new(read_nquads(open()).map(|r| r.unwrap_or_else(|e| panic!("ours failed: {e}"))))
         } else {
-            Box::new(read_ntriples(open()).map(|r| r.unwrap_or_else(|e| panic!("ours failed: {e}")).in_graph(oxrdf::GraphName::DefaultGraph)))
+            Box::new(read_ntriples(open()).map(|r| r.unwrap_or_else(|e| panic!("ours failed: {e}")).in_graph(GraphName::DefaultGraph)))
         };
         let theirs_it: Box<dyn Iterator<Item = Quad>> = if quads {
-            Box::new(oxttl::NQuadsParser::new().for_reader(open()).map(|r| r.unwrap_or_else(|e| panic!("oxttl failed: {e}"))))
+            Box::new(oxttl::NQuadsParser::new().for_reader(open()).map(|r| ox::quad(r.unwrap_or_else(|e| panic!("oxttl failed: {e}")))))
         } else {
-            Box::new(oxttl::NTriplesParser::new().for_reader(open()).map(|r| r.unwrap_or_else(|e| panic!("oxttl failed: {e}")).in_graph(oxrdf::GraphName::DefaultGraph)))
+            Box::new(oxttl::NTriplesParser::new().for_reader(open()).map(|r| ox::triple(r.unwrap_or_else(|e| panic!("oxttl failed: {e}"))).in_graph(GraphName::DefaultGraph)))
         };
         let (mut a, mut b) = (ours_it, theirs_it);
         let mut n = 0u64;

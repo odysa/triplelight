@@ -1,0 +1,19 @@
+[package]
+name = "triplelight-rdf"
+description = "TripleLight's RDF term types: IRIs, blank nodes, literals, variables, triples and quads"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+triplelight-iri.workspace = true
+# Seeds blank-node labels (`BlankNode::default`) from the OS, or from the JS host in the WebAssembly package.
+getrandom.workspace = true
+
+[dev-dependencies]
+# Comparator only (task #45): the differential tests check these types against oxrdf; it is not a runtime dependency.
+oxrdf.workspace = true
+
+[lints]
+workspace = true

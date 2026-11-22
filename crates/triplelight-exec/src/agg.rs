@@ -10,7 +10,7 @@ use super::{expr, Ctx, Row, UNBOUND};
 use crate::model::TermId;
 use crate::storage::Snapshot;
 use expr::Num;
-use oxrdf::{Literal, Term, Variable};
+use triplelight_rdf::{Literal, Term, Variable};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression};
 use std::cell::RefCell;
 use std::cmp::Ordering;

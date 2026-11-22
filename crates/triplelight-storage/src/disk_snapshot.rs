@@ -3,7 +3,7 @@
 use super::disk_index::{DiskIndex, write_index};
 use super::{Dictionary, MemorySnapshot, Snapshot, StorageError};
 use crate::model::{Perm, TermId, TripleBatch};
-use oxrdf::Term;
+use triplelight_rdf::Term;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -417,7 +417,7 @@ impl DiskSnapshot {
         }
         for &(g, count) in &named.catalog {
             let mut iri = false;
-            self.with_term(g, &mut |t| iri = matches!(t, oxrdf::TermRef::NamedNode(_)))?;
+            self.with_term(g, &mut |t| iri = matches!(t, triplelight_rdf::TermRef::NamedNode(_)))?;
             let range = base.range(&[g])?;
             if !iri || range.end - range.start != count {
                 return Err(bad("graph catalog disagrees with the quad orders"));
@@ -480,7 +480,7 @@ impl Dictionary for DiskSnapshot {
     fn with_term(
         &self,
         id: TermId,
-        f: &mut dyn FnMut(oxrdf::TermRef<'_>),
+        f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>),
     ) -> Result<(), StorageError> {
         match &self.dictionary {
             DictionaryBackend::Legacy { reverse, .. } => {
@@ -497,7 +497,7 @@ impl Dictionary for DiskSnapshot {
     fn with_terms(
         &self,
         ids: &[TermId],
-        f: &mut dyn FnMut(usize, oxrdf::TermRef<'_>),
+        f: &mut dyn FnMut(usize, triplelight_rdf::TermRef<'_>),
     ) -> Result<(), StorageError> {
         match &self.dictionary {
             DictionaryBackend::Legacy { reverse, .. } => {
@@ -606,8 +606,8 @@ impl DiskGraph {
 impl Dictionary for DiskGraph {
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { self.snap.lookup(term) }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> { self.snap.resolve(id) }
-    fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> Result<(), StorageError> { self.snap.with_term(id, f) }
-    fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, oxrdf::TermRef<'_>)) -> Result<(), StorageError> {
+    fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.snap.with_term(id, f) }
+    fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> {
         self.snap.with_terms(ids, f)
     }
 }
@@ -651,7 +651,7 @@ impl Snapshot for DiskGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use oxrdf::{Literal, NamedNode, Triple};
+    use triplelight_rdf::{Literal, NamedNode, Triple};
     /// A dataset base (`RDFSNAP5`): every named graph view answers like the overlay it was written from (by term)
     /// and like a row model of its quad rows (by ID) for every order, prefix and seek; the catalog keeps empty graphs.
     #[test]

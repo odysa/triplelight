@@ -6,12 +6,14 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-oxrdf.workspace = true
+triplelight-rdf.workspace = true
 triplelight-iri.workspace = true
 
 [dev-dependencies]
-# Comparator only (task #45): the differential tests check `ntriples` and `turtle` against oxttl.
+# Comparators only (task #45): the differential tests check `ntriples` and `turtle` against oxttl, whose oxrdf
+# terms they convert to TripleLight's.
 oxttl.workspace = true
+oxrdf.workspace = true
 
 [lints]
 workspace = true

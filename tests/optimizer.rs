@@ -1,4 +1,4 @@
-use oxrdf::Term;
+use triplelight_rdf::Term;
 use triplelight::model::{Perm, TermId, TripleBatch};
 use triplelight::opt::plan::{JoinTree, Slot, TriplePattern};
 use triplelight::opt::stats::scan_permutation;
@@ -43,7 +43,7 @@ impl Dictionary for Graph {
             "encoded-only graph fixture",
         ))
     }
-    fn with_term(&self, _: TermId, _: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> std::io::Result<()> {
+    fn with_term(&self, _: TermId, _: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> std::io::Result<()> {
         Err(std::io::Error::new(
             std::io::ErrorKind::Unsupported,
             "encoded-only graph fixture",
@@ -684,7 +684,7 @@ impl Dictionary for Faulty<'_> {
     fn resolve(&self, id: TermId) -> std::io::Result<Term> {
         self.inner.resolve(id)
     }
-    fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> std::io::Result<()> {
+    fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> std::io::Result<()> {
         self.inner.with_term(id, f)
     }
 }
@@ -888,7 +888,7 @@ fn wide_high_work_bgp_preserves_original_runtime_results() {
     let graph = MemorySnapshot::from_ntriples(input.as_bytes()).unwrap();
     let stats = Stats::from_snapshot(&graph).unwrap();
     let pred = graph
-        .lookup(&oxrdf::NamedNode::new("urn:p").unwrap().into())
+        .lookup(&triplelight_rdf::NamedNode::new("urn:p").unwrap().into())
         .unwrap()
         .unwrap();
     let patterns = vec![p(v(0), Slot::Const(pred), v(1)); 8];
