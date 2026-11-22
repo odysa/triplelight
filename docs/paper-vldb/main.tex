@@ -68,8 +68,7 @@ Correctness is gated on answers matching Apache Jena under each benchmark's decl
 RDF-3X stores all six permutations of subject, predicate and object, compressed by deltas, and adds count-aggregated indexes~\cite{neumann2008}; Hexastore\unread\ introduced the six-index idea.
 QLever's authors report that for typical semantic queries two permutations (PSO and POS) suffice, at the loss of patterns with a variable predicate, and describe Virtuoso's default indexes as corresponding to the same two, with more permutations built on demand~\cite{bast2017}.
 TripleLight keeps four (SPO, PSO, POS, OSP) and derives SOP and OPS exactly, so every access order remains available. The default store is 36\% smaller on LUBM-1000 (4.97 to 3.16\,GB) and 17\% smaller
-on BSBM-100M (7.94 to 6.56\,GB) than the six-order store (\texttt{docs/build-compare-orders-v1}). On 255 benchmark queries the derived path needed no regroup scan and no memo miss, with only 18 cheap remaps on LUBM, so on these benchmarks the two dropped orders cost nothing at query time
-(\texttt{docs/ablation-qual-v1}, \todo{cite after PR \#146 merges}). How often real query logs reach a derived order is open (Section~5).
+on BSBM-100M (7.94 to 6.56\,GB) than the six-order store (\texttt{docs/build-compare-orders-v1}). Across 255 benchmark queries, the trace recorded no regroup scans or memo misses and 18 direct remaps, all on LUBM (\texttt{docs/ablation-qual-v1}, \todo{cite after PR \#146 merges}); any latency effect is left to the timed four-against-six comparison in Section~4.4. How often real query logs reach a derived order is open (Section~5).
 The Ring\unread\ also answers ordered access over all six orders, from one structure in memory; our setting differs (disk, ordinary sorted blocks).
 
 \subsection{Counting from index metadata and ID-level aggregation}
