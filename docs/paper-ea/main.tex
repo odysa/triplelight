@@ -74,14 +74,11 @@ and we report them as benchmark results only.
 \paragraph{Systems.} Versions are pinned in \texttt{docs/eval-plan/PLAN.md} (frozen plan). Dispositions follow the inventory
 (\texttt{docs/embedded-store-inventory.md} and its receipt supplement); fixed-layout systems have no alternate configuration, so their
 default and aligned arms coincide.
-\emph{Server cohort (HTTP):} TripleLight (four and six orders), QLever (default; two-order mode), RDF4J native (three orders, \texttt{spoc, posc, ospc}),
-Jena TDB2/Fuseki and Oxigraph (fixed layouts), and Virtuoso~7 (fixed layout: full quad indexes PSOG and POGS plus partial indexes SP, OP and GS as vendor defaults).
-Virtuoso enters the ranking only if the new run's receipt captures its index catalog and its suites pass the answer gate.
-\emph{Embedded cohort (language API):} TripleLight bindings (four and six orders) and DuckDB (single table; six copies fixed and routed, within-engine contrasts) are the registered
-arms. pyoxigraph (fixed SPO, POS, OSP for triples) and Blazegraph~2.1.5 (fixed SPO, POS, OSP) are candidate fixed-layout comparators whose admission is decided per suite at the registered
-scale: pyoxigraph's BI qualification timed out and Blazegraph has no admitted full-scale comparison yet. RDFLib backends are listed as supporting evidence only, because
-the inventory registers no full-workload ranking profile or common order set for any of them.
-\todo{Open decision for the claims owner: with the proposed minimum of four paired engines, the embedded cohort is unevaluable unless enough fixed-layout comparators are admitted; otherwise the embedded comparisons are descriptive and the ranking test is defined on the HTTP cohort.}
+\emph{Server cohort (HTTP), the ranking cohort:} TripleLight (four and six orders), QLever (default; two-order mode), Jena TDB2/Fuseki and Oxigraph (fixed layouts),
+and Virtuoso~7 (fixed layout: full quad indexes PSOG and POGS plus partial indexes SP, OP and GS as vendor defaults; it enters only if the new run's receipt captures its index catalog
+and its suites pass the answer gate). RDF4J native (three orders, \texttt{spoc, posc, ospc}) is measured and reported but is not one of the five ranking engines.
+\emph{Embedded cohorts (descriptive only):} Python (TripleLight with four and six orders, DuckDB, pyoxigraph) and Java (TripleLight, Blazegraph~2.1.5). DuckDB is run as a single table and as six copies, fixed and routed, as within-engine contrasts.
+pyoxigraph (SPO, POS, OSP) and Blazegraph (SPO, POS, OSP) enter per suite only if they pass their full-workload gates. These cohorts have too few engines to rank, so we report per-engine results, default against aligned, with no $\tau$ and no kill rule. RDFLib backends are listed as supporting evidence only (no registered full-workload profile or common order set).
 The embedded and the HTTP cohort are compared within themselves and never in one figure.
 
 \paragraph{Index inventory.} For every system we record the orders it stores in its measured configuration
@@ -104,26 +101,25 @@ request set}, by geometric-mean time over answers that pass the gate. If an engi
 QLever's two-order mode), it is reported in the coverage table as unsupported and removed from \emph{both} rank vectors before
 $\tau$ is computed, so a change in who can answer is never read as a ranking change. A suite and cohort with fewer than the minimum
 number of paired engines is \emph{unevaluable} and stays unevaluable under the kill rule. The fixed-SPO DuckDB arm is diagnostic only
-and not an arm of the test. Proposed, for the claims owner to confirm: $\tau_b$ with average ranks for ties, minimum of four paired engines.
+and not an arm of the test. Decided by the claims owner (Kaiming He, 2026-11-22, task \#96), still pending the plan amendment: the test is defined on the HTTP cohort only; the statistic is Kendall's $\tau_b$ with average ranks for ties; the minimum is four paired engines per suite after unsupported cells are dropped from both vectors. The embedded cohorts are descriptive only.
 
 \section{Results: Rankings}
 \subsection{Registered predictions (written before any measurement)}
 \begin{itemize}
-  \item \textbf{Quantity:} Kendall's $\tau$ between the default-configuration ranking and the aligned ranking, per suite and cohort.
+  \item \textbf{Quantity:} Kendall's $\tau$ between the default-configuration ranking and the aligned ranking, per suite, on the HTTP cohort (TripleLight, QLever, Virtuoso, Jena TDB2, Oxigraph).
   \item \textbf{Arms and order sets} (each system: default configuration and closest aligned order set, as measured; list from the \#72 inventory, to be confirmed by its owner):
   TripleLight with four and with six orders; QLever default and two-order mode (the latter may not answer variable-predicate patterns);
-  DuckDB as a single table and as six copies, fixed and routed; RDF4J with three orders as measured (\texttt{spoc, posc, ospc});
-  Jena TDB2 and Oxigraph with fixed layouts, so default and aligned configurations coincide.
+  Virtuoso, Jena TDB2 and Oxigraph with fixed layouts, so default and aligned configurations coincide.
   \item \textbf{Kill rule:} the claim that index layout changes the ranking fails if $\tau \ge 0.8$ on every \emph{evaluable} suite; unevaluable suites do not count towards it.
-  \item \textbf{Predicted direction} (registered 2026-11-22 by the claims owner, Kaiming He, task \#96, before any measurement):
+  \item \textbf{Predicted direction} (registered 2026-11-22 by the claims owner, Kaiming He, task \#96, before any measurement; scoped to the HTTP cohort):
   on the analytical suites (BSBM BI and the WatDiv aggregates) aligning order sets changes the ranking, $\tau < 0.8$;
   on the 14 LUBM queries the ranking holds, $\tau \ge 0.8$. If either prediction is wrong, the paper reports that.
 \end{itemize}
 \subsection{Results}
-\begin{tabular}{lccc}\toprule Suite & Cohort & $\tau$ & Ranks that change\\\midrule
-LUBM & embedded & \todo{} & \todo{}\\ LUBM & HTTP & \todo{} & \todo{}\\
-WatDiv & embedded & \todo{} & \todo{}\\ WatDiv & HTTP & \todo{} & \todo{}\\
-BSBM & embedded & \todo{} & \todo{}\\ BSBM & HTTP & \todo{} & \todo{}\\\bottomrule\end{tabular}
+\begin{tabular}{lccc}\toprule Suite (HTTP cohort) & Paired engines & $\tau_b$ & Ranks that change\\\midrule
+LUBM & \todo{} & \todo{} & \todo{}\\ WatDiv & \todo{} & \todo{} & \todo{}\\ BSBM & \todo{} & \todo{} & \todo{}\\\bottomrule\end{tabular}
+
+\noindent The embedded cohorts are reported per engine, default against aligned, without $\tau$ (Section~3).
 
 \section{Storage Arm: Four Orders Instead of Six}
 TripleLight's default store keeps four orders (SPO, PSO, POS, OSP); SOP and OPS are derived exactly from them at query time.
