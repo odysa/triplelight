@@ -653,7 +653,9 @@ fn read_exact_at_traced(
     }
     Ok(())
 }
-/// Physical memory in bytes (macOS: sysctl hw.memsize; Linux: /proc/meminfo MemTotal), if it can be determined.
+/// Memory available to this process in bytes, if it can be determined: macOS `sysctl hw.memsize`; Linux
+/// `/proc/meminfo` `MemTotal`, capped by the process's cgroup memory limit (a container or a `systemd-run` scope), so
+/// the default cache and build budgets fit inside the limit.
 /// Computed once per process. On macOS this spawns `sysctl`, and a child process may briefly share the parent's
 /// open file descriptions until it execs; spawning on every disk open made it likely that a concurrently closed
 /// database's directory lock (flock) outlived its close for a few milliseconds. Caching removes this repeated
@@ -662,6 +664,37 @@ fn read_exact_at_traced(
 pub fn physical_memory_bytes() -> Option<u64> {
     static MEMORY: std::sync::OnceLock<Option<u64>> = std::sync::OnceLock::new();
     *MEMORY.get_or_init(read_physical_memory_bytes)
+}
+
+/// The tightest memory limit on the process's cgroups, from `/proc/self/cgroup` (`groups`) and the files `read` returns:
+/// cgroup v2 `memory.max` of the process's group and of each ancestor, or cgroup v1 `memory.limit_in_bytes`. `None` if
+/// there is no numeric limit (`max`, or nothing readable). A v1 "unlimited" value is a huge number, which the caller's
+/// `min` with `MemTotal` makes harmless.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn cgroup_memory_limit(groups: &str, read: &dyn Fn(&str) -> Option<String>) -> Option<u64> {
+    let number = |file: String| read(&file).and_then(|t| t.trim().parse::<u64>().ok());
+    let mut tightest: Option<u64> = None;
+    for line in groups.lines() {
+        let mut parts = line.splitn(3, ':');
+        let (Some(_), Some(controllers), Some(path)) = (parts.next(), parts.next(), parts.next()) else { continue };
+        let path = path.trim_end_matches('/');
+        let limits: Vec<u64> = if controllers.is_empty() {
+            // v2: "0::/a/b". The group and every ancestor up to the root can carry a limit.
+            let mut dir = path.to_string();
+            let mut found = Vec::new();
+            loop {
+                found.extend(number(format!("/sys/fs/cgroup{dir}/memory.max")));
+                match dir.rfind('/') { Some(i) => dir.truncate(i), None => break }
+            }
+            found
+        } else if controllers.split(',').any(|c| c == "memory") {
+            number(format!("/sys/fs/cgroup/memory{path}/memory.limit_in_bytes")).into_iter().collect()
+        } else {
+            Vec::new()
+        };
+        for limit in limits { tightest = Some(tightest.map_or(limit, |t| t.min(limit))) }
+    }
+    tightest
 }
 
 fn read_physical_memory_bytes() -> Option<u64> {
@@ -689,7 +722,10 @@ fn read_physical_memory_bytes() -> Option<u64> {
             .nth(1)?
             .parse()
             .ok()?;
-        return Some(kb * 1024);
+        let total = kb * 1024;
+        let groups = std::fs::read_to_string("/proc/self/cgroup").unwrap_or_default();
+        let limit = cgroup_memory_limit(&groups, &|path| std::fs::read_to_string(path).ok());
+        return Some(limit.map_or(total, |limit| limit.min(total)));
     }
     #[allow(unreachable_code)]
     None
@@ -697,6 +733,31 @@ fn read_physical_memory_bytes() -> Option<u64> {
 
 #[cfg(test)]
 mod tests {
+    /// The cgroup limit is the tightest `memory.max` on the group or an ancestor (v2), or the v1 memory controller's
+    /// limit; `max` or a missing file means no limit.
+    #[test]
+    fn cgroup_memory_limit_takes_the_tightest_limit() {
+        let files = |entries: &'static [(&'static str, &'static str)]| move |path: &str| {
+            entries.iter().find(|(p, _)| *p == path).map(|(_, v)| v.to_string())
+        };
+        let v2 = files(&[
+            ("/sys/fs/cgroup/system.slice/bench.scope/memory.max", "8589934592\n"),
+            ("/sys/fs/cgroup/system.slice/memory.max", "max\n"),
+            ("/sys/fs/cgroup/memory.max", "max\n"),
+        ]);
+        assert_eq!(cgroup_memory_limit("0::/system.slice/bench.scope\n", &v2), Some(8 << 30));
+        let parent = files(&[("/sys/fs/cgroup/a/memory.max", "4294967296"), ("/sys/fs/cgroup/a/b/memory.max", "max")]);
+        assert_eq!(cgroup_memory_limit("0::/a/b", &parent), Some(4 << 30), "an ancestor's limit applies");
+        let nested = files(&[("/sys/fs/cgroup/a/memory.max", "4294967296"), ("/sys/fs/cgroup/a/b/memory.max", "8589934592")]);
+        assert_eq!(cgroup_memory_limit("0::/a/b", &nested), Some(4 << 30), "the tightest of several limits wins");
+        let docker = files(&[("/sys/fs/cgroup/memory.max", "17179869184")]);
+        assert_eq!(cgroup_memory_limit("0::/\n", &docker), Some(16 << 30), "a container sees its group as the root");
+        assert_eq!(cgroup_memory_limit("0::/x", &files(&[("/sys/fs/cgroup/x/memory.max", "max")])), None);
+        let v1 = files(&[("/sys/fs/cgroup/memory/docker/abc/memory.limit_in_bytes", "2147483648")]);
+        assert_eq!(cgroup_memory_limit("12:cpu,cpuacct:/docker/abc\n11:memory:/docker/abc\n", &v1), Some(2 << 30));
+        assert_eq!(cgroup_memory_limit("", &files(&[])), None);
+        assert_eq!(cgroup_memory_limit("garbage\n", &files(&[])), None);
+    }
     use super::*;
     #[test]
     fn fallible_stream_propagates_errors_and_rejects_wrong_count() {
