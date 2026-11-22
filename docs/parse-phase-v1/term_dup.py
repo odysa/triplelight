@@ -4,9 +4,10 @@ the next line boundary), globally, and per kind. Terms are the raw tokens of the
 counts are raw-token estimates, not canonical terms. Python's 64-bit hash stands in for the term: under uniform hashing a
 file with 32.9M distinct terms has about 2.9e-5 expected colliding pairs (n^2 / 2^65), so a collision is very unlikely but
 would undercount distinct terms by one.
-The scanner supports only plain space-separated N-Triples, one triple per line, each ending in " .". A comment, a blank
-line, a tab-separated line or a line that does not split into three tokens makes it stop with an error, so a count never
-silently includes something that is not a triple. Per-shard triple counts are printed so they can be checked against the
+The scanner supports plain N-Triples, one triple per line, each ending in " .", whose subject, predicate and object are
+separated either all by single spaces or all by single tabs (the separator is taken from the first line and must hold on
+every line; WatDiv uses tabs). A comment, a blank line, a mixed or doubled separator or a line that does not split into
+three tokens makes it stop with an error, so a count never silently includes something that is not a triple. Per-shard triple counts are printed so they can be checked against the
 builder's own.
 usage: term_dup.py file.nt out.json [shards]"""
 import sys, json, os, time, collections
@@ -16,6 +17,9 @@ size = os.path.getsize(path)
 def boundary(f, off):
     if off == 0: return 0
     f.seek(off); f.readline(); return f.tell()
+with open(path, "rb") as f:
+    first = f.readline()
+sep = b"\t" if first.split(b"\t", 2)[0].count(b" ") == 0 and first.count(b"\t") >= 2 else b" "
 with open(path, "rb") as f:
     bounds = [0] + [boundary(f, size * i // shards) for i in range(1, shards)] + [size]
 t0 = time.time()
@@ -30,7 +34,7 @@ with open(path, "rb") as f:
         while f.tell() < end:
             line = f.readline()
             if not line: break
-            parts = line.split(b" ", 2)
+            parts = line.split(sep, 2)
             if line[:1] in (b"#", b"\n", b"\r") or len(parts) < 3 or (line.rstrip(b"\r\n")[-2:] != b" ."):
                 sys.exit(f"unsupported input in shard {s} near byte {f.tell()}: {line[:80]!r}")
             # token boundaries: subject and predicate are one non-empty token each, with no whitespace inside, separated by
