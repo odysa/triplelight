@@ -77,11 +77,7 @@ pub(super) fn decode<const N: usize>(data: &[u8], count: usize) -> io::Result<Ve
             .ok_or_else(|| invalid("truncated compressed column"))?;
         let slice = &data[cursor..end];
         let (mut acc, mut bits, mut at) = (0u128, 0usize, 0usize);
-        let mask = if width == 64 {
-            u64::MAX as u128
-        } else {
-            (1u128 << width) - 1
-        };
+        let mask = (1u128 << width) - 1; // width <= 64, checked above
         let mut last = base[col];
         for row in &mut rows {
             while bits < width {
