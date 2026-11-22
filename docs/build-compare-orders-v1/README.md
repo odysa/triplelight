@@ -31,8 +31,8 @@ later in the day (16:15 UTC, against 13:44 to 15:44 for the other seven). Two ex
   #89's profile). The `*.files` timelines show the batches: six orders write SOP, SPO and PSO together, then OSP, OPS and
   POS; four orders write SPO, PSO and POS together, then OSP alone.
 - **Memory:** peak RSS is 2.2–2.8 GB for both.
-- **Equality:** `dictionary.unified`, SPO, PSO, POS and OSP are byte-identical across all eight builds of each dataset,
-  six-order and four-order alike.
+- **Equality:** `dictionary.unified`, SPO, PSO, POS and OSP are byte-identical across all six LUBM-1000 builds
+  (the four registered ones and the `-scratch` pair) and all four BSBM-100M builds, six-order and four-order alike.
 
 ## Scratch disk: not the order count
 
