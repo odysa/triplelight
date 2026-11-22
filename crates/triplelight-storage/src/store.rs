@@ -413,13 +413,58 @@ impl Store {
     /// Durably commits a change set; returns once it is fsynced and visible to new readers. Concurrent commits
     /// share one fsync (group commit). No-op changes (inserting a present triple, deleting an absent one) are dropped.
     pub fn commit(&self, changes: &[(Change, Triple)]) -> std::io::Result<usize> {
-        // Serialize acceptance with SPARQL update's read/compute/enqueue transaction.
-        // Release before fsync so concurrent writers can still share a group commit.
+        self.submit(|_| self.enqueue(&default_changes(changes), Count::Net), &|e| e)
+    }
+
+    /// Durably commits a dataset update (task #36): the steps apply in order and atomically, as in
+    /// `Overlay::with_dataset_changes`, and their net effect is one WAL record. Returns the number of triples changed.
+    /// The first record that touches a named graph first fences CURRENT (see the module docs).
+    pub fn commit_dataset(&self, changes: &[DatasetChange]) -> std::io::Result<usize> {
+        self.submit(|_| self.enqueue(changes, Count::Steps), &|e| e)
+    }
+
+    /// Executes an update request atomically: `compute` turns `text` into a change set against the latest accepted
+    /// state, and the net change set is committed once (all or nothing). Returns the number of triples changed.
+    ///
+    /// Serializable: the writer lock is held while reading the latest state, computing the changes and enqueueing
+    /// them, so every update sees all earlier accepted updates (durable or not) and none is accepted in between.
+    /// The lock is released before waiting for the fsync, so concurrent writers share one group commit. The query
+    /// engine is passed in as `compute` (the `triplelight` crate wires in SPARQL Update), which keeps this crate
+    /// independent of the executor.
+    pub fn update_with<E>(
+        &self,
+        text: &str,
+        compute: &dyn Fn(&Overlay, &str) -> Result<Vec<(Change, Triple)>, E>,
+        storage_error: &dyn Fn(std::io::Error) -> E,
+    ) -> Result<usize, E> {
+        self.submit(|snap| {
+            let changes = compute(snap, text)?;
+            self.enqueue(&default_changes(&changes), Count::Net).map_err(storage_error)
+        }, storage_error)
+    }
+
+    /// `update_with` for dataset updates: `compute` returns the ordered steps against the latest accepted state.
+    pub fn update_dataset_with<E>(
+        &self,
+        text: &str,
+        compute: &dyn Fn(&Overlay, &str) -> Result<Vec<DatasetChange>, E>,
+        storage_error: &dyn Fn(std::io::Error) -> E,
+    ) -> Result<usize, E> {
+        self.submit(|snap| {
+            let changes = compute(snap, text)?;
+            self.enqueue(&changes, Count::Steps).map_err(storage_error)
+        }, storage_error)
+    }
+
+    /// The one write path. Under the writer lock, `enqueue` sees the latest accepted state (durable or not) and appends
+    /// one record; the lock is released before the fsync, so concurrent writers share one group commit.
+    fn submit<E>(&self, enqueue: impl FnOnce(&Overlay) -> Result<(u64, usize), E>, storage_error: &dyn Fn(std::io::Error) -> E) -> Result<usize, E> {
         let (seq, n) = {
             let _writer = self.writer.lock().unwrap();
-            self.enqueue(changes)?
+            let snap = self.pending.lock().unwrap().latest.clone();
+            enqueue(&snap)?
         };
-        self.flush_until(seq)?;
+        self.flush_until(seq).map_err(storage_error)?;
         Ok(n)
     }
 
@@ -430,20 +475,38 @@ impl Store {
         Ok(())
     }
 
-    /// Validates and appends a change set to the pending state; returns the sequence number to wait for.
-    fn enqueue(&self, changes: &[(Change, Triple)]) -> std::io::Result<(u64, usize)> {
+    /// Validates and appends a dataset update to the pending state as one record; returns the sequence number to wait
+    /// for and the count `count` asks for.
+    fn enqueue(&self, changes: &[DatasetChange], count: Count) -> std::io::Result<(u64, usize)> {
         self.check_poisoned()?;
-        // Only what adds data is checked: deleting an oversized term from a legacy record must stay possible.
-        for (c, t) in changes { if *c == Change::Insert { check_triple_size(t)? } }
+        // Only what adds data is checked (inserts and CREATE): deleting an oversized term, or dropping or clearing a
+        // graph named by one, which a legacy WAL record can have put in the store, must stay possible.
+        for change in changes {
+            match change {
+                DatasetChange::Quad(g, Change::Insert, t) => {
+                    check_triple_size(t)?;
+                    if let GraphTarget::Named(g) = g { check_term_size(triplelight_rdf::TermRef::NamedNode(g.as_ref()))? }
+                }
+                DatasetChange::Create { graph, .. } => check_term_size(triplelight_rdf::TermRef::NamedNode(graph.as_ref()))?,
+                _ => {}
+            }
+        }
         let mut p = self.pending.lock().unwrap();
         let cur = p.latest.clone();
-        let (next, _, rec) = cur.apply_dataset(&default_changes(changes), true)?;
+        let (next, steps, rec) = cur.apply_dataset(changes, true)?;
+        let n = match count { Count::Net => rec.len(), Count::Steps => steps };
         // Even a no-op must wait for earlier accepted changes it may have observed.
-        if rec.is_empty() { return Ok((p.seq, 0)) }
+        if rec.is_empty() { return Ok((p.seq, n)) }
+        if needs_fence(&rec) && !self.fenced.load(std::sync::atomic::Ordering::SeqCst) {
+            // Durable before any named-graph line can reach the WAL.
+            let generation = self.generation.lock().unwrap();
+            set_current(&self.dir, *generation, true)?;
+            self.fenced.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
         push_record(&mut p.buf, &rec);
         p.latest = Arc::new(next);
         p.seq += 1;
-        Ok((p.seq, rec.len()))
+        Ok((p.seq, n))
     }
 
     /// Makes everything up to `seq` durable and visible. One caller writes and fsyncs all pending records; callers
@@ -529,9 +592,7 @@ impl Store {
         *generation = next;
         Ok(())
     }
-}
 
-impl Store {
     /// Runs the steps that switch the store to a new base. If one fails, CURRENT may already name the new base while
     /// the WAL handle, `generation` and the published overlay still describe the old one, so the store is poisoned:
     /// commits and compaction are refused until a reopen recovers from what is on disk.
@@ -594,6 +655,11 @@ fn check_triple_size(t: &Triple) -> std::io::Result<()> {
     check_term_size(t.predicate.as_ref().into())?;
     check_term_size(t.object.as_ref())
 }
+
+/// The count a commit returns: the net change (the WAL record's length, which `commit` and `update_with` have always
+/// reported), or the sum of each step's changed triples (`commit_dataset`, `update_dataset_with`).
+#[derive(Clone, Copy)]
+enum Count { Net, Steps }
 
 /// Default-graph triple changes as dataset steps.
 fn default_changes(changes: &[(Change, Triple)]) -> Vec<DatasetChange> {
@@ -680,93 +746,6 @@ fn read_wal(path: &Path) -> std::io::Result<(Vec<Vec<DatasetChange>>, u64)> {
         match parse_line(text) { Some(change) => cur.push(change), None => break }
     }
     Ok((records, valid))
-}
-
-impl Store {
-    /// Durably commits a dataset update (task #36): the steps apply in order and atomically, as in
-    /// `Overlay::with_dataset_changes`, and their net effect is one WAL record. Returns the number of triples changed.
-    /// The first record that touches a named graph first fences CURRENT (see the module docs).
-    pub fn commit_dataset(&self, changes: &[DatasetChange]) -> std::io::Result<usize> {
-        let (seq, n) = {
-            let _writer = self.writer.lock().unwrap();
-            self.enqueue_dataset(changes)?
-        };
-        self.flush_until(seq)?;
-        Ok(n)
-    }
-
-    /// `update_with` for dataset updates: `compute` returns the ordered steps against the latest accepted state.
-    pub fn update_dataset_with<E>(
-        &self,
-        text: &str,
-        compute: &dyn Fn(&Overlay, &str) -> Result<Vec<DatasetChange>, E>,
-        storage_error: &dyn Fn(std::io::Error) -> E,
-    ) -> Result<usize, E> {
-        let (seq, n) = {
-            let _writer = self.writer.lock().unwrap();
-            let snap = self.pending.lock().unwrap().latest.clone();
-            let changes = compute(&snap, text)?;
-            self.enqueue_dataset(&changes).map_err(storage_error)?
-        };
-        self.flush_until(seq).map_err(storage_error)?;
-        Ok(n)
-    }
-
-    fn enqueue_dataset(&self, changes: &[DatasetChange]) -> std::io::Result<(u64, usize)> {
-        self.check_poisoned()?;
-        // Only what adds data is checked (inserts and CREATE): deleting an oversized term, or dropping or clearing a
-        // graph named by one, which a legacy WAL record can have put in the store, must stay possible.
-        for change in changes {
-            match change {
-                DatasetChange::Quad(g, Change::Insert, t) => {
-                    check_triple_size(t)?;
-                    if let GraphTarget::Named(g) = g { check_term_size(triplelight_rdf::TermRef::NamedNode(g.as_ref()))? }
-                }
-                DatasetChange::Create { graph, .. } => check_term_size(triplelight_rdf::TermRef::NamedNode(graph.as_ref()))?,
-                _ => {}
-            }
-        }
-        let mut p = self.pending.lock().unwrap();
-        let cur = p.latest.clone();
-        let (next, n, rec) = cur.apply_dataset(changes, true)?;
-        if rec.is_empty() { return Ok((p.seq, n)) }
-        if needs_fence(&rec) && !self.fenced.load(std::sync::atomic::Ordering::SeqCst) {
-            // Durable before any named-graph line can reach the WAL.
-            let generation = self.generation.lock().unwrap();
-            set_current(&self.dir, *generation, true)?;
-            self.fenced.store(true, std::sync::atomic::Ordering::SeqCst);
-        }
-        push_record(&mut p.buf, &rec);
-        p.latest = Arc::new(next);
-        p.seq += 1;
-        Ok((p.seq, n))
-    }
-}
-
-impl Store {
-    /// Executes an update request atomically: `compute` turns `text` into a change set against the latest accepted
-    /// state, and the net change set is committed once (all or nothing). Returns the number of triples changed.
-    ///
-    /// Serializable: the writer lock is held while reading the latest state, computing the changes and enqueueing
-    /// them, so every update sees all earlier accepted updates (durable or not) and none is accepted in between.
-    /// The lock is released before waiting for the fsync, so concurrent writers share one group commit. The query
-    /// engine is passed in as `compute` (the `triplelight` crate wires in SPARQL Update), which keeps this crate
-    /// independent of the executor.
-    pub fn update_with<E>(
-        &self,
-        text: &str,
-        compute: &dyn Fn(&Overlay, &str) -> Result<Vec<(Change, Triple)>, E>,
-        storage_error: &dyn Fn(std::io::Error) -> E,
-    ) -> Result<usize, E> {
-        let (seq, n) = {
-            let _writer = self.writer.lock().unwrap();
-            let snap = self.pending.lock().unwrap().latest.clone();
-            let changes = compute(&snap, text)?;
-            self.enqueue(&changes).map_err(storage_error)?
-        };
-        self.flush_until(seq).map_err(storage_error)?;
-        Ok(n)
-    }
 }
 
 #[cfg(test)]
