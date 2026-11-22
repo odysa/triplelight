@@ -44,7 +44,7 @@ What we contribute is the combination in an embedded, disk-resident engine, the 
 
 \paragraph{Is the comparison fair?} RDF engines differ in the triple orders they store (RDF-3X and Hexastore keep six; QLever supports a two-order mode; RDF4J's native store is configurable).
 A ranking of engines can therefore mix executor quality with index choice. Section~4.5 asks whether changing the registered layouts of three engines moves them in
-a ranking of six HTTP engines, and registers in advance what would count as a negative answer.
+a ranking of seven HTTP engines, and registers in advance what would count as a negative answer.
 
 \section{Architecture}
 TripleLight is a Cargo workspace of focused crates (\texttt{DESIGN.md}): RDF terms and parsers, IRI handling, a core of term IDs and storage traits,
@@ -104,8 +104,12 @@ Commercial engines (GraphDB, Stardog, AllegroGraph) are excluded: we do not acce
 \subsection{C1b: HTTP}\todo{Results after the dedicated-machine run.}
 \subsection{Build and storage}\todo{Build time, scratch and store size on the dedicated machine; size numbers from Section~3.1 may be repeated.}
 \subsection{Is the comparison fair?}
-Registered predictions, to be stated here exactly as registered in the plan amendment (draft: branch \texttt{wxp-paper-ea}, Section~4.0): Kendall's $\tau_b$ between the default-layout and the registered aligned-layout ranking of the six HTTP engines, per suite; a suite with fewer than four paired engines is unevaluable;
-the claim fails if $\tau_b \ge 0.8$ on every evaluable suite. \todo{results table.}
+Registered in the plan (\texttt{docs/eval-plan/PLAN.md}, amendment A4, merged 2026-11-22), before any measurement. The HTTP cohort is TripleLight, QLever, Virtuoso, Jena TDB2, Oxigraph, RDF4J and MillenniumDB; each must pass its store receipt and answer gate.
+The moving engines are TripleLight (four and six orders), QLever (default and two-order) and RDF4J (default \texttt{spoc,posc} and aligned \texttt{spoc,posc,ospc}); the others are fixed-layout.
+The statistic is Kendall's $\tau_b$ with average ranks, per suite and per independent block, on one frozen common set of engines and requests used in both rank vectors; the suite reducer is the median of the per-block values, with every block shown.
+A suite needs at least four paired engines after unsupported cells are dropped from both vectors, otherwise it is unevaluable, and if no suite is evaluable the test is unevaluable. The claim fails if $\tau_b \ge 0.8$ on every evaluable suite.
+Registered prediction (claims owner, 2026-11-22): $\tau_b < 0.8$ on BSBM BI and the WatDiv aggregates, and $\tau_b \ge 0.8$ on LUBM. If a prediction is wrong, the paper reports that.
+\todo{results table: per suite, paired engines, per-block $\tau_b$, median, the ranks that change.}
 \subsection{Ablations}\todo{Count shortcut, cache budget, result windowing: reported as ablations.}
 
 \section{Limits and Related Work}
