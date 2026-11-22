@@ -11,7 +11,7 @@ the max degree D_s(p) or D_o(p), or the exact count when an end is a constant. B
 In this rule every query's first join involves a constant or an `rdf:type` atom, so (b) never applied and the reported bound is (a). Implemented in `bounds.py`.
 
 **Truth.** `truth.py`: exact set-semantics counts by in-memory index joins in Python (an offline oracle, independent of the engine).
-The registered `COUNT(*)` run on the engine is still to be done under the lock and should reproduce `truth_py.json`.
+The registered engine `COUNT(*)` run (`engine_counts.txt`, release binary of main at `fbffe93`, queries wrapped as `SELECT (COUNT(*) AS ?n) WHERE {...}` over `lubm100.nt`, run under the lock) reproduces all 14 counts in `truth_py.json` exactly. The file has 13,409,395 distinct triples out of 13,879,970 statements.
 
 | Query | true count | bound | bound / true |
 |---|---:|---:|---:|
