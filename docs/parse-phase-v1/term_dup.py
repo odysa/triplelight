@@ -4,8 +4,10 @@ the next line boundary), globally, and per kind. Terms are the raw tokens of the
 counts are raw-token estimates, not canonical terms. Python's 64-bit hash stands in for the term: under uniform hashing a
 file with 32.9M distinct terms has about 2.9e-5 expected colliding pairs (n^2 / 2^65), so a collision is very unlikely but
 would undercount distinct terms by one.
-The scanner supports only plain space-separated N-Triples, one triple per line, each ending in " .". A comment, a blank
-line, a tab-separated line or a line that does not split into three tokens makes it stop with an error, so a count never
+The scanner supports only N-Triples with one triple per line, each ending in " .", written either with single spaces
+between subject, predicate and object, or (as WatDiv does) with a tab after the subject and after the predicate; the
+object may contain spaces. A comment, a blank line, a line with other whitespace between the first tokens or a line that
+does not split into three tokens makes it stop with an error, so a count never
 silently includes something that is not a triple. Per-shard triple counts are printed so they can be checked against the
 builder's own.
 usage: term_dup.py file.nt out.json [shards]"""
@@ -30,11 +32,12 @@ with open(path, "rb") as f:
         while f.tell() < end:
             line = f.readline()
             if not line: break
-            parts = line.split(b" ", 2)
+            parts = line.split(b"\t", 2) if b"\t" in line.split(b"<", 1)[0] + line[:line.find(b">") + 2] else line.split(b" ", 2)
             if line[:1] in (b"#", b"\n", b"\r") or len(parts) < 3 or (line.rstrip(b"\r\n")[-2:] != b" ."):
                 sys.exit(f"unsupported input in shard {s} near byte {f.tell()}: {line[:80]!r}")
             # token boundaries: subject and predicate are one non-empty token each, with no whitespace inside, separated by
-            # exactly one space; the object starts a term. A tab or a second space would shift the boundaries.
+            # exactly one space, or exactly one tab when the line has a tab after the subject; the object starts a term. A second
+            # separator would shift the boundaries.
             if (not (parts[0][:1] == b"<" and parts[0][-1:] == b">" or parts[0][:2] == b"_:")
                     or not (parts[1][:1] == b"<" and parts[1][-1:] == b">")
                     or any(c in parts[0] + parts[1] for c in (b"\t", b"\r", b"\n", b" "))
