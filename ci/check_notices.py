@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Every binding package must carry THIRD_PARTY_NOTICES.md, identical to the root file.
+"""Every binding package must carry LICENSE and THIRD_PARTY_NOTICES.md, identical to the root files.
 
 Python (in bindings/python/notices/, listed in license-files), Node, Go, Java and C keep a checked-in copy next to their manifest; the WASM package copies the root file
 into its generated pkg/ directories (scripts/bindgen.js). This script fails if a copy differs or a manifest stops
@@ -8,18 +8,20 @@ packaging it. Run from anywhere: python3 ci/check_notices.py
 import pathlib, sys
 
 root = pathlib.Path(__file__).resolve().parent.parent
-notice = (root / "THIRD_PARTY_NOTICES.md").read_text()
+FILES = ("LICENSE", "THIRD_PARTY_NOTICES.md")
+texts = {n: (root / n).read_text() for n in FILES}
 bad = []
 copies = {"python": "bindings/python/notices", "node": "bindings/node", "go": "bindings/go", "java": "bindings/java", "c": "bindings/c"}
 for name, d in copies.items():
-    f = root / d / "THIRD_PARTY_NOTICES.md"
-    if not f.exists() or f.read_text() != notice:
-        bad.append(f"{d}/THIRD_PARTY_NOTICES.md is missing or differs from the root file (cp THIRD_PARTY_NOTICES.md {d}/)")
+    for n in FILES:
+        f = root / d / n
+        if not f.exists() or f.read_text() != texts[n]:
+            bad.append(f"{d}/{n} is missing or differs from the root file (cp {n} {d}/)")
 needs = {
-    "bindings/python/pyproject.toml": ["license-files", "THIRD_PARTY_NOTICES.md"],
-    "bindings/node/package.json": ['"files"', "THIRD_PARTY_NOTICES.md"],
-    "bindings/wasm/scripts/bindgen.js": ["THIRD_PARTY_NOTICES.md"],
-    "bindings/java/pom.xml": ["THIRD_PARTY_NOTICES.md"],
+    "bindings/python/pyproject.toml": ["license-files", "notices/LICENSE", "THIRD_PARTY_NOTICES.md"],
+    "bindings/node/package.json": ['"files"', '"LICENSE"', "THIRD_PARTY_NOTICES.md"],
+    "bindings/wasm/scripts/bindgen.js": ['"LICENSE"', "THIRD_PARTY_NOTICES.md"],
+    "bindings/java/pom.xml": ["<include>LICENSE</include>", "THIRD_PARTY_NOTICES.md"],
 }
 for path, words in needs.items():
     text = (root / path).read_text()
@@ -34,18 +36,19 @@ if len(sys.argv) == 3 and sys.argv[1] == "--artifacts":
     art = pathlib.Path(sys.argv[2])
     found = {}
     for w in art.glob("*.whl"):
-        found["wheel"] = any(n.endswith("THIRD_PARTY_NOTICES.md") and ".dist-info/" in n for n in zipfile.ZipFile(w).namelist())
+        names = zipfile.ZipFile(w).namelist()
+        found["wheel"] = all(any(n.endswith("/" + f) and ".dist-info/" in n for n in names) for f in FILES)
     for t in art.glob("*.tar.gz"):
         names = tarfile.open(t).getnames()
         if any(n.endswith("/PKG-INFO") for n in names):
-            found["sdist"] = any(n.endswith("THIRD_PARTY_NOTICES.md") for n in names)
+            found["sdist"] = all(any(n.endswith("/" + f) for n in names) for f in FILES)
         elif "package/package.json" in names:
-            found["npm"] = "package/THIRD_PARTY_NOTICES.md" in names
+            found["npm"] = all("package/" + f in names for f in FILES)
     for t in art.glob("*.tgz"):
-        found["npm"] = "package/THIRD_PARTY_NOTICES.md" in tarfile.open(t).getnames()
+        found["npm"] = all("package/" + f in tarfile.open(t).getnames() for f in FILES)
     missing = [k for k, v in found.items() if not v]
     if not found:
         print("no wheel, sdist or npm tarball found in " + str(art)); sys.exit(1)
     if missing:
-        print("built package lacks the notices: " + ", ".join(missing)); sys.exit(1)
-print("third-party notices present in every binding package")
+        print("built package lacks LICENSE or the notices: " + ", ".join(missing)); sys.exit(1)
+print("LICENSE and third-party notices present in every binding package")

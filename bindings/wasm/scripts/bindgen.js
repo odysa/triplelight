@@ -9,5 +9,5 @@ for (const [kind, dir] of [["web", "pkg"], ["nodejs", "pkg-node"]]) {
   const out = path.join(__dirname, "..", dir);
   execFileSync("wasm-bindgen", ["--target", kind, "--out-dir", out, wasm], { stdio: "inherit" });
   // The generated package carries the third-party notices for the code the wasm binary is derived from.
-  fs.copyFileSync(path.join(__dirname, "..", "..", "..", "THIRD_PARTY_NOTICES.md"), path.join(out, "THIRD_PARTY_NOTICES.md"));
+  for (const f of ["LICENSE", "THIRD_PARTY_NOTICES.md"]) fs.copyFileSync(path.join(__dirname, "..", "..", "..", f), path.join(out, f));
 }

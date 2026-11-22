@@ -8,6 +8,7 @@ resolver = "3"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.100"
+license = "MIT"
 
 # Clippy runs with -D warnings in CI. These lints flag deliberate design choices here (dense generic iterator types,
 # executor entry points with many inputs, enums whose variants differ in size by design); everything else is enforced.
@@ -43,6 +44,7 @@ name = "triplelight"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+license.workspace = true
 autobins = false
 default-run = "triplelight"
 
