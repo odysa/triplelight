@@ -16,8 +16,15 @@ for (const b of r.bindings) console.log(b.who.value, b.age.value); // urn:alice 
 db.close();
 ```
 
-Install: `npm install triplelight`. The package carries a prebuilt addon for macOS arm64, Linux x64 and Linux arm64
-(glibc 2.36 or newer); on another platform, build from source.
+Install: `npm install triplelight`. The package carries one prebuilt addon per platform and loads the one that matches
+`process.platform` and `process.arch`:
+
+| Platform | Requirement |
+|---|---|
+| macOS arm64 (Apple Silicon) | none beyond Node 18+ |
+| Linux x64 and Linux arm64 | glibc 2.36 or newer (Debian 12, Ubuntu 22.04 or newer); older distributions such as Debian 11 and RHEL 8, and musl (Alpine), are not supported |
+
+The unpacked package is about 18 MB (three addons of about 6 MB each). On any other platform, build from source.
 
 Build from source (Rust 1.100, Node 18+, Linux or macOS): `npm run build`, then `npm test`.
 Types are in `index.d.ts`. Errors are `TripleLightError` subclasses: `SyntaxError`, `UnsupportedError`,
