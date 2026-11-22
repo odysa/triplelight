@@ -106,6 +106,9 @@ than memory. Laptop evidence so far: #83 (cache budget), #88 (four against six o
 - **Metrics per query:** cold and warm time, peak memory (`memory.peak` of the scope), bytes read from the device
   (`/proc/<pid>/io` `read_bytes`) and major faults, and TripleLight's block-cache hits, misses and bytes read per
   order (`TRIPLELIGHT_TRACE_BLOCK_CACHE`). An OOM kill is recorded as a failure, never as a time.
+- **Page cache counts against the limit:** under `memory.max` the page cache is charged to the scope as well. For every
+  system, and especially the mmap-based ones (QLever, Oxigraph), record `memory.stat` `anon` and `file` at the peak, so
+  a reader can tell whether the limit squeezed the heap (and TripleLight's block cache) or the page cache.
 - **To register before running:** the predicted warm slowdown at 16 GB and 8 GB per suite against the unlimited run,
   stated per query class (point lookups, star joins, large scans such as LUBM Q6/Q14).
 
