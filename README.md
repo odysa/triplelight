@@ -136,4 +136,4 @@ off by default and can be enabled with a token or, on loopback only, without one
 
 ## License
 
-No project license has been chosen. See [third-party notices](THIRD_PARTY_NOTICES.md) for incorporated code.
+TripleLight is licensed under the [MIT License](LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md) for incorporated code.

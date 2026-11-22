@@ -41,10 +41,10 @@
 
   <build>
     <resources>
-      <!-- The jar carries the third-party notices (META-INF/THIRD_PARTY_NOTICES.md). -->
+      <!-- The jar carries the licence and the third-party notices (META-INF/LICENSE, META-INF/THIRD_PARTY_NOTICES.md). -->
       <resource>
         <directory>${project.basedir}</directory>
-        <includes><include>THIRD_PARTY_NOTICES.md</include></includes>
+        <includes><include>LICENSE</include><include>THIRD_PARTY_NOTICES.md</include></includes>
         <targetPath>META-INF</targetPath>
       </resource>
     </resources>

@@ -102,8 +102,7 @@ and then blocking every compaction (#95). `verify` is 3.4–3.7× faster and sti
 - **SPARQL coverage.** `LOAD`, `SERVICE` and `BNODE(string)` are unsupported, as are blank-node graph names in
   N-Quads and TriG. Numeric arithmetic is exact only within 96 bits for decimals and 64 bits for integers; results
   outside are errors, and decimal underflow is stricter than XPath.
-- **Operation.** Results are materialized before output; one process per store directory; no licence has been chosen
-  yet, so the code is not licensed for reuse.
+- **Operation.** Results are materialized before output; one process per store directory. The code is MIT-licensed.
 - **Evidence.** Most large-scale numbers come from one host and one or two passes. A virtual-machine session can
   drift 2–3× from another, so only same-session numbers are compared.
 
