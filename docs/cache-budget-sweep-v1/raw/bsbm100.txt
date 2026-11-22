@@ -1,0 +1,14 @@
+budget 0: done, rss 0.72 GiB
+budget 10240: done, rss 0.72 GiB
+budget 2048: done, rss 0.72 GiB
+budget 1024: done, rss 0.72 GiB
+budget 512: done, rss 0.54 GiB
+budget 0: done, rss 0.72 GiB
+bsbm100: budget_mb warm_gm cold_gm worst_warm warm_total_ms idle_rss_gib peak_rss_gib footprint_gib open_s
+       0 1.000 1.000 q001.rq=1.0 63.4 0.169 0.722 0.719 0.52
+   10240 1.097 0.702 q023.rq=1.185 67.7 0.168 0.721 0.718 0.51
+    2048 0.930 0.652 q007.rq=1.061 55.7 0.169 0.719 0.717 0.51
+    1024 1.204 0.626 q010.rq=2.288 123.0 0.169 0.723 0.721 0.51
+     512 4.992 0.637 q013.rq=27.433 1260.0 0.169 0.537 0.535 0.51
+       0 (control) 0.941 0.617 q009.rq=1.03 56.6 0.169 0.719 0.717 0.51
+answers match at every budget

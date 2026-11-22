@@ -1,0 +1,13 @@
+12:33:12 building binary at a03774f2
+12:33:46 building lubm1000 store (default four orders)
+--- restart 12:43:10 after raft proc 4 GB cap kill
+12:43:11 building binary at a03774f2
+12:43:54 building lubm1000 store (default four orders)
+12:57:59 built lubm1000: 3.0G
+12:57:59 building bsbm100 store (default four orders)
+13:12:34 built bsbm100: 6.1G
+13:12:34 sweep lubm1000 (ascending)
+13:27:58 lubm1000 exit 0
+13:27:58 sweep bsbm100 (descending)
+13:28:57 bsbm100 exit 0
+13:28:57 ALL-DONE (stores kept in /tmp/sweep83)

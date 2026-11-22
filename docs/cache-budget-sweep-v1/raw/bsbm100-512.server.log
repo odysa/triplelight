@@ -1,0 +1,22 @@
+opened disk snapshot /tmp/sweep83/bsbm100 in 0.40s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:7891/sparql
+time: command terminated abnormally
+       11.56 real        19.20 user         0.93 sys
+           576307200  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               38192  page reclaims
+                   0  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                 184  messages sent
+                 170  messages received
+                   0  signals received
+                 121  voluntary context switches
+                4455  involuntary context switches
+        228147284192  instructions retired
+         62039809311  cycles elapsed
+           573932480  peak memory footprint
