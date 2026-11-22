@@ -159,7 +159,14 @@ pub(super) struct Builder {
     index_workers: usize,
     /// The orders `finish` writes (bits of `Perm::ALL` positions), from `KEPT_ORDERS` at construction.
     orders: u8,
+    /// Deduplicating parse (task #91): per shard, the file of triples as local term IDs, its count of local IDs and its
+    /// triple count. When set, the term sort holds each shard's distinct terms, not every occurrence, and `finish` maps
+    /// the rows to global IDs by array lookup instead of sorting one record per occurrence.
+    dedup_rows: Option<Vec<DedupShard>>,
 }
+/// One shard of a deduplicating parse: its rows file (three big-endian local IDs per triple), the number of local IDs it
+/// handed out (dense from 0) and its number of triples.
+struct DedupShard { rows: std::path::PathBuf, locals: u64, triples: u64 }
 impl Builder {
     fn new(dir: &Path) -> io::Result<Self> { Self::with_budget(dir, MEMORY) }
     fn with_budget(dir: &Path, bytes: usize) -> io::Result<Self> {
@@ -170,6 +177,7 @@ impl Builder {
             graph_names: 0,
             index_workers: 1,
             orders: kept_orders_setting(),
+            dedup_rows: None,
         })
     }
     fn add(&mut self, terms: [String; 3]) -> io::Result<()> {
@@ -316,6 +324,9 @@ impl Builder {
         let mut graph_ids: Vec<u64> = Vec::new();
         let mut previous_id = None;
         let rows = self.triples + self.quads + self.graph_names;
+        if let Some(shards) = self.dedup_rows.take() {
+            remap_dedup(&mut input, &shards, &mut triples, self.triples)?;
+        } else {
         for row in 0..rows {
             let arity = if row < self.triples { 3 } else if row < self.triples + self.quads { 4 } else { 1 };
             let mut current_id = None;
@@ -349,6 +360,7 @@ impl Builder {
         while read_fixed(&mut input, &mut extra)? {
             let free = cfg!(feature = "rdf-12") && extra[..8] == FREE_ROW.to_be_bytes() && extra[8] == FREE_POS;
             if !free { return Err(bad("extra term assignment")) }
+        }
         }
         triples.flush()?;
         drop(triples);
@@ -538,6 +550,16 @@ fn next_line_boundary(path: &Path, offset: u64, size: u64) -> io::Result<u64> {
 /// Eight independent parsers create private sorted runs; worker IDs occupy disjoint ranges.
 /// The split is only used for N-Triples (Turtle grammar is not line splittable).
 fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Result<()> {
+    from_nt_parallel_with(dir, path, workers, dedup_setting())
+}
+/// Deduplicating parse (task #91), off unless `TRIPLELIGHT_DEDUP_TERMS=1`: the byte budget of one shard's term map
+/// (`TRIPLELIGHT_DEDUP_MAP_MB`, 256 by default).
+fn dedup_setting() -> Option<usize> {
+    if std::env::var("TRIPLELIGHT_DEDUP_TERMS").as_deref() != Ok("1") { return None; }
+    let mb = std::env::var("TRIPLELIGHT_DEDUP_MAP_MB").ok().and_then(|v| v.parse::<usize>().ok()).unwrap_or(256);
+    Some(mb.max(1).saturating_mul(1_048_576))
+}
+fn from_nt_parallel_with(dir: &Path, path: Option<&Path>, workers: usize, dedup: Option<usize>) -> io::Result<()> {
     let Some(path) = path else { return from_nt(dir, None); };
     // A worker's merge must hold at least two maximum-length records and file buffers.
     // The global limit is an advisory allocation target, not an RSS guarantee.
@@ -557,10 +579,15 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
         let mut handles = Vec::new();
         for (shard, limits) in boundaries.windows(2).enumerate() {
             let (start, end) = (limits[0], limits[1]);
-            handles.push(scope.spawn(move || -> io::Result<(Builder, std::path::PathBuf)> {
+            handles.push(scope.spawn(move || -> io::Result<(Builder, std::path::PathBuf, Option<DedupShard>)> {
                 let mut b = Builder::with_budget(dir, worker_budget)?;
                 let mut file = File::open(path)?; file.seek(SeekFrom::Start(start))?;
                 let input = BufReader::new(file.take(end - start));
+                if let Some(map_bytes) = dedup {
+                    let shard_rows = dedup_shard(dir, shard, &mut b, input, map_bytes)?;
+                    let sorted = b.terms.finish()?;
+                    return Ok((b, sorted, Some(shard_rows)));
+                }
                 for t in triplelight_core::ntriples::read_ntriples(input) {
                     let t: Triple = t?;
                     if b.triples >= (1u64 << 56) { return Err(bad("too many triples in shard")); }
@@ -568,12 +595,18 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
                     b.add_with_id([t.subject.to_string(), t.predicate.to_string(), t.object.to_string()], id)?;
                 }
                 let sorted = b.terms.finish()?;
-                Ok((b, sorted))
+                Ok((b, sorted, None))
             }));
         }
         handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(io::Error::other("N-Triples worker panicked")))).collect::<Vec<_>>()
     });
-    let builders = results.into_iter().collect::<io::Result<Vec<_>>>()?;
+    let mut builders = Vec::new();
+    let mut dedup_rows = Vec::new();
+    for r in results {
+        let (b, path, rows) = r?;
+        builders.push((b, path));
+        dedup_rows.extend(rows);
+    }
     let mut paths = Vec::with_capacity(builders.len());
     let mut observed = 0usize;
     let mut count = 0u64;
@@ -585,6 +618,7 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
     let mut combined = Builder::new(dir)?;
     combined.terms.import_sorted(&paths, observed)?;
     combined.triples = count;
+    if dedup.is_some() { combined.dedup_rows = Some(dedup_rows); }
     combined.index_workers = shards.min(3);
     drop(builders);
     combined.finish(dir)
@@ -617,6 +651,97 @@ fn write_triple_terms(dir: &Path) -> io::Result<[u8; 32]> {
     index.validate()?;
     Ok(index.identity())
 }
+/// One shard of a deduplicating parse (task #91). Each distinct term gets a local ID, dense from 0 in order of first
+/// appearance, and each triple is written as three big-endian local IDs. When the term map outgrows `map_bytes` it is
+/// pushed into the shard's sorter as records `(text, 0, shard << 56 | local ID, 0)` and cleared, so a term seen again
+/// gets a new local ID and the global dictionary pass still sees each text with every ID it was given.
+fn dedup_shard(dir: &Path, shard: usize, b: &mut Builder, input: impl BufRead, map_bytes: usize) -> io::Result<DedupShard> {
+    use std::collections::HashMap;
+    let rows_path = dir.join(format!(".rows-{shard}"));
+    let mut rows = BufWriter::with_capacity(1 << 20, OpenOptions::new().write(true).create_new(true).open(&rows_path)?);
+    let mut map: HashMap<String, u64> = HashMap::new();
+    let (mut used, mut next, mut flushes, mut sorted_bytes) = (0usize, 0u64, 0u64, 0u64);
+    let flush = |map: &mut HashMap<String, u64>, b: &mut Builder, sorted_bytes: &mut u64| -> io::Result<()> {
+        for (text, local) in map.drain() {
+            let mut r = text.into_bytes();
+            r.push(0);
+            r.extend_from_slice(&(((shard as u64) << 56) | local).to_be_bytes());
+            r.push(0);
+            *sorted_bytes += r.len() as u64;
+            b.terms.push(r)?;
+        }
+        Ok(())
+    };
+    for t in triplelight_core::ntriples::read_ntriples(input) {
+        let t: Triple = t?;
+        if b.triples >= (1u64 << 56) { return Err(bad("too many triples in shard")); }
+        for term in [t.subject.to_string(), t.predicate.to_string(), t.object.to_string()] {
+            if term.len() > MAX_TERM || term.as_bytes().contains(&0) {
+                return Err(bad("invalid or oversized encoded RDF term"));
+            }
+            let local = match map.get(term.as_str()) {
+                Some(&local) => local,
+                None => {
+                    let local = next;
+                    next += 1;
+                    // The text, its String header, the entry and the table's control bytes.
+                    used += term.len() + 64;
+                    map.insert(term, local);
+                    local
+                }
+            };
+            rows.write_all(&local.to_be_bytes())?;
+        }
+        b.triples += 1;
+        if used > map_bytes {
+            flush(&mut map, b, &mut sorted_bytes)?;
+            flushes += 1;
+            used = 0;
+        }
+    }
+    flush(&mut map, b, &mut sorted_bytes)?;
+    rows.flush()?;
+    eprintln!("[dedup shard {shard}] triples={} local_ids={next} flushes={flushes} record_bytes_to_sort={sorted_bytes}", b.triples);
+    Ok(DedupShard { rows: rows_path, locals: next, triples: b.triples })
+}
+/// Writes `.triples.raw` rows from the dedup rows files: `assignments` holds one 17-byte record per local ID
+/// `(shard << 56 | local, 0, global ID)`, sorted by local ID, so each shard's IDs arrive dense and in order and its
+/// local-to-global table is read into memory.
+fn remap_dedup(assignments: &mut impl Read, shards: &[DedupShard], out: &mut impl Write, triples: u64) -> io::Result<()> {
+    const LOCAL: u64 = (1 << 56) - 1;
+    let mut table: Vec<u64> = Vec::new();
+    let mut done = 0usize;
+    let mut total = 0u64;
+    let finish_shard = |s: usize, table: &Vec<u64>, out: &mut dyn Write| -> io::Result<u64> {
+        let sh = &shards[s];
+        if table.len() as u64 != sh.locals { return Err(bad("dedup assignments do not cover every local ID")); }
+        let mut input = BufReader::with_capacity(1 << 20, File::open(&sh.rows)?);
+        let mut row = [0u8; 24];
+        for _ in 0..sh.triples {
+            input.read_exact(&mut row)?;
+            for k in 0..3 {
+                let local = u64::from_be_bytes(row[k * 8..k * 8 + 8].try_into().unwrap()) as usize;
+                let global = *table.get(local).ok_or_else(|| bad("dedup row references an unknown local ID"))?;
+                out.write_all(&global.to_be_bytes())?;
+            }
+        }
+        fs::remove_file(&sh.rows)?;
+        Ok(sh.triples)
+    };
+    while let Some(r) = read_record(assignments, 17)? {
+        if r.len() != 17 || r[8] != 0 { return Err(bad("invalid term assignment")); }
+        let id = u64::from_be_bytes(r[..8].try_into().unwrap());
+        let (shard, local) = ((id >> 56) as usize, id & LOCAL);
+        if shard >= shards.len() || shard < done { return Err(bad("unordered term assignment")); }
+        while done < shard { total += finish_shard(done, &table, out)?; table.clear(); done += 1; }
+        if local != table.len() as u64 { return Err(bad("unordered term assignment")); }
+        table.push(u64::from_be_bytes(r[9..17].try_into().unwrap()));
+    }
+    while done < shards.len() { total += finish_shard(done, &table, out)?; table.clear(); done += 1; }
+    if total != triples { return Err(bad("dedup triple count mismatch")); }
+    Ok(())
+}
+
 pub(super) fn from_nt(dir: &Path, path: Option<&Path>) -> io::Result<()> {
     fs::create_dir(dir)?;
     let mut builder = Builder::new(dir)?;
@@ -701,6 +826,51 @@ mod tests {
         exec::{QueryResult, query},
         storage::DiskSnapshot,
     };
+    /// Task #91: the deduplicating parse writes exactly the store the plain parse writes, with every term map budget from
+    /// "flush after every triple" to "never flush", including duplicate triples, blank nodes, repeated terms across
+    /// shards and shards that hold no triples.
+    #[test]
+    fn deduplicating_parse_writes_identical_stores() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS);
+        let root = std::env::temp_dir().join(format!("rdf-dedup-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root); fs::create_dir(&root).unwrap();
+        let mut text = String::new();
+        let mut x = 12345u64;
+        let mut next = || { x ^= x << 13; x ^= x >> 7; x ^= x << 17; x };
+        for i in 0..6000u64 {
+            let s = next() % 400; let p = next() % 7; let o = next() % 900;
+            match i % 5 {
+                0 => text.push_str(&format!("<urn:s{s}> <urn:p{p}> <urn:o{o}> .\n")),
+                1 => text.push_str(&format!("_:b{s} <urn:p{p}> \"v{o}\" .\n")),
+                2 => text.push_str(&format!("<urn:s{s}> <urn:p{p}> \"{o}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n")),
+                3 => text.push_str(&format!("<urn:s{s}> <urn:p{p}> \"é{o}\"@fr .\n")),
+                _ => text.push_str(&format!("<urn:s{}> <urn:p{}> <urn:o{}> .\n", s % 5, p % 2, o % 5)), // many duplicates
+            }
+        }
+        let file = root.join("input.nt");
+        fs::write(&file, &text).unwrap();
+        let reference = root.join("plain");
+        from_nt_parallel_with(&reference, Some(&file), 8, None).unwrap();
+        for (label, budget) in [("one-byte", 1usize), ("small", 4096), ("default", 256 << 20)] {
+            let out = root.join(label);
+            from_nt_parallel_with(&out, Some(&file), 8, Some(budget)).unwrap();
+            for name in FILES[1..].iter().copied().chain(["dictionary.unified", "MANIFEST"]) {
+                assert_eq!(fs::read(reference.join(name)).unwrap(), fs::read(out.join(name)).unwrap(), "{label}: {name}");
+            }
+            assert!(!out.join(".rows-0").exists() && !out.join(".triples.raw").exists(), "{label}: scratch left behind");
+            let snap = DiskSnapshot::open(&out).unwrap(); snap.verify().unwrap(); drop(snap);
+        }
+        // A file with fewer triples than shards: some shards are empty.
+        let tiny = root.join("tiny.nt");
+        fs::write(&tiny, "<urn:a> <urn:p> <urn:b> .\n<urn:a> <urn:p> <urn:b> .\n").unwrap();
+        let (a, b) = (root.join("tiny-plain"), root.join("tiny-dedup"));
+        from_nt_parallel_with(&a, Some(&tiny), 8, None).unwrap();
+        from_nt_parallel_with(&b, Some(&tiny), 8, Some(1)).unwrap();
+        for name in FILES[1..].iter().copied().chain(["dictionary.unified", "MANIFEST"]) {
+            assert_eq!(fs::read(a.join(name)).unwrap(), fs::read(b.join(name)).unwrap(), "tiny: {name}");
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
     #[test]
     fn sharded_nt_preserves_terms_across_boundaries() {
         crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
