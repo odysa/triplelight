@@ -81,7 +81,7 @@ stores. On BSBM-10M, N-Triples parsing takes 8.4–9.2 s against
 **Disk build and dictionary layout (#54, #55).** Profiling the external build of BSBM-100M showed two near-raw-size
 copies of the dictionary, one ordered by term and one by ID, making up about three quarters of the store. IDs inside a
 kind already follow term-text order, so one front-coded file in ID order, with each block's last term kept in the
-directory, serves both lookups (`RDFSNAP4`). On BSBM-100M the store shrank from 12.24 GiB to 7.75 GiB (−37%), the dictionary conversion phase ran about 58 s
+directory, serves both lookups (`RDFSNAP4`). On BSBM-100M the store shrank from 12.53 GB (11.67 GiB) to 7.94 GB (7.39 GiB) (−37%), the dictionary conversion phase ran about 58 s
 (30%) faster, and `verify` passes ([evidence](../unified-dictionary-100m-v1/README.md)). *Unaudited:* an
 Arrow-decode A/B showed no regression. Earlier fixes freed scratch artifacts as soon as they were consumed and streamed the final
 term merge into the dictionary pass; peak scratch disk during the build fell from about 60 GB to about 42–44 GB.

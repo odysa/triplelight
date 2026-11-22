@@ -59,9 +59,12 @@ Details and formats: [docs/persistence.md](docs/persistence.md).
 1. **Parse** SPARQL into an algebra (`triplelight-sparql`). Features the engine does not implement (`SERVICE`,
    `LOAD`, `BNODE(string)`) are refused with an "unsupported" error rather than answered partially.
 2. **Encode** constants through the dictionary. A constant that is not in the data makes its pattern empty.
-3. **Order joins.** By default the executor orders a basic graph pattern greedily from exact index-prefix counts.
-   When statistics are available, the pattern has at most seven triples and the estimated work is large enough,
-   it uses the planner's cost-based order instead: characteristic sets and predicate counts
+3. **Order joins.** By default the executor orders a basic graph pattern greedily: at each step it takes the
+   pattern with the smallest exact index-prefix count for the current (sampled) binding, and penalizes patterns not
+   connected to those already chosen. Eligible cyclic patterns use leapfrog triejoin with its own variable-order
+   choice. The planner's cost-based binary order replaces the greedy one only when statistics are available, the
+   pattern has two to seven triples, its input is a single all-unbound row in the default data context, and the
+   estimated greedy work is at least 100,000. The planner uses characteristic sets and predicate counts
    (Neumann and Moerkotte, ICDE 2011), subset dynamic programming,
    and a cost-based variable order for trie joins. Disk stores persist the statistics next to the base, so a reopened
    store has them at once; otherwise they are built in the background.
@@ -75,7 +78,8 @@ Optimizer details: [docs/optimizer.md](docs/optimizer.md).
 
 ## Correctness
 
-- Every benchmark answer is reduced to a canonical multiset and compared with Apache Jena.
+- Every benchmark compares TripleLight's answers with Apache Jena under that benchmark's declared checks (for
+  example canonical multisets, or projected columns and `ORDER BY` where the benchmark registers them).
 - CI requires at least 323 passing tests from the W3C SPARQL 1.1 query suite ([ci/w3c_floor.json](ci/w3c_floor.json)).
 - Numbers: `xsd:decimal` arithmetic is exact within 96 bits and `xsd:integer` within 64 bits; results outside that
   range are errors.

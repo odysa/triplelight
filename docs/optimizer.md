@@ -1,10 +1,12 @@
 # Optimizer
 
-**How the engine uses it today.** The executor orders each basic graph pattern greedily from exact index-prefix
-counts. When statistics are available (persisted with disk stores, built in the background in memory), the pattern
-has at most seven triples (`MAX_RUNTIME_DP_PATTERNS`) and the estimated greedy work is at least
-`MIN_OPTIMIZER_WORK`, it uses `choose_variable_order` and the cost-based binary order described below. The `plan_bgp`
-API keeps `enable_leapfrog` off by default; the executor chooses leapfrog itself for cyclic patterns. The sections
+**How the engine uses it today.** The executor orders each basic graph pattern greedily, using the exact
+index-prefix count for a sampled current binding and penalizing disconnected patterns. Eligible cyclic patterns use
+leapfrog triejoin with their own variable order (`choose_variable_order` when statistics exist). The cost-based binary
+order described below replaces the greedy one only when statistics are available (persisted with disk stores, built
+in the background in memory), the pattern has two to seven triples (`MAX_RUNTIME_DP_PATTERNS`), its input is a single
+all-unbound row in the default data context, and the estimated greedy work is at least `MIN_OPTIMIZER_WORK`
+(100,000). The `plan_bgp` API keeps `enable_leapfrog` off by default. The sections
 below record the design and its validation as it was built (task history: "P1").
 
 The optimizer consumes dictionary-encoded `TriplePattern`s and statistics from
