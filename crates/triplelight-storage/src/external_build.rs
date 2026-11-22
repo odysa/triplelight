@@ -16,6 +16,8 @@ const MEMORY: usize = 128 * 1024 * 1024;
 /// The longest N-Triples term text a base can hold (task #45: the WAL refuses longer terms at commit).
 pub(crate) const MAX_TERM: usize = triplelight_core::ntriples::MAX_TOKEN;
 const _: () = assert!(MAX_TERM == 16 * 1024 * 1024, "the base limit is oxttl's 16 MiB token limit");
+/// Longest record of the term sort: the term text plus its flag and ID bytes.
+const TERM_SORT_RECORD_MAX: usize = MAX_TERM + 10;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 static BUILD_BUDGET_MB: AtomicUsize = AtomicUsize::new(0);
 static FORCE_EXTERNAL: AtomicBool = AtomicBool::new(false);
@@ -123,7 +125,7 @@ impl Builder {
     fn new(dir: &Path) -> io::Result<Self> { Self::with_budget(dir, MEMORY) }
     fn with_budget(dir: &Path, bytes: usize) -> io::Result<Self> {
         Ok(Self {
-            terms: ExternalSort::new(dir, bytes, MAX_TERM + 10)?,
+            terms: ExternalSort::new(dir, bytes, TERM_SORT_RECORD_MAX)?,
             triples: 0,
             quads: 0,
             graph_names: 0,
@@ -455,7 +457,7 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
     // A worker's merge must hold at least two maximum-length records and file buffers.
     // The global limit is an advisory allocation target, not an RSS guarantee.
     let budget = budget_mb().saturating_mul(1_048_576);
-    let minimum = 2 * (MAX_TERM + 10 + 8192 + 128);
+    let minimum = 2 * (TERM_SORT_RECORD_MAX + 8192 + 128);
     let shards = workers.clamp(1, 8).min((budget / minimum).max(1));
     if shards == 1 { return from_nt(dir, Some(path)); }
     let worker_budget = (budget / shards).min(MEMORY);

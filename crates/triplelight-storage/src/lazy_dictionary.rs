@@ -1,4 +1,5 @@
 //! Prototype immutable on-disk dictionary indexes. Not yet connected to snapshots.
+use super::external_build::MAX_TERM;
 use super::term_block_codec;
 use crate::model::TermId;
 use triplelight_rdf::Term;
@@ -18,7 +19,14 @@ const ID_MAGIC: &[u8; 8] = b"RDFDID01";
 const UNIFIED_MAGIC: &[u8; 8] = b"RDFDID02";
 /// File name of the unified dictionary inside a snapshot directory.
 pub(super) const UNIFIED_FILE: &str = "dictionary.unified";
-const LIMIT: usize = 16 * 1024 * 1024 + 8192;
+/// Largest encoded block, and the byte budget a block is filled to: one maximum-length term plus its codec overhead.
+const LIMIT: usize = MAX_TERM + 8192;
+/// Longest sort record of each dictionary order: the term text plus its 8-byte ID, and for the term order also the
+/// zero separator before the ID.
+const ID_RECORD_MAX: usize = MAX_TERM + 8;
+const TERM_RECORD_MAX: usize = MAX_TERM + 9;
+// The values the literals had before they were derived from MAX_TERM; a change here changes sort-record validation.
+const _: () = assert!(LIMIT == 16 * 1024 * 1024 + 8192 && ID_RECORD_MAX == 16 * 1024 * 1024 + 8 && TERM_RECORD_MAX == 16 * 1024 * 1024 + 9);
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(ErrorKind::InvalidData, s)
 }
@@ -687,7 +695,7 @@ impl Iterator for Rows {
         if self.done {
             return None;
         }
-        let value = match super::external_sort::read_record(&mut self.input, 16 * 1024 * 1024 + 9) {
+        let value = match super::external_sort::read_record(&mut self.input, TERM_RECORD_MAX) {
             Ok(Some(v)) => v,
             Ok(None) => {
                 self.done = true;
@@ -762,7 +770,7 @@ pub(super) fn convert_unified(dir: &Path) -> io::Result<[u8; 32]> {
         }
         input.read_exact(&mut header)?;
         let len = usize::try_from(u64::from_le_bytes(header)).map_err(|_| bad("dictionary term length"))?;
-        if len > 16 * 1024 * 1024 {
+        if len > MAX_TERM {
             return Err(bad("dictionary term too long"));
         }
         let mut text = vec![0; len];
@@ -859,8 +867,8 @@ pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
     if count > 100_000_000 {
         return Err(bad("dictionary count too large"));
     }
-    let mut by_term = ExternalSort::new(dir, 128 * 1024 * 1024, 16 * 1024 * 1024 + 9)?;
-    let mut by_id = ExternalSort::new(dir, 128 * 1024 * 1024, 16 * 1024 * 1024 + 8)?;
+    let mut by_term = ExternalSort::new(dir, 128 * 1024 * 1024, TERM_RECORD_MAX)?;
+    let mut by_id = ExternalSort::new(dir, 128 * 1024 * 1024, ID_RECORD_MAX)?;
     for _ in 0..count {
         input.read_exact(&mut header)?;
         let id = u64::from_le_bytes(header);
@@ -870,7 +878,7 @@ pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
         input.read_exact(&mut header)?;
         let len = usize::try_from(u64::from_le_bytes(header))
             .map_err(|_| bad("dictionary term length"))?;
-        if len > 16 * 1024 * 1024 {
+        if len > MAX_TERM {
             return Err(bad("dictionary term too long"));
         }
         let mut text = vec![0; len];
