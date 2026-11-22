@@ -2,7 +2,8 @@
 
 **How the engine uses it today.** The executor orders each basic graph pattern greedily, using the exact
 index-prefix count for a sampled current binding and penalizing disconnected patterns. Eligible cyclic patterns use
-leapfrog triejoin with their own variable order (`choose_variable_order` when statistics exist). The cost-based binary
+leapfrog triejoin; their variable order comes from `choose_variable_order` when the same planner gate passes
+(statistics, default data context, at most seven patterns, enough estimated work), and from the legacy order otherwise. The cost-based binary
 order described below replaces the greedy one only when statistics are available (persisted with disk stores, built
 in the background in memory), the pattern has two to seven triples (`MAX_RUNTIME_DP_PATTERNS`), its input is a single
 all-unbound row in the default data context, and the estimated greedy work is at least `MIN_OPTIMIZER_WORK`

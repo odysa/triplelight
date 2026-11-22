@@ -114,4 +114,5 @@ tested before any build-out: sizing the block cache to the working set (memory t
 data); streaming results with batched decoding (two LUBM-1000 queries returning 7.9M rows each take 5.5 of the 6.4 s
 total); numbers stored inside the ID in value order, so numeric range filters become index range scans; a parallel
 external build that derives orders in pairs; and building only four of the six orders by default (#73: the 54
-benchmark queries never use SOP or OPS, and dropping them makes stores 17–36% smaller).
+benchmark queries never use SOP or OPS, and leaving them out would make stores an estimated 17–36% smaller, from the existing six-order file sizes; a
+four-order build has not been measured yet).
