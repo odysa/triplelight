@@ -25,7 +25,7 @@ cargo run --release -- query example.nt 'ASK { <urn:alice> <urn:knows> <urn:bob>
 
 | Language | Start here |
 | --- | --- |
-| Rust | [Embedded API, persistent stores and bulk loading](docs/embedded/README.md) |
+| Rust | [Embedded API, persistent stores and bulk loading](docs/embedded/README.md) · [async API on any executor](docs/embedded/README.md#async) |
 | Python | [Install from source and query a graph](#python) |
 | JavaScript / TypeScript | [Node.js binding](bindings/node/README.md) · [WebAssembly for browsers and other runtimes](bindings/wasm/README.md) |
 | C, Go and Java | [C ABI](bindings/c/README.md) · [Go binding](bindings/go/README.md) · [Java binding](bindings/java/README.md) |
