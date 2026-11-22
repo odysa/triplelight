@@ -3,7 +3,7 @@
 \usepackage{booktabs,hyperref,amsmath}
 \newcommand{\todo}[1]{\textbf{[TODO: #1]}}
 \newcommand{\unread}{$^{\dagger}$}
-\title{How Much of an RDF Engine's Ranking Is Its Index Layout?\\\large An Experiments \& Analysis Study (draft)}
+\title{Do Index Layout Changes Move RDF Engine Rankings?\\\large An Experiments \& Analysis Study (draft)}
 \author{TripleLight authors}
 \date{Draft, 2026-11-22. Sections 4 and 7 await the dedicated-machine measurements.}
 \begin{document}
@@ -17,7 +17,7 @@ re-checked before submission. Section~4 holds only the registered predictions an
 \begin{abstract}
 RDF engines are routinely ranked on LUBM, WatDiv and BSBM. Engines differ in which triple-index orders they store, so a ranking
 mixes executor quality with index choice. We test whether changing the registered layouts of two engines, TripleLight and QLever,
-moves them among fixed-layout peers (Virtuoso, Jena TDB2, Oxigraph) on each suite. We rank the five HTTP engines twice, under their
+moves them among fixed-layout peers (Virtuoso, Jena TDB2, Oxigraph) on each suite; RDF4J, whose index orders are configurable, joins as a third moving engine. We rank the six HTTP engines twice, under their
 default layouts and under the registered aligned layouts, and register in advance that the claim fails if the two rankings agree at
 Kendall's $\tau_b \ge 0.8$ on every evaluable suite. The test cannot estimate a layout effect for every engine, nor say how much of
 the overall ranking comes from indexes. Embedded cohorts are reported descriptively. As a storage arm we study a store that keeps four
@@ -39,7 +39,7 @@ change?
 
 \paragraph{Contributions.}
 \begin{enumerate}
-  \item \textbf{A ranking test with a registered kill rule.} For each of LUBM, WatDiv and BSBM we compare the ranking of the five
+  \item \textbf{A ranking test with a registered kill rule.} For each of LUBM, WatDiv and BSBM we compare the ranking of the six
   HTTP engines under their default layouts with the ranking under registered aligned layouts, using Kendall's $\tau_b$. The
   claim that registered layout changes move engines among fixed-layout peers fails if $\tau_b \ge 0.8$ on every evaluable suite. The rule, the order set of every arm and the predicted
   direction are fixed before any result exists (Section~4.0).
@@ -77,7 +77,7 @@ and we report them as benchmark results only.
 default and aligned arms coincide.
 \emph{Server cohort (HTTP), the ranking cohort:} TripleLight (four and six orders), QLever (default; two-order mode), Jena TDB2/Fuseki and Oxigraph (fixed layouts),
 and Virtuoso~7 (fixed layout: full quad indexes PSOG and POGS plus partial indexes SP, OP and GS as vendor defaults; it enters only if the new run's receipt captures its index catalog
-and its suites pass the answer gate). RDF4J native (three orders, \texttt{spoc, posc, ospc}) is measured and reported but is not one of the five ranking engines.
+and its suites pass the answer gate). RDF4J native joins the ranking as a sixth engine, conditional on its HTTP store receipt passing the answer gate; its default arm is the documented \texttt{spoc, posc} and its aligned arm the three orders we measured, \texttt{spoc, posc, ospc}.
 \emph{Embedded cohorts (descriptive only):} Python (TripleLight with four and six orders, DuckDB, pyoxigraph) and Java (TripleLight, Blazegraph~2.1.5). DuckDB is run as a single table and as six copies, fixed and routed, as within-engine contrasts.
 pyoxigraph (SPO, POS, OSP) and Blazegraph (SPO, POS, OSP) enter per suite only if they pass their full-workload gates. These cohorts have too few engines to rank, so we report per-engine results, default against aligned, with no $\tau$ and no kill rule. RDFLib backends are listed as supporting evidence only (no registered full-workload profile or common order set).
 The embedded and the HTTP cohort are compared within themselves and never in one figure.
@@ -107,11 +107,11 @@ and not an arm of the test. Decided by the claims owner (Kaiming He, 2026-11-22,
 \section{Results: Rankings}
 \subsection{Registered predictions (written before any measurement)}
 \begin{itemize}
-  \item \textbf{Quantity:} Kendall's $\tau$ between the default-configuration ranking and the aligned ranking, per suite, on the HTTP cohort (TripleLight, QLever, Virtuoso, Jena TDB2, Oxigraph).
+  \item \textbf{Quantity:} Kendall's $\tau$ between the default-configuration ranking and the aligned ranking, per suite, on the HTTP cohort (TripleLight, QLever, RDF4J, Virtuoso, Jena TDB2, Oxigraph).
   \item \textbf{Arms and order sets} (each system: default configuration and closest aligned order set, as measured; list from the \#72 inventory, to be confirmed by its owner):
   TripleLight with four and with six orders; QLever default and two-order mode (the latter may not answer variable-predicate patterns);
-  Virtuoso, Jena TDB2 and Oxigraph with fixed layouts, so default and aligned configurations coincide.
-  \item \textbf{Layouts in the two rank vectors} (to be fixed in the pre-run amendment; fixed arms included): default vector: TripleLight SPO, PSO, POS, OSP; QLever default (six orders); Virtuoso PSOG, POGS (+ SP, OP, GS); Jena TDB2 and Oxigraph as shipped. Aligned vector: TripleLight six orders; QLever two-order (PSO, POS); the three fixed engines unchanged. \todo{inventory owner to confirm the exact order names for Jena and Oxigraph.}
+  RDF4J default \texttt{spoc, posc} and aligned \texttt{spoc, posc, ospc}; Virtuoso, Jena TDB2 and Oxigraph with fixed layouts, so default and aligned configurations coincide.
+  \item \textbf{Layouts in the two rank vectors} (to be fixed in the pre-run amendment; fixed arms included): default vector: TripleLight SPO, PSO, POS, OSP; QLever default (six orders); RDF4J \texttt{spoc, posc}; Virtuoso PSOG, POGS (+ SP, OP, GS); Jena TDB2 and Oxigraph with SPO, POS, OSP for default-graph triples and GSPO, GPOS, GOSP, SPOG, POSG, OSPG for quads (the prefix index is not an order). Aligned vector: TripleLight six orders; QLever two-order (PSO, POS); RDF4J \texttt{spoc, posc, ospc}; the three fixed engines unchanged. Server configurations are confirmed in the run receipts.
   \item \textbf{Kill rule:} the claim that index layout changes the ranking fails if $\tau \ge 0.8$ on every \emph{evaluable} suite; unevaluable suites do not count towards it. If no suite is evaluable, the test is reported as unevaluable and neither supports nor kills the claim.
   \item \textbf{Predicted direction} (registered 2026-11-22 by the claims owner, Kaiming He, task \#96, before any measurement; scoped to the HTTP cohort):
   on the analytical suites (BSBM BI and the WatDiv aggregates) aligning order sets changes the ranking, $\tau < 0.8$;
@@ -149,7 +149,7 @@ engineering that follows an existing design, not as a new method.
   \item \textbf{One machine class and synthetic data.} The suites are synthetic benchmark data with nearly fixed structure~\cite{duan2011}.
   \item \textbf{Unsupported cells.} QLever's two-order mode cannot answer patterns with a variable predicate; on suites that contain
   such patterns those cells are \emph{unsupported}, both rank vectors drop the engine, and the test covers fewer engines or suites.
-  \item \textbf{What the test can claim.} Only TripleLight and QLever change layout between the two vectors; Virtuoso, Jena TDB2 and Oxigraph are fixed. The test therefore asks whether the registered layout changes for those two engines move them among fixed-layout peers. It cannot estimate a layout effect for every engine, and it cannot say how much of the overall ranking comes from indexes.
+  \item \textbf{What the test can claim.} Only TripleLight, QLever and RDF4J change layout between the two vectors; Virtuoso, Jena TDB2 and Oxigraph are fixed. The test therefore asks whether the registered layout changes for three engines move them among three fixed-layout peers. It cannot estimate a layout effect for every engine, and it cannot say how much of the overall ranking comes from indexes.
   \item \textbf{Tuning.} We configured the engines; vendor tuning may differ. Jena is the answer reference, not a speed reference.
   \item \textbf{A null result.} If the rankings agree at $\tau \ge 0.8$ on every suite, the central claim fails and the paper reduces to the storage
   arm and the build results.
