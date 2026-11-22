@@ -33,8 +33,6 @@ fn term_ref_json(t: TermRef<'_>, out: &mut String) {
             if let Some(lang) = l.language() { out.push_str(",\"xml:lang\":"); esc(lang, out); }
             else if l.datatype() != triplelight_rdf::vocab::xsd::STRING { out.push_str(",\"datatype\":"); esc(l.datatype().as_str(), out); }
         }
-        #[allow(unreachable_patterns)]
-        _ => out.push_str("{\"type\":\"literal\",\"value\":\"\""),
     }
     out.push('}');
 }
