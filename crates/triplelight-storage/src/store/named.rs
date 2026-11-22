@@ -70,14 +70,7 @@ impl NamedGraph {
     fn dict(&self) -> DictRef<'_> { DictRef { base: &*self.base, delta: &self.delta } }
     /// Exactly the base's rows for this graph (nothing changed since the base was written).
     fn pristine(&self) -> bool { self.stored.is_some() && self.rows.is_empty() }
-    fn spo_rows(&self) -> std::io::Result<Vec<[TermId; 3]>> {
-        let mut v = Vec::new();
-        for b in self.scan(Perm::Spo, &[]) {
-            let b = b?;
-            v.extend((0..b.len()).map(|i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]));
-        }
-        Ok(v)
-    }
+    fn spo_rows(&self) -> std::io::Result<Vec<[TermId; 3]>> { all_rows(self, Perm::Spo) }
 }
 
 impl Dictionary for NamedGraph {
@@ -189,6 +182,32 @@ impl DatasetView for Overlay {
             }
         }
         Ok(Some(false))
+    }
+}
+
+/// Every row of `view` in key order `perm`.
+fn all_rows(view: &dyn Snapshot, perm: Perm) -> std::io::Result<Vec<[TermId; 3]>> {
+    let mut rows = Vec::new();
+    for b in view.scan(perm, &[]) {
+        let b = b?;
+        rows.extend((0..b.len()).map(|i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]));
+    }
+    Ok(rows)
+}
+
+/// The RDF triple of the SPO row `r`, its terms resolved in `dict`.
+fn triple_of(dict: &dyn Dictionary, r: [TermId; 3]) -> std::io::Result<Triple> {
+    let invalid = |what| StorageError::new(std::io::ErrorKind::InvalidData, what);
+    let subject: triplelight_rdf::NamedOrBlankNode = dict.resolve(r[0])?.try_into().map_err(|_| invalid("invalid RDF subject"))?;
+    let predicate: NamedNode = dict.resolve(r[1])?.try_into().map_err(|_| invalid("invalid RDF predicate"))?;
+    Ok(Triple::new(subject, predicate, dict.resolve(r[2])?))
+}
+
+/// The IRI a graph-name ID stands for.
+fn graph_iri(dict: &dyn Dictionary, g: TermId) -> std::io::Result<NamedNode> {
+    match dict.resolve(g)? {
+        Term::NamedNode(n) => Ok(n),
+        _ => Err(StorageError::new(std::io::ErrorKind::InvalidData, "graph name is not an IRI")),
     }
 }
 
@@ -353,12 +372,7 @@ impl Work<'_> {
         self.changed += visible;
         self.cleared = true;
         for p in Perm::ALL {
-            let mut rows = Vec::new();
-            for b in self.base.scan(p, &[]) {
-                let b = b?;
-                rows.extend((0..b.len()).map(|i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]));
-            }
-            self.d.dels[slot(p)] = rows;
+            self.d.dels[slot(p)] = all_rows(&**self.base, p)?;
             self.d.adds[slot(p)].clear();
         }
         Ok(())
@@ -478,18 +492,8 @@ impl Overlay {
     /// The net difference from `self` to `next` (see `apply_dataset`). Terms are resolved in `next`, whose dictionary
     /// extends this one.
     fn net_record(&self, next: &Overlay, touched: HashMap<[TermId; 3], bool>, cleared: bool, named_changes: HashMap<TermId, (HashMap<[TermId; 3], bool>, bool)>) -> std::io::Result<Vec<DatasetChange>> {
-        let triple = |r: [TermId; 3]| -> std::io::Result<Triple> {
-            let invalid = |what| StorageError::new(std::io::ErrorKind::InvalidData, what);
-            let subject: triplelight_rdf::NamedOrBlankNode = next.resolve(r[0])?.try_into().map_err(|_| invalid("invalid RDF subject"))?;
-            let predicate: NamedNode = next.resolve(r[1])?.try_into().map_err(|_| invalid("invalid RDF predicate"))?;
-            Ok(Triple::new(subject, predicate, next.resolve(r[2])?))
-        };
-        let graph_name = |g: TermId| -> std::io::Result<NamedNode> {
-            match next.resolve(g)? {
-                Term::NamedNode(n) => Ok(n),
-                _ => Err(StorageError::new(std::io::ErrorKind::InvalidData, "graph name is not an IRI")),
-            }
-        };
+        let triple = |r: [TermId; 3]| triple_of(next, r);
+        let graph_name = |g: TermId| graph_iri(next, g);
         let flips_of = |touched: HashMap<[TermId; 3], bool>, now: &dyn Snapshot| -> std::io::Result<Vec<([TermId; 3], Change)>> {
             let mut flips = Vec::new();
             for (spo, was) in touched {
@@ -501,15 +505,7 @@ impl Overlay {
         let (mut creates, mut quads, mut drops) = (Vec::new(), Vec::new(), Vec::new());
         // Default graph.
         let flips = if cleared {
-            let all = |o: &Overlay| -> std::io::Result<Vec<[TermId; 3]>> {
-                let mut v = Vec::new();
-                for b in o.scan(Perm::Spo, &[]) {
-                    let b = b?;
-                    v.extend((0..b.len()).map(|i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]));
-                }
-                Ok(v)
-            };
-            let (before, after) = (all(self)?, all(next)?);
+            let (before, after) = (all_rows(self, Perm::Spo)?, all_rows(next, Perm::Spo)?);
             let mut flips = Vec::new();
             diff(&before, &after, &mut |r, c| flips.push((r, c)));
             flips
@@ -552,16 +548,10 @@ impl Overlay {
     pub fn named_graph_changes(&self) -> std::io::Result<Vec<DatasetChange>> {
         let mut out = Vec::new();
         for (&gid, view) in &self.named.graphs {
-            let Term::NamedNode(graph) = self.resolve(gid)? else {
-                return Err(StorageError::new(std::io::ErrorKind::InvalidData, "graph name is not an IRI"));
-            };
+            let graph = graph_iri(self, gid)?;
             out.push(DatasetChange::Create { graph: graph.clone(), silent: false });
             for r in view.spo_rows()? {
-                let invalid = |what| StorageError::new(std::io::ErrorKind::InvalidData, what);
-                let subject: triplelight_rdf::NamedOrBlankNode = self.resolve(r[0])?.try_into().map_err(|_| invalid("invalid RDF subject"))?;
-                let predicate: NamedNode = self.resolve(r[1])?.try_into().map_err(|_| invalid("invalid RDF predicate"))?;
-                let triple = Triple::new(subject, predicate, self.resolve(r[2])?);
-                out.push(DatasetChange::Quad(GraphTarget::Named(graph.clone()), Change::Insert, triple));
+                out.push(DatasetChange::Quad(GraphTarget::Named(graph.clone()), Change::Insert, triple_of(self, r)?));
             }
         }
         Ok(out)
