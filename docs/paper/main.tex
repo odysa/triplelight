@@ -1,0 +1,201 @@
+\documentclass[sigconf,nonacm]{acmart}
+\usepackage{tikz}
+\input{style.tex}
+\usepackage{booktabs}
+\usepackage[capitalise,noabbrev]{cleveref}
+\settopmatter{printacmref=false}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+\pagestyle{plain}
+
+\newcommand{\sys}{TripleLight}
+\newcommand{\repo}[1]{\href{https://github.com/odysa/triplelight/blob/main/#1}{\nolinkurl{#1}}}
+
+\begin{document}
+\title{\sys{}: An Embedded Database for Analytical SPARQL}
+\subtitle{Demonstration}
+\author{The \sys{} authors}
+\affiliation{\institution{\url{https://github.com/odysa/triplelight}}\country{}}
+
+\begin{abstract}
+Analysts who keep their data as RDF must choose between two kinds of engines. Triple-store servers are fast but
+run as separate services. Embedded stores live inside the application but are slow at the joins and aggregations
+that analytical questions need. We demonstrate \sys{}, an RDF database written in Rust that runs inside the
+application, in the way DuckDB does for tables. It encodes every term as a 64-bit ID and keeps six sorted, compressed
+orders of the triples. It plans joins from persisted statistics and runs worst-case-optimal joins, filters and hash
+aggregation on IDs, decoding text only for the final result. A persistent store adds a write-ahead log, snapshot reads
+and compaction, including named graphs. The same engine is available from Rust, Python, Node.js, WebAssembly, C, Go
+and Java. Through its Python API on an on-disk store, \sys{} answers the 45 timed BSBM business-intelligence requests
+at 10M triples in 11.6\,s, against 130.0\,s for DuckDB running hand-written SQL over a triples table, and every
+request passes answer checks against Apache Jena. Attendees load data, query it from a notebook and a browser, crash and reopen a store, and compare
+engines on the same queries.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+
+Consider a data scientist who receives a product catalog as RDF, a few tens of millions of triples, and wants to know
+which product features sell best in each country. The question is one SPARQL query with four joins, a filter and a
+\texttt{GROUP BY}. Today there are two ways to answer it. One is to install and operate a triple-store server such as
+Virtuoso~\cite{virtuoso}, QLever~\cite{qlever} or Jena TDB2~\cite{jena}, load the data, and query it over HTTP. The
+other is an embedded library such as Oxigraph~\cite{oxigraph} or the RDF4J memory store~\cite{rdf4j}, which lives in
+the analyst's process. Embedded RDF libraries, however, evaluate queries one solution at a time, and on aggregate workloads they are one to two orders of magnitude slower than the servers (\cref{sec:perf}).
+A third option, converting the triples to a relational table and using DuckDB~\cite{duckdb}, gives up SPARQL and RDF
+term semantics and, as we show, is still slow, because a single triples table turns every graph pattern into a chain
+of self-joins.
+
+Relational analytics went through the same split, and DuckDB resolved it by bringing columnar storage and vectorized
+execution into the application's process. \sys{} applies that idea to RDF. Its storage follows the read-optimized
+designs of RDF-3X~\cite{rdf3x}, Hexastore~\cite{hexastore} and QLever~\cite{qlever}: dictionary-encoded IDs and all
+six orders of the triples, so that every triple pattern is a range scan. Its executor joins and aggregates IDs, with
+leapfrog triejoin~\cite{leapfrog} for many-way patterns. What is new is the packaging: the whole engine, including
+updates, durability and named graphs, is a library with one file-system directory as its database.
+
+This demonstration shows:
+\begin{itemize}
+  \item an embedded, persistent, updatable RDF store that runs analytical SPARQL in process, with bindings for seven
+        languages, including a WebAssembly build that runs in the browser (\cref{sec:system});
+  \item a correctness discipline that compares every benchmark answer with Apache Jena and gates every change on the
+        W3C SPARQL 1.1 query tests (\cref{sec:system});
+  \item measurements against six RDF stores and DuckDB, in process and over HTTP, with their limits stated
+        (\cref{sec:perf}), and three scenarios that let attendees check these claims themselves (\cref{sec:demo}).
+\end{itemize}
+
+\section{System overview}
+\label{sec:system}
+
+\begin{figure}[t]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[node distance=3mm and 4mm]
+  \node[databox, minimum width=58mm] (api) {Rust \textbullet\ Python \textbullet\ Node.js \textbullet\ WASM \textbullet\ C \textbullet\ Go \textbullet\ Java};
+  \node[oursbox, below=of api, minimum width=18mm] (parse) {SPARQL\\parser};
+  \node[oursbox, right=of parse, minimum width=18mm] (plan) {planner\\(char.\ sets)};
+  \node[oursbox, right=of plan, minimum width=18mm] (exec) {executor\\(IDs only)};
+  \draw[flow] (api.south -| parse) -- (parse);
+  \draw[flow] (parse) -- (plan);
+  \draw[flow] (plan) -- (exec);
+  \draw[flow] ([xshift=3mm]exec.north) -- node[edgelabel, right, xshift=1mm] {results} ([xshift=3mm]exec.north |- api.south);
+  \node[membox, below=6mm of parse, minimum width=18mm] (dict) {dictionary\\ID $\leftrightarrow$ term};
+  \node[membox, right=of dict, minimum width=18mm] (perm) {6 sorted orders\\SPO \dots\ OPS};
+  \node[membox, right=of perm, minimum width=18mm] (delta) {delta + WAL\\(updates)};
+  \node[group, fit=(dict)(perm)(delta), label={[grouplabel]below:immutable base snapshot \;+\; overlay; compaction merges them}] (store) {};
+  \draw[flow] (exec.south) -- (exec.south |- store.north);
+  \draw[flow] (plan.south) -- node[edgelabel] {statistics} (plan.south |- store.north);
+\end{tikzpicture}}
+\caption{\sys{} inside an application. Queries are planned from persisted statistics and executed on 64-bit term IDs
+over six sorted orders of the triples; only results are decoded to text. Updates go to a write-ahead log and an
+in-memory overlay that compaction merges into a new base.}
+\label{fig:overview}
+\end{figure}
+
+\cref{fig:overview} shows the components. The code is seven library crates (Rust packages) plus the bindings, under the MIT licence; the
+parsers and term types are \sys{}'s own, with the RDF parsing behaviour of Oxigraph's crates kept exactly.
+
+\paragraph{Terms and IDs.} Every RDF term is a 64-bit ID whose top four bits give its kind. Plain strings of up to seven bytes are carried inside the ID and need no dictionary entry; every other term is
+stored once in a front-coded dictionary. Operators compare, join and group IDs, and decode a term only when a filter, a string
+function or the final result needs its text.
+
+\paragraph{Storage.} A base snapshot holds the six orders (SPO, SOP, PSO, POS, OSP, OPS) as compressed, checksummed
+blocks, read through one shared block cache with a fixed budget. A dataset with named graphs adds six graph-first
+quad orders and a catalog of graphs. Updates are appended to a write-ahead log with group commit and are synced
+before the call returns; they are kept as an overlay of inserts and deletes, and compaction writes a new base.
+Readers pin a snapshot, so a query never sees half of an update. A \texttt{verify} command checks a whole store: block checksums,
+orders and dictionary.
+
+\paragraph{Query engine.} SPARQL is parsed to an algebra and planned with cost-based join ordering from characteristic
+sets~\cite{charsets} and predicate counts. These statistics are saved next to the base, so a reopened 100M-triple store
+plans with them within 0.74--0.91\,s of opening, instead of 20.5--25.8\,s for a rebuild scan
+(\repo{docs/startup36-persisted-stats/README.md}). The executor runs leapfrog triejoin, bind joins, filter
+pushdown, hash aggregation and top-$k$ on IDs. A feature it does not implement (\texttt{SERVICE}, \texttt{LOAD})
+is refused with an ``unsupported'' error instead of being answered partially.
+
+\paragraph{Correctness.} Every benchmark answer is reduced to a canonical multiset and compared with Apache Jena.
+Every change must keep at least 323 W3C SPARQL 1.1 query tests passing. The parsers were checked against Oxigraph's
+on the W3C RDF test suites, hundreds of thousands of random documents and every statement of the benchmark data; stores
+built before and after the switch are byte-identical.
+
+\section{Performance snapshot}
+\label{sec:perf}
+
+All numbers come from reports in the repository (\repo{docs/report/evaluation.md},
+\repo{docs/benchmark-overview.md}), each with its method, raw data and answer checks. Engines are compared only within
+one session on one host, and in-process and HTTP numbers are never mixed. These are descriptive measurements with two
+to six passes, not significance tests.
+
+\begin{table}[t]
+\caption{In process, through each engine's Python API on an on-disk store (4 CPUs, 12\,GiB). Summed query seconds,
+pass 1 / pass 2; lower is better. DuckDB answers SQL over one triples table. pyoxigraph did not finish the BI
+qualification.}
+\label{tab:python}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Workload & \sys{} & DuckDB & pyoxigraph \\
+\midrule
+BSBM BI, 10M (45 requests) & \textbf{11.6 / 13.1} & 130.0 / 110.6 & -- \\
+LUBM-100 aggregates (30) & \textbf{0.67 / 0.64} & 50.4 / 40.0 & 41.7 / 34.5 \\
+WatDiv aggregates (42) & \textbf{0.20 / 0.23} & 27.1 / 18.9 & 71.6 / 71.8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{In process.} \cref{tab:python} is the comparison an embedded user cares about: time from submitting a query
+until the full result is Python values. On the BSBM business-intelligence workload \sys{} is 8--11$\times$ faster
+than DuckDB, and on the aggregate suites 60--135$\times$. DuckDB's queries are hand-written or translated SQL over a
+single table; a better relational layout might narrow the gap, and we did not measure one. All 1,104 scheduled requests
+passed the answer gates against Jena. The Node.js API shows the same picture against quadstore with Comunica.
+
+\paragraph{As a server.} Over the SPARQL protocol, on LUBM-100~\cite{lubm}, WatDiv-100~\cite{watdiv} and BSBM-10M~\cite{bsbm} (13--15M triples), \sys{} has the
+lowest total in memory and on disk against Virtuoso~7 and QLever in a Linux VM, and against RDF4J, Jena TDB2 and
+Oxigraph on the host (on BSBM-10M in the VM, within a few percent of Virtuoso); for example, LUBM-100 totals 289\,ms (memory) and 378\,ms (disk) against 2,103\,ms for QLever
+and 9,441\,ms for Virtuoso. At 100--140M triples, with every system given about 10\,GB of cache, \sys{}'s disk store
+has the lowest LUBM-1000 total (6.4\,s against 30.5\,s for QLever) and is level with Virtuoso on BSBM-100M (260 and
+223\,ms total; geometric means 8.32 and 8.39\,ms).
+
+\paragraph{Limits.} Building the disk store is the widest gap: LUBM-1000 takes 1,035\,s against 425\,s for QLever,
+because the build is mostly single-threaded and needs tens of gigabytes of scratch disk. QLever runs LUBM-1000 in
+0.4\,GB of memory against 9.0\,GB for \sys{}. Numeric arithmetic is exact within 96 bits for decimals and 64 bits for
+integers, and results outside that range are errors. Results are materialized before they are returned.
+
+\section{Demonstration}
+\label{sec:demo}
+
+Attendees use a laptop with prepared stores of LUBM, WatDiv and BSBM, and can bring their own N-Triples or Turtle file.
+
+\paragraph{Scenario 1: analytics in a notebook.} In Jupyter, the attendee opens a persistent store with
+\texttt{Database("bsbm.db")}, runs a BSBM business-intelligence query and receives rows as Python values. The same
+question as SQL runs next to it in DuckDB over the triples table, and pyoxigraph runs the SPARQL. Both answers are
+checked against Jena's in the notebook, so the attendee sees time and correctness together. They can edit a query and compare again.
+
+\paragraph{Scenario 2: an updatable, durable store.} The attendee inserts and deletes triples in named graphs with
+SPARQL Update, holds a read snapshot open while the data changes, and sees the snapshot keep its view. They then kill
+the process in the middle of a stream of updates, reopen the directory, and check that every acknowledged update
+survived; \texttt{verify} checks the store, and compaction folds the log into a new base while queries continue.
+
+\paragraph{Scenario 3: the same engine everywhere.} The same queries run from Node.js, from Go and Java through the C
+interface with Arrow output, and in a browser tab through the WebAssembly build, which needs no server at all. The
+attendee loads a TriG file with named graphs into the browser database and queries it with \texttt{GRAPH} and
+\texttt{FROM NAMED}.
+
+\section{Related work}
+
+RDF-3X~\cite{rdf3x} and Hexastore~\cite{hexastore} introduced exhaustive permutation indexes over dictionary-encoded
+triples; QLever~\cite{qlever} showed how fast a read-optimized, compressed layout can be, and Virtuoso~\cite{virtuoso}
+remains a strong relational-backed store. Jena TDB2~\cite{jena}, RDF4J~\cite{rdf4j} and Oxigraph~\cite{oxigraph} are
+widely used Java and Rust stores, the last also embeddable. Worst-case-optimal joins~\cite{leapfrog} and their
+combination with binary joins in systems such as MillenniumDB~\cite{millenniumdb} and Free Join~\cite{freejoin} inform
+\sys{}'s executor, and characteristic sets~\cite{charsets} its cardinality estimates. DuckDB~\cite{duckdb} and
+vectorized execution~\cite{x100} are the model for running analytics inside the application. \sys{} brings these
+pieces together as an embedded, updatable RDF database.
+
+\section{Conclusion}
+
+\sys{} shows that RDF analytics need not require a server: an embedded engine that stores six orders of
+dictionary-encoded triples and executes on IDs is faster than embedded RDF libraries and a relational embedded engine
+on analytical SPARQL, and competitive with the fastest servers. Its main open problems are a parallel, lower-scratch
+disk build and a smaller memory footprint at 100M triples and beyond.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{refs}
+\end{document}
