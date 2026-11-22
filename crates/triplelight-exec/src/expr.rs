@@ -1,8 +1,8 @@
 //! SPARQL expression evaluation over resolved terms. `None` is the SPARQL "error" value.
 use super::{Ctx, Row};
 use crate::storage::Snapshot;
-use oxrdf::vocab::xsd;
-use oxrdf::{Literal, NamedNode, Term};
+use triplelight_rdf::vocab::xsd;
+use triplelight_rdf::{Literal, NamedNode, Term};
 use crate::sparql::{Expression, Function};
 use std::cmp::Ordering;
 #[cfg(not(target_arch = "wasm32"))]
@@ -429,7 +429,7 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
         Function::Rand => Some(Num::Dbl((random_u64() >> 11) as f64 / (1u64 << 53) as f64).term()),
         Function::Uuid => Some(NamedNode::new_unchecked(format!("urn:uuid:{}", uuid_v4())).into()),
         Function::StrUuid => Some(simple(uuid_v4())),
-        Function::BNode if args.is_empty() => Some(oxrdf::BlankNode::default().into()),
+        Function::BNode if args.is_empty() => Some(triplelight_rdf::BlankNode::default().into()),
         Function::Md5 | Function::Sha1 | Function::Sha256 | Function::Sha384 | Function::Sha512 => {
             use sha2::Digest;
             let x = plain(0)?;
@@ -522,7 +522,7 @@ pub(super) fn term_num(t: &Term) -> Option<Num> { num(t) }
 /// XPath constructor functions (SPARQL 1.1 §17.5 casts), e.g. `xsd:double(str(?price))`. `None` = type error.
 fn xsd_cast(iri: &str, t: &Term) -> Option<Term> {
     let target = iri.strip_prefix("http://www.w3.org/2001/XMLSchema#")?;
-    let typed = |v: String, dt: oxrdf::NamedNodeRef<'_>| -> Option<Term> { Some(Literal::new_typed_literal(v, dt).into()) };
+    let typed = |v: String, dt: triplelight_rdf::NamedNodeRef<'_>| -> Option<Term> { Some(Literal::new_typed_literal(v, dt).into()) };
     // Source: a numeric value, a boolean, or a lexical form (plain/xsd:string literal, or any literal's string).
     let source_num = num(t);
     let lexical = match t {
@@ -550,14 +550,14 @@ fn xsd_cast(iri: &str, t: &Term) -> Option<Term> {
             let i: i64 = match source_num { Some(Num::Int(i)) => i, Some(n) => { let f = n.f(); if !f.is_finite() { return None } f.trunc() as i64 }
                 None if is_bool => i64::from(matches!(lexical.as_str(), "true" | "1")),
                 None => lexical.trim_start_matches('+').parse().ok()? };
-            typed(i.to_string(), oxrdf::NamedNodeRef::new_unchecked(iri))
+            typed(i.to_string(), triplelight_rdf::NamedNodeRef::new_unchecked(iri))
         }
         "boolean" => {
             let b = match source_num { Some(n) => { let f = n.f(); f != 0.0 && !f.is_nan() }
                 None => match lexical.as_str() { "true" | "1" => true, "false" | "0" => false, _ => return None } };
             Some(bool_term(b))
         }
-        "dateTime" | "date" | "time" => typed(lexical, oxrdf::NamedNodeRef::new_unchecked(iri)),
+        "dateTime" | "date" | "time" => typed(lexical, triplelight_rdf::NamedNodeRef::new_unchecked(iri)),
         _ => None,
     }
 }

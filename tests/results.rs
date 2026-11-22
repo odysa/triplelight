@@ -1,4 +1,4 @@
-use oxrdf::{BlankNode, Literal, NamedNode, Term, TermRef, Triple, Variable};
+use triplelight_rdf::{BlankNode, Literal, NamedNode, Term, TermRef, Triple, Variable};
 use std::collections::HashMap;
 use triplelight::exec::{IdSolutions, QueryResult, UNBOUND, results::{serialize, serialize_ids}};
 use triplelight::model::TermId;
@@ -45,7 +45,7 @@ fn decoded_and_id_rows_keep_exact_json_bytes() {
         BlankNode::new("b0").unwrap().into(),
         Literal::new_simple_literal("\0\u{1}\u{8}\u{c}\n\r\t\"\\/雪😀").into(),
         Literal::new_language_tagged_literal("hello", "en").unwrap().into(),
-        Literal::new_typed_literal("01", oxrdf::vocab::xsd::INT).into(),
+        Literal::new_typed_literal("01", triplelight_rdf::vocab::xsd::INT).into(),
     ];
     let vars = variables(&["iri", "blank", "text", "lang", "typed", "absent"]);
     let mut row: Vec<_> = terms.iter().cloned().map(Some).collect();

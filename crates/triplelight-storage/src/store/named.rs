@@ -7,7 +7,7 @@
 use super::{DictRef, Delta, Overlay, DELTA_TAG, key, merged_count, merged_scan, merged_seek, range, slot};
 use crate::model::{Change, DatasetChange, GraphScope, GraphTarget, Perm, TermId, TripleBatch};
 use crate::storage::{Dictionary, Snapshot, StorageError};
-use oxrdf::{NamedNode, Term, TermRef, Triple};
+use triplelight_rdf::{NamedNode, Term, TermRef, Triple};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 use triplelight_core::storage::DatasetView;
@@ -480,7 +480,7 @@ impl Overlay {
     fn net_record(&self, next: &Overlay, touched: HashMap<[TermId; 3], bool>, cleared: bool, named_changes: HashMap<TermId, (HashMap<[TermId; 3], bool>, bool)>) -> std::io::Result<Vec<DatasetChange>> {
         let triple = |r: [TermId; 3]| -> std::io::Result<Triple> {
             let invalid = |what| StorageError::new(std::io::ErrorKind::InvalidData, what);
-            let subject: oxrdf::NamedOrBlankNode = next.resolve(r[0])?.try_into().map_err(|_| invalid("invalid RDF subject"))?;
+            let subject: triplelight_rdf::NamedOrBlankNode = next.resolve(r[0])?.try_into().map_err(|_| invalid("invalid RDF subject"))?;
             let predicate: NamedNode = next.resolve(r[1])?.try_into().map_err(|_| invalid("invalid RDF predicate"))?;
             Ok(Triple::new(subject, predicate, next.resolve(r[2])?))
         };
@@ -558,7 +558,7 @@ impl Overlay {
             out.push(DatasetChange::Create { graph: graph.clone(), silent: false });
             for r in view.spo_rows()? {
                 let invalid = |what| StorageError::new(std::io::ErrorKind::InvalidData, what);
-                let subject: oxrdf::NamedOrBlankNode = self.resolve(r[0])?.try_into().map_err(|_| invalid("invalid RDF subject"))?;
+                let subject: triplelight_rdf::NamedOrBlankNode = self.resolve(r[0])?.try_into().map_err(|_| invalid("invalid RDF subject"))?;
                 let predicate: NamedNode = self.resolve(r[1])?.try_into().map_err(|_| invalid("invalid RDF predicate"))?;
                 let triple = Triple::new(subject, predicate, self.resolve(r[2])?);
                 out.push(DatasetChange::Quad(GraphTarget::Named(graph.clone()), Change::Insert, triple));
@@ -575,7 +575,7 @@ impl Overlay {
 mod tests {
     use super::*;
     use crate::storage::MemorySnapshot;
-    use oxrdf::{BlankNode, Literal};
+    use triplelight_rdf::{BlankNode, Literal};
     use DatasetChange::{Clear, Create, Drop, Quad};
 
     fn iri(s: &str) -> NamedNode { NamedNode::new(format!("http://ex/{s}")).unwrap() }

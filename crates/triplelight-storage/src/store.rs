@@ -23,7 +23,7 @@
 //! the WAL; the change is one-way.
 use crate::model::{DatasetChange, GraphScope, GraphTarget, Perm, TermId, TripleBatch};
 use crate::storage::{Dictionary, MemorySnapshot, Snapshot, StorageError};
-use oxrdf::{Term, TermRef, Triple};
+use triplelight_rdf::{Term, TermRef, Triple};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
@@ -573,14 +573,14 @@ fn sync_dir(dir: &Path) -> std::io::Result<()> { File::open(dir)?.sync_all() }
 /// Refuses a term whose N-Triples text (what the WAL writes and a base stores) is longer than a base can hold.
 /// Without this, the commit would be acknowledged, but no compaction could ever write the store's next base.
 /// Checked before anything is applied, so a refused update changes nothing.
-fn check_term_size(term: oxrdf::TermRef<'_>) -> std::io::Result<()> {
+fn check_term_size(term: triplelight_rdf::TermRef<'_>) -> std::io::Result<()> {
     // The same limit as the base writer (`external_build::MAX_TERM`, Unix only) and the streaming parsers.
     let limit = triplelight_core::ntriples::MAX_TOKEN;
     // Cheap upper bound first: escaping turns one byte into at most six (`\u0000`), plus quotes and the suffix.
     let bound = match term {
-        oxrdf::TermRef::NamedNode(n) => n.as_str().len() + 2,
-        oxrdf::TermRef::BlankNode(b) => b.as_str().len() + 2,
-        oxrdf::TermRef::Literal(l) => l.value().len() * 6 + l.datatype().as_str().len() + l.language().map_or(0, str::len) + 8,
+        triplelight_rdf::TermRef::NamedNode(n) => n.as_str().len() + 2,
+        triplelight_rdf::TermRef::BlankNode(b) => b.as_str().len() + 2,
+        triplelight_rdf::TermRef::Literal(l) => l.value().len() * 6 + l.datatype().as_str().len() + l.language().map_or(0, str::len) + 8,
     };
     if bound <= limit { return Ok(()) }
     let len = term.to_string().len();
@@ -616,7 +616,7 @@ impl Overlay {
 
 
 /// One WAL line for a triple change, in the default graph (`graph == None`) or a named graph.
-fn push_quad(buf: &mut String, c: Change, t: &Triple, graph: Option<&oxrdf::NamedNode>) {
+fn push_quad(buf: &mut String, c: Change, t: &Triple, graph: Option<&triplelight_rdf::NamedNode>) {
     use std::fmt::Write as _;
     buf.push_str(if c == Change::Insert { "+ " } else { "- " });
     let _ = match graph { Some(g) => writeln!(buf, "{t} {g} ."), None => writeln!(buf, "{t} .") };
@@ -643,7 +643,7 @@ fn needs_fence(rec: &[DatasetChange]) -> bool {
 
 /// One WAL line as a replayable step, or `None` if it is not a valid change line (a torn tail).
 fn parse_line(line: &str) -> Option<DatasetChange> {
-    let graph = |rest: &str| rest.strip_prefix('<')?.strip_suffix('>').and_then(|iri| oxrdf::NamedNode::new(iri).ok());
+    let graph = |rest: &str| rest.strip_prefix('<')?.strip_suffix('>').and_then(|iri| triplelight_rdf::NamedNode::new(iri).ok());
     if let Some(rest) = line.strip_prefix("G+ ") { return Some(DatasetChange::Create { graph: graph(rest)?, silent: true }) }
     if let Some(rest) = line.strip_prefix("G- ") {
         return Some(DatasetChange::Drop { target: GraphScope::Graph(graph(rest)?), silent: true });
@@ -655,9 +655,9 @@ fn parse_line(line: &str) -> Option<DatasetChange> {
     };
     let quad = triplelight_core::ntriples::parse_nquads_line(rest)?;
     let target = match quad.graph_name {
-        oxrdf::GraphName::DefaultGraph => GraphTarget::Default,
-        oxrdf::GraphName::NamedNode(g) => GraphTarget::Named(g),
-        oxrdf::GraphName::BlankNode(_) => return None,
+        triplelight_rdf::GraphName::DefaultGraph => GraphTarget::Default,
+        triplelight_rdf::GraphName::NamedNode(g) => GraphTarget::Named(g),
+        triplelight_rdf::GraphName::BlankNode(_) => return None,
     };
     Some(DatasetChange::Quad(target, c, Triple::new(quad.subject, quad.predicate, quad.object)))
 }
@@ -720,9 +720,9 @@ impl Store {
             match change {
                 DatasetChange::Quad(g, Change::Insert, t) => {
                     check_triple_size(t)?;
-                    if let GraphTarget::Named(g) = g { check_term_size(oxrdf::TermRef::NamedNode(g.as_ref()))? }
+                    if let GraphTarget::Named(g) = g { check_term_size(triplelight_rdf::TermRef::NamedNode(g.as_ref()))? }
                 }
-                DatasetChange::Create { graph, .. } => check_term_size(oxrdf::TermRef::NamedNode(graph.as_ref()))?,
+                DatasetChange::Create { graph, .. } => check_term_size(triplelight_rdf::TermRef::NamedNode(graph.as_ref()))?,
                 _ => {}
             }
         }
@@ -799,7 +799,7 @@ mod writer_serialization_tests {
 #[cfg(test)]
 mod borrowed_overlay_tests {
     use super::*;
-    use oxrdf::{NamedNode, Triple};
+    use triplelight_rdf::{NamedNode, Triple};
 
     #[test]
     fn borrowed_rows_only_bypass_an_empty_delta() {
@@ -853,7 +853,7 @@ mod directory_lock_tests {
 mod dataset_wal_tests {
     use super::*;
     use triplelight_core::storage::DatasetView;
-    use oxrdf::{BlankNode, Literal, NamedNode};
+    use triplelight_rdf::{BlankNode, Literal, NamedNode};
     use DatasetChange::{Clear, Create, Drop, Quad};
 
     fn iri(s: &str) -> NamedNode { NamedNode::new(format!("http://ex/{s}")).unwrap() }
@@ -1151,7 +1151,7 @@ mod dataset_wal_tests {
     fn wal_lines_parse_as_oxttl_did() {
         let oxttl_line = |rest: &str| {
             let mut q = oxttl::NQuadsParser::new().for_slice(rest.as_bytes());
-            match (q.next(), q.next()) { (Some(Ok(quad)), None) => Some(quad), _ => None }
+            match (q.next(), q.next()) { (Some(Ok(quad)), None) => Some(quad.to_string()), _ => None }
         };
         let dir = Dir::new("wal-parser-parity");
         let store = dir.open();
@@ -1172,7 +1172,7 @@ mod dataset_wal_tests {
         let mut quad_lines = 0;
         for line in wal.lines() {
             if let Some(rest) = line.strip_prefix("+ ").or_else(|| line.strip_prefix("- ")) {
-                assert_eq!(triplelight_core::ntriples::parse_nquads_line(rest), oxttl_line(rest), "{line:?}");
+                assert_eq!(triplelight_core::ntriples::parse_nquads_line(rest).map(|q| q.to_string()), oxttl_line(rest), "{line:?}");
                 assert!(parse_line(line).is_some(), "{line:?}");
                 quad_lines += 1;
             }
@@ -1181,7 +1181,7 @@ mod dataset_wal_tests {
         assert_eq!(state(&dir.open().snapshot()), before);
         for bad in ["<http://a> <http://b> <http://c>", "<http://a> <http://b> \"x", "<http://a> <http://b> <http://c> . extra", "_:a <http://b> <http://c> _:g ."] {
             let ours = triplelight_core::ntriples::parse_nquads_line(bad);
-            assert_eq!(ours, oxttl_line(bad), "{bad:?}");
+            assert_eq!(ours.as_ref().map(|q| q.to_string()), oxttl_line(bad), "{bad:?}");
             if bad.ends_with("_:g .") { assert!(parse_line(&format!("+ {bad}")).is_none()) } else { assert!(ours.is_none(), "{bad:?}") }
         }
     }

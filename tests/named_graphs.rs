@@ -1,7 +1,7 @@
 //! Named graphs on the query side (task #36): GRAPH, FROM, FROM NAMED over a `DatasetView`. The dataset here is a
 //! test double sharing one dictionary; expected answers follow SPARQL 1.1 §13 (dataset) and are to be re-checked
 //! against Jena on the shared fixture list before the semantics are frozen.
-use oxrdf::{NamedNode, Term, TermRef, Triple};
+use triplelight_rdf::{NamedNode, Term, TermRef, Triple};
 use triplelight::exec::{query_dataset_with, query_with, Options, QueryErrorKind, QueryResult};
 use triplelight::model::{Perm, TermId, TripleBatch};
 use triplelight::model::{Change, DatasetChange, GraphTarget};
@@ -78,16 +78,16 @@ impl DatasetView for TestDataset<'_> {
 }
 
 fn iri(s: &str) -> NamedNode { NamedNode::new(format!("http://ex/{s}")).unwrap() }
-fn t_pq(s: &str, p: &str, o: &str) -> Triple { Triple::new(iri(s), iri(p), oxrdf::Literal::new_simple_literal(o)) }
-fn t(s: &str, o: &str) -> Triple { Triple::new(iri(s), iri("p"), oxrdf::Literal::new_simple_literal(o)) }
+fn t_pq(s: &str, p: &str, o: &str) -> Triple { Triple::new(iri(s), iri(p), triplelight_rdf::Literal::new_simple_literal(o)) }
+fn t(s: &str, o: &str) -> Triple { Triple::new(iri(s), iri("p"), triplelight_rdf::Literal::new_simple_literal(o)) }
 
 /// default: a p "d" | g1: a p "1", b p "1" | g2: a p "2", a p "1" | g3: empty (in the catalog) | g4: _:x p "4" | g5: _:x q "5".
 /// `absent` occurs in the dictionary but is not a graph of the dataset.
 fn data() -> (MemorySnapshot, Vec<Triple>, Vec<(&'static str, Vec<Triple>)>) {
     let default = vec![t("a", "d")];
     // g4 / g5 share the blank node _:x (one dataset input, so the same node in both graphs).
-    let x = oxrdf::BlankNode::new("x").unwrap();
-    let bn = |p: &str, o: &str| Triple::new(x.clone(), iri(p), oxrdf::Literal::new_simple_literal(o));
+    let x = triplelight_rdf::BlankNode::new("x").unwrap();
+    let bn = |p: &str, o: &str| Triple::new(x.clone(), iri(p), triplelight_rdf::Literal::new_simple_literal(o));
     let graphs = vec![("g1", vec![t("a", "1"), t("b", "1")]), ("g2", vec![t("a", "2"), t("a", "1")]), ("g3", vec![]),
                       ("g4", vec![bn("p", "4"), t_pq("iri", "p", "4")]), ("g5", vec![bn("q", "5"), t_pq("iri", "q", "5")])];
     let mut all: Vec<Triple> = default.iter().chain(graphs.iter().flat_map(|(_, g)| g)).cloned().collect();

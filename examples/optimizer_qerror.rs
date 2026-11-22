@@ -1,7 +1,7 @@
 //! Compare pure SELECT-BGP estimates to external, exact result counts.
 //! Usage: cargo run --release --example optimizer_qerror -- data.nt queries/ reference_counts.tsv
 //! Reference TSV: query-name<TAB>row-count, e.g. q1<TAB>4. No DISTINCT/FILTER/LIMIT semantics are silently ignored.
-use oxrdf::Term;
+use triplelight_rdf::Term;
 use triplelight::opt::plan::{JoinTree, Slot, TriplePattern};
 use triplelight::opt::{PlannerOptions, Stats, plan_bgp_with_options, q_error};
 use triplelight::storage::{MemorySnapshot, Snapshot};
@@ -266,7 +266,7 @@ mod tests {
         fn with_term(
             &self,
             id: triplelight::model::TermId,
-            f: &mut dyn FnMut(oxrdf::TermRef<'_>),
+            f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>),
         ) -> io::Result<()> {
             self.inner.with_term(id, f)
         }
@@ -295,13 +295,13 @@ mod tests {
     fn lookup_failures_preserve_original_io_error_in_every_constant_position() {
         let snapshot =
             MemorySnapshot::from_ntriples("<urn:s> <urn:p> <urn:o> .".as_bytes()).unwrap();
-        let named = |s| Term::NamedNode(oxrdf::NamedNode::new(s).unwrap());
+        let named = |s| Term::NamedNode(triplelight_rdf::NamedNode::new(s).unwrap());
         let cases = [
             (named("urn:s"), "SELECT * WHERE { <urn:s> ?p ?o }"),
             (named("urn:p"), "SELECT * WHERE { ?s <urn:p> ?o }"),
             (named("urn:o"), "SELECT * WHERE { ?s ?p <urn:o> }"),
             (
-                Term::Literal(oxrdf::Literal::new_language_tagged_literal("broken", "en").unwrap()),
+                Term::Literal(triplelight_rdf::Literal::new_language_tagged_literal("broken", "en").unwrap()),
                 "SELECT * WHERE { ?s ?p \"broken\"@en }",
             ),
         ];

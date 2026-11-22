@@ -3,7 +3,7 @@
 use super::disk_index::{DiskIndex, write_index};
 use super::{Dictionary, MemorySnapshot, Snapshot, StorageError};
 use crate::model::{Perm, TermId, TripleBatch};
-use oxrdf::Term;
+use triplelight_rdf::Term;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -417,7 +417,7 @@ impl DiskSnapshot {
         }
         for &(g, count) in &named.catalog {
             let mut iri = false;
-            self.with_term(g, &mut |t| iri = matches!(t, oxrdf::TermRef::NamedNode(_)))?;
+            self.with_term(g, &mut |t| iri = matches!(t, triplelight_rdf::TermRef::NamedNode(_)))?;
             let range = base.range(&[g])?;
             if !iri || range.end - range.start != count {
                 return Err(bad("graph catalog disagrees with the quad orders"));
@@ -480,7 +480,7 @@ impl Dictionary for DiskSnapshot {
     fn with_term(
         &self,
         id: TermId,
-        f: &mut dyn FnMut(oxrdf::TermRef<'_>),
+        f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>),
     ) -> Result<(), StorageError> {
         match &self.dictionary {
             DictionaryBackend::Legacy { reverse, .. } => {
@@ -497,7 +497,7 @@ impl Dictionary for DiskSnapshot {
     fn with_terms(
         &self,
         ids: &[TermId],
-        f: &mut dyn FnMut(usize, oxrdf::TermRef<'_>),
+        f: &mut dyn FnMut(usize, triplelight_rdf::TermRef<'_>),
     ) -> Result<(), StorageError> {
         match &self.dictionary {
             DictionaryBackend::Legacy { reverse, .. } => {
@@ -606,8 +606,8 @@ impl DiskGraph {
 impl Dictionary for DiskGraph {
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { self.snap.lookup(term) }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> { self.snap.resolve(id) }
-    fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> Result<(), StorageError> { self.snap.with_term(id, f) }
-    fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, oxrdf::TermRef<'_>)) -> Result<(), StorageError> {
+    fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.snap.with_term(id, f) }
+    fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> {
         self.snap.with_terms(ids, f)
     }
 }
@@ -651,7 +651,7 @@ impl Snapshot for DiskGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use oxrdf::{Literal, NamedNode, Triple};
+    use triplelight_rdf::{Literal, NamedNode, Triple};
     /// A dataset base (`RDFSNAP5`): every named graph view answers like the overlay it was written from (by term)
     /// and like a row model of its quad rows (by ID) for every order, prefix and seek; the catalog keeps empty graphs.
     #[test]
@@ -759,6 +759,87 @@ mod tests {
 
     /// A dataset whose named graphs are all empty (only `CREATE GRAPH`): the base builds with empty quad orders,
     /// lists every graph, verifies, and each view is empty.
+    /// #45 step 4 store gate: every stored term reads back and is found again by its text, `lookup(resolve(id)) ==
+    /// Some(id)`, in an in-memory build (`RDFSNAP3`), an external build (`RDFSNAP4`) and a dataset base (`RDFSNAP5`).
+    /// The term dictionaries search by the text `Display` renders, so a rendering change would make stored terms
+    /// unfindable while `verify` still passes. The stores are byte-identical to main's (PR #103), so this also covers
+    /// stores built by main.
+    #[test]
+    fn every_stored_term_is_found_by_its_text() {
+        use crate::model::{Change, DatasetChange, GraphTarget};
+        use triplelight_core::storage::DatasetView;
+        use triplelight_rdf::BlankNode;
+        let iri = |s: &str| NamedNode::new(s).unwrap();
+        let xsd = |t: &str| iri(&format!("http://www.w3.org/2001/XMLSchema#{t}"));
+        let objects: Vec<Term> = vec![
+            Literal::new_simple_literal("plain").into(),
+            Literal::new_simple_literal("tab\t new\n line\r \"quote\" back\\slash").into(),
+            Literal::new_simple_literal("control \u{0} \u{1} \u{1f} \u{7f}").into(),
+            Literal::new_simple_literal("é ü 中文 \u{1F600}").into(),
+            Literal::new_simple_literal("").into(),
+            Literal::new_simple_literal("seven!!").into(), // a short string: an inline ID in memory stores
+            Literal::new_language_tagged_literal("hello", "en-GB").unwrap().into(),
+            Literal::new_language_tagged_literal("hallo", "DE-at").unwrap().into(),
+            Literal::new_typed_literal("0042", xsd("integer")).into(),
+            Literal::new_typed_literal("typed string", xsd("string")).into(),
+            Literal::new_typed_literal("1.5e3", xsd("double")).into(),
+            Literal::new_typed_literal("x", iri("http://ex/custom-type")).into(),
+            iri("http://ex/é/%20?q=1#frag").into(),
+            iri(&format!("http://ex/long/{}", "seg/".repeat(500))).into(),
+            BlankNode::new("b1").unwrap().into(),
+            BlankNode::new("a1b2c3d4e5f6a7b8").unwrap().into(), // hex: oxrdf's numeric-ID form
+            BlankNode::new("0123").unwrap().into(),
+            BlankNode::default().into(),
+        ];
+        let subjects = [iri("http://ex/s"), iri("http://ex/s2")];
+        let mut triples = Vec::new();
+        for (i, o) in objects.iter().enumerate() {
+            let s: triplelight_rdf::NamedOrBlankNode = if i % 3 == 0 { BlankNode::new(format!("s{i}")).unwrap().into() } else { subjects[i % 2].clone().into() };
+            triples.push(Triple::new(s, iri(&format!("http://ex/p{}", i % 4)), o.clone()));
+        }
+        let check = |label: &str, dir: &Path, named: bool| {
+            let disk = std::sync::Arc::new(DiskSnapshot::open(dir).unwrap());
+            disk.verify().unwrap();
+            let mut ids: Vec<TermId> = Vec::new();
+            let mut views: Vec<&dyn Snapshot> = vec![&*disk];
+            let graph_views: Vec<DiskGraph> = disk.graph_names().into_iter().filter_map(|g| { ids.push(g); disk.graph_view(g) }).collect();
+            for v in &graph_views { views.push(v) }
+            for view in views {
+                for b in view.scan(Perm::Spo, &[]) { let b = b.unwrap(); for c in &b.cols { ids.extend(c.iter().copied()) } }
+            }
+            ids.sort_unstable();
+            ids.dedup();
+            assert!(ids.len() > objects.len(), "{label}: {} IDs", ids.len());
+            for &id in &ids {
+                let term = disk.resolve(id).unwrap();
+                assert_eq!(disk.lookup(&term).unwrap(), Some(id), "{label}: {term} (id {id:?}) is not found by its text");
+            }
+            assert_eq!(disk.lookup(&Literal::new_simple_literal("never stored").into()).unwrap(), None, "{label}");
+            if named { assert_eq!(disk.graph_names().len(), 2, "{label}") }
+            assert_eq!(&fs::read(dir.join("MANIFEST")).unwrap()[..8], match (label, named) { ("in-memory", _) => b"RDFSNAP3", (_, false) => b"RDFSNAP4", (_, true) => b"RDFSNAP5" }, "{label}");
+        };
+        let parent = std::env::temp_dir().join(format!("rdf-lookup-round-trip-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&parent);
+        fs::create_dir(&parent).unwrap();
+        // In-memory build: RDFSNAP3 (two dictionary files).
+        let memory = MemorySnapshot::from_triples(triples.clone());
+        DiskSnapshot::create(parent.join("memory"), &memory).unwrap();
+        check("in-memory", &parent.join("memory"), false);
+        // External build: RDFSNAP4 (the unified dictionary).
+        write_disk_snapshot(parent.join("external"), &memory).unwrap();
+        check("external", &parent.join("external"), false);
+        // Dataset base: RDFSNAP5, with the same terms also in named graphs and as graph names.
+        let mut changes: Vec<DatasetChange> = triples.iter().map(|t| DatasetChange::Quad(GraphTarget::Default, Change::Insert, t.clone())).collect();
+        for (i, t) in triples.iter().enumerate() {
+            changes.push(DatasetChange::Quad(GraphTarget::Named(iri(if i % 2 == 0 { "http://ex/g/é" } else { "http://ex/g2" })), Change::Insert, t.clone()));
+        }
+        let source = crate::store::Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([]))).with_dataset_changes(&changes).unwrap().0;
+        assert_eq!(source.graph_names().unwrap().len(), 2);
+        write_disk_dataset(parent.join("dataset"), &source).unwrap();
+        check("dataset", &parent.join("dataset"), true);
+        fs::remove_dir_all(parent).unwrap();
+    }
+
     #[test]
     fn dataset_base_with_only_empty_named_graphs() {
         use crate::model::{Change, DatasetChange, GraphTarget};

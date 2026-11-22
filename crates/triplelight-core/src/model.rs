@@ -35,12 +35,12 @@ pub enum Change { Insert, Delete }
 /// The graph a change applies to (task #36). Named graphs are given as IRIs, not IDs: a graph the dictionary has not
 /// seen yet is interned in the same commit as its first quads.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub enum GraphTarget { Default, Named(oxrdf::NamedNode) }
+pub enum GraphTarget { Default, Named(triplelight_rdf::NamedNode) }
 
 /// The graphs a `DROP` or `CLEAR` applies to, as in SPARQL 1.1 Update.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum GraphScope {
-    Graph(oxrdf::NamedNode),
+    Graph(triplelight_rdf::NamedNode),
     /// The default graph, which always exists: dropping it only empties it.
     Default,
     /// Every named graph.
@@ -58,8 +58,8 @@ pub enum GraphScope {
 /// catalog; deleting its last triple keeps it there.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum DatasetChange {
-    Quad(GraphTarget, Change, oxrdf::Triple),
-    Create { graph: oxrdf::NamedNode, silent: bool },
+    Quad(GraphTarget, Change, triplelight_rdf::Triple),
+    Create { graph: triplelight_rdf::NamedNode, silent: bool },
     Drop { target: GraphScope, silent: bool },
     Clear { target: GraphScope, silent: bool },
 }

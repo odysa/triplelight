@@ -6,7 +6,7 @@ use super::{
     external_sort::{ExternalSort, read_record},
 };
 use crate::model::{Perm, TermId};
-use oxrdf::{Term, Triple};
+use triplelight_rdf::{Term, Triple};
 use std::{
     fs::{self, File, OpenOptions},
     io::{self, BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write},

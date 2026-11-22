@@ -1,5 +1,5 @@
 //! Durable updates: overlay correctness against a rebuilt snapshot, reopen, torn WAL, compaction, crash.
-use oxrdf::{Literal, NamedNode, Triple};
+use triplelight_rdf::{Literal, NamedNode, Triple};
 use triplelight::store::StoreUpdate;
 use triplelight::exec::{query, QueryResult};
 use triplelight::storage::MemorySnapshot;
@@ -233,9 +233,9 @@ fn overlay_scan_propagates_base_errors() {
     use std::sync::Arc;
     struct Faulty(MemorySnapshot);
     impl Dictionary for Faulty {
-        fn lookup(&self, t: &oxrdf::Term) -> Result<Option<TermId>, StorageError> { self.0.lookup(t) }
-        fn resolve(&self, id: TermId) -> Result<oxrdf::Term, StorageError> { self.0.resolve(id) }
-        fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
+        fn lookup(&self, t: &triplelight_rdf::Term) -> Result<Option<TermId>, StorageError> { self.0.lookup(t) }
+        fn resolve(&self, id: TermId) -> Result<triplelight_rdf::Term, StorageError> { self.0.resolve(id) }
+        fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
     }
     impl Snapshot for Faulty {
         fn scan<'a>(&'a self, p: Perm, pre: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {

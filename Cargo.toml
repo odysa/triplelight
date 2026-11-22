@@ -19,6 +19,7 @@ large_enum_variant = "allow"
 [workspace.dependencies]
 triplelight-core = { path = "crates/triplelight-core" }
 triplelight-iri = { path = "crates/triplelight-iri" }
+triplelight-rdf = { path = "crates/triplelight-rdf" }
 triplelight-storage = { path = "crates/triplelight-storage" }
 triplelight-sparql = { path = "crates/triplelight-sparql" }
 triplelight-plan = { path = "crates/triplelight-plan" }
@@ -35,6 +36,7 @@ sha2 = "0.10"
 sha1 = "0.10"
 md5 = { package = "md-5", version = "0.10" }
 web-time = "1"
+getrandom = "0.3"
 
 [package]
 name = "triplelight"
@@ -63,7 +65,7 @@ triplelight-storage.workspace = true
 triplelight-sparql.workspace = true
 triplelight-plan.workspace = true
 triplelight-exec.workspace = true
-oxrdf.workspace = true
+triplelight-rdf.workspace = true
 sha2.workspace = true
 tiny_http = { version = "0.12.0", optional = true }
 asyncband = { version = "0.8", optional = true, features = ["oneshot", "semaphore"] }

@@ -1,15 +1,15 @@
 //! Immutable, in-memory reference snapshot. Bulk construction deduplicates RDF triples.
 use super::{Dictionary, Snapshot, StorageError};
 use crate::model::{Perm, TermId, TripleBatch};
-use oxrdf::{Term, Triple};
+use triplelight_rdf::{Term, Triple};
 use std::collections::HashMap;
 
 const INLINE: u64 = 0xf000_0000_0000_0000;
 fn inline(term: &Term) -> Option<TermId> {
     inline_ref(term.as_ref())
 }
-fn inline_ref(term: oxrdf::TermRef<'_>) -> Option<TermId> {
-    if let oxrdf::TermRef::Literal(l) = term {
+fn inline_ref(term: triplelight_rdf::TermRef<'_>) -> Option<TermId> {
+    if let triplelight_rdf::TermRef::Literal(l) = term {
         let b = l.value().as_bytes();
         if l.language().is_none()
             && l.datatype().as_str() == "http://www.w3.org/2001/XMLSchema#string"
@@ -31,11 +31,11 @@ fn slot(p: Perm) -> usize {
 const XSD_STRING: &str = "http://www.w3.org/2001/XMLSchema#string";
 /// A term as stored: kind (1 IRI, 2 blank node, 3 xsd:string literal, 4 language-tagged literal, 5 other typed
 /// literal), lexical value, and language tag or datatype IRI (empty for kinds 1-3). Distinct terms have distinct parts.
-fn parts(term: oxrdf::TermRef<'_>) -> (u8, &str, &str) {
+fn parts(term: triplelight_rdf::TermRef<'_>) -> (u8, &str, &str) {
     match term {
-        oxrdf::TermRef::NamedNode(v) => (1, v.as_str(), ""),
-        oxrdf::TermRef::BlankNode(v) => (2, v.as_str(), ""),
-        oxrdf::TermRef::Literal(v) => match v.language() {
+        triplelight_rdf::TermRef::NamedNode(v) => (1, v.as_str(), ""),
+        triplelight_rdf::TermRef::BlankNode(v) => (2, v.as_str(), ""),
+        triplelight_rdf::TermRef::Literal(v) => match v.language() {
             Some(lang) => (4, v.value(), lang),
             None if v.datatype().as_str() == XSD_STRING => (3, v.value(), ""),
             None => (5, v.value(), v.datatype().as_str()),
@@ -100,7 +100,7 @@ impl TermArena {
         (e.kind, &self.text[start..mid], &self.text[mid..mid + e.aux_len as usize])
     }
     /// The ID of a stored term, if any.
-    fn find(&self, term: oxrdf::TermRef<'_>) -> Option<TermId> {
+    fn find(&self, term: triplelight_rdf::TermRef<'_>) -> Option<TermId> {
         if let Some(id) = inline_ref(term) {
             return self.inline.contains_key(&id).then_some(id);
         }
@@ -113,7 +113,7 @@ impl TermArena {
             .map(|&(_, id)| id)
     }
     /// Stores a term under `id`. `false` (and no change) if that ID or that term is already stored.
-    fn insert(&mut self, id: TermId, term: oxrdf::TermRef<'_>) -> bool {
+    fn insert(&mut self, id: TermId, term: triplelight_rdf::TermRef<'_>) -> bool {
         let key @ (_, value, aux) = parts(term);
         if is_inline(id) {
             if self.inline.contains_key(&id) {
@@ -151,19 +151,19 @@ impl TermArena {
         self.by_term.insert_unique(hash, (hash, id), |&(h, _)| h);
         self.len += 1;
     }
-    fn get(&self, id: TermId) -> Option<oxrdf::TermRef<'_>> {
+    fn get(&self, id: TermId) -> Option<triplelight_rdf::TermRef<'_>> {
         let (kind, value, aux) = self.entry_parts(self.entry(id)?);
         Some(match kind {
-            1 => oxrdf::NamedNodeRef::new_unchecked(value).into(),
-            2 => oxrdf::BlankNodeRef::new_unchecked(value).into(),
-            3 => oxrdf::LiteralRef::new_simple_literal(value).into(),
-            4 => oxrdf::LiteralRef::new_language_tagged_literal_unchecked(value, aux).into(),
-            5 => oxrdf::LiteralRef::new_typed_literal(value, oxrdf::NamedNodeRef::new_unchecked(aux)).into(),
+            1 => triplelight_rdf::NamedNodeRef::new_unchecked(value).into(),
+            2 => triplelight_rdf::BlankNodeRef::new_unchecked(value).into(),
+            3 => triplelight_rdf::LiteralRef::new_simple_literal(value).into(),
+            4 => triplelight_rdf::LiteralRef::new_language_tagged_literal_unchecked(value, aux).into(),
+            5 => triplelight_rdf::LiteralRef::new_typed_literal(value, triplelight_rdf::NamedNodeRef::new_unchecked(aux)).into(),
             _ => return None,
         })
     }
     /// All stored terms in ascending ID order.
-    fn sorted_entries(&self) -> Vec<(TermId, oxrdf::TermRef<'_>)> {
+    fn sorted_entries(&self) -> Vec<(TermId, triplelight_rdf::TermRef<'_>)> {
         let mut out: Vec<_> = self
             .direct
             .iter()
@@ -477,7 +477,7 @@ impl MemorySnapshot {
         }
         Ok(snapshot)
     }
-    fn intern(&mut self, term: oxrdf::TermRef<'_>) -> TermId {
+    fn intern(&mut self, term: triplelight_rdf::TermRef<'_>) -> TermId {
         if let Some(id) = inline_ref(term) {
             self.arena.insert(id, term); // no-op if already stored
             return id;
@@ -495,7 +495,7 @@ impl MemorySnapshot {
         id
     }
     /// Every stored term with its ID, in ascending ID order (for snapshot and dictionary writers).
-    pub(super) fn terms(&self) -> Vec<(TermId, oxrdf::TermRef<'_>)> {
+    pub(super) fn terms(&self) -> Vec<(TermId, triplelight_rdf::TermRef<'_>)> {
         self.arena.sorted_entries()
     }
     fn index(&self, perm: Perm) -> &PermIndex {
@@ -516,7 +516,7 @@ impl Dictionary for MemorySnapshot {
     fn with_term(
         &self,
         id: TermId,
-        f: &mut dyn FnMut(oxrdf::TermRef<'_>),
+        f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>),
     ) -> Result<(), StorageError> {
         f(self.arena.get(id).ok_or_else(|| {
             StorageError::new(std::io::ErrorKind::InvalidData, "unknown term ID")
@@ -582,7 +582,7 @@ impl Snapshot for MemorySnapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use oxrdf::{BlankNode, Literal, NamedNode};
+    use triplelight_rdf::{BlankNode, Literal, NamedNode};
     fn triple(s: &str, p: &str, o: &str) -> Triple {
         Triple::new(
             NamedNode::new(s).unwrap(),

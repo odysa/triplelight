@@ -5,7 +5,7 @@ use crate::{
     storage::Snapshot,
 };
 use bgp::Slot;
-use oxrdf::{Literal, Variable};
+use triplelight_rdf::{Literal, Variable};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression, GraphPattern, NamedNodePattern};
 use std::collections::HashSet;
 
@@ -164,7 +164,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         Some(out)
     }
     fn count_literal(&self, n: u64) -> TermId {
-        self.intern(&Literal::new_typed_literal(n.to_string(), oxrdf::vocab::xsd::INTEGER).into())
+        self.intern(&Literal::new_typed_literal(n.to_string(), triplelight_rdf::vocab::xsd::INTEGER).into())
     }
     fn count_groups(
         &self,

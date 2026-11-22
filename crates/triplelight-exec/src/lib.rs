@@ -30,7 +30,7 @@ pub mod results;
 use crate::model::{Perm, TermId};
 use crate::storage::{DatasetView, Snapshot};
 use crate::opt::stats::Stats;
-use oxrdf::{BlankNode, Literal, Term, Variable};
+use triplelight_rdf::{BlankNode, Literal, Term, Variable};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression, Function, GraphPattern, OrderExpression};
 use crate::sparql::{GroundTerm, NamedNodePattern, TermPattern, TriplePattern};
 use crate::sparql::Query;
@@ -48,7 +48,7 @@ pub enum QueryResult {
     /// Undecoded solutions (with `Options::raw_ids`): serialize with `results::serialize_ids`.
     Ids(IdSolutions),
     Boolean(bool),
-    Graph(Vec<oxrdf::Triple>),
+    Graph(Vec<triplelight_rdf::Triple>),
 }
 
 /// SELECT results as term IDs: `ids` holds `vars.len()` IDs per row (`UNBOUND` = unbound). Computed terms that the
@@ -163,7 +163,7 @@ fn resolve_dataset<'a, S: Snapshot>(snap: &S, ds: &'a dyn DatasetView, spec: Opt
     let mut named: Vec<TermId> = Vec::new();
     // Local-only dataset construction: every FROM / FROM NAMED source must be a graph of the catalog (present,
     // possibly empty). A missing source is refused rather than silently omitted or invented as an empty graph.
-    let present = |iris: &[oxrdf::NamedNode]| -> Result<Vec<TermId>, QueryError> {
+    let present = |iris: &[triplelight_rdf::NamedNode]| -> Result<Vec<TermId>, QueryError> {
         let mut ids = Vec::new();
         for iri in iris {
             let id = snap.lookup(&iri.clone().into()).map_err(storage)?;
@@ -289,8 +289,8 @@ fn run_construct<S: Snapshot>(ctx: &mut Ctx<'_, S>, template: &[TriplePattern], 
                 NamedNodePattern::NamedNode(n) => Some(Term::NamedNode(n.clone())),
                 NamedNodePattern::Variable(v) => { let id = r[ctx.var(v)]; (id != UNBOUND).then(|| ctx.resolve(id)) }
             };
-            let (Some(Term::NamedNode(p)), Ok(s)) = (p, oxrdf::NamedOrBlankNode::try_from(s)) else { continue };
-            let tr = oxrdf::Triple::new(s, p, o);
+            let (Some(Term::NamedNode(p)), Ok(s)) = (p, triplelight_rdf::NamedOrBlankNode::try_from(s)) else { continue };
+            let tr = triplelight_rdf::Triple::new(s, p, o);
             if seen.insert(tr.clone()) { out.push(tr); }
         }
     }
@@ -309,14 +309,14 @@ fn run_describe<S: Snapshot>(ctx: &mut Ctx<'_, S>, pattern: &GraphPattern) -> Re
     for r in &rows { for &id in r { if id != UNBOUND && id.0 >> 60 != 0xe && seen.insert(id) { queue.push(id) } } }
     let mut out = Vec::new();
     while let Some(s) = queue.pop() {
-        let Ok(subject) = oxrdf::NamedOrBlankNode::try_from(ctx.resolve(s)) else { continue };
+        let Ok(subject) = triplelight_rdf::NamedOrBlankNode::try_from(ctx.resolve(s)) else { continue };
         let mut triples = Vec::new();
         ctx.scan_each(Perm::Spo, &[s], |_, p, o| triples.push((p, o)));
         for (p, o) in triples {
             let Term::NamedNode(p) = ctx.resolve(p) else { continue };
             let object = ctx.resolve(o);
             if matches!(object, Term::BlankNode(_)) && seen.insert(o) { queue.push(o) }
-            out.push(oxrdf::Triple::new(subject.clone(), p, object));
+            out.push(triplelight_rdf::Triple::new(subject.clone(), p, object));
         }
     }
     Ok(QueryResult::Graph(out))
@@ -1262,9 +1262,9 @@ fn walk_expr(e: &Expression, out: &mut Vec<String>) {
 /// The change set of a SPARQL 1.1 Update request, computed against `snap` (task #8). Supports INSERT DATA,
 /// DELETE DATA and DELETE/INSERT ... WHERE on the default graph. Every operation's WHERE clause is evaluated on
 /// `snap` (the state before the request); deletions of an operation precede its insertions.
-pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::store::Change, oxrdf::Triple)>, QueryError> {
+pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::store::Change, triplelight_rdf::Triple)>, QueryError> {
     use crate::store::Change;
-    use oxrdf::{NamedOrBlankNode, Triple};
+    use triplelight_rdf::{NamedOrBlankNode, Triple};
     use crate::sparql::GraphName;
     use crate::sparql::{GraphNamePattern, GroundTermPattern};
     use crate::sparql::GraphUpdateOperation as Op;
@@ -1303,7 +1303,7 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                         TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(format!("{}u{n}", b.as_str())).into()),
                         TermPattern::Variable(v) => var(v),
                     } };
-                    let pred = |p: &NamedNodePattern| -> Option<oxrdf::NamedNode> { match p {
+                    let pred = |p: &NamedNodePattern| -> Option<triplelight_rdf::NamedNode> { match p {
                         NamedNodePattern::NamedNode(x) => Some(x.clone()),
                         NamedNodePattern::Variable(v) => match var(v) { Some(Term::NamedNode(x)) => Some(x), _ => None },
                     } };
@@ -1338,7 +1338,7 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
     use crate::model::{Change, DatasetChange, GraphScope, GraphTarget};
     use crate::sparql::{ClearTarget, GraphName, GraphNamePattern, GroundTermPattern, TransferKind};
     use crate::sparql::GraphUpdateOperation as Op;
-    use oxrdf::{NamedOrBlankNode, Triple};
+    use triplelight_rdf::{NamedOrBlankNode, Triple};
     let unsupported = |what: &str| QueryError::new(QueryErrorKind::Unsupported, format!("{what} is not supported yet"));
     let target = |g: &GraphName| match g { GraphName::DefaultGraph => GraphTarget::Default, GraphName::NamedNode(n) => GraphTarget::Named(n.clone()) };
     let scope_of = |g: &ClearTarget| match g {
@@ -1389,7 +1389,7 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
                     TermPattern::BlankNode(b) => Some(fresh(b, Some(n)).into()),
                     TermPattern::Variable(v) => var(v),
                 } };
-                let pred = |p: &NamedNodePattern| -> Option<oxrdf::NamedNode> { match p {
+                let pred = |p: &NamedNodePattern| -> Option<triplelight_rdf::NamedNode> { match p {
                     NamedNodePattern::NamedNode(x) => Some(x.clone()),
                     NamedNodePattern::Variable(v) => match var(v) { Some(Term::NamedNode(x)) => Some(x), _ => None },
                 } };
@@ -1450,7 +1450,7 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
 }
 
 /// Whether the named graph `g` is in the catalog of `dataset` (empty graphs included).
-fn graph_exists<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &oxrdf::NamedNode) -> Result<bool, QueryError> {
+fn graph_exists<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &triplelight_rdf::NamedNode) -> Result<bool, QueryError> {
     let storage = |e: crate::storage::StorageError| QueryError::new(QueryErrorKind::Storage, e.to_string());
     match snap.lookup(&Term::NamedNode(g.clone())).map_err(storage)? {
         Some(id) => Ok(dataset.graph(id).map_err(storage)?.is_some()),
@@ -1459,7 +1459,7 @@ fn graph_exists<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &oxrdf::Nam
 }
 
 /// Every triple of the default graph or of the named graph `g`.
-fn graph_triples<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &crate::sparql::GraphName) -> Result<Vec<oxrdf::Triple>, QueryError> {
+fn graph_triples<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &crate::sparql::GraphName) -> Result<Vec<triplelight_rdf::Triple>, QueryError> {
     use crate::sparql::GraphName;
     let v = |n: &str| TermPattern::Variable(Variable::new_unchecked(n));
     let bgp = GraphPattern::Bgp { patterns: vec![TriplePattern {
@@ -1473,7 +1473,7 @@ fn graph_triples<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &crate::sp
     let col = |name: &str| vars.iter().position(|x| x.as_str() == name).expect("projected variable");
     let (s, p, o) = (col("s"), col("p"), col("o"));
     Ok(rows.into_iter().filter_map(|r| match (r[s].clone(), r[p].clone(), r[o].clone()) {
-        (Some(s), Some(Term::NamedNode(p)), Some(o)) => oxrdf::NamedOrBlankNode::try_from(s).ok().map(|s| oxrdf::Triple::new(s, p, o)),
+        (Some(s), Some(Term::NamedNode(p)), Some(o)) => triplelight_rdf::NamedOrBlankNode::try_from(s).ok().map(|s| triplelight_rdf::Triple::new(s, p, o)),
         _ => None,
     }).collect())
 }

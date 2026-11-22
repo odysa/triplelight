@@ -1,6 +1,6 @@
 //! Front-coded RDF term blocks. Block payloads are checksummed by the caller.
 use crate::model::TermId;
-use oxrdf::Term;
+use triplelight_rdf::Term;
 use std::io::{self, ErrorKind};
 const MAX_TERM: usize = 16 * 1024 * 1024;
 const MAX_BLOCK: usize = MAX_TERM + 8192;
@@ -96,7 +96,7 @@ pub(super) fn decode(data: &[u8]) -> io::Result<Vec<(TermId, Term)>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use oxrdf::{BlankNode, Literal, NamedNode};
+    use triplelight_rdf::{BlankNode, Literal, NamedNode};
     #[test]
     fn terms_roundtrip_and_malformed_blocks_fail() {
         let terms = vec![

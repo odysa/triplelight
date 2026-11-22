@@ -2,8 +2,8 @@
 use super::{IdSolutions, QueryResult, UNBOUND};
 use crate::model::TermId;
 use crate::storage::Dictionary;
-use oxrdf::TermRef;
-use oxrdf::{Term, Variable};
+use triplelight_rdf::TermRef;
+use triplelight_rdf::{Term, Variable};
 use std::fmt::Write;
 
 fn esc(s: &str, out: &mut String) {
@@ -31,7 +31,7 @@ fn term_ref_json(t: TermRef<'_>, out: &mut String) {
         TermRef::Literal(l) => {
             out.push_str("{\"type\":\"literal\",\"value\":"); esc(l.value(), out);
             if let Some(lang) = l.language() { out.push_str(",\"xml:lang\":"); esc(lang, out); }
-            else if l.datatype() != oxrdf::vocab::xsd::STRING { out.push_str(",\"datatype\":"); esc(l.datatype().as_str(), out); }
+            else if l.datatype() != triplelight_rdf::vocab::xsd::STRING { out.push_str(",\"datatype\":"); esc(l.datatype().as_str(), out); }
         }
         #[allow(unreachable_patterns)]
         _ => out.push_str("{\"type\":\"literal\",\"value\":\"\""),

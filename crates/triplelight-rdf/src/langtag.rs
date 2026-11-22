@@ -1,7 +1,24 @@
 //! RFC 5646 language-tag well-formedness (task #45), with exactly the acceptance of `oxilangtag` 0.1, which the
-//! N-Triples parser used before: grandfathered tags, private use (`x-…`), and the langtag production. Validity only;
-//! the parser lowercases the tag itself.
+//! N-Triples parser and oxrdf used before: grandfathered tags, private use (`x-…`), and the langtag production. Validity
+//! only; the parsers and `Literal::new_language_tagged_literal` lowercase the tag themselves.
 //! Derived in part from oxilangtag (MIT); see THIRD_PARTY_NOTICES.md.
+
+use std::fmt;
+
+/// An ill-formed language tag (`oxilangtag::LanguageTagParseError` in oxrdf).
+#[derive(Debug)]
+pub struct LanguageTagParseError;
+
+impl fmt::Display for LanguageTagParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { f.write_str("The language tag is not well-formed") }
+}
+
+impl std::error::Error for LanguageTagParseError {}
+
+/// `tag` itself if it is well-formed.
+pub fn parse(tag: String) -> Result<String, LanguageTagParseError> {
+    if is_well_formed(&tag) { Ok(tag) } else { Err(LanguageTagParseError) }
+}
 
 const GRANDFATHERED: [&str; 26] = [
     "art-lojban", "cel-gaulish", "en-GB-oed", "i-ami", "i-bnn", "i-default", "i-enochian", "i-hak", "i-klingon",
