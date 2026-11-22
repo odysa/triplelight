@@ -581,6 +581,43 @@ pub(super) fn write_index(
 ) -> io::Result<()> {
     write_index_checked(path, order, rows, true)
 }
+/// Directory entry of one written block.
+struct BlockEntry {
+    /// Order key of the block's last term (its ID for the ID orders, its text for the term order).
+    key: Vec<u8>,
+    /// Text of the block's last term; recorded for the unified order only.
+    last_text: Vec<u8>,
+    offset: u64,
+    len: usize,
+    hash: [u8; 32],
+}
+/// Accumulates one block of rows and appends it to the file when it is full.
+struct BlockWriter<W: Write> {
+    out: W,
+    order: Order,
+    block: Vec<(TermId, Term)>,
+    entries: Vec<BlockEntry>,
+    offset: u64,
+}
+impl<W: Write> BlockWriter<W> {
+    fn flush(&mut self) -> io::Result<()> {
+        if self.block.is_empty() {
+            return Ok(());
+        }
+        let bytes = term_block_codec::encode(&self.block)?;
+        let (id, t) = self.block.last().unwrap();
+        let key = self.order.key(*id, t);
+        self.out.write_all(&bytes)?;
+        let last_text = if matches!(self.order, Order::Unified) { t.to_string().into_bytes() } else { Vec::new() };
+        self.entries.push(BlockEntry { key, last_text, offset: self.offset, len: bytes.len(), hash: Sha256::digest(&bytes).into() });
+        self.offset = self
+            .offset
+            .checked_add(bytes.len() as u64)
+            .ok_or_else(|| bad("dictionary size overflow"))?;
+        self.block.clear();
+        Ok(())
+    }
+}
 /// `check_text` is false only in tests that need a unified file whose text order is broken.
 fn write_index_checked(
     path: &Path,
@@ -592,41 +629,18 @@ fn write_index_checked(
         std::io::BufWriter::new(OpenOptions::new().write(true).create_new(true).open(path)?);
     let header = order.magic();
     out.write_all(header)?;
-    let mut meta = Vec::new();
-    let mut block = Vec::new();
-    let mut previous: Option<Vec<u8>> = None;
+    let mut writer = BlockWriter { out, order, block: Vec::new(), entries: Vec::new(), offset: 8 };
+    let mut previous_key: Option<Vec<u8>> = None;
+    // Unified order only: the previous row's ID and text, to start a block at a kind change and check the text order.
     let mut previous_unified: Option<(TermId, Vec<u8>)> = None;
-    let mut offset = 8u64;
     let mut bytes_estimate = 0usize;
-    fn flush(
-        out: &mut impl Write,
-        block: &mut Vec<(TermId, Term)>,
-        order: Order,
-        meta: &mut Vec<(Vec<u8>, Vec<u8>, u64, usize, [u8; 32])>,
-        offset: &mut u64,
-    ) -> io::Result<()> {
-        if block.is_empty() {
-            return Ok(());
-        }
-        let bytes = term_block_codec::encode(block)?;
-        let (id, t) = block.last().unwrap();
-        let key = order.key(*id, t);
-        out.write_all(&bytes)?;
-        let last_text = if matches!(order, Order::Unified) { t.to_string().into_bytes() } else { Vec::new() };
-        meta.push((key, last_text, *offset, bytes.len(), Sha256::digest(&bytes).into()));
-        *offset = offset
-            .checked_add(bytes.len() as u64)
-            .ok_or_else(|| bad("dictionary size overflow"))?;
-        block.clear();
-        Ok(())
-    }
     for row in rows {
         let (id, t) = row?;
         let key = order.key(id, &t);
-        if id.0 == 0 || previous.as_ref().is_some_and(|v| *v >= key) {
+        if id.0 == 0 || previous_key.as_ref().is_some_and(|v| *v >= key) {
             return Err(bad("dictionary keys not unique and sorted"));
         }
-        if matches!(order, Order::Unified) {
+        let text_len = if matches!(order, Order::Unified) {
             // A block holds one kind, and inside a kind the text is strictly increasing.
             let text = t.to_string().into_bytes();
             if text_kind(&text) != Some(id_kind(id.0)) {
@@ -634,39 +648,44 @@ fn write_index_checked(
             }
             if let Some((pid, ptext)) = previous_unified.as_ref() {
                 if id_kind(pid.0) != id_kind(id.0) {
-                    flush(&mut out, &mut block, order, &mut meta, &mut offset)?;
+                    writer.flush()?;
                     bytes_estimate = 0;
                 } else if check_text && *ptext >= text {
                     return Err(bad("dictionary keys not unique and sorted"));
                 }
             }
+            let len = text.len();
             previous_unified = Some((id, text));
-        }
-        let estimate = t.to_string().len().saturating_add(16);
-        if !block.is_empty()
-            && (block.len() == 256 || bytes_estimate.saturating_add(estimate) > LIMIT)
+            len
+        } else {
+            t.to_string().len()
+        };
+        let estimate = text_len.saturating_add(16);
+        if !writer.block.is_empty()
+            && (writer.block.len() == 256 || bytes_estimate.saturating_add(estimate) > LIMIT)
         {
-            flush(&mut out, &mut block, order, &mut meta, &mut offset)?;
+            writer.flush()?;
             bytes_estimate = 0;
         }
         bytes_estimate = bytes_estimate.saturating_add(estimate);
-        previous = Some(key);
-        block.push((id, t));
+        previous_key = Some(key);
+        writer.block.push((id, t));
     }
-    flush(&mut out, &mut block, order, &mut meta, &mut offset)?;
+    writer.flush()?;
+    let BlockWriter { mut out, entries, .. } = writer;
     let mut dir = Vec::new();
-    let count = u32::try_from(meta.len()).map_err(|_| bad("too many dictionary blocks"))?;
+    let count = u32::try_from(entries.len()).map_err(|_| bad("too many dictionary blocks"))?;
     dir.extend_from_slice(&count.to_le_bytes());
-    for (key, last_text, off, len, hash) in meta {
-        dir.extend_from_slice(&off.to_le_bytes());
-        dir.extend_from_slice(&(len as u32).to_le_bytes());
-        dir.extend_from_slice(&(key.len() as u32).to_le_bytes());
-        dir.extend_from_slice(&key);
+    for e in entries {
+        dir.extend_from_slice(&e.offset.to_le_bytes());
+        dir.extend_from_slice(&(e.len as u32).to_le_bytes());
+        dir.extend_from_slice(&(e.key.len() as u32).to_le_bytes());
+        dir.extend_from_slice(&e.key);
         if matches!(order, Order::Unified) {
-            dir.extend_from_slice(&(last_text.len() as u32).to_le_bytes());
-            dir.extend_from_slice(&last_text);
+            dir.extend_from_slice(&(e.last_text.len() as u32).to_le_bytes());
+            dir.extend_from_slice(&e.last_text);
         }
-        dir.extend_from_slice(&hash);
+        dir.extend_from_slice(&e.hash);
     }
     out.write_all(&dir)?;
     out.write_all(&(dir.len() as u64).to_le_bytes())?;
