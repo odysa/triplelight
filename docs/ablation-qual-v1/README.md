@@ -25,7 +25,10 @@ idea (#95): those paths cost under 5% of query time on every suite.
 ## Results
 
 1. **Answers: 0 mismatches, 0 errors, 0 order differences** across all 126 queries × 6 variants (`out/*.txt`).
-2. **Derived paths are never taken by these suites** (`out/*.derived_trace.log`):
+2. **Derived paths are never taken by these suites.** The counters are process-global and reset per query, so they're
+   exact only for single-client runs, which is how `run1.py` drives the server. They cover the expensive paths, the
+   regroups and the memo misses. A one-column-prefix `count` on a derived order goes to an exact count on the sibling
+   order and isn't counted, so the trace undercounts the total number of derived-order requests (`out/*.derived_trace.log`):
    - 0 regroup scans and 0 memo misses in all 255 default-endpoint queries;
    - LUBM made 18 twin remaps, a two-column-prefix rewrite that costs what a kept order costs;
    - BSBM and WatDiv made none.
