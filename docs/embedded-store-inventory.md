@@ -1,6 +1,8 @@
 # Embedded RDF stores: evidence inventory and remaining work
 
-The completed Python, Node, JVM and HDT reports cover several embedded implementations, with explicit workload exclusions. They do not exhaust the candidate list. Redland and Oxiland were installed and tested but failed selected tiny gates; neither has a performance score here. Oxilite passes a separate 24-observation tiny qualification, without a workload score. RDFLib Memory, Oxrdflib and Ontop / DuckDB JDBC have separate negative tiny qualifications; additional plugins remain untested. This inventory is a handoff reconciliation updated 21 November 2026, not a new benchmark or a cross-runtime ranking.
+This inventory links the measured embedded cohorts and the smaller installation, storage and answer checks.
+A workload enters the timing tables after its declared answer checks pass. Each entry identifies the runtime,
+storage mode and limits of the evidence.
 
 ## Completed evidence
 
@@ -19,6 +21,32 @@ The completed Python, Node, JVM and HDT reports cover several embedded implement
 | LadybugDB property-graph mapping | Historical mapped cohorts plus [new within-Ladybug generic/hybrid Explore comparison](https://app.raft.build/artifacts/8VcJUG98ks6qNp3y5YruCc). | SQL/property-graph mapping, not native RDF/SPARQL. New Explore mapping study has different scope and no new cross-engine comparison. |
 
 The [JVM report and replay evidence](https://app.raft.build/artifacts/4FiCDWgEyXpz3b3fRS8GLk) are available separately; its registered freeze is f888a81224b063a2fdc98137a7b52961007f2c99ebd469e47118cd352a41a8df. This inventory copies no timing observations into a new session. All selected answer gates are bounded checks, not general conformance certification. Missing totals are not zeros or measured losses.
+
+## Index layouts in the benchmarks
+
+The same input and reference answers can be tested with different physical layouts. These rows distinguish
+observed layouts from published product defaults.
+
+| Profile | Layout evidence |
+|---|---|
+| TripleLight external disk, BSBM-100M | The RDFSNAP4 store contains six triple-order files and one unified dictionary. [Raw file lengths and build receipts](unified-dictionary-100m-v1/README.md) |
+| DuckDB typed-triples SQL, disk Python and analytical HTTP | One triples table stores the subject, predicate and typed object struct. The loader creates no ART index. DuckDB builds automatic min-max zonemaps. [Python cohort](https://app.raft.build/artifacts/Azoz2CgbhGKQtHczyXUoiY) · [DuckDB index types](https://duckdb.org/docs/2.0/sql/indexes) |
+| QLever, three retained preparation builds | All six main orders appear in the LUBM-100, WatDiv and BSBM BI 100M index inventories. Each also contains internal indexes and vocabularies. [File lengths and preparation intervals](benchmark-index-receipts.json) |
+| Jena TDB2 6.2.0, native Java tiny fixture | The retained B+ tree filenames show SPO, POS and OSP for triples, and GSPO, GPOS, GOSP, SPOG, POSG and OSPG for quads. The observation applies to the tiny fixture. [File inventory](benchmark-index-receipts.json) |
+| Oxigraph and PyOxigraph disk | The upstream RocksDB design documents SPO, POS and OSP for default-graph triples and six orders for named-graph quads. This describes the disk design. The in-memory backends use different structures. [Oxigraph architecture](https://github.com/oxigraph/oxigraph/wiki/Architecture#how-are-data-encoded-in-rocksdb) |
+| Virtuoso 7 HTTP | The documented default has two full quad indexes, PSOG and POGS, and three partial indexes, SP, OP and GS. The benchmark receipts do not bind the full index catalog for each historical run. [Virtuoso index scheme](https://docs.openlinksw.com/virtuoso/rdfperfrdfscheme/) |
+| RDF4J NativeStore | Its documented defaults are SPOC and POSC. The [native Java cohort](https://app.raft.build/artifacts/4FiCDWgEyXpz3b3fRS8GLk) also covers separate LMDBStore and MemoryStore profiles. [RDF4J storage configuration](https://rdf4j.org/documentation/reference/configuration/#native-store) |
+
+The two RDFSNAP4 BSBM-100M builds have the same file lengths. Their six orders occupy 3,316,099,215 bytes,
+the dictionary 4,620,210,974 bytes and the manifest 232 bytes. The preceding format used two dictionary files.
+Across these builds, the store changed from 12,533,110,608 bytes (11.67 GiB) to 7,936,310,421 bytes (7.39 GiB),
+a 36.7% reduction. The new builds took 706.3 s and 704.3 s. [Raw old build](unified-dictionary-100m-v1/raw/1-old.result.json)
+· [Raw new builds](unified-dictionary-100m-v1/raw/2-new.result.json) and
+[second new build](unified-dictionary-100m-v1/raw/3-new.result.json)
+
+The planned DuckDB experiment compares the existing one-table layout with six sorted copies. A fixed-SPO arm
+and a routed arm use the same six-copy database. Sorted DuckDB tables provide different access paths from
+TripleLight's seekable indexes. The experiment is still in preparation.
 
 ## Existing evidence paths and provenance
 
@@ -57,6 +85,10 @@ The initial candidate list was not exhaustive. A maintenance label alone is not 
 |---|---|---|
 | [RDFLib Kyoto Cabinet](rdflib-kyotocabinet-qualification-v1/README.md) | The untouched source failed during wheel metadata generation on CPython 3.12.16 and setuptools 80.9.0. | RDFLib 4.2.2 on Linux ARM64 with a substituted Debian binding retains nine triples across load and reopen. Normalization disabled preserves the exact reference. Current deployment support and comparisons with RDFLib 7.6 are outside this archival profile's scope. No workload timing. |
 
-## Current execution order
+## Work in preparation
 
-The first task46 R2RML controls are complete as an independently replayed negative admission result. Oxilite's declared tiny SQLite-store feasibility is now complete and independently replayed. RDFLib Memory's two profiles and Oxrdflib's four disk profiles are complete, and each failed at least one tiny gate. The bounded Oxilite LUBM-100 attempt stopped during import. Next assess untested RDFLib backends separately and retain the Ontop / DuckDB JDBC count-distinct failure as a separate negative admission result. Public package metadata is a packaging observation, not installation success. Any full workload attempt follows successful declared admission, immutable inputs, bounded resources and an announced machine window. The currently completed reports are not rerun or pooled. Task39 remains open for the unattempted candidates and supported workload comparisons; this document does not close it.
+- The matched Java 25 fixture will check Blazegraph and TripleLight on one runtime before any timing.
+- The Ontop workload mapping will qualify the remaining aggregate and BI queries against their reference
+  answers. The [distinct-count diagnostic](ontop-distinct-diagnostic-v3/README.md) explains why WatDiv
+  `distinct_L2.rq` needs a separate domain check.
+- The six-copy DuckDB profile needs tiny-fixture admission and a registered runtime before workload measurements.
