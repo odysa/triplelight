@@ -30,7 +30,7 @@ with open(path, "rb") as f:
         while f.tell() < end:
             line = f.readline()
             if not line: break
-            parts = line.split(b" ", 2)
+            parts = line.split(b"\t", 2) if b"\t" in line.split(b"<", 1)[0] + line[:line.find(b">") + 2] else line.split(b" ", 2)
             if line[:1] in (b"#", b"\n", b"\r") or len(parts) < 3 or (line.rstrip(b"\r\n")[-2:] != b" ."):
                 sys.exit(f"unsupported input in shard {s} near byte {f.tell()}: {line[:80]!r}")
             # token boundaries: subject and predicate are one non-empty token each, with no whitespace inside, separated by

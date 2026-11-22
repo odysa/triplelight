@@ -1,0 +1,90 @@
+{
+ "file": "bsbm100.nt",
+ "shards": 8,
+ "seconds": 431.2,
+ "occurrences": 296584332,
+ "distinct_global": 23502671,
+ "sum_of_per_shard_distinct": 27561370,
+ "distinct_share_global": 0.07924,
+ "per_shard_distinct_share": 0.09293,
+ "occurrence_record_bytes": 28436796443,
+ "per_shard_distinct_record_bytes": 6272465574,
+ "kind_occurrences": {
+  "<": 244845799,
+  "\"": 51738533
+ },
+ "occurrences_by_term_frequency": {
+  "1": 13409832,
+  "2-9": 7319517,
+  "10-99": 110470071,
+  "100-999": 4467483,
+  "1000-99999": 39309930,
+  ">=100000": 121607499
+ },
+ "per_shard": [
+  {
+   "shard": 0,
+   "triples": 12295866,
+   "occurrences": 36887598,
+   "distinct": 2790445,
+   "occurrence_record_bytes": 3553054217,
+   "distinct_record_bytes": 575024005
+  },
+  {
+   "shard": 1,
+   "triples": 14314211,
+   "occurrences": 42942633,
+   "distinct": 3896163,
+   "occurrence_record_bytes": 3603512824,
+   "distinct_record_bytes": 375084775
+  },
+  {
+   "shard": 2,
+   "triples": 14203964,
+   "occurrences": 42611892,
+   "distinct": 3871408,
+   "occurrence_record_bytes": 3600756769,
+   "distinct_record_bytes": 376426921
+  },
+  {
+   "shard": 3,
+   "triples": 14182192,
+   "occurrences": 42546576,
+   "distinct": 3866067,
+   "occurrence_record_bytes": 3600212254,
+   "distinct_record_bytes": 376567927
+  },
+  {
+   "shard": 4,
+   "triples": 13631795,
+   "occurrences": 40895385,
+   "distinct": 3820553,
+   "occurrence_record_bytes": 3586452545,
+   "distinct_record_bytes": 516910254
+  },
+  {
+   "shard": 5,
+   "triples": 10124240,
+   "occurrences": 30372720,
+   "distinct": 3118899,
+   "occurrence_record_bytes": 3498765148,
+   "distinct_record_bytes": 1355796013
+  },
+  {
+   "shard": 6,
+   "triples": 10055867,
+   "occurrences": 30167601,
+   "distinct": 3099333,
+   "occurrence_record_bytes": 3497052544,
+   "distinct_record_bytes": 1348650508
+  },
+  {
+   "shard": 7,
+   "triples": 10053309,
+   "occurrences": 30159927,
+   "distinct": 3098502,
+   "occurrence_record_bytes": 3496990142,
+   "distinct_record_bytes": 1348005171
+  }
+ ]
+}
