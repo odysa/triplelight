@@ -50,13 +50,15 @@ the shape and, once shifted to a common origin, to within about 15 s.
 - **1b (parse and term sort together are the largest piece, at least 30%):** held. The shard parse and sort alone is 38.7%.
 - **1c (the fourth order runs alone as a single-thread tail, 25 to 40% of the order phase):** held. The lone OSP build is
   57.8 s, 33.4% of the order phase. It is also about twice as fast as an order built beside two others (57.8 s against
-  115 s for three), so concurrency helps, but only about 1.5× per order.
+  115 s for three), so three orders at once finish in 115 s against about 173 s in series (3 × 57.8), a 1.5× gain for the batch, while each order runs about 2× slower than alone.
 
 ## What it says
 
 - Everything after the dictionary is 26% of the wall time. Even if the whole order phase (reading, sorting, counting and
   writing) became three times faster, the build would be about 17% shorter (115 s). The larger pieces are the parse (39%) and the dictionary and mapping stages together (33%:
   the term merge and dictionary pass, the mapping sort, the raw rows and the conversion).
+- The 46.7 GB peak of the build directory is in the parse phase (at 244 s, from the sampler), when the shard runs for
+  the input are on disk; the order phase peaks at about 20 GB. Any reduction of scratch space has to target the parse.
 - The machine is far from busy: 2.9 cores on average, and 29% of the CPU time is system time, so the build is also
   waiting on and issuing a great deal of I/O.
 - Running the four orders as one batch of four, or two batches of two, would remove the lone 57.8 s tail only if four
