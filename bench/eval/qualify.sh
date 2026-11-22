@@ -10,7 +10,8 @@ step() { n=$1; shift; echo "== $n"; ( "$@" ) > "$OUT/$n.log" 2>&1 && echo "$n ex
 step selftest python3 "$HERE/driver.py" selftest
 step selftest-big /usr/bin/time -l python3 "$HERE/driver.py" selftest-big --rows 5000000
 step prep "$HERE/prep.sh" "$TOOLS" "$SRC"
-[ -x "$ROOT/target/release/triplelight" ] || step build-triplelight bash -c "cd $ROOT && cargo build --release --features server"
+# always build with the server feature: a plain release binary has no `serve` (found in the first qualification run)
+step build-triplelight bash -c "cd $ROOT && cargo build --release --features server"
 LUBM_Q=$ROOT/bench/lubm; BSBM_Q=$ROOT/bench/bsbm
 # jena-tdb2 first: it builds the frozen reference answers.
 for pair in "lubm10:$LUBM_Q" "bsbm1:$BSBM_Q"; do
