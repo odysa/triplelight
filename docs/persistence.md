@@ -57,7 +57,8 @@ and new bases can exist on disk at the same time. Compaction keeps the order set
 A base directory holds a `MANIFEST`, written last, and the files it names. The manifest starts with an 8-byte
 version and lists a 32-byte SHA-256 identity for each file, which `open` checks. For a block-indexed file (the triple
 and quad orders and the `RDFSNAP3`+ dictionaries) the identity covers its header and block directory; for the
-`RDFSNAP2` legacy dictionary and the graph catalog it is a SHA-256 of the whole file's contents.
+`RDFSNAP2` legacy dictionary it is a SHA-256 of the whole file. The graph catalog ends with a SHA-256 of everything
+before it, and the manifest holds that same checksum.
 
 | Manifest | Dictionary | Triple orders | Named graphs |
 | --- | --- | --- | --- |
