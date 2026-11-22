@@ -105,10 +105,13 @@ the claim fails if $\tau_b \ge 0.8$ on every evaluable suite. \todo{results tabl
 \paragraph{Limits.} Disk builds parse shards in parallel and overlap index builds (an average of 2.9 of 10 cores busy on LUBM-1000, \texttt{docs/build-profile-v1}) and need scratch disk of 1.7 to 2.1 times the input at the peak (\texttt{docs/build-compare-orders-v1}).
 Results are materialized before output. One process per store directory. \texttt{LOAD}, \texttt{SERVICE}, \texttt{BNODE(string)} and blank-node graph names are unsupported (\texttt{DESIGN.md}).
 The cost of the derived orders on real query logs is not measured. The benchmarks are synthetic and their structure is nearly fixed and unlike real RDF data~\cite{duan2011}.
-\paragraph{Related work.} \emph{Embedded analytics.} DuckDB's requirements for embedded analytical systems~\cite{raasveldt2020}; Kùzu\unread; pyoxigraph, Blazegraph and DuckDB as embedded comparators.
+\paragraph{Related work.} \emph{Embedded analytics.} DuckDB's requirements for embedded analytical systems~\cite{raasveldt2020} (the system itself is described in a SIGMOD 2019 demonstration paper\unread); Kùzu\unread; pyoxigraph, Blazegraph and DuckDB as embedded comparators.
 \emph{RDF stores.} RDF-3X~\cite{neumann2008}, Hexastore\unread, QLever~\cite{bast2017}, Virtuoso, Jena TDB2, Oxigraph, RDF4J.
 \emph{Layout and benchmarks.} Sidirourgos et al.\ re-evaluated vertical partitioning on MonetDB/SQL and PostgreSQL and found that clustering (PSO against SPO) changes performance by factors of two to five~\cite{sidirourgos2008};
 Duan et al.\ showed that benchmark data differ from real RDF data in structuredness~\cite{duan2011}.
+
+\section*{Artifact}
+The code, the scripts and the data needed to reproduce every number are in the repository \todo{URL} and in the archived package \texttt{docs/eval-v1/} (raw receipts, driver output, dataset checksums and reproduction commands), produced in the dedicated-machine window. \todo{link both, and say which commit and which package version the paper uses; VLDB requires the link in the initial submission.}
 
 \begin{thebibliography}{9}
 \bibitem{raasveldt2020} M.~Raasveldt, H.~M\"uhleisen. Data management for data science: towards embedded analytics. \emph{CIDR}, 2020.
