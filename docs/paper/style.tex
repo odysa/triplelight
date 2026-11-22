@@ -1,0 +1,32 @@
+% Shared paper-figure style. \input{style.tex} after \usepackage{tikz}.
+% Semantic colors: one hue per KIND of thing, used consistently across all figures.
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds,calc,shapes.misc,matrix}
+\definecolor{ours}{HTML}{D55E00}      % the proposed system / new component
+\definecolor{compute}{HTML}{E69F00}   % model / kernel / GPU compute
+\definecolor{data}{HTML}{0072B2}      % requests, data, queries
+\definecolor{mem}{HTML}{7F7F7F}       % memory / storage
+\definecolor{good}{HTML}{009E73}      % hit / success
+\definecolor{bad}{HTML}{CC3311}       % miss / waste
+\definecolor{ink}{HTML}{333333}
+\tikzset{
+  font=\sffamily\footnotesize,
+  >={Stealth[length=1.6mm,width=1.2mm]},
+  every path/.style={draw=ink, line width=0.6pt},
+  box/.style={rectangle, rounded corners=1.5pt, draw=ink, line width=0.6pt,
+              minimum height=6mm, minimum width=16mm, align=center, inner sep=2pt},
+  oursbox/.style={box, fill=ours!15, draw=ours!80!black},
+  computebox/.style={box, fill=compute!15},
+  databox/.style={box, fill=data!12},
+  membox/.style={box, fill=mem!12},
+  group/.style={rectangle, rounded corners=2pt, draw=ink!60, dashed, line width=0.5pt, inner sep=4pt},
+  grouplabel/.style={font=\sffamily\scriptsize\bfseries, text=ink!80},
+  flow/.style={->, line width=0.7pt},
+  ctrl/.style={->, dashed, line width=0.6pt},
+  edgelabel/.style={font=\sffamily\scriptsize, fill=white, inner sep=1pt},
+  stepcircle/.style={circle, fill=ink, text=white, font=\sffamily\scriptsize\bfseries,
+               inner sep=0pt, minimum size=3.4mm},
+  slot/.style={rectangle, draw=ink, line width=0.4pt, minimum width=7mm, minimum height=4.2mm,
+               font=\sffamily\scriptsize, inner sep=0pt},
+}
+% \stepnum{3} -> circled step number inline in text or nodes
+\newcommand{\stepnum}[1]{\tikz[baseline=(s.base)]\node[stepcircle](s){#1};}
