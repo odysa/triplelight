@@ -10,7 +10,7 @@ TOOLCHAIN=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)
 GLIBC=2.31
 VENV=$(mktemp -d)
 python3 -m venv "$VENV"
-"$VENV/bin/pip" install -q cargo-zigbuild ziglang
+"$VENV/bin/pip" install -q cargo-zigbuild==0.24.1 ziglang==0.17.1
 export PATH="$VENV/bin:$PATH"
 rustup toolchain install "$TOOLCHAIN" --profile minimal -c llvm-tools \
   -t aarch64-unknown-linux-gnu -t x86_64-unknown-linux-gnu >/dev/null 2>&1
