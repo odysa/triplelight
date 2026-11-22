@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Load or serve one system on one dataset, with the same CPU and memory budget for every system (docs/eval-plan/PLAN.md).
 #   systems.sh <system> load|serve <dataset> [--mem GB] [--cpus N]
-#   system:  triplelight | qlever | qlever-two-order | virtuoso | jena-tdb2 | oxigraph | rdf4j-native | rdf4j-native-default
+#   system:  triplelight | qlever | qlever-two-order | virtuoso | jena-tdb2 | oxigraph | rdf4j-native | rdf4j-native-default | millenniumdb
 #   dataset: tools/<dataset>.nt must exist (TOOLS=... to use another directory); stores are tools/<system>-<dataset>.
 # `serve` runs in the foreground and prints nothing but the server's own log; the SPARQL endpoint of each system:
 #   triplelight http://127.0.0.1:7979/sparql   qlever http://127.0.0.1:7001/   virtuoso http://127.0.0.1:8890/sparql
 #   jena-tdb2 http://127.0.0.1:3030/ds/sparql  oxigraph http://127.0.0.1:7878/query
-#   rdf4j-native* http://127.0.0.1:8080/rdf4j-server/repositories/bench  (RDF4J's own server; indexes spoc,posc,ospc, or spoc,posc for -default)
+#   millenniumdb http://127.0.0.1:1234/sparql   rdf4j-native* http://127.0.0.1:8080/rdf4j-server/repositories/bench  (RDF4J's own server; indexes spoc,posc,ospc, or spoc,posc for -default)
 # Budget: Docker systems get --memory and --cpus (cgroup limits); the native ones get the JVM heap (Jena) or nothing, and the
 # script prints "budget not enforced" for them; on the Linux machine the whole process is started under a cgroup instead.
 set -eu
@@ -93,6 +93,20 @@ TTL
              # receipt: the indexes the store actually created
              docker exec bench-rdf4j-load sh -c 'cat /var/rdf4j/server/repositories/bench/triples.prop 2>/dev/null || find /var/rdf4j -name "triples.prop" -exec cat {} +' >&2 || true
              docker stop bench-rdf4j-load >/dev/null ;;
+    esac ;;
+  millenniumdb)
+    # MillenniumDB RDF model (docs: github.com/MillenniumDB/MillenniumDB/wiki). UNTESTED. Facts from its documentation that matter here:
+    # the importer reads a real .ttl file (a hard link works, a symlink does not); SPARQL is POSTed to :1234/sparql as
+    # application/sparql-query; the documented Accept is text/csv (JSON is unverified, and CSV loses term types); named graphs
+    # and FROM/GRAPH are unsupported; numeric lexical forms are not preserved. Build the image first: build-millenniumdb.sh.
+    DIR=$T/millenniumdb-$D; IMG=mdb:$MILLENNIUMDB_COMMIT
+    case $MODE in
+      load)  echo "budget: container cgroup limits" >&2
+             mkdir -p "$DIR/in"; [ -e "$DIR/in/$D.ttl" ] || ln "$NT" "$DIR/in/$D.ttl"
+             rm -rf "$DIR/db"
+             docker run --rm "${LIM[@]}" -v "$DIR":/data "$IMG" mdb import "/data/in/$D.ttl" /data/db ;;
+      serve) docker rm -f bench-mdb >/dev/null 2>&1 || true
+             exec docker run --rm --name bench-mdb "${LIM[@]}" -p 1234:1234 -v "$DIR":/data "$IMG" mdb server /data/db ;;
     esac ;;
   oxigraph)
     O=$T/oxigraph

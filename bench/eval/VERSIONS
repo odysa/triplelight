@@ -6,3 +6,4 @@ QLEVER_IMAGE=adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cb
 VIRTUOSO_IMAGE=openlink/virtuoso-opensource-7@sha256:0dbe1ab4fa0cb7bbafc1f6c0c2b0a5d6f22d918dbd17672f2ddb24580aa6756a
 # TripleLight is the commit under test: `git rev-parse HEAD`, recorded by driver.py.
 RDF4J_IMAGE=eclipse/rdf4j-workbench@sha256:0944c151198f33d4694f0f09637cbc56c20970014082cbc7bae305daa231b0e6   # 5.0.0, Tomcat with rdf4j-server and workbench
+MILLENNIUMDB_COMMIT=126c387a7b4fbcd6f8a970c0a19766586be60d0e   # upstream main on 2026-11-22; image built locally by build-millenniumdb.sh as mdb:$MILLENNIUMDB_COMMIT
