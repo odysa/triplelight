@@ -15,7 +15,7 @@ const r = await db.query("SELECT ?s (COUNT(?o) AS ?n) WHERE { ?s ?p ?o } GROUP B
 for (const b of r.bindings) console.log(b.s.value, b.n.value);
 ```
 
-Build: `npm run build` (Rust 1.89+, `rustup target add wasm32-unknown-unknown`, and
+Build: `npm run build` (Rust 1.100, `rustup target add wasm32-unknown-unknown`, and
 `cargo install wasm-bindgen-cli --version 0.2.100`). Test: `npm test` (runs the WASM build under Node).
 
 All work (`load`, `update`, `query`, `queryJson`) runs to completion on the calling thread before the method
