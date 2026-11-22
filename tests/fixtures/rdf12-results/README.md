@@ -13,5 +13,5 @@ source version. Use them as fixtures for the result writers, and update them tog
 Notes from the drafts: JSON writes a triple term as `{"type":"triple","value":{"subject":S,"predicate":P,"object":O}}` and a directional literal with
 `"its:dir"` next to `"xml:lang"`; the 1.2 version is announced by the media-type parameter `version=1.2` or a `"version"` member of `head`.
 TSV uses Turtle-style terms (`<<( s p o )>>`, `"x"@en--ltr`); CSV prints lexical forms without type markers.
-`directional-literal.*` come from the spec's mixed-term example: the row with `"String-with-lang-dir"@en--ltr`. Check the exact CSV cell text against the spec
+`directional-literal.*` are the spec's whole mixed-term example (IRIs, blank nodes, missing cells, language tag, and the directional literal `"String-with-lang-dir"@en--ltr`). Check the exact CSV cell text against the spec
 when the writer is implemented; the CSV example in the draft prints the lexical value only.
