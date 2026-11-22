@@ -1,0 +1,9 @@
+[shard 0] triples=17405039 records=52215117 record_bytes=3421630387 parse=41.7s format=8.0s push=25.7s finish=18.6s total=96.0s
+[shard 5] triples=17273778 records=51821334 record_bytes=3418348873 parse=39.8s format=8.0s push=22.9s finish=25.0s total=97.8s
+[shard 6] triples=17273272 records=51819816 record_bytes=3418336116 parse=39.1s format=8.0s push=22.4s finish=41.1s total=112.6s
+[shard 1] triples=17273643 records=51820929 record_bytes=3418345339 parse=40.1s format=8.0s push=23.7s finish=42.0s total=115.9s
+[shard 4] triples=17273805 records=51821415 record_bytes=3418349395 parse=40.9s format=8.0s push=22.9s finish=42.3s total=116.2s
+[shard 2] triples=17273177 records=51819531 record_bytes=3418333688 parse=39.1s format=8.0s push=23.2s finish=44.5s total=116.8s
+[shard 3] triples=17272579 records=51817737 record_bytes=3418318821 parse=40.1s format=8.0s push=23.7s finish=43.0s total=116.9s
+[shard 7] triples=17273121 records=51819363 record_bytes=3418332142 parse=40.3s format=8.0s push=23.5s finish=44.6s total=118.4s
+[shards total] runs=416 flush_sort=82.5s flush_write=86.7s merge_rounds=294.2s (sums over all shards)

@@ -1,0 +1,96 @@
+diff --git a/crates/triplelight-storage/src/external_build.rs b/crates/triplelight-storage/src/external_build.rs
+index abd0089..4901a9a 100644
+--- a/crates/triplelight-storage/src/external_build.rs
++++ b/crates/triplelight-storage/src/external_build.rs
+@@ -512,19 +512,43 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
+                 let mut b = Builder::with_budget(dir, worker_budget)?;
+                 let mut file = File::open(path)?; file.seek(SeekFrom::Start(start))?;
+                 let input = BufReader::new(file.take(end - start));
+-                for t in triplelight_core::ntriples::read_ntriples(input) {
++                // Experiment (#91): per-shard time split.
++                let t_start = std::time::Instant::now();
++                let (mut t_parse, mut t_fmt, mut t_push) = (0u128, 0u128, 0u128);
++                let (mut records, mut bytes) = (0u64, 0u64);
++                let mut it = triplelight_core::ntriples::read_ntriples(input);
++                loop {
++                    let t0 = std::time::Instant::now();
++                    let Some(t) = it.next() else { break };
++                    t_parse += t0.elapsed().as_nanos();
+                     let t: Triple = t?;
+                     if b.triples >= (1u64 << 56) { return Err(bad("too many triples in shard")); }
+                     let id = ((shard as u64) << 56) | b.triples;
+-                    b.add_with_id([t.subject.to_string(), t.predicate.to_string(), t.object.to_string()], id)?;
++                    let t1 = std::time::Instant::now();
++                    let terms = [t.subject.to_string(), t.predicate.to_string(), t.object.to_string()];
++                    t_fmt += t1.elapsed().as_nanos();
++                    records += 3; bytes += terms.iter().map(|x| x.len() as u64 + 10).sum::<u64>();
++                    let t2 = std::time::Instant::now();
++                    b.add_with_id(terms, id)?;
++                    t_push += t2.elapsed().as_nanos();
+                 }
++                let t3 = std::time::Instant::now();
+                 let sorted = b.terms.finish()?;
++                let t_finish = t3.elapsed().as_nanos();
++                eprintln!("[shard {shard}] triples={} records={records} record_bytes={bytes} parse={:.1}s format={:.1}s push={:.1}s finish={:.1}s total={:.1}s",
++                    b.triples, t_parse as f64 / 1e9, t_fmt as f64 / 1e9, t_push as f64 / 1e9, t_finish as f64 / 1e9, t_start.elapsed().as_secs_f64());
+                 Ok((b, sorted))
+             }));
+         }
+         handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(io::Error::other("N-Triples worker panicked")))).collect::<Vec<_>>()
+     });
+     let builders = results.into_iter().collect::<io::Result<Vec<_>>>()?;
++    {
++        use std::sync::atomic::Ordering::Relaxed;
++        use super::external_sort::{N_RUNS, T_FLUSH_SORT, T_FLUSH_WRITE, T_MERGE};
++        eprintln!("[shards total] runs={} flush_sort={:.1}s flush_write={:.1}s merge_rounds={:.1}s (sums over all shards)",
++            N_RUNS.load(Relaxed), T_FLUSH_SORT.load(Relaxed) as f64 / 1e9, T_FLUSH_WRITE.load(Relaxed) as f64 / 1e9, T_MERGE.load(Relaxed) as f64 / 1e9);
++    }
+     let mut paths = Vec::with_capacity(builders.len());
+     let mut observed = 0usize;
+     let mut count = 0u64;
+diff --git a/crates/triplelight-storage/src/external_sort.rs b/crates/triplelight-storage/src/external_sort.rs
+index aadc142..eff6ee5 100644
+--- a/crates/triplelight-storage/src/external_sort.rs
++++ b/crates/triplelight-storage/src/external_sort.rs
+@@ -9,6 +9,11 @@ use std::{
+     sync::atomic::{AtomicU64, Ordering},
+ };
+ const FAN_IN: usize = 32;
++/// Experiment (#91): nanoseconds spent sorting and writing runs, summed over every sorter in the process, and runs written.
++pub(crate) static T_FLUSH_SORT: AtomicU64 = AtomicU64::new(0);
++pub(crate) static T_FLUSH_WRITE: AtomicU64 = AtomicU64::new(0);
++pub(crate) static N_RUNS: AtomicU64 = AtomicU64::new(0);
++pub(crate) static T_MERGE: AtomicU64 = AtomicU64::new(0);
+ const BUF: usize = 8192;
+ static NONCE: AtomicU64 = AtomicU64::new(0);
+ fn bad(msg: &'static str) -> io::Error {
+@@ -93,7 +98,10 @@ impl ExternalSort {
+         if self.pending.is_empty() {
+             return Ok(());
+         }
++        let t0 = std::time::Instant::now();
+         self.pending.sort_unstable();
++        T_FLUSH_SORT.fetch_add(t0.elapsed().as_nanos() as u64, Ordering::Relaxed);
++        let t1 = std::time::Instant::now();
+         let path = self.path();
+         let mut out = BufWriter::with_capacity(
+             BUF,
+@@ -107,6 +115,8 @@ impl ExternalSort {
+         }
+         out.flush()?;
+         drop(out);
++        T_FLUSH_WRITE.fetch_add(t1.elapsed().as_nanos() as u64, Ordering::Relaxed);
++        N_RUNS.fetch_add(1, Ordering::Relaxed);
+         self.pending.clear();
+         self.used = 0;
+         self.runs.push(path);
+@@ -148,7 +158,9 @@ impl ExternalSort {
+                     // A lone run is already sorted; move it instead of copying it through a merge.
+                     fs::rename(only, &path)?;
+                 } else {
++                    let tm = std::time::Instant::now();
+                     merge(group, &path, self.max_record)?;
++                    T_MERGE.fetch_add(tm.elapsed().as_nanos() as u64, Ordering::Relaxed);
+                     // Free this group's inputs now, not after the whole round, so a round does not hold both its
+                     // inputs and its outputs. A failure leaves files only in the private scratch directory, which
+                     // `Drop` removes.
