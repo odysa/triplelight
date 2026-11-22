@@ -33,6 +33,13 @@ with open(path, "rb") as f:
             parts = line.split(b" ", 2)
             if line[:1] in (b"#", b"\n", b"\r") or len(parts) < 3 or (line.rstrip(b"\r\n")[-2:] != b" ."):
                 sys.exit(f"unsupported input in shard {s} near byte {f.tell()}: {line[:80]!r}")
+            # token boundaries: subject and predicate are one non-empty token each, with no whitespace inside, separated by
+            # exactly one space; the object starts a term. A tab or a second space would shift the boundaries.
+            if (not (parts[0][:1] == b"<" and parts[0][-1:] == b">" or parts[0][:2] == b"_:")
+                    or not (parts[1][:1] == b"<" and parts[1][-1:] == b">")
+                    or any(c in parts[0] + parts[1] for c in (b"\t", b"\r", b"\n", b" "))
+                    or parts[2][:1] not in (b"<", b"_", b'"')):
+                sys.exit(f"unsupported token boundaries in shard {s} near byte {f.tell()}: {line[:80]!r}")
             triples += 1
             o = parts[2]
             if o.endswith(b" .\n"): o = o[:-3]

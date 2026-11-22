@@ -19,7 +19,9 @@ scored below. One instrumented build, one scan, one host; descriptive.
   ` .`; the scan that produced the LUBM numbers did not have those checks (it silently skipped short lines), but its
   per-shard triple and occurrence counts equal the builder's own timing counters in all eight shards (for example 17,405,039
   triples in shard 0 and 17,273,643 in shard 1; 138,318,414 in all, three term occurrences each), so nothing but triples
-  was counted for LUBM.
+  was counted for LUBM. The strict version was checked on four one-line controls: a comment line, a tab between subject and predicate
+  around a literal with a space (`"one two"`), two spaces between subject and predicate, and a valid triple. The first three
+  stop with an error, and the valid one is counted.
 
 ## Measurement 1: where a shard's time goes
 
@@ -102,8 +104,7 @@ read today. That pass replaces the mapping sort and the 17-byte mapping records.
   6 GB for LUBM-1000. That is within a 64 GB machine but a regression against today's flat 2.3 GB.
 - **When a shard's map exceeds its budget:** flush it as a partial dictionary run (sorted terms with their local IDs),
   clear it, and continue with a new run number. Row IDs then carry (run, local ID), the term merge assigns a global ID per
-  (run, local ID), and the remap arrays are per run. A dataset of mostly unique terms makes every run nearly as large as
-  today's records but without the triple ID and position, so it should not be slower than today, only no longer faster.
+  (run, local ID), and the remap arrays are per run.
 - **Open question:** how Option A behaves on a mostly unique input. Every term then goes through a hash lookup and an insert,
   the rows file and the remap pass are pure additions, and the saving on the sorts shrinks with the duplicate share; only
   the BSBM and WatDiv scans, and then a prototype, can say.
