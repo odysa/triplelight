@@ -201,6 +201,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         wcoj,
                         raw_ids: false,
                         general_group: false,
+                        count_pushdown: true,
                     },
                 )?
                 else {
