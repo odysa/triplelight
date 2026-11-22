@@ -233,16 +233,17 @@ impl Database {
         let path = path.as_ref();
         let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
         if ext == "nq" || ext == "trig" { return self.load_quads(path, ext) }
+        if ext != "nt" && ext != "ttl" { return Err(DatabaseError::Unsupported("load requires an .nt, .ttl, .nq or .trig file".into())) }
+        let open = || -> Result<_, DatabaseError> { Ok(std::io::BufReader::new(std::fs::File::open(path)?)) };
         if let Backend::Memory(store) = &self.store {
             let writer = store.writer.lock().unwrap();
             let current = store.current.read().unwrap().clone();
             if current.count(Perm::Spo, &[])? == 0 && !current.has_named_graphs() {
-                let reader = std::io::BufReader::new(std::fs::File::open(path)?);
                 let mut scope = BlankScope::default();
-                let built = match ext {
-                    "nt" => MemorySnapshot::try_from_triples(crate::ntriples::read_ntriples(reader).map(|t| t.map(|t| scope.rewrite(t)))),
-                    "ttl" => MemorySnapshot::try_from_triples(crate::turtle::read_turtle(reader).map(|t| t.map(|t| scope.rewrite(t)))),
-                    _ => return Err(DatabaseError::Unsupported("load requires an .nt, .ttl, .nq or .trig file".into())),
+                let built = if ext == "nt" {
+                    MemorySnapshot::try_from_triples(crate::ntriples::read_ntriples(open()?).map(|t| t.map(|t| scope.rewrite(t))))
+                } else {
+                    MemorySnapshot::try_from_triples(crate::turtle::read_turtle(open()?).map(|t| t.map(|t| scope.rewrite(t))))
                 }.map_err(read_error)?;
                 let count = built.count(Perm::Spo, &[])?;
                 *store.current.write().unwrap() = Arc::new(Overlay::from_base(Arc::new(built)));
@@ -251,11 +252,10 @@ impl Database {
                 return Ok(count as usize);
             }
         }
-        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
-        let triples = match ext {
-            "nt" => crate::ntriples::read_ntriples(reader).collect::<Result<Vec<_>, _>>(),
-            "ttl" => crate::turtle::read_turtle(reader).collect::<Result<Vec<_>, _>>(),
-            _ => return Err(DatabaseError::Unsupported("load requires an .nt, .ttl, .nq or .trig file".into())),
+        let triples = if ext == "nt" {
+            crate::ntriples::read_ntriples(open()?).collect::<Result<Vec<_>, _>>()
+        } else {
+            crate::turtle::read_turtle(open()?).collect::<Result<Vec<_>, _>>()
         }.map_err(read_error)?;
         let triples = scope_blank_nodes(triples);
         match &self.store {
@@ -290,10 +290,7 @@ impl Database {
     fn load_quads(&self, path: &Path, ext: &str) -> Result<usize, DatabaseError> {
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
         let format = if ext == "nq" { crate::rdf::QuadFormat::NQuads } else { crate::rdf::QuadFormat::TriG };
-        let quads = crate::rdf::read_quads(reader, format).map_err(|e| match e {
-            crate::rdf::ReadError::Io(e) => DatabaseError::Storage(e),
-            crate::rdf::ReadError::Syntax(m) => DatabaseError::Syntax(m),
-        })?;
+        let quads = crate::rdf::read_quads(reader, format).map_err(read_error)?;
         let changes = crate::store::quad_load_changes(quads)?;
         match &self.store {
             Backend::Disk(store) => Ok(store.commit_dataset(&changes).map_err(crate::store::storage_error)?),
@@ -337,11 +334,11 @@ impl Database {
     }
 }
 
-// Blank node labels are local to each imported document.
 fn read_error(e: crate::rdf::ReadError) -> DatabaseError {
     match e { crate::rdf::ReadError::Io(e) => DatabaseError::Storage(e), crate::rdf::ReadError::Syntax(m) => DatabaseError::Syntax(m) }
 }
 
+/// Blank node labels are local to each imported document.
 #[derive(Default)]
 struct BlankScope(std::collections::HashMap<crate::rdf::BlankNode, crate::rdf::BlankNode>);
 impl BlankScope {
