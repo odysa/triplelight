@@ -11,7 +11,11 @@ use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::Path;
 
 pub(super) const FILES: [&str; 7] = ["dictionary", "spo", "sop", "pso", "pos", "osp", "ops"];
-/// The graph-first quad orders of an `RDFSNAP5` base (task #36), in `Perm::ALL` order of their triple part.
+/// Which triple (and quad) orders a base keeps, as bits of their `Perm::ALL` positions (task #73).
+pub const ALL_ORDERS: u8 = 0b11_1111;
+/// SPO, PSO, POS and OSP: kept by every base. SOP and OPS are served from them when absent (`derived_order`).
+pub const REQUIRED_ORDERS: u8 = 0b01_1101;
+/// The graph-first quad orders of an `RDFSNAP5`/`RDFSNAP6` base (task #36), in `Perm::ALL` order of their triple part.
 pub(super) const QUAD_FILES: [&str; 6] = ["gspo", "gsop", "gpso", "gpos", "gosp", "gops"];
 /// The graph catalog of an `RDFSNAP5` base: every named graph's ID and triple count, empty graphs included.
 pub(super) const CATALOG_FILE: &str = "graphs";
@@ -137,6 +141,15 @@ pub fn build_disk_snapshot_with_workers(dir: impl AsRef<Path>, source: Option<&P
     if workers == 0 { return Err(io::Error::new(io::ErrorKind::InvalidInput, "workers must be positive")); }
     super::external_build::adaptive(dir.as_ref(), source, workers)
 }
+/// The orders the base in `dir` keeps (bits of `Perm::ALL` positions): its RDFSNAP6 order set, or all six.
+pub(super) fn kept_orders(dir: &Path) -> io::Result<u8> {
+    let mut head = [0u8; 9];
+    let mut manifest = File::open(dir.join("MANIFEST"))?;
+    manifest.read_exact(&mut head[..8])?;
+    if &head[..8] != b"RDFSNAP6" { return Ok(ALL_ORDERS) }
+    manifest.read_exact(&mut head[8..])?;
+    Ok(head[8])
+}
 /// Persistent Store base format backed by immutable checksummed disk indexes.
 pub struct DiskBase {
     pub workers: usize,
@@ -154,6 +167,15 @@ impl crate::store::BaseFormat for DiskBase {
     fn holds_named_graphs(&self) -> bool { true }
     fn write_dataset(&self, dir: &Path, src: &crate::store::Overlay) -> io::Result<()> {
         write_disk_dataset(dir, src)
+    }
+    fn rewrite(&self, previous: &Path, dir: &Path, src: &crate::store::Overlay, dataset: bool) -> io::Result<()> {
+        // The new base keeps the previous base's orders, whatever this process's build setting.
+        let orders = kept_orders(previous)?;
+        if dataset {
+            super::external_build::from_dataset_keeping(dir, src, orders)
+        } else {
+            super::external_build::from_snapshot_keeping(dir, src, orders)
+        }
     }
     fn open_dataset(&self, dir: &Path) -> io::Result<(std::sync::Arc<dyn Snapshot>, Vec<(TermId, std::sync::Arc<dyn Snapshot>)>)> {
         let snap = std::sync::Arc::new(DiskSnapshot::open(dir)?);
@@ -240,10 +262,25 @@ impl DiskSnapshot {
             b"RDFSNAP3" => 3,
             b"RDFSNAP4" => 4,
             b"RDFSNAP5" => 5,
+            b"RDFSNAP6" => 6,
             _ => return Err(bad("bad snapshot manifest or version")),
         };
+        // RDFSNAP6 (task #73): a byte of kept orders (bit i = `Perm::ALL[i]`, at least `REQUIRED_ORDERS`), a byte that
+        // is 1 when the base holds named graphs (else 0), then the RDFSNAP4/5 identities of only the kept orders.
+        let (orders, named_graphs) = if version == 6 {
+            let mut flags = [0u8; 2];
+            manifest.read_exact(&mut flags)?;
+            if flags[0] & !ALL_ORDERS != 0 || flags[0] & REQUIRED_ORDERS != REQUIRED_ORDERS || flags[1] > 1 {
+                return Err(bad("bad RDFSNAP6 order set"));
+            }
+            (flags[0], flags[1] == 1)
+        } else {
+            (ALL_ORDERS, version == 5)
+        };
+        let kept = |slot: usize| orders & (1 << slot) != 0;
+        let order_count = orders.count_ones() as usize;
         // RDFSNAP5: the RDFSNAP4 identities, then six quad orders and the catalog.
-        let mut expected = vec![[0u8; 32]; match version { 3 => 8, 5 => 14, _ => 7 }];
+        let mut expected = vec![[0u8; 32]; if version == 3 { 2 } else { 1 } + order_count + if named_graphs { order_count + 1 } else { 0 }];
         for item in &mut expected {
             manifest.read_exact(item)?;
         }
@@ -253,7 +290,7 @@ impl DiskSnapshot {
         }
         let (dictionary, index_offset) = if version >= 4 {
             use super::lazy_dictionary::{DictionaryCache, LazyIndex, Order, UNIFIED_FILE};
-            let shares = if version == 5 { super::disk_index::DATASET_SHARES } else { super::disk_index::DEFAULT_SHARES };
+            let shares = if named_graphs { super::disk_index::DATASET_SHARES } else { super::disk_index::DEFAULT_SHARES };
             let unified = LazyIndex::open_shared(&dir.join(UNIFIED_FILE), Order::Unified, DictionaryCache::with_shares(shares))?;
             if unified.identity() != expected[0] {
                 return Err(bad("dictionary directory checksum mismatch"));
@@ -277,10 +314,12 @@ impl DiskSnapshot {
         };
         let mut indexes = Vec::new();
         // With the six quad orders, every index takes a smaller share so the snapshot stays within its cache budget.
-        let shares = if version == 5 { super::disk_index::DATASET_SHARES } else { super::disk_index::DEFAULT_SHARES };
+        let shares = if named_graphs { super::disk_index::DATASET_SHARES } else { super::disk_index::DEFAULT_SHARES };
+        let mut identities = expected[index_offset..].iter();
         for (i, name) in FILES[1..].iter().enumerate() {
+            if !kept(i) { indexes.push(None); continue }
             let index = DiskIndex::<3>::open_with_share(dir.join(name), shares)?;
-            if index.identity() != expected[i + index_offset] {
+            if Some(&index.identity()) != identities.next() {
                 return Err(bad("index directory checksum mismatch"));
             }
             indexes.push(Some(index));
@@ -289,11 +328,12 @@ impl DiskSnapshot {
         if indexes.iter().flatten().any(|index| index.len() != rows) {
             return Err(bad("index counts differ"));
         }
-        let named = if version == 5 {
+        let named = if named_graphs {
             let mut quads = Vec::new();
             for (i, name) in QUAD_FILES.iter().enumerate() {
+                if !kept(i) { quads.push(None); continue }
                 let index = DiskIndex::<4>::open_with_share(dir.join(name), super::disk_index::DATASET_SHARES)?;
-                if index.identity() != expected[7 + i] {
+                if Some(&index.identity()) != identities.next() {
                     return Err(bad("quad index directory checksum mismatch"));
                 }
                 quads.push(Some(index));
@@ -302,7 +342,7 @@ impl DiskSnapshot {
             if quads.iter().flatten().any(|q| q.len() != rows) {
                 return Err(bad("quad index counts differ"));
             }
-            let catalog = read_catalog(&dir.join(CATALOG_FILE), expected[13], rows)?;
+            let catalog = read_catalog(&dir.join(CATALOG_FILE), *identities.next().expect("sized above"), rows)?;
             Some(NamedBase { quads, catalog })
         } else {
             None
@@ -473,16 +513,6 @@ impl DiskSnapshot {
     /// A kept order. SPO, PSO, POS and OSP are always kept.
     fn index(&self, perm: Perm) -> &DiskIndex {
         self.kept(perm).expect("a base keeps every order it is asked for directly")
-    }
-    /// Stops serving SOP and OPS (and their quad orders) from their files, as a base that does not keep them.
-    #[cfg(test)]
-    pub(super) fn without_derived_orders(mut self) -> Self {
-        for perm in [Perm::Sop, Perm::Ops] {
-            let slot = Perm::ALL.iter().position(|x| *x == perm).unwrap();
-            self.indexes[slot] = None;
-            if let Some(named) = &mut self.named { named.quads[slot] = None }
-        }
-        self
     }
 }
 impl Dictionary for DiskSnapshot {
@@ -694,6 +724,38 @@ impl super::derived_order::KeptOrders for DiskGraph {
 mod tests {
     use super::*;
     use triplelight_rdf::{Literal, NamedNode, Triple};
+    /// Task #73: compaction keeps the order set of the base it replaces, four or six, for default-graph and dataset
+    /// bases alike, whatever this process's build setting.
+    #[test]
+    fn compaction_keeps_the_order_set() {
+        use crate::model::{Change, DatasetChange, GraphTarget};
+        use crate::store::{Overlay, Store};
+        let iri = |s: &str| NamedNode::new(format!("http://ex/{s}")).unwrap();
+        for (label, orders) in [("four", REQUIRED_ORDERS), ("six", ALL_ORDERS)] {
+            let dir = std::env::temp_dir().join(format!("rdf-compact-orders-{label}-{}", std::process::id()));
+            let _ = fs::remove_dir_all(&dir);
+            fs::create_dir(&dir).unwrap();
+            let empty = Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([])));
+            crate::external_build::from_dataset_keeping(&dir.join("base-0"), &empty, orders).unwrap();
+            fs::write(dir.join("CURRENT"), "base-0\n").unwrap();
+            let store = Store::open_with(&dir, None, Box::new(DiskBase { workers: 1 })).unwrap();
+            let t = |s: &str| Triple::new(iri(s), iri("p"), iri("o"));
+            store.commit(&[(Change::Insert, t("a"))]).unwrap();
+            store.compact().unwrap();
+            assert_eq!(kept_orders(&dir.join("base-1")).unwrap(), orders, "{label} default-graph compaction");
+            store.commit_dataset(&[DatasetChange::Quad(GraphTarget::Named(iri("g")), Change::Insert, t("b"))]).unwrap();
+            store.compact().unwrap();
+            let manifest = fs::read(dir.join("base-2").join("MANIFEST")).unwrap();
+            assert_eq!(kept_orders(&dir.join("base-2")).unwrap(), orders, "{label} dataset compaction");
+            assert_eq!(&manifest[..8], if orders == ALL_ORDERS { b"RDFSNAP5" } else { b"RDFSNAP6" });
+            let base = DiskSnapshot::open(dir.join("base-2")).unwrap();
+            base.verify().unwrap();
+            assert_eq!(base.count(Perm::Sop, &[]).unwrap(), 1);
+            assert_eq!(base.graph_names().len(), 1);
+            drop(store);
+            fs::remove_dir_all(&dir).unwrap();
+        }
+    }
     /// Task #73: a base without SOP and OPS answers every scan, count and seek on them exactly as the same base with
     /// all six orders, for the default graph and every named graph. The fixture has a subject and an object with more
     /// than one batch (4096 rows) of triples, so regrouped groups span batches.
@@ -713,11 +775,22 @@ mod tests {
             add(Triple::new(iri(&format!("in{i}")), iri(&format!("p{}", i % 3)), iri("sink")), Some("g1"));
         }
         let source = crate::store::Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([]))).with_dataset_changes(&changes).unwrap().0;
-        let dir = std::env::temp_dir().join(format!("rdf-derived-orders-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&dir);
-        write_disk_dataset(&dir, &source).unwrap();
-        let full = std::sync::Arc::new(DiskSnapshot::open(&dir).unwrap());
-        let derived = std::sync::Arc::new(DiskSnapshot::open(&dir).unwrap().without_derived_orders());
+        let parent = std::env::temp_dir().join(format!("rdf-derived-orders-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&parent);
+        fs::create_dir(&parent).unwrap();
+        let (six, four) = (parent.join("six"), parent.join("four"));
+        write_disk_dataset(&six, &source).unwrap();
+        crate::external_build::from_dataset_keeping(&four, &source, REQUIRED_ORDERS).unwrap();
+        // The four-order base is RDFSNAP6 and has no SOP/OPS files; everything it keeps is byte-identical.
+        let manifest = fs::read(four.join("MANIFEST")).unwrap();
+        assert_eq!(&manifest[..10], b"RDFSNAP6\x1d\x01");
+        assert_eq!(manifest.len(), 10 + 32 * (1 + 4 + 4 + 1));
+        for name in ["sop", "ops", "gsop", "gops"] { assert!(!four.join(name).exists(), "{name}") }
+        for name in ["dictionary.unified", "spo", "pso", "pos", "osp", "gspo", "gpso", "gpos", "gosp", "graphs"] {
+            assert_eq!(fs::read(four.join(name)).unwrap(), fs::read(six.join(name)).unwrap(), "{name}");
+        }
+        let full = std::sync::Arc::new(DiskSnapshot::open(&six).unwrap());
+        let derived = std::sync::Arc::new(DiskSnapshot::open(&four).unwrap());
         derived.verify().unwrap();
         let rows = |view: &dyn Snapshot, perm: Perm, prefix: &[TermId]| -> Vec<[TermId; 3]> {
             let mut v = Vec::new();
@@ -758,7 +831,26 @@ mod tests {
                 for perm in [Perm::Sop, Perm::Ops] { assert_eq!(rows(&d, perm, &[]), rows(&f, perm, &[]), "{g:?} {perm:?}") }
             }
         }
-        fs::remove_dir_all(&dir).unwrap();
+        // A default-graph-only base keeps the same layout without the quad orders and catalog.
+        let plain = parent.join("plain");
+        crate::external_build::from_dataset_keeping(&plain, &crate::store::Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([Triple::new(iri("a"), iri("b"), iri("c"))]))), REQUIRED_ORDERS).unwrap();
+        let manifest = fs::read(plain.join("MANIFEST")).unwrap();
+        assert_eq!((&manifest[..10], manifest.len()), (&b"RDFSNAP6\x1d\x00"[..], 10 + 32 * 5));
+        let plain = DiskSnapshot::open(&plain).unwrap();
+        plain.verify().unwrap();
+        let [spo] = rows(&plain, Perm::Spo, &[])[..] else { panic!("one triple") };
+        assert_eq!(rows(&plain, Perm::Sop, &[]), [[spo[0], spo[2], spo[1]]]);
+        // Order sets that drop a required order, use reserved bits or a bad named-graph flag are refused.
+        for (orders, named) in [(REQUIRED_ORDERS & !1, 0u8), (REQUIRED_ORDERS & !(1 << 4), 0), (REQUIRED_ORDERS | 0x40, 0), (REQUIRED_ORDERS, 2)] {
+            let mut bad = manifest.clone();
+            (bad[8], bad[9]) = (orders, named);
+            let dir = parent.join(format!("bad-{orders}-{named}"));
+            fs::create_dir(&dir).unwrap();
+            fs::write(dir.join("MANIFEST"), &bad).unwrap();
+            let err = DiskSnapshot::open(&dir).err().expect("refused");
+            assert!(err.to_string().contains("order set"), "{orders:#b} {named}: {err}");
+        }
+        fs::remove_dir_all(&parent).unwrap();
     }
     /// A dataset base (`RDFSNAP5`): every named graph view answers like the overlay it was written from (by term)
     /// and like a row model of its quad rows (by ID) for every order, prefix and seek; the catalog keeps empty graphs.

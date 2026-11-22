@@ -249,6 +249,12 @@ pub trait BaseFormat: Send + Sync {
     fn write_dataset(&self, _dir: &Path, _src: &Overlay) -> std::io::Result<()> {
         Err(std::io::Error::new(std::io::ErrorKind::Unsupported, "this base format does not hold named graphs"))
     }
+    /// Compaction's write: `write_dataset` (if `dataset`) or `write` of `src` into `dir`, a base that replaces
+    /// `previous`. A format whose bases record build choices keeps them here (the disk base keeps its order set, task
+    /// #73), so compaction never changes them; only a new import does.
+    fn rewrite(&self, _previous: &Path, dir: &Path, src: &Overlay, dataset: bool) -> std::io::Result<()> {
+        if dataset { self.write_dataset(dir, src) } else { self.write(dir, src) }
+    }
     /// `open`, plus the base's named graphs: each graph's ID with its view, sharing the base's dictionary.
     fn open_dataset(&self, dir: &Path) -> std::io::Result<(Arc<dyn Snapshot>, Vec<(TermId, Arc<dyn Snapshot>)>)> {
         Ok((self.open(dir)?, Vec::new()))
@@ -565,7 +571,7 @@ impl Store {
         if new_dir.exists() { std::fs::remove_dir_all(&new_dir)?; }
         // Named graphs go into the base when the format holds them (step 3c), otherwise into the new WAL below.
         let into_base = cur.has_named_graphs() && self.format.holds_named_graphs();
-        if into_base { self.format.write_dataset(&new_dir, &cur)? } else { self.format.write(&new_dir, &*cur)? }
+        self.format.rewrite(&self.dir.join(format!("base-{}", *generation)), &new_dir, &cur, into_base)?;
         // Open (and so validate) the new base before committing to it: if this fails, CURRENT, the WAL and the
         // in-memory state all still describe the old base.
         let (base, named) = self.format.open_dataset(&new_dir)?;

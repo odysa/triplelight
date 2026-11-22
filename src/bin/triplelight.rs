@@ -59,6 +59,14 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     for (i, arg) in args.iter().enumerate() {
         if arg == "--build-external" { triplelight::storage::external_build::force_external_build(); }
+        // Task #73: `--orders=4` keeps SPO, PSO, POS and OSP (an RDFSNAP6 base, external builder only); SOP and OPS are
+        // then served from them. `--orders=6` (the default) keeps all six.
+        if let Some(value) = arg.strip_prefix("--orders=") {
+            use triplelight::storage::{ALL_ORDERS, REQUIRED_ORDERS, external_build};
+            let orders = match value { "4" => REQUIRED_ORDERS, "6" => ALL_ORDERS, _ => { eprintln!("--orders must be 4 or 6"); std::process::exit(2) } };
+            external_build::set_kept_orders(orders).expect("order set");
+            if orders != ALL_ORDERS { external_build::force_external_build() }
+        }
         let value=arg.strip_prefix("--build-memory-mb=").or_else(|| (arg == "--build-memory-mb").then(|| args.get(i+1).map(String::as_str)).flatten());
         if arg == "--build-memory-mb" && value.is_none() { eprintln!("--build-memory-mb requires a positive integer"); std::process::exit(2); }
         if let Some(value)=value { let n=value.parse::<usize>().ok().filter(|n|*n>0).unwrap_or_else(|| { eprintln!("--build-memory-mb requires a positive integer"); std::process::exit(2) }); triplelight::storage::external_build::set_build_budget_mb(n).expect("build budget"); }
@@ -78,15 +86,21 @@ fn main() {
             let result=DiskSnapshot::open(&args[2]).and_then(|s|s.verify());
             if let Err(e)=result { eprintln!("verification failed: {e}"); std::process::exit(1); }
             println!("snapshot verified");
+            // File sizes, so a receipt shows what each order and the dictionary cost (task #73).
+            let mut files: Vec<_> = std::fs::read_dir(&args[2]).expect("read snapshot directory").filter_map(Result::ok)
+                .filter_map(|e| Some((e.file_name().into_string().ok()?, e.metadata().ok()?.len()))).collect();
+            files.sort();
+            for (name, bytes) in files { println!("{name} {bytes} bytes") }
         }
         Some("build-disk") => {
             if args.iter().skip(2).any(|arg| arg == "--help" || arg == "-h") {
-                println!("usage: triplelight build-disk <source.nt|source.ttl> <new-directory> [--parallel-load=N] [--build-memory-mb=N] [--build-external]\n\
+                println!("usage: triplelight build-disk <source.nt|source.ttl> <new-directory> [--parallel-load=N] [--build-memory-mb=N] [--build-external] [--orders=4|6]\n\
                     --parallel-load=N  Ingestion workers; defaults to available cores, 1 forces serial.\n\
                     External N-Triples parsing uses at most 8 workers and 3 index builders.\n\
                     --build-memory-mb=N  Advisory strategy/run-buffer target, not a process RSS limit.\n\
                     Temporary files, caches, allocator overhead and concurrent work add memory.\n\
-                    --build-external  Force the scratch-backed N-Triples builder.");
+                    --build-external  Force the scratch-backed N-Triples builder.\n\
+                    --orders=4  Keep only SPO, PSO, POS and OSP (implies --build-external); SOP and OPS are served from them.");
                 return;
             }
             if args.len() < 4 || args.iter().any(|a| a == "--disk") {
