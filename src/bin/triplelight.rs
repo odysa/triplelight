@@ -59,8 +59,8 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     for (i, arg) in args.iter().enumerate() {
         if arg == "--build-external" { triplelight::storage::external_build::force_external_build(); }
-        // Task #73: `--orders=4` keeps SPO, PSO, POS and OSP (an RDFSNAP6 base, external builder only); SOP and OPS are
-        // then served from them. `--orders=6` (the default) keeps all six.
+        // Task #73: `--orders=4` (the default) keeps SPO, PSO, POS and OSP (an RDFSNAP6 base, external builder only);
+        // SOP and OPS are then served from them. `--orders=6` keeps all six (RDFSNAP4/5, readable by older binaries).
         if let Some(value) = arg.strip_prefix("--orders=") {
             use triplelight::storage::{ALL_ORDERS, REQUIRED_ORDERS, external_build};
             let orders = match value { "4" => REQUIRED_ORDERS, "6" => ALL_ORDERS, _ => { eprintln!("--orders must be 4 or 6"); std::process::exit(2) } };
@@ -100,7 +100,8 @@ fn main() {
                     --build-memory-mb=N  Advisory strategy/run-buffer target, not a process RSS limit.\n\
                     Temporary files, caches, allocator overhead and concurrent work add memory.\n\
                     --build-external  Force the scratch-backed N-Triples builder.\n\
-                    --orders=4  Keep only SPO, PSO, POS and OSP (implies --build-external); SOP and OPS are served from them.");
+                    --orders=4|6  Index orders to build. 4 (default, N-Triples only) keeps SPO, PSO, POS and OSP and serves\n\
+                    SOP and OPS from them; 6 keeps all six, a layout older versions can open. Turtle always builds six.");
                 return;
             }
             if args.len() < 4 || args.iter().any(|a| a == "--disk") {

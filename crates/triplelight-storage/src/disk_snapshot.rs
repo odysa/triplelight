@@ -762,6 +762,7 @@ mod tests {
     /// than one batch (4096 rows) of triples, so regrouped groups span batches.
     #[test]
     fn derived_orders_answer_like_stored_ones() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
         use crate::model::{Change, DatasetChange, GraphTarget};
         let iri = |s: &str| NamedNode::new(format!("http://ex/{s}")).unwrap();
         let mut changes = Vec::new();
@@ -795,7 +796,7 @@ mod tests {
         derived.verify().unwrap();
         // Cache shares follow the kept files: 3 + 6 + 6 = 15 for the six-order dataset base, 3 + 4 + 4 = 11 for the
         // four-order one, so each kept index of the smaller base gets a larger share.
-        let capacity = |shares: usize| (super::disk_index::cache_budget_mb() * 1024 * 1024 / (shares * 16 * 256 * 24)).max(1);
+        let capacity = |shares: usize| (crate::disk_index::cache_budget_mb() * 1024 * 1024 / (shares * 16 * 256 * 24)).max(1);
         assert_eq!(full.index(Perm::Spo).shard_capacity(), capacity(15));
         assert_eq!(derived.index(Perm::Spo).shard_capacity(), capacity(11));
         let rows = |view: &dyn Snapshot, perm: Perm, prefix: &[TermId]| -> Vec<[TermId; 3]> {
@@ -862,6 +863,7 @@ mod tests {
     /// and like a row model of its quad rows (by ID) for every order, prefix and seek; the catalog keeps empty graphs.
     #[test]
     fn dataset_base_matches_its_source_and_a_row_model() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
         use crate::model::{Change, DatasetChange, GraphTarget};
         use triplelight_core::storage::DatasetView;
         let iri = |s: &str| NamedNode::new(format!("http://ex/{s}")).unwrap();
@@ -972,6 +974,7 @@ mod tests {
     /// stores built by main.
     #[test]
     fn every_stored_term_is_found_by_its_text() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
         use crate::model::{Change, DatasetChange, GraphTarget};
         use triplelight_core::storage::DatasetView;
         use triplelight_rdf::BlankNode;
@@ -1048,6 +1051,7 @@ mod tests {
 
     #[test]
     fn dataset_base_with_only_empty_named_graphs() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
         use crate::model::{Change, DatasetChange, GraphTarget};
         let iri = |s: &str| NamedNode::new(format!("http://ex/{s}")).unwrap();
         let changes = vec![
@@ -1304,6 +1308,7 @@ mod tests {
     }
     #[test]
     fn unified_verify_rejects_a_non_spo_order_with_one_triple_swapped() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
         let dir = std::env::temp_dir().join(format!("rdf-verify4-swap-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         let spo = unified_snapshot(&dir);
@@ -1316,6 +1321,7 @@ mod tests {
     }
     #[test]
     fn unified_verify_rejects_an_id_missing_from_the_dictionary() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
         let dir = std::env::temp_dir().join(format!("rdf-verify4-unknown-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         let spo = unified_snapshot(&dir);
@@ -1329,6 +1335,7 @@ mod tests {
     }
     #[test]
     fn unified_dictionary_byte_flips_fail_open_or_verify() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
         let dir = std::env::temp_dir().join(format!("rdf-verify4-flip-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         unified_snapshot(&dir);
@@ -1352,6 +1359,7 @@ mod tests {
     }
     #[test]
     fn unified_verify_rejects_broken_text_order_that_open_and_id_lookups_accept() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
         use super::super::lazy_dictionary::{LazyIndex, Order, UNIFIED_FILE, write_unified_without_text_check};
         let dir = std::env::temp_dir().join(format!("rdf-verify4-order-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
