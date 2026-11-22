@@ -178,13 +178,16 @@ enum DictionaryBackend {
 }
 pub struct DiskSnapshot {
     dictionary: DictionaryBackend,
-    indexes: Vec<DiskIndex>,
+    /// The six triple orders in `Perm::ALL` order; `None` for an order this base does not keep (SOP and OPS are then
+    /// served from the others, see `derived_order`).
+    indexes: Vec<Option<DiskIndex>>,
     /// Named graphs (`RDFSNAP5` only): the six graph-first quad orders and the catalog `(graph ID, triples)`,
     /// ascending by ID.
     named: Option<NamedBase>,
 }
 struct NamedBase {
-    quads: Vec<DiskIndex<4>>,
+    /// The graph-first quad orders, in `Perm::ALL` order of their triple part; `None` as for `indexes`.
+    quads: Vec<Option<DiskIndex<4>>>,
     catalog: Vec<(TermId, u64)>,
 }
 impl DiskSnapshot {
@@ -279,10 +282,10 @@ impl DiskSnapshot {
             if index.identity() != expected[i + index_offset] {
                 return Err(bad("index directory checksum mismatch"));
             }
-            indexes.push(index);
+            indexes.push(Some(index));
         }
-        let rows = indexes[0].len();
-        if indexes.iter().any(|index| index.len() != rows) {
+        let rows = indexes[0].as_ref().map_or(0, DiskIndex::len);
+        if indexes.iter().flatten().any(|index| index.len() != rows) {
             return Err(bad("index counts differ"));
         }
         let named = if version == 5 {
@@ -292,12 +295,13 @@ impl DiskSnapshot {
                 if index.identity() != expected[7 + i] {
                     return Err(bad("quad index directory checksum mismatch"));
                 }
-                quads.push(index);
+                quads.push(Some(index));
             }
-            if quads.iter().any(|q| q.len() != quads[0].len()) {
+            let rows = quads[0].as_ref().map_or(0, DiskIndex::len);
+            if quads.iter().flatten().any(|q| q.len() != rows) {
                 return Err(bad("quad index counts differ"));
             }
-            let catalog = read_catalog(&dir.join(CATALOG_FILE), expected[13], quads[0].len())?;
+            let catalog = read_catalog(&dir.join(CATALOG_FILE), expected[13], rows)?;
             Some(NamedBase { quads, catalog })
         } else {
             None
@@ -327,7 +331,7 @@ impl DiskSnapshot {
             // `find_term` exact, so a single pass over all blocks is the whole dictionary check.
             unified.clear_cache()?;
             let count = unified.check_text_order()?;
-            if count == 0 && !self.indexes[0].is_empty() {
+            if count == 0 && !self.index(Perm::Spo).is_empty() {
                 return Err(bad("dictionary is empty but the indexes are not"));
             }
         }
@@ -359,12 +363,12 @@ impl DiskSnapshot {
             }
         }
         // Phase 2.
-        self.indexes.par_iter().try_for_each(|index| -> io::Result<()> {
+        self.indexes.par_iter().flatten().try_for_each(|index| -> io::Result<()> {
             index.clear_cache()?;
             index.validate()
         })?;
         let rows = self.index(Perm::Spo).len();
-        if self.indexes.iter().any(|index| index.len() != rows) {
+        if self.indexes.iter().flatten().any(|index| index.len() != rows) {
             return Err(bad("permutation row counts differ"));
         }
         // Phase 3.
@@ -387,13 +391,16 @@ impl DiskSnapshot {
     fn verify_named(&self) -> io::Result<()> {
         use rayon::prelude::*;
         let Some(named) = &self.named else { return Ok(()) };
-        named.quads.par_iter().try_for_each(|index| -> io::Result<()> {
+        named.quads.par_iter().flatten().try_for_each(|index| -> io::Result<()> {
             index.clear_cache()?;
             index.validate()
         })?;
-        let base = &named.quads[0];
+        let base = named.quads[0].as_ref().expect("a base keeps GSPO");
+        if named.quads.iter().flatten().any(|q| q.len() != base.len()) {
+            return Err(bad("quad index counts differ"));
+        }
         Perm::ALL.par_iter().enumerate().try_for_each(|(slot, &perm)| -> io::Result<()> {
-            let index = &named.quads[slot];
+            let Some(index) = &named.quads[slot] else { return Ok(()) };
             let order = perm.order();
             for i in 0..index.len() {
                 let row = index.get(i)?;
@@ -442,7 +449,7 @@ impl DiskSnapshot {
         use rayon::prelude::*;
         let base = self.index(Perm::Spo);
         Perm::ALL.par_iter().try_for_each(|&perm| -> io::Result<()> {
-            let index = self.index(perm);
+            let Some(index) = self.kept(perm) else { return Ok(()) };
             let order = perm.order();
             for i in 0..index.len() {
                 let row = index.get(i)?;
@@ -458,8 +465,22 @@ impl DiskSnapshot {
             Ok(())
         })
     }
+    fn kept(&self, perm: Perm) -> Option<&DiskIndex> {
+        self.indexes[Perm::ALL.iter().position(|x| *x == perm).unwrap()].as_ref()
+    }
+    /// A kept order. SPO, PSO, POS and OSP are always kept.
     fn index(&self, perm: Perm) -> &DiskIndex {
-        &self.indexes[Perm::ALL.iter().position(|x| *x == perm).unwrap()]
+        self.kept(perm).expect("a base keeps every order it is asked for directly")
+    }
+    /// Stops serving SOP and OPS (and their quad orders) from their files, as a base that does not keep them.
+    #[cfg(test)]
+    pub(super) fn without_derived_orders(mut self) -> Self {
+        for perm in [Perm::Sop, Perm::Ops] {
+            let slot = Perm::ALL.iter().position(|x| *x == perm).unwrap();
+            self.indexes[slot] = None;
+            if let Some(named) = &mut self.named { named.quads[slot] = None }
+        }
+        self
     }
 }
 impl Dictionary for DiskSnapshot {
@@ -519,7 +540,34 @@ impl Dictionary for DiskSnapshot {
 }
 
 impl Snapshot for DiskSnapshot {
-    fn scan<'a>(
+    fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+        super::derived_order::scan(self, perm, prefix)
+    }
+    fn scan_for_stats(&self) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + '_> {
+        let index = self.index(Perm::Spo);
+        let mut pos = 0;
+        Box::new(std::iter::from_fn(move || {
+            if pos >= index.len() { return None; }
+            let end = pos.saturating_add(4096).min(index.len());
+            match index.block_slice_uncached(pos, end) {
+                Ok(rows) => {
+                    pos += rows.len() as u64;
+                    let mut batch = TripleBatch::default();
+                    for row in rows { for (col, value) in batch.cols.iter_mut().zip(row) { col.push(value); } }
+                    Some(Ok(batch))
+                }
+                Err(e) => { pos = index.len(); Some(Err(e)) }
+            }
+        }))
+    }
+    fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> { super::derived_order::count(self, perm, prefix) }
+    fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
+        super::derived_order::seek(self, perm, prefix, target)
+    }
+}
+impl super::derived_order::KeptOrders for DiskSnapshot {
+    fn has(&self, perm: Perm) -> bool { self.kept(perm).is_some() }
+    fn scan_kept<'a>(
         &'a self,
         perm: Perm,
         prefix: &[TermId],
@@ -556,33 +604,11 @@ impl Snapshot for DiskSnapshot {
             }
         }
     }
-    fn scan_for_stats(&self) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + '_> {
-        let index = self.index(Perm::Spo);
-        let mut pos = 0;
-        Box::new(std::iter::from_fn(move || {
-            if pos >= index.len() { return None; }
-            let end = pos.saturating_add(4096).min(index.len());
-            match index.block_slice_uncached(pos, end) {
-                Ok(rows) => {
-                    pos += rows.len() as u64;
-                    let mut batch = TripleBatch::default();
-                    for row in rows { for (col, value) in batch.cols.iter_mut().zip(row) { col.push(value); } }
-                    Some(Ok(batch))
-                }
-                Err(e) => { pos = index.len(); Some(Err(e)) }
-            }
-        }))
-    }
-    fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
+    fn count_kept(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
         let r = self.index(perm).range(prefix)?;
         Ok(r.end - r.start)
     }
-    fn seek(
-        &self,
-        perm: Perm,
-        prefix: &[TermId],
-        target: TermId,
-    ) -> Result<Option<TermId>, StorageError> {
+    fn seek_kept(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
         self.index(perm).seek_value(prefix, target)
     }
 }
@@ -593,9 +619,10 @@ pub struct DiskGraph {
     g: TermId,
 }
 impl DiskGraph {
-    fn index(&self, perm: Perm) -> &DiskIndex<4> {
-        &self.snap.named.as_ref().expect("a graph view exists only for RDFSNAP5").quads[Perm::ALL.iter().position(|x| *x == perm).unwrap()]
+    fn kept(&self, perm: Perm) -> Option<&DiskIndex<4>> {
+        self.snap.named.as_ref().expect("a graph view exists only for RDFSNAP5").quads[Perm::ALL.iter().position(|x| *x == perm).unwrap()].as_ref()
     }
+    fn index(&self, perm: Perm) -> &DiskIndex<4> { self.kept(perm).expect("a base keeps every quad order it is asked for directly") }
     fn key(&self, prefix: &[TermId]) -> Vec<TermId> {
         let mut key = Vec::with_capacity(prefix.len() + 1);
         key.push(self.g);
@@ -613,6 +640,16 @@ impl Dictionary for DiskGraph {
 }
 impl Snapshot for DiskGraph {
     fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+        super::derived_order::scan(self, perm, prefix)
+    }
+    fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> { super::derived_order::count(self, perm, prefix) }
+    fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
+        super::derived_order::seek(self, perm, prefix, target)
+    }
+}
+impl super::derived_order::KeptOrders for DiskGraph {
+    fn has(&self, perm: Perm) -> bool { self.kept(perm).is_some() }
+    fn scan_kept<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
         let index = self.index(perm);
         match index.range(&self.key(prefix)) {
             Err(e) => Box::new(std::iter::once(Err(e))),
@@ -638,11 +675,11 @@ impl Snapshot for DiskGraph {
             }
         }
     }
-    fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
+    fn count_kept(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
         let r = self.index(perm).range(&self.key(prefix))?;
         Ok(r.end - r.start)
     }
-    fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
+    fn seek_kept(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
         if prefix.len() >= 3 { return Ok(None) }
         self.index(perm).seek_value(&self.key(prefix), target)
     }
@@ -652,6 +689,72 @@ impl Snapshot for DiskGraph {
 mod tests {
     use super::*;
     use triplelight_rdf::{Literal, NamedNode, Triple};
+    /// Task #73: a base without SOP and OPS answers every scan, count and seek on them exactly as the same base with
+    /// all six orders, for the default graph and every named graph. The fixture has a subject and an object with more
+    /// than one batch (4096 rows) of triples, so regrouped groups span batches.
+    #[test]
+    fn derived_orders_answer_like_stored_ones() {
+        use crate::model::{Change, DatasetChange, GraphTarget};
+        let iri = |s: &str| NamedNode::new(format!("http://ex/{s}")).unwrap();
+        let mut changes = Vec::new();
+        let mut add = |t: Triple, g: Option<&str>| changes.push(DatasetChange::Quad(g.map_or(GraphTarget::Default, |g| GraphTarget::Named(iri(g))), Change::Insert, t));
+        for i in 0..600u32 {
+            let t = Triple::new(iri(&format!("s{}", i % 29)), iri(&format!("p{}", i % 5)), Literal::new_simple_literal(format!("{}", i % 37)));
+            add(t.clone(), None);
+            add(t, Some(["g1", "g2"][(i % 2) as usize]));
+        }
+        for i in 0..5000u32 {
+            add(Triple::new(iri("hub"), iri(&format!("p{}", i % 3)), iri(&format!("o{i}"))), None);
+            add(Triple::new(iri(&format!("in{i}")), iri(&format!("p{}", i % 3)), iri("sink")), Some("g1"));
+        }
+        let source = crate::store::Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([]))).with_dataset_changes(&changes).unwrap().0;
+        let dir = std::env::temp_dir().join(format!("rdf-derived-orders-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        write_disk_dataset(&dir, &source).unwrap();
+        let full = std::sync::Arc::new(DiskSnapshot::open(&dir).unwrap());
+        let derived = std::sync::Arc::new(DiskSnapshot::open(&dir).unwrap().without_derived_orders());
+        derived.verify().unwrap();
+        let rows = |view: &dyn Snapshot, perm: Perm, prefix: &[TermId]| -> Vec<[TermId; 3]> {
+            let mut v = Vec::new();
+            for b in view.scan(perm, prefix) {
+                let b = b.unwrap();
+                assert!(!b.is_empty() && b.len() <= 4096, "{perm:?} {prefix:?} batch of {}", b.len());
+                v.extend((0..b.len()).map(|i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]));
+            }
+            v
+        };
+        let check = |full: &dyn Snapshot, derived: &dyn Snapshot, label: &str| {
+            for perm in [Perm::Sop, Perm::Ops] {
+                let all = rows(full, perm, &[]);
+                assert!(all.len() > 4096, "{label}: the fixture spans batches");
+                assert_eq!(rows(derived, perm, &[]), all, "{label} {perm:?} full scan");
+                let mut prefixes: Vec<Vec<TermId>> = vec![vec![], vec![TermId(1)], vec![TermId(u64::MAX), TermId(1)]];
+                for r in all.iter().step_by(97) { for k in 1..=3 { prefixes.push(r[..k].to_vec()) } }
+                prefixes.extend([all[0][..1].to_vec(), all[all.len() - 1][..1].to_vec()]);
+                for prefix in &prefixes {
+                    assert_eq!(rows(derived, perm, prefix), rows(full, perm, prefix), "{label} {perm:?} {prefix:?}");
+                    assert_eq!(derived.count(perm, prefix).unwrap(), full.count(perm, prefix).unwrap(), "{label} {perm:?} {prefix:?}");
+                    if prefix.len() < 3 {
+                        let mut targets = vec![TermId(0), TermId(u64::MAX)];
+                        targets.extend(all.iter().step_by(311).map(|r| r[prefix.len()]));
+                        targets.extend(targets.clone().into_iter().map(|t| TermId(t.0.saturating_add(1))));
+                        for t in targets {
+                            assert_eq!(derived.seek(perm, prefix, t).unwrap(), full.seek(perm, prefix, t).unwrap(), "{label} {perm:?} {prefix:?} {t:?}");
+                        }
+                    }
+                }
+            }
+        };
+        check(&*full, &*derived, "default");
+        for g in full.graph_names() {
+            let (f, d) = (full.graph_view(g).unwrap(), derived.graph_view(g).unwrap());
+            if rows(&f, Perm::Spo, &[]).len() > 4096 { check(&f, &d, "g1") }
+            else {
+                for perm in [Perm::Sop, Perm::Ops] { assert_eq!(rows(&d, perm, &[]), rows(&f, perm, &[]), "{g:?} {perm:?}") }
+            }
+        }
+        fs::remove_dir_all(&dir).unwrap();
+    }
     /// A dataset base (`RDFSNAP5`): every named graph view answers like the overlay it was written from (by term)
     /// and like a row model of its quad rows (by ID) for every order, prefix and seek; the catalog keeps empty graphs.
     #[test]
