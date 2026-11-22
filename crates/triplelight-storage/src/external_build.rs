@@ -3,7 +3,7 @@ use super::{
     Snapshot,
     disk_index::{DiskIndex, write_index_stream},
     disk_snapshot::{CATALOG_FILE, FILES, QUAD_FILES},
-    external_sort::{ExternalSort, read_record},
+    external_sort::ExternalSort,
     fixed_sort::{FixedSort, read_fixed},
 };
 use crate::model::{Perm, TermId};
