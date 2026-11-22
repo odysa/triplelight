@@ -5,9 +5,6 @@ use triplelight_rdf::{Term, Triple};
 use std::collections::HashMap;
 
 const INLINE: u64 = 0xf000_0000_0000_0000;
-fn inline(term: &Term) -> Option<TermId> {
-    inline_ref(term.as_ref())
-}
 fn inline_ref(term: triplelight_rdf::TermRef<'_>) -> Option<TermId> {
     if let triplelight_rdf::TermRef::Literal(l) = term {
         let b = l.value().as_bytes();
@@ -319,22 +316,18 @@ impl MemorySnapshot {
             PermIndex::from_sorted(&rows)
         };
         debug_assert_eq!(Perm::Spo.order(), [0, 1, 2]);
-        if parallel_sort {
-            use rayon::prelude::*;
-            spo.par_sort_unstable();
-            spo.dedup();
-            spo.shrink_to_fit();
-            let derived: Vec<_> = Perm::ALL.par_iter().filter(|&&p| p != Perm::Spo).map(|&p| (p, permute(&spo, p))).collect();
-            for (perm, rows) in derived {
-                store.indexes[slot(perm)] = rows;
-            }
+        use rayon::prelude::*;
+        if parallel_sort { spo.par_sort_unstable() } else { spo.sort_unstable() }
+        spo.dedup();
+        spo.shrink_to_fit();
+        let derived: Vec<Perm> = Perm::ALL.into_iter().filter(|&p| p != Perm::Spo).collect();
+        let built: Vec<(Perm, PermIndex)> = if parallel_sort {
+            derived.par_iter().map(|&p| (p, permute(&spo, p))).collect()
         } else {
-            spo.sort_unstable();
-            spo.dedup();
-            spo.shrink_to_fit();
-            for perm in Perm::ALL.into_iter().filter(|&p| p != Perm::Spo) {
-                store.indexes[slot(perm)] = permute(&spo, perm);
-            }
+            derived.iter().map(|&p| (p, permute(&spo, p))).collect()
+        };
+        for (perm, rows) in built {
+            store.indexes[slot(perm)] = rows;
         }
         store.indexes[slot(Perm::Spo)] = PermIndex::from_sorted(&spo);
         Ok(store)
@@ -420,7 +413,7 @@ impl MemorySnapshot {
                 Term::NamedNode(_) => tag == 1,
                 Term::BlankNode(_) => tag == 2,
                 Term::Literal(_) => {
-                    if let Some(expected) = inline(&term) {
+                    if let Some(expected) = inline_ref(term.as_ref()) {
                         expected == id
                     } else {
                         tag == 3
