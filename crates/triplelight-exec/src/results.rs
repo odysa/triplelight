@@ -65,10 +65,25 @@ impl SolutionsWriter {
         out.push('}');
     }
 
-    fn chunks(&self, chunks: Vec<String>, out: &mut String) {
-        let body = chunks.concat();
-        out.push_str(body.strip_prefix(',').unwrap_or(&body));
+}
+
+/// Serializes `items` in parallel chunks of `chunk` items and appends them to `out` in order, a bounded window of
+/// chunks at a time (task #84). Each chunk's rows start with a comma; the first one's is dropped. Only one window of
+/// chunk strings is alive at once, so peak memory is the output plus one window, not the output two or three times
+/// over (the earlier collect-then-concat kept every chunk, their concatenation and `out` alive together).
+fn append_chunks<T: Sync, E: Send>(items: &[T], chunk: usize, out: &mut String,
+                                   f: impl Fn(&[T]) -> Result<String, E> + Sync + Send) -> Result<(), E> {
+    use rayon::prelude::*;
+    let window = chunk * rayon::current_num_threads().max(1) * 4;
+    let mut first = true;
+    for part in items.chunks(window) {
+        let strings: Vec<String> = part.par_chunks(chunk).map(&f).collect::<Result<_, _>>()?;
+        for s in strings {
+            out.push_str(if first { s.strip_prefix(',').unwrap_or(&s) } else { &s });
+            first = false;
+        }
     }
+    Ok(())
 }
 
 /// Returns (content type, body).
@@ -78,15 +93,13 @@ pub fn serialize(r: &QueryResult) -> (&'static str, String) {
         QueryResult::Boolean(b) => { let _ = write!(out, "{{\"head\":{{}},\"boolean\":{b}}}"); ("application/sparql-results+json", out) }
         QueryResult::Solutions { vars, rows } => {
             let writer = SolutionsWriter::start(vars, &mut out);
-            use rayon::prelude::*;
-            let chunks: Vec<String> = rows.par_chunks(4096).map(|chunk| {
+            let _ = append_chunks(rows, 4096, &mut out, |chunk| -> Result<String, std::convert::Infallible> {
                 let mut out = String::with_capacity(chunk.len() * 96);
                 for row in chunk {
                     writer.row(row.iter().map(Option::as_ref), &mut out, term_json);
                 }
-                out
-            }).collect();
-            writer.chunks(chunks, &mut out);
+                Ok(out)
+            });
             out.push_str("]}}");
             ("application/sparql-results+json", out)
         }
@@ -101,12 +114,11 @@ pub fn serialize(r: &QueryResult) -> (&'static str, String) {
 /// SPARQL JSON straight from term IDs: each term is written from the dictionary's borrowed bytes, so a large result
 /// never materializes owned `Term`s. Rows are serialized in parallel chunks.
 pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D) -> Result<String, crate::storage::StorageError> {
-    use rayon::prelude::*;
     let mut out = String::new();
     let writer = SolutionsWriter::start(&sol.vars, &mut out);
     let w = sol.width();
     if w > 0 {
-        let chunks: Vec<String> = sol.ids.par_chunks(w * 4096).map(|chunk| -> Result<String, crate::storage::StorageError> {
+        append_chunks(&sol.ids, w * 4096, &mut out, |chunk| -> Result<String, crate::storage::StorageError> {
             // Decode every distinct stored ID of this chunk with one batched dictionary call (one cache access per
             // dictionary block on disk), then assemble rows in their original order. Callbacks may arrive in any
             // order; an error discards the whole chunk.
@@ -131,8 +143,7 @@ pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D)
                 });
             }
             Ok(out)
-        }).collect::<Result<_, _>>()?;
-        writer.chunks(chunks, &mut out);
+        })?;
     } else {
         out.push_str(&vec!["{}"; sol.rows].join(","));
     }
