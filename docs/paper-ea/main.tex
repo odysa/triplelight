@@ -99,12 +99,14 @@ suite are marked unsupported and left out of the aligned ranking, which then cov
 \subsection{Registered predictions (written before any measurement)}
 \begin{itemize}
   \item \textbf{Quantity:} Kendall's $\tau$ between the default-configuration ranking and the aligned ranking, per suite and cohort.
-  \item \textbf{Arms and order sets:}
-  TripleLight: \{SPO, PSO, POS, OSP\} and the six-order store; QLever: default and two-order mode (its two-order mode may not
-  answer variable-predicate patterns); RDF4J: \{spoc, posc, ospc\}; DuckDB: single table, six sorted copies fixed and routed;
-  other systems: as recorded in the inventory. \todo{freeze the exact list from the inventory before the first run.}
+  \item \textbf{Arms and order sets} (each system: default configuration and closest aligned order set, as measured; list from the \#72 inventory, to be confirmed by its owner):
+  TripleLight with four and with six orders; QLever default and two-order mode (the latter may not answer variable-predicate patterns);
+  DuckDB as a single table and as six copies, fixed and routed; RDF4J with three orders as measured (\texttt{spoc, posc, ospc});
+  Jena TDB2 and Oxigraph with fixed layouts, so default and aligned configurations coincide.
   \item \textbf{Kill rule:} the claim that index layout changes the ranking fails if $\tau \ge 0.8$ on every suite.
-  \item \textbf{Predicted direction:} \todo{owner of the prediction (Kaiming/Jianlin) to supply the registered direction; the writer does not set it.}
+  \item \textbf{Predicted direction} (registered 2026-11-22 by the claims owner, Kaiming He, task \#96, before any measurement):
+  on the analytical suites (BSBM BI and the WatDiv aggregates) aligning order sets changes the ranking, $\tau < 0.8$;
+  on the 14 LUBM queries the ranking holds, $\tau \ge 0.8$. If either prediction is wrong, the paper reports that.
 \end{itemize}
 \subsection{Results}
 \begin{tabular}{lccc}\toprule Suite & Cohort & $\tau$ & Ranks that change\\\midrule
