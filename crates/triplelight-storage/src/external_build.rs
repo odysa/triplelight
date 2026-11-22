@@ -584,7 +584,7 @@ pub(super) fn from_dataset_keeping(dir: &Path, source: &dyn triplelight_core::st
 pub(super) fn from_snapshot(dir: &Path, source: &dyn Snapshot) -> io::Result<()> {
     from_snapshot_keeping(dir, source, KEPT_ORDERS.load(Ordering::Relaxed))
 }
-fn from_snapshot_keeping(dir: &Path, source: &dyn Snapshot, orders: u8) -> io::Result<()> {
+pub(super) fn from_snapshot_keeping(dir: &Path, source: &dyn Snapshot, orders: u8) -> io::Result<()> {
     fs::create_dir(dir)?;
     let mut builder = Builder::new(dir)?;
     builder.orders = orders;

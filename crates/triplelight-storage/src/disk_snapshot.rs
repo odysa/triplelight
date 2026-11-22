@@ -141,6 +141,15 @@ pub fn build_disk_snapshot_with_workers(dir: impl AsRef<Path>, source: Option<&P
     if workers == 0 { return Err(io::Error::new(io::ErrorKind::InvalidInput, "workers must be positive")); }
     super::external_build::adaptive(dir.as_ref(), source, workers)
 }
+/// The orders the base in `dir` keeps (bits of `Perm::ALL` positions): its RDFSNAP6 order set, or all six.
+pub(super) fn kept_orders(dir: &Path) -> io::Result<u8> {
+    let mut head = [0u8; 9];
+    let mut manifest = File::open(dir.join("MANIFEST"))?;
+    manifest.read_exact(&mut head[..8])?;
+    if &head[..8] != b"RDFSNAP6" { return Ok(ALL_ORDERS) }
+    manifest.read_exact(&mut head[8..])?;
+    Ok(head[8])
+}
 /// Persistent Store base format backed by immutable checksummed disk indexes.
 pub struct DiskBase {
     pub workers: usize,
@@ -158,6 +167,15 @@ impl crate::store::BaseFormat for DiskBase {
     fn holds_named_graphs(&self) -> bool { true }
     fn write_dataset(&self, dir: &Path, src: &crate::store::Overlay) -> io::Result<()> {
         write_disk_dataset(dir, src)
+    }
+    fn rewrite(&self, previous: &Path, dir: &Path, src: &crate::store::Overlay, dataset: bool) -> io::Result<()> {
+        // The new base keeps the previous base's orders, whatever this process's build setting.
+        let orders = kept_orders(previous)?;
+        if dataset {
+            super::external_build::from_dataset_keeping(dir, src, orders)
+        } else {
+            super::external_build::from_snapshot_keeping(dir, src, orders)
+        }
     }
     fn open_dataset(&self, dir: &Path) -> io::Result<(std::sync::Arc<dyn Snapshot>, Vec<(TermId, std::sync::Arc<dyn Snapshot>)>)> {
         let snap = std::sync::Arc::new(DiskSnapshot::open(dir)?);
@@ -706,6 +724,38 @@ impl super::derived_order::KeptOrders for DiskGraph {
 mod tests {
     use super::*;
     use triplelight_rdf::{Literal, NamedNode, Triple};
+    /// Task #73: compaction keeps the order set of the base it replaces, four or six, for default-graph and dataset
+    /// bases alike, whatever this process's build setting.
+    #[test]
+    fn compaction_keeps_the_order_set() {
+        use crate::model::{Change, DatasetChange, GraphTarget};
+        use crate::store::{Overlay, Store};
+        let iri = |s: &str| NamedNode::new(format!("http://ex/{s}")).unwrap();
+        for (label, orders) in [("four", REQUIRED_ORDERS), ("six", ALL_ORDERS)] {
+            let dir = std::env::temp_dir().join(format!("rdf-compact-orders-{label}-{}", std::process::id()));
+            let _ = fs::remove_dir_all(&dir);
+            fs::create_dir(&dir).unwrap();
+            let empty = Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([])));
+            super::external_build::from_dataset_keeping(&dir.join("base-0"), &empty, orders).unwrap();
+            fs::write(dir.join("CURRENT"), "base-0\n").unwrap();
+            let store = Store::open_with(&dir, None, Box::new(DiskBase { workers: 1 })).unwrap();
+            let t = |s: &str| Triple::new(iri(s), iri("p"), iri("o"));
+            store.commit(&[(Change::Insert, t("a"))]).unwrap();
+            store.compact().unwrap();
+            assert_eq!(kept_orders(&dir.join("base-1")).unwrap(), orders, "{label} default-graph compaction");
+            store.commit_dataset(&[DatasetChange::Quad(GraphTarget::Named(iri("g")), Change::Insert, t("b"))]).unwrap();
+            store.compact().unwrap();
+            let manifest = fs::read(dir.join("base-2").join("MANIFEST")).unwrap();
+            assert_eq!(kept_orders(&dir.join("base-2")).unwrap(), orders, "{label} dataset compaction");
+            assert_eq!(&manifest[..8], if orders == ALL_ORDERS { b"RDFSNAP5" } else { b"RDFSNAP6" });
+            let base = DiskSnapshot::open(dir.join("base-2")).unwrap();
+            base.verify().unwrap();
+            assert_eq!(base.count(Perm::Sop, &[]).unwrap(), 1);
+            assert_eq!(base.graph_names().len(), 1);
+            drop(store);
+            fs::remove_dir_all(&dir).unwrap();
+        }
+    }
     /// Task #73: a base without SOP and OPS answers every scan, count and seek on them exactly as the same base with
     /// all six orders, for the default graph and every named graph. The fixture has a subject and an object with more
     /// than one batch (4096 rows) of triples, so regrouped groups span batches.
