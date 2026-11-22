@@ -941,5 +941,45 @@ fn count_pushdown_off_gives_identical_answers() {
         "SELECT (COUNT(*) AS ?n) WHERE { ?s <http://ex/none> ?o }",
         "SELECT ?v (COUNT(*) AS ?n) WHERE { ?s <http://ex/q> ?v } GROUP BY ?v",
     ];
-    for q in queries { assert_eq!(run_with(q, true), run_with(q, false), "{q}"); }
+    // Compare as bags: incidental row order must not decide parity.
+    let bag = |q: &str, on: bool| { let mut v = run_with(q, on); v.sort(); v };
+    for q in queries { assert_eq!(bag(q, true), bag(q, false), "{q}"); }
+}
+
+/// The `count_pushdown` switch really changes the path: with it on, a single-pattern COUNT is answered from index
+/// counts without reading a triple; with it off, the same query scans the matching triples. Both give the known
+/// typed answer.
+#[test]
+fn count_pushdown_switch_changes_the_access_path() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use triplelight::model::{Perm, TermId, TripleBatch};
+    use triplelight::storage::{Dictionary, Snapshot, StorageError};
+    struct Probe(MemorySnapshot, AtomicUsize, AtomicUsize);
+    impl Dictionary for Probe {
+        fn lookup(&self, t: &triplelight_rdf::Term) -> Result<Option<TermId>, StorageError> { self.0.lookup(t) }
+        fn resolve(&self, id: TermId) -> Result<triplelight_rdf::Term, StorageError> { self.0.resolve(id) }
+        fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
+    }
+    impl Snapshot for Probe {
+        fn scan<'a>(&'a self, p: Perm, pre: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+            Box::new(self.0.scan(p, pre).inspect(|b| if let Ok(b) = b { self.1.fetch_add(b.len(), Ordering::Relaxed); }))
+        }
+        fn count(&self, p: Perm, pre: &[TermId]) -> Result<u64, StorageError> { self.2.fetch_add(1, Ordering::Relaxed); self.0.count(p, pre) }
+        fn seek(&self, p: Perm, pre: &[TermId], t: TermId) -> Result<Option<TermId>, StorageError> { self.0.seek(p, pre, t) }
+    }
+    let data = "<urn:a> <urn:p> <urn:b> .\n<urn:b> <urn:p> <urn:c> .\n<urn:c> <urn:p> <urn:a> .\n<urn:a> <urn:q> <urn:a> .\n";
+    let q = "SELECT (COUNT(*) AS ?n) WHERE { ?s <urn:p> ?o }";
+    let run = |count_pushdown: bool| {
+        let s = Probe(MemorySnapshot::from_ntriples(data.as_bytes()).unwrap(), AtomicUsize::new(0), AtomicUsize::new(0));
+        let opts = triplelight::exec::Options { count_pushdown, ..Default::default() };
+        let rows = match triplelight::exec::query_with(&s, q, &opts).unwrap() { QueryResult::Solutions { rows, .. } => rows, r => panic!("{r:?}") };
+        (format!("{rows:?}"), s.1.load(Ordering::Relaxed), s.2.load(Ordering::Relaxed))
+    };
+    let (on, on_rows, on_counts) = run(true);
+    let (off, off_rows, _) = run(false);
+    assert!(on.contains("\"3\"") && on.contains("integer"), "known typed answer: {on}");
+    assert_eq!(on, off);
+    assert_eq!(on_rows, 0, "pushdown on reads no triples");
+    assert!(on_counts > 0, "pushdown on uses index counts");
+    assert!(off_rows >= 3, "pushdown off scans the matching triples ({off_rows})");
 }
