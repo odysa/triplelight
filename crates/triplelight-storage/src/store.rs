@@ -1072,6 +1072,7 @@ mod dataset_wal_tests {
     #[cfg(unix)]
     #[test]
     fn disk_store_named_graphs_in_the_base_match_a_model() {
+        crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
         use std::collections::{BTreeMap, BTreeSet};
         let dir = Dir::new("named-base-model");
         let open = || Store::open_with(&dir.0, None, Box::new(crate::DiskBase { workers: 1 })).unwrap();
