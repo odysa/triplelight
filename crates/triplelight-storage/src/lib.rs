@@ -28,6 +28,9 @@ mod lazy_dictionary;
 mod external_sort;
 
 #[cfg(unix)]
+mod fixed_sort;
+
+#[cfg(unix)]
 pub mod external_build;
 
 #[cfg(unix)]

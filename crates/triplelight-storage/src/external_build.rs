@@ -3,7 +3,8 @@ use super::{
     Snapshot,
     disk_index::{DiskIndex, write_index_stream},
     disk_snapshot::{CATALOG_FILE, FILES, QUAD_FILES},
-    external_sort::{ExternalSort, read_record},
+    external_sort::ExternalSort,
+    fixed_sort::{FixedSort, read_fixed},
 };
 use crate::model::{Perm, TermId};
 use triplelight_rdf::{Term, Triple};
@@ -84,38 +85,39 @@ pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io:
 fn build_permutation(dir: &Path, raw: &Path, triples: u64, name: &str, perm: Perm, run_budget: usize) -> io::Result<[u8; 32]> {
     // Triple rows are (s, p, o); the key is the order's permutation of them.
     let order = perm.order();
-    build_index::<3>(dir, raw, triples, name, run_budget, &|row: &[u8], key: &mut Vec<u8>| {
-        for i in order { key.extend_from_slice(&row[i * 8..i * 8 + 8]) }
+    build_index::<3, 24>(dir, raw, triples, name, run_budget, &|row: &[u8], key: &mut [u8; 24]| {
+        for (k, i) in order.into_iter().enumerate() { key[k * 8..k * 8 + 8].copy_from_slice(&row[i * 8..i * 8 + 8]) }
     })
 }
 /// One graph-first quad order (task #36): raw rows are (g, s, p, o) and the key is g followed by the triple order.
 fn build_quad_permutation(dir: &Path, raw: &Path, quads: u64, name: &str, perm: Perm, run_budget: usize) -> io::Result<[u8; 32]> {
     let order = perm.order();
-    build_index::<4>(dir, raw, quads, name, run_budget, &|row: &[u8], key: &mut Vec<u8>| {
-        key.extend_from_slice(&row[..8]);
-        for i in order { key.extend_from_slice(&row[8 + i * 8..16 + i * 8]) }
+    build_index::<4, 32>(dir, raw, quads, name, run_budget, &|row: &[u8], key: &mut [u8; 32]| {
+        key[..8].copy_from_slice(&row[..8]);
+        for (k, i) in order.into_iter().enumerate() { key[8 + k * 8..16 + k * 8].copy_from_slice(&row[8 + i * 8..16 + i * 8]) }
     })
 }
-/// Sorts `count` raw rows of `N` big-endian IDs by `key_of`, drops duplicates and writes them as index `name`.
-fn build_index<const N: usize>(dir: &Path, raw: &Path, count: u64, name: &str, run_budget: usize, key_of: &(dyn Fn(&[u8], &mut Vec<u8>) + Sync)) -> io::Result<[u8; 32]>
+/// Sorts `count` raw rows of `N` big-endian IDs (`W` = `8 * N` bytes) by `key_of`, drops duplicates and writes them
+/// as index `name`.
+fn build_index<const N: usize, const W: usize>(dir: &Path, raw: &Path, count: u64, name: &str, run_budget: usize, key_of: &(dyn Fn(&[u8], &mut [u8; W]) + Sync)) -> io::Result<[u8; 32]>
 where
     super::disk_index::Width<N>: super::disk_index::SupportedWidth<N>,
 {
-    let width = N * 8;
-    let mut sorter = ExternalSort::new(dir, run_budget, width)?;
+    const { assert!(W == 8 * N) };
+    let mut sorter = FixedSort::<W>::new(dir, run_budget)?;
     let mut input = BufReader::new(File::open(raw)?);
-    let mut row = vec![0u8; width];
+    let mut row = [0u8; W];
+    let mut key = [0u8; W];
     for _ in 0..count {
         input.read_exact(&mut row)?;
-        let mut key = Vec::with_capacity(width);
         key_of(&row, &mut key);
         sorter.push(key)?;
     }
     let sorted = sorter.finish()?;
-    let mut reader = UniqueRows::<N>::open(&sorted)?;
+    let mut reader = UniqueRows::<N, W>::open(&sorted)?;
     let mut unique = 0u64;
     while reader.next().transpose()?.is_some() { unique += 1; }
-    let rows = UniqueRows::<N>::open(&sorted)?;
+    let rows = UniqueRows::<N, W>::open(&sorted)?;
     let path = dir.join(name);
     let mut output = BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&path)?);
     write_index_stream(&mut output, unique, rows)?;
@@ -206,7 +208,7 @@ impl Builder {
     fn finish(mut self, dir: &Path) -> io::Result<()> {
         // The last merge is not written out: records stream straight from the runs into the dictionary pass.
         let mut stream = self.terms.finish_stream()?;
-        let mut mapping = ExternalSort::new(dir, MEMORY, 17)?;
+        let mut mapping = FixedSort::<17>::new(dir, MEMORY)?;
         let mut dict = BufWriter::new(
             OpenOptions::new()
                 .read(true)
@@ -245,10 +247,10 @@ impl Builder {
                 previous.clear();
                 previous.extend_from_slice(text);
             }
-            let tail = &r[r.len() - 9..];
-            let mut entry = Vec::with_capacity(17);
-            entry.extend_from_slice(tail);
-            entry.extend_from_slice(&current.0.to_be_bytes());
+            // (row ID, position, term ID): sorted by row ID, then position.
+            let mut entry = [0u8; 17];
+            entry[..9].copy_from_slice(&r[r.len() - 9..]);
+            entry[9..].copy_from_slice(&current.0.to_be_bytes());
             mapping.push(entry)?;
         }
         dict.flush()?;
@@ -281,9 +283,9 @@ impl Builder {
             let mut current_id = None;
             let mut ids = [[0u8; 8]; 4];
             for pos in 0..arity as u8 {
-                let r =
-                    read_record(&mut input, 17)?.ok_or_else(|| bad("missing term assignment"))?;
-                if r.len() != 17 || r[8] != pos { return Err(bad("invalid term assignment")); }
+                let mut r = [0u8; 17];
+                if !read_fixed(&mut input, &mut r)? { return Err(bad("missing term assignment")) }
+                if r[8] != pos { return Err(bad("invalid term assignment")); }
                 let id = u64::from_be_bytes(r[..8].try_into().unwrap());
                 if pos == 0 {
                     if previous_id.is_some_and(|prev| id <= prev) { return Err(bad("unordered term assignment")); }
@@ -304,7 +306,7 @@ impl Builder {
             }
         }
         if let Some(mut q) = quads.take() { q.flush()?; }
-        if read_record(&mut input, 17)?.is_some() {
+        if read_fixed(&mut input, &mut [0u8; 17])? {
             return Err(bad("extra term assignment"));
         }
         triples.flush()?;
@@ -418,34 +420,32 @@ fn write_catalog(dir: &Path, mut graph_ids: Vec<u64>) -> io::Result<[u8; 32]> {
     out.get_ref().sync_all()?;
     Ok(identity)
 }
-struct UniqueRows<const N: usize> {
+/// The distinct rows of a sorted `FixedSort` output of `W` = `8 * N`-byte records, read without a per-row allocation.
+struct UniqueRows<const N: usize, const W: usize> {
     input: BufReader<File>,
-    previous: Option<Vec<u8>>,
+    previous: Option<[u8; W]>,
     done: bool,
 }
-impl<const N: usize> UniqueRows<N> {
+impl<const N: usize, const W: usize> UniqueRows<N, W> {
     fn open(path: &Path) -> io::Result<Self> {
         Ok(Self {
-            input: BufReader::new(File::open(path)?),
+            input: BufReader::with_capacity(64 * 1024, File::open(path)?),
             previous: None,
             done: false,
         })
     }
 }
-impl<const N: usize> Iterator for UniqueRows<N> {
+impl<const N: usize, const W: usize> Iterator for UniqueRows<N, W> {
     type Item = io::Result<[TermId; N]>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.done {
             return None;
         }
+        let mut bytes = [0u8; W];
         loop {
-            match read_record(&mut self.input, N * 8) {
-                Ok(Some(bytes)) => {
-                    if bytes.len() != N * 8 {
-                        self.done = true;
-                        return Some(Err(bad("bad triple run")));
-                    }
-                    if self.previous.as_deref() == Some(&bytes[..]) {
+            match read_fixed(&mut self.input, &mut bytes) {
+                Ok(true) => {
+                    if self.previous == Some(bytes) {
                         continue;
                     }
                     let row = std::array::from_fn(|i| {
@@ -456,7 +456,7 @@ impl<const N: usize> Iterator for UniqueRows<N> {
                     self.previous = Some(bytes);
                     return Some(Ok(row));
                 }
-                Ok(None) => {
+                Ok(false) => {
                     self.done = true;
                     return None;
                 }
