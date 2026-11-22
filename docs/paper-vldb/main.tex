@@ -74,7 +74,7 @@ RDF-3X stores all six permutations of subject, predicate and object, compressed 
 QLever's authors report that for typical semantic queries two permutations (PSO and POS) suffice, at the loss of patterns with a variable predicate, and describe Virtuoso's default indexes as corresponding to the same two, with more permutations built on demand~\cite{bast2017}.
 TripleLight keeps four (SPO, PSO, POS, OSP) and derives SOP and OPS exactly, so every access order remains available. The default store is 36\% smaller on LUBM-1000 (4.97 to 3.16\,GB) and 17\% smaller
 on BSBM-100M (7.94 to 6.56\,GB) than the six-order store (\texttt{docs/build-compare-orders-v1}). Across 255 benchmark queries, the trace recorded no regroup scans or memo misses and 18 direct remaps, all on LUBM (\texttt{docs/ablation-qual-v1}, \todo{cite after PR \#146 merges}); any latency effect is left to the timed four-against-six comparison in Section~4.4. How often real query logs reach a derived order is open (Section~5).
-The Ring\unread\ also answers ordered access over all six orders, from one structure in memory; our setting differs (disk, ordinary sorted blocks).
+The ring of Arroyuelo et al.\ replaces the six orders needed for worst-case-optimal joins by one compact structure that adds only sublinear space; their implementation operates in main memory on Wikidata, and they note that its random accesses make migration to disk difficult~\cite{arroyuelo2021}. Our setting differs: disk-resident, ordinary sorted blocks, and four stored orders.
 
 \subsection{Counting from index metadata and ID-level aggregation}
 Aggregation runs on IDs and decodes only the output. For supported counts the executor reads exact range counts from the index instead of enumerating matches:
@@ -82,7 +82,7 @@ a single-pattern \texttt{COUNT} is a prefix count, and a group-by on a permutati
 ours use the exact prefix metadata of the stored orders and need no extra index. Kùzu\unread\ counts per level of a join, of which this is a special case. The effect is measured as an ablation (Section~4.6), not claimed as a contribution.
 
 \subsection{Leapfrog triejoin with characteristic-set planning}
-Cyclic patterns use leapfrog triejoin (Veldhuizen\unread). The planner estimates cardinalities with characteristic sets and predicate counts (Neumann and Moerkotte\unread), orders joins by subset dynamic programming, and picks a variable order for trie joins;
+Cyclic patterns use leapfrog triejoin~\cite{veldhuizen2014}, a worst-case-optimal join that requires its inputs as sorted iterators, so each variable order needs an index in the matching permutation. The planner estimates cardinalities with characteristic sets and predicate counts (Neumann and Moerkotte\unread), orders joins by subset dynamic programming, and picks a variable order for trie joins;
 it replaces the greedy order only when statistics exist, the pattern has two to seven triples and the estimated greedy work is at least 100,000 (\texttt{docs/optimizer.md}).
 Its costs are heuristic work units, not calibrated against elapsed time (\texttt{docs/optimizer.md}).
 
@@ -130,6 +130,8 @@ The code, the scripts and the data needed to reproduce every number are in the r
 \bibitem{vrgoc2021} D.~Vrgo{\v c} et al. MillenniumDB: a persistent, open-source, graph database. arXiv:2111.01540, 2021.
 \bibitem{mdbreadme} MillenniumDB project README, github.com/MillenniumDB/MillenniumDB (accessed 2026-11-22).
 \bibitem{duckdbrdf} DuckDB community extension \texttt{rdf} (``Read and write RDF, query using SPARQL''), duckdb.org/community\_extensions/extensions/rdf (accessed 2026-11-22).
+\bibitem{arroyuelo2021} D.~Arroyuelo, A.~Hogan, G.~Navarro, J.~L.~Reutter, J.~Rojas-Ledesma, A.~Soto. Worst-case optimal graph joins in almost no space. \emph{SIGMOD}, 2021.
+\bibitem{veldhuizen2014} T.~L.~Veldhuizen. Leapfrog triejoin: a simple, worst-case optimal join algorithm. \emph{ICDT}, 2014 (arXiv:1210.0481).
 \bibitem{duan2011} S.~Duan, A.~Kementsietsidis, K.~Srinivas, O.~Udrea. Apples and oranges: a comparison of RDF benchmarks and real RDF datasets. \emph{SIGMOD}, 2011.
 \end{thebibliography}
 \end{document}
