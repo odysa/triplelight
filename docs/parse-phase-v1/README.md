@@ -52,8 +52,8 @@ fastest shards then waited, since the term merge needs every shard.
 | Occurrences that are IRIs / literals | 370.6M / 44.4M (no blank nodes) |
 
 Occurrences by how often their term occurs: once 11.2M; 2 to 9 times 99.0M; 10 to 99 times 84.6M; 100 to 999 times
-11.6M; 1,000 to 99,999 times 23.5M; 100,000 times or more 185.1M (44.6% of all occurrences, from a few hundred terms:
-predicates, `rdf:type`, class IRIs).
+11.6M; 1,000 to 99,999 times 23.5M; 100,000 times or more 185.1M (44.6% of all occurrences). Which terms those
+are was not itemised; predicates and class IRIs are the likely ones.
 
 Per-shard and global distinct counts are almost equal because LUBM's data is generated university by university, so a
 term is local to the shard that holds its university. Other datasets will share more terms across shards, and the scan
