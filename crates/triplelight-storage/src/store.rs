@@ -413,14 +413,14 @@ impl Store {
     /// Durably commits a change set; returns once it is fsynced and visible to new readers. Concurrent commits
     /// share one fsync (group commit). No-op changes (inserting a present triple, deleting an absent one) are dropped.
     pub fn commit(&self, changes: &[(Change, Triple)]) -> std::io::Result<usize> {
-        self.submit(|_| self.enqueue(&default_changes(changes), Count::Net), &|e| e)
+        self.submit(|_| self.enqueue_triples(changes), &|e| e)
     }
 
     /// Durably commits a dataset update (task #36): the steps apply in order and atomically, as in
     /// `Overlay::with_dataset_changes`, and their net effect is one WAL record. Returns the number of triples changed.
     /// The first record that touches a named graph first fences CURRENT (see the module docs).
     pub fn commit_dataset(&self, changes: &[DatasetChange]) -> std::io::Result<usize> {
-        self.submit(|_| self.enqueue(changes, Count::Steps), &|e| e)
+        self.submit(|_| self.enqueue_dataset(changes), &|e| e)
     }
 
     /// Executes an update request atomically: `compute` turns `text` into a change set against the latest accepted
@@ -439,7 +439,7 @@ impl Store {
     ) -> Result<usize, E> {
         self.submit(|snap| {
             let changes = compute(snap, text)?;
-            self.enqueue(&default_changes(&changes), Count::Net).map_err(storage_error)
+            self.enqueue_triples(&changes).map_err(storage_error)
         }, storage_error)
     }
 
@@ -452,7 +452,7 @@ impl Store {
     ) -> Result<usize, E> {
         self.submit(|snap| {
             let changes = compute(snap, text)?;
-            self.enqueue(&changes, Count::Steps).map_err(storage_error)
+            self.enqueue_dataset(&changes).map_err(storage_error)
         }, storage_error)
     }
 
@@ -475,9 +475,20 @@ impl Store {
         Ok(())
     }
 
-    /// Validates and appends a dataset update to the pending state as one record; returns the sequence number to wait
-    /// for and the count `count` asks for.
-    fn enqueue(&self, changes: &[DatasetChange], count: Count) -> std::io::Result<(u64, usize)> {
+    /// Validates default-graph triple changes, then appends them as one record; returns the sequence number to wait
+    /// for and the net change. Validation runs before the conversion to dataset steps, so a rejected batch is not
+    /// copied under the writer lock.
+    fn enqueue_triples(&self, changes: &[(Change, Triple)]) -> std::io::Result<(u64, usize)> {
+        self.check_poisoned()?;
+        // Only inserts are checked: deleting an oversized term, which a legacy WAL record can have put in the store,
+        // must stay possible.
+        for (c, t) in changes { if *c == Change::Insert { check_triple_size(t)? } }
+        self.append(&default_changes(changes), Count::Net)
+    }
+
+    /// Validates a dataset update, then appends it as one record; returns the sequence number to wait for and the
+    /// sum of each step's changed triples.
+    fn enqueue_dataset(&self, changes: &[DatasetChange]) -> std::io::Result<(u64, usize)> {
         self.check_poisoned()?;
         // Only what adds data is checked (inserts and CREATE): deleting an oversized term, or dropping or clearing a
         // graph named by one, which a legacy WAL record can have put in the store, must stay possible.
@@ -491,6 +502,12 @@ impl Store {
                 _ => {}
             }
         }
+        self.append(changes, Count::Steps)
+    }
+
+    /// Appends validated steps to the pending state as one record (fencing CURRENT first if the record is the first
+    /// to touch a named graph); returns the sequence number to wait for and the count `count` asks for.
+    fn append(&self, changes: &[DatasetChange], count: Count) -> std::io::Result<(u64, usize)> {
         let mut p = self.pending.lock().unwrap();
         let cur = p.latest.clone();
         let (next, steps, rec) = cur.apply_dataset(changes, true)?;
