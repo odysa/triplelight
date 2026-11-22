@@ -1,0 +1,121 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{booktabs,hyperref,amsmath}
+\newcommand{\todo}[1]{\textbf{[TODO: #1]}}
+\newcommand{\unread}{$^{\dagger}$}
+\title{TripleLight: an Embedded Analytical RDF Database}
+\author{TripleLight authors}
+\date{Draft, 2026-11-22 (target: VLDB 2027, February 1 cycle). Section~4 awaits the dedicated-machine measurements.}
+\begin{document}
+\maketitle
+
+\noindent\textbf{Status of this draft.} Every number cites its evidence file (\texttt{docs/...} in the repository).
+Papers marked~\unread\ were not read in full; they are named from their abstracts or from a source we read and must be re-checked before
+submission. Timing results are deliberately absent: they are measured once, on one dedicated machine, under a registered protocol
+(\texttt{docs/eval-plan/PLAN.md}). Whether VLDB 2027 requires anonymization is to be confirmed against the call for papers.
+
+\begin{abstract}
+Applications that need analytical queries over RDF data today run a database server or load the data into a general-purpose
+relational engine. TripleLight is an embedded RDF database: an application opens a directory through a library call, and
+SPARQL~1.1 queries run in the application's process, over dictionary-encoded IDs, on a sorted, compressed, disk-resident store.
+\todo{one sentence on the measured position against embedded RDF stores and a SQL engine (C1a), and one against RDF servers (C1b), from Section~4 after the dedicated-machine run.}
+We describe the architecture and the techniques it combines, credit each to its source, and examine whether the comparison itself is fair, since
+engines differ in which triple-index orders they store.
+\end{abstract}
+
+\section{Introduction}
+\paragraph{Analytical SPARQL inside the application.} Data scientists increasingly run analyses on one machine and are poorly
+served by systems built for dedicated servers, a point Raasveldt and M\"uhleisen made for relational data when they proposed
+embedded analytical systems: tight integration with the analysis tool, efficient transfer of results into it, resilience on user
+hardware, and cooperation with the host application for resources~\cite{raasveldt2020}. RDF has a similar gap. The scalable RDF stores we compare against (Virtuoso, QLever) are servers that an application reaches over a protocol.
+An application that wants an aggregate over a hundred million triples has to run such a server, or export the data to a relational engine.
+
+\paragraph{What we built and where it stands.} TripleLight is an embedded RDF database in Rust, with bindings for Python, Node, WebAssembly, C, Go and Java.
+It answers SPARQL~1.1 queries and updates in process, on IDs, and returns results as SPARQL JSON, owned rows or Arrow C streams
+(\texttt{DESIGN.md}). We measure it in two settings that are never mixed: embedded, through each language's in-process API, against embedded
+RDF stores and a SQL engine (C1a); and as an HTTP SPARQL server, against QLever, Virtuoso, Jena TDB2/Fuseki, Oxigraph and RDF4J (C1b).
+\todo{state the measured position for C1a and C1b, with the dedicated-machine numbers and the answer gate.}
+The techniques that produce it are not new, and Section~3 credits each: four of the six triple orders with exact derivation of the other two,
+count answers from index metadata, leapfrog triejoin with characteristic-set planning, and an external-sort build pipeline.
+What we contribute is the combination in an embedded, disk-resident engine, the measurements, and the evidence package behind them.
+
+\paragraph{Is the comparison fair?} RDF engines differ in the triple orders they store (RDF-3X and Hexastore keep six; QLever supports a two-order mode; RDF4J's native store is configurable).
+A ranking of engines can therefore mix executor quality with index choice. Section~4.5 asks whether changing the registered layouts of three engines moves them in
+a ranking of six HTTP engines, and registers in advance what would count as a negative answer.
+
+\section{Architecture}
+TripleLight is a Cargo workspace of focused crates (\texttt{DESIGN.md}): RDF terms and parsers, IRI handling, a core of term IDs and storage traits,
+a SPARQL parser and algebra, a planner with statistics, an executor, a storage layer, and the embedded API with an optional HTTP server.
+No Oxigraph crate is a runtime dependency; the parsers and term types were written to match \texttt{oxrdf}, \texttt{oxiri} and \texttt{oxttl} and are tested
+differentially against them.
+
+\paragraph{Terms and IDs.} Every term is a 64-bit ID whose top four bits give its kind. Within a kind, ID order equals term-text order, so operators compare, join and group
+IDs and decode a term only when a filter, a string function or the result needs its text. On disk one front-coded dictionary file in ID order serves lookups in both directions;
+this one copy shrank the BSBM-100M store from 12,533.1\,MB to 7,936.3\,MB (\texttt{docs/unified-dictionary-100m-v1}).
+
+\paragraph{Storage.} A base snapshot is immutable: sorted triples in compressed, checksummed blocks, read on demand through decoded-block caches that share one memory budget.
+New bases keep SPO, PSO, POS and OSP; SOP and OPS are served from them with the same rows in the same order. Updates go to a write-ahead log with group commit and form an
+overlay of inserts and deletes over the base; readers pin a snapshot, so a query never sees part of an update, and compaction writes a new base by external sort and
+switches to it atomically. A file lock allows one process per store directory.
+
+\paragraph{Query processing.} A BGP is ordered greedily by exact index-prefix counts, and eligible patterns use a cost-based order from characteristic-set statistics; cyclic patterns use leapfrog triejoin.
+Execution runs on IDs with index nested-loop joins, filter pushdown, hash aggregation, top-$k$ for \texttt{ORDER BY \dots\ LIMIT}, and count shortcuts. Statistics are persisted next to the base:
+with a saved file they are ready 0.74 to 0.91\,s after open, against 20.5 to 25.8\,s when rebuilt by a scan (\texttt{docs/startup36-persisted-stats}).
+Correctness is gated on answers matching Apache Jena under each benchmark's declared checks and on at least 323 passing W3C SPARQL~1.1 query tests in CI (\texttt{DESIGN.md}).
+
+\section{Techniques and Their Sources}
+\subsection{Four orders with exact derivation}
+RDF-3X stores all six permutations of subject, predicate and object, compressed by deltas, and adds count-aggregated indexes~\cite{neumann2008}; Hexastore\unread\ introduced the six-index idea.
+QLever's authors report that for typical semantic queries two permutations (PSO and POS) suffice, at the loss of patterns with a variable predicate, and describe Virtuoso's default indexes as corresponding to the same two, with more permutations built on demand~\cite{bast2017}.
+TripleLight keeps four (SPO, PSO, POS, OSP) and derives SOP and OPS exactly, so every access order remains available. The default store is 36\% smaller on LUBM-1000 (4.97 to 3.16\,GB) and 17\% smaller
+on BSBM-100M (7.94 to 6.56\,GB) than the six-order store (\texttt{docs/build-compare-orders-v1}). On 255 benchmark queries the derived path needed no regroup scan and no memo miss, with only 18 cheap remaps on LUBM, so on these benchmarks the two dropped orders cost nothing at query time
+(\texttt{docs/ablation-qual-v1}, \todo{cite after PR \#146 merges}). How often real query logs reach a derived order is open (Section~5).
+The Ring\unread\ also answers ordered access over all six orders, from one structure in memory; our setting differs (disk, ordinary sorted blocks).
+
+\subsection{Counting from index metadata and ID-level aggregation}
+Aggregation runs on IDs and decodes only the output. For supported counts the executor reads exact range counts from the index instead of enumerating matches:
+a single-pattern \texttt{COUNT} is a prefix count, and a group-by on a permutation prefix counts each run (\texttt{docs/count-pushdown}). RDF-3X precomputes such counts as separate aggregated indexes~\cite{neumann2008};
+ours use the exact prefix metadata of the stored orders and need no extra index. Kùzu\unread\ counts per level of a join, of which this is a special case. The effect is measured as an ablation (Section~4.6), not claimed as a contribution.
+
+\subsection{Leapfrog triejoin with characteristic-set planning}
+Cyclic patterns use leapfrog triejoin (Veldhuizen\unread). The planner estimates cardinalities with characteristic sets and predicate counts (Neumann and Moerkotte\unread), orders joins by subset dynamic programming, and picks a variable order for trie joins;
+it replaces the greedy order only when statistics exist, the pattern has two to seven triples and the estimated greedy work is at least 100,000 (\texttt{docs/optimizer.md}).
+Its costs are heuristic work units, not calibrated against elapsed time (\texttt{docs/optimizer.md}).
+
+\subsection{Build pipeline}
+A disk store is built by external sort: parallel shard parsing, a term sort, ID assignment and the order builds. On LUBM-1000 a four-order build took 654.8\,s, of which shard parsing and sorting took 38.7\%, the dictionary-side stages 35\% and the order builds 26.4\%
+(\texttt{docs/build-profile-v1}). Fixed-width sort rows were 4--5$\times$ faster than variable-length rows in a microbenchmark (same file). Terms repeat heavily: 7.9\% are distinct in LUBM-1000 and BSBM-100M and 3.2\% in WatDiv-100 over the whole file
+(\texttt{docs/parse-phase-v1}), which makes deduplication before sorting attractive; QLever's builder already deduplicates before sorting, so we treat this as engineering that follows an existing design.
+
+\subsection{Memory budget and cooperation}
+The decoded-block caches share one budget. Cache budgets of 2\,GB, 1\,GB and 512\,MB made warm LUBM-1000 queries 3.6, 4.0 and 4.6$\times$ slower than the default (\texttt{docs/cache-budget-sweep-v1}). Cooperating with a host application's resources is one of the embedded requirements~\cite{raasveldt2020};
+we do not yet claim more than a configurable budget. \todo{cgroup-aware default, once its PR is merged and measured.}
+
+\section{Evaluation}
+\subsection{Setup and answer gates}
+\todo{Systems, versions, dedicated machine, protocol, answer classes and timeout: from \texttt{docs/eval-plan/PLAN.md}.}
+\subsection{C1a: embedded}\todo{Results after the dedicated-machine run.}
+\subsection{C1b: HTTP}\todo{Results after the dedicated-machine run.}
+\subsection{Build and storage}\todo{Build time, scratch and store size on the dedicated machine; size numbers from Section~3.1 may be repeated.}
+\subsection{Is the comparison fair?}
+Registered predictions, to be stated here exactly as registered in the plan amendment (draft: branch \texttt{wxp-paper-ea}, Section~4.0): Kendall's $\tau_b$ between the default-layout and the registered aligned-layout ranking of the six HTTP engines, per suite; a suite with fewer than four paired engines is unevaluable;
+the claim fails if $\tau_b \ge 0.8$ on every evaluable suite. \todo{results table.}
+\subsection{Ablations}\todo{Count shortcut, cache budget, result windowing: reported as ablations.}
+
+\section{Limits and Related Work}
+\paragraph{Limits.} Disk builds parse shards in parallel and overlap index builds (an average of 2.9 of 10 cores busy on LUBM-1000, \texttt{docs/build-profile-v1}) and need scratch disk of 1.7 to 2.1 times the input at the peak (\texttt{docs/build-compare-orders-v1}).
+Results are materialized before output. One process per store directory. \texttt{LOAD}, \texttt{SERVICE}, \texttt{BNODE(string)} and blank-node graph names are unsupported (\texttt{DESIGN.md}).
+The cost of the derived orders on real query logs is not measured. The benchmarks are synthetic and their structure is nearly fixed and unlike real RDF data~\cite{duan2011}.
+\paragraph{Related work.} \emph{Embedded analytics.} DuckDB's requirements for embedded analytical systems~\cite{raasveldt2020}; Kùzu\unread; pyoxigraph, Blazegraph and DuckDB as embedded comparators.
+\emph{RDF stores.} RDF-3X~\cite{neumann2008}, Hexastore\unread, QLever~\cite{bast2017}, Virtuoso, Jena TDB2, Oxigraph, RDF4J.
+\emph{Layout and benchmarks.} Sidirourgos et al.\ re-evaluated vertical partitioning on MonetDB/SQL and PostgreSQL and found that clustering (PSO against SPO) changes performance by factors of two to five~\cite{sidirourgos2008};
+Duan et al.\ showed that benchmark data differ from real RDF data in structuredness~\cite{duan2011}.
+
+\begin{thebibliography}{9}
+\bibitem{raasveldt2020} M.~Raasveldt, H.~M\"uhleisen. Data management for data science: towards embedded analytics. \emph{CIDR}, 2020.
+\bibitem{neumann2008} T.~Neumann, G.~Weikum. RDF-3X: a RISC-style engine for RDF. \emph{PVLDB} 1(1), 2008.
+\bibitem{bast2017} H.~Bast, B.~Buchhold. QLever: a query engine for efficient SPARQL+text search. \emph{CIKM}, 2017.
+\bibitem{sidirourgos2008} L.~Sidirourgos, R.~Goncalves, M.~Kersten, N.~Nes, S.~Manegold. Column-store support for RDF data management: not all swans are white. \emph{PVLDB} 1(2), 2008.
+\bibitem{duan2011} S.~Duan, A.~Kementsietsidis, K.~Srinivas, O.~Udrea. Apples and oranges: a comparison of RDF benchmarks and real RDF datasets. \emph{SIGMOD}, 2011.
+\end{thebibliography}
+\end{document}
