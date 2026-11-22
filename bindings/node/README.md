@@ -22,9 +22,9 @@ Install: `npm install triplelight`. The package carries one prebuilt addon per p
 | Platform | Requirement |
 |---|---|
 | macOS arm64 (Apple Silicon) | none beyond Node 18+ |
-| Linux x64 and Linux arm64 | glibc GLIBC_FLOOR or newer; musl (Alpine) is not supported |
+| Linux x64 and Linux arm64 | glibc 2.31 or newer (Debian 11, Ubuntu 20.04, RHEL 9 and later); older systems such as RHEL 8, and musl (Alpine), are not supported |
 
-The download is 6.6 MB and the unpacked package 18.9 MB (three addons of 5.7 to 6.7 MB each). On any other platform, build from source.
+The download is 5.9 MB and the unpacked package 15.3 MB (three addons of 4.5 to 5.7 MB each). On any other platform, build from source.
 
 Build from source (Rust 1.100, Node 18+, Linux or macOS): `npm run build`, then `npm test`.
 Types are in `index.d.ts`. Errors are `TripleLightError` subclasses: `SyntaxError`, `UnsupportedError`,
