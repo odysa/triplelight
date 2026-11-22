@@ -1,0 +1,31 @@
+27 matches in 1F:
+
+[file] /private/tmp/wxp-16/n89/p1/stderr.log (27):
+     2: [phase] start t=0.0s dir_mb=0
+     3: [phase] shards_parsed_and_sorted t=253.6s dir_mb=27665
+     4: [phase] term_runs_ready_for_stream t=253.6s dir_mb=27665
+     5: [phase] term_runs_streamed_and_removed t=347.6s dir_mb=10716
+     6: [phase] legacy_dictionary_written_sorted_terms_removed t=347.6s dir_mb=10716
+     7: [phase] mapping_sorted t=425.1s dir_mb=10766
+     8: [phase] triples_raw_written_assignments_removed t=438.0s dir_mb=5622
+     9: [phase] dictionary_converted t=481.7s dir_mb=3806
+    10: [phase] spo_rows_read t=521.9s dir_mb=13100
+    11: [phase] pso_rows_read t=530.4s dir_mb=15410
+    12: [phase] pos_rows_read t=535.7s dir_mb=17198
+    13: [phase] spo_sorted t=563.1s dir_mb=17685
+    14: [phase] spo_counted t=570.5s dir_mb=20011
+    15: [phase] pso_sorted t=571.5s dir_mb=16873
+    16: [phase] pos_sorted t=577.9s dir_mb=15314
+    17: [phase] pso_counted t=578.5s dir_mb=15348
+    18: [phase] pos_counted t=584.6s dir_mb=15923
+    19: [phase] pso_written t=592.1s dir_mb=16656
+    20: [phase] spo_written t=594.5s dir_mb=13203
+    21: [phase] pos_written t=596.4s dir_mb=9585
+    22: [phase] permutation_batch_done t=596.7s dir_mb=5892
+    23: [phase] osp_rows_read t=621.6s dir_mb=9550
+    24: [phase] osp_sorted t=643.1s dir_mb=9585
+    25: [phase] osp_counted t=647.1s dir_mb=9585
+    26: [phase] osp_written t=654.3s dir_mb=9876
+  +2
+
+... +2
