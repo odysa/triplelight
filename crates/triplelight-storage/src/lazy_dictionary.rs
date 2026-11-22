@@ -881,7 +881,7 @@ pub(super) fn convert_unified(dir: &Path) -> io::Result<[u8; 32]> {
 /// Caller owns manifest publication and scratch directory durability.
 pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
     use super::external_sort::ExternalSort;
-    use std::io::{BufReader, Read};
+    use std::io::Read;
     let (mut input, count) = open_legacy(&dir.join("dictionary"))?;
     let mut by_term = ExternalSort::new(dir, 128 * 1024 * 1024, TERM_RECORD_MAX)?;
     let mut by_id = ExternalSort::new(dir, 128 * 1024 * 1024, ID_RECORD_MAX)?;
