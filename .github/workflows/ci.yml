@@ -118,7 +118,7 @@ jobs:
       - name: Notices ship in the npm package
         working-directory: bindings/node
         run: |
-          mkdir -p dist && npm pack --pack-destination dist
+          mkdir -p dist && npm pack --ignore-scripts --pack-destination dist
           python3 ../../ci/check_notices.py --artifacts dist
 
   wasm:
