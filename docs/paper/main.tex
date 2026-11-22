@@ -39,10 +39,11 @@ which product features sell best in each country. The question is one SPARQL que
 \texttt{GROUP BY}. Today there are two ways to answer it. One is to install and operate a triple-store server such as
 Virtuoso~\cite{virtuoso}, QLever~\cite{qlever} or Jena TDB2~\cite{jena}, load the data, and query it over HTTP. The
 other is an embedded library such as Oxigraph~\cite{oxigraph} or the RDF4J memory store~\cite{rdf4j}, which lives in
-the analyst's process. Embedded RDF libraries, however, evaluate queries one solution at a time, and on aggregate workloads they are one to two orders of magnitude slower than the servers (\cref{sec:perf}).
-A third option, converting the triples to a relational table and using DuckDB~\cite{duckdb}, gives up SPARQL and RDF
-term semantics and, as we show, is still slow, because a single triples table turns every graph pattern into a chain
-of self-joins.
+the analyst's process. In our measurements, however, the embedded stores we tested were far slower on aggregate
+queries: through its Python API, pyoxigraph takes 41.7\,s and 71.6\,s for the LUBM and WatDiv aggregate suites that
+\sys{} answers in 0.67\,s and 0.20\,s (\cref{sec:perf}). A third option, converting the triples to a relational table
+and using DuckDB~\cite{duckdb}, gives up SPARQL and RDF term semantics; with the single triples table we tested, every
+graph pattern becomes a chain of self-joins, and the same suites take 50.4\,s and 27.1\,s.
 
 Relational analytics went through the same split, and DuckDB resolved it by bringing columnar storage and vectorized
 execution into the application's process. \sys{} applies that idea to RDF. Its storage follows the read-optimized
@@ -77,13 +78,13 @@ This demonstration shows:
   \draw[flow] (plan) -- (exec);
   \draw[flow] ([xshift=3mm]exec.north) -- node[edgelabel, right, xshift=1mm] {results} ([xshift=3mm]exec.north |- api.south);
   \node[membox, below=6mm of parse, minimum width=18mm] (dict) {dictionary\\ID $\leftrightarrow$ term};
-  \node[membox, right=of dict, minimum width=18mm] (perm) {6 sorted orders\\SPO \dots\ OPS};
+  \node[membox, right=of dict, minimum width=18mm] (perm) {6 triple orders\\(+6 quad orders)};
   \node[membox, right=of perm, minimum width=18mm] (delta) {delta + WAL\\(updates)};
   \node[group, fit=(dict)(perm)(delta), label={[grouplabel]below:immutable base snapshot \;+\; overlay; compaction merges them}] (store) {};
   \draw[flow] (exec.south) -- (exec.south |- store.north);
   \draw[flow] (plan.south) -- node[edgelabel] {statistics} (plan.south |- store.north);
 \end{tikzpicture}}
-\caption{\sys{} inside an application. Queries are planned from persisted statistics and executed on 64-bit term IDs
+\caption{\sys{} inside an application. Queries are planned from statistics (persisted with disk stores) and executed on 64-bit term IDs
 over six sorted orders of the triples; only results are decoded to text. Updates go to a write-ahead log and an
 in-memory overlay that compaction merges into a new base.}
 \label{fig:overview}
@@ -92,16 +93,16 @@ in-memory overlay that compaction merges into a new base.}
 \cref{fig:overview} shows the components. The code is seven library crates (Rust packages) plus the bindings, under the MIT licence; the
 parsers and term types are \sys{}'s own, with the RDF parsing behaviour of Oxigraph's crates kept exactly.
 
-\paragraph{Terms and IDs.} Every RDF term is a 64-bit ID whose top four bits give its kind. Plain strings of up to seven bytes are carried inside the ID and need no dictionary entry; every other term is
-stored once in a front-coded dictionary. Operators compare, join and group IDs, and decode a term only when a filter, a string
+\paragraph{Terms and IDs.} Every RDF term is a 64-bit ID whose top four bits give its kind; in memory, a plain string of up to seven bytes is
+encoded in the ID itself. On disk, every term is stored once, in a front-coded dictionary. Operators compare, join and group IDs, and decode a term only when a filter, a string
 function or the final result needs its text.
 
 \paragraph{Storage.} A base snapshot holds the six orders (SPO, SOP, PSO, POS, OSP, OPS) as compressed, checksummed
-blocks, read through one shared block cache with a fixed budget. A dataset with named graphs adds six graph-first
+blocks, read through block caches that share one fixed memory budget. A dataset with named graphs adds six graph-first
 quad orders and a catalog of graphs. Updates are appended to a write-ahead log with group commit and are synced
 before the call returns; they are kept as an overlay of inserts and deletes, and compaction writes a new base.
-Readers pin a snapshot, so a query never sees half of an update. A \texttt{verify} command checks a whole store: block checksums,
-orders and dictionary.
+Readers pin a snapshot, so a query never sees half of an update. A \texttt{verify} command checks a whole store: block checksums, that all orders hold the same triples, that every
+ID resolves, and the dictionary and graph catalog.
 
 \paragraph{Query engine.} SPARQL is parsed to an algebra and planned with cost-based join ordering from characteristic
 sets~\cite{charsets} and predicate counts. These statistics are saved next to the base, so a reopened 100M-triple store
@@ -141,8 +142,8 @@ WatDiv aggregates (42) & \textbf{0.20 / 0.23} & 27.1 / 18.9 & 71.6 / 71.8 \\
 \end{table}
 
 \paragraph{In process.} \cref{tab:python} is the comparison an embedded user cares about: time from submitting a query
-until the full result is Python values. On the BSBM business-intelligence workload \sys{} is 8--11$\times$ faster
-than DuckDB, and on the aggregate suites 60--135$\times$. DuckDB's queries are hand-written or translated SQL over a
+until the full result is Python values. On these workloads and with these SQL layouts, \sys{} is 8--11$\times$ faster than DuckDB on
+BSBM business intelligence, 62--75$\times$ on the LUBM-100 aggregates and 82--136$\times$ on the WatDiv aggregates. DuckDB's queries are hand-written or translated SQL over a
 single table; a better relational layout might narrow the gap, and we did not measure one. All 1,104 scheduled requests
 passed the answer gates against Jena. The Node.js API shows the same picture against quadstore with Comunica.
 
@@ -150,8 +151,10 @@ passed the answer gates against Jena. The Node.js API shows the same picture aga
 lowest total in memory and on disk against Virtuoso~7 and QLever in a Linux VM, and against RDF4J, Jena TDB2 and
 Oxigraph on the host (on BSBM-10M in the VM, within a few percent of Virtuoso); for example, LUBM-100 totals 289\,ms (memory) and 378\,ms (disk) against 2,103\,ms for QLever
 and 9,441\,ms for Virtuoso. At 100--140M triples, with every system given about 10\,GB of cache, \sys{}'s disk store
-has the lowest LUBM-1000 total (6.4\,s against 30.5\,s for QLever) and is level with Virtuoso on BSBM-100M (260 and
-223\,ms total; geometric means 8.32 and 8.39\,ms).
+has the lowest LUBM-1000 total among complete answers (6.4\,s against 30.5\,s for QLever; Virtuoso's 18.2\,s is
+understated because its endpoint truncates two results at 1,048,576 rows, and without those two queries the totals are
+0.94, 1.68 and 5.16\,s for \sys{}, QLever and Virtuoso). On BSBM-100M, \sys{} and Virtuoso are level: Virtuoso has
+the lower total (223 against 260\,ms) and \sys{} the lower geometric mean (8.32 against 8.39\,ms).
 
 \paragraph{Limits.} Building the disk store is the widest gap: LUBM-1000 takes 1,035\,s against 425\,s for QLever,
 because the build is mostly single-threaded and needs tens of gigabytes of scratch disk. QLever runs LUBM-1000 in
@@ -163,10 +166,21 @@ integers, and results outside that range are errors. Results are materialized be
 
 Attendees use a laptop with prepared stores of LUBM, WatDiv and BSBM, and can bring their own N-Triples or Turtle file.
 
-\paragraph{Scenario 1: analytics in a notebook.} In Jupyter, the attendee opens a persistent store with
-\texttt{Database("bsbm.db")}, runs a BSBM business-intelligence query and receives rows as Python values. The same
-question as SQL runs next to it in DuckDB over the triples table, and pyoxigraph runs the SPARQL. Both answers are
-checked against Jena's in the notebook, so the attendee sees time and correctness together. They can edit a query and compare again.
+\paragraph{Scenario 1: analytics in a notebook.} In Jupyter, the attendee builds and opens a WatDiv-100 store and runs
+one aggregate query in three engines side by side:
+{\footnotesize\begin{verbatim}
+$ triplelight build-disk watdiv100.nt w.db --build-external
+>>> from triplelight import Database
+>>> db = Database("w.db")
+>>> db.query("SELECT ?o (COUNT(*) AS ?n) WHERE { ?s "
+...   "<http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?o }"
+...   " GROUP BY ?o")
+\end{verbatim}}
+pyoxigraph runs the same SPARQL and DuckDB the equivalent SQL over the triples table. The notebook checks every answer
+against Jena's, which is in the repository (\repo{docs/count-pushdown/results/jena-watdiv-group_gender.json}):
+\texttt{wsdbm:Gender0} 15,119 and \texttt{wsdbm:Gender1} 44,898. The notebook then shows the recorded BSBM
+business-intelligence comparison of \sys{} and DuckDB (\cref{tab:python}) with its fixed 45 requests; pyoxigraph is
+not part of it, because it did not complete that workload's qualification.
 
 \paragraph{Scenario 2: an updatable, durable store.} The attendee inserts and deletes triples in named graphs with
 SPARQL Update, holds a read snapshot open while the data changes, and sees the snapshot keep its view. They then kill
@@ -191,9 +205,9 @@ pieces together as an embedded, updatable RDF database.
 
 \section{Conclusion}
 
-\sys{} shows that RDF analytics need not require a server: an embedded engine that stores six orders of
-dictionary-encoded triples and executes on IDs is faster than embedded RDF libraries and a relational embedded engine
-on analytical SPARQL, and competitive with the fastest servers. Its main open problems are a parallel, lower-scratch
+\sys{} shows that RDF analytics need not require a server. On the workloads we measured, an embedded engine that
+stores six orders of dictionary-encoded triples and executes on IDs was faster than the embedded RDF stores and the
+triples-table SQL layouts we tested, and competitive with the fastest servers we ran. Its main open problems are a parallel, lower-scratch
 disk build and a smaller memory footprint at 100M triples and beyond.
 
 \bibliographystyle{ACM-Reference-Format}
