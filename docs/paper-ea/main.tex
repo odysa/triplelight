@@ -71,10 +71,12 @@ and we report them as benchmark results only.
 \paragraph{Methodology.} \todo{SPARQL log studies (Bonifati et al.\unread, Arias et al.\unread) and the real-query-log coverage of the derived orders; read before writing.}
 
 \section{Methodology}
-\paragraph{Systems.} Versions are pinned in \texttt{docs/eval-plan/PLAN.md} (frozen plan). Server cohort (HTTP): TripleLight,
-QLever, Virtuoso~7, Jena TDB2/Fuseki, Oxigraph, RDF4J (native). Embedded cohort (language API): TripleLight bindings,
-pyoxigraph, Blazegraph, and DuckDB as a SQL baseline. The embedded and the HTTP cohort are compared within themselves and
-never in one figure.
+\paragraph{Systems.} Versions are pinned in \texttt{docs/eval-plan/PLAN.md} (frozen plan). Server cohort (HTTP):
+TripleLight, QLever, Jena TDB2/Fuseki, Oxigraph and RDF4J (native) are in the ranking test, each with the arm named in
+Section~4.0. Virtuoso~7 is measured and reported in the HTTP cohort but is \emph{outside the ranking test}: \todo{reason or arm, to be confirmed by the inventory owner; the inventory has no registered alternate layout for it}.
+Embedded cohort (language API): TripleLight bindings and DuckDB are in the ranking test; pyoxigraph, Blazegraph and rdflib backends
+are reported but outside it for the same reason (no registered default/aligned pair). \todo{confirm per system.}
+The embedded and the HTTP cohort are compared within themselves and never in one figure.
 
 \paragraph{Index inventory.} For every system we record the orders it stores in its measured configuration
 (\texttt{docs/embedded-store-inventory.md} and its receipt supplement). Examples: RDF4J's measured profile stores
@@ -90,10 +92,13 @@ Timeout is 300\,s per query. Every answer is checked against a frozen Jena refer
 value-compatible, mismatch, incomplete, timeout or error; only passing and value-compatible runs are timed, and each figure
 names the gate it uses. Variants are compared with ABBA ordering. Equal CPU and memory budgets are enforced by cgroup.
 
-\paragraph{Ranking test.} For every suite we rank the systems of a cohort by geometric-mean time (default configuration), re-rank
-under the aligned configurations, and compute Kendall's $\tau$ between the two rankings. Cells where a system cannot answer a
-suite are marked unsupported and left out of the aligned ranking, which then covers fewer systems or suites
-(Section~8).
+\paragraph{Ranking test (proposed amendment to the frozen plan).} This test is not in the frozen plan yet; it is a proposed
+amendment until it lands there. For each suite and cohort we compute both rankings on the \emph{same engines} and the \emph{same frozen
+request set}, by geometric-mean time over answers that pass the gate. If an engine cannot answer a suite in one arm (for example
+QLever's two-order mode), it is reported in the coverage table as unsupported and removed from \emph{both} rank vectors before
+$\tau$ is computed, so a change in who can answer is never read as a ranking change. A suite and cohort with fewer than the minimum
+number of paired engines is \emph{unevaluable} and stays unevaluable under the kill rule. The fixed-SPO DuckDB arm is diagnostic only
+and not an arm of the test. Proposed, for the claims owner to confirm: $\tau_b$ with average ranks for ties, minimum of four paired engines.
 
 \section{Results: Rankings}
 \subsection{Registered predictions (written before any measurement)}
@@ -103,7 +108,7 @@ suite are marked unsupported and left out of the aligned ranking, which then cov
   TripleLight with four and with six orders; QLever default and two-order mode (the latter may not answer variable-predicate patterns);
   DuckDB as a single table and as six copies, fixed and routed; RDF4J with three orders as measured (\texttt{spoc, posc, ospc});
   Jena TDB2 and Oxigraph with fixed layouts, so default and aligned configurations coincide.
-  \item \textbf{Kill rule:} the claim that index layout changes the ranking fails if $\tau \ge 0.8$ on every suite.
+  \item \textbf{Kill rule:} the claim that index layout changes the ranking fails if $\tau \ge 0.8$ on every \emph{evaluable} suite; unevaluable suites do not count towards it.
   \item \textbf{Predicted direction} (registered 2026-11-22 by the claims owner, Kaiming He, task \#96, before any measurement):
   on the analytical suites (BSBM BI and the WatDiv aggregates) aligning order sets changes the ranking, $\tau < 0.8$;
   on the 14 LUBM queries the ranking holds, $\tau \ge 0.8$. If either prediction is wrong, the paper reports that.
@@ -128,9 +133,8 @@ that predate its format, and there is no downgrade path (\texttt{docs/release-no
 This section supports the study; it is not a contribution. A four-order build of LUBM-1000 took 654.8\,s. Shard parsing and
 sorting took 38.7\% of it, the dictionary-side stages 35\%, and the order builds 26.4\% (\texttt{docs/build-profile-v1}).
 In a microbenchmark, fixed-width external sort rows were 4--5$\times$ faster than the current variable-length rows
-(\texttt{docs/build-profile-v1}); this is the basis of the fixed-width sorter in the current build. The terms in the data repeat
-heavily (7.9\% distinct in LUBM-1000 and 9.3\% per shard in BSBM-100M; \texttt{docs/parse-phase-v1}), which makes
-deduplication before sorting attractive. QLever's index builder already deduplicates before sorting, so we treat this as
+(\texttt{docs/build-profile-v1}); this is the basis of the fixed-width sorter in the current build. The terms in LUBM-1000 repeat heavily: 7.9\% are distinct (\texttt{docs/parse-phase-v1}), which makes
+deduplication before sorting attractive. \todo{BSBM and WatDiv duplication figures after their scan has an evidence file.} QLever's index builder already deduplicates before sorting, so we treat this as
 engineering that follows an existing design, not as a new method.
 
 \section{Ablations}
@@ -140,7 +144,7 @@ engineering that follows an existing design, not as a new method.
 \begin{itemize}
   \item \textbf{One machine class and synthetic data.} The suites are synthetic benchmark data with nearly fixed structure~\cite{duan2011}.
   \item \textbf{Unsupported cells.} QLever's two-order mode cannot answer patterns with a variable predicate; on suites that contain
-  such patterns those cells are \emph{unsupported}, and the aligned ranking covers fewer suites.
+  such patterns those cells are \emph{unsupported}, both rank vectors drop the engine, and the test covers fewer engines or suites.
   \item \textbf{Tuning.} We configured the engines; vendor tuning may differ. Jena is the answer reference, not a speed reference.
   \item \textbf{A null result.} If the rankings agree at $\tau \ge 0.8$ on every suite, the central claim fails and the paper reduces to the storage
   arm and the build results.
