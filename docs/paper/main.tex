@@ -18,15 +18,15 @@
 
 \begin{abstract}
 Analysts who keep their data as RDF must choose between two kinds of engines. Triple-store servers are fast but
-run as separate services. Embedded stores live inside the application but are slow at the joins and aggregations
-that analytical questions need. We demonstrate \sys{}, an RDF database written in Rust that runs inside the
+run as separate services. Embedded stores live inside the application, but the ones we measured were slow at the joins and
+aggregations that analytical questions need. We demonstrate \sys{}, an RDF database written in Rust that runs inside the
 application, in the way DuckDB does for tables. It encodes every term as a 64-bit ID and keeps six sorted, compressed
 orders of the triples. It plans joins from persisted statistics and runs worst-case-optimal joins, filters and hash
-aggregation on IDs, decoding text only for the final result. A persistent store adds a write-ahead log, snapshot reads
+aggregation on IDs, decoding text only where filters, string functions or results need it. A persistent store adds a write-ahead log, snapshot reads
 and compaction, including named graphs. The same engine is available from Rust, Python, Node.js, WebAssembly, C, Go
 and Java. Through its Python API on an on-disk store, \sys{} answers the 45 timed BSBM business-intelligence requests
-at 10M triples in 11.6\,s, against 130.0\,s for DuckDB running hand-written SQL over a triples table, and every
-request passes answer checks against Apache Jena. Attendees load data, query it from a notebook and a browser, crash and reopen a store, and compare
+at 10M triples in 11.6 and 13.1\,s (two passes), against 130.0 and 110.6\,s for DuckDB running hand-written SQL over
+a triples table, and every request passes answer checks against Apache Jena. Attendees load data, query it from a notebook and a browser, crash and reopen a store, and compare
 engines on the same queries.
 \end{abstract}
 
@@ -42,7 +42,8 @@ other is an embedded library such as Oxigraph~\cite{oxigraph} or the RDF4J memor
 the analyst's process. In our measurements, however, the embedded stores we tested were far slower on aggregate
 queries: through its Python API, pyoxigraph takes 41.7\,s and 71.6\,s for the LUBM and WatDiv aggregate suites that
 \sys{} answers in 0.67\,s and 0.20\,s (\cref{sec:perf}). A third option, converting the triples to a relational table
-and using DuckDB~\cite{duckdb}, gives up SPARQL and RDF term semantics; with the single triples table we tested, every
+and using DuckDB~\cite{duckdb}, requires mapping every SPARQL query to SQL by hand or with a translator; with the
+single triples table we tested, every
 graph pattern becomes a chain of self-joins, and the same suites take 50.4\,s and 27.1\,s.
 
 Relational analytics went through the same split, and DuckDB resolved it by bringing columnar storage and vectorized
@@ -85,7 +86,8 @@ This demonstration shows:
   \draw[flow] (plan.south) -- node[edgelabel] {statistics} (plan.south |- store.north);
 \end{tikzpicture}}
 \caption{\sys{} inside an application. Queries are planned from statistics (persisted with disk stores) and executed on 64-bit term IDs
-over six sorted orders of the triples; only results are decoded to text. Updates go to a write-ahead log and an
+over six sorted orders of the triples; terms are decoded to text only where filters, string functions or results
+need them. Updates go to a write-ahead log and an
 in-memory overlay that compaction merges into a new base.}
 \label{fig:overview}
 \end{figure}
@@ -101,7 +103,7 @@ function or the final result needs its text.
 blocks, read through block caches that share one fixed memory budget. A dataset with named graphs adds six graph-first
 quad orders and a catalog of graphs. Updates are appended to a write-ahead log with group commit and are synced
 before the call returns; they are kept as an overlay of inserts and deletes, and compaction writes a new base.
-Readers pin a snapshot, so a query never sees half of an update. A \texttt{verify} command checks a whole store: block checksums, that all orders hold the same triples, that every
+Readers pin a snapshot, so a query never sees half of an update. A \texttt{verify} command checks a base snapshot: block checksums, that all orders hold the same triples, that every
 ID resolves, and the dictionary and graph catalog.
 
 \paragraph{Query engine.} SPARQL is parsed to an algebra and planned with cost-based join ordering from characteristic
@@ -170,12 +172,11 @@ integers, and results outside that range are errors. Results are materialized be
 
 Attendees use a laptop with prepared stores of LUBM, WatDiv and BSBM, and can bring their own N-Triples or Turtle file.
 
-\paragraph{Scenario 1: analytics in a notebook.} In Jupyter, the attendee builds and opens a WatDiv-100 store and runs
-one aggregate query in three engines side by side:
+\paragraph{Scenario 1: analytics in a notebook.} In Jupyter, the attendee creates a persistent WatDiv-100 store from the
+N-Triples file and runs one aggregate query in three engines side by side:
 {\footnotesize\begin{verbatim}
-$ triplelight build-disk watdiv100.nt w.db --build-external
 >>> from triplelight import Database
->>> db = Database("w.db")
+>>> db = Database("w.db", initial="watdiv100.nt")
 >>> db.query("SELECT ?o (COUNT(*) AS ?n) WHERE { ?s "
 ...   "<http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?o }"
 ...   " GROUP BY ?o")
@@ -198,8 +199,9 @@ compaction folds the log into a new base while queries continue.
 >>> snap = db.read()
 >>> db.update("DELETE DATA { GRAPH <urn:g> "
 ...           "{ <urn:s> <urn:p> 1 } }")
->>> snap.query("ASK { GRAPH <urn:g> { ?s ?p ?o } }")
-# still true: the snapshot keeps its view
+>>> bool(snap.query("ASK { GRAPH <urn:g> "
+...                "{ ?s ?p ?o } }"))
+True    # the snapshot keeps its view
 $ triplelight verify demo.db/$(cut -d' ' -f2 demo.db/CURRENT)
 \end{verbatim}}
 
