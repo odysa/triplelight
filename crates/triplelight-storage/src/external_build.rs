@@ -325,6 +325,8 @@ impl Builder {
         let mut previous_id = None;
         let rows = self.triples + self.quads + self.graph_names;
         if let Some(shards) = self.dedup_rows.take() {
+            // The deduplicating parse reads N-Triples only; it has no quad or graph-name rows to remap.
+            if self.quads + self.graph_names > 0 { return Err(bad("deduplicated build with named graphs")) }
             remap_dedup(&mut input, &shards, &mut triples, self.triples)?;
         } else {
         for row in 0..rows {
