@@ -1,6 +1,6 @@
 //! The storage interface the query side is written against (snapshots and the term dictionary).
 use crate::model::{Perm, TermId, TripleBatch};
-use oxrdf::{Term, TermRef};
+use triplelight_rdf::{Term, TermRef};
 
 pub type StorageError = std::io::Error;
 

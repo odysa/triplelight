@@ -1,7 +1,7 @@
 //! Prototype immutable on-disk dictionary indexes. Not yet connected to snapshots.
 use super::term_block_codec;
 use crate::model::TermId;
-use oxrdf::Term;
+use triplelight_rdf::Term;
 use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
@@ -504,7 +504,7 @@ impl LazyIndex {
     pub(super) fn with_ids(
         &self,
         ids: &[TermId],
-        f: &mut dyn FnMut(usize, oxrdf::TermRef<'_>),
+        f: &mut dyn FnMut(usize, triplelight_rdf::TermRef<'_>),
     ) -> io::Result<()> {
         if !matches!(self.order, Order::Id | Order::Unified) {
             return Err(bad("wrong dictionary index"));
@@ -542,7 +542,7 @@ impl LazyIndex {
     pub(super) fn with_id(
         &self,
         id: TermId,
-        f: &mut dyn FnMut(oxrdf::TermRef<'_>),
+        f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>),
     ) -> io::Result<()> {
         if !matches!(self.order, Order::Id | Order::Unified) {
             return Err(bad("wrong dictionary index"));
@@ -937,7 +937,7 @@ pub(super) fn convert_legacy(dir: &Path) -> io::Result<([u8; 32], [u8; 32])> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use oxrdf::{Literal, NamedNode};
+    use triplelight_rdf::{Literal, NamedNode};
     fn legacy_dictionary(dir: &std::path::Path, entries: &[(u64, &str)]) {
         let mut bytes = b"RDFDIC01".to_vec();
         bytes.extend_from_slice(&(entries.len() as u64).to_le_bytes());
@@ -1065,7 +1065,7 @@ mod tests {
         // Valid IDs, kinds and last text, but the text order inside the block is broken.
         let rows: Vec<io::Result<(TermId, Term)>> = [(1u64, "urn:c"), (2, "urn:a"), (3, "urn:b")]
             .iter()
-            .map(|(n, iri)| Ok((TermId((1 << 60) | n), oxrdf::NamedNode::new(*iri).unwrap().into())))
+            .map(|(n, iri)| Ok((TermId((1 << 60) | n), triplelight_rdf::NamedNode::new(*iri).unwrap().into())))
             .collect();
         let path = dir.join(UNIFIED_FILE);
         write_index_checked(&path, Order::Unified, rows.into_iter(), false).unwrap();

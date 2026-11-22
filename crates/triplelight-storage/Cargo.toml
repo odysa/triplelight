@@ -7,7 +7,7 @@ rust-version.workspace = true
 
 [dependencies]
 triplelight-core.workspace = true
-oxrdf.workspace = true
+triplelight-rdf.workspace = true
 rayon.workspace = true
 hashbrown.workspace = true
 sha2.workspace = true

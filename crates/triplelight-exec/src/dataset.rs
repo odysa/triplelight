@@ -2,7 +2,7 @@
 //! duplicate-free union of several graphs that share one dictionary.
 use crate::model::{Perm, TermId, TripleBatch};
 use crate::storage::{Dictionary, Snapshot, StorageError};
-use oxrdf::{Term, TermRef};
+use triplelight_rdf::{Term, TermRef};
 
 const BATCH: usize = 4096;
 

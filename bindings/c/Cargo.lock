@@ -520,33 +520,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
-name = "oxilangtag"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d3b4eb570abd4a1dcb062c31fd37b832264d9dc7292c3e69acfe926c87b063f"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "oxiri"
-version = "0.2.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54b4ed3a7192fa19f5f48f99871f2755047fabefd7f222f12a1df1773796a102"
-
-[[package]]
-name = "oxrdf"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08037a3c3cf580d065caec6a864cf97f51be219862d95c691a48c7543406d675"
-dependencies = [
- "oxilangtag",
- "oxiri",
- "rand 0.9.5",
- "thiserror",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -824,26 +797,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "thiserror"
-version = "2.0.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09e52cb86a36cede5cb101bf8908837b3e4c6e5e59fe7fd85c23fb56200d189e"
-dependencies = [
- "thiserror-impl",
-]
-
-[[package]]
-name = "thiserror-impl"
-version = "2.0.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe5197923287db20a58125f0bc85c062f7f2c892de97b18c356f9efb14b28524"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 3.0.10",
-]
-
-[[package]]
 name = "tiny-keccak"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -887,11 +840,11 @@ name = "triplelight"
 version = "0.1.0"
 dependencies = [
  "mimalloc",
- "oxrdf",
  "sha2",
  "triplelight-core",
  "triplelight-exec",
  "triplelight-plan",
+ "triplelight-rdf",
  "triplelight-sparql",
  "triplelight-storage",
 ]
@@ -909,8 +862,8 @@ dependencies = [
 name = "triplelight-core"
 version = "0.1.0"
 dependencies = [
- "oxrdf",
  "triplelight-iri",
+ "triplelight-rdf",
 ]
 
 [[package]]
@@ -919,7 +872,6 @@ version = "0.1.0"
 dependencies = [
  "md-5",
  "num-bigint 0.4.8",
- "oxrdf",
  "rayon",
  "regex",
  "rust_decimal",
@@ -928,6 +880,7 @@ dependencies = [
  "triplelight-core",
  "triplelight-iri",
  "triplelight-plan",
+ "triplelight-rdf",
  "triplelight-sparql",
  "web-time",
 ]
@@ -944,6 +897,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "triplelight-rdf"
+version = "0.1.0"
+dependencies = [
+ "getrandom 0.3.4",
+ "triplelight-iri",
+]
+
+[[package]]
 name = "triplelight-sparql"
 version = "0.1.0"
 dependencies = [
@@ -956,10 +917,10 @@ name = "triplelight-storage"
 version = "0.1.0"
 dependencies = [
  "hashbrown",
- "oxrdf",
  "rayon",
  "sha2",
  "triplelight-core",
+ "triplelight-rdf",
 ]
 
 [[package]]

@@ -27,7 +27,7 @@ fn normalize(result: QueryResult) -> Result<Vec<String>, Box<dyn Error>> {
 fn scalar(result: &QueryResult) -> String {
     if let QueryResult::Solutions { vars, rows } = result
         && vars.len() == 1 && rows.len() == 1
-            && let Some(oxrdf::Term::Literal(value)) = &rows[0][0] {
+            && let Some(triplelight_rdf::Term::Literal(value)) = &rows[0][0] {
                 return value.value().to_owned();
             }
     String::new()

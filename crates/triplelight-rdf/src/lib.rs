@@ -1,0 +1,26 @@
+//! RDF 1.1 term types (task #45, step 4): named nodes, blank nodes, literals, variables, triples, quads and graph
+//! names, with the API, equality, ordering, hashing and `Display` text of `oxrdf` 0.3.5 (without RDF 1.2, `Dataset`,
+//! `Graph` and serde), so stores and outputs written with oxrdf terms stay identical. IRIs are checked
+//! by `triplelight-iri` and language tags by [`langtag`].
+//! Derived from oxrdf (MIT); see THIRD_PARTY_NOTICES.md.
+
+mod blank_node;
+#[doc(hidden)]
+pub mod langtag;
+mod literal;
+mod named_node;
+mod parser;
+mod triple;
+mod variable;
+pub mod vocab;
+
+pub use crate::blank_node::{BlankNode, BlankNodeIdParseError, BlankNodeRef};
+pub use crate::langtag::LanguageTagParseError;
+pub use crate::literal::{Literal, LiteralRef};
+pub use crate::named_node::{IriParseError, NamedNode, NamedNodeRef};
+pub use crate::parser::TermParseError;
+pub use crate::triple::{
+    GraphName, GraphNameRef, NamedOrBlankNode, NamedOrBlankNodeRef, Quad, QuadRef, Term, TermRef, Triple, TripleRef,
+    TryFromTermError,
+};
+pub use crate::variable::{Variable, VariableNameParseError, VariableRef};

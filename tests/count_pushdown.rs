@@ -1,4 +1,4 @@
-use oxrdf::{NamedNode, Term, Triple};
+use triplelight_rdf::{NamedNode, Term, Triple};
 use triplelight::{
     exec::{QueryErrorKind, QueryResult, query},
     model::{Perm, TermId, TripleBatch},
@@ -49,7 +49,7 @@ impl Dictionary for IndexOnly {
     fn with_term(
         &self,
         id: TermId,
-        f: &mut dyn FnMut(oxrdf::TermRef<'_>),
+        f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>),
     ) -> Result<(), StorageError> {
         self.inner.with_term(id, f)
     }
@@ -151,9 +151,9 @@ fn prefix_groups_preserve_counts_duplicates_and_unbound_keys() {
     assert_eq!(values.len(), 2);
     assert!(values[0].0.contains("urn:a"));
     for (row, n) in values.iter().zip([3, 1]) {
-        assert_eq!(row.1, oxrdf::Literal::from(n).to_string());
+        assert_eq!(row.1, triplelight_rdf::Literal::from(n).to_string());
         assert_eq!(row.2, row.1);
-        assert_eq!(row.3, oxrdf::Literal::from(1).to_string());
+        assert_eq!(row.3, triplelight_rdf::Literal::from(1).to_string());
     }
     let QueryResult::Solutions { rows, .. } = query(
         &s,
@@ -269,7 +269,7 @@ fn counted_results_keep_projection_under_limit_and_distinct() {
     assert_eq!(vars.len(), 1);
     assert_eq!(vars[0].as_str(), "n");
     assert_eq!(rows.len(), 1);
-    assert_eq!(rows[0][0], Some(oxrdf::Literal::from(4).into()));
+    assert_eq!(rows[0][0], Some(triplelight_rdf::Literal::from(4).into()));
     let QueryResult::Solutions { vars, rows } =
         query(&s, "SELECT (COUNT(*) AS ?n) WHERE {?s <urn:p> ?o} LIMIT 0").unwrap()
     else {
@@ -280,9 +280,9 @@ fn counted_results_keep_projection_under_limit_and_distinct() {
 }
 #[test]
 fn distinct_counts_preserve_literal_lexical_and_datatype_identity() {
-    let one = oxrdf::Literal::new_typed_literal("1", oxrdf::vocab::xsd::INT);
-    let zero_one = oxrdf::Literal::new_typed_literal("01", oxrdf::vocab::xsd::INT);
-    let integer = oxrdf::Literal::new_typed_literal("1", oxrdf::vocab::xsd::INTEGER);
+    let one = triplelight_rdf::Literal::new_typed_literal("1", triplelight_rdf::vocab::xsd::INT);
+    let zero_one = triplelight_rdf::Literal::new_typed_literal("01", triplelight_rdf::vocab::xsd::INT);
+    let integer = triplelight_rdf::Literal::new_typed_literal("1", triplelight_rdf::vocab::xsd::INTEGER);
     let s = MemorySnapshot::from_triples([
         Triple::new(n("a"), n("p"), one.clone()),
         Triple::new(n("a"), n("p"), zero_one),

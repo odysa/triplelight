@@ -1,6 +1,6 @@
 //! Python bindings for the embedded TripleLight database (`import triplelight`).
 //! Terms are converted to Python values in Rust (see `to_py`). Query and update calls release the GIL.
-use oxrdf::Term;
+use triplelight::rdf::Term;
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;

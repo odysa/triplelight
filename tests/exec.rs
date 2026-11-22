@@ -95,9 +95,9 @@ fn dictionary_errors_are_storage_errors() {
     use triplelight::storage::{Dictionary, Snapshot, StorageError};
     struct BadDict(MemorySnapshot);
     impl Dictionary for BadDict {
-        fn lookup(&self, _: &oxrdf::Term) -> Result<Option<TermId>, StorageError> { Err(StorageError::other("planted dictionary failure")) }
-        fn resolve(&self, id: TermId) -> Result<oxrdf::Term, StorageError> { self.0.resolve(id) }
-        fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
+        fn lookup(&self, _: &triplelight_rdf::Term) -> Result<Option<TermId>, StorageError> { Err(StorageError::other("planted dictionary failure")) }
+        fn resolve(&self, id: TermId) -> Result<triplelight_rdf::Term, StorageError> { self.0.resolve(id) }
+        fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
     }
     impl Snapshot for BadDict {
         fn scan<'a>(&'a self, p: Perm, pre: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> { self.0.scan(p, pre) }
@@ -268,7 +268,7 @@ fn float_promotion_and_aggregates() {
     let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
     let dt = |q: &str| -> String {
         match query(&s, q).unwrap() { QueryResult::Solutions { rows, .. } => match rows[0][0].as_ref().unwrap() {
-            oxrdf::Term::Literal(l) => l.datatype().as_str().rsplit('#').next().unwrap().to_string(), t => panic!("{t}") }, r => panic!("{r:?}") }
+            triplelight_rdf::Term::Literal(l) => l.datatype().as_str().rsplit('#').next().unwrap().to_string(), t => panic!("{t}") }, r => panic!("{r:?}") }
     };
     assert_eq!(dt("SELECT ?v WHERE { <http://ex/a> <http://ex/f> ?f BIND(?f + 1 AS ?v) }"), "float");
     assert_eq!(dt("SELECT ?v WHERE { <http://ex/a> <http://ex/f> ?f BIND(?f + 1.5 AS ?v) }"), "float");
@@ -737,9 +737,9 @@ fn describe_scan_errors_are_storage_errors() {
     use triplelight::storage::{Dictionary, Snapshot, StorageError};
     struct BadScan(MemorySnapshot);
     impl Dictionary for BadScan {
-        fn lookup(&self, t: &oxrdf::Term) -> Result<Option<TermId>, StorageError> { self.0.lookup(t) }
-        fn resolve(&self, id: TermId) -> Result<oxrdf::Term, StorageError> { self.0.resolve(id) }
-        fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
+        fn lookup(&self, t: &triplelight_rdf::Term) -> Result<Option<TermId>, StorageError> { self.0.lookup(t) }
+        fn resolve(&self, id: TermId) -> Result<triplelight_rdf::Term, StorageError> { self.0.resolve(id) }
+        fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
     }
     impl Snapshot for BadScan {
         fn scan<'a>(&'a self, _: Perm, _: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
@@ -865,9 +865,9 @@ fn matching_tail_path_matches_scan_path() {
     use triplelight::storage::{Dictionary, Snapshot, StorageError};
     struct View(MemorySnapshot, bool, AtomicUsize);
     impl Dictionary for View {
-        fn lookup(&self, t: &oxrdf::Term) -> Result<Option<TermId>, StorageError> { self.0.lookup(t) }
-        fn resolve(&self, id: TermId) -> Result<oxrdf::Term, StorageError> { self.0.resolve(id) }
-        fn with_term(&self, id: TermId, f: &mut dyn FnMut(oxrdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
+        fn lookup(&self, t: &triplelight_rdf::Term) -> Result<Option<TermId>, StorageError> { self.0.lookup(t) }
+        fn resolve(&self, id: TermId) -> Result<triplelight_rdf::Term, StorageError> { self.0.resolve(id) }
+        fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
     }
     impl Snapshot for View {
         fn scan<'a>(&'a self, p: Perm, pre: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> { self.0.scan(p, pre) }

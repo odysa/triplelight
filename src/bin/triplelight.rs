@@ -3,7 +3,7 @@
 use triplelight::exec::{query, results::serialize};
 use triplelight::storage::{MemorySnapshot, DiskSnapshot, Dictionary, Snapshot, StorageError};
 use triplelight::model::{Perm, TermId, TripleBatch};
-use oxrdf::{Term, TermRef};
+use triplelight_rdf::{Term, TermRef};
 
 #[cfg(target_os = "linux")]
 #[global_allocator]
@@ -126,8 +126,8 @@ fn main() {
             let store = triplelight::store::Store::open(&args[2], None, 1).expect("open store");
             let n: u64 = args[3].parse().unwrap();
             for i in 0..n {
-                let t = oxrdf::Triple::new(oxrdf::NamedNode::new_unchecked(format!("http://ex/{i}")),
-                    oxrdf::NamedNode::new_unchecked("http://ex/100"), oxrdf::NamedNode::new_unchecked(format!("http://ex/{}", i + 1)));
+                let t = triplelight_rdf::Triple::new(triplelight_rdf::NamedNode::new_unchecked(format!("http://ex/{i}")),
+                    triplelight_rdf::NamedNode::new_unchecked("http://ex/100"), triplelight_rdf::NamedNode::new_unchecked(format!("http://ex/{}", i + 1)));
                 store.commit(&[(triplelight::store::Change::Insert, t)]).expect("commit");
                 println!("acked {i}");
             }

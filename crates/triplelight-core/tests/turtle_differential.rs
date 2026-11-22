@@ -2,7 +2,8 @@
 //! accepted by both or neither, and an accepted one yields the same statements in the same order. Both parsers give
 //! `[]` and collection nodes fresh random labels, so blank nodes are compared after relabelling them in order of first
 //! appearance (which also checks that the emission order matches).
-use oxrdf::{BlankNode, GraphName, NamedOrBlankNode, Quad, Term};
+use triplelight_core::rdf::{BlankNode, GraphName, NamedOrBlankNode, Quad, Term};
+mod ox;
 use std::collections::HashMap;
 use triplelight_core::turtle::{read_trig, read_turtle};
 
@@ -23,8 +24,8 @@ fn ours(data: &[u8], trig: bool) -> Option<Vec<String>> {
     Some(canonical(quads))
 }
 fn theirs(data: &[u8], trig: bool) -> Option<Vec<String>> {
-    let quads = if trig { oxttl::TriGParser::new().for_reader(data).collect::<Result<Vec<_>, _>>().ok()? } else {
-        oxttl::TurtleParser::new().for_reader(data).map(|t| t.map(|t| t.in_graph(GraphName::DefaultGraph))).collect::<Result<Vec<_>, _>>().ok()?
+    let quads = if trig { oxttl::TriGParser::new().for_reader(data).map(|q| q.map(ox::quad)).collect::<Result<Vec<_>, _>>().ok()? } else {
+        oxttl::TurtleParser::new().for_reader(data).map(|t| t.map(|t| ox::triple(t).in_graph(GraphName::DefaultGraph))).collect::<Result<Vec<_>, _>>().ok()?
     };
     Some(canonical(quads))
 }
@@ -133,7 +134,7 @@ fn files_agree_and_time() {
     for path in std::env::split_paths(&files) {
         let open = || std::io::BufReader::with_capacity(1 << 20, std::fs::File::open(&path).unwrap());
         let mut a = read_turtle(open()).map(|r| r.unwrap_or_else(|e| panic!("ours failed: {e}")));
-        let mut b = oxttl::TurtleParser::new().for_reader(open()).map(|r| r.unwrap_or_else(|e| panic!("oxttl failed: {e}")));
+        let mut b = oxttl::TurtleParser::new().for_reader(open()).map(|r| ox::triple(r.unwrap_or_else(|e| panic!("oxttl failed: {e}"))));
         let mut n = 0u64;
         loop {
             match (a.next(), b.next()) {
