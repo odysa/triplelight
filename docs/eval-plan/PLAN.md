@@ -46,6 +46,43 @@ Four vs six orders; fixed-width sorter on/off; term dedup on/off; ID-level aggre
 4. Write the registration (this file, frozen) and get Alex/Jianlin review.
 Then: rent, provision (script), load datasets to gp3, run, archive raw data + receipts into `docs/eval-v1/`.
 
+## Analytical workloads, DuckDB layouts and answer gates (owner: Jianlin)
+
+Use three analytical families. BSBM BI uses eight hand-translated SQL templates in the DuckDB arm. LUBM and WatDiv use the curated COUNT, DISTINCT and GROUP BY translations. Freeze the RDF input, graph-set cardinality, query bytes, request order and expected answers at each scale. Keep the workload names and parsed and stored triple counts in the manifest. [Prior workload and result boundaries](../benchmark-overview.md)
+
+| Family | Laptop qualification | Dedicated Linux evaluation |
+| --- | --- | --- |
+| BSBM BI | The retained BSBM-10M manifest with 15 warm-up and 45 measured-position requests. Exercise all 60 with timing disabled. | Generate constants separately on each BSBM-100M and BSBM-1B graph with the pinned generator and parameter selection procedure. Freeze seeds, request mix, parameter values and all resulting SPARQL bytes before collecting comparisons. |
+| LUBM aggregates | LUBM-100, 30 labels and 26 distinct texts. | Run the registered 30 labels at each admitted larger scale, with fresh Jena references from that graph. |
+| WatDiv aggregates | The retained WatDiv aggregate graph, 10,914,314 stored triples and 42 labels. Identify it by the input SHA and exact count. | Run the registered 42 labels at each admitted larger scale, with fresh Jena references from that graph. |
+
+Verify the BI parameter pools, graph membership and reference cardinalities before freezing the requests. Predeclare how the generator handles unusable constants and ties at the LIMIT boundary, then keep every selected request, including legitimately empty ones. Compute numeric diagnostic inputs and references from the exact graph at the new scale. Ratios, ordering boundaries and diagnostic anchors from 10M do not transfer to 100M or 1B.
+
+### DuckDB layout comparison
+
+| Arm | Physical data | Table selection |
+| --- | --- | --- |
+| Single table | One distinct typed triples relation from the common loader | Every pattern scans that table. |
+| Six sorted copies, fixed | One database with SPO, SOP, PSO, POS, OSP and OPS copies | Every pattern scans SPO. |
+| Six sorted copies, routed | The exact same database file as the fixed arm | Every pattern scans one copy. Choose the longest prefix of local constants, then break ties in the listed order. |
+
+Freeze the BI choices at the existing scan sites. Each BI scan has a predicate constant, so the routed translation uses PSO where the fixed translation uses SPO. Filters above those scan sites stay in place. Freeze the aggregate choices from the structured triple patterns. Normalize only the table identifiers and check that the remaining SQL bytes agree across arms. Record the generated SQL and physical scan names from representative EXPLAIN plans outside timing. Apply the same memory, threads and spill settings to all three arms.
+
+Require each sorted copy to match the control schema, row count and bag in both directions, then verify adjacent physical row order after a fresh reopen. Record full database size, each copy's creation time, checkpoint time and spill. The single-versus-fixed comparison measures the change to sorted SPO in the six-copy storage layout. The fixed-versus-routed comparison measures table selection with physical storage held fixed. DuckDB can skip row groups using min-max metadata. The six copies do not provide the same access path as TripleLight's permutation indexes. Report any comparison against TripleLight as a comparison of the registered configurations. State its order set for every result, and use the registered six-order anchor if including an order-count-matched arm. [DuckDB indexing guide](https://duckdb.org/docs/stable/guides/performance/indexing)
+
+### Answer admission and timing
+
+Generate frozen reference answers using a pinned Jena profile and the exact graph and query manifest for each scale. When Jena is a timed comparator, collect its reference answers in a separate unscored execution. Require the exact projected variables, binding state, RDF-term identity and row multiplicity. Check the order and LIMIT membership where declared and accept tie alternatives only under the frozen per-query policy. Empty results still need the expected projection. [SPARQL 1.1 projection and solution sequence](https://www.w3.org/TR/sparql11-query/#solutionModifiers)
+
+- Record the primary typed check for every answer. For BI, use the established value-compatible policy for ranking only with its declared numeric columns, rounding bounds, scale-specific diagnostic anchors and cutoff/order checks. For the aggregate suite, allow the registered exact integral COUNT representation compatibility only in declared computed count columns. Group keys, multiplicity, remaining term identities and binding states stay exact. Mark each chart with its actual gate. [Prior answer policies](../benchmarks.md)
+- Qualify every scheduled request before scoring a profile at that scale. Check every warm-up and measured answer again. Record timeouts, unsupported queries and mismatches as outcomes. If a profile lacks complete qualified coverage, report its coverage and any registered common-query subset explicitly. A completed subset does not become a full-suite total.
+- Compare embedded Python APIs in one cohort, and Java APIs in a separate matched cohort. Time from the query or SQL-generation call through full typed result materialization in that language. Record SQL generation separately within the total. Validation and artifact serialization are outside the timer. HTTP runs use their own request-to-complete-body boundary.
+- Follow the shared cold and warm protocol, recording which parts of open and statistics readiness ran before query timing. Reverse or rotate the arm order between independent passes and retain the order and every valid sample. Preserve the BI request mix and the aggregate duplicate labels. Report per-query distributions and the preregistered suite summary, with a distinct-query-text sensitivity summary for the aggregates.
+
+### Qualification before renting
+
+The eight-row DuckDB fixture passed all six persisted-copy checks and all 12 layout/query checks. The source audit binds all 396 SQL translations for the smaller 60 BI, 30 LUBM and 42 WatDiv requests. The next local gate is a full build and fresh reopen of each smaller layout, then an untimed replay of all arms with the archived answer policies. Exercise negative controls for a different RDF term with the same spelling, missing or unbound cells, an empty result with a missing projection and out-of-policy numeric or cutoff changes. Finish a driver dry-run with complete pass, mismatch and timeout records. Verify real cold-cache control on the dedicated machine before gathering cold measurements.
+
 ## Storage, build and memory (owner: Alex)
 
 Supports C2 (four orders) and C3 (bulk build), and tests the disk store where it has to earn its place: data larger
