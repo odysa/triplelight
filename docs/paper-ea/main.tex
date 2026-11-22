@@ -1,0 +1,158 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs,hyperref,amsmath}
+\newcommand{\todo}[1]{\textbf{[TODO: #1]}}
+\newcommand{\unread}{$^{\dagger}$}
+\title{How Much of an RDF Engine's Ranking Is Its Index Layout?\\\large An Experiments \& Analysis Study (draft)}
+\author{TripleLight authors}
+\date{Draft, 2026-11-22. Sections 4 and 7 await the dedicated-machine measurements.}
+\begin{document}
+\maketitle
+
+\noindent\textbf{Status of this draft.}
+Every number cites its evidence file (\texttt{docs/...} in the repository). Papers marked with~\unread\ were not read
+in full by the author; they are cited from their abstract or from a source we read that describes them, and must be
+re-checked before submission. Section~4 holds only the registered predictions and empty tables.
+
+\begin{abstract}
+RDF engines are routinely ranked on LUBM, WatDiv and BSBM. Engines differ in which triple-index orders they store, and
+a ranking therefore mixes the quality of the executor with the choice of indexes. We ask how much of today's ranking is
+the index layout. We rank engines twice on each suite: once in their default configuration and once with the index orders
+aligned across systems, and we register in advance that the claim fails if the two rankings agree at Kendall's
+$\tau \ge 0.8$ on every suite. As a storage arm we study a store that keeps four of the six orders and derives the other
+two exactly. \todo{one sentence with the result once Section 4 is measured}
+\end{abstract}
+
+\section{Introduction}
+When two RDF engines are compared on a benchmark, the table reports one number per system and suite. It does not usually
+report which of the six triple orders (SPO, SOP, PSO, POS, OSP, OPS) each system keeps, although the choice decides
+which access paths are available: a pattern whose bound positions are not a prefix of any stored order falls back to a
+scan or a filter. Hexastore\unread\ stores all six orders; other engines store fewer. The question of this paper is whether
+that choice moves the \emph{ranking}, not only the absolute times.
+
+Qualitative evidence that physical layout dominates RDF performance is old: Sidirourgos et al.\ found in 2008 that
+clustering a triple store by PSO instead of SPO changed performance by factors of two to five, and that a triple store with
+the right clustered indexes could beat vertical partitioning on a row store~\cite{sidirourgos2008}. What is missing is the
+corresponding question for current engines: if systems are re-ranked with their index layouts aligned, does the order
+change?
+
+\paragraph{Contributions.}
+\begin{enumerate}
+  \item \textbf{A ranking test with a registered kill rule.} For each of LUBM, WatDiv and BSBM we compare the ranking of
+  systems in their default configuration with the ranking under index-aligned configurations, using Kendall's $\tau$. The
+  claim that layout matters fails if $\tau \ge 0.8$ on every suite. The rule, the order set of every arm and the predicted
+  direction are fixed before any result exists (Section~4.0).
+  \item \textbf{A layout-aligned protocol} that records each system's index inventory, pins versions, applies one answer gate
+  to every reported time, and reports wrong, incomplete and timed-out runs as such instead of timing them
+  (Section~3).
+  \item \textbf{A storage arm.} A store that keeps SPO, PSO, POS and OSP and derives SOP and OPS exactly is
+  36\% smaller on LUBM-1000 and 17\% smaller on BSBM-100M than the same store with six orders
+  (\texttt{docs/build-compare-orders-v1}). Whether query time changes is re-measured on the dedicated machine (Section~5).
+\end{enumerate}
+The artifact (raw receipts, scripts, reproduction commands) is described in the appendix. If the ranking does not change under
+alignment, the paper reduces to the storage arm and an engineering report on loading; we say so in advance in Section~8.
+
+\section{Related Work}
+\paragraph{Index orders in RDF stores.} RDF-3X\unread\ and Hexastore\unread\ keep all or most of the six permutations;
+QLever\unread\ offers a two-order mode; The Ring\unread\ answers ordered access over all six orders from one structure.
+Our storage arm sits between: four ordinary B-tree-like orders and exact derivation of the remaining two. Where the prior systems are
+cited, we have read abstracts or secondary descriptions only (marked~\unread).
+
+\paragraph{Layout versus store.} Sidirourgos et al.\ reexamined column-store RDF storage and found that the advantage
+reported for vertical partitioning depends on how the triple store is clustered~\cite{sidirourgos2008}. That study
+compared storage schemes on one column-store and one row-store engine; it did not rank engines against one another.
+We ask the ranking question for current engines.
+
+\paragraph{Benchmark data and structure.} Duan et al.\ showed that the structuredness of LUBM, BSBM and SP$^2$Bench data is
+nearly fixed and differs from that of real RDF datasets such as DBpedia, so conclusions drawn from benchmark runs may not transfer
+to real data~\cite{duan2011}. This is a threat to our own results (Section~8): our suites are the benchmark datasets they analyse,
+and we report them as benchmark results only.
+
+\paragraph{Methodology.} \todo{SPARQL log studies (Bonifati et al.\unread, Arias et al.\unread) and the real-query-log coverage of the derived orders; read before writing.}
+
+\section{Methodology}
+\paragraph{Systems.} Versions are pinned in \texttt{docs/eval-plan/PLAN.md} (frozen plan). Server cohort (HTTP): TripleLight,
+QLever, Virtuoso~7, Jena TDB2/Fuseki, Oxigraph, RDF4J (native). Embedded cohort (language API): TripleLight bindings,
+pyoxigraph, Blazegraph, and DuckDB as a SQL baseline. The embedded and the HTTP cohort are compared within themselves and
+never in one figure.
+
+\paragraph{Index inventory.} For every system we record the orders it stores in its measured configuration
+(\texttt{docs/embedded-store-inventory.md} and its receipt supplement). Examples: RDF4J's measured profile stores
+\texttt{spoc, posc, ospc} (three orders); DuckDB is run as a single table and as six sorted copies, fixed and routed, as
+contrasts \emph{within} DuckDB only; TripleLight is run with four and with six orders; QLever with its default and its two-order mode.
+
+\paragraph{Datasets and queries.} LUBM-1000, WatDiv-100M and BSBM-100M, with the benchmark query suites and the analytical
+(BI and aggregate) families of the plan. \todo{final scales after the machine is rented.}
+
+\paragraph{Protocol.} One system at a time on one dedicated Linux machine. Cold runs drop the page cache before a fresh
+process; warm runs do one warm-up pass and then five measured runs; median and range are reported, geometric mean per suite.
+Timeout is 300\,s per query. Every answer is checked against a frozen Jena reference. Each result falls in one class: pass,
+value-compatible, mismatch, incomplete, timeout or error; only passing and value-compatible runs are timed, and each figure
+names the gate it uses. Variants are compared with ABBA ordering. Equal CPU and memory budgets are enforced by cgroup.
+
+\paragraph{Ranking test.} For every suite we rank the systems of a cohort by geometric-mean time (default configuration), re-rank
+under the aligned configurations, and compute Kendall's $\tau$ between the two rankings. Cells where a system cannot answer a
+suite are marked unsupported and left out of the aligned ranking, which then covers fewer systems or suites
+(Section~8).
+
+\section{Results: Rankings}
+\subsection{Registered predictions (written before any measurement)}
+\begin{itemize}
+  \item \textbf{Quantity:} Kendall's $\tau$ between the default-configuration ranking and the aligned ranking, per suite and cohort.
+  \item \textbf{Arms and order sets:}
+  TripleLight: \{SPO, PSO, POS, OSP\} and the six-order store; QLever: default and two-order mode (its two-order mode may not
+  answer variable-predicate patterns); RDF4J: \{spoc, posc, ospc\}; DuckDB: single table, six sorted copies fixed and routed;
+  other systems: as recorded in the inventory. \todo{freeze the exact list from the inventory before the first run.}
+  \item \textbf{Kill rule:} the claim that index layout changes the ranking fails if $\tau \ge 0.8$ on every suite.
+  \item \textbf{Predicted direction:} \todo{owner of the prediction (Kaiming/Jianlin) to supply the registered direction; the writer does not set it.}
+\end{itemize}
+\subsection{Results}
+\begin{tabular}{lccc}\toprule Suite & Cohort & $\tau$ & Ranks that change\\\midrule
+LUBM & embedded & \todo{} & \todo{}\\ LUBM & HTTP & \todo{} & \todo{}\\
+WatDiv & embedded & \todo{} & \todo{}\\ WatDiv & HTTP & \todo{} & \todo{}\\
+BSBM & embedded & \todo{} & \todo{}\\ BSBM & HTTP & \todo{} & \todo{}\\\bottomrule\end{tabular}
+
+\section{Storage Arm: Four Orders Instead of Six}
+TripleLight's default store keeps four orders (SPO, PSO, POS, OSP); SOP and OPS are derived exactly from them at query time.
+Dropping the two orders makes the store smaller: on LUBM-1000, from 4.97 to 3.16\,GB ($-36\%$), and on BSBM-100M from 7.94 to
+6.56\,GB ($-17\%$) (\texttt{docs/build-compare-orders-v1}). Probe queries over the benchmark suites returned identical
+answers in both layouts. The cost of the derived path in query time is \emph{re-measured on the dedicated machine}; no
+laptop timing is claimed here. \todo{table: query time, four vs six orders, per suite, with the answer gate.}
+How often real queries use a derived order is open and gates whether materializing derived orders on demand is worth it
+(\todo{coverage trace on real query logs, task~\#98}). A store written in the four-order format cannot be opened by binaries
+that predate its format, and there is no downgrade path (\texttt{docs/release-notes/v0.1.0.md}).
+
+\section{Build and Load}
+This section supports the study; it is not a contribution. A four-order build of LUBM-1000 took 654.8\,s. Shard parsing and
+sorting took 38.7\% of it, the dictionary-side stages 35\%, and the order builds 26.4\% (\texttt{docs/build-profile-v1}).
+In a microbenchmark, fixed-width external sort rows were 4--5$\times$ faster than the current variable-length rows
+(\texttt{docs/build-profile-v1}); this is the basis of the fixed-width sorter in the current build. The terms in the data repeat
+heavily (7.9\% distinct in LUBM-1000 and 9.3\% per shard in BSBM-100M; \texttt{docs/parse-phase-v1}), which makes
+deduplication before sorting attractive. QLever's index builder already deduplicates before sorting, so we treat this as
+engineering that follows an existing design, not as a new method.
+
+\section{Ablations}
+\todo{Count shortcut, cache budget (\texttt{docs/cache-budget-sweep-v1}), result windowing; reported as ablations.}
+
+\section{Threats to Validity}
+\begin{itemize}
+  \item \textbf{One machine class and synthetic data.} The suites are synthetic benchmark data with nearly fixed structure~\cite{duan2011}.
+  \item \textbf{Unsupported cells.} QLever's two-order mode cannot answer patterns with a variable predicate; on suites that contain
+  such patterns those cells are \emph{unsupported}, and the aligned ranking covers fewer suites.
+  \item \textbf{Tuning.} We configured the engines; vendor tuning may differ. Jena is the answer reference, not a speed reference.
+  \item \textbf{A null result.} If the rankings agree at $\tau \ge 0.8$ on every suite, the central claim fails and the paper reduces to the storage
+  arm and the build results.
+\end{itemize}
+
+\section{Conclusion}
+\todo{after Section 4.}
+
+\appendix
+\section{Artifact}
+\todo{reproduction commands, archive layout \texttt{docs/eval-v1/}, SHA-256 of datasets.}
+
+\begin{thebibliography}{9}
+\bibitem{sidirourgos2008} L.~Sidirourgos, R.~Goncalves, M.~Kersten, N.~Nes, S.~Manegold. Column-store support for RDF data management: not all swans are white. \emph{PVLDB} 1(2), 2008.
+\bibitem{duan2011} S.~Duan, A.~Kementsietsidis, K.~Srinivas, O.~Udrea. Apples and oranges: a comparison of RDF benchmarks and real RDF datasets. \emph{SIGMOD}, 2011.
+\end{thebibliography}
+\end{document}
