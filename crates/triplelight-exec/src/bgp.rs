@@ -221,12 +221,12 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     }
 
     /// Exact match count of each pattern's constant prefix (its candidate rows before any join).
-    fn const_counts(&self, pats: &[[Slot; 3]]) -> Vec<u64> {
-        pats.iter().map(|p| {
+    fn const_counts<'b>(&'b self, pats: &'b [[Slot; 3]]) -> impl Iterator<Item = u64> + 'b {
+        pats.iter().map(move |p| {
             let fixed: [Option<TermId>; 3] = std::array::from_fn(|i| if let Slot::Const(c) = p[i] { c } else { None });
             let (perm, prefix, n) = choose_perm(&fixed);
             self.count(perm, &prefix[..n])
-        }).collect()
+        })
     }
 
     /// Leapfrog triejoin (Veldhuizen, ICDT'14), the worst-case-optimal join: bind one variable at a time,
@@ -234,7 +234,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// permutation keyed (its constants, then its variables in the global order). The first variable's values are
     /// split across rayon workers.
     pub fn leapfrog(&self, pats: &[[Slot; 3]], row: &[TermId], given: Option<Vec<usize>>) -> Vec<TermId> {
-        let counts = self.const_counts(pats);
+        let counts: Vec<_> = self.const_counts(pats).collect();
         if counts.contains(&0) { return Vec::new() }
         let (order, plans) = lf_plan(pats, &counts, given);
         let mut row = row.to_vec();
@@ -260,10 +260,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         if pats.is_empty(){return 1;}
         let mut seen=HashSet::new();
         if pats.iter().all(|p|p.iter().filter_map(|s|if let Slot::Var(v)=s{Some(*v)}else{None}).all(|v|seen.insert(v))) {
-            return pats.iter().map(|p| {
-                let fixed=std::array::from_fn(|i|if let Slot::Const(c)=p[i]{c}else{None});
-                let (perm,prefix,n)=choose_perm(&fixed);self.count(perm,&prefix[..n])
-            }).fold(1u64,|a,b|a.checked_mul(b).unwrap_or_else(||storage_failure(std::io::Error::new(std::io::ErrorKind::InvalidData,"aggregate count overflow"))));
+            return self.const_counts(pats).fold(1, checked_count_product);
         }
         let mut rows=vec![UNBOUND;self.w];let mut bound=HashSet::new();
         let mut remaining:Vec<_>=order.map_or_else(||(0..pats.len()).collect(),|o|o.to_vec());
@@ -289,7 +286,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// variable contributes an intersection size, or an exact prefix count when
     /// only one relation contains it. Callers reject repeated-variable patterns.
     pub fn count_leapfrog(&self, pats: &[[Slot; 3]], given: Option<Vec<usize>>) -> u64 {
-        let counts = self.const_counts(pats);
+        let counts: Vec<_> = self.const_counts(pats).collect();
         if counts.contains(&0) { return 0; }
         if pats.len() == 1 { return counts[0]; }
         // Disconnected BGP components are independent factors. Counting their
@@ -309,7 +306,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             return components.into_iter().map(|indices| {
                 let part: Vec<_> = indices.into_iter().map(|i|pats[i]).collect();
                 self.count_leapfrog(&part,None)
-            }).fold(1u64, |a,b| a.checked_mul(b).unwrap_or_else(|| storage_failure(std::io::Error::new(std::io::ErrorKind::InvalidData,"aggregate count overflow"))));
+            }).fold(1, checked_count_product);
         }
         if pats.iter().all(|p| vars_of(p).is_empty()) { return 1; }
         let (order, plans) = lf_plan(pats, &counts, given);
@@ -447,6 +444,12 @@ pub(super) fn no_repeated_var(p: &[Slot; 3]) -> bool {
 
 fn checked_count(a:u64,b:u64)->u64 {
     a.checked_add(b).unwrap_or_else(|| storage_failure(std::io::Error::new(std::io::ErrorKind::InvalidData,"aggregate count overflow")))
+}
+
+fn checked_count_product(a: u64, b: u64) -> u64 {
+    a.checked_mul(b).unwrap_or_else(|| {
+        storage_failure(std::io::Error::new(std::io::ErrorKind::InvalidData, "aggregate count overflow"))
+    })
 }
 
 /// Variables of one pattern, in slot order.
