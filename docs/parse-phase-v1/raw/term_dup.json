@@ -1,0 +1,90 @@
+{
+ "file": "lubm1000.nt",
+ "shards": 8,
+ "seconds": 392.6,
+ "occurrences": 414955242,
+ "distinct_global": 32905188,
+ "sum_of_per_shard_distinct": 32920468,
+ "distinct_share_global": 0.0793,
+ "per_shard_distinct_share": 0.07933,
+ "occurrence_record_bytes": 27349994761,
+ "per_shard_distinct_record_bytes": 2378714432,
+ "kind_occurrences": {
+  "<": 370604059,
+  "\"": 44351183
+ },
+ "occurrences_by_term_frequency": {
+  "1": 11169012,
+  "2-9": 98989991,
+  "10-99": 84590038,
+  "100-999": 11578021,
+  "1000-99999": 23515259,
+  ">=100000": 185112921
+ },
+ "per_shard": [
+  {
+   "shard": 0,
+   "triples": 17405039,
+   "occurrences": 52215117,
+   "distinct": 4142938,
+   "occurrence_record_bytes": 3421630387,
+   "distinct_record_bytes": 296190787
+  },
+  {
+   "shard": 1,
+   "triples": 17273643,
+   "occurrences": 51820929,
+   "distinct": 4111361,
+   "occurrence_record_bytes": 3418345339,
+   "distinct_record_bytes": 297515552
+  },
+  {
+   "shard": 2,
+   "triples": 17273177,
+   "occurrences": 51819531,
+   "distinct": 4111087,
+   "occurrence_record_bytes": 3418333688,
+   "distinct_record_bytes": 297502857
+  },
+  {
+   "shard": 3,
+   "triples": 17272579,
+   "occurrences": 51817737,
+   "distinct": 4110139,
+   "occurrence_record_bytes": 3418318821,
+   "distinct_record_bytes": 297429526
+  },
+  {
+   "shard": 4,
+   "triples": 17273805,
+   "occurrences": 51821415,
+   "distinct": 4110966,
+   "occurrence_record_bytes": 3418349395,
+   "distinct_record_bytes": 297489746
+  },
+  {
+   "shard": 5,
+   "triples": 17273778,
+   "occurrences": 51821334,
+   "distinct": 4111723,
+   "occurrence_record_bytes": 3418348873,
+   "distinct_record_bytes": 297545205
+  },
+  {
+   "shard": 6,
+   "triples": 17273272,
+   "occurrences": 51819816,
+   "distinct": 4111210,
+   "occurrence_record_bytes": 3418336116,
+   "distinct_record_bytes": 297504437
+  },
+  {
+   "shard": 7,
+   "triples": 17273121,
+   "occurrences": 51819363,
+   "distinct": 4111044,
+   "occurrence_record_bytes": 3418332142,
+   "distinct_record_bytes": 297536322
+  }
+ ]
+}
