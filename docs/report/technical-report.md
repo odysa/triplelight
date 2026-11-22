@@ -7,7 +7,7 @@ for RDF, not a triple-store server. This report covers the architecture, what is
 and what is still open. It links only to reports in this repository or to registered evidence; sentences marked
 *unaudited* come from task measurements whose raw data is not yet in the repository.
 
-Status: version 0.1, no published release, Unix only, Rust 1.89+.
+Status: version 0.1, no published release, Unix only, Rust 1.100.
 
 ## 1. Architecture
 
