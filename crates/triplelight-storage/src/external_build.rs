@@ -728,8 +728,10 @@ fn remap_dedup(assignments: &mut impl Read, shards: &[DedupShard], out: &mut imp
         fs::remove_file(&sh.rows)?;
         Ok(sh.triples)
     };
-    while let Some(r) = read_record(assignments, 17)? {
-        if r.len() != 17 || r[8] != 0 { return Err(bad("invalid term assignment")); }
+    // The mapping is a `FixedSort<17>` output since #90: raw 17-byte records, no length prefix.
+    let mut r = [0u8; 17];
+    while read_fixed(assignments, &mut r)? {
+        if r[8] != 0 { return Err(bad("invalid term assignment")); }
         let id = u64::from_be_bytes(r[..8].try_into().unwrap());
         let (shard, local) = ((id >> 56) as usize, id & LOCAL);
         if shard >= shards.len() || shard < done { return Err(bad("unordered term assignment")); }
