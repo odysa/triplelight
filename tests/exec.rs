@@ -60,7 +60,7 @@ fn union_distinct_group_ask() {
 #[test]
 fn leapfrog_matches_bind_join() {
     let q = "SELECT ?a ?b ?c WHERE { ?a <http://ex/knows> ?b . ?b <http://ex/knows> ?c . ?c <http://ex/knows> ?a }";
-    let run = |wcoj| match triplelight::exec::query_with(&store(), q, &triplelight::exec::Options { stats: None, wcoj, raw_ids: false, general_group: false }).unwrap() {
+    let run = |wcoj| match triplelight::exec::query_with(&store(), q, &triplelight::exec::Options { stats: None, wcoj, raw_ids: false, general_group: false, count_pushdown: true }).unwrap() {
         QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.iter().map(|r| format!("{r:?}")).collect(); v.sort(); v }
         _ => unreachable!(),
     };
@@ -910,4 +910,76 @@ fn matching_tail_path_matches_scan_path() {
         assert_eq!(sorted(&tail, q), want, "{q}");
     }
     assert!(tail.2.load(Ordering::Relaxed) > 0, "the tail path must be exercised");
+}
+
+/// `Options::count_pushdown = false` (the `--ablate=count` benchmark control) answers every count shape the index
+/// shortcuts handle by full enumeration, with identical results: single patterns, joins (last-level counts),
+/// disconnected parts (products), a cyclic pattern (leapfrog counts), DISTINCT and grouped counts.
+#[test]
+fn count_pushdown_off_gives_identical_answers() {
+    let data = r#"<http://ex/a> <http://ex/p> <http://ex/b> .
+<http://ex/b> <http://ex/p> <http://ex/c> .
+<http://ex/c> <http://ex/p> <http://ex/a> .
+<http://ex/a> <http://ex/p> <http://ex/c> .
+<http://ex/a> <http://ex/q> "1" .
+<http://ex/b> <http://ex/q> "1" .
+<http://ex/c> <http://ex/q> "2" .
+<http://ex/d> <http://ex/r> <http://ex/a> .
+"#;
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let run_with = |q: &str, count_pushdown: bool| -> Vec<String> {
+        let opts = triplelight::exec::Options { count_pushdown, ..Default::default() };
+        match triplelight::exec::query_with(&s, q, &opts).unwrap() { QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| format!("{r:?}")).collect(), r => panic!("{r:?}") }
+    };
+    let queries = [
+        "SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }",
+        "SELECT (COUNT(*) AS ?n) WHERE { ?s <http://ex/p> ?o }",
+        "SELECT (COUNT(?o) AS ?n) (COUNT(DISTINCT ?o) AS ?d) WHERE { ?s <http://ex/q> ?o }",
+        "SELECT (COUNT(*) AS ?n) WHERE { ?s <http://ex/p> ?o . ?o <http://ex/q> ?v }",
+        "SELECT (COUNT(*) AS ?n) WHERE { ?s <http://ex/p> ?o . ?x <http://ex/r> ?y }",
+        "SELECT (COUNT(*) AS ?n) WHERE { ?x <http://ex/p> ?y . ?y <http://ex/p> ?z . ?z <http://ex/p> ?x }",
+        "SELECT (COUNT(*) AS ?n) WHERE { ?s <http://ex/none> ?o }",
+        "SELECT ?v (COUNT(*) AS ?n) WHERE { ?s <http://ex/q> ?v } GROUP BY ?v",
+    ];
+    // Compare as bags: incidental row order must not decide parity.
+    let bag = |q: &str, on: bool| { let mut v = run_with(q, on); v.sort(); v };
+    for q in queries { assert_eq!(bag(q, true), bag(q, false), "{q}"); }
+}
+
+/// The `count_pushdown` switch really changes the path: with it on, a single-pattern COUNT is answered from index
+/// counts without reading a triple; with it off, the same query scans the matching triples. Both give the known
+/// typed answer.
+#[test]
+fn count_pushdown_switch_changes_the_access_path() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use triplelight::model::{Perm, TermId, TripleBatch};
+    use triplelight::storage::{Dictionary, Snapshot, StorageError};
+    struct Probe(MemorySnapshot, AtomicUsize, AtomicUsize);
+    impl Dictionary for Probe {
+        fn lookup(&self, t: &triplelight_rdf::Term) -> Result<Option<TermId>, StorageError> { self.0.lookup(t) }
+        fn resolve(&self, id: TermId) -> Result<triplelight_rdf::Term, StorageError> { self.0.resolve(id) }
+        fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
+    }
+    impl Snapshot for Probe {
+        fn scan<'a>(&'a self, p: Perm, pre: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+            Box::new(self.0.scan(p, pre).inspect(|b| if let Ok(b) = b { self.1.fetch_add(b.len(), Ordering::Relaxed); }))
+        }
+        fn count(&self, p: Perm, pre: &[TermId]) -> Result<u64, StorageError> { self.2.fetch_add(1, Ordering::Relaxed); self.0.count(p, pre) }
+        fn seek(&self, p: Perm, pre: &[TermId], t: TermId) -> Result<Option<TermId>, StorageError> { self.0.seek(p, pre, t) }
+    }
+    let data = "<urn:a> <urn:p> <urn:b> .\n<urn:b> <urn:p> <urn:c> .\n<urn:c> <urn:p> <urn:a> .\n<urn:a> <urn:q> <urn:a> .\n";
+    let q = "SELECT (COUNT(*) AS ?n) WHERE { ?s <urn:p> ?o }";
+    let run = |count_pushdown: bool| {
+        let s = Probe(MemorySnapshot::from_ntriples(data.as_bytes()).unwrap(), AtomicUsize::new(0), AtomicUsize::new(0));
+        let opts = triplelight::exec::Options { count_pushdown, ..Default::default() };
+        let rows = match triplelight::exec::query_with(&s, q, &opts).unwrap() { QueryResult::Solutions { rows, .. } => rows, r => panic!("{r:?}") };
+        (format!("{rows:?}"), s.1.load(Ordering::Relaxed), s.2.load(Ordering::Relaxed))
+    };
+    let (on, on_rows, on_counts) = run(true);
+    let (off, off_rows, _) = run(false);
+    assert!(on.contains("\"3\"") && on.contains("integer"), "known typed answer: {on}");
+    assert_eq!(on, off);
+    assert_eq!(on_rows, 0, "pushdown on reads no triples");
+    assert!(on_counts > 0, "pushdown on uses index counts");
+    assert!(off_rows >= 3, "pushdown off scans the matching triples ({off_rows})");
 }

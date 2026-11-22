@@ -35,6 +35,8 @@ pub mod external_build;
 
 #[cfg(unix)]
 mod derived_order;
+#[cfg(unix)]
+pub use derived_order::trace as derived_trace;
 
 #[cfg(unix)]
 mod disk_snapshot;
