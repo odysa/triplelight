@@ -54,8 +54,8 @@ updates, durability and named graphs, is a library with one file-system director
 
 This demonstration shows:
 \begin{itemize}
-  \item an embedded, persistent, updatable RDF store that runs analytical SPARQL in process, with bindings for seven
-        languages, including a WebAssembly build that runs in the browser (\cref{sec:system});
+  \item an embedded, persistent, updatable RDF store that runs analytical SPARQL in process, available in seven
+        environments (Rust, Python, Node.js, C, Go, Java, and an in-memory WebAssembly build for the browser) (\cref{sec:system});
   \item a correctness discipline that compares every benchmark answer with Apache Jena and gates every change on the
         W3C SPARQL 1.1 query tests (\cref{sec:system});
   \item measurements against six RDF stores and DuckDB, in process and over HTTP, with their limits stated
@@ -105,16 +105,17 @@ Readers pin a snapshot, so a query never sees half of an update. A \texttt{verif
 ID resolves, and the dictionary and graph catalog.
 
 \paragraph{Query engine.} SPARQL is parsed to an algebra and planned with cost-based join ordering from characteristic
-sets~\cite{charsets} and predicate counts. These statistics are saved next to the base, so a reopened 100M-triple store
-plans with them within 0.74--0.91\,s of opening, instead of 20.5--25.8\,s for a rebuild scan
+sets~\cite{charsets} and predicate counts. Disk stores save these statistics next to the base. In one registered session on LUBM-1000 and BSBM-100M,
+the medians from the start of open to statistics readiness were 0.74--0.91\,s with the saved file and
+20.5--25.8\,s with a rebuild scan, with no change in the first query's time
 (\repo{docs/startup36-persisted-stats/README.md}). The executor runs leapfrog triejoin, bind joins, filter
 pushdown, hash aggregation and top-$k$ on IDs. A feature it does not implement (\texttt{SERVICE}, \texttt{LOAD})
 is refused with an ``unsupported'' error instead of being answered partially.
 
 \paragraph{Correctness.} Every benchmark answer is reduced to a canonical multiset and compared with Apache Jena.
-Every change must keep at least 323 W3C SPARQL 1.1 query tests passing. The parsers were checked against Oxigraph's
-on the W3C RDF test suites, hundreds of thousands of random documents and every statement of the benchmark data; stores
-built before and after the switch are byte-identical.
+Every change must keep at least 323 W3C SPARQL 1.1 query tests passing. On the W3C RDF test suites, hundreds of thousands of random documents and every statement of the benchmark data,
+the parsers accept, reject and produce exactly what Oxigraph's did, and in the store tests we ran, stores built before
+and after the switch are byte-identical.
 
 \section{Performance snapshot}
 \label{sec:perf}
@@ -144,10 +145,13 @@ WatDiv aggregates (42) & \textbf{0.20 / 0.23} & 27.1 / 18.9 & 71.6 / 71.8 \\
 \paragraph{In process.} \cref{tab:python} is the comparison an embedded user cares about: time from submitting a query
 until the full result is Python values. On these workloads and with these SQL layouts, \sys{} is 8--11$\times$ faster than DuckDB on
 BSBM business intelligence, 62--75$\times$ on the LUBM-100 aggregates and 82--136$\times$ on the WatDiv aggregates. DuckDB's queries are hand-written or translated SQL over a
-single table; a better relational layout might narrow the gap, and we did not measure one. All 1,104 scheduled requests
-passed the answer gates against Jena. The Node.js API shows the same picture against quadstore with Comunica.
+single table; a better relational layout might narrow the gap, and we did not measure one. All 1,104 requests scheduled for
+the qualified cells passed the answer gates against Jena: a registered value-compatible gate for BI, and for the
+aggregates COUNT-datatype compatibility with exact group terms and multiplicities. Through the Node.js API, the one
+completed on-disk comparison, the WatDiv aggregates, took 0.21/0.26\,s for \sys{} and 322.9/543.6\,s for quadstore with
+Comunica.
 
-\paragraph{As a server.} Over the SPARQL protocol, on LUBM-100~\cite{lubm}, WatDiv-100~\cite{watdiv} and BSBM-10M~\cite{bsbm} (13--15M triples), \sys{} has the
+\paragraph{As a server.} Here a total is the sum of per-query medians of five runs after one warm-up. Over the SPARQL protocol, on LUBM-100~\cite{lubm}, WatDiv-100~\cite{watdiv} and BSBM-10M~\cite{bsbm} (13--15M triples), \sys{} has the
 lowest total in memory and on disk against Virtuoso~7 and QLever in a Linux VM, and against RDF4J, Jena TDB2 and
 Oxigraph on the host (on BSBM-10M in the VM, within a few percent of Virtuoso); for example, LUBM-100 totals 289\,ms (memory) and 378\,ms (disk) against 2,103\,ms for QLever
 and 9,441\,ms for Virtuoso. At 100--140M triples, with every system given about 10\,GB of cache, \sys{}'s disk store
@@ -156,9 +160,9 @@ understated because its endpoint truncates two results at 1,048,576 rows, and wi
 0.94, 1.68 and 5.16\,s for \sys{}, QLever and Virtuoso). On BSBM-100M, \sys{} and Virtuoso are level: Virtuoso has
 the lower total (223 against 260\,ms) and \sys{} the lower geometric mean (8.32 against 8.39\,ms).
 
-\paragraph{Limits.} Building the disk store is the widest gap: LUBM-1000 takes 1,035\,s against 425\,s for QLever,
-because the build is mostly single-threaded and needs tens of gigabytes of scratch disk. QLever runs LUBM-1000 in
-0.4\,GB of memory against 9.0\,GB for \sys{}. Numeric arithmetic is exact within 96 bits for decimals and 64 bits for
+\paragraph{Limits.} Building the disk store is the widest gap: in round 9, LUBM-1000 took 1,035\,s against 425\,s for
+QLever. The build is mostly single-threaded and needs tens of gigabytes of scratch disk; we have not isolated how much
+of the gap each explains. With LUBM-1000 loaded, QLever had 0.4\,GB of memory in use against 9.0\,GB for \sys{}. Numeric arithmetic is exact within 96 bits for decimals and 64 bits for
 integers, and results outside that range are errors. Results are materialized before they are returned.
 
 \section{Demonstration}
@@ -184,8 +188,20 @@ not part of it, because it did not complete that workload's qualification.
 
 \paragraph{Scenario 2: an updatable, durable store.} The attendee inserts and deletes triples in named graphs with
 SPARQL Update, holds a read snapshot open while the data changes, and sees the snapshot keep its view. They then kill
-the process in the middle of a stream of updates, reopen the directory, and check that every acknowledged update
-survived; \texttt{verify} checks the store, and compaction folds the log into a new base while queries continue.
+the process in the middle of a stream of updates, reopen the directory, and compare the recovered data with the list of
+acknowledged updates. Separately, \texttt{verify} checks the base that the store's \texttt{CURRENT} file names, and
+compaction folds the log into a new base while queries continue.
+{\footnotesize\begin{verbatim}
+>>> db = Database("demo.db")
+>>> db.update("INSERT DATA { GRAPH <urn:g> "
+...           "{ <urn:s> <urn:p> 1 } }")
+>>> snap = db.read()
+>>> db.update("DELETE DATA { GRAPH <urn:g> "
+...           "{ <urn:s> <urn:p> 1 } }")
+>>> snap.query("ASK { GRAPH <urn:g> { ?s ?p ?o } }")
+# still true: the snapshot keeps its view
+$ triplelight verify demo.db/$(cut -d' ' -f2 demo.db/CURRENT)
+\end{verbatim}}
 
 \paragraph{Scenario 3: the same engine everywhere.} The same queries run from Node.js, from Go and Java through the C
 interface with Arrow output, and in a browser tab through the WebAssembly build, which needs no server at all. The
@@ -197,7 +213,7 @@ attendee loads a TriG file with named graphs into the browser database and queri
 RDF-3X~\cite{rdf3x} and Hexastore~\cite{hexastore} introduced exhaustive permutation indexes over dictionary-encoded
 triples; QLever~\cite{qlever} showed how fast a read-optimized, compressed layout can be, and Virtuoso~\cite{virtuoso}
 remains a strong relational-backed store. Jena TDB2~\cite{jena}, RDF4J~\cite{rdf4j} and Oxigraph~\cite{oxigraph} are
-widely used Java and Rust stores, the last also embeddable. Worst-case-optimal joins~\cite{leapfrog} and their
+widely used Java and Rust stores; RDF4J's repository API and Oxigraph can also run inside an application~\cite{rdf4jrepo}. Worst-case-optimal joins~\cite{leapfrog} and their
 combination with binary joins in systems such as MillenniumDB~\cite{millenniumdb} and Free Join~\cite{freejoin} inform
 \sys{}'s executor, and characteristic sets~\cite{charsets} its cardinality estimates. DuckDB~\cite{duckdb} and
 vectorized execution~\cite{x100} are the model for running analytics inside the application. \sys{} brings these
