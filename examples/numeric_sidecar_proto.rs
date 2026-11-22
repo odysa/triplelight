@@ -120,19 +120,23 @@ fn main() -> R<()> {
         let r = rows(&snap, Perm::Pso, &[n1])?; let objects: Vec<TermId> = r.iter().map(|x| x[2]).collect();
         Ok(int_value(&snap, &objects)?.iter().flatten().filter(|v| (lo1..=hi1).contains(v)).count())
     })?;
-    let out = serde_json::json!({
-        "snapshot": a[1], "bound_values": [v1, v2], "windows": [[lo1, hi1], [lo2, hi2]],
-        "engine_q010_ms": full_ms, "engine_q010_rows": full_rows, "engine_without_numeric_ms": nonum_ms, "engine_without_numeric_rows": nonum_rows,
-        "engine_numeric_part_ms": full_ms - nonum_ms,
-        "candidates_sharing_a_feature": candidates(&snap)?.len(),
-        "today_shape_ms": today_ms, "today_shape_matches": today.len(),
-        "sidecar_plan_ms": side_ms, "sidecar_plan_matches": sided.len(), "same_products": today == sided,
-        "sidecar_rows": [side1.len(), side2.len()], "sidecar_build_ms": [build1_ms, build2_ms],
-        "sidecar_bytes_per_row": std::mem::size_of::<(i64, TermId)>(), "sidecar_bytes": (side1.len() + side2.len()) * std::mem::size_of::<(i64, TermId)>(),
-        "range_lookup_ns": lookup_ns, "range_lookup_sink": sink,
-        "whole_predicate_decode_filter_ms": whole_ms, "whole_predicate_matches": whole,
-    });
-    std::fs::write(&a[3], serde_json::to_string_pretty(&out)?)?;
-    println!("{}", serde_json::to_string_pretty(&out)?);
+    let cands = candidates(&snap)?.len();
+    let fields: Vec<(&str, String)> = vec![
+        ("snapshot", format!("\"{}\"", a[1])), ("bound_values", format!("[{v1}, {v2}]")), ("windows", format!("[[{lo1}, {hi1}], [{lo2}, {hi2}]]")),
+        ("engine_q010_ms", format!("{full_ms:.3}")), ("engine_q010_rows", full_rows.to_string()),
+        ("engine_without_numeric_ms", format!("{nonum_ms:.3}")), ("engine_without_numeric_rows", nonum_rows.to_string()),
+        ("engine_numeric_part_ms", format!("{:.3}", full_ms - nonum_ms)),
+        ("candidates_sharing_a_feature", cands.to_string()),
+        ("today_shape_ms", format!("{today_ms:.3}")), ("today_shape_matches", today.len().to_string()),
+        ("sidecar_plan_ms", format!("{side_ms:.3}")), ("sidecar_plan_matches", sided.len().to_string()), ("same_products", (today == sided).to_string()),
+        ("sidecar_rows", format!("[{}, {}]", side1.len(), side2.len())), ("sidecar_build_ms", format!("[{build1_ms:.1}, {build2_ms:.1}]")),
+        ("sidecar_bytes_per_row", std::mem::size_of::<(i64, TermId)>().to_string()),
+        ("sidecar_bytes", ((side1.len() + side2.len()) * std::mem::size_of::<(i64, TermId)>()).to_string()),
+        ("range_lookup_ns", format!("{lookup_ns:.1}")), ("range_lookup_sink", sink.to_string()),
+        ("whole_predicate_decode_filter_ms", format!("{whole_ms:.3}")), ("whole_predicate_matches", whole.to_string()),
+    ];
+    let json = format!("{{\n{}\n}}\n", fields.iter().map(|(k, v)| format!("  \"{k}\": {v}")).collect::<Vec<_>>().join(",\n"));
+    std::fs::write(&a[3], &json)?;
+    print!("{json}");
     Ok(())
 }
