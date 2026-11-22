@@ -70,7 +70,7 @@ Correctness is gated on answers matching Apache Jena under each benchmark's decl
 
 \section{Techniques and Their Sources}
 \subsection{Four orders with exact derivation}
-RDF-3X stores all six permutations of subject, predicate and object, compressed by deltas, and adds count-aggregated indexes~\cite{neumann2008}; Hexastore\unread\ introduced the six-index idea.
+RDF-3X stores all six permutations of subject, predicate and object, compressed by deltas, and adds count-aggregated indexes~\cite{neumann2008}; Hexastore indexes the data in all six orders, at the price of a worst-case five-fold increase in index space~\cite{weiss2008}.
 QLever's authors report that for typical semantic queries two permutations (PSO and POS) suffice, at the loss of patterns with a variable predicate, and describe Virtuoso's default indexes as corresponding to the same two, with more permutations built on demand~\cite{bast2017}.
 TripleLight keeps four (SPO, PSO, POS, OSP) and derives SOP and OPS exactly, so every access order remains available. The default store is 36\% smaller on LUBM-1000 (4.97 to 3.16\,GB) and 17\% smaller
 on BSBM-100M (7.94 to 6.56\,GB) than the six-order store (\texttt{docs/build-compare-orders-v1}). Across 255 benchmark queries, the trace recorded no regroup scans or memo misses and 18 direct remaps, all on LUBM (\texttt{docs/ablation-qual-v1}, \todo{cite after PR \#146 merges}); any latency effect is left to the timed four-against-six comparison in Section~4.4. How often real query logs reach a derived order is open (Section~5).
@@ -79,7 +79,7 @@ The ring of Arroyuelo et al.\ replaces the six orders needed for worst-case-opti
 \subsection{Counting from index metadata and ID-level aggregation}
 Aggregation runs on IDs and decodes only the output. For supported counts the executor reads exact range counts from the index instead of enumerating matches:
 a single-pattern \texttt{COUNT} is a prefix count, and a group-by on a permutation prefix counts each run (\texttt{docs/count-pushdown}). RDF-3X precomputes such counts as separate aggregated indexes~\cite{neumann2008};
-ours use the exact prefix metadata of the stored orders and need no extra index. Kùzu\unread\ counts per level of a join, of which this is a special case. The effect is measured as an ablation (Section~4.6), not claimed as a contribution.
+ours use the exact prefix metadata of the stored orders and need no extra index. Kùzu's factorized query processor represents intermediate relations of many-to-many joins as Cartesian products instead of flat tuples~\cite{feng2023}, which is closely related to counting without enumerating. The effect is measured as an ablation (Section~4.6), not claimed as a contribution.
 
 \subsection{Leapfrog triejoin with characteristic-set planning}
 Cyclic patterns use leapfrog triejoin~\cite{veldhuizen2014}, a worst-case-optimal join that requires its inputs as sorted iterators, so each variable order needs an index in the matching permutation. The planner estimates cardinalities with characteristic sets and predicate counts (Neumann and Moerkotte\unread), orders joins by subset dynamic programming, and picks a variable order for trie joins;
@@ -112,8 +112,8 @@ the claim fails if $\tau_b \ge 0.8$ on every evaluable suite. \todo{results tabl
 \paragraph{Limits.} Disk builds parse shards in parallel and overlap index builds (an average of 2.9 of 10 cores busy on LUBM-1000, \texttt{docs/build-profile-v1}) and need scratch disk of 1.7 to 2.1 times the input at the peak (\texttt{docs/build-compare-orders-v1}).
 Results are materialized before output. One process per store directory. \texttt{LOAD}, \texttt{SERVICE}, \texttt{BNODE(string)} and blank-node graph names are unsupported (\texttt{DESIGN.md}).
 The cost of the derived orders on real query logs is not measured. The benchmarks are synthetic and their structure is nearly fixed and unlike real RDF data~\cite{duan2011}.
-\paragraph{Related work.} \emph{Embedded analytics.} DuckDB's requirements for embedded analytical systems~\cite{raasveldt2020} (the system itself is described in a SIGMOD 2019 demonstration paper\unread); Kùzu\unread\ (archived upstream and a Cypher engine, so outside the SPARQL comparison; \todo{verify after reading}); pyoxigraph, Blazegraph and DuckDB as embedded comparators.
-\emph{RDF stores.} RDF-3X~\cite{neumann2008}, Hexastore\unread, QLever~\cite{bast2017}, Virtuoso, Jena TDB2, Oxigraph, RDF4J.
+\paragraph{Related work.} \emph{Embedded analytics.} DuckDB's requirements for embedded analytical systems~\cite{raasveldt2020} (the system itself is described in a SIGMOD 2019 demonstration paper~\cite{raasveldt2019}); Kùzu~\cite{feng2023} (a disk-based, embeddable graph database queried in Cypher, so outside the SPARQL comparison; \todo{confirm its current maintenance status before stating it}); pyoxigraph, Blazegraph and DuckDB as embedded comparators.
+\emph{RDF stores.} RDF-3X~\cite{neumann2008}, Hexastore~\cite{weiss2008}, QLever~\cite{bast2017}, Virtuoso, Jena TDB2, Oxigraph, RDF4J.
 \emph{Layout and benchmarks.} Sidirourgos et al.\ re-evaluated vertical partitioning on MonetDB/SQL and PostgreSQL and found that clustering (PSO against SPO) changes performance by factors of two to five~\cite{sidirourgos2008};
 Duan et al.\ showed that benchmark data differ from real RDF data in structuredness~\cite{duan2011}.
 
@@ -132,6 +132,9 @@ The code, the scripts and the data needed to reproduce every number are in the r
 \bibitem{duckdbrdf} DuckDB community extension \texttt{rdf} (``Read and write RDF, query using SPARQL''), duckdb.org/community\_extensions/extensions/rdf (accessed 2026-11-22).
 \bibitem{arroyuelo2021} D.~Arroyuelo, A.~Hogan, G.~Navarro, J.~L.~Reutter, J.~Rojas-Ledesma, A.~Soto. Worst-case optimal graph joins in almost no space. \emph{SIGMOD}, 2021.
 \bibitem{veldhuizen2014} T.~L.~Veldhuizen. Leapfrog triejoin: a simple, worst-case optimal join algorithm. \emph{ICDT}, 2014 (arXiv:1210.0481).
+\bibitem{weiss2008} C.~Weiss, P.~Karras, A.~Bernstein. Hexastore: sextuple indexing for Semantic Web data management. \emph{PVLDB} 1(1), 2008.
+\bibitem{feng2023} X.~Feng, G.~Jin, Z.~Chen, C.~Liu, S.~Salihoglu. K\`uzu graph database management system. \emph{CIDR}, 2023.
+\bibitem{raasveldt2019} M.~Raasveldt, H.~M\"uhleisen. DuckDB: an embeddable analytical database. \emph{SIGMOD} (demonstration), 2019.
 \bibitem{duan2011} S.~Duan, A.~Kementsietsidis, K.~Srinivas, O.~Udrea. Apples and oranges: a comparison of RDF benchmarks and real RDF datasets. \emph{SIGMOD}, 2011.
 \end{thebibliography}
 \end{document}
