@@ -748,6 +748,8 @@ mod tests {
         assert_eq!(cgroup_memory_limit("0::/system.slice/bench.scope\n", &v2), Some(8 << 30));
         let parent = files(&[("/sys/fs/cgroup/a/memory.max", "4294967296"), ("/sys/fs/cgroup/a/b/memory.max", "max")]);
         assert_eq!(cgroup_memory_limit("0::/a/b", &parent), Some(4 << 30), "an ancestor's limit applies");
+        let nested = files(&[("/sys/fs/cgroup/a/memory.max", "4294967296"), ("/sys/fs/cgroup/a/b/memory.max", "8589934592")]);
+        assert_eq!(cgroup_memory_limit("0::/a/b", &nested), Some(4 << 30), "the tightest of several limits wins");
         let docker = files(&[("/sys/fs/cgroup/memory.max", "17179869184")]);
         assert_eq!(cgroup_memory_limit("0::/\n", &docker), Some(16 << 30), "a container sees its group as the root");
         assert_eq!(cgroup_memory_limit("0::/x", &files(&[("/sys/fs/cgroup/x/memory.max", "max")])), None);
