@@ -10,7 +10,7 @@ the immutable base formats, how bases are built, opened and verified, and the bl
 ```sh
 # Build a base directory from N-Triples (fails if the directory exists).
 triplelight build-disk data.nt ./snapshot --build-external
-# Keep only four of the six triple orders (an RDFSNAP6 base; see "Kept orders" below).
+# N-Triples only: keep four of the six triple orders (an RDFSNAP6 base; see "Kept orders" below).
 triplelight build-disk data.nt ./snapshot4 --orders=4
 # Query a base, or check every block and cross-index invariant (also prints each file's size).
 triplelight query ./snapshot 'SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }' --disk
@@ -84,7 +84,7 @@ version and lists a 32-byte SHA-256 identity (of the block directory) for each f
 ### Kept orders (`RDFSNAP6`)
 
 On the 54 LUBM, WatDiv and BSBM benchmark queries, SPO, PSO and POS are used by most queries, OSP by one, and SOP and
-OPS by none, yet SOP is as large as SPO (task #73). SOP and OPS are needed only when the predicate is unbound. An `RDFSNAP6` base can therefore keep a subset of the orders. After
+OPS by none, yet SOP is as large as SPO (task #73). Every one of those queries binds its predicate. An `RDFSNAP6` base can therefore keep a subset of the orders. After
 the magic come two bytes, the kept orders (bit *i* is `Perm::ALL[i]`, in the order SPO, SOP, PSO, POS, OSP, OPS) and
 1 if the base holds named graphs (else 0), then the identities of only the kept files. Every base keeps SPO, PSO,
 POS and OSP; `open` refuses any other set.
@@ -92,13 +92,14 @@ POS and OSP; `open` refuses any other set.
 When SOP or OPS is absent, the base answers it with the same rows in the same order (`derived_order.rs`):
 
 - With the first two key columns bound, SOP `[s,o,..]` is read from OSP `[o,s,..]` and OPS `[o,p,..]` from POS
-  `[p,o,..]`. The third column is already sorted, so these cost the same as a kept order.
+  `[p,o,..]`. The third column is already sorted there, so this is a lookup in a kept order with no group sort.
 - Otherwise rows come from the kept order with the same first column (SPO for SOP, OSP for OPS), one first-column group
   at a time, and each group is sorted. A seek within one group reads the group once and then binary-searches it.
   Only a scan with nothing bound reads and sorts the whole table, one group at a time.
 
-The same rules apply to the quad orders `gsop` and `gops`. `build-disk --orders=4` writes such a base; without the
-flag, builds write all six orders in the `RDFSNAP4`/`RDFSNAP5` layout. A base keeps its set across compactions; only
+The same rules apply to the quad orders `gsop` and `gops`. `build-disk --orders=4` writes such a base from N-Triples
+(a Turtle input still goes through the in-memory path and gets all six orders); without the flag, builds write all six
+orders in the `RDFSNAP4`/`RDFSNAP5` layout. A base keeps its set across compactions; only
 a new build changes it.
 
 ## Building a base
