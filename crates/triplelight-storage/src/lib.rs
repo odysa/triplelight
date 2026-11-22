@@ -31,6 +31,9 @@ mod external_sort;
 pub mod external_build;
 
 #[cfg(unix)]
+mod derived_order;
+
+#[cfg(unix)]
 mod disk_snapshot;
 #[cfg(unix)]
 pub use disk_snapshot::{DiskBase, DiskGraph, DiskSnapshot, build_disk_snapshot, build_disk_snapshot_with_workers, write_disk_dataset, write_disk_snapshot};
