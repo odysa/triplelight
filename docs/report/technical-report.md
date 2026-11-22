@@ -7,7 +7,7 @@ for RDF, not a triple-store server. This report covers the architecture, what is
 and what is still open. It links only to reports in this repository or to registered evidence; sentences marked
 *unaudited* come from task measurements whose raw data is not yet in the repository.
 
-Status: version 0.1, no published release, Unix only, Rust 1.100.
+Status: version 0.1, no published release, native store: Unix (macOS, Linux); the WebAssembly package runs in memory anywhere; Rust 1.100.
 
 ## 1. Architecture
 
@@ -15,8 +15,8 @@ Status: version 0.1, no published release, Unix only, Rust 1.100.
 `triplelight-sparql` (SPARQL parser and algebra), `triplelight-plan` (statistics, join ordering),
 `triplelight-exec` (vectorized operators) and `triplelight-storage` (dictionary, permutations, WAL, snapshots).
 
-**Terms and IDs.** Every term is a 64-bit ID with a kind tag. Short strings and numbers are held inline; everything
-else is a dictionary entry. Operators work on IDs and decode a term only when a result, a string function or a
+**Terms and IDs.** Every term is a 64-bit ID whose top four bits tag its kind. Some kinds carry their value inline in the low 60 bits
+with no dictionary entry (see `model.rs`); every other term is a dictionary entry. Operators work on IDs and decode a term only when a result, a string function or a
 filter needs its text.
 
 **Storage.** A snapshot holds six sorted permutations of the triples (SPO, SOP, PSO, POS, OSP, OPS) as compressed,
@@ -65,15 +65,16 @@ SPARQL layer now support `GRAPH`, `FROM`, `FROM NAMED`, updates into named graph
 (`CREATE`, `DROP`, `CLEAR`, `ADD`, `MOVE`, `COPY`) and N-Quads and TriG loading. A disk base can hold named graphs
 (`RDFSNAP5`): the default graph as before, six graph-first quad orders and a checksummed catalog of graphs. A
 dataset without named graphs writes exactly the `RDFSNAP4` base. Compaction moves graphs from the WAL into the
-base; a model test runs 60 rounds of random updates, compactions and reopens against a set model.
+base; a model test runs 60 rounds of random updates, compactions and reopens against a set model. Still different from the full
+standard: `LOAD`, blank-node graph names and empty TriG graph blocks are not supported (section 4).
 
 **Own parsers (#45).** TripleLight no longer depends on Oxigraph's parsers at run time. Its own IRI resolver
 (`triplelight-iri`), N-Triples/N-Quads parser and Turtle/TriG parser accept and reject exactly what the previous
 `oxiri`/`oxttl` code did and emit the same statements. Parity is checked by differential tests against those crates:
 the W3C RDF 1.1 N-Triples, N-Quads, Turtle and TriG suites (161 and 992 files), curated edge cases, and
 hundreds of thousands of random documents, plus every statement of LUBM-100, BSBM-10M and WatDiv-100. Stores built
-with the old and new N-Triples parser are byte-identical. On BSBM-10M, parsing takes 8.4 s against 10.1–10.5 s,
-and Turtle takes 11.9 s against 13.6 s. The old crates remain as test-only comparators, and
+with the old and new N-Triples parser are byte-identical. On BSBM-10M, N-Triples parsing takes 8.4–9.2 s against
+10.1–10.5 s for the old parser, and Turtle is at parity (11.6–11.9 s against 11.4–11.9 s). The old crates remain as test-only comparators, and
 `THIRD_PARTY_NOTICES.md` records the MIT notices for the code the parsers are derived from.
 
 **Disk build and dictionary layout (#54, #55).** Profiling the external build of BSBM-100M showed two near-raw-size
