@@ -1,0 +1,24 @@
+13:44:05 build lubm1000-o6-r1
+14:00:35 done lubm1000-o6-r1: 4.6G, disk 44905624 53429724
+14:00:35 build lubm1000-o4-r2
+14:15:30 done lubm1000-o4-r2: 2.9G, disk 50988280 48803212
+14:15:30 build lubm1000-o4-r3
+14:29:17 done lubm1000-o4-r3: 3.0G, disk 50469136 49377104
+14:29:17 build lubm1000-o6-r4
+14:42:58 done lubm1000-o6-r4: 4.6G, disk 43642028 56216784
+14:42:59 build bsbm100-o6-r1
+15:05:07 done bsbm100-o6-r1: 7.4G, disk 50630880 49205512
+15:05:08 build bsbm100-o4-r2
+15:19:53 done bsbm100-o4-r2: 6.1G, disk 45079488 54726256
+15:19:54 build bsbm100-o4-r3
+15:32:37 done bsbm100-o4-r3: 6.1G, disk 44994768 54684592
+15:32:37 build bsbm100-o6-r4
+--- resume 16:15:07: remaining r4 + scratch diagnosis
+16:15:07 build bsbm100-o6-r4
+16:34:38 done bsbm100-o6-r4: 7.4G, disk 45319316 54562248
+16:34:38 ALL-DONE
+16:34:38 build lubm1000-o6-r1-scratch
+16:52:10 done lubm1000-o6-r1-scratch: 4.6G, disk 47799388 52043188
+16:52:10 build lubm1000-o4-r2-scratch
+17:06:00 done lubm1000-o4-r2-scratch: 3.0G, disk 42422452 57468852
+17:06:00 ALL-DONE
