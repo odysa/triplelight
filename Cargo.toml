@@ -9,6 +9,10 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.100"
 license = "MIT"
+repository = "https://github.com/odysa/triplelight"
+homepage = "https://github.com/odysa/triplelight"
+keywords = ["rdf", "sparql", "database", "embedded", "triplestore"]
+categories = ["database-implementations"]
 
 # Clippy runs with -D warnings in CI. These lints flag deliberate design choices here (dense generic iterator types,
 # executor entry points with many inputs, enums whose variants differ in size by design); everything else is enforced.
@@ -18,13 +22,13 @@ too_many_arguments = "allow"
 large_enum_variant = "allow"
 
 [workspace.dependencies]
-triplelight-core = { path = "crates/triplelight-core" }
-triplelight-iri = { path = "crates/triplelight-iri" }
-triplelight-rdf = { path = "crates/triplelight-rdf" }
-triplelight-storage = { path = "crates/triplelight-storage" }
-triplelight-sparql = { path = "crates/triplelight-sparql" }
-triplelight-plan = { path = "crates/triplelight-plan" }
-triplelight-exec = { path = "crates/triplelight-exec" }
+triplelight-core = { path = "crates/triplelight-core", version = "0.1.0" }
+triplelight-iri = { path = "crates/triplelight-iri", version = "0.1.0" }
+triplelight-rdf = { path = "crates/triplelight-rdf", version = "0.1.0" }
+triplelight-storage = { path = "crates/triplelight-storage", version = "0.1.0" }
+triplelight-sparql = { path = "crates/triplelight-sparql", version = "0.1.0" }
+triplelight-plan = { path = "crates/triplelight-plan", version = "0.1.0" }
+triplelight-exec = { path = "crates/triplelight-exec", version = "0.1.0" }
 oxrdf = "0.3.5"
 oxttl = "0.2.5"
 oxiri = "0.2.11"
@@ -41,10 +45,18 @@ getrandom = "0.3"
 
 [package]
 name = "triplelight"
+description = "An embedded RDF database for analytical SPARQL queries"
+readme = "README.md"
+# Only the library and CLI sources ship; benchmarks, evidence reports and bindings stay in the repository.
+include = ["src/**", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md"]
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
 autobins = false
 default-run = "triplelight"
 
