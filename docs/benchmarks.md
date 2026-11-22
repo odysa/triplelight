@@ -112,6 +112,8 @@ The [Blazegraph streaming COUNT fixture](blazegraph-embedded-count-fixture-v1/RE
 
 The [Blazegraph LUBM-100 qualification](blazegraph-lubm100-qualification-v1/README.md) reports 13,409,395 total and explicit triples at load and reopen, plus 30 exact typed answer passes on the registered aggregate queries. It uses the separate all-statements profile and collects no scored latency.
 
+The [matched Java 25 fixture](blazegraph-matched-java25-qualification-v1/README.md) passed load, fresh-process reopen and three typed answer checks for both Blazegraph and TripleLight on Linux ARM64. The report records the tiny store sizes, including Blazegraph’s preallocated journal extent. Full-workload qualification remains ahead.
+
 The [sparq-rdf embedded fixture](sparq-embedded-qualification-v1/README.md) passed 24 typed query checks across memory, the saved graph in the loader process, and a fresh read-only indexed reopen. No workload timing.
 
 The [Grafeo embedded fixture](grafeo-embedded-qualification-v1/README.md) passed 24 typed query checks across memory, disk load and fresh-process reopen. Both loads added nine triples, and the reopened graph returned nine in SPARQL COUNT. No workload timing.

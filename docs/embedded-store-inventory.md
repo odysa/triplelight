@@ -87,7 +87,7 @@ The initial candidate list was not exhaustive. A maintenance label alone is not 
 
 ## Work in preparation
 
-- The matched Java 25 fixture will check Blazegraph and TripleLight on one runtime before any timing.
+- Full-workload qualification follows the [matched Java 25 fixture](blazegraph-matched-java25-qualification-v1/README.md). Blazegraph and TripleLight each loaded and reopened nine triples, then passed three typed answer checks on the same Linux ARM64 runtime.
 - The Ontop workload mapping will qualify the remaining aggregate and BI queries against their reference
   answers. The [distinct-count diagnostic](ontop-distinct-diagnostic-v3/README.md) explains why WatDiv
   `distinct_L2.rq` needs a separate domain check.
