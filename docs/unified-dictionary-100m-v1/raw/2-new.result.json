@@ -1,0 +1,27 @@
+{
+ "sizes": {
+  "MANIFEST": 232,
+  "dictionary.unified": 4620210974,
+  "ops": 268212982,
+  "osp": 299437398,
+  "pos": 252863076,
+  "pso": 286142347,
+  "sop": 1104721706,
+  "spo": 1104721706
+ },
+ "total_mb": 7936.3,
+ "wall_s": 706.3,
+ "exit": 0,
+ "peak_du_mb": 43912,
+ "max_rss_mb": 2664,
+ "hashes": {
+  "MANIFEST": "833afed629c06129411815a06aab1934900c7fe367d0f11cfe6124a3ac2db416",
+  "dictionary.unified": "be4f232116834471e3942c882d93a73cddfc8235b0c96a2f86e4d88237413b88",
+  "ops": "8b48067a3536f41b9497c4ea8c522dbcdfbb559ffc5716832bf22d4505266e7c",
+  "osp": "20e5862a6f67625c77738b07c6feaf7a6b24702f5baa064a64d018956c58815e",
+  "pos": "3a869e91ecddf35c33e4b328ec1ed27376ff0ef44b00fff526d2eda53deb45f1",
+  "pso": "f8630dd05b0cf0f59e5e7298d6e577e3f8bc7c099c725170eaf4e879d42d0417",
+  "sop": "91512666d138259dabf3f9eb6711a5b7d9e13db6666ed75173c1007d871ece65",
+  "spo": "fc337beae79ee5613486a2452250cc07586cd025ba5ff922370962ee1cc7dd2a"
+ }
+}
