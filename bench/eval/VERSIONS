@@ -1,0 +1,7 @@
+# Pinned systems for the paper evaluation (docs/eval-plan/PLAN.md). Read by systems.sh and written into every result file.
+JENA_VERSION=6.2.0
+FUSEKI_VERSION=6.2.0
+OXIGRAPH_VERSION=0.5.13
+QLEVER_IMAGE=adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cba4e894ca1ba8117cef6727
+VIRTUOSO_IMAGE=openlink/virtuoso-opensource-7@sha256:0dbe1ab4fa0cb7bbafc1f6c0c2b0a5d6f22d918dbd17672f2ddb24580aa6756a
+# TripleLight is the commit under test: `git rev-parse HEAD`, recorded by driver.py.
