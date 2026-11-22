@@ -1,7 +1,24 @@
 "use strict";
 // TripleLight for Node.js: an embedded RDF database with SPARQL 1.1. The native addon does the work on worker threads;
 // this file turns its errors into typed exceptions.
-const native = require("./triplelight.node");
+const native = loadNative();
+
+// The published package carries one prebuilt addon per platform under prebuilds/<platform>-<arch>/. A local build
+// (`npm run build`) puts the addon at ./triplelight.node, which is used when there is no prebuild (development).
+function loadNative() {
+  const target = `${process.platform}-${process.arch}`;
+  const candidates = [`./prebuilds/${target}/triplelight.node`, "./triplelight.node"];
+  let failure = null;
+  for (const candidate of candidates) {
+    try {
+      return require(candidate);
+    } catch (e) {
+      if (e && e.code !== "MODULE_NOT_FOUND") failure = e; // found but would not load (for example an older glibc)
+    }
+  }
+  if (failure) throw failure;
+  throw new Error(`TripleLight has no native addon for ${target}. Supported: darwin-arm64, linux-x64 and linux-arm64 (glibc 2.31 or newer).`);
+}
 
 class TripleLightError extends Error {
   constructor(message, kind) { super(message); this.name = kind || "TripleLightError"; this.kind = kind; }

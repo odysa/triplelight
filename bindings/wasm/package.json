@@ -4,7 +4,39 @@
   "description": "TripleLight compiled to WebAssembly: an in-memory SPARQL 1.1 database for browsers, Deno, edge workers and Node",
   "scripts": {
     "build": "cargo build --release --target wasm32-unknown-unknown && node scripts/bindgen.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "prepack": "node scripts/check-build.js"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/odysa/triplelight.git",
+    "directory": "bindings/wasm"
+  },
+  "homepage": "https://github.com/odysa/triplelight#readme",
+  "bugs": "https://github.com/odysa/triplelight/issues",
+  "keywords": [
+    "rdf",
+    "sparql",
+    "database",
+    "wasm",
+    "webassembly",
+    "triplestore"
+  ],
+  "main": "pkg-node/triplelight_wasm.js",
+  "module": "pkg/triplelight_wasm.js",
+  "types": "pkg/triplelight_wasm.d.ts",
+  "exports": {
+    ".": {
+      "types": "./pkg/triplelight_wasm.d.ts",
+      "node": "./pkg-node/triplelight_wasm.js",
+      "default": "./pkg/triplelight_wasm.js"
+    },
+    "./wasm": "./pkg/triplelight_wasm_bg.wasm",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "pkg",
+    "pkg-node"
+  ]
 }
