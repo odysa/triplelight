@@ -1,0 +1,108 @@
+diff --git a/crates/triplelight-storage/src/external_build.rs b/crates/triplelight-storage/src/external_build.rs
+index abd0089..41359dd 100644
+--- a/crates/triplelight-storage/src/external_build.rs
++++ b/crates/triplelight-storage/src/external_build.rs
+@@ -111,15 +111,19 @@ where
+         key_of(&row, &mut key);
+         sorter.push(key)?;
+     }
++    phase(&format!("{name}_rows_read"), dir);
+     let sorted = sorter.finish()?;
++    phase(&format!("{name}_sorted"), dir);
+     let mut reader = UniqueRows::<N>::open(&sorted)?;
+     let mut unique = 0u64;
+     while reader.next().transpose()?.is_some() { unique += 1; }
++    phase(&format!("{name}_counted"), dir);
+     let rows = UniqueRows::<N>::open(&sorted)?;
+     let path = dir.join(name);
+     let mut output = BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&path)?);
+     write_index_stream(&mut output, unique, rows)?;
+     output.flush()?; output.get_ref().sync_all()?; drop(output);
++    phase(&format!("{name}_written"), dir);
+     Ok(DiskIndex::<N>::open(path)?.identity())
+ }
+ // Test-only failure injection: `checkpoint(n)` fails when the test selected phase `n`. Compiled out in normal builds.
+@@ -133,6 +137,17 @@ fn checkpoint(n: usize) -> io::Result<()> {
+ #[inline(always)]
+ fn checkpoint(_n: usize) -> io::Result<()> { Ok(()) }
+ 
++/// Experiment: phase boundaries with elapsed seconds and the size of everything under the build directory.
++fn phase(label: &str, dir: &Path) {
++    static T0: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
++    let t0 = T0.get_or_init(std::time::Instant::now);
++    fn du(p: &Path) -> u64 {
++        let Ok(rd) = fs::read_dir(p) else { return 0 };
++        rd.flatten().map(|e| match e.metadata() { Ok(m) if m.is_dir() => du(&e.path()), Ok(m) => m.len(), _ => 0 }).sum()
++    }
++    eprintln!("[phase] {label} t={:.1}s dir_mb={}", t0.elapsed().as_secs_f64(), du(dir) / 1_048_576);
++}
++
+ fn bad(s: &'static str) -> io::Error {
+     io::Error::new(io::ErrorKind::InvalidData, s)
+ }
+@@ -206,6 +221,7 @@ impl Builder {
+     fn finish(mut self, dir: &Path) -> io::Result<()> {
+         // The last merge is not written out: records stream straight from the runs into the dictionary pass.
+         let mut stream = self.terms.finish_stream()?;
++        phase("term_runs_ready_for_stream", dir);
+         let mut mapping = ExternalSort::new(dir, MEMORY, 17)?;
+         let mut dict = BufWriter::new(
+             OpenOptions::new()
+@@ -259,8 +275,11 @@ impl Builder {
+         drop(dict);
+         // The term runs have been fully consumed; free them before the mapping sort and index builds.
+         stream.discard()?;
++        phase("term_runs_streamed_and_removed", dir);
+         checkpoint(1)?;
++        phase("legacy_dictionary_written_sorted_terms_removed", dir);
+         let assignments = mapping.finish()?;
++        phase("mapping_sorted", dir);
+         let mut input = BufReader::new(File::open(&assignments)?);
+         let raw = dir.join(".triples.raw");
+         let quad_raw = dir.join(".quads.raw");
+@@ -312,8 +331,10 @@ impl Builder {
+         drop(input);
+         fs::remove_file(&assignments)?;
+         checkpoint(2)?;
++        phase("triples_raw_written_assignments_removed", dir);
+         let dictionary_identity = super::lazy_dictionary::convert_unified(dir)?;
+         checkpoint(3)?;
++        phase("dictionary_converted", dir);
+         let mut identities = vec![dictionary_identity];
+         let orders = self.orders;
+         let kept = |&(slot, _): &(usize, _)| orders & (1 << slot) != 0;
+@@ -330,8 +351,10 @@ impl Builder {
+             });
+             // Join all workers before returning any failure, so no background writer survives.
+             for result in results { identities.push(result?); }
++        phase("permutation_batch_done", dir);
+         }
+         fs::remove_file(raw)?;
++        phase("raw_removed", dir);
+         // Named graphs: six graph-first quad orders and the catalog, only when the dataset has named graphs, so a
+         // default-only base stays byte-identical to an RDFSNAP4 base.
+         let named = self.quads + self.graph_names > 0;
+@@ -504,6 +527,7 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
+     }
+     boundaries.push(size);
+     fs::create_dir(dir)?;
++    phase("start", dir);
+     let results = std::thread::scope(|scope| {
+         let mut handles = Vec::new();
+         for (shard, limits) in boundaries.windows(2).enumerate() {
+@@ -525,6 +549,7 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
+         handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(io::Error::other("N-Triples worker panicked")))).collect::<Vec<_>>()
+     });
+     let builders = results.into_iter().collect::<io::Result<Vec<_>>>()?;
++        phase("shards_parsed_and_sorted", dir);
+     let mut paths = Vec::with_capacity(builders.len());
+     let mut observed = 0usize;
+     let mut count = 0u64;
+@@ -543,6 +568,7 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
+ 
+ pub(super) fn from_nt(dir: &Path, path: Option<&Path>) -> io::Result<()> {
+     fs::create_dir(dir)?;
++    phase("start", dir);
+     let mut builder = Builder::new(dir)?;
+     if let Some(path) = path {
+         let input = BufReader::new(File::open(path)?);
