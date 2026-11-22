@@ -1,0 +1,23 @@
+opened disk snapshot /tmp/sweep83/lubm1000 in 0.47s
+optimizer statistics: building in background
+serving SPARQL at http://127.0.0.1:7891/sparql
+statistics ready after 35.84s
+time: command terminated abnormally
+      164.99 real       221.27 user        11.01 sys
+          6028754944  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              873452  page reclaims
+                  10  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+              563002  messages sent
+                  67  messages received
+                   0  signals received
+                 415  voluntary context switches
+              205754  involuntary context switches
+       1352174605279  instructions retired
+        352196141030  cycles elapsed
+          4930753360  peak memory footprint
