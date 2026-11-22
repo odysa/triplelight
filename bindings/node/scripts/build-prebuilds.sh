@@ -12,6 +12,8 @@ cargo build --release --locked
 cp target/release/libtriplelight_node.dylib prebuilds/darwin-arm64/triplelight.node
 docker run --rm --platform linux/arm64 -v "$ROOT:/src" -w /src/bindings/node \
   -e CARGO_TARGET_DIR=/tmp/target debian:bullseye bash -ec "
+    # Debian 11 is end-of-life: its packages live on archive.debian.org, and its security repository is gone.
+    sed -i 's|deb.debian.org|archive.debian.org|; /security/d' /etc/apt/sources.list
     apt-get update -qq
     apt-get install -y -qq build-essential curl ca-certificates gcc-x86-64-linux-gnu binutils-multiarch >/dev/null
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none --profile minimal >/dev/null 2>&1
