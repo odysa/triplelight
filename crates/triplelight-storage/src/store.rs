@@ -352,6 +352,13 @@ impl Store {
 
     pub fn open_with(dir: impl AsRef<Path>, initial: Option<&Path>, format: Box<dyn BaseFormat>) -> std::io::Result<Self> {
         let dir = dir.as_ref().to_path_buf();
+        // A bare base (what `build-disk` writes: MANIFEST and order files, no CURRENT) is not a store. Opening it as
+        // one would write an empty `base-0` and serve no triples, so refuse before touching the directory.
+        if dir.join("MANIFEST").is_file() && !dir.join("CURRENT").exists() {
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!(
+                "{} is a base directory (as written by build-disk), not a store; query it directly, or create a store with --init",
+                dir.display())));
+        }
         std::fs::create_dir_all(&dir)?;
         // Lock before reading CURRENT, recovery, or deleting any abandoned generation.
         // The file remains in place to avoid lock-inode replacement races between processes.
@@ -794,6 +801,27 @@ mod writer_serialization_tests {
         assert!(done_rx.recv_timeout(std::time::Duration::from_secs(10)).unwrap());
         worker.join().unwrap();
         drop(store);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod bare_base_tests {
+    use super::*;
+    /// A directory written by `build-disk` (a MANIFEST, no CURRENT) is refused, and left untouched, instead of being
+    /// opened as a new empty store.
+    #[test]
+    fn opening_a_bare_base_as_a_store_is_refused() {
+        let dir = std::env::temp_dir().join(format!("rdf-bare-base-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("MANIFEST"), "RDFSNAP6\n").unwrap();
+        let err = Store::open(&dir, None, 1).err().expect("a bare base is not a store");
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+        assert!(err.to_string().contains("build-disk"), "{err}");
+        let mut names: Vec<_> = std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name()).collect();
+        names.sort();
+        assert_eq!(names, ["MANIFEST"], "nothing was written into the base directory");
         std::fs::remove_dir_all(dir).unwrap();
     }
 }
