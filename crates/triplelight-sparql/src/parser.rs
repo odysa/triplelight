@@ -870,7 +870,8 @@ impl<'a> Parser<'a> {
     fn triples_template(&mut self) -> R<Vec<TriplePattern>> {
         let mut out = Vec::new();
         loop {
-            if self.is_punct("}") { break }
+            // `GRAPH` can follow a dot in quad data and templates: `Quads ::= TriplesTemplate? (QuadsNotTriples '.'? TriplesTemplate?)*`.
+            if self.is_punct("}") || self.is_kw("GRAPH") { break }
             let starts_node = matches!(self.peek(), Tok::Punct("[") | Tok::Punct("("));
             let s = self.graph_node(&mut out, false)?;
             if !(starts_node && (self.is_punct(".") || self.is_punct("}"))) { self.property_list_not_empty(&s, &mut out, false)?; }
