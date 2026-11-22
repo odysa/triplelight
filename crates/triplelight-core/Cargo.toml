@@ -4,6 +4,7 @@ description = "Shared types and storage traits of TripleLight"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+license.workspace = true
 
 [dependencies]
 triplelight-rdf.workspace = true

@@ -4,6 +4,7 @@ description = "TripleLight query planning: statistics and cost-based join orderi
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+license.workspace = true
 
 [dependencies]
 triplelight-core.workspace = true
