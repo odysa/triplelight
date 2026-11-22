@@ -31,9 +31,9 @@ jobs:
       - name: Build with the HTTP server feature
         run: cargo build --locked --features server
       - name: Clippy
-        run: cargo clippy --locked --workspace --all-targets --features server -- -D warnings
+        run: cargo clippy --locked --workspace --all-targets --features server,async -- -D warnings
       - name: Test
-        run: cargo test --locked --workspace --features server
+        run: cargo test --locked --workspace --features server,async
 
   w3c:
     name: W3C SPARQL 1.1 query suite

@@ -91,3 +91,7 @@ pub mod store {
 
 #[cfg(unix)]
 pub mod embedded;
+
+/// The async embedded API (feature `async`): every call runs on a worker and is awaited on any executor.
+#[cfg(feature = "async")]
+pub mod async_embedded;

@@ -54,6 +54,8 @@ workspace = true
 [features]
 # The SPARQL HTTP server (`triplelight serve` / `serve-store`). Off by default: TripleLight is embedded first.
 server = ["dep:tiny_http"]
+# The async embedded API (`triplelight::async_embedded`, task #41): runtime-independent, through AsyncBand.
+async = ["dep:asyncband"]
 
 [dependencies]
 triplelight-core.workspace = true
@@ -64,6 +66,7 @@ triplelight-exec.workspace = true
 oxrdf.workspace = true
 sha2.workspace = true
 tiny_http = { version = "0.12.0", optional = true }
+asyncband = { version = "0.8", optional = true, features = ["oneshot", "semaphore"] }
 
 [dev-dependencies]
 sha2.workspace = true
