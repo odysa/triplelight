@@ -80,9 +80,9 @@ with the old and new N-Triples parser are byte-identical. On BSBM-10M, N-Triples
 **Disk build and dictionary layout (#54, #55).** Profiling the external build of BSBM-100M showed two near-raw-size
 copies of the dictionary, one ordered by term and one by ID, making up about three quarters of the store. IDs inside a
 kind already follow term-text order, so one front-coded file in ID order, with each block's last term kept in the
-directory, serves both lookups (`RDFSNAP4`). *Unaudited:* the BSBM-100M store shrank from 12.24 GB to 7.75 GB
-(−37%), the dictionary conversion phase ran about 60 s (31%) faster, `verify` passes, and an Arrow-decode A/B
-showed no regression. Earlier fixes freed scratch artifacts as soon as they were consumed and streamed the final
+directory, serves both lookups (`RDFSNAP4`). On BSBM-100M the store shrank from 12.24 GiB to 7.75 GiB (−37%), the dictionary conversion phase ran about 58 s
+(30%) faster, and `verify` passes ([evidence](../unified-dictionary-100m-v1/README.md)). *Unaudited:* an
+Arrow-decode A/B showed no regression. Earlier fixes freed scratch artifacts as soon as they were consumed and streamed the final
 term merge into the dictionary pass; peak scratch disk during the build fell from about 60 GB to about 42–44 GB.
 Older snapshot formats stay readable; there is no downgrade.
 
@@ -92,8 +92,8 @@ and then blocking every compaction (#95). `verify` is 3.4–3.7× faster and sti
 ## 4. Open limits
 
 - **Build speed and footprint.** Building the disk store is TripleLight's widest gap to QLever: LUBM-1000 took
-  1,035 s against 425 s (benchmarks.md, round 9), and BSBM-100M's store was 12.3 GB against 3.8 GB before the
-  dictionary change (*unaudited*; the change above narrows the size gap but the time gap is not re-measured against
+  1,035 s against 425 s (benchmarks.md, round 9), and BSBM-100M's store was 12.3 GB against 3.8 GB for QLever before the
+  dictionary change (QLever's size is *unaudited*; the change above narrows the size gap but the time gap is not re-measured against
   QLever). The build is mostly single-threaded, and the build needs tens of gigabytes of scratch disk.
 - **Memory.** QLever uses about a tenth of TripleLight's memory on BI 100M (0.4–0.5 GiB against 3.7–4.1 GiB), and is
   faster on BI q3.
