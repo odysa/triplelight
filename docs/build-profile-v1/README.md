@@ -55,7 +55,7 @@ the shape and, once shifted to a common origin, to within about 15 s.
 ## What it says
 
 - Everything after the dictionary is 26% of the wall time. Even if the whole order phase (reading, sorting, counting and
-  writing) became three times faster, the build would be about 17% shorter (115 s). The larger pieces are the parse (39%) and the dictionary and mapping stages together (33%:
+  writing) became three times faster, the build would be about 17% shorter (115 s). The larger pieces are the parse (39%) and the dictionary and mapping stages together (35%:
   the term merge and dictionary pass, the mapping sort, the raw rows and the conversion).
 - The 46.7 GB peak of the build directory is in the parse phase (at 244 s, from the sampler), when the shard runs for
   the input are on disk; the order phase peaks at about 20 GB. Any reduction of scratch space has to target the parse.
