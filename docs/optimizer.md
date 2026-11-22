@@ -1,4 +1,14 @@
-# P1 optimizer
+# Optimizer
+
+**How the engine uses it today.** The executor orders each basic graph pattern greedily, using the exact
+index-prefix count for a sampled current binding and penalizing disconnected patterns. Eligible cyclic patterns use
+leapfrog triejoin; their variable order comes from `choose_variable_order` when the same planner gate passes
+(statistics, default data context, at most seven patterns, enough estimated work), and from the legacy order otherwise. The cost-based binary
+order described below replaces the greedy one only when statistics are available (persisted with disk stores, built
+in the background in memory), the pattern has two to seven triples (`MAX_RUNTIME_DP_PATTERNS`), its input is a single
+all-unbound row in the default data context, and the estimated greedy work is at least `MIN_OPTIMIZER_WORK`
+(100,000). The `plan_bgp` API keeps `enable_leapfrog` off by default. The sections
+below record the design and its validation as it was built (task history: "P1").
 
 The optimizer consumes dictionary-encoded `TriplePattern`s and statistics from
 the same read snapshot. It emits scans, index nested loops, optional merge/hash joins, or a capability-gated
@@ -11,7 +21,7 @@ against elapsed time or shown to beat another RDF store.
 let mut stats = Stats::from_snapshot(snapshot)?;
 stats.cache_pattern_counts(&patterns, snapshot)?; // exact index-prefix counts, no full query execution
 let plan = plan_bgp(&patterns, &stats);
-// Once a leapfrog executor is available:
+// Opt in to the leapfrog candidate:
 let decision = plan_bgp_with_options(&patterns, &stats,
     PlannerOptions { enable_leapfrog: true, ..Default::default() });
 ```
