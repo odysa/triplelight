@@ -196,3 +196,77 @@ statistics (TripleLight's statistics-ready flag is checked before timing).
 answers hashed against Jena, to check the configurations, the cold-run reset, the answer classes and the result files
 before any rented hour. QLever and Virtuoso run in the Docker VM on the laptop, so those two timings are meaningless
 there; only their correctness is checked.
+
+## Amendment 1 (2026-11-22, after the gap audit `docs/paper-gaps-v1.md`, task #100)
+
+Registered before any dedicated-machine run. Where this section and an earlier one disagree, this section wins. Sources
+are #100 messages from the section owners.
+
+**A1. Framing.** The main paper is the VLDB 2027 research-track systems paper (owner decision bcc69cbb). The claims stay
+C1a (embedded) and C1b (HTTP), with the layout ranking test as its "is the comparison fair?" section.
+
+**A2. Added systems (gap B2).**
+- *DuckDB `rdf` extension:* in the Python embedded cohort. `execute_sparql` runs over one frozen R2RML mapping of the same
+  graph. Pin a compatible DuckDB and extension pair and record both identities. Typed identity, projection,
+  multiplicity and unbound handling are gated first, and the generated SQL is kept outside timing. Coverage is reported
+  and exclusions are stated. It is kept separate from the hand-written SQL layout arms. (Jianlin)
+- *RDF Fusion 0.3.1:* a native Rust in-process cohort with TripleLight, on the release's local disk backend. Load, close
+  and reopen are staged separately, with a typed-identity gate. A memory-only run, if needed, is reported separately. (Jianlin)
+- *MillenniumDB:* an HTTP engine with its own loader and server, answer-gated, ranked as a fixed-layout engine. (WindowsXP)
+- *RDF4J:* the official server image (`eclipse/rdf4j-workbench:5.0.0`, pinned by digest), native store, with the default
+  `spoc,posc` and aligned `spoc,posc,ospc` arms. The in-house wrapper is used only for the embedded Java cohort. (WindowsXP)
+- *QLever two-order arm* (`qlever-index -o`); a variable-predicate request it can't answer is recorded as unsupported. (WindowsXP)
+
+**A3. Real data (gap B3).** WDBench (ISWC 2022): 1,257,169,959 triples from the 2021-06-23 Wikidata truthy dump, with
+the query files pinned at upstream `6767ee26`. The full archive is downloaded once on the dedicated machine. The
+qualification gate is 30 requests, six per category, chosen by a hash of category and upstream ID before any candidate
+result. Each upstream pattern is wrapped as `SELECT *` with its bytes frozen, and answers are complete typed bags under a
+predeclared output and time budget (a budget stop is reported as incomplete, with no bare `LIMIT`). A full upstream run
+is reported separately from the gate. The laptop gets only a parser test on a streamed prefix of the current truthy dump,
+recorded with its date and SHA and used for no answer or timing claim. (Jianlin: workload; Alex: load)
+
+**A4. Ranking test (finalizes #96).** The HTTP cohort is TripleLight, QLever, Virtuoso, Jena TDB2, Oxigraph,
+RDF4J and MillenniumDB. Each must pass its store receipt and answer gate.
+- The moving engines are TripleLight (4 and 6 orders), QLever (default and two-order) and RDF4J (default and aligned).
+  The others are fixed-layout.
+- The statistic is τ_b with average ranks, computed per suite and per independent block.
+- A suite needs at least four paired engines after dropping unsupported cells from both vectors. Otherwise it is
+  unevaluable, and if no suite is evaluable, the test is unevaluable.
+- The claim fails if τ_b ≥ 0.8 on every evaluable suite.
+- Registered prediction: τ_b < 0.8 on BSBM-BI and the WatDiv aggregates, and τ_b ≥ 0.8 on LUBM.
+- The embedded cohorts are descriptive only.
+
+**A5. Statistical unit (gap B8).** An independent block is a fresh process or server per configuration, with the same
+cache admission and warm-up, and one measured warm pass. There are six blocks by default, in a frozen balanced order
+(AB/BA three times for a pair, balanced rotations for more arms). Report:
+- per-query medians and IQR, paired same-request ratios and suite sums, with every outcome retained;
+- a distinct-text sensitivity result for repeated labels;
+- descriptive ranges with six blocks.
+
+Five warm calls in one process estimate within-process variability only. A timeout, mismatch or failed readiness makes
+the comparison incomplete. For practical equivalence (four against six orders), the margin is ±10%, with at least
+12 paired blocks and a paired interval wholly inside the margin; otherwise the effect is reported with its uncertainty.
+
+**A6. Where the time goes (gap B9), new section S6.** One instrumented TripleLight build records per query: parse, plan,
+the join phases (BGP extension, leapfrog), aggregation, decode and serialization, together with rows decoded against
+rows produced. Run it on one suite per dataset at 100M, next to the fastest rival's own profile where it exposes one
+(QLever's runtime tree). Report it as a breakdown, not a speed claim. (Kaiming)
+
+**A7. Thread scaling (gap W8).** TripleLight runs with `RAYON_NUM_THREADS` = 1, 2, 4, 8 and 16 on one suite at 100M, warm,
+under A5 blocks. Execution is intra-query parallel in BGP extension, last-level counting, the leapfrog first level, and
+result decoding and serialization.
+
+**A8. Storage additions (gaps B4, W9).**
+- Re-run the #83 memory sweep on main after #131, on the laptop (mechanism evidence only).
+- Forced derived-order stress test: one-column prefixes on the 50 highest-degree subjects and objects per 1B store, plus
+  prefix-free scans of each derived order. Report time, peak RSS and memo hits and misses against a six-order store.
+- WDBench coverage of the derived path via the `TRIPLELIGHT_TRACE_DERIVED` trace.
+- Durability and update claims are scoped as in #100 (Alex's W6 and W7 texts).
+
+(Alex)
+
+**A9. Baseline tuning (gap B6).** Each system follows its vendor's documented post-load steps: `oxigraph optimize`, Jena
+`tdbstats`, QLever's and Virtuoso's index and statistics steps. All of them are recorded in the receipts. Memory rule: the
+same cgroup `memory.max` for every system; inside it, each system's memory knobs follow vendor guidance, stated per
+system (TripleLight: cache at half the limit). Commercial engines are excluded because their benchmark-publication
+licence terms are not accepted on the owner's behalf. (WindowsXP)
