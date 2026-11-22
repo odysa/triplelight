@@ -18,9 +18,21 @@ pub(crate) const MAX_TERM: usize = triplelight_core::ntriples::MAX_TOKEN;
 const _: () = assert!(MAX_TERM == 16 * 1024 * 1024, "the base limit is oxttl's 16 MiB token limit");
 /// Longest record of the term sort: the term text plus its flag and ID bytes.
 const TERM_SORT_RECORD_MAX: usize = MAX_TERM + 10;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
 static BUILD_BUDGET_MB: AtomicUsize = AtomicUsize::new(0);
 static FORCE_EXTERNAL: AtomicBool = AtomicBool::new(false);
+static KEPT_ORDERS: AtomicU8 = AtomicU8::new(super::disk_snapshot::ALL_ORDERS);
+/// Which orders this process's external builds (imports and compaction) write, as bits of `Perm::ALL` positions
+/// (task #73). The default, `ALL_ORDERS`, writes the six-order `RDFSNAP4`/`RDFSNAP5` layout byte for byte; any
+/// smaller set writes an `RDFSNAP6` base. The set must contain `REQUIRED_ORDERS` (SPO, PSO, POS, OSP).
+pub fn set_kept_orders(orders: u8) -> io::Result<()> {
+    use super::disk_snapshot::{ALL_ORDERS, REQUIRED_ORDERS};
+    if orders & !ALL_ORDERS != 0 || orders & REQUIRED_ORDERS != REQUIRED_ORDERS {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "an order set must keep SPO, PSO, POS and OSP"));
+    }
+    KEPT_ORDERS.store(orders, Ordering::Relaxed);
+    Ok(())
+}
 /// Sets an advisory strategy budget, not a hard process RSS limit.
 pub fn set_build_budget_mb(mb: usize) -> io::Result<()> {
     if mb == 0 {
@@ -120,6 +132,8 @@ pub(super) struct Builder {
     quads: u64,
     graph_names: u64,
     index_workers: usize,
+    /// The orders `finish` writes (bits of `Perm::ALL` positions), from `KEPT_ORDERS` at construction.
+    orders: u8,
 }
 impl Builder {
     fn new(dir: &Path) -> io::Result<Self> { Self::with_budget(dir, MEMORY) }
@@ -130,6 +144,7 @@ impl Builder {
             quads: 0,
             graph_names: 0,
             index_workers: 1,
+            orders: KEPT_ORDERS.load(Ordering::Relaxed),
         })
     }
     fn add(&mut self, terms: [String; 3]) -> io::Result<()> {
@@ -287,7 +302,9 @@ impl Builder {
         let dictionary_identity = super::lazy_dictionary::convert_unified(dir)?;
         checkpoint(3)?;
         let mut identities = vec![dictionary_identity];
-        let jobs: Vec<_> = FILES[1..].iter().copied().zip(Perm::ALL).collect();
+        let orders = self.orders;
+        let kept = |&(slot, _): &(usize, _)| orders & (1 << slot) != 0;
+        let jobs: Vec<_> = FILES[1..].iter().copied().zip(Perm::ALL).enumerate().filter(kept).map(|(_, j)| j).collect();
         let workers = self.index_workers;
         let run_budget = (budget_mb().saturating_mul(1_048_576) / workers).min(MEMORY);
         for batch in jobs.chunks(workers) {
@@ -306,7 +323,7 @@ impl Builder {
         // default-only base stays byte-identical to an RDFSNAP4 base.
         let named = self.quads + self.graph_names > 0;
         if named {
-            let quad_jobs: Vec<_> = QUAD_FILES.iter().copied().zip(Perm::ALL).collect();
+            let quad_jobs: Vec<_> = QUAD_FILES.iter().copied().zip(Perm::ALL).enumerate().filter(kept).map(|(_, j)| j).collect();
             for batch in quad_jobs.chunks(workers) {
                 let results = std::thread::scope(|scope| {
                     let handles: Vec<_> = batch.iter().map(|&(name, perm)| {
@@ -329,8 +346,14 @@ impl Builder {
                 .create_new(true)
                 .open(dir.join("MANIFEST"))?,
         );
-        // RDFSNAP5 (task #36) = RDFSNAP4 plus six quad orders and the graph catalog.
-        manifest.write_all(if named { b"RDFSNAP5" } else { b"RDFSNAP4" })?;
+        // RDFSNAP5 (task #36) = RDFSNAP4 plus six quad orders and the graph catalog. RDFSNAP6 (task #73) = either,
+        // with only the kept orders, after the order set and the named-graph flag.
+        if orders == super::disk_snapshot::ALL_ORDERS {
+            manifest.write_all(if named { b"RDFSNAP5" } else { b"RDFSNAP4" })?;
+        } else {
+            manifest.write_all(b"RDFSNAP6")?;
+            manifest.write_all(&[orders, u8::from(named)])?;
+        }
         for identity in identities {
             manifest.write_all(&identity)?;
         }
@@ -524,10 +547,15 @@ pub(super) fn from_nt(dir: &Path, path: Option<&Path>) -> io::Result<()> {
 /// A base of the default graph and every named graph of `source` (task #36): `RDFSNAP5` if it has named graphs,
 /// otherwise exactly `from_snapshot` of its default graph.
 pub(super) fn from_dataset(dir: &Path, source: &dyn triplelight_core::storage::DatasetView) -> io::Result<()> {
+    from_dataset_keeping(dir, source, KEPT_ORDERS.load(Ordering::Relaxed))
+}
+/// `from_dataset` writing the orders `orders` (bits of `Perm::ALL` positions) instead of the process setting.
+pub(super) fn from_dataset_keeping(dir: &Path, source: &dyn triplelight_core::storage::DatasetView, orders: u8) -> io::Result<()> {
     let names = source.graph_names()?;
-    if names.is_empty() { return from_snapshot(dir, source.default_graph()) }
+    if names.is_empty() { return from_snapshot_keeping(dir, source.default_graph(), orders) }
     fs::create_dir(dir)?;
     let mut builder = Builder::new(dir)?;
+    builder.orders = orders;
     let text = |view: &dyn Snapshot, id: TermId| -> io::Result<String> {
         let mut out = String::new();
         view.with_term(id, &mut |v| out = v.to_string())?;
@@ -554,8 +582,12 @@ pub(super) fn from_dataset(dir: &Path, source: &dyn triplelight_core::storage::D
     builder.finish(dir)
 }
 pub(super) fn from_snapshot(dir: &Path, source: &dyn Snapshot) -> io::Result<()> {
+    from_snapshot_keeping(dir, source, KEPT_ORDERS.load(Ordering::Relaxed))
+}
+pub(super) fn from_snapshot_keeping(dir: &Path, source: &dyn Snapshot, orders: u8) -> io::Result<()> {
     fs::create_dir(dir)?;
     let mut builder = Builder::new(dir)?;
+    builder.orders = orders;
     for batch in source.scan(Perm::Spo, &[]) {
         let batch = batch?;
         if batch.cols.iter().any(|c| c.len() != batch.len()) {
