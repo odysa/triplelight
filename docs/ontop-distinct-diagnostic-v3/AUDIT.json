@@ -1,0 +1,19 @@
+{
+  "packet_sha256": "b3af44ffc67fe5dae6a1da4456d78ee17e4008278dc53376d72dfa9552fd9fc3",
+  "members": 77,
+  "distinct_count_vector": [
+    8,
+    9,
+    8,
+    9
+  ],
+  "all_other_answer_controls_pass": true,
+  "same_native_sql_across_profiles": true,
+  "native_aggregate_key": "lexical field alone",
+  "original_setup_stop_reproduced_by_receipts": true,
+  "workload_screen_candidates": [
+    "watdiv/distinct_L2.rq"
+  ],
+  "full_workload_qualified": false,
+  "scored": false
+}

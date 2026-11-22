@@ -133,7 +133,10 @@ The [Mulgara 2.1.13 build and startup check](mulgara-embedded-startup-v1/README.
 
 The [Ontop / DuckDB JDBC tiny qualification](ontop-tiny-qualification-v1/README.md) passes twelve of thirteen
 fixed cases. COUNT(DISTINCT) returns integer 8 instead of 9 while plain, DISTINCT and grouped bags retain all
-nine typed objects. This configuration fails admission; the cause is not established and no timings are reported.
+nine typed objects. The [four-profile diagnostic](ontop-distinct-diagnostic-v3/README.md) found that Ontop's
+reformulated aggregate counts lexical strings, collapsing an IRI and a string with the same spelling in this
+mapping. WatDiv `distinct_L2.rq` needs a mapped-domain check before qualification. The full Ontop mapping and
+workload timings are still pending.
 
 The [embedded-store evidence inventory](embedded-store-inventory.md) distinguishes completed cohorts,
 failed admission checks and remaining workload qualifications. Existing timed tables below retain their
