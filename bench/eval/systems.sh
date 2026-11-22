@@ -24,7 +24,10 @@ case $SYS in
       load)  echo "budget not enforced for native triplelight" >&2
              rm -rf "$T/triplelight-$D"; "$BIN" build-disk "$NT" "$T/triplelight-$D" --build-external ;;
       serve) echo "budget not enforced for native triplelight" >&2
-             exec "$BIN" serve "$T/triplelight-$D" 7979 --disk --cache-mb "$((MEM * 1024 / 4))" ;;
+             # fail fast if this binary was built without the server feature (a later plain `cargo test` or `cargo build` rebuilds it that way)
+             if "$BIN" serve /nonexistent 0 2>&1 | grep -q "does not include"; then echo "$BIN has no server feature: cargo build --release --features server" >&2; exit 3; fi
+             # cache budget: half of the memory limit, as in the frozen plan (S1), recorded in the receipt
+             exec "$BIN" serve "$T/triplelight-$D" 7979 --disk --cache-mb "$((MEM * 1024 / 2))" ;;
     esac ;;
   qlever)
     case $MODE in
