@@ -94,7 +94,7 @@ in-memory overlay that compaction merges into a new base.}
 parsers and term types are \sys{}'s own, with the RDF parsing behaviour of Oxigraph's crates kept exactly.
 
 \paragraph{Terms and IDs.} Every RDF term is a 64-bit ID whose top four bits give its kind; in memory, a plain string of up to seven bytes is
-encoded in the ID itself. On disk, every term is stored once, in a front-coded dictionary. Operators compare, join and group IDs, and decode a term only when a filter, a string
+encoded in the ID itself. On disk, terms are kept in a front-coded dictionary (one copy in current stores). Operators compare, join and group IDs, and decode a term only when a filter, a string
 function or the final result needs its text.
 
 \paragraph{Storage.} A base snapshot holds the six orders (SPO, SOP, PSO, POS, OSP, OPS) as compressed, checksummed
