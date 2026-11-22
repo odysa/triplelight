@@ -54,8 +54,8 @@ the shape and, once shifted to a common origin, to within about 15 s.
 
 ## What it says
 
-- Everything after the dictionary is 26% of the wall time. Even a sort three times faster would save at most about
-  17% of the build (115 s). The larger pieces are the parse (39%) and the dictionary and mapping stages together (33%:
+- Everything after the dictionary is 26% of the wall time. Even if the whole order phase (reading, sorting, counting and
+  writing) became three times faster, the build would be about 17% shorter (115 s). The larger pieces are the parse (39%) and the dictionary and mapping stages together (33%:
   the term merge and dictionary pass, the mapping sort, the raw rows and the conversion).
 - The machine is far from busy: 2.9 cores on average, and 29% of the CPU time is system time, so the build is also
   waiting on and issuing a great deal of I/O.
