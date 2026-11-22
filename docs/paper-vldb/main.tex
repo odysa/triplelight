@@ -27,8 +27,11 @@ engines differ in which triple-index orders they store.
 \paragraph{Analytical SPARQL inside the application.} Data scientists increasingly run analyses on one machine and are poorly
 served by systems built for dedicated servers, a point Raasveldt and M\"uhleisen made for relational data when they proposed
 embedded analytical systems: tight integration with the analysis tool, efficient transfer of results into it, resilience on user
-hardware, and cooperation with the host application for resources~\cite{raasveldt2020}. RDF has a similar gap. The scalable RDF stores we compare against (Virtuoso, QLever) are servers that an application reaches over a protocol.
-An application that wants an aggregate over a hundred million triples has to run such a server, or export the data to a relational engine.
+hardware, and cooperation with the host application for resources~\cite{raasveldt2020}. RDF has the same gap, and it is only partly filled. The scalable RDF stores we compare against (Virtuoso, QLever) are servers that an application reaches over a protocol.
+Recent work moves toward the embedded setting from three sides. A community extension for DuckDB runs SPARQL~1.1 queries (a subset) over DuckDB tables through R2RML mappings~\cite{duckdbrdf}.
+RDF Fusion builds a SPARQL engine on Apache DataFusion and Arrow; it keeps its quad indexes (GSPO, GPOS, GOPS) in memory, has no on-disk storage yet, and was evaluated on BSBM data of about 9 million and 1.8 million triples~\cite{schwarzinger2025}.
+MillenniumDB is a persistent, open-source graph database that combines B+-tree indexes with worst-case-optimal joins, and lists SPARQL~1.1 among its supported models~\cite{vrgoc2021,mdbreadme}; it runs as a database server, and its published evaluation is on Wikidata with its own query language.
+To our knowledge none of these is an embedded, disk-resident, SPARQL-native engine measured at hundreds of millions of triples, which is the position TripleLight takes. \todo{verify against each system's current release before submission, and add the measured comparison from Section~4.}
 
 \paragraph{What we built and where it stands.} TripleLight is an embedded RDF database in Rust, with bindings for Python, Node, WebAssembly, C, Go and Java.
 It answers SPARQL~1.1 queries and updates in process, on IDs, and returns results as SPARQL JSON, owned rows or Arrow C streams
@@ -123,6 +126,10 @@ The code, the scripts and the data needed to reproduce every number are in the r
 \bibitem{neumann2008} T.~Neumann, G.~Weikum. RDF-3X: a RISC-style engine for RDF. \emph{PVLDB} 1(1), 2008.
 \bibitem{bast2017} H.~Bast, B.~Buchhold. QLever: a query engine for efficient SPARQL+text search. \emph{CIKM}, 2017.
 \bibitem{sidirourgos2008} L.~Sidirourgos, R.~Goncalves, M.~Kersten, N.~Nes, S.~Manegold. Column-store support for RDF data management: not all swans are white. \emph{PVLDB} 1(2), 2008.
+\bibitem{schwarzinger2025} T.~Schwarzinger, M.~Thoma, T.~Preindl, M.~Kj{\"a}er, V.~P.~Just, G.~Steindl. RDF Fusion: an extensible SPARQL engine for hybrid data models. \emph{IEEE Access} 13, 2025.
+\bibitem{vrgoc2021} D.~Vrgo{\v c} et al. MillenniumDB: a persistent, open-source, graph database. arXiv:2111.01540, 2021.
+\bibitem{mdbreadme} MillenniumDB project README, github.com/MillenniumDB/MillenniumDB (accessed 2026-11-22).
+\bibitem{duckdbrdf} DuckDB community extension \texttt{rdf} (``Read and write RDF, query using SPARQL''), duckdb.org/community\_extensions/extensions/rdf (accessed 2026-11-22).
 \bibitem{duan2011} S.~Duan, A.~Kementsietsidis, K.~Srinivas, O.~Udrea. Apples and oranges: a comparison of RDF benchmarks and real RDF datasets. \emph{SIGMOD}, 2011.
 \end{thebibliography}
 \end{document}
