@@ -298,6 +298,14 @@ fn keep(table: &mut BTreeMap<Option<u32>, Candidate>, candidate: Candidate) {
         table.insert(candidate.sorted, candidate);
     }
 }
+fn pattern_subset(patterns: &[TriplePattern], mask: usize) -> impl Iterator<Item = TriplePattern> + '_ {
+    patterns
+        .iter()
+        .enumerate()
+        .filter(move |(i, _)| mask & (1 << i) != 0)
+        .map(|(_, pattern)| *pattern)
+}
+
 // Index nested loops discard ordering after a join. Their cost depends only on
 // the outer subset's cardinality, not on a retained physical order. Keep compact
 // predecessor/cost arrays and build the winning tree once instead of cloning a
@@ -328,13 +336,7 @@ fn dp_index(patterns: &[TriplePattern], stats: &Stats) -> Candidate {
             continue;
         }
         subset.clear();
-        subset.extend(
-            patterns
-                .iter()
-                .enumerate()
-                .filter(|(i, _)| mask & (1 << i) != 0)
-                .map(|(_, p)| *p),
-        );
+        subset.extend(pattern_subset(patterns, mask));
         cardinalities[mask] = stats.estimate_bgp(&subset);
         let mut remaining = mask;
         while remaining != 0 {
@@ -388,12 +390,7 @@ fn dp(patterns: &[TriplePattern], stats: &Stats, mode: BinaryJoinMode) -> Candid
         if mask.count_ones() < 2 {
             continue;
         }
-        let subset: Vec<_> = patterns
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| mask & (1 << i) != 0)
-            .map(|(_, p)| *p)
-            .collect();
+        let subset: Vec<_> = pattern_subset(patterns, mask).collect();
         let rows = stats.estimate_bgp(&subset);
         let mut best = BTreeMap::new();
         for (i, leaf) in leaves.iter().enumerate() {
