@@ -61,6 +61,7 @@ switches to it atomically. A file lock allows one process per store directory.
 \paragraph{Query processing.} A BGP is ordered greedily by exact index-prefix counts, and eligible patterns use a cost-based order from characteristic-set statistics; cyclic patterns use leapfrog triejoin.
 Execution runs on IDs with index nested-loop joins, filter pushdown, hash aggregation, top-$k$ for \texttt{ORDER BY \dots\ LIMIT}, and count shortcuts. Statistics are persisted next to the base:
 with a saved file they were ready 0.74 to 0.91\,s after open, against 20.5 to 25.8\,s when rebuilt by a scan (\texttt{docs/startup36-persisted-stats}; laptop, single session, preliminary: to be replaced by dedicated-machine numbers).
+Execution is intra-query parallel through Rayon: morsel-parallel BGP extension, parallel counting at the last join level, a parallel first level for leapfrog, and parallel result decoding and serialization; aggregation and the other operators run serially (code audit in task \#100; a thread-scaling run is planned on the dedicated machine). There is one writer and one process per store.
 Correctness is gated on answers matching Apache Jena under each benchmark's declared checks and on at least 323 passing W3C SPARQL~1.1 query tests in CI (\texttt{DESIGN.md}).
 
 \section{Techniques and Their Sources}
