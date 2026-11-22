@@ -1,0 +1,19 @@
+disk build strategy: external sort (budget is advisory, not an RSS limit)
+      630.16 real      1197.84 user       537.77 sys
+          2429124608  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              186593  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+             2088199  voluntary context switches
+             4374808  involuntary context switches
+       9436981050850  instructions retired
+       2650309559255  cycles elapsed
+          1096516904  peak memory footprint
