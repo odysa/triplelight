@@ -1,0 +1,23 @@
+{
+ "file": "bsbm100.nt",
+ "lines": 98861444,
+ "literals": 51738533,
+ "seconds": 84.6,
+ "types": {
+  "integer": {
+   "occurrences": 14880794,
+   "distinct": 2000,
+   "canonical_occ": 14880794,
+   "canonical_distinct": 2000,
+   "fits_60bit_occ": 14880794,
+   "xsd11_canonical_occ": null,
+   "not_roundtrip_plain_rule_occ": 0,
+   "not_roundtrip_xsd_rule_occ": 0,
+   "examples_failing": []
+  }
+ },
+ "numeric_occ": 14880794,
+ "numeric_canonical_occ": 14880794,
+ "numeric_share_of_literals": 0.287615,
+ "canonical_share_of_numeric": 1.0
+}
