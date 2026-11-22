@@ -153,15 +153,15 @@ configs and the driver: WindowsXP. Claims, ablations, protocol, final registrati
 Built from what `bench/run.py`, `bench/suite.sh` and `docs/report/evaluation.md` already do, and from the problems met in
 tasks #2 and #16.
 
-**Systems, pinned.** The main tables carry TripleLight (commit recorded), QLever (Docker image by digest, run natively
-where possible), Virtuoso 7 open source (image by digest), Jena TDB2 with Fuseki 6.2.0, and Oxigraph 0.5.13 (the closest
-Rust peer). RDF4J 5.3.2 (native and memory stores behind the wrapper in `bench/rdf4j-server`) and DuckDB go in a second
-table. Every server answers the SPARQL 1.1 protocol on one Linux machine, and versions and digests are written into every
+**Systems, pinned.** The main tables carry TripleLight (commit recorded), QLever (Docker image by digest; the W3 control run checks that Docker's
+networking and volume mounts make no difference), Virtuoso 7 open source (image by digest), Jena TDB2 with Fuseki 6.2.0, and Oxigraph 0.5.13 (the closest
+Rust peer). RDF4J (official server image, ranked; see A2), MillenniumDB (A2) and the embedded cohorts are added by Amendment 1;
+the wrapper in `bench/rdf4j-server` serves only the embedded Java cohort. Every server answers the SPARQL 1.1 protocol on one Linux machine, and versions and digests are written into every
 result file.
 
 **Equal resources, two regimes.** Every server gets the same CPUs and the same memory limit through a cgroup, not
 through its own settings alone. (a) Fits in RAM: the limit is larger than the store and each system's cache or heap knob
-is set to the same budget, with the knob and its value listed per system (TripleLight `--cache-mb`, QLever's memory
+follows its vendor's guidance inside that limit (Amendment 1, A9), with the knob and its value listed per system (TripleLight `--cache-mb`, QLever's memory
 options, Virtuoso `NumberOfBuffers`, the JVM heap for Jena and RDF4J). (b) Memory-limited: 8 and 16 GB with stores larger
 than the limit (the storage section); same configurations, only the limit changes.
 
@@ -196,3 +196,88 @@ statistics (TripleLight's statistics-ready flag is checked before timing).
 answers hashed against Jena, to check the configurations, the cold-run reset, the answer classes and the result files
 before any rented hour. QLever and Virtuoso run in the Docker VM on the laptop, so those two timings are meaningless
 there; only their correctness is checked.
+
+## Amendment 1 (2026-11-22, after the gap audit `docs/paper-gaps-v1.md`, task #100)
+
+Registered before any dedicated-machine run. Where this section and an earlier one disagree, this section wins. Sources
+are #100 messages from the section owners.
+
+**A1. Framing.** The main paper is the VLDB 2027 research-track systems paper (owner decision bcc69cbb). The claims stay
+C1a (embedded) and C1b (HTTP), with the layout ranking test as its "is the comparison fair?" section.
+
+**A2. Added systems (gap B2).**
+- *DuckDB `rdf` extension:* in the Python embedded cohort. `execute_sparql` runs over one frozen R2RML mapping of the same
+  graph. Pin a compatible DuckDB and extension pair and record both identities. Typed identity, projection,
+  multiplicity and unbound handling are gated first. Diagnostic SQL is captured in a separate untimed run. The timed
+  interval starts at the SPARQL call, includes the translation, and ends at full typed result consumption. Coverage is reported
+  and exclusions are stated. It is kept separate from the hand-written SQL layout arms. (Jianlin)
+- *RDF Fusion 0.3.1:* a native Rust in-process cohort with TripleLight, on the release's local DeltaQuads disk backend, so it is distinguishable from the paper's in-memory setup. Load, close
+  and reopen are staged separately, with a typed-identity gate. A memory-only run, if needed, is reported separately. (Jianlin)
+- *MillenniumDB:* an HTTP engine with its own loader and server (Docker build from a pinned commit, `mdb import`,
+  `mdb server`). Its layout counts as fixed only once its store receipt shows the indexes it builds. Known limits from its
+  own documentation: no named graphs, `FROM` or `GRAPH` (those requests are recorded as unsupported); numeric lexical
+  forms not preserved, so its answers can at best reach the value-compatible class, never exact typed identity; it
+  describes itself as "not production ready". Its JSON results format is to be verified in qualification. (WindowsXP)
+- *RDF4J:* (supersedes the RDF4J 5.3.2 wrapper row in "Systems, pinned" above) the official server image (`eclipse/rdf4j-workbench:5.0.0`, pinned by digest), native store, with the default
+  `spoc,posc` and aligned `spoc,posc,ospc` arms. The in-house wrapper is used only for the embedded Java cohort. (WindowsXP)
+- *QLever two-order arm* (`qlever-index -o`); a variable-predicate request it can't answer is recorded as unsupported. (WindowsXP)
+
+**A3. Real data (gap B3).** WDBench (ISWC 2022): 1,257,169,959 triples from the 2021-06-23 Wikidata truthy dump, with
+the query files pinned at upstream `6767ee26`. The full archive is downloaded once on the dedicated machine. The
+qualification gate is 30 requests, six per category, chosen by a hash of category and upstream ID before any candidate
+result. Each upstream pattern is wrapped as `SELECT *` with its bytes frozen, and answers are complete typed bags under a
+predeclared output and time budget (a budget stop is reported as incomplete, with no bare `LIMIT`). A full upstream run
+is reported separately from the gate. The 30-request answer gate runs only on the full archived graph on the rental. The laptop gets only a parser test on a streamed prefix of the current truthy dump,
+recorded with its date and SHA and used for no answer or timing claim. (Jianlin: workload; Alex: load)
+
+**A4. Ranking test (finalizes #96).** The HTTP cohort is TripleLight, QLever, Virtuoso, Jena TDB2, Oxigraph,
+RDF4J and MillenniumDB. Each must pass its store receipt and answer gate.
+- The moving engines are TripleLight (4 and 6 orders), QLever (default and two-order) and RDF4J (default and aligned).
+  The others are fixed-layout.
+- The statistic is τ_b with average ranks, computed per suite and per independent block. Each engine's rank metric is
+  its complete suite sum. Freeze one common eligible engine and request set per suite, used in both vectors and in
+  every reportable paired block, before timing.
+- Suite reducer: the median of the per-block τ_b values is compared with the threshold, with every block's value
+  shown. A wrong answer, a timeout or a missing arm invalidates the affected full-suite comparison.
+- A suite needs at least four paired engines after dropping unsupported cells from both vectors. Otherwise it is
+  unevaluable, and if no suite is evaluable, the test is unevaluable.
+- The claim fails if τ_b ≥ 0.8 on every evaluable suite.
+- Registered prediction: τ_b < 0.8 on BSBM-BI and the WatDiv aggregates, and τ_b ≥ 0.8 on LUBM.
+- The embedded cohorts are descriptive only.
+
+**A5. Statistical unit (gap B8).** An independent block is a fresh process or server per configuration, with the same
+cache admission and warm-up, and one measured warm pass. There are six blocks by default, in a frozen balanced order
+(AB/BA three times for a pair, balanced rotations for more arms). Report:
+- per-query medians and IQR, paired same-request ratios and suite sums, with every outcome retained;
+- a distinct-text sensitivity result for repeated labels;
+- descriptive ranges with six blocks.
+
+Five warm calls in one process estimate within-process variability only. A timeout, mismatch or failed readiness makes
+the comparison incomplete. For practical equivalence (four against six orders), the margin is ±10%: at least 12 paired
+blocks, a 90% paired t interval on log ratios of complete per-block suite sums (TOST at 5%), exponentiated and wholly
+inside [0.90, 1.10]. If the model is unsuitable or paired coverage is incomplete, estimates are reported with no
+equivalence claim. otherwise the effect is reported with its uncertainty.
+
+**A6. Where the time goes (gap B9), new section S6.** One instrumented TripleLight build records per query: parse, plan,
+the join phases (BGP extension, leapfrog), aggregation, decode and serialization, together with rows decoded against
+rows produced. Run it on one suite per dataset at 100M, next to the fastest rival's own profile where it exposes one
+(QLever's runtime tree). Report it as a breakdown, not a speed claim. (Kaiming)
+
+**A7. Thread scaling (gap W8).** TripleLight runs with `RAYON_NUM_THREADS` = 1, 2, 4, 8 and 16 on one suite at 100M, warm,
+under A5 blocks. Execution is intra-query parallel in BGP extension, last-level counting, the leapfrog first level, and
+result decoding and serialization.
+
+**A8. Storage additions (gaps B4, W9).**
+- Re-run the #83 memory sweep on main after #131, on the laptop (mechanism evidence only).
+- Forced derived-order stress test: one-column prefixes on the 50 highest-degree subjects and objects per 1B store, plus
+  prefix-free scans of each derived order. Report time, peak RSS and memo hits and misses against a six-order store.
+- WDBench coverage of the derived path via the `TRIPLELIGHT_TRACE_DERIVED` trace.
+- Durability and update claims are scoped as in #100 (Alex's W6 and W7 texts).
+
+(Alex)
+
+**A9. Baseline tuning (gap B6).** Each system follows its vendor's documented post-load steps: `oxigraph optimize`, Jena
+`tdbstats`, QLever's and Virtuoso's index and statistics steps. All of them are recorded in the receipts. Memory rule (supersedes "the same budget for
+every knob" above): the same cgroup `memory.max` for every system; inside it, each system's memory knobs follow vendor guidance, stated per
+system (TripleLight: cache at half the limit). Commercial engines are excluded because their benchmark-publication
+licence terms are not accepted on the owner's behalf. (WindowsXP)
