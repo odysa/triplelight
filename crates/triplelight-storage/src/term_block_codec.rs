@@ -206,4 +206,24 @@ mod tests {
         assert!(get_varint(&[0x81, 0x00], &mut pos).is_err());
         assert!(encode(&[(TermId(5), iri(1)), (TermId(5), iri(2))], true).is_err(), "IDs must ascend in a lean block");
     }
+    #[test]
+    fn noncanonical_text_is_refused_only_when_canonical_is_checked() {
+        // `"a"^^xsd:string` parses, but serializes as `"a"`: text an older or a buggy writer could have stored.
+        let text = br#""a"^^<http://www.w3.org/2001/XMLSchema#string>"#;
+        let mut block = vec![1, 0];
+        put_varint(&mut block, (3 << 60) | 1);
+        put_varint(&mut block, 0);
+        put_varint(&mut block, text.len() as u64);
+        block.extend_from_slice(text);
+        assert!(decode(&block, true, true).is_err(), "verify refuses noncanonical text");
+        let rows = decode(&block, true, false).unwrap();
+        assert_eq!(rows[0].1.to_string(), "\"a\"", "the read path takes the parsed term");
+        // Text that does not parse is refused either way.
+        let mut bad = vec![1, 0];
+        put_varint(&mut bad, 1);
+        put_varint(&mut bad, 0);
+        put_varint(&mut bad, 3);
+        bad.extend_from_slice(b"<a ");
+        assert!(decode(&bad, true, false).is_err());
+    }
 }
