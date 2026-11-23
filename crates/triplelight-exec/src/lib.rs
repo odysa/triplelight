@@ -41,7 +41,7 @@ use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
 pub const UNBOUND: TermId = TermId(0);
-const SCRATCH: u64 = 0xe << 60;
+const SCRATCH: u64 = crate::model::id_tag::SCRATCH << 60;
 
 pub type Row = Vec<TermId>;
 
