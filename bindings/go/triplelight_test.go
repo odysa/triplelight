@@ -152,6 +152,9 @@ func TestConcurrentQueriesAndClose(t *testing.T) {
 func TestRDF12TripleTermsAndDirection(t *testing.T) {
 	db := mustMem(t)
 	if _, err := db.Update(`INSERT DATA { <urn:a> <urn:says> <<( <urn:b> <urn:p> "v" )>> . <urn:a> <urn:label> "שלום"@he--rtl }`); err != nil {
+		if os.Getenv("TRIPLELIGHT_EXPECT_RDF12") != "" {
+			t.Fatal(err) // the build is supposed to have rdf-12: a refusal is a failure, not a skip
+		}
 		t.Skip("built without the rdf-12 feature: ", err)
 	}
 	r, err := db.Query(`SELECT ?p ?o WHERE { <urn:a> ?p ?o }`)

@@ -80,6 +80,8 @@ def test_rdf12_triple_terms_and_direction():
     try:
         db.update('INSERT DATA { <urn:a> <urn:says> <<( <urn:b> <urn:p> "v" )>> . <urn:a> <urn:label> "שלום"@he--rtl }')
     except triplelight.TripleLightError:
+        if os.environ.get("TRIPLELIGHT_EXPECT_RDF12"):
+            raise            # the build is supposed to have rdf-12: a refusal is a failure, not a skip
         pytest.skip("built without the rdf-12 feature")
     rows = {row["p"]: row["o"] for row in db.query("SELECT ?p ?o WHERE { <urn:a> ?p ?o }")}
     t = rows["urn:says"]

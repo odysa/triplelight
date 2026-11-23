@@ -110,6 +110,7 @@ class DatabaseTest {
             try {
                 db.update("INSERT DATA { <urn:a> <urn:says> <<( <urn:b> <urn:p> \"v\" )>> . <urn:a> <urn:label> \"שלום\"@he--rtl }");
             } catch (TripleLightException e) {
+                if (System.getenv("TRIPLELIGHT_EXPECT_RDF12") != null) throw e; // the build is supposed to have rdf-12
                 org.junit.jupiter.api.Assumptions.assumeTrue(false, "built without the rdf-12 feature");
             }
             Result r = db.query("SELECT ?p ?o WHERE { <urn:a> ?p ?o }");

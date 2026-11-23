@@ -100,6 +100,7 @@ test("RDF 1.2 triple terms and base direction (skipped on a build without the rd
   try {
     await db.update('INSERT DATA { <urn:a> <urn:says> <<( <urn:b> <urn:p> "v" )>> . <urn:a> <urn:label> "שלום"@he--rtl }');
   } catch (e) {
+    if (process.env.TRIPLELIGHT_EXPECT_RDF12) throw e; // the build is supposed to have rdf-12: a refusal is a failure
     t.skip("built without the rdf-12 feature");
     return;
   }
