@@ -33,12 +33,12 @@ start_system() {  # start_system <system> <dataset> [budget args...]; waits unti
   if [ "$(uname)" = Linux ] && command -v systemd-run >/dev/null && ! is_docker_system "$s"; then
     local mem; mem=$(printf '%s\n' "$@" | awk 'p{print; exit} $0=="--mem"{p=1}')
     [ -n "$mem" ] || { echo "start_system $s: no --mem in the budget; refusing to start a native server without a memory limit" >&2; return 1; }
-    echo "start_system $s: native server in scope bench-$s, MemoryMax=${mem}G, no swap, CPUQuota=${cpus:-8} CPUs" >> "$OUT/$s.server.log"
     # a scope that ended badly (e.g. OOM-killed) stays as a failed unit and blocks its name until reset
     systemctl stop "bench-$s.scope" >/dev/null 2>&1 || true; systemctl reset-failed "bench-$s.scope" >/dev/null 2>&1 || true
     # CPU parity with Docker's --cpus (a CFS quota, not pinning): CPUQuota of the same number of CPUs
     local cpus; cpus=$(printf '%s\n' "$@" | awk 'p{print; exit} $0=="--cpus"{p=1}'); cpus=${cpus:-8}
     scope=(systemd-run --scope --quiet --unit="bench-$s" -p MemoryMax="${mem}G" -p MemorySwapMax=0 -p CPUQuota="$((cpus * 100))%" --)
+    echo "start_system $s: native server in scope bench-$s, MemoryMax=${mem}G, no swap, CPUQuota=${cpus} CPUs" >> "$OUT/$s.server.log"
   fi
   ${scope[@]+"${scope[@]}"} "$HERE/systems.sh" "$s" serve "$d" "$@" > "$OUT/$s.server.log" 2>&1 &
   echo $! > "$(PIDFILE "$s")"
