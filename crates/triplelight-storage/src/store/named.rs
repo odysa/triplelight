@@ -330,6 +330,19 @@ impl Work<'_> {
     }
     fn intern(&mut self, term: Term) -> Result<TermId, StorageError> {
         if let Some(id) = self.lookup(&term)? { return Ok(id) }
+        // RDF 1.2: a new triple term's parts are stored terms too (`Dictionary::triple_term_parts`).
+        #[cfg(feature = "rdf-12")]
+        match &term {
+            Term::Triple(t) => {
+                let t = (**t).clone();
+                self.intern(t.subject.into())?;
+                self.intern(t.predicate.into())?;
+                self.intern(t.object)?;
+                self.d.rdf12 = true;
+            }
+            Term::Literal(l) if l.direction().is_some() => self.d.rdf12 = true,
+            _ => {}
+        }
         let id = TermId((DELTA_TAG << 60) | self.d.rev.len() as u64);
         self.d.terms.insert(term.clone(), id);
         self.d.rev.push(term);
