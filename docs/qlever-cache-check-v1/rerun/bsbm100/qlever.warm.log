@@ -1,0 +1,22 @@
+q001     pass              0.0226
+q002     value-compatible  0.0238
+q003     value-compatible  0.0253
+q004     pass              0.0364
+q005     value-compatible  0.0247
+q006     value-compatible  0.0244
+q007     pass              0.0736
+q008     value-compatible  0.025
+q009     value-compatible  0.0265
+q010     pass              0.0587
+q011     value-compatible  0.1244
+q012     value-compatible  0.1222
+q013     pass              0.0509
+q014     value-compatible  0.101
+q015     value-compatible  0.0971
+q016     value-compatible  0.0327
+q019     value-compatible  0.0447
+q022     pass              0.3227
+q023     pass              0.3283
+q024     value-compatible  0.0045
+fatal: not a git repository (or any of the parent directories): .git
+summary: {'pass': 7, 'value-compatible': 13}
