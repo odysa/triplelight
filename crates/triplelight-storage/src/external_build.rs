@@ -16,6 +16,12 @@ use std::{
 const MEMORY: usize = 128 * 1024 * 1024;
 /// The longest N-Triples term text a base can hold (task #45: the WAL refuses longer terms at commit).
 pub(crate) const MAX_TERM: usize = triplelight_core::ntriples::MAX_TOKEN;
+/// Row ID and position of a term record that belongs to no row (an RDF 1.2 triple-term part, `Builder::push_parts`).
+/// Real row IDs are far smaller (at most `8 << 56` in a sharded build), so these assignments sort after every row.
+#[cfg_attr(not(feature = "rdf-12"), allow(dead_code))]
+const FREE_ROW: u64 = u64::MAX;
+#[cfg_attr(not(feature = "rdf-12"), allow(dead_code))]
+const FREE_POS: u8 = 0xff;
 const _: () = assert!(MAX_TERM == 16 * 1024 * 1024, "the base limit is oxttl's 16 MiB token limit");
 /// Longest record of the term sort: the term text plus its flag and ID bytes.
 const TERM_SORT_RECORD_MAX: usize = MAX_TERM + 10;
@@ -76,7 +82,11 @@ pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io:
             eprintln!("disk build strategy: in-memory (estimated 3x input; not an RSS limit)");
             let snapshot =
                 super::MemorySnapshot::from_ntriples_parallel_file(path, workers.max(1))?;
-            return super::DiskSnapshot::create(dir, &snapshot);
+            // That path writes RDFSNAP3, which has no RDF 1.2 flag: such input takes the external builder instead.
+            if !snapshot.has_rdf12_terms() { return super::DiskSnapshot::create(dir, &snapshot) }
+            eprintln!("disk build strategy: input holds RDF 1.2 terms; using the external sort");
+            drop(snapshot);
+            return from_nt_parallel(dir, source, workers.max(1));
         }
     }
     eprintln!("disk build strategy: external sort (budget is advisory, not an RSS limit)");
@@ -197,10 +207,30 @@ impl Builder {
             if term.len() > MAX_TERM || term.as_bytes().contains(&0) {
                 return Err(bad("invalid or oversized encoded RDF term"));
             }
+            #[cfg(feature = "rdf-12")]
+            if term.starts_with("<<(") { self.push_parts(&term)? }
             let mut r = term.into_bytes();
             r.push(0);
             r.extend_from_slice(&triple_id.to_be_bytes());
             r.push(pos as u8);
+            self.terms.push(r)?;
+        }
+        Ok(())
+    }
+    /// RDF 1.2 (task #101): every part of triple term `text`, nested ones included, becomes a dictionary term even
+    /// if it occurs nowhere else, so `Dictionary::triple_term_parts` resolves on a disk base. Parts are pushed as
+    /// row-less records (`FREE_ROW`, `FREE_POS`), which get IDs like any term and are skipped when rows are built.
+    #[cfg(feature = "rdf-12")]
+    fn push_parts(&mut self, text: &str) -> io::Result<()> {
+        let Term::Triple(t) = text.parse::<Term>().map_err(|_| bad("invalid RDF term"))? else { return Ok(()) };
+        let t = *t;
+        for part in [t.subject.to_string(), t.predicate.to_string(), t.object.to_string()] {
+            if part.len() > MAX_TERM { return Err(bad("invalid or oversized encoded RDF term")) }
+            if part.starts_with("<<(") { self.push_parts(&part)? }
+            let mut r = part.into_bytes();
+            r.push(0);
+            r.extend_from_slice(&FREE_ROW.to_be_bytes());
+            r.push(FREE_POS);
             self.terms.push(r)?;
         }
         Ok(())
@@ -221,6 +251,10 @@ impl Builder {
         let mut previous = Vec::new();
         let mut current = TermId(0);
         let mut unique = 0u64;
+        // Whether any RDF 1.2 term (triple term or directional literal) is in the dictionary: the base is then
+        // written as RDFSNAP7, which carries `has_rdf12_terms` and which builds without RDF 1.2 support refuse.
+        #[cfg_attr(not(feature = "rdf-12"), allow(unused_mut))]
+        let mut rdf12 = false;
         while let Some(r) = stream.next_record()? {
             if r.len() < 10 || r[r.len() - 10] != 0 {
                 return Err(bad("malformed term run"));
@@ -234,10 +268,14 @@ impl Builder {
                 if unique >= (1u64 << 60) {
                     return Err(bad("too many RDF terms"));
                 }
+                #[cfg(feature = "rdf-12")]
+                if matches!(&term, Term::Triple(_)) || matches!(&term, Term::Literal(l) if l.direction().is_some()) { rdf12 = true }
                 let kind = match term {
-                    Term::NamedNode(_) => 1u64,
-                    Term::BlankNode(_) => 2,
-                    Term::Literal(_) => 3,
+                    Term::NamedNode(_) => crate::model::id_tag::IRI,
+                    Term::BlankNode(_) => crate::model::id_tag::BLANK_NODE,
+                    Term::Literal(_) => crate::model::id_tag::LITERAL,
+                    #[cfg(feature = "rdf-12")]
+                    Term::Triple(_) => crate::model::id_tag::TRIPLE_TERM,
                 };
                 current = TermId((kind << 60) | unique);
                 unique += 1;
@@ -306,8 +344,11 @@ impl Builder {
             }
         }
         if let Some(mut q) = quads.take() { q.flush()?; }
-        if read_fixed(&mut input, &mut [0u8; 17])? {
-            return Err(bad("extra term assignment"));
+        // Only row-less part records (RDF 1.2 triple-term parts, `push_parts`) may follow the rows; they sort last.
+        let mut extra = [0u8; 17];
+        while read_fixed(&mut input, &mut extra)? {
+            let free = cfg!(feature = "rdf-12") && extra[..8] == FREE_ROW.to_be_bytes() && extra[8] == FREE_POS;
+            if !free { return Err(bad("extra term assignment")) }
         }
         triples.flush()?;
         drop(triples);
@@ -352,6 +393,9 @@ impl Builder {
             fs::remove_file(&quad_raw)?;
             identities.push(write_catalog(dir, graph_ids)?);
         }
+        // RDFSNAP7: the triple-term parts table is the last identity.
+        #[cfg(feature = "rdf-12")]
+        if rdf12 { identities.push(write_triple_terms(dir)?) }
         // Finish and remove all scratch before publishing the manifest.
         drop(mapping);
         drop(self.terms);
@@ -363,7 +407,12 @@ impl Builder {
         );
         // RDFSNAP5 (task #36) = RDFSNAP4 plus six quad orders and the graph catalog. RDFSNAP6 (task #73) = either,
         // with only the kept orders, after the order set and the named-graph flag.
-        if orders == super::disk_snapshot::ALL_ORDERS {
+        // RDFSNAP7 (task #101): the RDFSNAP6 layout for any order set, for a base holding RDF 1.2 terms. A base without
+        // one is written exactly as before.
+        if rdf12 {
+            manifest.write_all(b"RDFSNAP7")?;
+            manifest.write_all(&[orders, u8::from(named)])?;
+        } else if orders == super::disk_snapshot::ALL_ORDERS {
             manifest.write_all(if named { b"RDFSNAP5" } else { b"RDFSNAP4" })?;
         } else {
             manifest.write_all(b"RDFSNAP6")?;
@@ -541,6 +590,33 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
     combined.finish(dir)
 }
 
+/// RDF 1.2 (task #101): the `triple_terms` table of a just-written dictionary, one row `(term, s, p, o)` per triple
+/// term in ID order, so `Dictionary::triple_term_parts` is one block read. Every part is a dictionary term
+/// (`Builder::push_parts`). Kind-4 IDs ascend with the dictionary's ID order, so rows come out sorted.
+#[cfg(feature = "rdf-12")]
+fn write_triple_terms(dir: &Path) -> io::Result<[u8; 32]> {
+    use super::lazy_dictionary::{LazyIndex, Order, UNIFIED_FILE};
+    let dictionary = LazyIndex::open(&dir.join(UNIFIED_FILE), Order::Unified)?;
+    let id_of = |term: Term| -> io::Result<TermId> {
+        dictionary.find_term(term.to_string().as_bytes())?.map(|v| v.0).ok_or_else(|| bad("triple-term part missing from the dictionary"))
+    };
+    let mut rows: Vec<[TermId; 4]> = Vec::new();
+    dictionary.for_each_of_kind(crate::model::id_tag::TRIPLE_TERM, &mut |id, term| {
+        let Term::Triple(t) = term else { return Err(bad("kind 4 entry is not a triple term")) };
+        let t = (**t).clone();
+        rows.push([id, id_of(t.subject.into())?, id_of(t.predicate.into())?, id_of(t.object)?]);
+        Ok(())
+    })?;
+    let path = dir.join(super::disk_snapshot::TRIPLE_TERMS_FILE);
+    let mut out = BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&path)?);
+    super::disk_index::write_index::<4>(&mut out, rows.into_iter())?;
+    out.flush()?;
+    out.get_ref().sync_all()?;
+    drop(out);
+    let index = super::disk_index::DiskIndex::<4>::open(&path)?;
+    index.validate()?;
+    Ok(index.identity())
+}
 pub(super) fn from_nt(dir: &Path, path: Option<&Path>) -> io::Result<()> {
     fs::create_dir(dir)?;
     let mut builder = Builder::new(dir)?;

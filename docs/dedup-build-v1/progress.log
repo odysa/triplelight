@@ -1,0 +1,12 @@
+05:40:15 building at 9770ceb3
+05:41:06 build r1-dedup0
+06:01:54 done r1-dedup0: 705.05 s, disk 43336440 64120932
+06:01:55 build r2-dedup1
+06:12:45 done r2-dedup1: 306.09 s, disk 21146784 86340488
+06:12:46 build r3-dedup1
+06:19:00 done r3-dedup1: 171.02 s, disk 19231188 88282464
+06:19:00 build r4-dedup0
+06:30:03 done r4-dedup0: 434.96 s, disk 51140204 56349988
+06:30:03 r1-dedup0 vs r2-dedup1: IDENTICAL
+06:30:03 r4-dedup0 vs r3-dedup1: IDENTICAL
+06:30:03 ALL-DONE

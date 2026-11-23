@@ -1,6 +1,15 @@
 # W3C SPARQL 1.1 query test suite
 
-## Latest: main `9a2f49b` (exact decimals)
+## Latest: main `58ba1b2b` (PR #146, local CI 2026-11-22)
+
+Of 353 query tests: pass 323 (the CI floor), fail 7, unsupported 1, skipped 22 (19 named-graph cases the harness does not
+run, 3 harness data-load cases). Failures by category: `cast` 2 and `functions` 5. These are the cases Jianlin
+classified on the same floor (#100): `cast-decimal`, `cast-string`, `ceil01`, `floor01`, `round01` (lexical
+canonical forms), and `seconds`, `tz` (lexical forms of time values). The unsupported case is `BNODE(string)`.
+Per-case output is not archived for this run; the next harness revision (#100, B11) writes it and stops skipping the
+named-graph cases, since named graphs are now supported.
+
+## Earlier: main `9a2f49b` (exact decimals)
 
 pass 281, fail 6, unsupported 44, skipped 19 / 3. `agg-sum-01` now passes. Remaining: 5 lexical canonical-form
 cases (`ceil01`, `floor01`, `round01`, `cast-decimal`, `cast-string`) and `values-construct-group-by` (parser).

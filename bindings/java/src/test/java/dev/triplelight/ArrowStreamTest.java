@@ -47,7 +47,25 @@ class ArrowStreamTest {
             case null -> UNBOUND;
             case Term.Iri i -> new Cell(true, "iri", i.value(), null, null);
             case Term.BlankNode b -> new Cell(true, "bnode", b.value(), null, null);
-            case Term.Literal l -> new Cell(true, "literal", l.value(), l.datatype(), l.language().isEmpty() ? null : l.language());
+            // the Arrow stream appends an RDF 1.2 base direction to the language tag ("en--ltr")
+            case Term.Literal l -> new Cell(true, "literal", l.value(), l.datatype(),
+                    l.language().isEmpty() ? null : l.language() + (l.direction().isEmpty() ? "" : "--" + l.direction()));
+            // an RDF 1.2 triple term is one value in Turtle form, "<<( s p o )>>", with kind "triple" and no datatype or language
+            case Term.Triple tr -> new Cell(true, "triple", turtle(tr), null, null);
+        };
+    }
+
+    /** Turtle form of a term, as the Arrow stream writes a triple term's value. */
+    static String turtle(Term t) {
+        return switch (t) {
+            case Term.Iri i -> "<" + i.value() + ">";
+            case Term.BlankNode b -> "_:" + b.value();
+            case Term.Literal l -> {
+                String q = "\"" + l.value().replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r") + "\"";
+                if (!l.language().isEmpty()) yield q + "@" + l.language() + (l.direction().isEmpty() ? "" : "--" + l.direction());
+                yield l.datatype().equals("http://www.w3.org/2001/XMLSchema#string") ? q : q + "^^<" + l.datatype() + ">";
+            }
+            case Term.Triple tr -> "<<( " + turtle(tr.subject()) + " " + turtle(tr.predicate()) + " " + turtle(tr.object()) + " )>>";
         };
     }
 

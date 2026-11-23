@@ -15,7 +15,7 @@ final class Native {
 
     static final StructLayout STR = MemoryLayout.structLayout(JAVA_LONG.withName("off"), JAVA_LONG.withName("len"));
     static final StructLayout TERM = MemoryLayout.structLayout(
-            JAVA_BYTE.withName("kind"), MemoryLayout.paddingLayout(7),
+            JAVA_BYTE.withName("kind"), JAVA_BYTE.withName("direction"), MemoryLayout.paddingLayout(6),
             STR.withName("value"), STR.withName("language"), STR.withName("datatype"));
     static final StructLayout VIEW = MemoryLayout.structLayout(
             JAVA_INT.withName("kind"), JAVA_INT.withName("boolean"),

@@ -1,0 +1,14 @@
+Mon Nov 23 06:01:54 UTC 2026
+<external container 8> Up 16 minutes
+<external container 1> Up 27 minutes
+<external container 3> Up 49 minutes
+<external container 4> Up 50 minutes
+<external container 5> Up 11 days (healthy)
+<external container 6> Up 12 days (healthy)
+<external container 7> Up 2 weeks
+ %CPU COMM
+  9.8 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  1.5 <external process>
+  0.9 /System/Library/DriverExtensions/com.apple.DriverKit-AppleBCMWLAN.dext/com.apple.DriverKit-AppleBCMWLAN
+  0.9 /opt/homebrew/Cellar/python@3.14/3.14.5/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python
+  0.6 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd

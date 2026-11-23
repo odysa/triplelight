@@ -2,6 +2,9 @@
 //! here instead of depending on the underlying parsing and term crates, so those can be replaced without changing
 //! any binding.
 pub use triplelight_rdf::{BlankNode, GraphName, Literal, NamedNode, NamedOrBlankNode, Quad, Term, TermRef, Triple, Variable};
+/// The base direction of an RDF 1.2 directional language-tagged literal (`rdf-12` feature).
+#[cfg(feature = "rdf-12")]
+pub use triplelight_rdf::BaseDirection;
 
 /// RDF dataset text formats TripleLight reads (task #36).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

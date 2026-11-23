@@ -1,0 +1,195 @@
+{
+ "file": "lubm100.nt",
+ "lines": 13879970,
+ "preds": {
+  "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>": {
+   "N": 2781269,
+   "n_subj": 2181773,
+   "n_obj": 15,
+   "Ds": 564,
+   "Do": 808741,
+   "l2s": 15016.361043874778,
+   "l2o": 1268117.5546032789
+  },
+  "<http://www.w3.org/2002/07/owl#imports>": {
+   "N": 2007,
+   "n_subj": 2007,
+   "n_obj": 1,
+   "Ds": 1,
+   "Do": 2007,
+   "l2s": 44.799553569204235,
+   "l2o": 2007.0
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#name>": {
+   "N": 2148830,
+   "n_subj": 2148830,
+   "n_obj": 1070,
+   "Ds": 1,
+   "Do": 70299,
+   "l2s": 1465.888808880128,
+   "l2o": 209592.3251075764
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#subOrganizationOf>": {
+   "N": 32043,
+   "n_subj": 32043,
+   "n_obj": 2107,
+   "Ds": 1,
+   "Do": 25,
+   "l2s": 179.0055865050027,
+   "l2o": 714.8265523887595
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#teacherOf>": {
+   "N": 217148,
+   "n_subj": 72302,
+   "n_obj": 217148,
+   "Ds": 4,
+   "Do": 1,
+   "l2s": 829.5673571205656,
+   "l2o": 465.9914162299559
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#undergraduateDegreeFrom>": {
+   "N": 324864,
+   "n_subj": 324864,
+   "n_obj": 1000,
+   "Ds": 1,
+   "Do": 401,
+   "l2s": 569.96842017782,
+   "l2o": 10290.110786575624
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#mastersDegreeFrom>": {
+   "N": 72302,
+   "n_subj": 72302,
+   "n_obj": 1000,
+   "Ds": 1,
+   "Do": 111,
+   "l2s": 268.89031220927245,
+   "l2o": 2302.82348433396
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#doctoralDegreeFrom>": {
+   "N": 72302,
+   "n_subj": 72302,
+   "n_obj": 1000,
+   "Ds": 1,
+   "Do": 96,
+   "l2s": 268.89031220927245,
+   "l2o": 2302.3891938592833
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#worksFor>": {
+   "N": 72302,
+   "n_subj": 72302,
+   "n_obj": 2007,
+   "Ds": 1,
+   "Do": 42,
+   "l2s": 268.89031220927245,
+   "l2o": 1617.1431600201634
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#emailAddress>": {
+   "N": 1120834,
+   "n_subj": 1120834,
+   "n_obj": 1120834,
+   "Ds": 1,
+   "Do": 1,
+   "l2s": 1058.6944790637192,
+   "l2o": 1058.6944790637192
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#telephone>": {
+   "N": 1120834,
+   "n_subj": 1120834,
+   "n_obj": 1,
+   "Ds": 1,
+   "Do": 1120834,
+   "l2s": 1058.6944790637192,
+   "l2o": 1120834.0
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#researchInterest>": {
+   "N": 60268,
+   "n_subj": 60268,
+   "n_obj": 30,
+   "Ds": 1,
+   "Do": 2086,
+   "l2s": 245.49541747250598,
+   "l2o": 11005.089458973061
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#headOf>": {
+   "N": 2007,
+   "n_subj": 2007,
+   "n_obj": 2007,
+   "Ds": 1,
+   "Do": 1,
+   "l2s": 44.799553569204235,
+   "l2o": 44.799553569204235
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#memberOf>": {
+   "N": 1048532,
+   "n_subj": 1048532,
+   "n_obj": 2007,
+   "Ds": 1,
+   "Do": 736,
+   "l2s": 1023.9785153996152,
+   "l2o": 23631.351844530604
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse>": {
+   "N": 2894749,
+   "n_subj": 1048532,
+   "n_obj": 216069,
+   "Ds": 4,
+   "Do": 52,
+   "l2s": 2980.2397554559266,
+   "l2o": 7693.711133126848
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#advisor>": {
+   "N": 411501,
+   "n_subj": 411501,
+   "n_obj": 60160,
+   "Ds": 1,
+   "Do": 27,
+   "l2s": 641.4834370426098,
+   "l2o": 1821.6550167361547
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#publicationAuthor>": {
+   "N": 1442184,
+   "n_subj": 808741,
+   "n_obj": 281213,
+   "Ds": 9,
+   "Do": 20,
+   "l2s": 1790.4965791645625,
+   "l2o": 3701.315441839563
+  },
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#teachingAssistantOf>": {
+   "N": 55994,
+   "n_subj": 55994,
+   "n_obj": 55994,
+   "Ds": 1,
+   "Do": 1,
+   "l2s": 236.63051367057463,
+   "l2o": 236.63051367057463
+  }
+ },
+ "class_counts": {
+  "<http://www.w3.org/2002/07/owl#Ontology>": 2007,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#University>": 471575,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#Department>": 2007,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#FullProfessor>": 17144,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#AssociateProfessor>": 24036,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#AssistantProfessor>": 19088,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#Lecturer>": 12034,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#UndergraduateStudent>": 795970,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateStudent>": 252562,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#ResearchGroup>": 30036,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#Publication>": 808741,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#Course>": 108634,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateCourse>": 108514,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#TeachingAssistant>": 55994,
+  "<http://swat.cse.lehigh.edu/onto/univ-bench.owl#ResearchAssistant>": 72927
+ },
+ "const": {
+  "o|takesCourse|<http://www.Department0.University0.edu/GraduateCourse0>": 4,
+  "o|publicationAuthor|<http://www.Department0.University0.edu/AssistantProfessor0>": 6,
+  "o|worksFor|<http://www.Department0.University0.edu>": 41,
+  "o|memberOf|<http://www.Department0.University0.edu>": 678,
+  "s|teacherOf|<http://www.Department0.University0.edu/AssociateProfessor0>": 4,
+  "o|subOrganizationOf|<http://www.University0.edu>": 15,
+  "o|subOrganizationOf|<http://www.Department0.University0.edu>": 10,
+  "o|undergraduateDegreeFrom|<http://www.University0.edu>": 325
+ }
+}

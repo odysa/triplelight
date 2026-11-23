@@ -9,6 +9,9 @@ pub(crate) use triplelight_exec as exec;
 
 pub mod store;
 
+#[cfg(all(test, feature = "rdf-12"))]
+mod rdf12_tests;
+
 mod memory;
 pub use memory::MemorySnapshot;
 
@@ -35,6 +38,8 @@ pub mod external_build;
 
 #[cfg(unix)]
 mod derived_order;
+#[cfg(unix)]
+pub use derived_order::trace as derived_trace;
 
 #[cfg(unix)]
 mod disk_snapshot;

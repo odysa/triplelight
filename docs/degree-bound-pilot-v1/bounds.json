@@ -1,0 +1,406 @@
+[
+ {
+  "q": 1,
+  "order": [
+   [
+    "?X",
+    "ub:takesCourse",
+    "<http://www.Department0.University0.edu/GraduateCourse0>"
+   ],
+   [
+    "?X",
+    "rdf:type",
+    "ub:GraduateStudent"
+   ]
+  ],
+  "factors": [
+   4,
+   1
+  ],
+  "bound_a": 4,
+  "bound_l2": null,
+  "bound": 4
+ },
+ {
+  "q": 2,
+  "order": [
+   [
+    "?Z",
+    "rdf:type",
+    "ub:Department"
+   ],
+   [
+    "?Z",
+    "ub:subOrganizationOf",
+    "?Y"
+   ],
+   [
+    "?Y",
+    "rdf:type",
+    "ub:University"
+   ],
+   [
+    "?X",
+    "ub:undergraduateDegreeFrom",
+    "?Y"
+   ],
+   [
+    "?X",
+    "rdf:type",
+    "ub:GraduateStudent"
+   ],
+   [
+    "?X",
+    "ub:memberOf",
+    "?Z"
+   ]
+  ],
+  "factors": [
+   2007,
+   1,
+   1,
+   401,
+   1,
+   1
+  ],
+  "bound_a": 804807,
+  "bound_l2": null,
+  "bound": 804807
+ },
+ {
+  "q": 3,
+  "order": [
+   [
+    "?X",
+    "ub:publicationAuthor",
+    "<http://www.Department0.University0.edu/AssistantProfessor0>"
+   ],
+   [
+    "?X",
+    "rdf:type",
+    "ub:Publication"
+   ]
+  ],
+  "factors": [
+   6,
+   1
+  ],
+  "bound_a": 6,
+  "bound_l2": null,
+  "bound": 6
+ },
+ {
+  "q": 4,
+  "order": [
+   [
+    "?X",
+    "ub:worksFor",
+    "<http://www.Department0.University0.edu>"
+   ],
+   [
+    "?X",
+    "rdf:type",
+    "ub:FullProfessor"
+   ],
+   [
+    "?X",
+    "ub:name",
+    "?Y1"
+   ],
+   [
+    "?X",
+    "ub:emailAddress",
+    "?Y2"
+   ],
+   [
+    "?X",
+    "ub:telephone",
+    "?Y3"
+   ]
+  ],
+  "factors": [
+   41,
+   1,
+   1,
+   1,
+   1
+  ],
+  "bound_a": 41,
+  "bound_l2": null,
+  "bound": 41
+ },
+ {
+  "q": 5,
+  "order": [
+   [
+    "?X",
+    "ub:memberOf",
+    "<http://www.Department0.University0.edu>"
+   ],
+   [
+    "?X",
+    "rdf:type",
+    "ub:UndergraduateStudent"
+   ]
+  ],
+  "factors": [
+   678,
+   1
+  ],
+  "bound_a": 678,
+  "bound_l2": null,
+  "bound": 678
+ },
+ {
+  "q": 6,
+  "order": [
+   [
+    "?X",
+    "rdf:type",
+    "ub:UndergraduateStudent"
+   ]
+  ],
+  "factors": [
+   795970
+  ],
+  "bound_a": 795970,
+  "bound_l2": null,
+  "bound": 795970
+ },
+ {
+  "q": 7,
+  "order": [
+   [
+    "<http://www.Department0.University0.edu/AssociateProfessor0>",
+    "ub:teacherOf",
+    "?Y"
+   ],
+   [
+    "?Y",
+    "rdf:type",
+    "ub:Course"
+   ],
+   [
+    "?X",
+    "ub:takesCourse",
+    "?Y"
+   ],
+   [
+    "?X",
+    "rdf:type",
+    "ub:UndergraduateStudent"
+   ]
+  ],
+  "factors": [
+   4,
+   1,
+   52,
+   1
+  ],
+  "bound_a": 208,
+  "bound_l2": null,
+  "bound": 208
+ },
+ {
+  "q": 8,
+  "order": [
+   [
+    "?Y",
+    "ub:subOrganizationOf",
+    "<http://www.University0.edu>"
+   ],
+   [
+    "?Y",
+    "rdf:type",
+    "ub:Department"
+   ],
+   [
+    "?X",
+    "ub:memberOf",
+    "?Y"
+   ],
+   [
+    "?X",
+    "rdf:type",
+    "ub:UndergraduateStudent"
+   ],
+   [
+    "?X",
+    "ub:emailAddress",
+    "?Z"
+   ]
+  ],
+  "factors": [
+   15,
+   1,
+   736,
+   1,
+   1
+  ],
+  "bound_a": 11040,
+  "bound_l2": null,
+  "bound": 11040
+ },
+ {
+  "q": 9,
+  "order": [
+   [
+    "?Y",
+    "rdf:type",
+    "ub:FullProfessor"
+   ],
+   [
+    "?Y",
+    "ub:teacherOf",
+    "?Z"
+   ],
+   [
+    "?Z",
+    "rdf:type",
+    "ub:Course"
+   ],
+   [
+    "?X",
+    "ub:advisor",
+    "?Y"
+   ],
+   [
+    "?X",
+    "rdf:type",
+    "ub:UndergraduateStudent"
+   ],
+   [
+    "?X",
+    "ub:takesCourse",
+    "?Z"
+   ]
+  ],
+  "factors": [
+   17144,
+   4,
+   1,
+   27,
+   1,
+   1
+  ],
+  "bound_a": 1851552,
+  "bound_l2": null,
+  "bound": 1851552
+ },
+ {
+  "q": 10,
+  "order": [
+   [
+    "?X",
+    "ub:takesCourse",
+    "<http://www.Department0.University0.edu/GraduateCourse0>"
+   ],
+   [
+    "?X",
+    "rdf:type",
+    "ub:GraduateStudent"
+   ]
+  ],
+  "factors": [
+   4,
+   1
+  ],
+  "bound_a": 4,
+  "bound_l2": null,
+  "bound": 4
+ },
+ {
+  "q": 11,
+  "order": [
+   [
+    "?X",
+    "ub:subOrganizationOf",
+    "<http://www.Department0.University0.edu>"
+   ],
+   [
+    "?X",
+    "rdf:type",
+    "ub:ResearchGroup"
+   ]
+  ],
+  "factors": [
+   10,
+   1
+  ],
+  "bound_a": 10,
+  "bound_l2": null,
+  "bound": 10
+ },
+ {
+  "q": 12,
+  "order": [
+   [
+    "?Y",
+    "ub:subOrganizationOf",
+    "<http://www.University0.edu>"
+   ],
+   [
+    "?Y",
+    "rdf:type",
+    "ub:Department"
+   ],
+   [
+    "?X",
+    "ub:worksFor",
+    "?Y"
+   ],
+   [
+    "?X",
+    "rdf:type",
+    "ub:FullProfessor"
+   ]
+  ],
+  "factors": [
+   15,
+   1,
+   42,
+   1
+  ],
+  "bound_a": 630,
+  "bound_l2": null,
+  "bound": 630
+ },
+ {
+  "q": 13,
+  "order": [
+   [
+    "?X",
+    "ub:undergraduateDegreeFrom",
+    "<http://www.University0.edu>"
+   ],
+   [
+    "?X",
+    "rdf:type",
+    "ub:GraduateStudent"
+   ]
+  ],
+  "factors": [
+   325,
+   1
+  ],
+  "bound_a": 325,
+  "bound_l2": null,
+  "bound": 325
+ },
+ {
+  "q": 14,
+  "order": [
+   [
+    "?X",
+    "rdf:type",
+    "ub:UndergraduateStudent"
+   ]
+  ],
+  "factors": [
+   795970
+  ],
+  "bound_a": 795970,
+  "bound_l2": null,
+  "bound": 795970
+ }
+]

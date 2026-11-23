@@ -10,7 +10,7 @@ fn main() {
     for q in &a[2..] {
         let text = std::fs::read_to_string(q).unwrap();
         let mut line = format!("{q}:");
-        for (name, opts) in [("bind", Options { stats: None, wcoj: false, raw_ids: false, general_group: false }), ("bind+wcoj", Options::default()), ("planner", Options { stats: Some(&st), wcoj: false, raw_ids: false, general_group: false })] {
+        for (name, opts) in [("bind", Options { stats: None, wcoj: false, raw_ids: false, general_group: false, count_pushdown: true }), ("bind+wcoj", Options::default()), ("planner", Options { stats: Some(&st), wcoj: false, raw_ids: false, general_group: false, count_pushdown: true })] {
             let mut best = f64::MAX; let mut rows = 0;
             for _ in 0..5 {
                 let t = Instant::now(); let r = query_with(&s, &text, &opts).unwrap(); let _ = serialize(&r);

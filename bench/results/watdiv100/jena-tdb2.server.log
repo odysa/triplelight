@@ -1,8 +1,8 @@
 22:04:41 INFO  Fuseki          :: Apache Jena Fuseki 6.2.0
-22:04:41 INFO  Config          :: Fuseki Base = <agent-workspace>/rdfdb/bench/run
+22:04:41 INFO  Config          :: Fuseki Base = <workspace>/rdfdb/bench/run
 22:04:41 INFO  Config          :: Database: /ds
 22:04:41 INFO  Config          :: UI Base: fuseki-server.jar
-22:04:41 INFO  Shiro           :: Shiro configuration: file:<agent-workspace>/rdfdb/bench/run/shiro.ini
+22:04:41 INFO  Shiro           :: Shiro configuration: file:<workspace>/rdfdb/bench/run/shiro.ini
 22:04:41 INFO  Server          :: Path = /ds
 22:04:41 INFO  Server          :: System
 22:04:41 INFO  Server          ::   Memory: 24.0 GiB

@@ -1,0 +1,21 @@
+query                 default                    wcoj                   count               fastgroup                 nostats                     all                     six
+C1           4.61ms n=8              4.49ms n=8              5.01ms n=8              5.03ms n=8              4.96ms n=8              5.30ms n=8              5.28ms n=8      
+C2           7.19ms n=0              7.08ms n=0              7.57ms n=0              8.53ms n=0              7.32ms n=0              6.96ms n=0              6.70ms n=0      
+C3         157.32ms n=429276       139.61ms n=429276       115.31ms n=429276       113.73ms n=429276       220.10ms n=429276       186.68ms n=429276       118.73ms n=429276 
+F1           0.97ms n=0              0.84ms n=0              0.60ms n=0              0.84ms n=0              0.80ms n=0              0.82ms n=0              0.71ms n=0      
+F2           2.31ms n=13             1.90ms n=13             1.64ms n=13             1.78ms n=13             1.74ms n=13             1.97ms n=13             1.71ms n=13     
+F3           2.07ms n=85             2.02ms n=85             2.03ms n=85             1.90ms n=85             1.92ms n=85             1.57ms n=85             1.70ms n=85     
+F4           0.99ms n=0              0.91ms n=0              0.98ms n=0              0.91ms n=0              0.95ms n=0              0.90ms n=0              0.90ms n=0      
+F5           0.88ms n=25             0.80ms n=25             0.77ms n=25             0.77ms n=25             0.70ms n=25             0.82ms n=25             0.74ms n=25     
+L1           0.49ms n=2              0.40ms n=2              0.39ms n=2              0.39ms n=2              0.38ms n=2              0.38ms n=2              0.39ms n=2      
+L2           0.76ms n=229            0.68ms n=229            0.77ms n=229            0.67ms n=229            0.71ms n=229            0.71ms n=229            0.74ms n=229    
+L3           0.43ms n=19             0.39ms n=19             0.36ms n=19             0.38ms n=19             0.38ms n=19             0.39ms n=19             0.33ms n=19     
+L4           1.16ms n=68             1.13ms n=68             1.01ms n=68             1.26ms n=68             1.00ms n=68             1.31ms n=68             1.24ms n=68     
+L5           1.76ms n=254            1.75ms n=254            1.74ms n=254            1.88ms n=254            2.30ms n=254            1.99ms n=254            2.13ms n=254    
+S1           0.61ms n=0              0.52ms n=0              0.49ms n=0              0.49ms n=0              0.48ms n=0              0.50ms n=0              0.49ms n=0      
+S2           0.80ms n=16             0.76ms n=16             0.78ms n=16             0.74ms n=16             0.75ms n=16             0.71ms n=16             0.74ms n=16     
+S3           1.06ms n=0              1.02ms n=0              0.95ms n=0              0.97ms n=0              0.98ms n=0              0.96ms n=0              0.97ms n=0      
+S4           1.18ms n=1              1.15ms n=1              1.10ms n=1              1.07ms n=1              1.04ms n=1              1.04ms n=1              1.19ms n=1      
+S5           0.94ms n=0              0.77ms n=0              0.76ms n=0              0.76ms n=0              0.85ms n=0              0.82ms n=0              0.91ms n=0      
+S6           0.73ms n=15             0.68ms n=15             0.66ms n=15             0.71ms n=15             0.67ms n=15             0.64ms n=15             0.82ms n=15     
+S7           0.48ms n=0              0.39ms n=0              0.42ms n=0              0.40ms n=0              0.40ms n=0              0.39ms n=0              0.39ms n=0      

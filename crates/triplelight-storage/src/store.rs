@@ -34,7 +34,7 @@ mod named;
 pub use named::{GraphStateError, NamedGraph};
 
 /// IDs for terms first seen in the delta.
-const DELTA_TAG: u64 = 0xd;
+const DELTA_TAG: u64 = crate::model::id_tag::DELTA;
 
 fn slot(p: Perm) -> usize { Perm::ALL.iter().position(|&q| q == p).unwrap() }
 fn key(perm: Perm, spo: [TermId; 3]) -> [TermId; 3] { let o = perm.order(); [spo[o[0]], spo[o[1]], spo[o[2]]] }
@@ -56,6 +56,9 @@ pub struct Delta {
     dels: [Vec<[TermId; 3]>; 6],
     terms: HashMap<Term, TermId>,
     rev: Vec<Term>,
+    /// Some term first seen in this delta is an RDF 1.2 term (`Snapshot::has_rdf12_terms`).
+    #[cfg(feature = "rdf-12")]
+    rdf12: bool,
 }
 
 impl Delta {
@@ -95,6 +98,16 @@ impl DictRef<'_> {
 }
 
 impl Dictionary for DictRef<'_> {
+    /// A base ID is answered by the base (one block read on a disk base with the `triple_terms` table); a delta
+    /// triple term's parts were interned with it, so the default lookup finds them.
+    #[cfg(feature = "rdf-12")]
+    fn triple_term_parts(&self, id: TermId) -> Result<Option<[TermId; 3]>, StorageError> {
+        if id.0 >> 60 != DELTA_TAG { return self.base.triple_term_parts(id) }
+        let Term::Triple(t) = self.delta_term(id)? else { return Ok(None) };
+        let t = (**t).clone();
+        let part = |term: Term| self.lookup(&term)?.ok_or_else(|| StorageError::other("triple-term part missing from the dictionary"));
+        Ok(Some([part(t.subject.into())?, part(t.predicate.into())?, part(t.object)?]))
+    }
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> {
         Ok(self.base.lookup(term)?.or_else(|| self.delta.terms.get(term).copied()))
     }
@@ -115,6 +128,8 @@ impl Dictionary for DictRef<'_> {
 }
 
 impl Dictionary for Overlay {
+    #[cfg(feature = "rdf-12")]
+    fn triple_term_parts(&self, id: TermId) -> Result<Option<[TermId; 3]>, StorageError> { self.dict().triple_term_parts(id) }
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { self.dict().lookup(term) }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> { self.dict().resolve(id) }
     fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> { self.dict().with_term(id, f) }
@@ -124,6 +139,8 @@ impl Dictionary for Overlay {
 }
 
 impl Snapshot for Overlay {
+    #[cfg(feature = "rdf-12")]
+    fn has_rdf12_terms(&self) -> bool { self.delta.rdf12 || self.base.has_rdf12_terms() }
     fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> {
         if self.delta.is_empty() { self.base.matching_rows(perm, prefix) } else { None }
     }
@@ -325,6 +342,8 @@ pub struct Store {
     /// Number of the active base directory, and whether CURRENT carries the dataset fence (see the module docs).
     generation: Mutex<u64>,
     fenced: std::sync::atomic::AtomicBool,
+    /// Whether CURRENT carries the RDF 1.2 fence `rdf12-1` (see `parse_current`).
+    rdf12_fenced: std::sync::atomic::AtomicBool,
     /// What readers see: everything durable.
     current: RwLock<Arc<Overlay>>,
     /// Accepted change sets, possibly not yet durable (group commit).
@@ -352,20 +371,27 @@ impl Store {
 
     pub fn open_with(dir: impl AsRef<Path>, initial: Option<&Path>, format: Box<dyn BaseFormat>) -> std::io::Result<Self> {
         let dir = dir.as_ref().to_path_buf();
+        // A bare base (what `build-disk` writes: MANIFEST and order files, no CURRENT) is not a store. Opening it as
+        // one would write an empty `base-0` and serve no triples, so refuse before touching the directory.
+        if dir.join("MANIFEST").is_file() && !dir.join("CURRENT").exists() {
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!(
+                "{} is a base directory (as written by build-disk), not a store; query it directly, or create a store with --init",
+                dir.display())));
+        }
         std::fs::create_dir_all(&dir)?;
         // Lock before reading CURRENT, recovery, or deleting any abandoned generation.
         // The file remains in place to avoid lock-inode replacement races between processes.
         let directory_lock = OpenOptions::new().read(true).write(true).create(true).truncate(false).open(dir.join("LOCK"))?;
         lock_directory(&directory_lock)?;
-        let (generation, fenced) = match std::fs::read_to_string(dir.join("CURRENT")) {
-            Ok(s) => parse_current(&s).ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?,
+        let (generation, fenced, rdf12_fenced) = match std::fs::read_to_string(dir.join("CURRENT")) {
+            Ok(s) => parse_current(&s)?.ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 let base0 = dir.join("base-0");
                 // No CURRENT means no base was ever committed: a `base-0` here is an abandoned earlier attempt.
                 if base0.exists() { std::fs::remove_dir_all(&base0)?; }
                 format.import(&base0, initial)?;
-                set_current(&dir, 0, false)?;
-                (0, false)
+                set_current(&dir, 0, false, false)?;
+                (0, false, false)
             }
             Err(e) => return Err(e),
         };
@@ -387,6 +413,7 @@ impl Store {
         let overlay = Arc::new(overlay);
         Ok(Store {
             dir, format, generation: Mutex::new(generation), fenced: std::sync::atomic::AtomicBool::new(fenced),
+            rdf12_fenced: std::sync::atomic::AtomicBool::new(rdf12_fenced),
             current: RwLock::new(overlay.clone()),
             pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0 }),
             wal: Mutex::new(Wal { file: wal, durable: 0 }),
@@ -520,11 +547,16 @@ impl Store {
         let n = match count { Count::Net => rec.len(), Count::Steps => steps };
         // Even a no-op must wait for earlier accepted changes it may have observed.
         if rec.is_empty() { return Ok((p.seq, n)) }
-        if needs_fence(&rec) && !self.fenced.load(std::sync::atomic::Ordering::SeqCst) {
-            // Durable before any named-graph line can reach the WAL.
+        let dataset = needs_fence(&rec) && !self.fenced.load(std::sync::atomic::Ordering::SeqCst);
+        let rdf12 = needs_rdf12_fence(&rec) && !self.rdf12_fenced.load(std::sync::atomic::Ordering::SeqCst);
+        if dataset || rdf12 {
+            // Durable before any named-graph or RDF 1.2 line can reach the WAL.
             let generation = self.generation.lock().unwrap();
-            set_current(&self.dir, *generation, true)?;
-            self.fenced.store(true, std::sync::atomic::Ordering::SeqCst);
+            let fenced = dataset || self.fenced.load(std::sync::atomic::Ordering::SeqCst);
+            let rdf12_fenced = rdf12 || self.rdf12_fenced.load(std::sync::atomic::Ordering::SeqCst);
+            set_current(&self.dir, *generation, fenced, rdf12_fenced)?;
+            self.fenced.store(fenced, std::sync::atomic::Ordering::SeqCst);
+            self.rdf12_fenced.store(rdf12_fenced, std::sync::atomic::Ordering::SeqCst);
         }
         push_record(&mut p.buf, &rec);
         p.latest = Arc::new(next);
@@ -576,6 +608,7 @@ impl Store {
         // in-memory state all still describe the old base.
         let (base, named) = self.format.open_dataset(&new_dir)?;
         let fenced = self.fenced.load(std::sync::atomic::Ordering::SeqCst);
+        let rdf12_fenced = self.rdf12_fenced.load(std::sync::atomic::Ordering::SeqCst);
         let mut fresh = Overlay::from_dataset_base(base, named);
         if cur.has_named_graphs() && !into_base {
             // Bases do not hold named graphs yet, so they move into the new WAL as its first record. That WAL is
@@ -591,7 +624,7 @@ impl Store {
             f.write_all(buf.as_bytes())?;
             f.sync_all()?;
             self.publish(|| {
-                set_current(&self.dir, next, fenced)?;
+                set_current(&self.dir, next, fenced, rdf12_fenced)?;
                 std::fs::rename(&tmp, self.dir.join("wal.log"))?;
                 self.fail_point("after-wal-rename")?;
                 sync_dir(&self.dir)
@@ -600,7 +633,7 @@ impl Store {
             fresh = moved;
         } else {
             self.publish(|| {
-                set_current(&self.dir, next, fenced)?;
+                set_current(&self.dir, next, fenced, rdf12_fenced)?;
                 self.fail_point("after-current")?;
                 // The new base is durable and current; only now drop the log.
                 w.file.set_len(0)?;
@@ -634,19 +667,29 @@ impl Store {
 }
 
 /// CURRENT's content: `base-<n>`, or `dataset-1 base-<n>` once fenced. `None` if it is neither.
-fn parse_current(s: &str) -> Option<(u64, bool)> {
+///
+/// RDF 1.2 (task #101): before the first WAL record holding a triple term or a directional literal, CURRENT gains the
+/// prefix `rdf12-1 ` (`rdf12-1 dataset-1 base-<n>` with both fences). Binaries without RDF 1.2 support then refuse
+/// the store before reading its WAL, instead of truncating it at the first line they cannot parse. Returns
+/// `(n, dataset fence, RDF 1.2 fence)`, `Ok(None)` if the text is malformed, and an error for an RDF 1.2 store in a
+/// build without the `rdf-12` feature.
+fn parse_current(s: &str) -> std::io::Result<Option<(u64, bool, bool)>> {
     let s = s.trim();
+    let (rdf12, s) = match s.strip_prefix("rdf12-1 ") { Some(rest) => (true, rest), None => (false, s) };
+    if rdf12 && !cfg!(feature = "rdf-12") {
+        return Err(std::io::Error::new(std::io::ErrorKind::Unsupported, "this store holds RDF 1.2 terms; open it with a build that has the rdf-12 feature"));
+    }
     let (fenced, base) = match s.strip_prefix("dataset-1 ") { Some(rest) => (true, rest), None => (false, s) };
-    let n = base.strip_prefix("base-")?;
-    if n.is_empty() || !n.bytes().all(|b| b.is_ascii_digit()) { return None }
-    Some((n.parse().ok()?, fenced))
+    let Some(n) = base.strip_prefix("base-") else { return Ok(None) };
+    if n.is_empty() || !n.bytes().all(|b| b.is_ascii_digit()) { return Ok(None) }
+    Ok(n.parse().ok().map(|n| (n, fenced, rdf12)))
 }
 
-/// Atomically points CURRENT at `base-<n>` (with the dataset fence if `fenced`).
-fn set_current(dir: &Path, n: u64, fenced: bool) -> std::io::Result<()> {
+/// Atomically points CURRENT at `base-<n>` (with the dataset fence if `fenced`, the RDF 1.2 fence if `rdf12`).
+fn set_current(dir: &Path, n: u64, fenced: bool, rdf12: bool) -> std::io::Result<()> {
     let tmp = dir.join("CURRENT.tmp");
     let mut f = File::create(&tmp)?;
-    writeln!(f, "{}base-{n}", if fenced { "dataset-1 " } else { "" })?;
+    writeln!(f, "{}{}base-{n}", if rdf12 { "rdf12-1 " } else { "" }, if fenced { "dataset-1 " } else { "" })?;
     f.sync_all()?;
     std::fs::rename(&tmp, dir.join("CURRENT"))?;
     sync_dir(dir)
@@ -658,6 +701,15 @@ fn sync_dir(dir: &Path) -> std::io::Result<()> { File::open(dir)?.sync_all() }
 /// Without this, the commit would be acknowledged, but no compaction could ever write the store's next base.
 /// Checked before anything is applied, so a refused update changes nothing.
 fn check_term_size(term: triplelight_rdf::TermRef<'_>) -> std::io::Result<()> {
+    // RDF 1.2: a base parses its dictionary text back with `Term::from_str`, which reads at most
+    // `MAX_TRIPLE_TERM_DEPTH` nested triple terms; a deeper one would block every later compaction.
+    #[cfg(feature = "rdf-12")]
+    {
+        let depth = triplelight_rdf::triple_term_depth(term);
+        if depth > triplelight_rdf::MAX_TRIPLE_TERM_DEPTH {
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("triple term nested {depth} deep exceeds the limit of {}", triplelight_rdf::MAX_TRIPLE_TERM_DEPTH)));
+        }
+    }
     // The same limit as the base writer (`external_build::MAX_TERM`, Unix only) and the streaming parsers.
     let limit = triplelight_core::ntriples::MAX_TOKEN;
     // Cheap upper bound first: escaping turns one byte into at most six (`\u0000`), plus quotes and the suffix.
@@ -665,6 +717,9 @@ fn check_term_size(term: triplelight_rdf::TermRef<'_>) -> std::io::Result<()> {
         triplelight_rdf::TermRef::NamedNode(n) => n.as_str().len() + 2,
         triplelight_rdf::TermRef::BlankNode(b) => b.as_str().len() + 2,
         triplelight_rdf::TermRef::Literal(l) => l.value().len() * 6 + l.datatype().as_str().len() + l.language().map_or(0, str::len) + 8,
+        // Nested parts make any cheap bound loose; triple terms are rare, so render them.
+        #[cfg(feature = "rdf-12")]
+        triplelight_rdf::TermRef::Triple(_) => usize::MAX,
     };
     if bound <= limit { return Ok(()) }
     let len = term.to_string().len();
@@ -724,6 +779,22 @@ fn push_record(buf: &mut String, rec: &[DatasetChange]) {
     }
     buf.push_str("C\n");
 }
+
+/// Whether a record needs the RDF 1.2 fence: it holds a triple term or a directional literal. Both occur only as
+/// objects (a directional literal inside a triple term makes the object a triple term).
+#[cfg(feature = "rdf-12")]
+fn needs_rdf12_fence(rec: &[DatasetChange]) -> bool {
+    rec.iter().any(|c| match c {
+        DatasetChange::Quad(_, _, t) => match &t.object {
+            Term::Triple(_) => true,
+            Term::Literal(l) => l.direction().is_some(),
+            _ => false,
+        },
+        _ => false,
+    })
+}
+#[cfg(not(feature = "rdf-12"))]
+fn needs_rdf12_fence(_rec: &[DatasetChange]) -> bool { false }
 
 /// Whether a record needs the dataset fence (it mentions a named graph).
 fn needs_fence(rec: &[DatasetChange]) -> bool {
@@ -794,6 +865,27 @@ mod writer_serialization_tests {
         assert!(done_rx.recv_timeout(std::time::Duration::from_secs(10)).unwrap());
         worker.join().unwrap();
         drop(store);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod bare_base_tests {
+    use super::*;
+    /// A directory written by `build-disk` (a MANIFEST, no CURRENT) is refused, and left untouched, instead of being
+    /// opened as a new empty store.
+    #[test]
+    fn opening_a_bare_base_as_a_store_is_refused() {
+        let dir = std::env::temp_dir().join(format!("rdf-bare-base-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("MANIFEST"), "RDFSNAP6\n").unwrap();
+        let err = Store::open(&dir, None, 1).err().expect("a bare base is not a store");
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+        assert!(err.to_string().contains("build-disk"), "{err}");
+        let mut names: Vec<_> = std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name()).collect();
+        names.sort();
+        assert_eq!(names, ["MANIFEST"], "nothing was written into the base directory");
         std::fs::remove_dir_all(dir).unwrap();
     }
 }
@@ -1265,10 +1357,18 @@ mod dataset_wal_tests {
 
     #[test]
     fn current_parsing() {
-        assert_eq!(parse_current("base-7\n"), Some((7, false)));
-        assert_eq!(parse_current("dataset-1 base-12\n"), Some((12, true)));
-        for bad in ["", "base-", "base-+1", "dataset-2 base-1", "dataset-1base-1", "dataset-1 ", "base-1 extra"] {
-            assert_eq!(parse_current(bad), None, "{bad:?}");
+        assert_eq!(parse_current("base-7\n").unwrap(), Some((7, false, false)));
+        assert_eq!(parse_current("dataset-1 base-12\n").unwrap(), Some((12, true, false)));
+        for bad in ["", "base-", "base-+1", "dataset-2 base-1", "dataset-1base-1", "dataset-1 ", "base-1 extra", "dataset-1 rdf12-1 base-1", "rdf12-1base-1"] {
+            assert_eq!(parse_current(bad).unwrap(), None, "{bad:?}");
+        }
+        // The RDF 1.2 fence (task #101): read by an rdf-12 build, refused with a clear error by any other.
+        for (text, expect) in [("rdf12-1 base-3", (3, false, true)), ("rdf12-1 dataset-1 base-4", (4, true, true))] {
+            if cfg!(feature = "rdf-12") {
+                assert_eq!(parse_current(text).unwrap(), Some(expect));
+            } else {
+                assert_eq!(parse_current(text).unwrap_err().kind(), std::io::ErrorKind::Unsupported);
+            }
         }
     }
 }

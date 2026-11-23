@@ -4,7 +4,7 @@ use crate::model::{Perm, TermId, TripleBatch};
 use triplelight_rdf::{Term, Triple};
 use std::collections::HashMap;
 
-const INLINE: u64 = 0xf000_0000_0000_0000;
+const INLINE: u64 = crate::model::id_tag::INLINE << 60;
 fn inline_ref(term: triplelight_rdf::TermRef<'_>) -> Option<TermId> {
     if let triplelight_rdf::TermRef::Literal(l) = term {
         let b = l.value().as_bytes();
@@ -27,21 +27,41 @@ fn slot(p: Perm) -> usize {
 
 const XSD_STRING: &str = "http://www.w3.org/2001/XMLSchema#string";
 /// A term as stored: kind (1 IRI, 2 blank node, 3 xsd:string literal, 4 language-tagged literal, 5 other typed
-/// literal), lexical value, and language tag or datatype IRI (empty for kinds 1-3). Distinct terms have distinct parts.
+/// literal, with RDF 1.2 also 6 and 7 for a left-to-right and right-to-left directional language-tagged literal),
+/// lexical value, and language tag or datatype IRI (empty for kinds 1-3). Distinct terms have distinct parts.
+/// Triple terms (kind `TRIPLE_KIND`) are kept whole beside the arena (`TermArena::triples`), never split into parts.
 fn parts(term: triplelight_rdf::TermRef<'_>) -> (u8, &str, &str) {
     match term {
         triplelight_rdf::TermRef::NamedNode(v) => (1, v.as_str(), ""),
         triplelight_rdf::TermRef::BlankNode(v) => (2, v.as_str(), ""),
         triplelight_rdf::TermRef::Literal(v) => match v.language() {
+            #[cfg(feature = "rdf-12")]
+            Some(lang) if v.direction().is_some() => {
+                (if v.direction() == Some(triplelight_rdf::BaseDirection::Ltr) { 6 } else { 7 }, v.value(), lang)
+            }
             Some(lang) => (4, v.value(), lang),
             None if v.datatype().as_str() == XSD_STRING => (3, v.value(), ""),
             None => (5, v.value(), v.datatype().as_str()),
         },
+        #[cfg(feature = "rdf-12")]
+        triplelight_rdf::TermRef::Triple(_) => unreachable!("triple terms are stored whole, not as parts"),
     }
 }
-/// The ID tag (top four bits) that a non-inline term of `kind` carries.
+/// Arena kind of a triple term (RDF 1.2). Its entry has no text; the term itself is in `TermArena::triples`.
+#[cfg(feature = "rdf-12")]
+const TRIPLE_KIND: u8 = 8;
+/// The ID tag (top four bits) that a non-inline term of `kind` carries: 1 IRI, 2 blank node, 3 literal, 4 triple
+/// term, the same kinds as a disk dictionary.
 fn tag_of(kind: u8) -> u64 {
-    u64::from(kind.min(3))
+    use crate::model::id_tag;
+    match kind {
+        0 => 0, // an unused slot
+        1 => id_tag::IRI,
+        2 => id_tag::BLANK_NODE,
+        #[cfg(feature = "rdf-12")]
+        TRIPLE_KIND => id_tag::TRIPLE_TERM,
+        _ => id_tag::LITERAL,
+    }
 }
 fn is_inline(id: TermId) -> bool {
     id.0 >> 60 == 15
@@ -68,6 +88,14 @@ struct TermArena {
     by_term: hashbrown::HashTable<(u64, TermId)>,
     hasher: std::hash::RandomState,
     len: usize,
+    /// RDF 1.2 triple terms by ID, and their IDs by term. Their parts are stored terms too (`MemorySnapshot::intern`).
+    #[cfg(feature = "rdf-12")]
+    triples: HashMap<TermId, Box<Triple>>,
+    #[cfg(feature = "rdf-12")]
+    triple_ids: HashMap<Triple, TermId>,
+    /// Set once a triple term or a directional literal is stored (`Snapshot::has_rdf12_terms`).
+    #[cfg(feature = "rdf-12")]
+    rdf12: bool,
 }
 impl TermArena {
     fn hash(&self, (kind, value, aux): (u8, &str, &str)) -> u64 {
@@ -98,6 +126,10 @@ impl TermArena {
     }
     /// The ID of a stored term, if any.
     fn find(&self, term: triplelight_rdf::TermRef<'_>) -> Option<TermId> {
+        #[cfg(feature = "rdf-12")]
+        if let triplelight_rdf::TermRef::Triple(t) = term {
+            return self.triple_ids.get(t).copied();
+        }
         if let Some(id) = inline_ref(term) {
             return self.inline.contains_key(&id).then_some(id);
         }
@@ -111,6 +143,15 @@ impl TermArena {
     }
     /// Stores a term under `id`. `false` (and no change) if that ID or that term is already stored.
     fn insert(&mut self, id: TermId, term: triplelight_rdf::TermRef<'_>) -> bool {
+        #[cfg(feature = "rdf-12")]
+        if let triplelight_rdf::TermRef::Triple(t) = term {
+            let index = direct_index(id);
+            if is_inline(id) || id.0 >> 60 != crate::model::id_tag::TRIPLE_TERM || self.direct.get(index).is_some_and(|e| e.kind != 0) || self.triple_ids.contains_key(t) {
+                return false;
+            }
+            self.push_triple(index, id, t);
+            return true;
+        }
         let key @ (_, value, aux) = parts(term);
         if is_inline(id) {
             if self.inline.contains_key(&id) {
@@ -138,6 +179,10 @@ impl TermArena {
     }
     /// Stores a non-inline term in free slot `index`; the caller has already looked it up by `hash` and found it absent.
     fn push_direct(&mut self, index: usize, id: TermId, key: (u8, &str, &str), hash: u64) {
+        #[cfg(feature = "rdf-12")]
+        if matches!(key.0, 6 | 7) {
+            self.rdf12 = true;
+        }
         let entry = self.entry_at_end(key);
         self.text.push_str(key.1);
         self.text.push_str(key.2);
@@ -148,9 +193,28 @@ impl TermArena {
         self.by_term.insert_unique(hash, (hash, id), |&(h, _)| h);
         self.len += 1;
     }
+    /// Stores triple term `t` in free slot `index` under `id`; the caller has checked that neither is taken.
+    #[cfg(feature = "rdf-12")]
+    fn push_triple(&mut self, index: usize, id: TermId, t: &Triple) {
+        if self.direct.len() <= index {
+            self.direct.resize(index + 1, ArenaEntry::default());
+        }
+        self.direct[index] = ArenaEntry { start: self.text.len() as u64, len: 0, aux_len: 0, kind: TRIPLE_KIND };
+        self.triples.insert(id, Box::new(t.clone()));
+        self.triple_ids.insert(t.clone(), id);
+        self.rdf12 = true;
+        self.len += 1;
+    }
     fn get(&self, id: TermId) -> Option<triplelight_rdf::TermRef<'_>> {
         let (kind, value, aux) = self.entry_parts(self.entry(id)?);
         Some(match kind {
+            #[cfg(feature = "rdf-12")]
+            TRIPLE_KIND => triplelight_rdf::TermRef::Triple(self.triples.get(&id)?),
+            #[cfg(feature = "rdf-12")]
+            6 | 7 => {
+                let direction = if kind == 6 { triplelight_rdf::BaseDirection::Ltr } else { triplelight_rdf::BaseDirection::Rtl };
+                triplelight_rdf::LiteralRef::new_directional_language_tagged_literal_unchecked(value, aux, direction).into()
+            }
             1 => triplelight_rdf::NamedNodeRef::new_unchecked(value).into(),
             2 => triplelight_rdf::BlankNodeRef::new_unchecked(value).into(),
             3 => triplelight_rdf::LiteralRef::new_simple_literal(value).into(),
@@ -412,6 +476,9 @@ impl MemorySnapshot {
             let valid_tag = match &term {
                 Term::NamedNode(_) => tag == 1,
                 Term::BlankNode(_) => tag == 2,
+                // Its parts are checked once every term is read (an inline part has a higher ID).
+                #[cfg(feature = "rdf-12")]
+                Term::Triple(_) => tag == 4,
                 Term::Literal(_) => {
                     if let Some(expected) = inline_ref(term.as_ref()) {
                         expected == id
@@ -427,6 +494,12 @@ impl MemorySnapshot {
             {
                 return Err(bad());
             }
+        }
+        #[cfg(feature = "rdf-12")]
+        if snapshot.arena.triples.values().any(|t| {
+            [t.subject.as_ref().into(), t.predicate.as_ref().into(), t.object.as_ref()].into_iter().any(|part| snapshot.arena.find(part).is_none())
+        }) {
+            return Err(bad());
         }
         for index in &mut full {
             let count = num(&mut input)?;
@@ -471,6 +544,20 @@ impl MemorySnapshot {
         Ok(snapshot)
     }
     fn intern(&mut self, term: triplelight_rdf::TermRef<'_>) -> TermId {
+        // A triple term's parts are interned first, so each part has a lower ID and resolves on its own.
+        #[cfg(feature = "rdf-12")]
+        if let triplelight_rdf::TermRef::Triple(t) = term {
+            if let Some(&id) = self.arena.triple_ids.get(t) {
+                return id;
+            }
+            self.intern(t.subject.as_ref().into());
+            self.intern(t.predicate.as_ref().into());
+            self.intern(t.object.as_ref());
+            let index = self.arena.direct.len();
+            let id = TermId((crate::model::id_tag::TRIPLE_TERM << 60) | index as u64);
+            self.arena.push_triple(index, id, t);
+            return id;
+        }
         if let Some(id) = inline_ref(term) {
             self.arena.insert(id, term); // no-op if already stored
             return id;
@@ -519,6 +606,10 @@ impl Dictionary for MemorySnapshot {
 }
 
 impl Snapshot for MemorySnapshot {
+    #[cfg(feature = "rdf-12")]
+    fn has_rdf12_terms(&self) -> bool {
+        self.arena.rdf12
+    }
     fn scan<'a>(
         &'a self,
         perm: Perm,
