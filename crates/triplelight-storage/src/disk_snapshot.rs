@@ -210,6 +210,7 @@ pub struct DiskSnapshot {
     /// The base holds an RDF 1.2 term (manifest `RDFSNAP7`).
     rdf12: bool,
     /// `RDFSNAP7` only: rows `(triple term, s, p, o)` sorted by term ID (`Dictionary::triple_term_parts`).
+    #[cfg_attr(not(feature = "rdf-12"), allow(dead_code))] // only RDF 1.2 builds open RDFSNAP7
     triple_terms: Option<DiskIndex<4>>,
 }
 /// File name of the triple-term parts table of an `RDFSNAP7` base.
