@@ -138,8 +138,9 @@ and is not claimed here.
 
 ### CSV and TSV results
 
-The HTTP server answers `SELECT` queries as SPARQL CSV or TSV when the `Accept` header names `text/csv` or `text/tab-separated-values` before SPARQL JSON
-(JSON stays the default). `ASK` and graph results keep their own formats.
+The HTTP server answers `SELECT` queries as SPARQL CSV or TSV when the `Accept` header explicitly names `text/csv` or `text/tab-separated-values` with a
+higher `q` than SPARQL JSON, or the same `q` and an earlier position (`q=0` excludes a type). Wildcard ranges such as `*/*` are not interpreted: they and
+a missing header give SPARQL JSON. `ASK` and graph results keep their own formats.
 
 ### Current limits
 
