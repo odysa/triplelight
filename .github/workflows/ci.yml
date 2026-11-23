@@ -38,6 +38,11 @@ jobs:
         run: python3 ci/check_notices.py
       - name: No absolute local paths in the evidence files
         run: python3 ci/check_paths.py
+      - name: Code structure (deslop-please, AGENTS.md)
+        run: |
+          rustup component add rust-analyzer
+          cargo install --locked deslop-please --version 0.1.3
+          ci/deslop.sh
       - name: RDF 1.2 (feature rdf-12) across the workspace, plus the term-type differential
         run: |
           cargo clippy --locked --workspace --all-targets --features server,async,rdf-12 -- -D warnings
