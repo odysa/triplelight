@@ -11,6 +11,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [features]
+# RDF 1.2 textual syntax and term representations. Forwards the term model feature to triplelight-rdf.
 rdf-12 = ["triplelight-rdf/rdf-12"]
 
 [dependencies]
