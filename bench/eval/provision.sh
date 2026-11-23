@@ -36,6 +36,7 @@ BLAZEGRAPH_SHA=8f38b1dae5ad92b0c786b92d1f260a18a4ca64151b62c8d5017dd59b743e131e 
 RDF_FUSION_VERSION=0.3.1   # crate rdf-fusion-cli, built --locked with $RUST_TOOLCHAIN
 # Signed DuckDB community extension `rdf` for DuckDB 2.0.1, installed by DuckDB itself with signature checks on, then
 # compared with this hash of the installed file (fetched 2026-11-23 from community-extensions.duckdb.org/v2.0.1/<arch>/).
+DUCKDB_RDF_VERSION=v2.9.0
 DUCKDB_RDF_SHA_linux_amd64=ce9422545435945979ef489bd51f40c43ef188b8d05ac024d880017827906cfe
 DUCKDB_RDF_SHA_linux_arm64=ce15ec9e46ed045205a1cf5c28a6cb977a90247b376b1c00fe4f035375a70a5d
 REPO_URL=${REPO_URL:-https://github.com/odysa/triplelight.git}
@@ -132,18 +133,27 @@ if [ ! -x "$T/rdf-fusion/bin/rdf-fusion" ]; then
 fi
 note "rdf-fusion-cli $RDF_FUSION_VERSION sha256 $(sha256sum "$T/rdf-fusion/bin/rdf-fusion" | cut -d' ' -f1)"
 # DuckDB rdf: installed from the community repository with signature checks on (the default), into a private
-# directory on the NVMe, then hashed against the pin.
+# directory on the NVMe. The installed file is hashed against the pin BEFORE anything loads it; only then is it loaded
+# (signature enforced) and its reported version required to be the pinned one.
 EXT=$T/duckdb-ext
-$V/bin/python -I - "$EXT" <<'PY' | while read -r l; do note "$l"; done
+$V/bin/python -I - "$EXT" <<'PY'
 import sys, duckdb
 c = duckdb.connect(config={"extension_directory": sys.argv[1], "allow_unsigned_extensions": "false"})
-c.execute("INSTALL rdf FROM community"); c.execute("LOAD rdf")
-r = c.execute("SELECT extension_version, install_path FROM duckdb_extensions() WHERE extension_name = 'rdf'").fetchone()
-print(f"duckdb {duckdb.__version__} rdf {r[0]} at {r[1]}")
+c.execute("INSTALL rdf FROM community")
 PY
-f=$(find "$EXT" -name rdf.duckdb_extension | head -1); dp=DUCKDB_RDF_SHA_$DARCH; got=$(sha256sum "$f" | cut -d' ' -f1)
-[ "$got" = "${!dp}" ] || die "DuckDB rdf extension hash $got, pinned ${!dp} (a new upstream build: re-pin with Jianlin)"
-note "duckdb rdf extension sha256 ok ($DARCH)"
+f=$(find "$EXT" -path "*/$DARCH/rdf.duckdb_extension" | head -1); [ -n "$f" ] || die "DuckDB rdf extension not installed under $EXT"
+dp=DUCKDB_RDF_SHA_$DARCH; got=$(sha256sum "$f" | cut -d' ' -f1)
+[ "$got" = "${!dp}" ] || die "DuckDB rdf extension hash $got, pinned ${!dp} (a new upstream build: not loaded; re-pin with Jianlin)"
+note "duckdb rdf extension sha256 ok ($DARCH), not yet loaded"
+v=$($V/bin/python -I - "$EXT" <<'PY'
+import sys, duckdb
+c = duckdb.connect(config={"extension_directory": sys.argv[1], "allow_unsigned_extensions": "false"})
+c.execute("LOAD rdf")
+print(c.execute("SELECT extension_version FROM duckdb_extensions() WHERE extension_name = 'rdf' AND loaded").fetchone()[0])
+PY
+)
+[ "$v" = "$DUCKDB_RDF_VERSION" ] || die "DuckDB rdf extension reports version $v, pinned $DUCKDB_RDF_VERSION"
+note "duckdb $($V/bin/python -I -c 'import duckdb; print(duckdb.__version__)') loaded rdf $v with signature checks on"
 
 # --- 7. TripleLight at the commit under test (server, Python wheel, C library + Java classes), and the images ------------
 step "repository and images"
