@@ -17,6 +17,7 @@ macro_rules! on_data {
     };
 }
 
+pub mod phase;
 mod agg;
 mod bgp;
 mod count;
@@ -143,7 +144,7 @@ fn catching_storage<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, Q
 }
 
 fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
-    let q = crate::sparql::parse_query(text, None).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
+    let q = phase::timed(&phase::PARSE_NS, || crate::sparql::parse_query(text, None)).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
     run_query(snap, dataset, &q, opts)
 }
 
@@ -595,6 +596,13 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn eval_order_by(&self, inner: &GraphPattern, expression: &[OrderExpression], input: Vec<Row>) -> Vec<Row> {
         let limit = self.order_limit.take();
         let rows = self.eval(inner, input);
+        let started = phase::enabled().then(std::time::Instant::now);
+        let out = self.sort_rows(expression, limit, rows);
+        if let Some(t) = started { phase::SORT_NS.fetch_add(t.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed); }
+        out
+    }
+
+    fn sort_rows(&self, expression: &[OrderExpression], limit: Option<usize>, rows: Vec<Row>) -> Vec<Row> {
         // Sort keys: a plain variable is decoded once per distinct ID; other expressions per row.
         let mut memo: HashMap<TermId, Option<Term>> = HashMap::new();
         let keys: Vec<Vec<Option<Term>>> = rows.iter().map(|r| expression.iter().map(|e| {
@@ -673,8 +681,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
 
     fn eval_group(&self, inner: &GraphPattern, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], input: Vec<Row>) -> Vec<Row> {
-        if self.count_pushdown && let Some(rows) = self.try_count_group(inner, keys, aggs, &input) { return rows; }
+        if self.count_pushdown && let Some(rows) = phase::timed(&phase::COUNT_NS, || self.try_count_group(inner, keys, aggs, &input)) { return rows; }
         let rows = self.eval(inner, input);
+        let started = phase::enabled().then(std::time::Instant::now);
+        let out = self.group_rows(keys, aggs, rows);
+        if let Some(t) = started { phase::GROUP_NS.fetch_add(t.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed); }
+        out
+    }
+
+    fn group_rows(&self, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], rows: Vec<Row>) -> Vec<Row> {
         let kidx: Vec<usize> = keys.iter().map(|v| self.var(v)).collect();
         if !self.general_group
             && let Some(out) = self.try_fast_group(&rows, &kidx, aggs) { return out; }
@@ -771,7 +786,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn eval_bgp(&self, patterns: &[TriplePattern], rows: Vec<Row>) -> Vec<Row> { self.eval_bgp_filtered(patterns, rows, &[]) }
 
     /// BGP evaluation that applies each filter in `filters` as soon as all its variables are bound.
+    /// Timed as the `bgp` phase (S6): every BGP evaluation, with or without pushed-down FILTER conjuncts, goes through here.
     fn eval_bgp_filtered(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<Row> {
+        phase::bgp(|| self.eval_bgp_filtered_untimed(patterns, rows, filters))
+    }
+
+    fn eval_bgp_filtered_untimed(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<Row> {
         let pats: Vec<[Slot; 3]> = patterns.iter().map(|t| {
             let p = match &t.predicate {
                 NamedNodePattern::Variable(v) => Slot::Var(self.var(v)),
