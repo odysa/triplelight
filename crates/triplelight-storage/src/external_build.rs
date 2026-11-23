@@ -27,7 +27,7 @@ const TERM_SORT_RECORD_MAX: usize = MAX_TERM + 10;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
 static BUILD_BUDGET_MB: AtomicUsize = AtomicUsize::new(0);
 static FORCE_EXTERNAL: AtomicBool = AtomicBool::new(false);
-static KEPT_ORDERS: AtomicU8 = AtomicU8::new(super::disk_snapshot::REQUIRED_ORDERS);
+static KEPT_ORDERS: AtomicU8 = AtomicU8::new(super::base_format::REQUIRED_ORDERS);
 #[cfg(test)]
 thread_local! { static TEST_ORDERS: std::cell::Cell<Option<u8>> = const { std::cell::Cell::new(None) }; }
 /// Tests run in parallel, so a test that needs another order set than the default sets it for its own thread.
@@ -76,7 +76,7 @@ pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io:
         let bytes = fs::metadata(path)?.len();
         let budget = (budget_mb() as u128) * 1_048_576;
         // The in-memory path writes all six orders (RDFSNAP3), so any smaller order set takes the external builder.
-        let six = kept_orders_setting() == super::disk_snapshot::ALL_ORDERS;
+        let six = kept_orders_setting() == super::base_format::ALL_ORDERS;
         if six && !FORCE_EXTERNAL.load(Ordering::Relaxed) && (bytes as u128) * 3 <= budget {
             eprintln!("disk build strategy: in-memory (estimated 3x input; not an RSS limit)");
             let snapshot =
@@ -427,7 +427,7 @@ impl Builder {
         if rdf12 {
             manifest.write_all(b"RDFSNAP7")?;
             manifest.write_all(&[orders, u8::from(named)])?;
-        } else if orders == super::disk_snapshot::ALL_ORDERS {
+        } else if orders == super::base_format::ALL_ORDERS {
             manifest.write_all(if named { b"RDFSNAP5" } else { b"RDFSNAP4" })?;
         } else {
             manifest.write_all(b"RDFSNAP6")?;
