@@ -1,0 +1,14 @@
+Mon Nov 23 04:37:11 UTC 2026
+<external container 1> Up 23 minutes
+<external container 2> Up 30 minutes
+<external container 3> Up 46 minutes
+<external container 4> Up About an hour
+<external container 5> Up 11 days (healthy)
+<external container 6> Up 11 days (healthy)
+<external container 7> Up 2 weeks
+ %CPU COMM
+ 12.6 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  4.9 <external process>
+  4.3 /opt/homebrew/Cellar/python@3.14/3.14.5/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python
+  2.4 /usr/libexec/sysmond
+  2.2 <external process>

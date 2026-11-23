@@ -1,0 +1,14 @@
+Mon Nov 23 04:46:56 UTC 2026
+<external container 1> Up 33 minutes
+<external container 2> Up 39 minutes
+<external container 3> Up 55 minutes
+<external container 4> Up About an hour
+<external container 5> Up 11 days (healthy)
+<external container 6> Up 12 days (healthy)
+<external container 7> Up 2 weeks
+ %CPU COMM
+ 23.8 <external process>
+ 10.6 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  1.9 /usr/libexec/sysmond
+  1.6 <external process>
+  1.1 <external process>
