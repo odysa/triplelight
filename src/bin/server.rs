@@ -3,7 +3,7 @@
 use crate::load;
 use std::io::Read;
 use std::time::Instant;
-use triplelight::exec::{query_with, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids, serialize_csv, serialize_tsv}};
+use triplelight::exec::{query_with, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids_v, serialize_csv, serialize_tsv}};
 use triplelight::opt::stats::Stats;
 use triplelight::store::StoreUpdate;
 
@@ -56,7 +56,7 @@ fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'
     let response = (|| { match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| query_with(snap, q, opts))) {
         Ok(Ok(r)) => {
             let (ct, b) = match &r {
-                QueryResult::Ids(sol) => match serialize_ids(sol, snap) {
+                QueryResult::Ids(sol) => match serialize_ids_v(sol, snap, snap.has_rdf12_terms()) {
                     Ok(b) => ("application/sparql-results+json", b),
                     Err(e) => return tiny_http::Response::from_string(format!("storage error: {e}")).with_status_code(500),
                 },

@@ -150,10 +150,15 @@ pub fn serialize(r: &QueryResult) -> (&'static str, String) {
 /// SPARQL JSON straight from term IDs: each term is written from the dictionary's borrowed bytes, so a large result
 /// never materializes owned `Term`s. Rows are serialized in parallel chunks.
 pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D) -> Result<String, crate::storage::StorageError> {
+    serialize_ids_v(sol, dict, false)
+}
+
+/// Like `serialize_ids`; `store_has_rdf12` is the snapshot's `has_rdf12_terms()`. When it is true, or a computed term is a
+/// 1.2 term, the head announces `"version":"1.2"`. A store without 1.2 terms keeps byte-identical 1.1 output.
+pub fn serialize_ids_v<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D, store_has_rdf12: bool) -> Result<String, crate::storage::StorageError> {
     let mut out = String::new();
-    // TODO(#104): a stored 1.2 term (triple term or directional literal) also needs the announcement. That needs a store-level
-    // flag from the dictionary (#101); until then only terms computed by the query (the scratch map) are detected.
-    let version12 = sol.scratch.values().any(is_rdf12);
+    // 1.2 version announcement from the store-level flag (no peeking at stored terms) or from computed terms (scratch).
+    let version12 = store_has_rdf12 || sol.scratch.values().any(is_rdf12);
     let writer = SolutionsWriter::start(&sol.vars, version12, &mut out);
     let w = sol.width();
     if w > 0 {
