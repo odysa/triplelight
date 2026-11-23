@@ -1,0 +1,315 @@
+deslop-please: indexing workspace...
+error[module-cycle]: 3 modules in `triplelight_core` use each other in a circle
+  --> crates/triplelight-core/src/rdf.rs:32:1
+  = note: members: ntriples, rdf, turtle
+  = note: crates/triplelight-core/src/rdf.rs:32:1: `rdf` uses `ntriples` by 2 items: read_nquads, read_ntriples_slice
+  = note: crates/triplelight-core/src/rdf.rs:33:1: `rdf` uses `turtle` by 2 items: read_trig, read_turtle_slice
+  = note: crates/triplelight-core/src/ntriples.rs:352:1: `ntriples` uses `rdf` by 3 items: ReadError, ReadError::Syntax, ReadError::Io
+  = note: crates/triplelight-core/src/turtle.rs:1040:1: `turtle` uses `rdf` by 3 items: ReadError, ReadError::Syntax, ReadError::Io
+  = note: crates/triplelight-core/src/turtle.rs:54:1: `turtle` uses `ntriples` by 4 items: MAX_TOKEN, pn_chars, pn_chars_base, pn_chars_u
+    ┌─▶ rdf
+    │     ┃ rdf.rs:32        uses read_nquads, read_ntriples_slice
+    │     ▼
+    │   ntriples
+    │     │ ntriples.rs:352  uses ReadError::{self, Syntax, Io}
+    └─────┘
+    not drawn: 1 more module, 3 more ties
+
+error[module-cycle]: 2 modules in `triplelight_exec` use each other in a circle
+  --> crates/triplelight-exec/src/range.rs:269:1
+  = note: members: bgp, range
+  = note: crates/triplelight-exec/src/range.rs:269:1: `range` uses `bgp` by 3 items: Slot, Slot::Var, Slot::Const
+  = note: crates/triplelight-exec/src/bgp.rs:26:1: `bgp` uses `range` by 4 items: Ranges, ObjRange::rows, ObjRange, ObjRange::objects
+    ┌─▶ range
+    │     ┃ range.rs:269  Ctx::object_ranges uses Slot::{self, Var, Const}
+    │     ▼
+    │   bgp
+    │     │ bgp.rs:26     uses Ranges, ObjRange::{rows, self, objects}
+    └─────┘
+
+error[module-cycle]: 4 modules in `triplelight_storage` use each other in a circle
+  --> crates/triplelight-storage/src/external_build.rs:372:1
+  = note: members: disk_snapshot, external_build, lazy_dictionary, term_block_codec
+  = note: crates/triplelight-storage/src/external_build.rs:372:1: `external_build` uses `lazy_dictionary` by 1 item: convert_unified
+  = note: crates/triplelight-storage/src/lazy_dictionary.rs:25:1: `lazy_dictionary` uses `external_build` by 1 item: MAX_TERM
+  = note: crates/triplelight-storage/src/term_block_codec.rs:6:1: `term_block_codec` uses `external_build` by 1 item: MAX_TERM
+  = note: crates/triplelight-storage/src/lazy_dictionary.rs:420:1: `lazy_dictionary` uses `term_block_codec` by 2 items: decode, encode
+  = note: crates/triplelight-storage/src/disk_snapshot.rs:124:1: `disk_snapshot` uses `external_build` by 5 items: from_snapshot, from_dataset, adaptive, from_dataset_keeping, from_snapshot_keeping
+  = note: crates/triplelight-storage/src/external_build.rs:31:1: `external_build` uses `disk_snapshot` by 8 items: DiskSnapshot, ALL_ORDERS, REQUIRED_ORDERS, DiskSnapshot::create, FILES, QUAD_FILES, CATALOG_FILE, +1 more
+  = note: crates/triplelight-storage/src/disk_snapshot.rs:195:1: `disk_snapshot` uses `lazy_dictionary` by 20 items: LazyIndex, convert_legacy, DictionaryCache, Order, UNIFIED_FILE, LazyIndex::open_shared, Order::Unified, +13 more
+    ┌─▶ external_build
+    │     ┃ external_build.rs:372  Builder::finish uses convert_unified
+    │     ▼
+    │   lazy_dictionary
+    │     │ lazy_dictionary.rs:25  uses MAX_TERM
+    └─────┘
+    not drawn: 2 more modules, 5 more ties
+
+error[tangle]: 2 things know each other in a circle, across 3 modules
+  --> crates/triplelight-exec/src/agg.rs:67:1
+  = note: members: triplelight_exec::Ctx, triplelight_exec::expr::eval
+  = note: written in: triplelight_exec, triplelight_exec::agg, triplelight_exec::expr
+  = note: crates/triplelight-exec/src/agg.rs:67:1: `triplelight_exec::Ctx` knows `triplelight_exec::expr::eval` by 1 item: eval; also at crates/triplelight-exec/src/lib.rs:623:1
+  = note: crates/triplelight-exec/src/expr.rs:304:1: `triplelight_exec::expr::eval` knows `triplelight_exec::Ctx` by 5 items: Ctx, Ctx::base, Ctx::now, Ctx::var_value, Ctx::exists
+    ┌─▶ triplelight_exec::Ctx
+    │     ┃ agg.rs:67    uses eval
+    │     ▼
+    │   triplelight_exec::expr::eval
+    │     │ expr.rs:304  eval uses Ctx::{self, base, now, var_value, exists}
+    └─────┘
+
+error[tangle]: 31 things know each other in a circle, across 7 modules
+  --> crates/triplelight-rdf/src/parser.rs:33:1
+  = note: members: triplelight_rdf::blank_node::BlankNode, triplelight_rdf::blank_node::BlankNodeRef, triplelight_rdf::literal::Literal, triplelight_rdf::literal::LiteralContent, triplelight_rdf::literal::LiteralRef, triplelight_rdf::literal::LiteralRefContent, triplelight_rdf::named_node::NamedNode, +24 more
+  = note: written in: triplelight_rdf::blank_node, triplelight_rdf::literal, triplelight_rdf::named_node, triplelight_rdf::parser, triplelight_rdf::triple, triplelight_rdf::vocab::rdf, triplelight_rdf::vocab::xsd
+  = note: crates/triplelight-rdf/src/parser.rs:33:1: `triplelight_rdf::blank_node::BlankNode` knows `triplelight_rdf::parser::read_blank_node` by 1 item: read_blank_node
+  = note: crates/triplelight-rdf/src/literal.rs:119:1: `triplelight_rdf::literal::Literal` knows `triplelight_rdf::named_node::NamedNodeRef` by 1 item: NamedNodeRef
+  = note: crates/triplelight-rdf/src/parser.rs:47:1: `triplelight_rdf::literal::Literal` knows `triplelight_rdf::parser::read_literal` by 1 item: read_literal
+  = note: crates/triplelight-rdf/src/literal.rs:224:1: `triplelight_rdf::literal::Literal` knows `triplelight_rdf::vocab::xsd::BOOLEAN` by 1 item: BOOLEAN
+  = note: crates/triplelight-rdf/src/literal.rs:326:1: `triplelight_rdf::literal::Literal` knows `triplelight_rdf::vocab::xsd::DOUBLE` by 1 item: DOUBLE
+  = note: crates/triplelight-rdf/src/literal.rs:310:1: `triplelight_rdf::literal::Literal` knows `triplelight_rdf::vocab::xsd::FLOAT` by 1 item: FLOAT
+  = note: crates/triplelight-rdf/src/literal.rs:234:1: `triplelight_rdf::literal::Literal` knows `triplelight_rdf::vocab::xsd::INTEGER` by 1 item: INTEGER
+  = note: and 123 more ties
+    ┌─▶ triplelight_rdf::blank_node::BlankNode
+    │     ┃ parser.rs:33   <BlankNode as FromStr>::from_str uses read_blank_node
+    │     ▼
+    │   triplelight_rdf::parser::read_blank_node
+    │     │ parser.rs:171  read_blank_node uses BlankNode::{self, new}
+    └─────┘
+    not drawn: 29 more things, 128 more ties
+
+error[field-leak]: `Parser::batch` is known outside `Parser`: 2 places in 1 module
+  --> crates/triplelight-core/src/turtle.rs:1051:1
+  = note: crates/triplelight-core/src/turtle.rs:1051:1: `triplelight_core::turtle::TurtleReader::step`
+  = note: crates/triplelight-core/src/turtle.rs:1067:1: `triplelight_core::turtle::<TurtleReader as Iterator>::next`
+    triplelight_core::turtle::Parser
+      batch ◀━━━ 2  triplelight_core::turtle
+      kept: stack, subjects, predicates, objects, graph, prefixes, with_graph
+
+error[field-leak]: `Ctx::base` is known outside `Ctx`: 1 place in 1 module
+  --> crates/triplelight-exec/src/lib.rs:231:1
+  = note: crates/triplelight-exec/src/lib.rs:231:1: `triplelight_exec::run_query`
+    triplelight_exec::Ctx
+      base ◀━━━ 1  triplelight_exec
+      also known outside: dataset, named, data, wcoj, general_group, count_pushdown, range_pushdown, +4 more
+      kept: snap, vars, scratch, range_checks, order_limit, now, exists_memo, +4 more
+
+error[field-leak]: `Ctx::char_pairs` is known outside `Ctx`: 1 place in 1 module
+  --> crates/triplelight-exec/src/lib.rs:236:1
+  = note: crates/triplelight-exec/src/lib.rs:236:1: `triplelight_exec::run_query`
+    triplelight_exec::Ctx
+      char_pairs ◀━━━ 1  triplelight_exec
+      also known outside: dataset, named, data, base, wcoj, general_group, count_pushdown, +4 more
+      kept: snap, vars, scratch, range_checks, order_limit, now, exists_memo, +4 more
+
+error[field-leak]: `Ctx::count_pushdown` is known outside `Ctx`: 1 place in 1 module
+  --> crates/triplelight-exec/src/lib.rs:234:1
+  = note: crates/triplelight-exec/src/lib.rs:234:1: `triplelight_exec::run_query`
+    triplelight_exec::Ctx
+      count_pushdown ◀━━━ 1  triplelight_exec
+      also known outside: dataset, named, data, base, wcoj, general_group, range_pushdown, +4 more
+      kept: snap, vars, scratch, range_checks, order_limit, now, exists_memo, +4 more
+
+error[field-leak]: `Ctx::data` is known outside `Ctx`: 1 place in 1 module
+  --> crates/triplelight-exec/src/lib.rs:229:1
+  = note: crates/triplelight-exec/src/lib.rs:229:1: `triplelight_exec::run_query`
+    triplelight_exec::Ctx
+      data ◀━━━ 1  triplelight_exec
+      also known outside: dataset, named, base, wcoj, general_group, count_pushdown, range_pushdown, +4 more
+      kept: snap, vars, scratch, range_checks, order_limit, now, exists_memo, +4 more
+
+error[field-leak]: `Ctx::dataset` is known outside `Ctx`: 1 place in 1 module
+  --> crates/triplelight-exec/src/lib.rs:225:1
+  = note: crates/triplelight-exec/src/lib.rs:225:1: `triplelight_exec::run_query`
+    triplelight_exec::Ctx
+      dataset ◀━━━ 1  triplelight_exec
+      also known outside: named, data, base, wcoj, general_group, count_pushdown, range_pushdown, +4 more
+      kept: snap, vars, scratch, range_checks, order_limit, now, exists_memo, +4 more
+
+error[field-leak]: `Ctx::general_group` is known outside `Ctx`: 1 place in 1 module
+  --> crates/triplelight-exec/src/lib.rs:233:1
+  = note: crates/triplelight-exec/src/lib.rs:233:1: `triplelight_exec::run_query`
+    triplelight_exec::Ctx
+      general_group ◀━━━ 1  triplelight_exec
+      also known outside: dataset, named, data, base, wcoj, count_pushdown, range_pushdown, +4 more
+      kept: snap, vars, scratch, range_checks, order_limit, now, exists_memo, +4 more
+
+error[field-leak]: `Ctx::named` is known outside `Ctx`: 1 place in 1 module
+  --> crates/triplelight-exec/src/lib.rs:226:1
+  = note: crates/triplelight-exec/src/lib.rs:226:1: `triplelight_exec::run_query`
+    triplelight_exec::Ctx
+      named ◀━━━ 1  triplelight_exec
+      also known outside: dataset, data, base, wcoj, general_group, count_pushdown, range_pushdown, +4 more
+      kept: snap, vars, scratch, range_checks, order_limit, now, exists_memo, +4 more
+
+error[field-leak]: `Ctx::range_pushdown` is known outside `Ctx`: 1 place in 1 module
+  --> crates/triplelight-exec/src/lib.rs:235:1
+  = note: crates/triplelight-exec/src/lib.rs:235:1: `triplelight_exec::run_query`
+    triplelight_exec::Ctx
+      range_pushdown ◀━━━ 1  triplelight_exec
+      also known outside: dataset, named, data, base, wcoj, general_group, count_pushdown, +4 more
+      kept: snap, vars, scratch, range_checks, order_limit, now, exists_memo, +4 more
+
+error[field-leak]: `Ctx::range_reorderable` is known outside `Ctx`: 1 place in 1 module
+  --> crates/triplelight-exec/src/lib.rs:243:1
+  = note: crates/triplelight-exec/src/lib.rs:243:1: `triplelight_exec::run_query`
+    triplelight_exec::Ctx
+      range_reorderable ◀━━━ 1  triplelight_exec
+      also known outside: dataset, named, data, base, wcoj, general_group, count_pushdown, +4 more
+      kept: snap, vars, scratch, range_checks, order_limit, now, exists_memo, +4 more
+
+error[field-leak]: `Ctx::sorted_probe` is known outside `Ctx`: 1 place in 1 module
+  --> crates/triplelight-exec/src/lib.rs:237:1
+  = note: crates/triplelight-exec/src/lib.rs:237:1: `triplelight_exec::run_query`
+    triplelight_exec::Ctx
+      sorted_probe ◀━━━ 1  triplelight_exec
+      also known outside: dataset, named, data, base, wcoj, general_group, count_pushdown, +4 more
+      kept: snap, vars, scratch, range_checks, order_limit, now, exists_memo, +4 more
+
+error[field-leak]: `Ctx::stats` is known outside `Ctx`: 1 place in 1 module
+  --> crates/triplelight-exec/src/lib.rs:246:1
+  = note: crates/triplelight-exec/src/lib.rs:246:1: `triplelight_exec::run_query`
+    triplelight_exec::Ctx
+      stats ◀━━━ 1  triplelight_exec
+      also known outside: dataset, named, data, base, wcoj, general_group, count_pushdown, +4 more
+      kept: snap, vars, scratch, range_checks, order_limit, now, exists_memo, +4 more
+
+error[field-leak]: `Ctx::wcoj` is known outside `Ctx`: 1 place in 1 module
+  --> crates/triplelight-exec/src/lib.rs:232:1
+  = note: crates/triplelight-exec/src/lib.rs:232:1: `triplelight_exec::run_query`
+    triplelight_exec::Ctx
+      wcoj ◀━━━ 1  triplelight_exec
+      also known outside: dataset, named, data, base, general_group, count_pushdown, range_pushdown, +4 more
+      kept: snap, vars, scratch, range_checks, order_limit, now, exists_memo, +4 more
+
+error[field-leak]: `PrefixModel::degree` is known outside `PrefixModel`: 4 places in 1 module
+  --> crates/triplelight-plan/src/planner.rs:540:1
+  = note: crates/triplelight-plan/src/planner.rs:540:1: `triplelight_plan::planner::choose_variable_order`
+  = note: crates/triplelight-plan/src/planner.rs:564:1: `triplelight_plan::planner::choose_variable_order`
+  = note: crates/triplelight-plan/src/planner.rs:566:1: `triplelight_plan::planner::choose_variable_order`
+  = note: crates/triplelight-plan/src/planner.rs:595:1: `triplelight_plan::planner::variable_order_work`
+    triplelight_plan::planner::PrefixModel
+      degree ◀━━━ 4  triplelight_plan::planner
+      also known outside: vars
+      kept: relations
+
+error[field-leak]: `PrefixModel::vars` is known outside `PrefixModel`: 5 places in 1 module
+  --> crates/triplelight-plan/src/planner.rs:526:1
+  = note: crates/triplelight-plan/src/planner.rs:526:1: `triplelight_plan::planner::choose_variable_order`
+  = note: crates/triplelight-plan/src/planner.rs:551:1: `triplelight_plan::planner::choose_variable_order`
+  = note: crates/triplelight-plan/src/planner.rs:572:1: `triplelight_plan::planner::choose_variable_order`
+  = note: crates/triplelight-plan/src/planner.rs:584:1: `triplelight_plan::planner::variable_order_work`
+  = note: crates/triplelight-plan/src/planner.rs:590:1: `triplelight_plan::planner::variable_order_work`
+    triplelight_plan::planner::PrefixModel
+      vars ◀━━━ 5  triplelight_plan::planner
+      also known outside: degree
+      kept: relations
+
+error[field-leak]: `Stats::characteristic_sets` is known outside `Stats`: 2 places in 1 module
+  --> examples/optimizer_hotpath.rs:16:1
+  = note: examples/optimizer_hotpath.rs:16:1: `triplelight::main`
+  = note: examples/optimizer_qerror.rs:102:1: `triplelight::main`
+    triplelight_plan::stats::Stats
+      characteristic_sets ◀━━━ 2  triplelight
+      kept: duplicate_triples_ignored, cs_lookup, predicates, objects, equality, exact_counts, exact_object_cs_counts, +4 more
+
+error[field-leak]: `SeekMemo::0` is known outside `SeekMemo`: 1 place in 1 module
+  --> crates/triplelight-storage/src/derived_order.rs:175:1
+  = note: crates/triplelight-storage/src/derived_order.rs:175:1: `triplelight_storage::derived_order::seek`
+    triplelight_storage::derived_order::SeekMemo
+      0 ◀━━━ 1  triplelight_storage::derived_order
+      kept: 1
+
+error[field-leak]: `Builder::dedup_rows` is known outside `Builder`: 1 place in 1 module
+  --> crates/triplelight-storage/src/external_build.rs:648:1
+  = note: crates/triplelight-storage/src/external_build.rs:648:1: `triplelight_storage::external_build::from_nt_parallel_with`
+    triplelight_storage::external_build::Builder
+      dedup_rows ◀━━━ 1  triplelight_storage::external_build
+      also known outside: terms, triples, index_workers, orders
+      kept: quads, graph_names
+
+error[field-leak]: `Builder::index_workers` is known outside `Builder`: 1 place in 1 module
+  --> crates/triplelight-storage/src/external_build.rs:649:1
+  = note: crates/triplelight-storage/src/external_build.rs:649:1: `triplelight_storage::external_build::from_nt_parallel_with`
+    triplelight_storage::external_build::Builder
+      index_workers ◀━━━ 1  triplelight_storage::external_build
+      also known outside: terms, triples, orders, dedup_rows
+      kept: quads, graph_names
+
+error[field-leak]: `Builder::orders` is known outside `Builder`: 2 places in 1 module
+  --> crates/triplelight-storage/src/external_build.rs:810:1
+  = note: crates/triplelight-storage/src/external_build.rs:810:1: `triplelight_storage::external_build::from_dataset_keeping`
+  = note: crates/triplelight-storage/src/external_build.rs:842:1: `triplelight_storage::external_build::from_snapshot_keeping`
+    triplelight_storage::external_build::Builder
+      orders ◀━━━ 2  triplelight_storage::external_build
+      also known outside: terms, triples, index_workers, dedup_rows
+      kept: quads, graph_names
+
+error[field-leak]: `Builder::terms` is known outside `Builder`: 5 places in 1 module
+  --> crates/triplelight-storage/src/external_build.rs:615:1
+  = note: crates/triplelight-storage/src/external_build.rs:615:1: `triplelight_storage::external_build::from_nt_parallel_with`
+  = note: crates/triplelight-storage/src/external_build.rs:624:1: `triplelight_storage::external_build::from_nt_parallel_with`
+  = note: crates/triplelight-storage/src/external_build.rs:643:1: `triplelight_storage::external_build::from_nt_parallel_with`
+  = note: crates/triplelight-storage/src/external_build.rs:646:1: `triplelight_storage::external_build::from_nt_parallel_with`
+  = note: crates/triplelight-storage/src/external_build.rs:698:1: `triplelight_storage::external_build::dedup_shard`
+    triplelight_storage::external_build::Builder
+      terms ◀━━━ 5  triplelight_storage::external_build
+      also known outside: triples, index_workers, orders, dedup_rows
+      kept: quads, graph_names
+
+error[field-leak]: `Builder::triples` is known outside `Builder`: 2 places in 1 module
+  --> crates/triplelight-storage/src/external_build.rs:647:1
+  = note: crates/triplelight-storage/src/external_build.rs:647:1: `triplelight_storage::external_build::from_nt_parallel_with`
+  = note: crates/triplelight-storage/src/external_build.rs:724:1: `triplelight_storage::external_build::dedup_shard`
+    triplelight_storage::external_build::Builder
+      triples ◀━━━ 2  triplelight_storage::external_build
+      also known outside: terms, index_workers, orders, dedup_rows
+      kept: quads, graph_names
+
+error[field-leak]: `Cache::entries` is known outside `Cache`: 1 place in 1 module
+  --> crates/triplelight-storage/src/lazy_dictionary.rs:1502:1
+  = note: crates/triplelight-storage/src/lazy_dictionary.rs:1502:1: `triplelight_storage::lazy_dictionary::b2_hit_bench::b2_miss_path`
+    triplelight_storage::lazy_dictionary::Cache
+      entries ◀━━━ 1  triplelight_storage::lazy_dictionary::b2_hit_bench
+      kept: keys, used, seed, rng, ghost, ghost_order
+
+error[field-leak]: `PermIndex::keys` is known outside `PermIndex`: 2 places in 1 module
+  --> crates/triplelight-storage/src/memory.rs:652:1
+  = note: crates/triplelight-storage/src/memory.rs:652:1: `triplelight_storage::memory::<MemorySnapshot as Snapshot>::seek`
+  = note: crates/triplelight-storage/src/memory.rs:653:1: `triplelight_storage::memory::<MemorySnapshot as Snapshot>::seek`
+    triplelight_storage::memory::PermIndex
+      keys ◀━━━ 2  triplelight_storage::memory
+      kept: tails
+
+error[field-leak]: `TermArena::direct` is known outside `TermArena`: 1 place in 1 module
+  --> crates/triplelight-storage/src/memory.rs:572:1
+  = note: crates/triplelight-storage/src/memory.rs:572:1: `triplelight_storage::memory::MemorySnapshot::intern`
+    triplelight_storage::memory::TermArena
+      direct ◀━━━ 1  triplelight_storage::memory
+      kept: text, inline, by_term, hasher
+
+error[field-leak]: `Overlay::base` is known outside `Overlay`: 4 places in 1 module
+  --> src/embedded.rs:126:1
+  = note: src/embedded.rs:126:1: `triplelight::embedded::Database::load_persisted_stats`, through `Overlay::base`
+  = note: src/embedded.rs:144:1: `triplelight::embedded::Database::refresh_stats`, through `Overlay::base`
+  = note: src/embedded.rs:162:1: `triplelight::embedded::Database::refresh_stats`, through `Overlay::base`
+  = note: src/embedded.rs:169:1: `triplelight::embedded::Database::refresh_stats`, through `Overlay::base`
+    triplelight_storage::store::Overlay
+      base ◀━━━ 4  triplelight::embedded
+      also known outside: delta
+      kept: named, object_memo
+
+error[field-leak]: `Overlay::delta` is known outside `Overlay`: 1 place in 1 module
+  --> crates/triplelight-storage/src/store.rs:617:1
+  = note: crates/triplelight-storage/src/store.rs:617:1: `triplelight_storage::store::Store::compact`
+    triplelight_storage::store::Overlay
+      delta ◀━━━ 1  triplelight_storage::store
+      also known outside: base
+      kept: named, object_memo
+
+error[wide-directory]: `tests/` is wide: it holds 17 files and directories, more than 15
+  = note: 17 files: count_pushdown.rs, dataset_updates.rs, disk_cli.rs, embedded.rs, exec.rs, functions.rs, graph_management.rs, +10 more
+                         15
+    holds  ███████████████│██ 17
+
+deslop-please: 33 errors, well done!

@@ -1,0 +1,35 @@
+# Existing architectural debt suppressed by `deslop-please --allow`.
+# Fixing an entry here never fails CI; new issues not listed here fail.
+module-cycle triplelight_core::ntriples,triplelight_core::rdf,triplelight_core::turtle
+module-cycle triplelight_exec::bgp,triplelight_exec::range
+module-cycle triplelight_storage::disk_snapshot,triplelight_storage::external_build,triplelight_storage::lazy_dictionary,triplelight_storage::term_block_codec
+tangle triplelight_exec::Ctx,triplelight_exec::expr::eval
+tangle triplelight_rdf::blank_node::BlankNode,triplelight_rdf::blank_node::BlankNodeRef,triplelight_rdf::literal::Literal,triplelight_rdf::literal::LiteralContent,triplelight_rdf::literal::LiteralRef,triplelight_rdf::literal::LiteralRefContent,triplelight_rdf::named_node::NamedNode,triplelight_rdf::named_node::NamedNodeRef,triplelight_rdf::parser::read_blank_node,triplelight_rdf::parser::read_literal,triplelight_rdf::parser::read_named_node,triplelight_rdf::parser::read_term,triplelight_rdf::parser::read_triple,triplelight_rdf::triple::GraphName,triplelight_rdf::triple::GraphNameRef,triplelight_rdf::triple::NamedOrBlankNode,triplelight_rdf::triple::NamedOrBlankNodeRef,triplelight_rdf::triple::Quad,triplelight_rdf::triple::QuadRef,triplelight_rdf::triple::Term,triplelight_rdf::triple::TermRef,triplelight_rdf::triple::Triple,triplelight_rdf::triple::TripleRef,triplelight_rdf::triple::TryFromTermError,triplelight_rdf::vocab::rdf::LANG_STRING,triplelight_rdf::vocab::xsd::BOOLEAN,triplelight_rdf::vocab::xsd::DECIMAL,triplelight_rdf::vocab::xsd::DOUBLE,triplelight_rdf::vocab::xsd::FLOAT,triplelight_rdf::vocab::xsd::INTEGER,triplelight_rdf::vocab::xsd::STRING
+field-leak triplelight_core::turtle::Parser::batch
+field-leak triplelight_exec::Ctx::base
+field-leak triplelight_exec::Ctx::char_pairs
+field-leak triplelight_exec::Ctx::count_pushdown
+field-leak triplelight_exec::Ctx::data
+field-leak triplelight_exec::Ctx::dataset
+field-leak triplelight_exec::Ctx::general_group
+field-leak triplelight_exec::Ctx::named
+field-leak triplelight_exec::Ctx::range_pushdown
+field-leak triplelight_exec::Ctx::range_reorderable
+field-leak triplelight_exec::Ctx::sorted_probe
+field-leak triplelight_exec::Ctx::stats
+field-leak triplelight_exec::Ctx::wcoj
+field-leak triplelight_plan::planner::PrefixModel::degree
+field-leak triplelight_plan::planner::PrefixModel::vars
+field-leak triplelight_plan::stats::Stats::characteristic_sets
+field-leak triplelight_storage::derived_order::SeekMemo::0
+field-leak triplelight_storage::external_build::Builder::dedup_rows
+field-leak triplelight_storage::external_build::Builder::index_workers
+field-leak triplelight_storage::external_build::Builder::orders
+field-leak triplelight_storage::external_build::Builder::terms
+field-leak triplelight_storage::external_build::Builder::triples
+field-leak triplelight_storage::lazy_dictionary::Cache::entries
+field-leak triplelight_storage::memory::PermIndex::keys
+field-leak triplelight_storage::memory::TermArena::direct
+field-leak triplelight_storage::store::Overlay::base
+field-leak triplelight_storage::store::Overlay::delta
+wide-directory tests/
