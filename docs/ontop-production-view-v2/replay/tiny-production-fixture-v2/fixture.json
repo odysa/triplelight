@@ -1,0 +1,285 @@
+{
+  "answers": {
+    "all": {
+      "columns": [
+        "o"
+      ],
+      "terms": [
+        {
+          "type": "uri",
+          "value": "urn:fixture:shared"
+        },
+        {
+          "datatype": "http://www.w3.org/2001/XMLSchema#string",
+          "type": "literal",
+          "value": "urn:fixture:shared"
+        },
+        {
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+          "type": "literal",
+          "value": "01"
+        },
+        {
+          "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+          "type": "literal",
+          "value": "1"
+        },
+        {
+          "datatype": "http://www.w3.org/2001/XMLSchema#string",
+          "type": "literal",
+          "value": ""
+        },
+        {
+          "type": "literal",
+          "value": "salut",
+          "xml:lang": "fr"
+        },
+        {
+          "type": "uri",
+          "value": "urn:fixture:second"
+        },
+        {
+          "type": "uri",
+          "value": "urn:fixture:third"
+        },
+        {
+          "datatype": "http://www.w3.org/2001/XMLSchema#date",
+          "type": "literal",
+          "value": "2000-01-01"
+        }
+      ]
+    },
+    "count": {
+      "columns": [
+        "n"
+      ],
+      "integer": 9
+    },
+    "groups": {
+      "columns": [
+        "o",
+        "n"
+      ],
+      "rows": [
+        [
+          {
+            "type": "uri",
+            "value": "urn:fixture:shared"
+          },
+          1
+        ],
+        [
+          {
+            "datatype": "http://www.w3.org/2001/XMLSchema#string",
+            "type": "literal",
+            "value": "urn:fixture:shared"
+          },
+          1
+        ],
+        [
+          {
+            "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+            "type": "literal",
+            "value": "01"
+          },
+          1
+        ],
+        [
+          {
+            "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+            "type": "literal",
+            "value": "1"
+          },
+          1
+        ],
+        [
+          {
+            "datatype": "http://www.w3.org/2001/XMLSchema#string",
+            "type": "literal",
+            "value": ""
+          },
+          1
+        ],
+        [
+          {
+            "type": "literal",
+            "value": "salut",
+            "xml:lang": "fr"
+          },
+          1
+        ],
+        [
+          {
+            "type": "uri",
+            "value": "urn:fixture:second"
+          },
+          1
+        ],
+        [
+          {
+            "type": "uri",
+            "value": "urn:fixture:third"
+          },
+          1
+        ],
+        [
+          {
+            "datatype": "http://www.w3.org/2001/XMLSchema#date",
+            "type": "literal",
+            "value": "2000-01-01"
+          },
+          1
+        ]
+      ]
+    },
+    "mixed-distinct": {
+      "columns": [
+        "n"
+      ],
+      "integer": 9,
+      "known_diagnostic_only": true
+    },
+    "resource-distinct": {
+      "columns": [
+        "n"
+      ],
+      "integer": 3
+    }
+  },
+  "negative": {
+    "additional_row": [
+      "urn:fixture:s",
+      "urn:fixture:p",
+      2,
+      null,
+      "http://www.w3.org/2001/XMLSchema#string",
+      null
+    ],
+    "expected_invalid": 1
+  },
+  "positive": {
+    "domains": [
+      {
+        "datatype": null,
+        "kind": 0,
+        "lang": null,
+        "rows": 3
+      },
+      {
+        "datatype": "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString",
+        "kind": 2,
+        "lang": "fr",
+        "rows": 1
+      },
+      {
+        "datatype": "http://www.w3.org/2001/XMLSchema#date",
+        "kind": 2,
+        "lang": null,
+        "rows": 1
+      },
+      {
+        "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+        "kind": 2,
+        "lang": null,
+        "rows": 2
+      },
+      {
+        "datatype": "http://www.w3.org/2001/XMLSchema#string",
+        "kind": 2,
+        "lang": null,
+        "rows": 2
+      }
+    ],
+    "expected_invalid": 0,
+    "rows": [
+      [
+        "urn:fixture:s",
+        "urn:fixture:p",
+        0,
+        "urn:fixture:shared",
+        null,
+        null
+      ],
+      [
+        "urn:fixture:s",
+        "urn:fixture:p",
+        2,
+        "urn:fixture:shared",
+        "http://www.w3.org/2001/XMLSchema#string",
+        null
+      ],
+      [
+        "urn:fixture:s",
+        "urn:fixture:p",
+        2,
+        "01",
+        "http://www.w3.org/2001/XMLSchema#integer",
+        null
+      ],
+      [
+        "urn:fixture:s",
+        "urn:fixture:p",
+        2,
+        "1",
+        "http://www.w3.org/2001/XMLSchema#integer",
+        null
+      ],
+      [
+        "urn:fixture:s",
+        "urn:fixture:p",
+        2,
+        "",
+        "http://www.w3.org/2001/XMLSchema#string",
+        null
+      ],
+      [
+        "urn:fixture:s",
+        "urn:fixture:p",
+        2,
+        "salut",
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString",
+        "fr"
+      ],
+      [
+        "urn:fixture:s",
+        "urn:fixture:p",
+        0,
+        "urn:fixture:second",
+        null,
+        null
+      ],
+      [
+        "urn:fixture:s",
+        "urn:fixture:p",
+        0,
+        "urn:fixture:third",
+        null,
+        null
+      ],
+      [
+        "urn:fixture:s",
+        "urn:fixture:p",
+        2,
+        "2000-01-01",
+        "http://www.w3.org/2001/XMLSchema#date",
+        null
+      ]
+    ]
+  },
+  "queries": {
+    "all": "SELECT ?o WHERE { <urn:fixture:s> <urn:fixture:p> ?o }",
+    "count": "SELECT (COUNT(*) AS ?n) WHERE { <urn:fixture:s> <urn:fixture:p> ?o }",
+    "groups": "SELECT ?o (COUNT(*) AS ?n) WHERE { <urn:fixture:s> <urn:fixture:p> ?o } GROUP BY ?o",
+    "mixed-distinct": "SELECT (COUNT(DISTINCT ?o) AS ?n) WHERE { <urn:fixture:s> <urn:fixture:p> ?o }",
+    "resource-distinct": "SELECT (COUNT(DISTINCT ?o) AS ?n) WHERE { <urn:fixture:s> <urn:fixture:p> ?o . VALUES ?o { <urn:fixture:shared> <urn:fixture:second> <urn:fixture:third> } }"
+  },
+  "sql": {
+    "create": "CREATE TABLE triples(\n    s VARCHAR, p VARCHAR, o STRUCT(kind UTINYINT, value VARCHAR, datatype VARCHAR, lang VARCHAR)\n)",
+    "create_view": "CREATE VIEW ontop_triples AS SELECT s, p, o.kind AS kind, o.value AS lexical, o.datatype AS datatype, o.lang AS lang FROM triples",
+    "domains": "\nSELECT o.kind AS kind, o.datatype AS datatype, o.lang AS lang, count(*) AS rows\nFROM triples\nGROUP BY o.kind, o.datatype, o.lang\nORDER BY o.kind, o.datatype, o.lang\n",
+    "insert": "INSERT INTO triples VALUES (\n    ?, ?, struct_pack(kind := ?::UTINYINT, value := ?::VARCHAR,\n                      datatype := ?::VARCHAR, lang := ?::VARCHAR)\n)",
+    "invalid": "SELECT count(*) FROM triples\n    WHERE s IS NULL OR s = '' OR p IS NULL OR p = '' OR o IS NULL\n       OR o.kind IS NULL OR o.value IS NULL",
+    "view_delta": "SELECT count(*) FROM ((SELECT s, p, o.kind AS kind, o.value AS lexical, o.datatype AS datatype, o.lang AS lang FROM triples EXCEPT ALL SELECT s, p, kind, lexical, datatype, lang FROM ontop_triples) UNION ALL (SELECT s, p, kind, lexical, datatype, lang FROM ontop_triples EXCEPT ALL SELECT s, p, o.kind AS kind, o.value AS lexical, o.datatype AS datatype, o.lang AS lang FROM triples)) AS mismatch",
+    "view_invalid": "SELECT count(*) FROM ontop_triples\n    WHERE s IS NULL OR s = '' OR p IS NULL OR p = '' OR kind IS NULL OR lexical IS NULL"
+  }
+}

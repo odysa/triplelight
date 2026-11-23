@@ -1,0 +1,22 @@
+{
+  "compile": {
+    "exit_code": 0,
+    "stop": null
+  },
+  "compiled_classes": {
+    "DistinctDiagnostic.class": "63a9e38521b4295acd146d37e0be2bbeba50ad0991072af981f52f4cab377e9b",
+    "ProductionFixture.class": "4e72e82dd549a092befa43ecc3fd95652299931d896ed293b79e1d257b01d160"
+  },
+  "fixture_admitted": true,
+  "full_workload_qualified": false,
+  "native_after_exit": {
+    "status": "absent_after_exit"
+  },
+  "query": {
+    "exit_code": 0,
+    "stop": null
+  },
+  "registration_sha256": "695d85cf771a0ea1ec94dd1307aeae5076b2c184f858cc8837f9ed216b269905",
+  "sampled_allocated_bytes": 64045056,
+  "scored": false
+}
