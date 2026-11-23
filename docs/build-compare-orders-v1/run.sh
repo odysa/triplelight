@@ -2,8 +2,8 @@
 # #88 same-session build comparison: --orders=6 vs --orders=4, ABBA per dataset (registered in #sota-rdf-db:#88).
 # Takes and releases /tmp/rdf-bench.lock itself.
 set -u
-OUT=/Users/odysa/.slock/agents/78888e08-1e35-4024-96d3-04d2a9dfaf6c/deliverables/build-compare-88
-DATA=/Users/odysa/.slock/agents/b438313f-6338-4d86-ab3e-5995a1bde6c3/rdfdb/bench/tools
+OUT=<workspace>/deliverables/build-compare-88
+DATA=<workspace>/rdfdb/bench/tools
 BIN=/tmp/sweep83/triplelight
 WORK=/tmp/build88
 MIN_FREE_KB=$((15 * 1024 * 1024))
