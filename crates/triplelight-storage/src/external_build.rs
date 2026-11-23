@@ -712,8 +712,7 @@ fn dedup_shard(dir: &Path, shard: usize, b: &mut Builder, input: impl BufRead, m
                 None => {
                     let local = next;
                     next += 1;
-                    // The text, its String header, the entry and the table's control bytes.
-                    used += term.len() + 64;
+                    used += term.len();
                     map.insert(term, local);
                     local
                 }
@@ -721,7 +720,9 @@ fn dedup_shard(dir: &Path, shard: usize, b: &mut Builder, input: impl BufRead, m
             rows.write_all(&local.to_be_bytes())?;
         }
         b.triples += 1;
-        if used > map_bytes {
+        // Text bytes plus the table itself: each bucket holds a `String` header (24 bytes) and a `u64`, plus one control
+        // byte, and the bucket array grows by powers of two, so charge its capacity rather than its length.
+        if used + map.capacity() * 33 > map_bytes {
             flush(&mut map, b, &mut sorted_bytes)?;
             flushes += 1;
             used = 0;
