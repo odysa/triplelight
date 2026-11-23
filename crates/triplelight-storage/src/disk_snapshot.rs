@@ -146,7 +146,7 @@ pub(super) fn kept_orders(dir: &Path) -> io::Result<u8> {
     let mut head = [0u8; 9];
     let mut manifest = File::open(dir.join("MANIFEST"))?;
     manifest.read_exact(&mut head[..8])?;
-    if &head[..8] != b"RDFSNAP6" { return Ok(ALL_ORDERS) }
+    if &head[..8] != b"RDFSNAP6" && &head[..8] != b"RDFSNAP7" { return Ok(ALL_ORDERS) }
     manifest.read_exact(&mut head[8..])?;
     Ok(head[8])
 }
@@ -207,6 +207,8 @@ pub struct DiskSnapshot {
     /// ascending by ID.
     named: Option<NamedBase>,
     seek_memo: super::derived_order::SeekMemo,
+    /// The base holds an RDF 1.2 term (manifest `RDFSNAP7`).
+    rdf12: bool,
 }
 struct NamedBase {
     /// The graph-first quad orders, in `Perm::ALL` order of their triple part; `None` as for `indexes`.
@@ -263,11 +265,14 @@ impl DiskSnapshot {
             b"RDFSNAP4" => 4,
             b"RDFSNAP5" => 5,
             b"RDFSNAP6" => 6,
+            // RDFSNAP7 (task #101): RDFSNAP6's layout, for a base holding RDF 1.2 terms.
+            b"RDFSNAP7" if cfg!(feature = "rdf-12") => 7,
+            b"RDFSNAP7" => return Err(io::Error::new(io::ErrorKind::Unsupported, "this store holds RDF 1.2 terms; open it with a build that has the rdf-12 feature")),
             _ => return Err(bad("bad snapshot manifest or version")),
         };
         // RDFSNAP6 (task #73): a byte of kept orders (bit i = `Perm::ALL[i]`, at least `REQUIRED_ORDERS`), a byte that
         // is 1 when the base holds named graphs (else 0), then the RDFSNAP4/5 identities of only the kept orders.
-        let (orders, named_graphs) = if version == 6 {
+        let (orders, named_graphs) = if version >= 6 {
             let mut flags = [0u8; 2];
             manifest.read_exact(&mut flags)?;
             if flags[0] & !ALL_ORDERS != 0 || flags[0] & REQUIRED_ORDERS != REQUIRED_ORDERS || flags[1] > 1 {
@@ -353,6 +358,7 @@ impl DiskSnapshot {
             indexes,
             named,
             seek_memo: Default::default(),
+            rdf12: version == 7,
         })
     }
     /// Exhaustive, exact verification. The phases run in this order because the later ones rely on the earlier:
@@ -573,6 +579,7 @@ impl Dictionary for DiskSnapshot {
 }
 
 impl Snapshot for DiskSnapshot {
+    fn has_rdf12_terms(&self) -> bool { self.rdf12 }
     fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
         super::derived_order::scan(self, perm, prefix)
     }

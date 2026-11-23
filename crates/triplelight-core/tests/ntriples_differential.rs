@@ -45,7 +45,9 @@ fn curated_documents_agree() {
         "<http://a> <http://b> <http://c> .\r\n<http://a> <http://b> <http://d> .\r\n", "<http://a> <http://b> <http://c> .\r<http://a> <http://b> <http://d> .",
         "\t<http://a>\t<http://b>\t<http://c>\t.\t\n", " <http://a> <http://b> <http://c> . <http://a> <http://b> <http://d> .\n",
         "<http://a> <http://b> \"x\" .\n", "<http://a> <http://b> \"x\"@en .\n", "<http://a> <http://b> \"x\" @en .\n", "<http://a> <http://b> \"x\"@EN-Us .\n",
-        "<http://a> <http://b> \"x\"@en-1 .\n", "<http://a> <http://b> \"x\"@en- .\n", "<http://a> <http://b> \"x\"@1en .\n", "<http://a> <http://b> \"x\"@en--ltr .\n",
+        "<http://a> <http://b> \"x\"@en-1 .\n", "<http://a> <http://b> \"x\"@en- .\n", "<http://a> <http://b> \"x\"@1en .\n",
+        #[cfg(not(feature = "rdf-12"))]
+        "<http://a> <http://b> \"x\"@en--ltr .\n",
         "<http://a> <http://b> \"x\"@i-klingon .\n", "<http://a> <http://b> \"x\"@x-private .\n", "<http://a> <http://b> \"x\"@en-a-bbb-x-a .\n",
         "<http://a> <http://b> \"x\"@en-a .\n", "<http://a> <http://b> \"x\"@zh-Hant-TW .\n", "<http://a> <http://b> \"x\"@abcdefghi .\n",
         "<http://a> <http://b> \"x\"^^<http://www.w3.org/2001/XMLSchema#string> .\n", "<http://a> <http://b> \"1\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n",
@@ -76,7 +78,10 @@ fn curated_documents_agree() {
 fn random_lines_agree() {
     const PIECES: &[&str] = &[
         "<http://a>", "<http://b/c>", "<urn:x>", "<rel>", "<http://a b>", "<http://\\u00e9>", "<http://\\u0020>", "<", ">", "_:a", "_:b.c", "_:1", "_:", "_:-",
-        "\"x\"", "\"\"", "\"\\n\"", "\"\\u00\"", "\"\\uD800\"", "\"é\"", "\"", "@en", "@EN-us", "@en-", "@1", "@x-a", "@i-klingon", "@en--ltr", "^^", "^",
+        "\"x\"", "\"\"", "\"\\n\"", "\"\\u00\"", "\"\\uD800\"", "\"é\"", "\"", "@en", "@EN-us", "@en-", "@1", "@x-a", "@i-klingon",
+        #[cfg(not(feature = "rdf-12"))]
+        "@en--ltr",
+        "^^", "^",
         "<http://www.w3.org/2001/XMLSchema#integer>", "<http://www.w3.org/1999/02/22-rdf-syntax-ns#langString>", ".", "..", ".5", "#", "# c", " ", " ", " ",
         "\t", "\r", "'x'", "<<", ">>", "(", "a", ":", "\u{feff}",
     ];
