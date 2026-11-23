@@ -104,3 +104,56 @@ fn endpoints_bound_by_earlier_patterns_must_be_graph_nodes() {
     // Sequences of alternatives are split by the parser on a blank node (W3C pp31).
     assert_eq!(rows("SELECT ?t WHERE { :a (:p|:q)/(:p|:q) ?t }"), v(&["<c>", "<c>"]));
 }
+
+/// `Options::csr_paths` on and off give the same rows in the same order (the CSR keeps the seek BFS's discovery
+/// order and the all-pairs start order, see `path.rs`), on random graphs with cycles, self-loops, two predicates and
+/// nodes that occur only as objects.
+#[test]
+fn csr_paths_match_seeks_row_for_row() {
+    use triplelight::exec::{query_with, Options};
+    let ordered = |snap: &MemorySnapshot, q: &str, csr_paths: bool| -> Vec<String> {
+        let q = format!("PREFIX : <http://ex/> {q}");
+        match query_with(snap, &q, &Options { csr_paths, ..Default::default() }).unwrap() {
+            QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| r.into_iter()
+                .map(|t| t.map(|t| t.to_string()).unwrap_or("-".into())).collect::<Vec<_>>().join(" ")).collect(),
+            QueryResult::Boolean(b) => vec![b.to_string()],
+            r => panic!("{r:?}"),
+        }
+    };
+    let queries = [
+        "SELECT * WHERE { ?x :p+ ?y }",
+        "SELECT * WHERE { ?x :p* ?y }",
+        "SELECT * WHERE { ?x ^:p+ ?y }",
+        "SELECT * WHERE { ?x (^:p)* ?y }",
+        "SELECT * WHERE { ?x ^(:p+) ?y }",
+        "SELECT * WHERE { ?x :p+ ?x }",
+        "SELECT * WHERE { ?x :q* ?y }",
+        "SELECT * WHERE { :n3 :p+ ?y }",
+        "SELECT * WHERE { :n3 :p* ?y }",
+        "SELECT * WHERE { ?x :p+ :n3 }",
+        "SELECT * WHERE { ?x :p* :n3 }",
+        "SELECT * WHERE { :n3 ^:p+ ?y }",
+        "SELECT * WHERE { :n3 :p+ :n4 }",
+        "SELECT * WHERE { :zzz :p* ?y }",
+        "SELECT * WHERE { ?x :p* :zzz }",
+        "SELECT * WHERE { :sink1 :p* ?y }",
+        "ASK { :zzz :p* :zzz }",
+        // Many bound closures: seeks first, then the CSR once they add up to a share of :p's edges.
+        "SELECT * WHERE { ?x :q ?m . ?m :p+ ?y }",
+        "SELECT * WHERE { ?x :q ?m . ?y ^:p* ?m }",
+        "SELECT * WHERE { ?x :p+ ?m . ?m :p+ ?y }",
+    ];
+    for seed in [0x2545_f491_4f6c_dd1du64, 0x9e37_79b9_7f4a_7c15, 42] {
+        let mut rng = seed;
+        let mut next = |m: u64| { rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17; rng % m };
+        let mut nt = String::new();
+        let mut edge = |s: String, p: &str, o: String| nt.push_str(&format!("<http://ex/{s}> <http://ex/{p}> <http://ex/{o}> .\n"));
+        for _ in 0..120 { let (s, o) = (next(40), next(40)); edge(format!("n{s}"), if next(3) == 0 { "q" } else { "p" }, format!("n{o}")) }
+        for x in 0..5 { edge(format!("n{x}"), "p", format!("n{x}")) }
+        for x in 0..6 { let s = next(40); edge(format!("n{s}"), "p", format!("sink{x}")) }
+        let snap = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
+        for q in queries {
+            assert_eq!(ordered(&snap, q, true), ordered(&snap, q, false), "{q} (seed {seed:#x})");
+        }
+    }
+}
