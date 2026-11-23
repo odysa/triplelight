@@ -7,7 +7,7 @@ in [persistence.md](persistence.md).
 
 ## Files
 
-Current bases (`RDFSNAP4` and later) have one file, `dictionary.unified` (magic `RDFDID02`), in ID order. An ID's top
+Current bases (`RDFSNAP4` and later) have one file, `dictionary.unified` (magic `RDFDID03`; `RDFDID02`, with fixed 16-byte entry framing, is still read), in ID order. An ID's top
 four bits are its kind: 1 IRI, 2 blank node, 3 literal. The external builder assigns IDs so that, within a kind, ID
 order is term-text order (the canonical N-Triples text). So one file in ID order is also in term order, kind by kind,
 and serves both lookups. Older `RDFSNAP3` bases have two files of the same block format, `dictionary.term`
