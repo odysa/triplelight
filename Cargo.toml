@@ -72,6 +72,9 @@ workspace = true
 server = ["dep:tiny_http"]
 # The async embedded API (`triplelight::async_embedded`, task #41): runtime-independent, through AsyncBand.
 async = ["dep:asyncband"]
+# SPARQL 1.2 queries and updates over RDF 1.2 data (triple terms, directional literals): the executor's evaluation, the
+# parser's syntax, and RDF 1.2 terms in the line parsers and the in-memory and durable stores.
+sparql-12 = ["triplelight-exec/sparql-12", "triplelight-sparql/sparql-12", "triplelight-core/rdf-12", "triplelight-storage/rdf-12"]
 
 [dependencies]
 triplelight-core.workspace = true

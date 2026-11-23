@@ -156,10 +156,23 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             TermPattern::BlankNode(b) => { let i = self.vars[&format!("_:b{}", b.as_str())]; if row[i] == UNBOUND { Err(i) } else { Ok(Some(row[i])) } }
             TermPattern::NamedNode(n) => Ok(Some(self.intern(&n.clone().into()))),
             TermPattern::Literal(l) => Ok(Some(self.intern(&l.clone().into()))),
+            // SPARQL 1.2: a ground triple term is a constant; any other is its hidden variable, unified with the
+            // pattern once the path has bound it (`unify_path_endpoints`). `eval_path` has already returned on a ground
+            // pattern that denotes no RDF term.
+            #[cfg(feature = "sparql-12")]
+            TermPattern::Triple(t) => match crate::triple_term::hidden_var(t) {
+                Some(h) => { let i = self.vars[&h]; if row[i] == UNBOUND { Err(i) } else { Ok(Some(row[i])) } }
+                None => Ok(Some(crate::triple_term::ground_term(t).map_or(UNBOUND, |term| self.intern(&term)))),
+            },
         }
     }
 
     pub(super) fn eval_path(&self, subject: &TermPattern, path: &Ppe, object: &TermPattern, input: Vec<Row>) -> Vec<Row> {
+        // A ground triple-term endpoint with a literal or triple-term subject is no RDF term: nothing matches it.
+        #[cfg(feature = "sparql-12")]
+        if [subject, object].iter().any(|tp| matches!(tp, TermPattern::Triple(t) if crate::triple_term::is_ground(t) && crate::triple_term::ground_term(t).is_none())) {
+            return Vec::new();
+        }
         let p = self.resolve_path(path);
         let mut out = Vec::new();
         // Rows that bind the endpoints the same way share one traversal.
@@ -191,6 +204,8 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 out.push(r);
             }
         }
+        #[cfg(feature = "sparql-12")]
+        self.unify_path_endpoints([subject, object], &mut out);
         out
     }
 }

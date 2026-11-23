@@ -343,10 +343,11 @@ fn read_error(e: crate::rdf::ReadError) -> DatabaseError {
 struct BlankScope(std::collections::HashMap<crate::rdf::BlankNode, crate::rdf::BlankNode>);
 impl BlankScope {
     fn rewrite(&mut self, t: crate::rdf::Triple) -> crate::rdf::Triple {
-        use crate::rdf::{NamedOrBlankNode, Term, Triple};
+        use crate::rdf::{NamedOrBlankNode, Triple};
         let mut fresh = |b: &crate::rdf::BlankNode| self.0.entry(b.clone()).or_default().clone();
         let subject = match t.subject { NamedOrBlankNode::BlankNode(b) => NamedOrBlankNode::BlankNode(fresh(&b)), s => s };
-        let object = match t.object { Term::BlankNode(b) => Term::BlankNode(fresh(&b)), o => o };
+        // Blank nodes inside RDF 1.2 triple terms are scoped to the document too.
+        let object = crate::exec::map_blank_nodes(t.object, &mut fresh);
         Triple::new(subject, t.predicate, object)
     }
 }
