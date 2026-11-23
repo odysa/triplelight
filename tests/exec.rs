@@ -257,6 +257,39 @@ fn fast_group_matches_general_group() {
     for ((q, f), l) in queries.iter().zip(&fast).zip(&legacy) { assert_eq!(f, l, "{q}"); }
 }
 
+/// Workers fold each group in member order, preserving promotion, overflow, and unbound results.
+#[test]
+fn parallel_expression_group_matches_serial_typed_rows() {
+    let mut input = String::new();
+    for _ in 0..2_048 {
+        input.push_str(
+            "(<urn:float> 1e16) (<urn:overflow> 9223372036854775807) \
+             (<urn:float> 1e0) (<urn:overflow> 1) \
+             (<urn:float> -1e16) (<urn:overflow> -1) \
+             (<urn:error> UNDEF) (<urn:error> 4) ",
+        );
+    }
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(4).build().unwrap();
+    let snapshot = store();
+    for aggregate in ["SUM(?x + 0)", "AVG(xsd:float(xsd:string(?x)))"] {
+        let query = format!(
+            "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> \
+             SELECT ?g ({aggregate} AS ?value) \
+             WHERE {{ VALUES (?g ?x) {{ {input} }} }} GROUP BY ?g"
+        );
+        let run = |general_group| {
+            let opts = triplelight::exec::Options { general_group, ..Default::default() };
+            pool.install(|| match triplelight::exec::query_with(&snapshot, &query, &opts).unwrap() {
+                QueryResult::Solutions { vars, rows } => (vars, rows),
+                other => panic!("expected solution rows, got {other:?}"),
+            })
+        };
+        let serial = run(true);
+        assert_eq!(serial.1.len(), 3);
+        assert_eq!(run(false), serial, "{aggregate}");
+    }
+}
+
 /// xsd:float is its own type in numeric promotion (integer < decimal < float < double), not folded into double.
 #[test]
 fn float_promotion_and_aggregates() {
