@@ -4,6 +4,8 @@ url_of() {   # the SPARQL endpoint of a system
              qlever-two-order) echo http://127.0.0.1:7001/;; rdf4j-native|rdf4j-native-default) echo http://127.0.0.1:3040/rdf4j-server/repositories/bench;;
              millenniumdb) echo http://127.0.0.1:1234/sparql;; *) echo "unknown system $1" >&2; return 1;; esac
 }
+# Result caches: QLever's survives its -c/-e/-E 1MB flags for small results, so the driver empties it before every request.
+clear_cache_url_of() { case $1 in qlever|qlever-two-order) echo "http://127.0.0.1:7001/?cmd=clear-cache-complete&access-token=bench";; esac; }
 port_of() { local u; u=$(url_of "$1"); u=${u#http://127.0.0.1:}; echo "${u%%/*}"; }
 PIDFILE() { echo "$OUT/$1.pid"; }
 stop_system() {   # stop_system <system>
