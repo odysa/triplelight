@@ -1,0 +1,24 @@
+{
+  "archive_files_verified": 197,
+  "dataset": "lubm",
+  "db_bytes": {
+    "candidate": 1102852096,
+    "control": 347353088
+  },
+  "exact_typed_answers": {
+    "always-spo": 30,
+    "longest-constant-prefix": 30,
+    "single": 30
+  },
+  "orders": [
+    "ops",
+    "osp",
+    "pos",
+    "pso",
+    "sop",
+    "spo"
+  ],
+  "query_timing_collected": false,
+  "rows_per_order": 13409395,
+  "scored": false
+}
