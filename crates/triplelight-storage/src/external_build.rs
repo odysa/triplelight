@@ -906,6 +906,32 @@ mod tests {
         }
         fs::remove_dir_all(root).unwrap();
     }
+    /// RDF 1.2 through the deduplicating parse: nested triple terms, a part that occurs only inside one, and directional
+    /// literals give the same files with dedup off, with a one-byte map (an eviction after every triple) and by default.
+    #[cfg(feature = "rdf-12")]
+    #[test]
+    fn deduplicating_parse_keeps_rdf12_parts() {
+        let root = std::env::temp_dir().join(format!("rdf-dedup12-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root); fs::create_dir(&root).unwrap();
+        let mut text = String::new();
+        for i in 0..400 {
+            text += &format!("<urn:s{}> <urn:p> <<( <urn:a{}> <urn:inside> <<( _:b{} <urn:q> \"x{}\"@en--ltr )>> )>> .\n", i % 13, i % 7, i % 5, i % 3);
+            text += &format!("<urn:s{}> <urn:label> \"v{}\"@ar--rtl .\n", i % 13, i % 11);
+        }
+        let file = root.join("input.nt");
+        fs::write(&file, &text).unwrap();
+        let reference = root.join("plain");
+        from_nt_parallel_with(&reference, Some(&file), 8, Dedup::Off).unwrap();
+        for (label, mode) in [("one-byte", Dedup::Map(1)), ("auto", Dedup::Auto)] {
+            let out = root.join(label);
+            from_nt_parallel_with(&out, Some(&file), 8, mode).unwrap();
+            let mut names: Vec<_> = fs::read_dir(&reference).unwrap().map(|e| e.unwrap().file_name()).collect();
+            names.sort();
+            for name in names { assert_eq!(fs::read(reference.join(&name)).unwrap(), fs::read(out.join(&name)).unwrap(), "{label}: {name:?}") }
+            DiskSnapshot::open(&out).unwrap().verify().unwrap();
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
     #[test]
     fn sharded_nt_preserves_terms_across_boundaries() {
         crate::external_build::keep_orders_on_this_thread(crate::ALL_ORDERS); // this test checks the six-order layout
