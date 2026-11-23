@@ -483,6 +483,20 @@ impl LazyIndex {
         }
         Ok(())
     }
+    /// Unified order only: every entry of `kind`, in ID order. A kind's blocks are one contiguous run, so only those
+    /// blocks are read.
+    #[cfg(feature = "rdf-12")]
+    pub(super) fn for_each_of_kind(&self, kind: u64, f: &mut dyn FnMut(TermId, &Term) -> io::Result<()>) -> io::Result<()> {
+        let kind_of = |e: &Meta| id_kind(u64::from_be_bytes(e.last.as_slice().try_into().unwrap()));
+        let lo = self.entries.partition_point(|e| kind_of(e) < kind);
+        let hi = self.entries.partition_point(|e| kind_of(e) <= kind);
+        for index in lo..hi {
+            for (id, term) in self.block(index)?.iter() {
+                f(*id, term)?;
+            }
+        }
+        Ok(())
+    }
     pub(super) fn find(&self, key: &[u8]) -> io::Result<Option<(TermId, Term)>> {
         let i = self.entries.partition_point(|e| e.last.as_slice() < key);
         if i == self.entries.len() {

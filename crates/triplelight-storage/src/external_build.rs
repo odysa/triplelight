@@ -393,6 +393,9 @@ impl Builder {
             fs::remove_file(&quad_raw)?;
             identities.push(write_catalog(dir, graph_ids)?);
         }
+        // RDFSNAP7: the triple-term parts table is the last identity.
+        #[cfg(feature = "rdf-12")]
+        if rdf12 { identities.push(write_triple_terms(dir)?) }
         // Finish and remove all scratch before publishing the manifest.
         drop(mapping);
         drop(self.terms);
@@ -587,6 +590,33 @@ fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Resu
     combined.finish(dir)
 }
 
+/// RDF 1.2 (task #101): the `triple_terms` table of a just-written dictionary, one row `(term, s, p, o)` per triple
+/// term in ID order, so `Dictionary::triple_term_parts` is one block read. Every part is a dictionary term
+/// (`Builder::push_parts`). Kind-4 IDs ascend with the dictionary's ID order, so rows come out sorted.
+#[cfg(feature = "rdf-12")]
+fn write_triple_terms(dir: &Path) -> io::Result<[u8; 32]> {
+    use super::lazy_dictionary::{LazyIndex, Order, UNIFIED_FILE};
+    let dictionary = LazyIndex::open(&dir.join(UNIFIED_FILE), Order::Unified)?;
+    let id_of = |term: Term| -> io::Result<TermId> {
+        dictionary.find_term(term.to_string().as_bytes())?.map(|v| v.0).ok_or_else(|| bad("triple-term part missing from the dictionary"))
+    };
+    let mut rows: Vec<[TermId; 4]> = Vec::new();
+    dictionary.for_each_of_kind(4, &mut |id, term| {
+        let Term::Triple(t) = term else { return Err(bad("kind 4 entry is not a triple term")) };
+        let t = (**t).clone();
+        rows.push([id, id_of(t.subject.into())?, id_of(t.predicate.into())?, id_of(t.object)?]);
+        Ok(())
+    })?;
+    let path = dir.join(super::disk_snapshot::TRIPLE_TERMS_FILE);
+    let mut out = BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&path)?);
+    super::disk_index::write_index::<4>(&mut out, rows.into_iter())?;
+    out.flush()?;
+    out.get_ref().sync_all()?;
+    drop(out);
+    let index = super::disk_index::DiskIndex::<4>::open(&path)?;
+    index.validate()?;
+    Ok(index.identity())
+}
 pub(super) fn from_nt(dir: &Path, path: Option<&Path>) -> io::Result<()> {
     fs::create_dir(dir)?;
     let mut builder = Builder::new(dir)?;
