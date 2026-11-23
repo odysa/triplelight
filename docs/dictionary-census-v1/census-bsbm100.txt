@@ -1,0 +1,16 @@
+file_bytes 4620210974 blocks 91809 (2-byte header each; per-entry framing today: 8-byte ID + 4-byte prefix + 4-byte suffix length)
+kind 1: terms 14739490 text 1334959524 front-coded-away 1299173178 suffix 35786346 framing_today 235831840 consecutive_ids 14681913 lean_estimate 65725942
+kind 3: terms 8763181 text 4278425070 front-coded-away 97676865 suffix 4180748205 framing_today 140210896 consecutive_ids 8728949 lean_estimate 4202207861
+literal text length buckets <16,<64,<256,<1K,<4K,<16K,<64K,more: [106048, 1458112, 4019539, 1222093, 1957389, 0, 0, 0]
+literal type @en: terms 1421543 text_bytes 1753073620
+literal type http://www.w3.org/2001/XMLSchema#string: terms 4913446 text_bytes 691392725
+literal type @zh: terms 288611 text_bytes 355722522
+literal type @ja: terms 285196 text_bytes 352160878
+literal type @de: terms 282098 text_bytes 348155772
+literal type @es: terms 144967 text_bytes 178817579
+literal type @ru: terms 144113 text_bytes 177785985
+literal type @fr: terms 142353 text_bytes 175371645
+literal type @ko: terms 139379 text_bytes 172056604
+literal type http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/USD: terms 996183 text_bytes 73608456
+literal type http://www.w3.org/2001/XMLSchema#date: terms 2837 text_bytes 150361
+literal type http://www.w3.org/2001/XMLSchema#integer: terms 2000 text_bytes 98893

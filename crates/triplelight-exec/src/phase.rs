@@ -42,6 +42,21 @@ pub(crate) fn bgp<T>(f: impl FnOnce() -> T) -> T {
     out
 }
 
+static RANGES: std::sync::Mutex<Vec<(bool, f64)>> = std::sync::Mutex::new(Vec::new());
+
+/// Records one range-pushdown decision (`range.rs`) when tracing is on: whether the range was pushed and the
+/// fraction of the predicate's triples it covers (a lower bound once it exceeds the gate, where counting stops).
+pub(crate) fn range_decision(pushed: bool, frac: f64) {
+    if enabled() && let Ok(mut r) = RANGES.lock() { r.push((pushed, frac)) }
+}
+
+/// The range-pushdown decisions since the last call, then reset: `on:0.031,off:0.150` in decision order, `-` if none.
+pub fn take_ranges() -> String {
+    let r = RANGES.lock().map(|mut r| std::mem::take(&mut *r)).unwrap_or_default();
+    if r.is_empty() { return "-".into() }
+    r.iter().map(|(on, f)| format!("{}:{f:.3}", if *on { "on" } else { "off" })).collect::<Vec<_>>().join(",")
+}
+
 /// Phase totals in microseconds since the last call, then reset: `parse bgp group count sort`.
 pub fn take() -> [u64; 5] {
     [&PARSE_NS, &BGP_NS, &GROUP_NS, &COUNT_NS, &SORT_NS].map(|c| c.swap(0, Relaxed) / 1000)

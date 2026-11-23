@@ -88,19 +88,29 @@ struct Entry {
 /// (clearing the reference bits it passes). FIFO or LRU miss on every access of a repeated pass larger than the
 /// shard; this keeps roughly capacity/working-set of such a pass while a hit-protected hot set survives. The
 /// generator has a fixed per-shard seed, so a single reader replays the same decisions.
+///
+/// A rejected miss is remembered in a bounded ghost set (keys only, no rows). A second miss on a ghost key is admitted
+/// for certain (#105): a block a query touches twice, such as a repeated query's output terms after earlier queries
+/// filled the shard, gets in on its second touch instead of one time in four. A one-shot pass still stays at one in
+/// four, so it cannot flush the hot set.
 struct Cache {
     entries: HashMap<(usize, usize), Entry>,
     keys: Vec<(usize, usize)>,
     used: usize,
     seed: u64,
     rng: u64,
+    ghost: std::collections::HashSet<(usize, usize)>,
+    ghost_order: std::collections::VecDeque<(usize, usize)>,
 }
+/// The ghost set holds at most this many keys per resident block (and at least `GHOST_MIN`).
+const GHOST_PER_RESIDENT: usize = 2;
+const GHOST_MIN: usize = 256;
 const ADMIT_ONE_IN: u64 = 4;
 const EVICTION_SAMPLE: usize = 8;
 impl Cache {
     fn new(shard: usize) -> Self {
         let seed = (0x9e37_79b9_7f4a_7c15 ^ (shard as u64).wrapping_mul(0xbf58_476d_1ce4_e5b9)) | 1;
-        Self { entries: HashMap::new(), keys: Vec::new(), used: 0, seed, rng: seed }
+        Self { entries: HashMap::new(), keys: Vec::new(), used: 0, seed, rng: seed, ghost: Default::default(), ghost_order: Default::default() }
     }
     /// xorshift64*: cheap, deterministic, and good enough for sampling and admission coin flips.
     fn next(&mut self) -> u64 {
@@ -150,7 +160,15 @@ impl Cache {
         if size > budget || self.entries.contains_key(&key) {
             return Ok(0);
         }
-        if self.used + size > budget && !self.next().is_multiple_of(ADMIT_ONE_IN) {
+        if self.used + size > budget && !self.ghost.remove(&key) && !self.next().is_multiple_of(ADMIT_ONE_IN) {
+            // Rejected: remember the key, so its next miss is admitted.
+            if self.ghost.insert(key) { self.ghost_order.push_back(key) }
+            // FIFO: the oldest keys go first. An admission removes its key from `ghost` but leaves it in
+            // `ghost_order`, so the queue is bounded by its own length (stale fronts are simply dropped).
+            let cap = (self.keys.len() * GHOST_PER_RESIDENT).max(GHOST_MIN);
+            while self.ghost.len() > cap || self.ghost_order.len() > 2 * cap {
+                match self.ghost_order.pop_front() { Some(old) => { self.ghost.remove(&old); } None => break }
+            }
             return Ok(0);
         }
         let mut evicted = 0;
@@ -169,6 +187,8 @@ impl Cache {
         self.keys.clear();
         self.used = 0;
         self.rng = self.seed;
+        self.ghost.clear();
+        self.ghost_order.clear();
     }
 }
 pub(super) struct DictionaryCache {
@@ -526,6 +546,26 @@ impl LazyIndex {
         let rows = self.block_traced(i, 6)?;
         let at = rows.partition_point(|(_, t)| t.to_string().as_bytes() < text);
         Ok(rows.get(at).filter(|(_, t)| t.to_string().as_bytes() == text).cloned())
+    }
+    /// Unified order only: the smallest ID of `kind` whose term text is `>= text` (`> text` if `strict`), or `None`
+    /// when every term of that kind is smaller. Inside a kind, ID order is text order, so this is the same block
+    /// search as `find_term`, returning the position instead of requiring an exact match.
+    pub(super) fn text_lower_bound(&self, kind: u64, text: &[u8], strict: bool) -> io::Result<Option<TermId>> {
+        if !matches!(self.order, Order::Unified) {
+            return Err(bad("wrong dictionary index"));
+        }
+        let kind_of = |e: &Meta| id_kind(u64::from_be_bytes(e.last.as_slice().try_into().unwrap()));
+        let lo = self.entries.partition_point(|e| kind_of(e) < kind);
+        let hi = self.entries.partition_point(|e| kind_of(e) <= kind);
+        let below = |t: &[u8]| if strict { t <= text } else { t < text };
+        // The first block of the kind whose last text qualifies holds the answer: every earlier block is below.
+        let i = lo + self.entries[lo..hi].partition_point(|e| below(e.last_text.as_slice()));
+        if i == hi {
+            return Ok(None);
+        }
+        let rows = self.block_traced(i, 6)?;
+        let at = rows.partition_point(|(_, t)| below(t.to_string().as_bytes()));
+        rows.get(at).map(|(id, _)| Some(*id)).ok_or_else(|| bad("invalid dictionary block order"))
     }
     /// Group requests by on-disk block. Callback positions are original input indices.
     pub(super) fn with_ids(
@@ -1290,6 +1330,25 @@ mod admission_cache_tests {
         }
         assert!((850..=1150).contains(&admitted), "admitted {admitted} of 4000, expected about 1000");
         assert_eq!(c.insert((7, 99_999), &r, 101, 100).unwrap(), 0, "a block larger than the shard is never cached");
+    }
+
+    #[test]
+    fn a_second_miss_on_a_rejected_block_is_admitted_and_one_shot_passes_stay_at_one_in_four() {
+        let mut c = Cache::new(5);
+        let r = rows();
+        for i in 0..10 { c.insert((7, i), &r, 10, 100).unwrap(); }
+        // A repeated set of 40 blocks into a full shard: every block is resident after its second miss at the latest.
+        for _ in 0..2 { for i in 100..140 { c.insert((7, i), &r, 10, 100).unwrap(); } }
+        let resident = (100..140).filter(|i| c.entries.contains_key(&(7, *i))).count();
+        assert!(resident >= 10 - 1, "the shard holds 10 blocks and they are now the repeated ones: {resident}");
+        // Single misses on fresh keys are still admitted about one time in four.
+        let mut admitted = 0;
+        for i in 1000..5000 { c.insert((7, i), &r, 10, 100).unwrap(); admitted += u32::from(c.entries.contains_key(&(7, i))); }
+        assert!((850..=1150).contains(&admitted), "admitted {admitted} of 4000");
+        assert!(c.ghost.len() <= GHOST_MIN.max(c.keys.len() * GHOST_PER_RESIDENT));
+        assert!(c.ghost_order.len() <= 4 * GHOST_MIN, "ghost queue stays bounded: {}", c.ghost_order.len());
+        c.clear();
+        assert!(c.ghost.is_empty() && c.ghost_order.is_empty());
     }
 
     #[test]

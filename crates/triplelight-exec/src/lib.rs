@@ -23,6 +23,7 @@ mod bgp;
 mod count;
 mod dataset;
 mod path;
+mod range;
 mod expr;
 mod support;
 #[cfg(feature = "rdf-12")]
@@ -127,8 +128,15 @@ pub struct Options<'a> {
     /// products of disconnected parts). Turning it off evaluates them by full enumeration with identical answers;
     /// it exists for ablations and differential checks.
     pub count_pushdown: bool,
+    /// Range-filter pushdown (`range.rs`): a pattern `?s <p> ?d` under FILTER bounds on `?d` with `xsd:date`
+    /// constants scans only the object IDs that can pass them, when the store orders literal IDs by text and `<p>`'s
+    /// dates are canonical, the range holds at most 15% of `<p>`'s triples, and the BGP's solution order cannot
+    /// reach the answers (no SUM/AVG/MIN/MAX/SAMPLE/GROUP_CONCAT above it, no LIMIT/OFFSET over an ORDER BY that may
+    /// tie). The filter still runs, so turning it off gives the same answers; it exists for ablations
+    /// (`--ablate=range`) and differential checks.
+    pub range_pushdown: bool,
 }
-impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true } } }
+impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true } } }
 
 pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     catching_storage(|| run(snap, None, text, opts))
@@ -217,6 +225,14 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     ctx.wcoj = opts.wcoj;
     ctx.general_group = opts.general_group;
     ctx.count_pushdown = opts.count_pushdown;
+    ctx.range_pushdown = opts.range_pushdown;
+    // With FROM / FROM NAMED the default graph is not `snap`, so nothing is marked (the pushdown also stays off
+    // whenever the active graph is not `snap`).
+    if ctx.range_pushdown && spec.is_none() {
+        let pattern = match q { Query::Select { pattern, .. } | Query::Ask { pattern, .. } | Query::Construct { pattern, .. } | Query::Describe { pattern, .. } => pattern };
+        let nodes = |p: &triplelight_rdf::NamedNode| range::iri_objects(snap, p);
+        range::reorderable_bgps(pattern, true, &nodes, &mut ctx.range_reorderable);
+    }
     let stats = opts.stats;
     ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
     match q {
@@ -367,6 +383,14 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     general_group: bool,
     /// `Options::count_pushdown`.
     count_pushdown: bool,
+    /// `Options::range_pushdown`.
+    range_pushdown: bool,
+    /// Range pushdown's per-predicate check (`range.rs`), per query, in front of the snapshot's `object_memo`: the
+    /// stored-literal objects of a predicate if its literals of that datatype are all canonical, else `None`.
+    range_checks: RefCell<HashMap<(TermId, &'static str), Option<std::sync::Arc<[TermId]>>>>,
+    /// BGPs (by the address of their pattern list in the query) whose solution order cannot change the answers:
+    /// the only ones range pushdown may reorder (`range::reorderable_bgps`).
+    range_reorderable: HashSet<usize>,
     /// LIMIT (+OFFSET) of a Slice directly above the next ORDER BY (through at most a Project): lets ORDER BY keep
     /// only the first `k` rows (stable top-k) instead of sorting everything. Taken by that ORDER BY.
     order_limit: std::cell::Cell<Option<usize>>,
@@ -390,7 +414,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, general_group: false, count_pushdown: true, order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
+        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, general_group: false, count_pushdown: true, range_pushdown: true, range_checks: RefCell::new(HashMap::new()), range_reorderable: HashSet::new(), order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -895,9 +919,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             return if all { rows } else { Vec::new() };
         }
         let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
+        let ranges = self.object_ranges(patterns, &pats, filters, &rows[0]);
         let flat: Vec<TermId> = rows.concat();
         let out = on_data!(self, |g| {
-            let bgp = bgp::Bgp { snap: g, w };
+            let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges) };
             if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(bgp::no_repeated_var) && bgp::cyclic(&pats) {
                 let mut out = bgp.leapfrog(&pats, &flat, self.variable_order(&pats));
                 if !filters.is_empty() { let all: HashSet<usize> = (0..w).collect(); self.apply_filters(&mut out, w, filters, &all, &mut vec![false; filters.len()]) }
@@ -905,7 +930,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             } else {
                 let mut applied = vec![false; filters.len()];
                 let mut post = |rows: &mut Vec<TermId>, bound: &HashSet<usize>| self.apply_filters(rows, w, filters, bound, &mut applied);
-                if let Some(order) = self.planned_order(&pats, &rows) { bgp.eval_order(&pats, &order, flat, &mut post) }
+                if let Some(order) = self.planned_order(&pats, &rows, &ranges) { bgp.eval_order(&pats, &order, flat, &mut post) }
                 else { bgp.eval_greedy(&pats, flat, &mut post) }
             }
         });
@@ -1020,7 +1045,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     /// Pattern order from the cost-based planner: leaves of its join tree, left to right. Used for top-level BGPs
     /// (a single all-unbound input row); nested BGPs with bound inputs keep the greedy order.
-    fn planned_order(&self, pats: &[[Slot; 3]], rows: &[Row]) -> Option<Vec<usize>> {
+    fn planned_order(&self, pats: &[[Slot; 3]], rows: &[Row], ranges: &range::Ranges) -> Option<Vec<usize>> {
         if self.data.get().is_some() { return None }
         let (stats, dynsnap) = self.stats?;
         if pats.len() < 2 || rows.len() != 1 || rows[0].iter().any(|&x| x != UNBOUND) { return None }
@@ -1051,23 +1076,32 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let clone_ns = elapsed(phase);
         let phase = clock();
         st.cache_pattern_counts(&tps, dynsnap).unwrap_or_else(|e| storage_failure(std::io::Error::other(e)));
+        // A ranged pattern scans only its range's rows (`bgp::Bgp::extend_range`): plan with that count.
+        for (p, tp) in pats.iter().zip(&tps) {
+            if let [Slot::Var(_), Slot::Const(Some(pid)), Slot::Var(o)] = *p && let Some(r) = ranges.get(&(pid, o)) {
+                st.set_exact_count(*tp, r.rows);
+            }
+        }
         let prefix_ns = elapsed(phase);
         let phase = clock();
         let tree = opt::planner::plan_bgp(&tps, &st);
         let search_ns = elapsed(phase);
-        fn leaves(t: &opt::plan::JoinTree, out: &mut Vec<opt::plan::TriplePattern>) {
+        // The executor runs the leaves in order as index nested-loop joins. A merge join's two sides tie in cost
+        // whichever is left, so with a pushed-down range the smaller side goes first (as a hash join's build side does).
+        fn leaves(t: &opt::plan::JoinTree, smaller_first: bool, out: &mut Vec<opt::plan::TriplePattern>) {
             use opt::plan::JoinTree::*;
             match t {
                 Scan { pattern, .. } => out.push(*pattern),
-                IndexNestedLoop { outer, pattern, .. } => { leaves(outer, out); out.push(*pattern); }
-                MergeJoin { left, right, .. } => { leaves(left, out); leaves(right, out) }
-                HashJoin { build, probe, .. } => { leaves(build, out); leaves(probe, out) }
-                Leapfrog { children, .. } => for c in children { leaves(c, out) },
+                IndexNestedLoop { outer, pattern, .. } => { leaves(outer, smaller_first, out); out.push(*pattern); }
+                MergeJoin { left, right, .. } if smaller_first && right.est() < left.est() => { leaves(right, smaller_first, out); leaves(left, smaller_first, out) }
+                MergeJoin { left, right, .. } => { leaves(left, smaller_first, out); leaves(right, smaller_first, out) }
+                HashJoin { build, probe, .. } => { leaves(build, smaller_first, out); leaves(probe, smaller_first, out) }
+                Leapfrog { children, .. } => for c in children { leaves(c, smaller_first, out) },
                 Unit | Empty => {}
             }
         }
         let mut ls = Vec::new();
-        leaves(&tree, &mut ls);
+        leaves(&tree, !ranges.is_empty(), &mut ls);
         let mut used = vec![false; tps.len()];
         let order: Vec<usize> = ls.iter().filter_map(|l| {
             let i = (0..tps.len()).find(|&i| !used[i] && tps[i] == *l)?; used[i] = true; Some(i)

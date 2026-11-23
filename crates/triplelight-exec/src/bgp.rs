@@ -1,13 +1,16 @@
 //! Basic-graph-pattern evaluation over flat row buffers (`w` IDs per row, no per-row allocation), parallelized
 //! morsel-style: large inputs are split into chunks that rayon workers extend independently.
 use super::{storage_failure, UNBOUND};
-use crate::model::{Perm, TermId};
+use crate::model::{Perm, TermId, TripleBatch};
 use crate::storage::Snapshot;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 
 /// Rows per parallel work unit.
 const MORSEL: usize = 1024;
+/// Cost of one index probe (a seek plus a short range read) in scanned rows, for choosing between one probe per input
+/// row and one scan of the whole range (`extend_hash`'s semi-join).
+const PROBE_ROWS: u64 = 20;
 
 #[derive(Copy, Clone, Debug)]
 pub(super) enum Slot { Const(Option<TermId>), Var(usize) }
@@ -16,6 +19,9 @@ pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
     pub snap: &'a S,
     /// Row width (number of query variables).
     pub w: usize,
+    /// Patterns whose object scan is restricted by a pushed-down range filter (`range.rs`), by (predicate, object
+    /// variable). Used only when the pattern's subject and object are unbound.
+    pub ranges: Option<&'a super::range::Ranges>,
 }
 
 /// Appends `row` extended by one matching index row, where `value(k)` is that row's value at key position `k`.
@@ -87,15 +93,57 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             Slot::Var(v) if bound.contains(&v) => Some(sample[v]),
             _ => None,
         });
-        let (perm, prefix, n) = choose_perm(&fixed);
-        let c = self.count(perm, &prefix[..n]) as f64;
+        let c = match self.ranged(pat, |v| bound.contains(&v)) {
+            Some(r) => r.rows as f64,
+            None => { let (perm, prefix, n) = choose_perm(&fixed); self.count(perm, &prefix[..n]) as f64 }
+        };
         let connected = pat.iter().any(|s| matches!(s, Slot::Var(v) if bound.contains(v)));
         if bound.is_empty() || connected { c } else { c * 1e6 } // avoid cross products
+    }
+
+    /// The pushed-down object range of `pat` if it has one and neither its subject nor its object is bound
+    /// (`is_bound`); otherwise the pattern is read through its bound positions as usual.
+    fn ranged(&self, pat: &[Slot; 3], is_bound: impl Fn(usize) -> bool) -> Option<&'a super::range::ObjRange> {
+        let [Slot::Var(s), Slot::Const(Some(p)), Slot::Var(o)] = *pat else { return None };
+        if is_bound(o) || is_bound(s) { return None }
+        self.ranges?.get(&(p, o))
+    }
+
+    /// `pat` read through its pushed-down object range: POS with the predicate and each candidate object bound, so
+    /// only triples whose object can pass the range filter are produced (the filter itself still runs afterwards).
+    fn extend_range(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
+        let w = self.w;
+        if w == 0 || rows.is_empty() { return None }
+        let first = &rows[..w];
+        let r = self.ranged(pat, |v| first[v] != UNBOUND)?;
+        let [Slot::Var(s), Slot::Const(Some(p)), Slot::Var(o)] = *pat else { return None };
+        if rows.chunks_exact(w).any(|row| row[o] != UNBOUND || row[s] != UNBOUND) { return None }
+        // POS key order: predicate, object, subject.
+        let order = Perm::Pos.order();
+        let mut matches: Vec<[TermId; 3]> = Vec::with_capacity(r.rows.min(1 << 24) as usize);
+        let mut keep = |b: TripleBatch, all: bool| {
+            // `r.objects` is ascending, so membership is a binary search.
+            matches.extend((0..b.len()).filter(|&i| all || r.objects.binary_search(&b.cols[1][i]).is_ok()).map(|i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]));
+        };
+        // One probe per object, unless that costs more than one scan of the predicate (a dense range).
+        if r.objects.len() as u64 * PROBE_ROWS > self.count(Perm::Pos, &[p]) {
+            for b in self.snap.scan(Perm::Pos, &[p]) { keep(b.unwrap_or_else(|e| storage_failure(e)), false) }
+        } else {
+            for &obj in &r.objects {
+                for b in self.snap.scan(Perm::Pos, &[p, obj]) { keep(b.unwrap_or_else(|e| storage_failure(e)), true) }
+            }
+        }
+        let mut out = Vec::with_capacity(matches.len() * (rows.len() / w));
+        for row in rows.chunks_exact(w) {
+            for t in &matches { push_extension(&mut out, row, pat, &order, 1, |k| t[k]) }
+        }
+        Some(out)
     }
 
     /// Index nested-loop join of `rows` with one pattern: one index range read per input row.
     pub fn extend(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> {
         let w = self.w;
+        if let Some(out) = self.extend_range(pat, rows) { return out }
         if let Some(out) = self.extend_member_set(pat, rows) { return out }
         if let Some(out) = self.extend_hash(pat, rows) { return out }
         if rows.len() / w.max(1) >= 2 * MORSEL {
@@ -138,7 +186,9 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// Hash join for a pattern with one constant, one variable bound in every row and one free variable (e.g.
     /// `?review rev:reviewer ?reviewer` for many reviews): when the constant's range is at most twice the input,
     /// one scan of the permutation `(constant, key, free)` builds key -> values, and each row is a lookup instead
-    /// of an index probe. Per row, values come in the same (index) order as the probe join's range scan.
+    /// of an index probe. Per row, values come in the same (index) order as the probe join's range scan. In a BGP
+    /// with a pushed-down range, a larger range is still scanned once, as a semi-join on the rows' keys, when that is
+    /// cheaper than probing per row (`PROBE_ROWS`).
     fn extend_hash(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
         let w = self.w;
         if w == 0 { return None }
@@ -160,13 +210,21 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         if rows.chunks_exact(w).any(|r| r[kv] == UNBOUND || r[fv] != UNBOUND) { return None }
         let perm = [Perm::Spo, Perm::Sop, Perm::Pso, Perm::Pos, Perm::Osp, Perm::Ops].into_iter().find(|p| p.order() == [cpos, kpos, fpos])?;
         let total = self.count(perm, &[c]);
-        if total > 2 * n_rows as u64 || total > 1 << 24 { return None }
-        let mut vals: Vec<TermId> = Vec::with_capacity(total as usize);
+        let whole = total <= 2 * n_rows as u64 && total <= 1 << 24;
+        // Semi-join, only in a BGP with a pushed-down range (whose first pattern can leave many rows in object order,
+        // where today's plan would have scanned both patterns): when one probe per row would cost more than one
+        // scan of the constant's range, scan it once and keep only the keys some row has. Memory is the kept
+        // entries, so the 2^24 cap of the whole-range table does not apply.
+        let semi = !whole && self.ranges.is_some() && total <= PROBE_ROWS * n_rows as u64 && total <= u64::from(u32::MAX);
+        if !whole && !semi { return None }
+        let keys: Option<HashSet<TermId>> = semi.then(|| rows.chunks_exact(w).map(|r| r[kv]).collect());
+        let mut vals: Vec<TermId> = Vec::with_capacity(if semi { n_rows } else { total as usize });
         let mut index: HashMap<TermId, (u32, u32)> = HashMap::new();
         for b in self.snap.scan(perm, &[c]) {
             let b = b.unwrap_or_else(|e| storage_failure(e));
             for i in 0..b.len() {
                 let (k, f) = (b.cols[1][i], b.cols[2][i]);
+                if keys.as_ref().is_some_and(|ks| !ks.contains(&k)) { continue }
                 let e = index.entry(k).or_insert((vals.len() as u32, 0));
                 e.1 += 1;
                 vals.push(f);

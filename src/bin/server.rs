@@ -65,7 +65,7 @@ fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax
 /// never an empty result in place of a failure.
 fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>, fmt: Format) -> Resp {
     let before = triplelight::storage::disk_index::cache_trace_enabled().then(triplelight::storage::disk_index::cache_trace_snapshot);
-    let phases = triplelight::exec::phase::enabled().then(|| { triplelight::exec::phase::take(); Instant::now() });
+    let phases = triplelight::exec::phase::enabled().then(|| { triplelight::exec::phase::take(); triplelight::exec::phase::take_ranges(); Instant::now() });
     let exec_done = std::cell::Cell::new(None::<Instant>);
     let shape = std::cell::Cell::new((0usize, 0usize));
     let derived = triplelight::storage::derived_trace::enabled().then(|| { triplelight::storage::derived_trace::take(); Instant::now() });
@@ -103,11 +103,12 @@ fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'
     if let Some(t0) = phases {
         let end = Instant::now();
         let [parse, bgp, group, count, sort] = triplelight::exec::phase::take();
+        let ranges = triplelight::exec::phase::take_ranges();
         let exec_us = exec_done.get().map_or(0, |e| (e - t0).as_micros());
         let output_us = exec_done.get().map_or(0, |e| (end - e).as_micros());
         let (rows, cols) = shape.get();
         let head: String = q.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
-        eprintln!("phase_trace total_us={} parse_us={parse} bgp_us={bgp} group_us={group} count_us={count} sort_us={sort} exec_us={exec_us} output_us={output_us} rows={rows} cols={cols} query={head:?}", (end - t0).as_micros());
+        eprintln!("phase_trace total_us={} parse_us={parse} bgp_us={bgp} group_us={group} count_us={count} sort_us={sort} exec_us={exec_us} output_us={output_us} rows={rows} cols={cols} range_pushdown={ranges} query={head:?}", (end - t0).as_micros());
     }
     if let Some(t) = derived {
         let head: String = q.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
@@ -260,8 +261,9 @@ pub(crate) fn run(cmd: &str, args: &[String]) {
     serve_memory(args);
 }
 
-/// Benchmark ablations, all off by default and answer-preserving: `--ablate=wcoj,count,fast-group` disables the
-/// leapfrog triejoin, the exact index-count aggregates and the ID hash-aggregation fast path. (`--no-stats` turns
+/// Benchmark ablations, all off by default and answer-preserving: `--ablate=wcoj,count,fast-group,range` disables the
+/// leapfrog triejoin, the exact index-count aggregates, the ID hash-aggregation fast path and the range-filter
+/// pushdown. (`--no-stats` turns
 /// off the cost-based planner.) Unknown names are refused so a typo cannot silently measure the default.
 fn ablations(args: &[String]) -> Options<'static> {
     let mut opts = Options::default();
@@ -270,11 +272,12 @@ fn ablations(args: &[String]) -> Options<'static> {
             "wcoj" => opts.wcoj = false,
             "count" => opts.count_pushdown = false,
             "fast-group" => opts.general_group = true,
-            other => { eprintln!("unknown --ablate name {other:?} (expected wcoj, count, fast-group)"); std::process::exit(2) }
+            "range" => opts.range_pushdown = false,
+            other => { eprintln!("unknown --ablate name {other:?} (expected wcoj, count, fast-group, range)"); std::process::exit(2) }
         }
     }
     if args.iter().any(|a| a.starts_with("--ablate=")) {
-        eprintln!("ablations: wcoj={} count_pushdown={} fast_group={}", opts.wcoj, opts.count_pushdown, !opts.general_group);
+        eprintln!("ablations: wcoj={} count_pushdown={} fast_group={} range_pushdown={}", opts.wcoj, opts.count_pushdown, !opts.general_group, opts.range_pushdown);
     }
     opts
 }
