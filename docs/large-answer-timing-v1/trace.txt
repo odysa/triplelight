@@ -1,0 +1,160 @@
+block_cache spo hits=0 misses=0 pread_calls=25569 pread_bytes=71874459 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=1 misses=89938 pread_calls=89938 pread_bytes=33928934 evictions=0
+block_cache pos hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=0 misses=1 pread_calls=1 pread_bytes=5574 evictions=0
+block_cache dictionary.id hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=1148433 parse_us=195 bgp_us=916096 group_us=0 count_us=0 sort_us=0 exec_us=1147992 output_us=440 rows=0 cols=0 query="ASK{?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?o}"
+block_cache spo hits=1 misses=3276 pread_calls=17430 pread_bytes=48995730 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=3 misses=16 pread_calls=16 pread_bytes=13776 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=2 misses=2 pread_calls=2 pread_bytes=11226 evictions=0
+block_cache dictionary.id hits=0 misses=2476 pread_calls=2476 pread_bytes=11830885 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=647611 parse_us=28 bgp_us=125749 group_us=0 count_us=0 sort_us=0 exec_us=125956 output_us=521655 rows=2604 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=3277 misses=0 pread_calls=114 pread_bytes=320454 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=19 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2476 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=5420 parse_us=33 bgp_us=1220 group_us=0 count_us=0 sort_us=0 exec_us=1396 output_us=4023 rows=2604 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=3277 misses=0 pread_calls=81 pread_bytes=227691 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=19 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2476 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=4030 parse_us=25 bgp_us=957 group_us=0 count_us=0 sort_us=0 exec_us=1112 output_us=2917 rows=2604 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=3277 misses=0 pread_calls=73 pread_bytes=205203 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=19 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2476 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=3566 parse_us=33 bgp_us=975 group_us=0 count_us=0 sort_us=0 exec_us=1131 output_us=2434 rows=2604 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=3277 misses=0 pread_calls=66 pread_bytes=185526 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=19 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2476 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=3224 parse_us=24 bgp_us=939 group_us=0 count_us=0 sort_us=0 exec_us=1091 output_us=2132 rows=2604 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=0 misses=0 pread_calls=44801 pread_bytes=125935611 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=1 misses=30957 pread_calls=30957 pread_bytes=10070879 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=3424 misses=49412 pread_calls=49412 pread_bytes=236302436 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=2064560 parse_us=26 bgp_us=274624 group_us=0 count_us=0 sort_us=0 exec_us=627146 output_us=1437413 rows=7924765 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=0 misses=0 pread_calls=19169 pread_bytes=53884059 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=30958 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=52836 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=879292 parse_us=39 bgp_us=144940 group_us=0 count_us=0 sort_us=0 exec_us=469473 output_us=409819 rows=7924765 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=0 misses=0 pread_calls=18962 pread_bytes=53302182 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=30958 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=52836 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=855004 parse_us=32 bgp_us=135794 group_us=0 count_us=0 sort_us=0 exec_us=457353 output_us=397651 rows=7924765 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=0 misses=0 pread_calls=18660 pread_bytes=52453260 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=30958 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=52836 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=854736 parse_us=38 bgp_us=135719 group_us=0 count_us=0 sort_us=0 exec_us=455959 output_us=398776 rows=7924765 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=0 misses=0 pread_calls=18876 pread_bytes=53060436 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=30958 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=52836 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=856828 parse_us=25 bgp_us=135231 group_us=0 count_us=0 sort_us=0 exec_us=456556 output_us=400271 rows=7924765 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=0 misses=0 pread_calls=19036 pread_bytes=53513007 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=30958 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=52836 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=876431 parse_us=24 bgp_us=135180 group_us=0 count_us=0 sort_us=0 exec_us=457560 output_us=418870 rows=7924765 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=0 misses=0 pread_calls=19282 pread_bytes=54201702 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=30958 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=52836 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=871135 parse_us=25 bgp_us=139144 group_us=0 count_us=0 sort_us=0 exec_us=465020 output_us=406114 rows=7924765 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=0 misses=0 pread_calls=19088 pread_bytes=53656368 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=30958 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=52836 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=861193 parse_us=25 bgp_us=135978 group_us=0 count_us=0 sort_us=0 exec_us=459609 output_us=401584 rows=7924765 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=0 misses=0 pread_calls=19114 pread_bytes=53729454 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=30958 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=52836 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=864197 parse_us=32 bgp_us=135439 group_us=0 count_us=0 sort_us=0 exec_us=458121 output_us=406075 rows=7924765 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
+block_cache spo hits=0 misses=0 pread_calls=19111 pread_bytes=53721021 evictions=0
+block_cache sop hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pso hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache pos hits=30958 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache osp hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache ops hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=52836 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache quads hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=903621 parse_us=24 bgp_us=136017 group_us=0 count_us=0 sort_us=0 exec_us=456056 output_us=447564 rows=7924765 cols=1 query="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX ub: <http://swa"
