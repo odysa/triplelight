@@ -880,7 +880,7 @@ mod tests {
         assert_eq!(&fs::read(older.join("spo")).unwrap()[..8], b"RDFIDX03");
         assert_eq!(&fs::read(current.join("spo")).unwrap()[..8], b"RDFIDX04");
         assert_eq!(&fs::read(older.join("dictionary.unified")).unwrap()[..8], b"RDFDID02");
-        assert_eq!(&fs::read(current.join("dictionary.unified")).unwrap()[..8], b"RDFDID03");
+        assert_eq!(&fs::read(current.join("dictionary.unified")).unwrap()[..8], b"RDFDID04");
         assert!(fs::metadata(current.join("dictionary.unified")).unwrap().len() < fs::metadata(older.join("dictionary.unified")).unwrap().len());
         assert!(fs::metadata(current.join("spo")).unwrap().len() < fs::metadata(older.join("spo")).unwrap().len());
         let (a, b) = (DiskSnapshot::open(&older).unwrap(), DiskSnapshot::open(&current).unwrap());
