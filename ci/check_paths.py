@@ -17,7 +17,7 @@ for root in ("docs", "bench/results"):
                 continue                                   # binary files (PDFs, images, archives) are not scanned
             for i, line in enumerate(text.splitlines(), 1):
                 if PATTERN.search(line) and MARKER not in line:
-                    bad.append(f"{p}:{i}: {line.strip()[:120]}")
+                    bad.append(f"{p}:{i}")  # file and line only: printing the line would copy the path into the public CI log
 if bad:
     print("absolute local paths found (replace them by <workspace>, <home>, <scratch> or a variable):")
     print("\n".join(bad[:50]))
