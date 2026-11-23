@@ -447,6 +447,12 @@ pub extern "C" fn triplelight_bench_rayon_threads() -> u32 {
 mod tests {
     use super::*;
 
+    #[cfg(feature = "benchmark-rayon-witness")]
+    #[test]
+    fn benchmark_rayon_witness_reports_a_positive_width() {
+        assert!(triplelight_bench_rayon_threads() >= 1);
+    }
+
     fn s(v: &TlResultView, x: TlStr) -> String {
         let b = unsafe { std::slice::from_raw_parts(v.bytes, v.n_bytes as usize) };
         String::from_utf8(b[x.off as usize..(x.off + x.len) as usize].to_vec()).unwrap()

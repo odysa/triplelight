@@ -19,7 +19,7 @@ arrow-schema = { version = "60.1", default-features = false }
 [workspace]
 
 [features]
-# Private instrumentation for the matched Java benchmark.
+# Benchmark instrumentation, off by default.
 benchmark-rayon-witness = ["dep:rayon"]
 # RDF 1.2 terms (triple terms, base direction) in results, forwarded to the engine. Off by default.
 rdf-12 = ["triplelight/rdf-12"]
