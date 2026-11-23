@@ -4,7 +4,8 @@
 //! streaming reader refuses a token longer than `oxttl`'s 16 MiB buffer, as it did (slices have no limit).
 //! Derived in part from oxttl (MIT); see THIRD_PARTY_NOTICES.md.
 use crate::ntriples::{pn_chars, pn_chars_base, pn_chars_u, MAX_TOKEN};
-use crate::rdf::{BlankNode, GraphName, Literal, NamedNode, NamedOrBlankNode, Quad, ReadError, Term};
+use crate::error::ReadError;
+use crate::rdf::{BlankNode, GraphName, Literal, NamedNode, NamedOrBlankNode, Quad, Term};
 use std::collections::{HashMap, VecDeque};
 use std::io::BufRead;
 use triplelight_iri::Iri;
@@ -560,6 +561,12 @@ impl Parser {
             batch: Vec::new(),
         }
     }
+    /// Moves the statements produced by the last token to `out`, last-first, as `oxttl` pops its results.
+    fn release_into(&mut self, out: &mut VecDeque<Quad>) {
+        while let Some(q) = self.batch.pop() { out.push_back(q) }
+    }
+    /// Drops the statements of a token whose processing failed.
+    fn discard_batch(&mut self) { self.batch.clear() }
     fn emit(&mut self) {
         let q = Quad::new(self.subjects.last().unwrap().clone(), self.predicates.last().unwrap().clone(), self.objects.last().unwrap().clone(), self.graph.clone());
         self.batch.push(q);
@@ -1047,8 +1054,7 @@ impl<I: BufRead> TurtleReader<I> {
         let token = self.lex.next()?;
         if token == Tok::Eof { self.parser.end()?; return Ok(false) }
         self.parser.recognize(token, &mut self.lex.base)?;
-        // Released last-first, as `oxttl` pops its results.
-        while let Some(q) = self.parser.batch.pop() { self.out.push_back(q) }
+        self.parser.release_into(&mut self.out);
         Ok(true)
     }
 }
@@ -1064,7 +1070,7 @@ impl<I: BufRead> Iterator for TurtleReader<I> {
                 Ok(false) => self.done = true,
                 Err(e) => {
                     self.done = true;
-                    self.parser.batch.clear();
+                    self.parser.discard_batch();
                     return Some(Err(match e {
                         Fail::Syntax(m) => ReadError::Syntax(m),
                         Fail::Io(e) => ReadError::Io(e),

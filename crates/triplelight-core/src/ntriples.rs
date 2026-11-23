@@ -3,7 +3,8 @@
 //! Each statement occupies its own line (`\n`, `\r` or `\r\n`). Triples and quads end in a dot. A trailing
 //! `#` comment is allowed. Comments are not checked for UTF-8; every token is.
 //! Derived in part from oxttl (MIT); see THIRD_PARTY_NOTICES.md.
-use crate::rdf::{BlankNode, GraphName, Literal, NamedNode, NamedOrBlankNode, Quad, ReadError, Term, Triple};
+use crate::error::ReadError;
+use crate::rdf::{BlankNode, GraphName, Literal, NamedNode, NamedOrBlankNode, Quad, Term, Triple};
 use std::io::BufRead;
 #[cfg(feature = "rdf-12")]
 use triplelight_rdf::{BaseDirection, MAX_TRIPLE_TERM_DEPTH};
