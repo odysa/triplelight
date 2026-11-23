@@ -69,9 +69,12 @@ fn seek_walk(snap: &DiskSnapshot, perm: Perm, key: TermId) -> std::io::Result<u6
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    let dir = args.get(1).expect("usage: derived_stress <store-dir> [--top N] [--skip-full]");
+    let dir = args.get(1).expect("usage: derived_stress <store-dir> [--top N] [--skip-full] [--cache-mb N]");
     let top = args.iter().position(|a| a == "--top").map(|i| args[i + 1].parse().expect("--top N")).unwrap_or(50usize);
     let skip_full = args.iter().any(|a| a == "--skip-full");
+    if let Some(i) = args.iter().position(|a| a == "--cache-mb") {
+        triplelight_storage::disk_index::set_cache_budget_mb(args[i + 1].parse().expect("--cache-mb N"))?;
+    }
     let t = Instant::now();
     let snap = DiskSnapshot::open(dir)?;
     let open_s = t.elapsed().as_secs_f64();
