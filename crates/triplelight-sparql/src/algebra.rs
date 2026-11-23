@@ -1,6 +1,11 @@
 //! SPARQL 1.1 algebra (W3C SPARQL 1.1 Query Language §18), produced by `parser` and evaluated by `exec`.
 //!
 //! The node names follow the specification's algebra operators. Terms come from `crate::rdf`.
+//!
+//! With the `sparql-12` feature the term types gain triple terms (SPARQL 1.2 §18.1.3: a triple pattern's subject or
+//! object may itself be a triple pattern), and `Function` the SPARQL 1.2 triple-term and base-direction functions.
+//! The reified-triple and annotation syntax has no node of its own: the parser expands it into `rdf:reifies` triple
+//! patterns (SPARQL 1.2 §4.3).
 use crate::rdf::{BlankNode, Literal, NamedNode, NamedOrBlankNode, Term, Variable};
 use std::fmt;
 
@@ -91,17 +96,50 @@ pub enum GraphNamePattern { NamedNode(NamedNode), DefaultGraph, Variable(Variabl
 
 /// A term of a triple pattern. Blank nodes in query patterns act as variables scoped to their basic graph pattern.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum TermPattern { NamedNode(NamedNode), BlankNode(BlankNode), Literal(Literal), Variable(Variable) }
+pub enum TermPattern {
+    NamedNode(NamedNode),
+    BlankNode(BlankNode),
+    Literal(Literal),
+    Variable(Variable),
+    /// A triple term `<<( s p o )>>` (SPARQL 1.2): a nested triple pattern matching a triple term. The grammar allows
+    /// it in subject and object position (and nested in either); one in subject position never matches RDF data.
+    #[cfg(feature = "sparql-12")]
+    Triple(Box<TriplePattern>),
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum NamedNodePattern { NamedNode(NamedNode), Variable(Variable) }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum GroundTermPattern { NamedNode(NamedNode), Literal(Literal), Variable(Variable) }
+pub enum GroundTermPattern {
+    NamedNode(NamedNode),
+    Literal(Literal),
+    Variable(Variable),
+    /// A triple term in a `DELETE` template (SPARQL 1.2), without blank nodes.
+    #[cfg(feature = "sparql-12")]
+    Triple(Box<GroundTriplePattern>),
+}
 
 /// A constant that may appear in `VALUES` or `DELETE DATA`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum GroundTerm { NamedNode(NamedNode), Literal(Literal) }
+pub enum GroundTerm {
+    NamedNode(NamedNode),
+    Literal(Literal),
+    /// A triple term without blank nodes (SPARQL 1.2 `TripleTermData`, or a triple term in `DELETE DATA`).
+    #[cfg(feature = "sparql-12")]
+    Triple(Box<GroundTriple>),
+}
+
+/// A triple term without blank nodes or variables (SPARQL 1.2). Its subject is an IRI: RDF 1.2 triple terms cannot
+/// have a triple term as subject, and `TripleTermDataSubject` (§19.7 [123]) is `iri`.
+#[cfg(feature = "sparql-12")]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct GroundTriple { pub subject: NamedNode, pub predicate: NamedNode, pub object: GroundTerm }
+
+/// A triple term of a `DELETE` template (SPARQL 1.2): a triple pattern without blank nodes.
+#[cfg(feature = "sparql-12")]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GroundTriplePattern { pub subject: GroundTermPattern, pub predicate: NamedNodePattern, pub object: GroundTermPattern }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TriplePattern { pub subject: TermPattern, pub predicate: NamedNodePattern, pub object: TermPattern }
@@ -197,6 +235,27 @@ pub enum Function {
     UCase, LCase, EncodeForUri, Contains, StrStarts, StrEnds, StrBefore, StrAfter, Year, Month, Day, Hours, Minutes,
     Seconds, Timezone, Tz, Now, Uuid, StrUuid, Md5, Sha1, Sha256, Sha384, Sha512, StrLang, StrDt, IsIri, IsBlank,
     IsLiteral, IsNumeric, Regex,
+    /// SPARQL 1.2 (§17.4.6, §17.4.2): `TRIPLE(s, p, o)` (also the translation of an expression `<<( s p o )>>`),
+    /// `SUBJECT`, `PREDICATE`, `OBJECT`, `isTRIPLE`, `LANGDIR`, `hasLANG`, `hasLANGDIR` (one argument each) and
+    /// `STRLANGDIR(lexical, lang, dir)`.
+    #[cfg(feature = "sparql-12")]
+    Triple,
+    #[cfg(feature = "sparql-12")]
+    Subject,
+    #[cfg(feature = "sparql-12")]
+    Predicate,
+    #[cfg(feature = "sparql-12")]
+    Object,
+    #[cfg(feature = "sparql-12")]
+    IsTriple,
+    #[cfg(feature = "sparql-12")]
+    LangDir,
+    #[cfg(feature = "sparql-12")]
+    HasLang,
+    #[cfg(feature = "sparql-12")]
+    HasLangDir,
+    #[cfg(feature = "sparql-12")]
+    StrLangDir,
     Custom(NamedNode),
 }
 
@@ -217,6 +276,24 @@ impl fmt::Display for Function {
             Function::Sha512 => "SHA512", Function::StrLang => "STRLANG", Function::StrDt => "STRDT",
             Function::IsIri => "isIRI", Function::IsBlank => "isBLANK", Function::IsLiteral => "isLITERAL",
             Function::IsNumeric => "isNUMERIC", Function::Regex => "REGEX",
+            #[cfg(feature = "sparql-12")]
+            Function::Triple => "TRIPLE",
+            #[cfg(feature = "sparql-12")]
+            Function::Subject => "SUBJECT",
+            #[cfg(feature = "sparql-12")]
+            Function::Predicate => "PREDICATE",
+            #[cfg(feature = "sparql-12")]
+            Function::Object => "OBJECT",
+            #[cfg(feature = "sparql-12")]
+            Function::IsTriple => "isTRIPLE",
+            #[cfg(feature = "sparql-12")]
+            Function::LangDir => "LANGDIR",
+            #[cfg(feature = "sparql-12")]
+            Function::HasLang => "hasLANG",
+            #[cfg(feature = "sparql-12")]
+            Function::HasLangDir => "hasLANGDIR",
+            #[cfg(feature = "sparql-12")]
+            Function::StrLangDir => "STRLANGDIR",
             Function::Custom(iri) => return write!(f, "<{}>", iri.as_str()),
         };
         f.write_str(name)
