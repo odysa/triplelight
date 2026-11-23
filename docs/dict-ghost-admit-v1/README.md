@@ -43,3 +43,8 @@ misses fewer blocks than on main (2,985 against 3,798). Over q14's three timed r
 14,275. Large outputs such as q6 and q14 are bound by the driver in the harness (#205), and the gain on a repeated
 small-result query is 6×. A frequency-based admission (a TinyLFU sketch comparing the candidate with the victim) could
 recover q14's cost and is the follow-up if it matters.
+
+**Accepted as a documented trade (Kaiming, #105).** The q14 cost comes from sharing the cache between two queries, not
+from extra work on q14's path, and the net is strongly positive. The TinyLFU sketch is the named follow-up, to be done
+if a rental suite shows the q14 pattern mattering. The replay times are curl to `/dev/null`, timed to the last byte
+with no hashing, the same as #205's drained timing.
