@@ -1,0 +1,171 @@
+block_cache dictionary.term hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=0 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=700 parse_us=158 bgp_us=0 group_us=0 count_us=0 sort_us=0 exec_us=302 output_us=398 rows=0 cols=0 
+block_cache dictionary.term hits=1 misses=3 pread_calls=3 pread_bytes=15912 evictions=0
+block_cache dictionary.id hits=1 misses=1 pread_calls=1 pread_bytes=4743 evictions=0
+phase_trace total_us=1416 parse_us=76 bgp_us=554 group_us=0 count_us=0 sort_us=0 exec_us=688 output_us=727 rows=4 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=438 parse_us=26 bgp_us=30 group_us=0 count_us=0 sort_us=0 exec_us=68 output_us=370 rows=4 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=421 parse_us=23 bgp_us=34 group_us=0 count_us=0 sort_us=0 exec_us=64 output_us=357 rows=4 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=423 parse_us=22 bgp_us=31 group_us=0 count_us=0 sort_us=0 exec_us=62 output_us=361 rows=4 cols=1 
+block_cache dictionary.term hits=9 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=1 misses=4776 pread_calls=4776 pread_bytes=23010934 evictions=0
+phase_trace total_us=511163 parse_us=31 bgp_us=61399 group_us=0 count_us=0 sort_us=0 exec_us=61648 output_us=449514 rows=2528 cols=3 
+block_cache dictionary.term hits=9 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=4777 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=24384 parse_us=40 bgp_us=17692 group_us=0 count_us=0 sort_us=0 exec_us=17934 output_us=6449 rows=2528 cols=3 
+block_cache dictionary.term hits=9 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=4777 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=24130 parse_us=32 bgp_us=17452 group_us=0 count_us=0 sort_us=0 exec_us=17681 output_us=6449 rows=2528 cols=3 
+block_cache dictionary.term hits=9 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=4777 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=24093 parse_us=31 bgp_us=17437 group_us=0 count_us=0 sort_us=0 exec_us=17665 output_us=6427 rows=2528 cols=3 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=1 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=416 parse_us=29 bgp_us=78 group_us=0 count_us=0 sort_us=0 exec_us=117 output_us=299 rows=6 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=1 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=335 parse_us=16 bgp_us=30 group_us=0 count_us=0 sort_us=0 exec_us=59 output_us=276 rows=6 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=1 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=323 parse_us=21 bgp_us=28 group_us=0 count_us=0 sort_us=0 exec_us=55 output_us=267 rows=6 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=1 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=335 parse_us=19 bgp_us=33 group_us=0 count_us=0 sort_us=0 exec_us=59 output_us=275 rows=6 cols=1 
+block_cache dictionary.term hits=6 misses=1 pread_calls=1 pread_bytes=4867 evictions=0
+block_cache dictionary.id hits=1 misses=12 pread_calls=12 pread_bytes=65747 evictions=0
+phase_trace total_us=1960 parse_us=25 bgp_us=328 group_us=0 count_us=0 sort_us=0 exec_us=364 output_us=1595 rows=10 cols=4 
+block_cache dictionary.term hits=7 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=13 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=403 parse_us=21 bgp_us=74 group_us=0 count_us=0 sort_us=0 exec_us=104 output_us=298 rows=10 cols=4 
+block_cache dictionary.term hits=7 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=13 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=394 parse_us=24 bgp_us=72 group_us=0 count_us=0 sort_us=0 exec_us=105 output_us=289 rows=10 cols=4 
+block_cache dictionary.term hits=7 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=13 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=389 parse_us=21 bgp_us=73 group_us=0 count_us=0 sort_us=0 exec_us=103 output_us=285 rows=10 cols=4 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2 misses=1 pread_calls=1 pread_bytes=4672 evictions=0
+phase_trace total_us=900 parse_us=17 bgp_us=315 group_us=0 count_us=0 sort_us=0 exec_us=365 output_us=534 rows=532 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=3 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=646 parse_us=17 bgp_us=169 group_us=0 count_us=0 sort_us=0 exec_us=220 output_us=425 rows=532 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=3 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=635 parse_us=20 bgp_us=163 group_us=0 count_us=0 sort_us=0 exec_us=215 output_us=419 rows=532 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=3 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=631 parse_us=17 bgp_us=163 group_us=0 count_us=0 sort_us=0 exec_us=213 output_us=418 rows=532 cols=1 
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=5714 misses=47122 pread_calls=47122 pread_bytes=225174650 evictions=0
+phase_trace total_us=1716911 parse_us=15 bgp_us=243842 group_us=0 count_us=0 sort_us=0 exec_us=582108 output_us=1134802 rows=7924765 cols=1 
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=52836 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=882560 parse_us=104 bgp_us=144300 group_us=0 count_us=0 sort_us=0 exec_us=471146 output_us=411413 rows=7924765 cols=1 
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=52836 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=868643 parse_us=104 bgp_us=136131 group_us=0 count_us=0 sort_us=0 exec_us=457846 output_us=410796 rows=7924765 cols=1 
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=52836 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=860605 parse_us=107 bgp_us=135892 group_us=0 count_us=0 sort_us=0 exec_us=453352 output_us=407253 rows=7924765 cols=1 
+block_cache dictionary.term hits=7 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=572 parse_us=105 bgp_us=124 group_us=0 count_us=0 sort_us=0 exec_us=244 output_us=328 rows=59 cols=2 
+block_cache dictionary.term hits=7 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=403 parse_us=21 bgp_us=76 group_us=0 count_us=0 sort_us=0 exec_us=109 output_us=294 rows=59 cols=2 
+block_cache dictionary.term hits=7 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=421 parse_us=23 bgp_us=73 group_us=0 count_us=0 sort_us=0 exec_us=108 output_us=312 rows=59 cols=2 
+block_cache dictionary.term hits=7 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=413 parse_us=21 bgp_us=77 group_us=0 count_us=0 sort_us=0 exec_us=110 output_us=303 rows=59 cols=2 
+block_cache dictionary.term hits=8 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=40 misses=5916 pread_calls=5916 pread_bytes=33777776 evictions=0
+phase_trace total_us=490980 parse_us=22 bgp_us=2546 group_us=0 count_us=0 sort_us=0 exec_us=2994 output_us=487986 rows=5916 cols=3 
+block_cache dictionary.term hits=8 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=5956 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=10730 parse_us=30 bgp_us=1270 group_us=0 count_us=0 sort_us=0 exec_us=1737 output_us=8992 rows=5916 cols=3 
+block_cache dictionary.term hits=8 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=5956 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=7407 parse_us=35 bgp_us=1193 group_us=0 count_us=0 sort_us=0 exec_us=1656 output_us=5751 rows=5916 cols=3 
+block_cache dictionary.term hits=8 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=5956 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=7305 parse_us=33 bgp_us=1130 group_us=0 count_us=0 sort_us=0 exec_us=1612 output_us=5693 rows=5916 cols=3 
+block_cache dictionary.term hits=9 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=28501 misses=25742 pread_calls=25742 pread_bytes=124270929 evictions=3456
+phase_trace total_us=1041911 parse_us=24 bgp_us=440725 group_us=0 count_us=0 sort_us=0 exec_us=444008 output_us=597902 rows=44190 cols=3 
+block_cache dictionary.term hits=9 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=38839 misses=15404 pread_calls=15404 pread_bytes=74222488 evictions=11757
+phase_trace total_us=759826 parse_us=31 bgp_us=290700 group_us=0 count_us=0 sort_us=0 exec_us=293785 output_us=466041 rows=44190 cols=3 
+block_cache dictionary.term hits=9 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=44050 misses=10193 pread_calls=10193 pread_bytes=48911098 evictions=5285
+phase_trace total_us=704377 parse_us=30 bgp_us=331288 group_us=0 count_us=0 sort_us=0 exec_us=334467 output_us=369909 rows=44190 cols=3 
+block_cache dictionary.term hits=9 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=47146 misses=7097 pread_calls=7097 pread_bytes=34036498 evictions=5441
+phase_trace total_us=563049 parse_us=33 bgp_us=294200 group_us=0 count_us=0 sort_us=0 exec_us=297335 output_us=265714 rows=44190 cols=3 
+block_cache dictionary.term hits=3 misses=1 pread_calls=1 pread_bytes=5581 evictions=1
+block_cache dictionary.id hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=526 parse_us=27 bgp_us=210 group_us=0 count_us=0 sort_us=0 exec_us=248 output_us=278 rows=4 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=319 parse_us=18 bgp_us=32 group_us=0 count_us=0 sort_us=0 exec_us=57 output_us=261 rows=4 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=329 parse_us=17 bgp_us=34 group_us=0 count_us=0 sort_us=0 exec_us=58 output_us=271 rows=4 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=333 parse_us=17 bgp_us=31 group_us=0 count_us=0 sort_us=0 exec_us=55 output_us=277 rows=4 cols=1 
+block_cache dictionary.term hits=3 misses=1 pread_calls=1 pread_bytes=4867 evictions=0
+block_cache dictionary.id hits=1 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=466 parse_us=17 bgp_us=171 group_us=0 count_us=0 sort_us=0 exec_us=195 output_us=271 rows=10 cols=1 
+block_cache dictionary.term hits=3 misses=1 pread_calls=1 pread_bytes=4867 evictions=1
+block_cache dictionary.id hits=1 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=462 parse_us=19 bgp_us=164 group_us=0 count_us=0 sort_us=0 exec_us=194 output_us=268 rows=10 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=1 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=330 parse_us=19 bgp_us=34 group_us=0 count_us=0 sort_us=0 exec_us=63 output_us=266 rows=10 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=1 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=328 parse_us=17 bgp_us=34 group_us=0 count_us=0 sort_us=0 exec_us=61 output_us=267 rows=10 cols=1 
+block_cache dictionary.term hits=6 misses=1 pread_calls=1 pread_bytes=5645 evictions=1
+block_cache dictionary.id hits=25 misses=12 pread_calls=12 pread_bytes=58130 evictions=5
+phase_trace total_us=2862 parse_us=20 bgp_us=1217 group_us=0 count_us=0 sort_us=0 exec_us=1257 output_us=1605 rows=125 cols=2 
+block_cache dictionary.term hits=7 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=30 misses=7 pread_calls=7 pread_bytes=34026 evictions=7
+phase_trace total_us=1437 parse_us=21 bgp_us=245 group_us=0 count_us=0 sort_us=0 exec_us=281 output_us=1156 rows=125 cols=2 
+block_cache dictionary.term hits=7 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=37 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=633 parse_us=21 bgp_us=245 group_us=0 count_us=0 sort_us=0 exec_us=280 output_us=352 rows=125 cols=2 
+block_cache dictionary.term hits=7 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=37 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+phase_trace total_us=638 parse_us=20 bgp_us=242 group_us=0 count_us=0 sort_us=0 exec_us=277 output_us=360 rows=125 cols=2 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=1819 misses=657 pread_calls=657 pread_bytes=3138808 evictions=193
+phase_trace total_us=79279 parse_us=18 bgp_us=9932 group_us=0 count_us=0 sort_us=0 exec_us=10084 output_us=69194 rows=2604 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2012 misses=464 pread_calls=464 pread_bytes=2216538 evictions=462
+phase_trace total_us=51903 parse_us=24 bgp_us=1171 group_us=0 count_us=0 sort_us=0 exec_us=1325 output_us=50578 rows=2604 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2471 misses=5 pread_calls=5 pread_bytes=23864 evictions=3
+phase_trace total_us=5948 parse_us=30 bgp_us=1263 group_us=0 count_us=0 sort_us=0 exec_us=1414 output_us=4533 rows=2604 cols=1 
+block_cache dictionary.term hits=4 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=2474 misses=2 pread_calls=2 pread_bytes=9546 evictions=2
+phase_trace total_us=5426 parse_us=30 bgp_us=1103 group_us=0 count_us=0 sort_us=0 exec_us=1255 output_us=4171 rows=2604 cols=1 
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=41133 misses=11703 pread_calls=11703 pread_bytes=56193247 evictions=3784
+phase_trace total_us=1114216 parse_us=20 bgp_us=179198 group_us=0 count_us=0 sort_us=0 exec_us=496892 output_us=617323 rows=7924765 cols=1 
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=42530 misses=10306 pread_calls=10306 pread_bytes=49480226 evictions=8378
+phase_trace total_us=1052414 parse_us=23 bgp_us=146486 group_us=0 count_us=0 sort_us=0 exec_us=462249 output_us=590165 rows=7924765 cols=1 
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=48058 misses=4778 pread_calls=4778 pread_bytes=22861658 evictions=2622
+phase_trace total_us=1011737 parse_us=104 bgp_us=156210 group_us=0 count_us=0 sort_us=0 exec_us=484946 output_us=526791 rows=7924765 cols=1 
+block_cache dictionary.term hits=2 misses=0 pread_calls=0 pread_bytes=0 evictions=0
+block_cache dictionary.id hits=49851 misses=2985 pread_calls=2985 pread_bytes=14285874 evictions=2306
+phase_trace total_us=919287 parse_us=104 bgp_us=148187 group_us=0 count_us=0 sort_us=0 exec_us=464707 output_us=454580 rows=7924765 cols=1 
