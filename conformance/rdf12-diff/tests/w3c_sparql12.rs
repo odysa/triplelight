@@ -22,20 +22,10 @@ const SUITES: &[(&str, usize)] = &[
     ("version", 9),
 ];
 
-// Observed on a6ed507e against rdf-tests 56076c0e. The floor is defined by
-// case identity so a newly passing case cannot offset a regression elsewhere.
-const SYNTAX_FAILURE: &str =
-    "<https://w3c.github.io/rdf-tests/sparql/sparql12/syntax/manifest#duplicated-values-variable>";
-const EVALUATION_FAILURE: &str =
-    "<https://w3c.github.io/rdf-tests/sparql/sparql12/expression/manifest#not-not>";
-
-fn assert_floor(suite: &str, passed: usize, failures: &[String], known: &str, total: usize) {
+fn assert_floor(suite: &str, passed: usize, failures: &[String], total: usize) {
     println!("{suite}: {passed}/{total} W3C cases pass");
-    assert!(
-        passed + failures.len() == total
-            && (failures.is_empty() || (failures.len() == 1 && failures[0] == known)),
-        "{suite} fell below its case-level floor: {failures:?}"
-    );
+    assert_eq!(passed, total, "{suite} fell below its floor: {failures:?}");
+    assert!(failures.is_empty(), "{suite} has failing cases: {failures:?}");
 }
 
 #[test]
@@ -97,7 +87,7 @@ fn sparql12_w3c_query_and_update_syntax() {
     ] {
         assert_eq!(totals[kind], expected, "{kind}");
     }
-    assert_floor("SPARQL 1.2 syntax", passed, &failures, SYNTAX_FAILURE, 203);
+    assert_floor("SPARQL 1.2 syntax", passed, &failures, 203);
 }
 
 #[test]
@@ -140,11 +130,5 @@ fn sparql12_w3c_query_and_update_evaluation() {
         }
     }
     assert_eq!((queries, updates), (65, 3));
-    assert_floor(
-        "SPARQL 1.2 evaluation",
-        passed,
-        &failures,
-        EVALUATION_FAILURE,
-        68,
-    );
+    assert_floor("SPARQL 1.2 evaluation", passed, &failures, 68);
 }
