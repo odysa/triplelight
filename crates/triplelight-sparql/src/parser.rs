@@ -1629,7 +1629,6 @@ fn term_vars<'a>(t: &'a TermPattern, out: &mut Vec<&'a Variable>) {
 
 /// In-scope variables of a pattern (§18.2.1), in order of first appearance; internal variables are not included.
 /// Iterative, because it runs during parsing, before the algebra depth has been checked.
-
 pub fn in_scope(p: &GraphPattern) -> Vec<Variable> {
     enum W<'a> { P(&'a GraphPattern), V(&'a Variable) }
     let mut out: Vec<Variable> = Vec::new();
