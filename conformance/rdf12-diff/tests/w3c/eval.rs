@@ -138,7 +138,7 @@ fn scope_term(term: Term, assigned: &mut HashMap<BlankNode, BlankNode>) -> Term 
     }
 }
 
-fn result_answer(data: &[u8], format: QueryResultsFormat) -> Fallible<Answer> {
+fn result_answer(data: &[u8], format: QueryResultsFormat, ordered: bool) -> Fallible<Answer> {
     match QueryResultsParser::from_format(format).for_slice(data)? {
         SliceQueryResultsParserOutput::Boolean(value) => Ok(Answer::Boolean(value)),
         SliceQueryResultsParserOutput::Solutions(solutions) => {
@@ -159,6 +159,14 @@ fn result_answer(data: &[u8], format: QueryResultsFormat) -> Fallible<Answer> {
                     row.clone(),
                     GraphName::DefaultGraph,
                 ));
+                if ordered {
+                    rows.push(Quad::new(
+                        row.clone(),
+                        NamedNode::new_unchecked("urn:tl:w3c:position"),
+                        oxrdf::Literal::from(i as u64),
+                        GraphName::DefaultGraph,
+                    ));
+                }
                 for (variable, value) in &solution {
                     rows.push(Quad::new(
                         row.clone(),
@@ -235,9 +243,19 @@ pub fn evaluate(
                     QueryResultsFormat::Xml
                 };
                 let (_, actual_json) = serialize(&result);
+                // These four pinned queries sort on ?x, a unique, projected IRI.
+                // The triple-term sort test checks the selected offsets in the bindings.
+                let ordered = request
+                    .split_once("/lang-basedir/")
+                    .is_some_and(|(_, file)| {
+                        matches!(
+                            file,
+                            "haslang.rq" | "haslangdir.rq" | "lang.rq" | "langdir.rq"
+                        )
+                    });
                 compare_results(
-                    result_answer(&fixture(root, path), reference_format)?,
-                    result_answer(actual_json.as_bytes(), QueryResultsFormat::Json)?,
+                    result_answer(&fixture(root, path), reference_format, ordered)?,
+                    result_answer(actual_json.as_bytes(), QueryResultsFormat::Json, ordered)?,
                 )
             }
             _ => {
@@ -265,10 +283,11 @@ fn solution_comparison_checks_duplicates_and_shared_nested_blank_nodes() {
         "subject":{"type":"bnode","value":"a"},
         "predicate":{"type":"uri","value":"urn:p"},
         "object":{"type":"literal","value":"text","xml:lang":"en","its:dir":"ltr"}}}}"#;
-    let answer = |rows: &str| {
+    let with_order = |rows: &str, ordered| {
         let json = format!(r#"{{"head":{{"vars":["x","t"]}},"results":{{"bindings":[{rows}]}}}}"#);
-        result_answer(json.as_bytes(), QueryResultsFormat::Json).unwrap()
+        result_answer(json.as_bytes(), QueryResultsFormat::Json, ordered).unwrap()
     };
+    let answer = |rows: &str| with_order(rows, false);
     assert!(compare_results(
         answer(row),
         answer(&row.replace("\"a\"", "\"b\""))
@@ -285,5 +304,13 @@ fn solution_comparison_checks_duplicates_and_shared_nested_blank_nodes() {
     assert!(!compare_results(
         answer(row),
         answer(&row.replace(nested, &nested.replace("\"a\"", "\"b\"")))
+    ));
+    let other = row.replace("text", "other");
+    let left = format!("{row},{other}");
+    let right = format!("{other},{row}");
+    assert!(compare_results(answer(&left), answer(&right)));
+    assert!(!compare_results(
+        with_order(&left, true),
+        with_order(&right, true)
     ));
 }
