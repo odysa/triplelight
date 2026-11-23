@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+# S3 bulk build (docs/eval-plan/PLAN.md "S3. Bulk build"; owner Alex): one load of one system on one dataset, with the
+# loader exactly as `systems.sh <system> load` runs it, measured from outside.
+#   s3-build.sh <system> <dataset> <tag> [--mem GB] [--cpus N]
+# Writes $OUT/<system>-<dataset>-<tag>/{build.log,samples.tsv,receipt.json}. OUT defaults to bench/results/s3.
+#
+# What is measured while the loader runs (memory every 0.5 s, directory sizes every 2 s):
+#   - the store directory's size (du), which includes the loader's scratch when it writes it there, and free space on its
+#     volume; the receipt keeps the peak and the final size;
+#   - memory: on Linux, the cgroup of the loader: the systemd scope this script starts (native loaders) and the Docker
+#     container's own cgroup (Docker loaders): memory.peak, and memory.stat anon/file at the sample where anon+file peaks
+#     (page cache counts against memory.max, so both are kept); elsewhere, RSS of the process tree plus `docker stats`
+#     memory, labelled as such;
+#   - device writes (Linux): /proc/diskstats sectors written on the store's device, before and after.
+# Every system goes through the same sampler on its own store directory, so peak scratch and final size are measured the
+# same way (a loader whose scratch lives elsewhere, e.g. in /tmp, would be noted in the receipt).
+# Wall, user and system CPU come from the time utility around `systems.sh` (for Docker loaders that is the client, so the
+# receipt also keeps the container's cpu.stat on Linux). The page cache is dropped first (lib.sh drop_caches).
+# On a laptop this is a dry run of the same path: numbers are correctness evidence only, never timing claims.
+#
+# Receipt schema (receipt.json), the same rule for every system:
+#   headline_memory_bytes  the build's own memory: the peak of the cgroup's memory.stat `anon` over the samples (Linux);
+#                          on macOS the peak RSS of the loader's process tree plus the container (dry run only).
+#                          memory.peak is kept as `cgroup_memory_peak_bytes` but is not the headline: it counts the page
+#                          cache, which a bulk load fills up to the limit.
+#                          The headline is sampled every 0.5 s, so it is a lower bound (a shorter burst can fall between
+#                          samples; cgroup v2 keeps no anon high-water mark) and memory.peak is an upper bound: the true
+#                          peak lies between the two, and the paper's build table reports both. Native loaders also get
+#                          the time utility's exact max RSS (client_max_rss_kb).
+#   peak_store_dir_kib     peak of the store directory (all of the system's scratch is configured to live there; see
+#                          SCRATCH below), at least the final size; final_store_kib after the load.
+#   tmp_growth_kib         peak growth of $TMPDIR during the load: a nonzero value means scratch escaped the store tree.
+set -eu
+SYS=$1; D=$2; TAG=$3; shift 3
+MEM=; CPUS=8
+while [ $# -gt 0 ]; do case $1 in --mem) MEM=$2; shift 2;; --cpus) CPUS=$2; shift 2;; *) echo "unknown option $1" >&2; exit 2;; esac; done
+[ -n "$MEM" ] || { echo "s3-build: --mem is required (every system gets the same memory.max)" >&2; exit 2; }
+HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../.." && pwd)
+T=${TOOLS:-$ROOT/bench/tools}
+OUT=${OUT:-$ROOT/bench/results/s3}/$SYS-$D-$TAG
+mkdir -p "$OUT"; : > "$OUT/samples.tsv"
+. "$HERE/lib.sh"
+. "$HERE/VERSIONS"
+
+case $SYS in   # where each loader writes its store (systems.sh)
+  qlever) STORE=$T/qlever-$D ;; qlever-two-order) STORE=$T/qlever-two-order-$D ;;
+  *) STORE=$T/$SYS-$D ;;
+esac
+case $SYS in   # the container a Docker loader runs in (empty: native loader)
+  qlever|qlever-two-order) CNAME_FILTER="ancestor=$QLEVER_IMAGE" ;;
+  virtuoso) CNAME_FILTER="name=bench-virtuoso-load" ;;
+  rdf4j-native|rdf4j-native-default) CNAME_FILTER="name=bench-rdf4j-load" ;;
+  millenniumdb) CNAME_FILTER="ancestor=mdb" ;;
+  *) CNAME_FILTER= ;;
+esac
+# Where each loader writes scratch, all inside the sampled store directory (checked by tmp_growth_kib):
+#   triplelight: external-sort runs in the output directory; qlever: index .tmp files beside the index in its -w dir;
+#   virtuoso: temp and transaction log in the database directory (/database = the store dir); jena-tdb2: tdb2.tdbloader
+#   works in place in --loc; oxigraph: RocksDB in --location.
+case $SYS in
+  triplelight) SCRATCH="output directory (external sort)";; qlever|qlever-two-order) SCRATCH="index directory (.tmp files)";;
+  virtuoso) SCRATCH="database directory (temp, transaction log)";; jena-tdb2) SCRATCH="--loc (in-place loader)";;
+  oxigraph) SCRATCH="--location (RocksDB)";; *) SCRATCH="store directory (unverified)";;
+esac
+TMPD=${TMPDIR:-/tmp}; TMP0=$(du -sk "$TMPD" 2>/dev/null | cut -f1)
+LINUX=0; [ "$(uname)" = Linux ] && [ -f /sys/fs/cgroup/cgroup.controllers ] && LINUX=1
+sha256() { if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1; }
+dev_written() {   # sectors written on the device that holds $T (Linux), else 0
+  [ $LINUX = 1 ] || { echo 0; return; }
+  local dev; dev=$(basename "$(df --output=source "$T" | tail -1)")
+  awk -v d="$dev" '$3==d {print $10; f=1} END {if (!f) print 0}' /proc/diskstats
+}
+cg_of_container() {   # cgroup v2 directory of a running container, or nothing
+  local id; id=$(docker ps -q --no-trunc --filter "$CNAME_FILTER" | head -1); [ -n "$id" ] || return 0
+  for d in /sys/fs/cgroup/system.slice/docker-$id.scope /sys/fs/cgroup/docker/$id; do [ -d "$d" ] && { echo "$d"; return; }; done
+}
+kill_tree() {   # the process and every descendant (the loader runs below time and systems.sh)
+  local kids; kids=$(ps -Ao pid=,ppid= | awk -v p="$1" '$2==p {print $1}')
+  for k in $kids; do kill_tree "$k"; done; kill "$1" 2>/dev/null || true
+}
+tree_rss_kb() {   # RSS of a process and all its descendants, in KiB
+  ps -Ao pid=,ppid=,rss= | awk -v root="$1" '{p[$1]=$2; r[$1]=$3} END {s=0; for (q in r) {x=q; while (x != "" && x != root && x != 1 && x != 0) x=p[x]; if (x == root) s+=r[q]} print s}'
+}
+
+echo "$(drop_caches)" > "$OUT/drop_caches.txt"
+W0=$(dev_written)
+SCOPE=s3-$SYS-$D-$TAG-$$
+if [ $LINUX = 1 ] && command -v systemd-run >/dev/null; then
+  # The native loaders are charged to this scope; Docker loaders to their container's cgroup (sampled below).
+  RUN=(systemd-run --scope --quiet --unit="$SCOPE" -p MemoryMax="${MEM}G" -p MemorySwapMax=0 -p AllowedCPUs="0-$((CPUS - 1))" --)
+else
+  RUN=()
+fi
+# GNU time on Linux, BSD time on macOS (the flag follows the OS, not whether systemd-run exists)
+if [ "$(uname)" = Linux ]; then TIMEFMT=(/usr/bin/time -v); else TIMEFMT=(/usr/bin/time -l); fi
+START=$(date +%s.%N 2>/dev/null || date +%s)
+"${TIMEFMT[@]}" ${RUN[@]+"${RUN[@]}"} "$HERE/systems.sh" "$SYS" load "$D" --mem "$MEM" --cpus "$CPUS" > "$OUT/build.log" 2>&1 &
+PID=$!
+CG=
+TICK=0
+while kill -0 $PID 2>/dev/null; do
+  # memory every 0.5 s, the (slower) directory size every 2 s; between du ticks the last size is repeated
+  if [ $((TICK % 4)) = 0 ]; then
+    s=$(du -sk "$STORE" 2>/dev/null | cut -f1); f=$(df -k "$T" | awk 'NR==2{print $4}')
+    tg=$(( $(du -sk "$TMPD" 2>/dev/null | cut -f1) - TMP0 ))
+  fi
+  TICK=$((TICK + 1))
+  mem_kb=; anon=; file=; peak=
+  if [ $LINUX = 1 ]; then
+    # resolved again whenever it is missing: a Docker loader's container appears a few seconds in, and a loader that
+    # starts a second container moves to a new cgroup
+    if [ -z "$CG" ] || [ ! -f "$CG/memory.peak" ]; then
+      if [ -n "$CNAME_FILTER" ]; then CG=$(cg_of_container); else CG=/sys/fs/cgroup/system.slice/$SCOPE.scope; fi
+    fi
+    if [ -n "$CG" ] && [ -f "$CG/memory.peak" ]; then
+      peak=$(cat "$CG/memory.peak"); anon=$(awk '$1=="anon"{print $2}' "$CG/memory.stat"); file=$(awk '$1=="file"{print $2}' "$CG/memory.stat")
+      cat "$CG/cpu.stat" > "$OUT/cpu.stat.last" 2>/dev/null || true
+    fi
+  else
+    mem_kb=$(tree_rss_kb $PID)
+    if [ -n "$CNAME_FILTER" ]; then
+      c=$(docker stats --no-stream --format '{{.MemUsage}}' $(docker ps -q --filter "$CNAME_FILTER") 2>/dev/null | head -1 | awk '{print $1}')
+      [ -n "$c" ] && mem_kb="$mem_kb+docker:$c"
+    fi
+  fi
+  # On the Linux machine an unmeasured build is a failure, not an empty field (Kaiming): no cgroup within the first 60 s,
+  # or 12 consecutive misses (6 s at 0.5 s) after the first successful sample. Any successful sample resets the count.
+  if [ $LINUX = 1 ]; then
+    if [ -n "$peak" ]; then SEEN=1; MISS=0
+    elif [ -z "${SEEN:-}" ]; then
+      if [ $(( $(date +%s) - ${START%.*} )) -ge 60 ]; then echo "no cgroup for $SYS within 60 s ($CNAME_FILTER / $SCOPE): stopping, the build would be unmeasured" >&2; kill_tree $PID; exit 9; fi
+    else
+      MISS=$(( ${MISS:-0} + 1 ))
+      if [ $MISS -ge 12 ]; then echo "lost the cgroup of $SYS for 6 s: stopping, the build would be unmeasured" >&2; kill_tree $PID; exit 9; fi
+    fi
+  fi
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date -u +%H:%M:%S)" "${s:-0}" "$f" "${peak:-}" "${anon:-}" "${file:-}" "${mem_kb:-}" "$tg" >> "$OUT/samples.tsv"
+  sleep 0.5
+done
+set +e; wait $PID; RC=$?; set -e
+END=$(date +%s.%N 2>/dev/null || date +%s)
+W1=$(dev_written)
+FINAL=$(du -sk "$STORE" 2>/dev/null | cut -f1)
+# Provenance: the exact load command, the pinned versions, the harness and binary hashes, the repository commit.
+{ echo "command=$HERE/systems.sh $SYS load $D --mem $MEM --cpus $CPUS"
+  echo "repo_commit=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)"
+  echo "systems_sh_sha256=$(sha256 "$HERE/systems.sh")"
+  [ "$SYS" = triplelight ] && echo "triplelight_bin_sha256=$(sha256 "${TRIPLELIGHT_BIN:-$ROOT/target/release/triplelight}")"
+  [ "$SYS" = oxigraph ] && echo "oxigraph_version=$("$T/oxigraph" --version)"
+  grep -E '^[A-Z_]+=' "$HERE/VERSIONS"
+} > "$OUT/provenance.txt"
+S3_SCRATCH="$SCRATCH" python3 -I - "$OUT" "$SYS" "$D" "$TAG" "$MEM" "$CPUS" "$RC" "$START" "$END" "$W0" "$W1" "${FINAL:-0}" "$LINUX" <<'EOF'
+import sys, json, re, os
+out, sys_, d, tag, mem, cpus, rc, start, end, w0, w1, final, linux = sys.argv[1:]
+rows = [l.rstrip("\n").split("\t") for l in open(os.path.join(out, "samples.tsv")) if l.strip()]
+num = lambda x: int(x) if x and x.isdigit() else None
+# A load shorter than one sample interval can finish between samples; the final size is a lower bound on the peak.
+peak_dir = max([num(r[1]) or 0 for r in rows] + [int(final)])
+min_free = min([num(r[2]) for r in rows if num(r[2]) is not None], default=None)
+mem_peak = max([num(r[3]) for r in rows if num(r[3]) is not None], default=None)
+at = max(rows, key=lambda r: (num(r[4]) or 0) + (num(r[5]) or 0), default=None)
+log = open(os.path.join(out, "build.log"), errors="replace").read()
+def grab(pat):
+    m = re.search(pat, log); return float(m.group(1)) if m else None
+rec = {
+    "system": sys_, "dataset": d, "tag": tag, "mem_gb": int(mem), "swap_gb": 0, "cpus": int(cpus), "cpuset": f"0-{int(cpus) - 1}", "cpu_limit": "the same CPU set for every system: Docker --cpuset-cpus, systemd AllowedCPUs", "exit": int(rc),
+    "wall_s": round(float(end) - float(start), 2),
+    "user_s": grab(r"User time \(seconds\): ([\d.]+)") or grab(r"([\d.]+) user"),
+    "sys_s": grab(r"System time \(seconds\): ([\d.]+)") or grab(r"([\d.]+) sys"),
+    "client_max_rss_kb": grab(r"Maximum resident set size \(kbytes\): (\d+)") or (lambda b: b / 1024 if b else None)(grab(r"(\d+)\s+maximum resident set size")),
+    "cgroup_memory_peak_bytes": mem_peak, "anon_at_peak_bytes": num(at[4]) if at else None, "file_at_peak_bytes": num(at[5]) if at else None,
+    "peak_store_dir_kib": peak_dir, "final_store_kib": int(final), "min_free_kib": min_free,
+    "device_written_bytes": (int(w1) - int(w0)) * 512 if linux == "1" else None,
+    "headline_memory_bytes": (max([num(r[4]) for r in rows if num(r[4]) is not None], default=None) if linux == "1"
+        else max([sum(int(float(x[:-3]) * {"KiB": 1024, "MiB": 2**20, "GiB": 2**30}[x[-3:]]) if x[-3:] in ("KiB", "MiB", "GiB") else int(x) * 1024
+                      for x in r[6].replace("docker:", "").split("+") if x) for r in rows if r[6]], default=None)),
+    "tmp_growth_kib": max([int(r[7]) for r in rows if len(r) > 7 and r[7].lstrip("-").isdigit()] + [0]),
+    "scratch_location": os.environ.get("S3_SCRATCH", ""),
+    "memory_source": "cgroup" if linux == "1" else "process-tree RSS + docker stats (laptop dry run)",
+    "page_cache": open(os.path.join(out, "drop_caches.txt")).read().strip(),
+    "provenance": dict(l.rstrip("\n").split("=", 1) for l in open(os.path.join(out, "provenance.txt")) if "=" in l),
+}
+json.dump(rec, open(os.path.join(out, "receipt.json"), "w"), indent=1)
+print(json.dumps(rec))
+EOF
+exit $RC
