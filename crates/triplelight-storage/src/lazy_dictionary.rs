@@ -396,18 +396,20 @@ impl LazyIndex {
     /// `trace_slot` only labels the counters (6 = looked up by term, 7 = by ID). Both lookup paths of a unified
     /// dictionary read the same blocks, so they share one cache entry.
     fn block_traced(&self, index: usize, trace_slot: usize) -> io::Result<Arc<Vec<(TermId, Term)>>> {
-        let mut cache = self.cache.shards[index % self.cache.shards.len()]
-            .lock()
-            .map_err(|_| io::Error::other("dictionary cache lock poisoned"))?;
+        let shard = &self.cache.shards[index % self.cache.shards.len()];
+        let lock = || shard.lock().map_err(|_| io::Error::other("dictionary cache lock poisoned"));
         let cache_slot = match self.order {
             Order::Term => 6,
             Order::Id | Order::Unified => 7,
         };
-        if let Some(value) = cache.get((cache_slot, index)) {
+        if let Some(value) = lock()?.get((cache_slot, index)) {
             super::disk_index::trace_dictionary(trace_slot, 0, 1);
             return Ok(value);
         }
         super::disk_index::trace_dictionary(trace_slot, 1, 1);
+        // A miss reads, checks and decodes without the shard lock (#105), so parallel output decoding does not queue
+        // behind one shard's disk read and decode. Two threads missing the same block may both decode it; blocks are
+        // immutable, the first insert wins, and the other's rows are returned without being cached.
         let meta = self
             .entries
             .get(index)
@@ -433,6 +435,10 @@ impl LazyIndex {
             .saturating_add(keys.iter().map(Vec::len).sum::<usize>())
             .saturating_add(rows.len() * 128);
         let rows = Arc::new(rows);
+        let mut cache = lock()?;
+        if let Some(value) = cache.get((cache_slot, index)) {
+            return Ok(value);
+        }
         let evicted = cache.insert((cache_slot, index), &rows, size, self.cache.shard_budget)?;
         if evicted > 0 {
             super::disk_index::trace_dictionary(trace_slot, 4, evicted);
