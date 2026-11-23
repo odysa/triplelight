@@ -169,6 +169,8 @@ fn spill_dir() -> std::path::PathBuf {
 fn spill_rows() -> usize {
     #[cfg(test)]
     if let Some(rows) = SPILL_ROWS_ON_THIS_THREAD.with(|c| c.get()) { return rows }
+    // Measurement override: `TRIPLELIGHT_REGROUP_SPILL_ROWS=n` (e.g. a huge n to compare with no spill at the same budget).
+    if let Some(n) = std::env::var("TRIPLELIGHT_REGROUP_SPILL_ROWS").ok().and_then(|v| v.parse().ok()) { return n }
     let budget = super::disk_index::cache_budget_mb().saturating_mul(1 << 20);
     (budget / 4 / 24).max(SPILL_FLOOR_ROWS)
 }
@@ -239,6 +241,9 @@ impl<'a> Regroup<'a> {
                     *pos += n;
                     self.ready -= n;
                     if *pos == rows.len() { self.out.pop_front(); }
+                    // Later groups keep being appended to this segment while it is read, so drop the consumed front
+                    // once it is the larger half (amortized O(1) per row; the segment never holds the whole scan).
+                    else if *pos > rows.len() / 2 { rows.drain(..*pos); *pos = 0 }
                 }
                 Segment::Spilled(_, reader) => {
                     let mut r = [0u8; 24];
