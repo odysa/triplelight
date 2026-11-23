@@ -23,6 +23,9 @@
 #                          on macOS the peak RSS of the loader's process tree plus the container (dry run only).
 #                          memory.peak is kept as `cgroup_memory_peak_bytes` but is not the headline: it counts the page
 #                          cache, which a bulk load fills up to the limit.
+#                          The headline is sampled every 2 s, so it is a lower bound (a short burst can fall between
+#                          samples; cgroup v2 keeps no anon high-water mark); memory.peak is an upper bound. Native loaders
+#                          also get the time utility's exact max RSS (client_max_rss_kb).
 #   peak_store_dir_kib     peak of the store directory (all of the system's scratch is configured to live there; see
 #                          SCRATCH below), at least the final size; final_store_kib after the load.
 #   tmp_growth_kib         peak growth of $TMPDIR during the load: a nonzero value means scratch escaped the store tree.
