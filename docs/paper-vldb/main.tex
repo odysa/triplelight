@@ -1,19 +1,20 @@
-\documentclass[10pt]{article}
-\usepackage[margin=0.9in]{geometry}
-\usepackage{booktabs,hyperref,amsmath}
+\documentclass[sigconf, nonacm]{acmart}
+%%% do not modify the following VLDB block %%%
+\usepackage{pvldb}% VLDB/PVLDB formatting overrides (PVLDB Vol. 20 template, vldbproceedings/VLDB-Template)
+%%% VLDB block end %%%
+\usepackage{booktabs,amsmath}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta}
 \newcommand{\todo}[1]{\textbf{[TODO: #1]}}
 \newcommand{\unread}{$^{\dagger}$}
-\title{TripleLight: an Embedded Analytical RDF Database}
-\author{TripleLight authors}
-\date{Draft, 2026-11-22 (target: VLDB 2027, February 1 cycle). Section~4 awaits the dedicated-machine measurements.}
+\renewcommand\vldbdoi{XX.XX/XXX.XX}
+\renewcommand\vldbpages{XXX-XXX}
+\renewcommand\vldbavailabilityurl{}% set to the public archive URL (the rental package plus the repository) before submission
 \begin{document}
-\maketitle
-
-\noindent\textbf{Status of this draft.} Every number cites its evidence file (\texttt{docs/...} in the repository).
-All cited papers were read in full, except web documentation cited as such (project READMEs and wikis, release notes). Timing results are deliberately absent: they are measured once, on one dedicated machine, under a registered protocol (\texttt{docs/eval-plan/PLAN.md}).
-Per the VLDB 2027 submission guidelines (checked by Jianlin): research review is single-blind, so author names and affiliations appear on page one; regular research papers may use 12 pages excluding references; the February~1 cycle needs an abstract by January~25 and the March~1 cycle one by February~25.
+\title{TripleLight: an Embedded Analytical RDF Database}
+\author{TripleLight authors \todo{names and affiliations: single-blind review, they appear on page one}}
+\affiliation{\institution{Institution to be filled in}\city{City}\country{Country}}
+\email{authors@example.org}
 
 \begin{abstract}
 Applications that need analytical queries over RDF data today run a database server or load the data into a general-purpose
@@ -23,6 +24,20 @@ SPARQL~1.1 queries run in the application's process, over dictionary-encoded IDs
 We describe the architecture and the techniques it combines, credit each to its source, and examine whether the comparison itself is fair, since
 engines differ in which triple-index orders they store.
 \end{abstract}
+
+\maketitle
+
+%%% do not modify the following VLDB block %%%
+\vldbtopmatter
+%%% VLDB block end %%%
+
+\begingroup\small
+\noindent\textbf{Status of this draft.} Every number cites its evidence file (\texttt{docs/...} in the repository).
+All cited papers were read in full, except web documentation cited as such (project READMEs and wikis, release notes). Timing results are deliberately absent: they are measured once, on one dedicated machine, under a registered protocol (\texttt{docs/eval-plan/PLAN.md}).
+Per the VLDB 2027 submission guidelines (checked by Jianlin): research review is single-blind, so author names and affiliations appear on page one; regular research papers may use 12 pages excluding references; the February~1 cycle needs an abstract by January~25 and the March~1 cycle one by February~25.
+
+\endgroup
+
 
 \section{Introduction}
 \paragraph{Analytical SPARQL inside the application.} Raasveldt and M\"uhleisen observe that data scientists increasingly analyze medium-sized data on their own computers with scripting languages, and argue for embedded analytical systems: tight integration with the analysis tool, efficient transfer of results into it, resilience on user hardware, and cooperation with the host application for resources~\cite{raasveldt2020}. RDF needs the same kind of system.
@@ -41,8 +56,8 @@ RDF stores and a SQL engine (C1a); and as an HTTP SPARQL server, against QLever,
 
 \paragraph{Contributions.}
 \begin{enumerate}
-  \item \textbf{Exact derived orders.} A disk store keeps four of the six triple orders and serves the other two with the same rows in the same order, so the planner and executor do not know which orders a base keeps. Two mechanisms make four enough: a stored twin with two key columns swapped, and a regroup of the stored sibling one first-column group at a time, with a memo that keeps leapfrog seeks linear (Section~3.1). The default stores are 36\% smaller on LUBM-1000 and 17\% smaller on BSBM-100M than six-order stores, and a trace of 255 benchmark queries recorded no regroup scans.
-  \item \textbf{An analytical store around one ID-ordered dictionary.} One front-coded dictionary in ID order, whose order equals term-text order within a kind, serves lookups by ID and by term, which shrank the BSBM-100M store from 12,533.1 to 7,936.3\,MB; operators join, group and count on IDs; counts are answered from index prefix metadata; and the disk build uses a fixed-width external sort, with a deduplicating parse whose effect we measure (Section~3.4).
+  \item \textbf{Exact derived orders.} A disk store keeps four of the six triple orders and serves the other two with the same rows in the same order, so the planner and executor do not know which orders a base keeps. Two mechanisms make four enough: a stored twin with two key columns swapped, and a regroup of the stored sibling one first-column group at a time, with a memo that keeps leapfrog seeks linear (Section~3.1). The default stores are 36\% smaller on LUBM-1000 and 17\% smaller on BSBM-100M than six-order stores, and a trace of 255 benchmark queries recorded no regroup scans, although the counters cover only the expensive paths and so undercount derived-order requests (Section~3.1).
+  \item \textbf{An analytical store around one ID-ordered dictionary.} One front-coded dictionary in ID order, whose order equals term-text order within a kind, serves lookups by ID and by term, which shrank the BSBM-100M store from 12,533.1 to 7,936.3\,MB compared with our own earlier two-file dictionary (not another system); operators join, group and count on IDs; counts are answered from index prefix metadata; and the disk build uses a fixed-width external sort, with a deduplicating parse whose effect we measure (Section~3.4).
   \item \textbf{A registered test of whether layout changes move rankings.} Engines differ in the triple orders they store (RDF-3X and Hexastore keep six; QLever has a two-order mode; RDF4J's native store is configurable), so a ranking can mix executor quality with index choice. Section~4.5 registers, before any measurement, how we compare rankings under default and aligned layouts and what would count as a negative answer.
 \end{enumerate}
 The individual techniques draw on earlier work, and Section~3 credits each source. TripleLight also implements the RDF 1.2 and SPARQL 1.2 drafts, which Oxigraph and Jena already do; we describe our design in Section~3.6 and make no priority claim.
@@ -70,12 +85,12 @@ with a saved file they were ready 0.74 to 0.91\,s after open, against 20.5 to 25
 Execution is intra-query parallel through Rayon: morsel-parallel BGP extension, parallel counting at the last join level, a parallel first level for leapfrog, and parallel result decoding and serialization; aggregation and the other operators run serially (code audit in task \#100; a thread-scaling run is planned on the dedicated machine). There is one writer and one process per store.
 Correctness is gated on answers matching Apache Jena under each benchmark's declared checks and on at least 323 passing W3C SPARQL~1.1 query tests in CI (\texttt{DESIGN.md}).
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\resizebox{\linewidth}{!}{\input{fig-architecture}}
+\resizebox{0.8\textwidth}{!}{\input{fig-architecture}}
 \caption{Architecture. A query passes the parser, the planner and the executor, which work on term IDs through one snapshot interface; the snapshot is an immutable base plus an overlay, read through a block cache that shares one memory budget.}
 \label{fig:arch}
-\end{figure}
+\end{figure*}
 
 \section{Techniques and Their Sources}
 \subsection{Four orders with exact derivation}
@@ -89,30 +104,34 @@ TripleLight keeps four orders: SPO, PSO, POS and OSP. The other two, SOP and OPS
   \item \emph{Regroup.} With zero or one bound column, the request is read from the stored sibling that shares the first key column (SPO for SOP, OSP for OPS), one first-column group at a time, and each group is sorted by the wanted key. Groups come out in ascending order of the shared column, so their concatenation is sorted. Memory is one group, and time is the rows read plus the per-group sorts.
   \item \emph{Seek memo.} A one-column-prefix seek on a derived order reads its group once into a memo of its sorted distinct second-column values. Later seeks in the same group, which leapfrog issues with rising targets, are binary searches; without the memo each seek would rescan the group, which is quadratic in the group size.
 \end{enumerate}
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\input{fig-derived-orders}
+\resizebox{0.7\textwidth}{!}{\input{fig-derived-orders}}
 \caption{Exact derived orders. A base stores SPO, OSP, POS and PSO. SOP and OPS answer every request with the rows and order a stored copy would give: through the twin, with two key columns swapped, when the first two columns are bound; otherwise by regrouping the sibling that shares the first column, one group at a time.}
 \label{fig:derived}
-\end{figure}
+\end{figure*}
+\begin{footnotesize}
 \begin{verbatim}
 scan(order, prefix):
   if stored(order): return scan_stored(order, prefix)
-  (twin, sibling) = route(order)       # SOP -> (OSP, SPO); OPS -> (POS, OSP)
-  if |prefix| >= 2: return swap01(scan_stored(twin, swap01(prefix)))
-  for group in scan_stored(sibling, prefix).group_by(col0):
-      yield sort_by(group, wanted_key)  # wanted key = sibling columns (0, 2, 1)
+  (twin, sib) = route(order)  # SOP: (OSP, SPO)
+                              # OPS: (POS, OSP)
+  if |prefix| >= 2:
+    return swap01(scan_stored(twin, swap01(prefix)))
+  for group in scan_stored(sib, prefix).group_by(col0):
+    yield sort_by(group, wanted_key)  # cols (0,2,1)
 \end{verbatim}
+\end{footnotesize}
 \emph{Cost.} Only a request on SOP or OPS with fewer than two bound columns pays anything beyond a stored order, namely one group sort; patterns of the shape \texttt{?s ?p o} joined on \texttt{s} before \texttt{p}, or \texttt{s ?p ?o} joined on \texttt{o}. The four stored orders serve the common analytical shapes (predicate-bound scans and joins) directly.
 \emph{Measured.} The default stores are 36\% smaller on LUBM-1000 (4.97 to 3.16\,GB) and 17\% smaller on BSBM-100M (7.94 to 6.56\,GB) than six-order stores (\texttt{docs/build-compare-orders-v1}). Build time does not improve measurably, because order builds run in batches of at most three. Across 255 benchmark queries, a trace recorded no regroup scans or memo misses and 18 twin remaps (a two-column-prefix rewrite that costs what a kept order costs), all on LUBM (\texttt{docs/ablation-qual-v1}); the counters cover only the expensive paths, since a one-column-prefix count on a derived order is answered from the sibling order and is not counted. Any latency effect is left to the timed four-against-six comparison in Section~4.4, and the rental's stress test measures the regroup path on the 50 highest-degree subjects and objects. How often real query logs reach a derived order is open (Section~5).
 
 \subsection{Counting from index metadata and ID-level aggregation}
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\resizebox{\linewidth}{!}{\input{fig-worked-query}}
+\resizebox{0.8\textwidth}{!}{\input{fig-worked-query}}
 \caption{A worked query: a grouped count answered from index prefix metadata (this form is the \texttt{rdf:type}-by-class grouping of the count-pushdown evidence, \texttt{docs/count-pushdown}).}
 \label{fig:worked}
-\end{figure}
+\end{figure*}
 
 Aggregation runs on IDs and decodes only the output (Figure~\ref{fig:worked}). For supported counts the executor reads exact range counts from the index instead of enumerating matches:
 a single-pattern \texttt{COUNT} is a prefix count, and a group-by on a permutation prefix counts each run (\texttt{docs/count-pushdown}). RDF-3X precomputes such counts as separate aggregated indexes~\cite{neumann2008};
@@ -126,7 +145,7 @@ Its costs are heuristic work units, not calibrated against elapsed time (\texttt
 \subsection{Build pipeline}
 A disk store is built by external sort: parallel shard parsing, a term sort, ID assignment and the order builds. On LUBM-1000 a four-order build took 654.8\,s on the development laptop (preliminary, single session), of which shard parsing and sorting took 38.7\%, the dictionary-side stages 35\% and the order builds 26.4\%
 (\texttt{docs/build-profile-v1}). Fixed-width sort rows were 4--5$\times$ faster than variable-length rows in a laptop microbenchmark (same file; preliminary). Terms repeat heavily: 7.9\% are distinct in LUBM-1000 and BSBM-100M and 3.2\% in WatDiv-100 over the whole file
-(\texttt{docs/parse-phase-v1}), which makes deduplication before sorting attractive. Each of the eight parse shards can replace repeated term texts by shard-local IDs before the external term sort, so the sort sees each distinct term once per map fill rather than once per occurrence, and a final pass remaps the rows to global IDs by array lookup. On LUBM-100 and BSBM-10M, four and six orders, the stores are byte-identical to the plain build. In one laptop ABBA session on LUBM-1000 (one binary, off, on, on, off), the build took 0.42$\times$ the time on the ABBA means (570 to 239\,s), the peak build directory about halved (47 to 20\,GB), system CPU fell about 4$\times$, and peak RSS rose by about 2.5\,GB for the shard maps (\texttt{docs/dedup-build-v1}; one session with strong drift and external load, so preliminary; the dedicated machine repeats it with six blocks). \todo{State that the map budget comes out of the build budget and give the 4\,GiB-cgroup RSS check once the productizing PR (\#178) has merged and its evidence is filed.}
+(\texttt{docs/parse-phase-v1}), which makes deduplication before sorting attractive. Each of the eight parse shards can replace repeated term texts by shard-local IDs before the external term sort, so the sort sees each distinct term once per map fill rather than once per occurrence, and a final pass remaps the rows to global IDs by array lookup. On LUBM-100 and BSBM-10M, four and six orders, the stores are byte-identical to the plain build. In one laptop ABBA session on LUBM-1000 (one binary, off, on, on, off), the build took 0.42$\times$ the time on the ABBA means (570 to 239\,s), the peak build directory about halved (47 to 20\,GB), system CPU fell about 4$\times$, and peak RSS rose by about 2.5\,GB for the shard maps (the prototype's fixed 256\,MB maps per shard) (\texttt{docs/dedup-build-v1}; one session with strong drift and external load, so preliminary; the dedicated machine repeats it with six blocks). \todo{State that the map budget comes out of the build budget and give the 4\,GiB-cgroup RSS check once the productizing PR (\#178) has merged and its evidence is filed.}
 QLever's index builder already maps the terms of each parse batch through a hash map into partial vocabularies before merging (source: \texttt{src/index/IndexImpl.cpp} and \texttt{IndexBuilderTypes.h} of ad-freiburg/qlever, master at \texttt{ba7b74c}, 2026-11-23), so we treat this as engineering that follows an existing design, not as a contribution.
 
 \subsection{Memory budget and cooperation}
@@ -137,7 +156,7 @@ TripleLight implements the W3C RDF 1.2 and SPARQL 1.2 drafts (Concepts is a Cand
 \emph{IDs.} A term ID carries its kind in its top four bits, and inside a kind ID order is term-text order. A triple term (\texttt{<<( s p o )>>}) is a fourth kind; equal triple terms have equal canonical text and therefore one ID, and they nest. Directional literals (\texttt{"x"@en--ltr}) stay literals, distinguished by their text. A \texttt{triple\_terms} table of rows (term, subject, predicate, object), sorted by term ID, answers ``the parts of this triple term'' in one block read, so the executor matches nested patterns on IDs without decoding text; parts that occur only inside a triple term are still dictionary terms.
 \emph{Format safety.} A store without any 1.2 term is byte-identical to an RDF 1.1 store, so every RDF 1.1 result in this paper is unaffected (checked on LUBM-100 with the feature off and on). A store with 1.2 data gets a new manifest version, which RDF 1.1 builds refuse, and a fence written to \texttt{CURRENT} before the first 1.2 change reaches the write-ahead log keeps an older binary from reading the new log line as a torn tail and truncating committed data (\texttt{docs/rdf12-storage-design.md}).
 \emph{Results and bindings.} SPARQL JSON writes a triple term as \texttt{\{"type":"triple","value":\{subject,predicate,object\}\}} and a base direction as \texttt{"its:dir"}, and announces \texttt{"version":"1.2"} only for results that contain a 1.2 term, so an RDF 1.1 client sees unchanged output; CSV and TSV writers follow the drafts; and the Python, Node, Java, Go, C and Arrow interfaces expose triple terms and directions.
-\emph{Conformance.} Under the \texttt{rdf-12} build feature the pinned W3C RDF 1.2 and SPARQL 1.2 test suites pass 509 of 509 cases; the SPARQL 1.1 query suite passes 323 of 353 with a CI floor of 323 (\texttt{ci/w3c\_floor.json}). \todo{cite the filed evidence for the 509 of 509 count.}
+\emph{Conformance.} Under the \texttt{rdf-12} build feature the pinned W3C RDF 1.2 and SPARQL 1.2 test suites pass 509 of 509 cases (runners \texttt{conformance/rdf12-diff/tests/w3c\_rdf12.rs} and \texttt{w3c\_sparql12.rs}, \texttt{w3c/rdf-tests} commit \texttt{56076c0e}, CI job \texttt{w3c12}); the SPARQL 1.1 query suite passes 323 of 353 with a CI floor of 323 (\texttt{ci/w3c\_floor.json}).
 
 \section{Evaluation}
 \subsection{Setup and answer gates}
@@ -163,7 +182,7 @@ Execution is parallel inside a query for joins, counting and result output, but 
 \paragraph{Limits.} Disk builds parse shards in parallel and overlap index builds (an average of 2.9 of 10 cores busy on LUBM-1000, \texttt{docs/build-profile-v1}) and need scratch disk of 1.7 to 2.1 times the input at the peak (\texttt{docs/build-compare-orders-v1}).
 Results are materialized before output. One process per store directory and one writer. Aggregation and the other operators beyond joins, counting and result output run serially, which a thread-scaling run in Section~4 quantifies. \texttt{LOAD}, \texttt{SERVICE}, \texttt{BNODE(string)} and blank-node graph names are unsupported (\texttt{DESIGN.md}).
 The cost of the derived orders on real query logs is not measured. LUBM, BSBM and WatDiv are synthetic and their structure is nearly fixed and unlike real RDF data~\cite{duan2011}; WDBench, built from Wikidata, partly answers that for the HTTP comparison.
-\paragraph{Related work.} \emph{Embedded analytics.} DuckDB sets the requirements for embedded analytical systems~\cite{raasveldt2020} and is described in a SIGMOD 2019 demonstration paper~\cite{raasveldt2019}; Kùzu is a disk-based, embeddable graph database queried in Cypher~\cite{feng2023}, so it is outside the SPARQL comparison. \todo{Confirm Kùzu's current maintenance status before saying more.}
+\paragraph{Related work.} \emph{Embedded analytics.} DuckDB sets the requirements for embedded analytical systems~\cite{raasveldt2020} and is described in a SIGMOD 2019 demonstration paper~\cite{raasveldt2019}; Kùzu is a disk-based, embeddable graph database queried in Cypher~\cite{feng2023}, so it is outside the SPARQL comparison; its GitHub repository (kuzudb/kuzu) is archived, and the latest release is v0.11.3 of 2025-10-10 (checked 2026-11-23).
 \emph{RDF engines.} RDF-3X~\cite{neumann2008}, Hexastore~\cite{weiss2008} and QLever~\cite{bast2017} are the index designs we compare in Section~3.1; Jena TDB stores its six orders in B+-trees~\cite{arroyuelo2021}; Oxigraph stores its indexes in a RocksDB key-value store~\cite{oxigraphwiki}; Oxigraph (pyoxigraph 0.5.13) and Jena 6.1 already support RDF 1.2 and SPARQL 1.2~\cite{oxigraphrdf12,jenarelease}. HDT~\cite{fernandez2013} is a compact binary RDF representation, split into a header, a dictionary and the triples, designed for publication and exchange with native support for simple query patterns; TripleLight is a queryable store with updates. Tentris~\cite{bigerl2020} is an in-memory triple store that keeps the graph as a sparse tensor in one structure (the hypertrie) that replaces several indexes, and evaluates joins with a worst-case-optimal multi-join algorithm; TripleLight keeps ordinary sorted blocks on disk. gStore~\cite{zou2011} stores RDF as a graph in a disk-based adjacency-list table with a signature-based index and answers SPARQL by subgraph matching. MillenniumDB~\cite{vrgoc2021} and RDF Fusion~\cite{schwarzinger2025} are the engines closest in aim, described in Section~1. EmptyHeaded~\cite{aberger2017} compiles multiway worst-case-optimal joins in a relational engine for graph analytics and is not an RDF store. Comunica~\cite{taelman2018} is a modular meta query engine for querying heterogeneous Web sources, and rdflib is a Python library whose stores are pluggable backends without a common index layout (\texttt{docs/embedded-store-inventory.md}); neither is a disk-resident analytical store.
 \emph{Layout and benchmarks.} Sidirourgos et al.\ re-evaluated the vertical-partitioning proposal on MonetDB/SQL and an anonymized commercial row-store DBMS (``DBX''), and found that clustering the triple table on PSO instead of the original SPO improved queries by factors of two to five on the row store~\cite{sidirourgos2008};
 Duan et al.\ showed that benchmark data differ from real RDF data in structuredness~\cite{duan2011}.
