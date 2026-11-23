@@ -554,14 +554,30 @@ fn next_line_boundary(path: &Path, offset: u64, size: u64) -> io::Result<u64> {
 fn from_nt_parallel(dir: &Path, path: Option<&Path>, workers: usize) -> io::Result<()> {
     from_nt_parallel_with(dir, path, workers, dedup_setting())
 }
-/// Deduplicating parse (task #91), off unless `TRIPLELIGHT_DEDUP_TERMS=1`: the byte budget of one shard's term map
-/// (`TRIPLELIGHT_DEDUP_MAP_MB`, 256 by default).
-fn dedup_setting() -> Option<usize> {
-    if std::env::var("TRIPLELIGHT_DEDUP_TERMS").as_deref() != Ok("1") { return None; }
-    let mb = std::env::var("TRIPLELIGHT_DEDUP_MAP_MB").ok().and_then(|v| v.parse::<usize>().ok()).unwrap_or(256);
-    Some(mb.max(1).saturating_mul(1_048_576))
+fn dedup_setting() -> Dedup {
+    if std::env::var("TRIPLELIGHT_DEDUP_TERMS").as_deref() == Ok("0") { return Dedup::Off }
+    match std::env::var("TRIPLELIGHT_DEDUP_MAP_MB").ok().and_then(|v| v.parse::<usize>().ok()) {
+        Some(mb) => Dedup::Map(mb.max(1).saturating_mul(1_048_576)),
+        None => Dedup::Auto,
+    }
 }
-fn from_nt_parallel_with(dir: &Path, path: Option<&Path>, workers: usize, dedup: Option<usize>) -> io::Result<()> {
+/// The deduplicating parse (task #91, `docs/dedup-build-v1`): each shard replaces repeated term texts by shard-local
+/// IDs before the term sort. On by default; `TRIPLELIGHT_DEDUP_TERMS=0` turns it off (an escape hatch kept for one
+/// release), and `TRIPLELIGHT_DEDUP_MAP_MB=n` fixes the map budget per shard.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Dedup {
+    /// The plain parse: one sort record per term occurrence.
+    Off,
+    /// Each shard's term map gets what its share of the build budget leaves after its term sorter, capped at
+    /// `DEDUP_MAP_MAX`, so map and sort buffers together stay within `--build-memory-mb` (cgroup-aware since #148). A
+    /// smaller map only flushes more often. Below `DEDUP_MAP_MIN` the shard parses plainly.
+    Auto,
+    /// A fixed map budget per shard, in bytes.
+    Map(usize),
+}
+const DEDUP_MAP_MAX: usize = 256 * 1024 * 1024;
+const DEDUP_MAP_MIN: usize = 1024 * 1024;
+fn from_nt_parallel_with(dir: &Path, path: Option<&Path>, workers: usize, dedup: Dedup) -> io::Result<()> {
     let Some(path) = path else { return from_nt(dir, None); };
     // A worker's merge must hold at least two maximum-length records and file buffers.
     // The global limit is an advisory allocation target, not an RSS guarantee.
@@ -569,7 +585,14 @@ fn from_nt_parallel_with(dir: &Path, path: Option<&Path>, workers: usize, dedup:
     let minimum = 2 * (TERM_SORT_RECORD_MAX + 8192 + 128);
     let shards = workers.clamp(1, 8).min((budget / minimum).max(1));
     if shards == 1 { return from_nt(dir, Some(path)); }
-    let worker_budget = (budget / shards).min(MEMORY);
+    // One shard's share of the budget: its term sorter first (as before), then its term map.
+    let share = budget / shards;
+    let worker_budget = share.min(MEMORY);
+    let dedup = match dedup {
+        Dedup::Off => None,
+        Dedup::Map(bytes) => Some(bytes),
+        Dedup::Auto => Some(share.saturating_sub(worker_budget).min(DEDUP_MAP_MAX)).filter(|&m| m >= DEDUP_MAP_MIN),
+    };
     let size = fs::metadata(path)?.len();
     let mut boundaries = vec![0u64];
     for i in 1..shards {
@@ -681,6 +704,9 @@ fn dedup_shard(dir: &Path, shard: usize, b: &mut Builder, input: impl BufRead, m
             if term.len() > MAX_TERM || term.as_bytes().contains(&0) {
                 return Err(bad("invalid or oversized encoded RDF term"));
             }
+            // RDF 1.2: a triple term's parts become dictionary terms too, as row-less records (`push_parts`).
+            #[cfg(feature = "rdf-12")]
+            if term.starts_with("<<(") && !map.contains_key(term.as_str()) { b.push_parts(&term)? }
             let local = match map.get(term.as_str()) {
                 Some(&local) => local,
                 None => {
@@ -703,7 +729,10 @@ fn dedup_shard(dir: &Path, shard: usize, b: &mut Builder, input: impl BufRead, m
     }
     flush(&mut map, b, &mut sorted_bytes)?;
     rows.flush()?;
-    eprintln!("[dedup shard {shard}] triples={} local_ids={next} flushes={flushes} record_bytes_to_sort={sorted_bytes}", b.triples);
+    // `flushes` counts the map evictions during the parse (the final drain is not one).
+    if std::env::var_os("TRIPLELIGHT_DEDUP_TRACE").is_some() {
+        eprintln!("[dedup shard {shard}] triples={} local_ids={next} flushes={flushes} record_bytes_to_sort={sorted_bytes}", b.triples);
+    }
     Ok(DedupShard { rows: rows_path, locals: next, triples: b.triples })
 }
 /// Writes `.triples.raw` rows from the dedup rows files: `assignments` holds one 17-byte record per local ID
@@ -733,8 +762,10 @@ fn remap_dedup(assignments: &mut impl Read, shards: &[DedupShard], out: &mut imp
     // The mapping is a `FixedSort<17>` output since #90: raw 17-byte records, no length prefix.
     let mut r = [0u8; 17];
     while read_fixed(assignments, &mut r)? {
-        if r[8] != 0 { return Err(bad("invalid term assignment")); }
         let id = u64::from_be_bytes(r[..8].try_into().unwrap());
+        // Row-less RDF 1.2 part records (`push_parts`) sort after every row; they map to no row.
+        if cfg!(feature = "rdf-12") && id == FREE_ROW && r[8] == FREE_POS { continue }
+        if r[8] != 0 { return Err(bad("invalid term assignment")); }
         let (shard, local) = ((id >> 56) as usize, id & LOCAL);
         if shard >= shards.len() || shard < done { return Err(bad("unordered term assignment")); }
         while done < shard { total += finish_shard(done, &table, out)?; table.clear(); done += 1; }
@@ -854,10 +885,10 @@ mod tests {
         let file = root.join("input.nt");
         fs::write(&file, &text).unwrap();
         let reference = root.join("plain");
-        from_nt_parallel_with(&reference, Some(&file), 8, None).unwrap();
+        from_nt_parallel_with(&reference, Some(&file), 8, Dedup::Off).unwrap();
         for (label, budget) in [("one-byte", 1usize), ("small", 4096), ("default", 256 << 20)] {
             let out = root.join(label);
-            from_nt_parallel_with(&out, Some(&file), 8, Some(budget)).unwrap();
+            from_nt_parallel_with(&out, Some(&file), 8, Dedup::Map(budget)).unwrap();
             for name in FILES[1..].iter().copied().chain(["dictionary.unified", "MANIFEST"]) {
                 assert_eq!(fs::read(reference.join(name)).unwrap(), fs::read(out.join(name)).unwrap(), "{label}: {name}");
             }
@@ -868,8 +899,8 @@ mod tests {
         let tiny = root.join("tiny.nt");
         fs::write(&tiny, "<urn:a> <urn:p> <urn:b> .\n<urn:a> <urn:p> <urn:b> .\n").unwrap();
         let (a, b) = (root.join("tiny-plain"), root.join("tiny-dedup"));
-        from_nt_parallel_with(&a, Some(&tiny), 8, None).unwrap();
-        from_nt_parallel_with(&b, Some(&tiny), 8, Some(1)).unwrap();
+        from_nt_parallel_with(&a, Some(&tiny), 8, Dedup::Off).unwrap();
+        from_nt_parallel_with(&b, Some(&tiny), 8, Dedup::Map(1)).unwrap();
         for name in FILES[1..].iter().copied().chain(["dictionary.unified", "MANIFEST"]) {
             assert_eq!(fs::read(a.join(name)).unwrap(), fs::read(b.join(name)).unwrap(), "tiny: {name}");
         }
