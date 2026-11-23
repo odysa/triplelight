@@ -1,0 +1,24 @@
+sop_prefix_scan: 0.000 s, 0 rows, 0 calls, remap_calls=0 regroup_scans=0 regroup_rows=0 regroup_groups=0 max_group=0 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=0 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+ops_prefix_scan: 0.000 s, 0 rows, 0 calls, remap_calls=0 regroup_scans=0 regroup_rows=0 regroup_groups=0 max_group=0 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=0 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+sop_seek_walk: 0.000 s, 0 rows, 0 calls, remap_calls=0 regroup_scans=0 regroup_rows=0 regroup_groups=0 max_group=0 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=0 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+ops_seek_walk: 0.000 s, 0 rows, 0 calls, remap_calls=0 regroup_scans=0 regroup_rows=0 regroup_groups=0 max_group=0 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=0 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+sop_full_scan: 9.779 s, 133613894 rows, 1 calls, remap_calls=0 regroup_scans=1 regroup_rows=133613894 regroup_groups=21735128 max_group=14 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=782378219 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+ops_full_scan: 5.103 s, 133613894 rows, 1 calls, remap_calls=0 regroup_scans=1 regroup_rows=133613894 regroup_groups=16156826 max_group=11168009 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=914515220 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+       25.96 real        24.84 user         1.10 sys
+           925138944  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               95606  page reclaims
+                   0  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 311  involuntary context switches
+        337805946873  instructions retired
+         83586065181  cycles elapsed
+           924828776  peak memory footprint
