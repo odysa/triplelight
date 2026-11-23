@@ -499,3 +499,22 @@ mod w3c_fixes {
         assert!(triplelight_sparql::parse_query("SELECT * WHERE { VALUES (?a ?b) { (1 1) } }", None).is_ok());
     }
 }
+
+/// Jianlin's #162 review: `!` recursion is bounded by MAX_NESTING, and a parenthesised predicate is not a simple
+/// predicate for a reifier.
+#[cfg(feature = "sparql-12")]
+mod review_162 {
+    #[test]
+    fn deep_negation_is_bounded() {
+        let deep = format!("SELECT ?e {{ VALUES ?v {{ true }} BIND({}?v AS ?e) }}", "!".repeat(300));
+        assert!(triplelight_sparql::parse_query(&deep, None).is_err());
+        assert!(triplelight_sparql::parse_query("SELECT ?e { VALUES ?v { true } BIND(!!!?v AS ?e) }", None).is_ok());
+    }
+    #[test]
+    fn parenthesised_predicate_cannot_take_a_reifier() {
+        assert!(triplelight_sparql::parse_query("SELECT * { ?s (<urn:p>) ?o ~ ?r }", None).is_err());
+        assert!(triplelight_sparql::parse_query("SELECT * { ?s (<urn:p>) ?o {| <urn:q> 1 |} }", None).is_err());
+        assert!(triplelight_sparql::parse_query("SELECT * { ?s <urn:p> ?o ~ ?r }", None).is_ok());
+        assert!(triplelight_sparql::parse_query("SELECT * { ?s a ?o ~ ?r }", None).is_ok());
+    }
+}

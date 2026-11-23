@@ -926,15 +926,21 @@ impl<'a> Parser<'a> {
 
     fn property_list_not_empty(&mut self, s: &TermPattern, out: &mut Vec<Elem>, paths: bool) -> R<()> {
         loop {
+            #[cfg(feature = "sparql-12")]
+            let verb_start = self.i;
             let verb = if let Tok::Var(_) = self.peek() { Verb::Var(self.var()?) }
                 else if paths { Verb::Path(self.path()?) }
                 else if self.eat_kw_a() { Verb::Path(PropertyPathExpression::NamedNode(rdf("type"))) }
                 else { Verb::Path(PropertyPathExpression::NamedNode(self.iri()?)) };
             // SPARQL 1.2: a reifier or annotation needs a simple predicate (an IRI, 'a' or a variable; §19.7 notes).
             #[cfg(feature = "sparql-12")]
+            // "Written as" a simple predicate: one token. A parenthesised `(<p>)` lowers to the same path but is not
+            // simple in the grammar, so it is refused here.
+            let one_token = self.i == verb_start + 1;
+            #[cfg(feature = "sparql-12")]
             let simple = match &verb {
                 Verb::Var(v) => Some(NamedNodePattern::Variable(v.clone())),
-                Verb::Path(PropertyPathExpression::NamedNode(n)) => Some(NamedNodePattern::NamedNode(n.clone())),
+                Verb::Path(PropertyPathExpression::NamedNode(n)) if one_token => Some(NamedNodePattern::NamedNode(n.clone())),
                 Verb::Path(_) => None,
             };
             loop {
@@ -1137,7 +1143,7 @@ impl<'a> Parser<'a> {
     fn unary(&mut self) -> R<Expression> {
         // SPARQL 1.2's UnaryExpression lets `!` apply to a UnaryExpression (`!!?x`); SPARQL 1.1 only to a primary.
         #[cfg(feature = "sparql-12")]
-        if self.eat_punct("!") { return Ok(Expression::Not(Box::new(self.unary()?))) }
+        if self.eat_punct("!") { return Ok(Expression::Not(Box::new(self.nested(|p| p.unary())?))) }
         #[cfg(not(feature = "sparql-12"))]
         if self.eat_punct("!") { return Ok(Expression::Not(Box::new(self.primary()?))) }
         if self.eat_punct("+") { return Ok(Expression::UnaryPlus(Box::new(self.primary()?))) }
