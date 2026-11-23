@@ -454,6 +454,69 @@ fn only_order_insensitive_consumers_are_pushed() {
 
 fn sorted(mut v: Vec<String>) -> Vec<String> { v.sort(); v }
 
+/// The tie-free proof needs every grouping key bound in every group. Grouped by an OPTIONAL key, the left subquery has
+/// the groups UNBOUND and <urn:t0>; both join the right subquery's <urn:t0> group, so two rows share ?k = <urn:t0>
+/// and `ORDER BY ?k LIMIT 1` picks by input order: not pushed. The same shape with a mandatory key is pushed.
+#[test]
+fn an_unbound_group_key_is_not_a_uniqueness_key() {
+    let mut nt = base_nt();
+    for i in 0..REVIEWS {
+        nt += &format!("<urn:r{i}> <urn:tag> <urn:t{}> .\n", i % 3);
+        if i % 2 == 0 { nt += &format!("<urn:r{i}> <urn:opt> <urn:t0> .\n"); }
+    }
+    let base = disk("unbound-key", &nt);
+    let range = format!("?d >= {} && ?d < {}", d("2007-10-10"), d("2007-10-15"));
+    let run = |q: &str, on: bool| {
+        let s = counting(&base.snap);
+        let got = ordered(&s, q, &opts(on));
+        (got, s.rows.load(Ordering::Relaxed), s.scans.load(Ordering::Relaxed))
+    };
+    let optional = format!(
+        "SELECT ?k ?a ?b WHERE {{ {{ SELECT ?k (COUNT(?r) AS ?a) WHERE {{ {{ ?r <urn:date> ?d FILTER({range}) }} OPTIONAL {{ ?r <urn:opt> ?k }} }} GROUP BY ?k }} \
+         {{ SELECT ?k (COUNT(?x) AS ?b) WHERE {{ ?x <urn:opt> ?k }} GROUP BY ?k }} }} ORDER BY ?k LIMIT 1");
+    let ((a, on_rows, on_scans), (b, off_rows, off_scans)) = (run(&optional, true), run(&optional, false));
+    assert_eq!(a, b, "{optional}");
+    assert_eq!((on_rows, on_scans), (off_rows, off_scans), "the OPTIONAL-keyed join was pushed down");
+    let mandatory = format!(
+        "SELECT ?k ?a ?b WHERE {{ {{ SELECT ?k (COUNT(?r) AS ?a) WHERE {{ ?r <urn:date> ?d . ?r <urn:tag> ?k FILTER({range}) }} GROUP BY ?k }} \
+         {{ SELECT ?k (COUNT(?x) AS ?b) WHERE {{ ?x <urn:tag> ?k }} GROUP BY ?k }} }} ORDER BY ?k LIMIT 1");
+    let ((a, on, _), (b, off, _)) = (run(&mandatory, true), run(&mandatory, false));
+    assert_eq!(a, b, "{mandatory}");
+    assert!(on < off, "the mandatory-keyed join was not pushed: {on} rows vs {off}");
+}
+
+/// The IRI-only proof for an object key is checked on the default graph. Under GRAPH the key comes from a named
+/// graph, where the same predicate has the literal objects 1 and 1.0 (distinct groups that ORDER BY ties): not pushed.
+#[test]
+fn a_key_from_a_named_graph_is_not_proven() {
+    let dir = tmp("graph-key");
+    std::fs::create_dir_all(&dir).unwrap();
+    let init = dir.join("init.nt");
+    std::fs::write(&init, format!("{}<urn:y> <urn:g> <urn:v1> .\n", base_nt())).unwrap();
+    let store = Store::open_with(dir.join("db"), Some(&init), Box::new(DiskBase { workers: 1 })).unwrap();
+    store.update("INSERT DATA { GRAPH <urn:G> { <urn:x1> <urn:g> 1 . <urn:x2> <urn:g> 1.0 } }").unwrap();
+    let snap = store.snapshot();
+    let range = format!("?d >= {} && ?d < {}", d("2007-10-10"), d("2007-10-15"));
+    let q = format!(
+        "SELECT ?k ?c WHERE {{ {{ SELECT ?k (COUNT(?r) AS ?c) WHERE {{ GRAPH <urn:G> {{ ?x <urn:g> ?k }} {{ ?r <urn:date> ?d FILTER({range}) }} }} GROUP BY ?k }} }} \
+         ORDER BY ?k LIMIT 1");
+    let run = |on: bool| {
+        let s = counting(&*snap);
+        let got = match triplelight::exec::query_dataset_with(&s, &*snap, &q, &opts(on)).unwrap_or_else(|e| panic!("{q}: {e}")) {
+            QueryResult::Solutions { rows, .. } => rows.iter().map(|r| r.iter().map(|t| t.as_ref().map_or("-".into(), |t| t.to_string())).collect::<Vec<_>>().join(" ")).collect::<Vec<_>>(),
+            r => panic!("{r:?}"),
+        };
+        (got, s.rows.load(Ordering::Relaxed), s.scans.load(Ordering::Relaxed))
+    };
+    let ((a, on_rows, on_scans), (b, off_rows, off_scans)) = (run(true), run(false));
+    assert_eq!(a, b, "{q}");
+    assert_eq!(a.len(), 1, "{q}");
+    assert_eq!((on_rows, on_scans), (off_rows, off_scans), "{q} was pushed down");
+    drop(snap);
+    drop(store);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 /// xorshift64*, as in the storage tests: deterministic and dependency-free.
 struct Rng(u64);
 impl Rng {

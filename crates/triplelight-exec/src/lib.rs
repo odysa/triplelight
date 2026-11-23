@@ -226,7 +226,9 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     ctx.general_group = opts.general_group;
     ctx.count_pushdown = opts.count_pushdown;
     ctx.range_pushdown = opts.range_pushdown;
-    if ctx.range_pushdown {
+    // With FROM / FROM NAMED the default graph is not `snap`, so nothing is marked (the pushdown also stays off
+    // whenever the active graph is not `snap`).
+    if ctx.range_pushdown && spec.is_none() {
         let pattern = match q { Query::Select { pattern, .. } | Query::Ask { pattern, .. } | Query::Construct { pattern, .. } | Query::Describe { pattern, .. } => pattern };
         let nodes = |p: &triplelight_rdf::NamedNode| range::iri_objects(snap, p);
         range::reorderable_bgps(pattern, true, &nodes, &mut ctx.range_reorderable);

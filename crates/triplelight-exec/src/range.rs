@@ -163,9 +163,9 @@ fn tie_free(p: &GraphPattern, nodes: &dyn Fn(&NamedNode) -> bool) -> bool {
     unique_on(inner).is_some_and(|vs| vs.iter().all(|(v, grouped)| keys.contains(v) && node_only(v, grouped, nodes)))
 }
 
-/// Whether every way `p` can bind `v` binds an IRI or a blank node: subject, predicate or GRAPH name, or the object of
-/// a constant predicate whose objects are all IRIs (`nodes`, i.e. `iri_objects`). A path endpoint, VALUES, BIND,
-/// aggregate result, SERVICE or (RDF 1.2) triple-term pattern is not proven.
+/// Whether every way `p` can bind `v` binds an IRI or a blank node: subject or predicate, or the object of a constant
+/// predicate whose objects in the default graph are all IRIs (`nodes`, i.e. `iri_objects`). A path endpoint,
+/// VALUES, BIND, aggregate result, SERVICE, GRAPH or (RDF 1.2) triple-term pattern is not proven.
 fn node_only(v: &str, p: &GraphPattern, nodes: &dyn Fn(&NamedNode) -> bool) -> bool {
     use crate::sparql::{NamedNodePattern, TermPattern};
     let is = |t: &TermPattern| matches!(t, TermPattern::Variable(x) if x.as_str() == v);
@@ -177,25 +177,32 @@ fn node_only(v: &str, p: &GraphPattern, nodes: &dyn Fn(&NamedNode) -> bool) -> b
         }),
         GraphPattern::Path { subject, object, .. } => !is(subject) && !is(object),
         GraphPattern::Values { variables, .. } => variables.iter().all(|x| x.as_str() != v),
-        GraphPattern::Service { .. } => false,
+        // Inside GRAPH the patterns read a named graph, where `nodes` (checked on the default graph) proves nothing.
+        GraphPattern::Service { .. } | GraphPattern::Graph { .. } => false,
         GraphPattern::Extend { inner, variable, .. } => variable.as_str() != v && node_only(v, inner, nodes),
         GraphPattern::Group { inner, aggregates, .. } => aggregates.iter().all(|(x, _)| x.as_str() != v) && node_only(v, inner, nodes),
         GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right }
         | GraphPattern::LeftJoin { left, right, .. } => node_only(v, left, nodes) && node_only(v, right, nodes),
-        GraphPattern::Filter { inner, .. } | GraphPattern::Graph { inner, .. } | GraphPattern::OrderBy { inner, .. }
+        GraphPattern::Filter { inner, .. } | GraphPattern::OrderBy { inner, .. }
         | GraphPattern::Project { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner }
         | GraphPattern::Slice { inner, .. } => node_only(v, inner, nodes),
     }
 }
 
 /// Variables on which the rows of `p` are unique (no two rows agree on all of them), if provable: a GROUP BY's keys
-/// (no keys: one row), kept through FILTER, BIND, DISTINCT/REDUCED and a projection that keeps them; a join of two
+/// when each is certainly bound inside it (`certainly_bound`: not only by OPTIONAL, one UNION branch, BIND or VALUES
+/// with UNDEF) (no keys: one row), kept through FILTER, BIND, DISTINCT/REDUCED and a projection that keeps them; a join of two
 /// such inputs is unique on the union (each row is one row of each side).
 fn unique_on(p: &GraphPattern) -> Option<Vec<(&str, &GraphPattern)>> {
     match p {
         // The empty group has exactly one solution (the identity of a join of subqueries).
         GraphPattern::Bgp { patterns } if patterns.is_empty() => Some(Vec::new()),
-        GraphPattern::Group { inner, variables, .. } => Some(variables.iter().map(|v| (v.as_str(), &**inner)).collect()),
+        // Each key must be bound in every group: an unbound key joins with any value, so two groups (UNBOUND and
+        // <x>) could meet one <x> group on the other side and give two rows with the same final key.
+        GraphPattern::Group { inner, variables, .. } => {
+            let bound = super::certainly_bound(inner);
+            variables.iter().all(|v| bound.contains(v.as_str())).then(|| variables.iter().map(|v| (v.as_str(), &**inner)).collect())
+        }
         GraphPattern::Filter { inner, .. } | GraphPattern::Extend { inner, .. } | GraphPattern::Distinct { inner }
         | GraphPattern::Reduced { inner } => unique_on(inner),
         GraphPattern::Project { inner, variables } => {
