@@ -6,7 +6,8 @@
 //!    the cache holds the order, else misses again);
 //! 2. `prefix1_<order>` / `prefix2_<order>`: the first batch (up to 4096 rows) of scans on `--keys` sampled one- and
 //!    two-column prefixes (spread evenly over the order), the shape of index nested-loop probes;
-//! 3. `seek_<order>`: `seek` with a one-column prefix and a rising target, the shape of leapfrog joins.
+//! 3. `repeat1_<order>`: one-column probes on 50 hot keys, four at a time, 25 rounds each;
+//! 4. `seek_<order>`: `seek` with a one-column prefix and a rising target, the shape of leapfrog joins.
 //!
 //!   cargo run --release -p triplelight-storage --example scan_bench -- <base-dir> [--keys 20000] [--passes 2]
 //!
@@ -68,6 +69,14 @@ fn main() -> std::io::Result<()> {
             for row in &sample { rows += drain_batches(&snap, perm, &key(row)[..width], 1, &mut sum)? }
             report(format!("prefix{width}_{perm:?}"), t.elapsed().as_secs_f64(), rows, sample.len() as u64, sum);
         }
+        // Repeated keys: 50 keys in rounds of 4, each round probed 25 times in turn, the shape of a query that
+        // probes a few hot keys (one class object) over and over.
+        let (t, mut sum, mut rows) = (Instant::now(), 0u64, 0u64);
+        let hot: Vec<&[TermId; 3]> = sample.iter().step_by((sample.len() / 50).max(1)).take(50).collect();
+        for round in hot.chunks(4) {
+            for _ in 0..25 { for row in round { rows += drain_batches(&snap, perm, &key(row)[..1], 1, &mut sum)? } }
+        }
+        report(format!("repeat1_{perm:?}"), t.elapsed().as_secs_f64(), rows, hot.len() as u64 * 25, sum);
         let (t, mut sum, mut calls) = (Instant::now(), 0u64, 0u64);
         for row in &sample {
             let k = key(row);
