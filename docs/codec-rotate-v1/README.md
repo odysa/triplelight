@@ -30,6 +30,16 @@ as before.
 | dictionary | 672,136,499 | 672,136,499 | 1.00 |
 | **store total** | 3,163,276,415 | 2,623,283,152 | **0.83** |
 
+**BSBM-100M** on the new codec (`bsbm-sizes.txt`; the same build binary as the LUBM store, `build-disk` and
+`build-disk --orders=6`):
+
+| Store | spo | pso | pos | osp | sop | ops | dictionary | total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| four orders | 705.4 MB | 286.1 MB | 252.8 MB | 299.4 MB | | | 4,620.2 MB | 6.16 GB |
+| six orders | 705.4 MB | 286.1 MB | 252.8 MB | 299.4 MB | 705.4 MB | 268.2 MB | 4,620.2 MB | 7.14 GB |
+
+The four-order store is 0.86× the six-order one. The dictionary is three quarters of either.
+
 **Full scans** (seconds per pass, main r1/r4 against rotated r2/r3; main against main is within 1% except PSO pass
 0, at 3.5%):
 
