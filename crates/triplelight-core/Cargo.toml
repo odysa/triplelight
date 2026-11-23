@@ -10,6 +10,10 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+# RDF 1.2 terms in the storage interface (`Dictionary::triple_term_parts`).
+rdf-12 = ["triplelight-rdf/rdf-12"]
+
 [dependencies]
 triplelight-rdf.workspace = true
 triplelight-iri.workspace = true
