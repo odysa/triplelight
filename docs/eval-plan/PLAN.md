@@ -323,3 +323,9 @@ under the limits is cached; `docs/qlever-cache-check-v1`), so the driver empties
 request, warm-up included, and stops the run if the call fails. Every earlier laptop warm number for QLever on small-result
 queries is invalid as an execution time. TripleLight has no result cache. The other servers document none and the rental
 re-checks that on day one.
+
+**B8. Large answers (registered 2026-11-23, before any rental measurement).** For a request whose reference answer has 200,000 or
+more rows, the one hashed answer check is the warm-up run and the timed runs only read the body to its last byte (time to last
+byte), each required to match the check run's byte count and to end in a complete document (`docs/large-answer-timing-v1`).
+Earlier warm numbers for such requests (LUBM Q6, Q14, about 7.9M rows) measured the driver's Python hash, not the engines.
+

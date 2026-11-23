@@ -6,6 +6,9 @@ Warm means: buffers, the OS page cache and indexes are warm, but NO system may a
 records `cache_clear_failed`. TripleLight has no result cache (block caches and a per-snapshot seek memo only); the other
 servers document none, which the rental re-checks (docs/qlever-cache-check-v1).
 
+Large answers (reference rows >= --drain-rows): the warm-up run is the one hashed check; the timed runs only drain the body (time to
+last byte) and must match its byte count (docs/large-answer-timing-v1).
+
   driver.py reference --queries DIR --url URL --out ref.json     answers of the reference system (Jena), untimed
   driver.py run --system NAME --url URL --queries DIR --reference ref.json --out out.json [--mode warm|cold]
   driver.py selftest                                             classifier and streaming checks on fake endpoints
@@ -138,8 +141,19 @@ def post(url, query, timeout):
     return resp.status, chunks(), conn
 
 
-def one_run(url, query, timeout):
-    """One timed execution to the last byte. Returns (record dict, seconds)."""
+def drain(chunks, deadline):
+    """Reads the body to the last byte without parsing it: returns its byte count and whether it ends like a complete SPARQL JSON
+    document (the closing braces). Used for the timed runs of large answers, where hashing the rows in Python is slower than any
+    engine (7.9M rows take about 20 s to fold) and would be what gets timed."""
+    n, tail = 0, b""
+    for c in chunks:
+        if time.monotonic() > deadline: raise Timeout()
+        n += len(c); tail = (tail + c)[-32:]
+    return {"bytes": n, "tail_ok": tail.rstrip().endswith(b"}")}
+
+
+def one_run(url, query, timeout, drain_only=False):
+    """One timed execution to the last byte. Returns (record dict, seconds). With `drain_only` the body is only counted (see `drain`)."""
     t0 = time.monotonic(); deadline = t0 + timeout
     try:
         status, chunks, conn = post(url, query, timeout)
@@ -147,7 +161,14 @@ def one_run(url, query, timeout):
             if status != 200:
                 body = b"".join(chunks)[:200]
                 return {"status": "error", "detail": f"HTTP {status}: {body!r}"}, time.monotonic() - t0
-            rec = stream_fold(chunks, deadline)
+            if drain_only:
+                rec = drain(chunks, deadline)
+            else:
+                box = [0]
+                def counted():
+                    for c in chunks: box[0] += len(c); yield c
+                rec = stream_fold(counted(), deadline)
+                rec["bytes"] = box[0]
         finally:
             conn.close()
         rec["status"] = "ok"
@@ -259,18 +280,32 @@ def cmd_run(a):
             runs = 1
         else:
             clear_engine_cache(a, entry)
-            rec, _ = one_run(a.url, q, a.timeout)       # warm-up, not recorded
-            restart_after_timeout(a, rec, entry)
+            check, _ = one_run(a.url, q, a.timeout)       # warm-up; for a large answer it is also the one answer check
+            restart_after_timeout(a, check, entry)
             runs = a.runs
+            # Large answers: the timed runs only drain the body (time to the last byte); the rows were hashed once above, and a
+            # drained run must return exactly as many bytes as that check or it is recorded as unstable.
+            if r["rows"] >= a.drain_rows:
+                check_cls = classify(check, r)
+                entry["timed_by"] = "drain"
+                entry["check_class"] = check_cls
+                if check_cls not in ("pass", "value-compatible"): runs = 0      # a wrong or incomplete answer is never timed
+                else: drain_bytes = check["bytes"]
         for _ in range(runs):
             clear_engine_cache(a, entry)
             t0 = time.time()   # wall-clock bounds of the run, so S1's cgroup samples can be joined per query (s1-report.py)
-            rec, secs = one_run(a.url, q, a.timeout)
+            drained = entry.get("timed_by") == "drain"
+            rec, secs = one_run(a.url, q, a.timeout, drain_only=drained)
             t1 = time.time()
             restart_after_timeout(a, rec, entry)
-            cls = classify(rec, r)
-            entry["runs"].append({"class": cls, "seconds": round(secs, 4), "t0": round(t0, 3), "t1": round(t1, 3), **{k: rec[k] for k in ("rows", "bag", "seq") if k in rec},
+            if drained and rec["status"] == "ok":
+                cls = entry["check_class"] if rec["bytes"] == drain_bytes and rec["tail_ok"] else "unstable"
+                rec = {**rec, **{k: check[k] for k in ("rows", "bag", "seq") if k in check}}
+            else: cls = classify(rec, r)
+            entry["runs"].append({"class": cls, "seconds": round(secs, 4), "t0": round(t0, 3), "t1": round(t1, 3), **{k: rec[k] for k in ("rows", "bag", "seq", "bytes") if k in rec},
                                   **({"detail": rec["detail"]} if "detail" in rec else {})})
+        if entry.get("timed_by") == "drain" and not entry["runs"]:
+            entry["runs"].append({"class": entry["check_class"], "seconds": None, **{k: check[k] for k in ("rows", "bag", "seq", "bytes") if k in check}})
         classes = {x["class"] for x in entry["runs"]}
         entry["class"] = classes.pop() if len(classes) == 1 else "unstable"
         ok_runs = [x["seconds"] for x in entry["runs"] if x["class"] in ("pass", "value-compatible")]
@@ -352,6 +387,13 @@ def cmd_selftest(a):
         try: got = stream_fold(iter([data[i:i + size] for i in range(0, len(data), size)]), time.monotonic() + 600)
         finally: MIN_READ = 64 << 10
         same = got == plain.result(); print(f"stream   {rows} rows, chunks of {size} bytes", "ok" if same else "FAIL"); ok &= same
+    # large answers: a drained run returns the same byte count as the hashed check run, and a cut-off document fails the tail test
+    for name in ("good", "trunc"):
+        full, _ = one_run(f"http://127.0.0.1:{port}/{name}", "SELECT * WHERE {}", 30)
+        dr, _ = one_run(f"http://127.0.0.1:{port}/{name}", "SELECT * WHERE {}", 30, drain_only=True)
+        if name == "good": good = dr["status"] == "ok" and dr["bytes"] == full["bytes"] and dr["tail_ok"]
+        else: good = full["status"] == "truncated" and dr["status"] == "ok" and not dr["tail_ok"]
+        print(f"drain    {name}: bytes {dr.get('bytes')}, tail_ok {dr.get('tail_ok')}", "ok" if good else "FAIL"); ok &= good
     print("SELFTEST", "PASSED" if ok else "FAILED"); sys.exit(0 if ok else 1)
 
 
@@ -376,6 +418,7 @@ def main():
     x = sub.add_parser("run"); x.add_argument("--system", required=True); x.add_argument("--url", required=True)
     x.add_argument("--queries", required=True); x.add_argument("--reference", required=True); x.add_argument("--out", required=True)
     x.add_argument("--mode", choices=["warm", "cold"], default="warm"); x.add_argument("--cold-hook")
+    x.add_argument("--drain-rows", type=int, default=200000, help="answers of at least this many reference rows are timed by draining the body, after one hashed check run")
     x.add_argument("--clear-cache-url", help="GET before every request (warm-up and timed) to empty the server's result cache")
     x.add_argument("--restart-hook", help="command that restarts the server; run after every timed-out query (warm mode)")
     x.add_argument("--runs", type=int, default=5); x.add_argument("--timeout", type=float, default=300); x.add_argument("--seed", type=int, default=0)
