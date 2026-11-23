@@ -233,6 +233,15 @@ dependencies = [
  "oxttl",
  "triplelight-core",
  "triplelight-rdf",
+ "triplelight-sparql",
+]
+
+[[package]]
+name = "triplelight-sparql"
+version = "0.1.0"
+dependencies = [
+ "triplelight-core",
+ "triplelight-iri",
 ]
 
 [[package]]

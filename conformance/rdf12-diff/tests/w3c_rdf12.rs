@@ -1,18 +1,13 @@
 //! The W3C RDF 1.2 syntax and evaluation suites for the four line/terse formats.
-use oxrdf::{
-    CanonicalizationAlgorithm, Dataset, Graph, NamedNodeRef, NamedOrBlankNodeRef, TermRef,
-};
-use std::fs;
+use oxrdf::{CanonicalizationAlgorithm, Dataset};
 use std::path::Path;
-use std::process::Command;
 use triplelight_core::ntriples::{read_nquads, read_ntriples};
 use triplelight_core::turtle::TurtleReader;
 use triplelight_rdf as tl;
 
-const COMMIT: &str = "56076c0efec4c353efcae2971be8f6005294ac64";
-const ORIGIN: &str = "https://w3c.github.io/rdf-tests/";
-const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
-const MF: &str = "http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#";
+mod w3c;
+use w3c::{MF, RDF, entries, fixture, iri, load_manifest, pinned_checkout, property};
+
 const RDFT: &str = "http://www.w3.org/ns/rdftest#";
 
 // Suite pin above is the November 18, 2026 test revision. The draft dates are
@@ -113,45 +108,6 @@ fn isomorphic(mut expected: Dataset, mut actual: Dataset) -> bool {
     expected == actual
 }
 
-fn fixture(root: &Path, iri: &str) -> Vec<u8> {
-    let relative = iri.strip_prefix(ORIGIN).expect("W3C fixture IRI");
-    fs::read(root.join(relative)).unwrap_or_else(|error| panic!("{iri}: {error}"))
-}
-
-fn property<'a>(
-    graph: &'a Graph,
-    subject: NamedOrBlankNodeRef<'a>,
-    prefix: &str,
-    local: &str,
-) -> TermRef<'a> {
-    let predicate = format!("{prefix}{local}");
-    let mut matches =
-        graph.objects_for_subject_predicate(subject, NamedNodeRef::new_unchecked(&predicate));
-    let value = matches
-        .next()
-        .unwrap_or_else(|| panic!("missing {local} on {subject}"));
-    assert!(
-        matches.next().is_none(),
-        "multiple {local} values on {subject}"
-    );
-    value
-}
-
-fn node(term: TermRef<'_>) -> NamedOrBlankNodeRef<'_> {
-    match term {
-        TermRef::NamedNode(value) => value.into(),
-        TermRef::BlankNode(value) => value.into(),
-        _ => panic!("expected IRI or blank node: {term}"),
-    }
-}
-
-fn iri(term: TermRef<'_>) -> &str {
-    match term {
-        TermRef::NamedNode(value) => value.as_str(),
-        _ => panic!("expected an IRI: {term}"),
-    }
-}
-
 fn expected_output(root: &Path, path: &str) -> Dataset {
     let data = fixture(root, path);
     if path.ends_with(".nt") {
@@ -198,43 +154,17 @@ fn comparison_checks_nested_blank_node_identity_and_direction() {
 #[test]
 #[ignore = "requires the exact W3C rdf-tests checkout in TL_RDF_TESTS"]
 fn rdf12_w3c_syntax_and_evaluation() {
-    let root = std::env::var_os("TL_RDF_TESTS").expect("set TL_RDF_TESTS to the pinned checkout");
-    let root = Path::new(&root);
-    let head = Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .current_dir(root)
-        .output()
-        .unwrap();
-    assert!(head.status.success());
-    assert_eq!(String::from_utf8(head.stdout).unwrap().trim(), COMMIT);
-
+    let root = pinned_checkout();
     let mut failures = Vec::new();
     let mut total = 0;
     for &(suite, format, count) in SUITES {
-        let manifest = format!("{ORIGIN}rdf/rdf12/{suite}/manifest.ttl");
-        let contents = fixture(root, &manifest);
-        let graph: Graph = oxttl::TurtleParser::new()
-            .with_base_iri(&manifest)
-            .unwrap()
-            .for_slice(&contents)
-            .collect::<Result<_, _>>()
-            .unwrap();
-        let entries = NamedNodeRef::new_unchecked(
-            "http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#entries",
-        );
-        let mut heads = graph
-            .triples_for_predicate(entries)
-            .map(|triple| triple.object);
-        let mut next = heads.next().expect("manifest entry list");
-        assert!(heads.next().is_none());
-        let mut visited = std::collections::HashSet::new();
-        while next != TermRef::NamedNode(oxrdf::vocab::rdf::NIL) {
-            let entry = node(property(&graph, node(next), RDF, "first"));
-            next = property(&graph, node(next), RDF, "rest");
-            assert!(visited.insert(entry), "repeated case {entry}");
+        let graph = load_manifest(&root, &format!("rdf/rdf12/{suite}/manifest.ttl"));
+        let cases = entries(&graph);
+        assert_eq!(cases.len(), count, "{suite}");
+        for entry in cases {
             let data = iri(property(&graph, entry, MF, "action"));
             let kind = iri(property(&graph, entry, RDF, "type"));
-            let outcome = parse(&fixture(root, data), format, data);
+            let outcome = parse(&fixture(&root, data), format, data);
             let suffix = kind
                 .strip_prefix(RDFT)
                 .and_then(|kind| kind.strip_prefix("Test"))
@@ -249,7 +179,7 @@ fn rdf12_w3c_syntax_and_evaluation() {
                 },
                 "Eval" => {
                     let expected =
-                        expected_output(root, iri(property(&graph, entry, MF, "result")));
+                        expected_output(&root, iri(property(&graph, entry, MF, "result")));
                     match outcome {
                         Ok(actual) => {
                             (!isomorphic(expected, actual)).then(|| "dataset differs".into())
@@ -266,7 +196,6 @@ fn rdf12_w3c_syntax_and_evaluation() {
                 println!("PASS {entry}");
             }
         }
-        assert_eq!(visited.len(), count, "{suite}");
         total += count;
     }
     assert_eq!(total, 238);
