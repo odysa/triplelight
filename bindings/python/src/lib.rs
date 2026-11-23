@@ -26,11 +26,11 @@ fn err(e: DatabaseError) -> PyErr {
 }
 
 /// Python classes from `triplelight/__init__.py`, looked up once per call.
-struct Classes<'py> { iri: Bound<'py, PyAny>, bnode: Bound<'py, PyAny>, literal: Bound<'py, PyAny> }
+struct Classes<'py> { iri: Bound<'py, PyAny>, bnode: Bound<'py, PyAny>, literal: Bound<'py, PyAny>, triple: Bound<'py, PyAny> }
 impl<'py> Classes<'py> {
     fn get(py: Python<'py>) -> PyResult<Self> {
         let m = py.import("triplelight")?;
-        Ok(Classes { iri: m.getattr("IRI")?, bnode: m.getattr("BNode")?, literal: m.getattr("Literal")? })
+        Ok(Classes { iri: m.getattr("IRI")?, bnode: m.getattr("BNode")?, literal: m.getattr("Literal")?, triple: m.getattr("Triple")? })
     }
 }
 const XSD_STRING: &str = "http://www.w3.org/2001/XMLSchema#string";
@@ -44,7 +44,15 @@ fn to_py<'py>(py: Python<'py>, c: &Classes<'py>, t: &Term) -> PyResult<Bound<'py
         Term::NamedNode(n) => c.iri.call1((n.as_str(),)),
         Term::BlankNode(b) => c.bnode.call1((b.as_str(),)),
         Term::Literal(l) => {
-            if let Some(lang) = l.language() { return c.literal.call1((l.value(), py.None(), lang)) }
+            if let Some(lang) = l.language() {
+                // a base direction ("ltr"/"rtl", RDF 1.2) is the fourth Literal field; plain language tags keep three
+                #[cfg(feature = "rdf-12")]
+                if let Some(dir) = l.direction() {
+                    let d = match dir { triplelight::rdf::BaseDirection::Ltr => "ltr", triplelight::rdf::BaseDirection::Rtl => "rtl" };
+                    return c.literal.call1((l.value(), py.None(), lang, d))
+                }
+                return c.literal.call1((l.value(), py.None(), lang))
+            }
             let dt = l.datatype().as_str();
             let v = l.value();
             if dt == XSD_STRING { return Ok(v.into_pyobject(py)?.into_any()) }
@@ -54,8 +62,13 @@ fn to_py<'py>(py: Python<'py>, c: &Classes<'py>, t: &Term) -> PyResult<Bound<'py
             if dt == XSD_BOOLEAN && (v == "true" || v == "false") { return Ok(pyo3::types::PyBool::new(py, v == "true").to_owned().into_any()) }
             c.literal.call1((v, dt, py.None()))
         }
-        #[allow(unreachable_patterns)]
-        _ => Ok(py.None().into_bound(py)),
+        // RDF 1.2 triple term -> Triple(subject, predicate, object), recursive
+        #[cfg(feature = "rdf-12")]
+        Term::Triple(t) => {
+            let s: Term = t.subject.clone().into();
+            let p: Term = t.predicate.clone().into();
+            c.triple.call1((to_py(py, c, &s)?, to_py(py, c, &p)?, to_py(py, c, &t.object)?))
+        }
     }
 }
 
