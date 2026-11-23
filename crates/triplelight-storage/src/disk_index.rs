@@ -192,15 +192,28 @@ where
 
 /// Write a sorted stream whose exact row count is known; propagate source read errors.
 pub fn write_index_stream<const N: usize>(
-    mut out: impl Write,
+    out: impl Write,
     count: u64,
     rows: impl Iterator<Item = io::Result<[TermId; N]>>,
 ) -> io::Result<()>
 where
     Width<N>: SupportedWidth<N>,
 {
+    write_index_format(out, count, rows, true)
+}
+/// `rotate`: the current format (`SupportedWidth::MAGIC`, tag-rotated columns allowed); otherwise the previous one
+/// (`OLDER`), which tests use to check that older files stay readable.
+fn write_index_format<const N: usize>(
+    mut out: impl Write,
+    count: u64,
+    rows: impl Iterator<Item = io::Result<[TermId; N]>>,
+    rotate: bool,
+) -> io::Result<()>
+where
+    Width<N>: SupportedWidth<N>,
+{
     let mut header = [0u8; 24];
-    header[..8].copy_from_slice(<Width<N> as SupportedWidth<N>>::MAGIC);
+    header[..8].copy_from_slice(if rotate { <Width<N> as SupportedWidth<N>>::MAGIC } else { <Width<N> as SupportedWidth<N>>::OLDER });
     header[8..16].copy_from_slice(&count.to_le_bytes());
     header[16..].copy_from_slice(&BLOCK_ROWS.to_le_bytes());
     out.write_all(&header)?;
@@ -213,7 +226,7 @@ where
             if block.is_empty() {
                 return Ok(());
             }
-            let bytes = super::block_codec::encode(block, true)?;
+            let bytes = super::block_codec::encode(block, rotate)?;
             for id in block.last().unwrap() {
                 meta.extend_from_slice(&id.0.to_le_bytes());
             }
@@ -888,6 +901,31 @@ mod tests {
         assert!(index.block_shared(2).is_ok());
         assert!(index.cache[2 % index.cache.len()].read().unwrap().entries.contains_key(&2));
         std::fs::remove_file(path).unwrap();
+    }
+    /// `RDFIDX03` files (no rotated columns) stay readable, and `RDFIDX04` stores mixed-tag columns in less space.
+    #[test]
+    fn older_and_current_formats_read_the_same_rows_and_mixed_tags_shrink() {
+        // Objects mix IRIs (tag 1), literals (tag 3) and inline numbers (tag 0xf), as in an SPO order.
+        let tag = |t: u64, rank: u64| TermId((t << 60) | rank);
+        let rows: Vec<[TermId; 3]> = (0..2000u64)
+            .map(|i| [tag(1, 10 + i / 6), tag(1, 3 + i % 6), tag([1, 3, 0xf][(i % 3) as usize], 1 + i * 37)])
+            .collect();
+        let (mut current, mut older) = (Vec::new(), Vec::new());
+        write_index_format(&mut current, rows.len() as u64, rows.iter().copied().map(Ok), true).unwrap();
+        write_index_format(&mut older, rows.len() as u64, rows.iter().copied().map(Ok), false).unwrap();
+        assert_eq!(&current[..8], MAGIC_V4);
+        assert_eq!(&older[..8], MAGIC_V3);
+        assert!(current.len() * 3 < older.len() * 2, "rotated object columns: {} against {} bytes", current.len(), older.len());
+        for (name, bytes) in [("current", &current), ("older", &older)] {
+            let path = std::env::temp_dir().join(format!("rdf-index-format-{name}-{}", std::process::id()));
+            std::fs::write(&path, bytes).unwrap();
+            let index = DiskIndex::<3>::open(&path).unwrap();
+            index.validate().unwrap();
+            let got: Vec<[TermId; 3]> = (0..index.len()).map(|i| index.get(i).unwrap()).collect();
+            assert_eq!(got, rows, "{name}");
+            assert_eq!(index.range(&[rows[700][0]]).unwrap().len(), 6, "{name}");
+            std::fs::remove_file(&path).unwrap();
+        }
     }
     /// A graph-first quad index answers `range`, `seek_value`, `get` and block reads like a sorted row model, across
     /// block boundaries, and each width refuses the other's files.
