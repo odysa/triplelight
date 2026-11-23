@@ -114,6 +114,10 @@ fn rdf12_w3c_syntax_and_evaluation() {
         total += count;
     }
     assert_eq!(total, 238);
+    println!(
+        "RDF 1.2 parser: {}/238 W3C cases pass",
+        total - failures.len()
+    );
     assert!(
         failures.is_empty(),
         "{}/{} failed: {failures:?}",
