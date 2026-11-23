@@ -6,7 +6,7 @@
 use crate::rdf::{BlankNode, GraphName, Literal, NamedNode, NamedOrBlankNode, Quad, ReadError, Term, Triple};
 use std::io::BufRead;
 #[cfg(feature = "rdf-12")]
-use triplelight_rdf::BaseDirection;
+use triplelight_rdf::{BaseDirection, MAX_TRIPLE_TERM_DEPTH};
 
 const RDF_LANG_STRING: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString";
 
@@ -90,6 +90,9 @@ impl<'a> Line<'a> {
         // validate all closing delimiters before constructing the nested value.
         let mut parts = Vec::new();
         while self.starts_with(b"<<(") {
+            if parts.len() == MAX_TRIPLE_TERM_DEPTH {
+                return Err(format!("Triple term depth exceeds {MAX_TRIPLE_TERM_DEPTH}").into());
+            }
             self.pos += 3;
             self.skip_ws();
             parts.push(self.subject_predicate()?);
@@ -540,6 +543,27 @@ mod tests {
             "VERSION \"1.2\"\n<urn:s> <urn:p> <urn:o> .",
         ] {
             assert!(parse_nquads_line(bad).is_none(), "{bad}");
+        }
+    }
+
+    #[cfg(feature = "rdf-12")]
+    #[test]
+    fn rdf12_line_depth_matches_dictionary() {
+        for depth in [MAX_TRIPLE_TERM_DEPTH, MAX_TRIPLE_TERM_DEPTH + 1] {
+            let object = format!("{}<urn:o>{}", "<<( <urn:s> <urn:p> ".repeat(depth), " )>>".repeat(depth));
+            let document = format!("<urn:s> <urn:p> {object} .");
+            let line = parse_nquads_line(&document);
+            let triple = read_ntriples(document.as_bytes()).next().unwrap();
+            let dictionary = object.parse::<Term>();
+            if depth == MAX_TRIPLE_TERM_DEPTH {
+                let object = dictionary.unwrap();
+                assert_eq!(line.unwrap().object, object);
+                assert_eq!(triple.unwrap().object, object);
+            } else {
+                assert!(dictionary.is_err());
+                assert!(line.is_none());
+                assert!(matches!(triple, Err(ReadError::Syntax(message)) if message.contains("Triple term depth")));
+            }
         }
     }
 
