@@ -294,8 +294,16 @@ impl DiskSnapshot {
         let shares = 3 + order_count + if named_graphs { order_count } else { 0 };
         // RDFSNAP5: the RDFSNAP4 identities, then six quad orders and the catalog.
         let mut expected = vec![[0u8; 32]; if version == 3 { 2 } else { 1 } + order_count + if named_graphs { order_count + 1 } else { 0 } + usize::from(version == 7)];
-        for item in &mut expected {
-            manifest.read_exact(item)?;
+        let last = expected.len() - 1;
+        for (i, item) in expected.iter_mut().enumerate() {
+            match manifest.read_exact(item) {
+                // RDFSNAP7 bases written before the parts table existed (unreleased, `rdf-12` builds of e51312ec)
+                // end one identity early.
+                Err(e) if version == 7 && i == last && e.kind() == io::ErrorKind::UnexpectedEof => {
+                    return Err(bad("RDFSNAP7 base without a triple-term table: rebuild it"));
+                }
+                r => r?,
+            }
         }
         let mut extra = [0];
         if manifest.read(&mut extra)? != 0 {
