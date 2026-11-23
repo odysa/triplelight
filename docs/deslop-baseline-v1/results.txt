@@ -1,0 +1,19 @@
+main 141b073523a2fa0d8efa9b8a35c98cc222eac250
+install exit 0
+usage: deslop-please [crate_or_mod] [--allow <path>] [--update-allow <path>]
+
+Runs architectural lints (module-cycle, tangle, field-leak, shallow-module,
+wide-directory, long-file) on the Cargo workspace.
+
+options:
+<crate_or_mod>          check only one crate or module (e.g. my-crate)
+--allow <path>          suppress listed existing debt; new errors still fail
+--update-allow <path>   write current diagnostics to <path>
+rust-analyzer component exit 0
+lint exit 1
+indexing ok
+summary line present: deslop-please: 33 errors, well done!
+lint output lines:      315
+update-allow exit 0
+DONE
+RELEASED
