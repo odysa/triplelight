@@ -22,6 +22,12 @@ pub trait Dictionary {
         }
         Ok(())
     }
+    /// For stores whose stored literal IDs (tag `id_tag::LITERAL`) ascend with the literals' N-Triples text
+    /// (`Term::to_string()`, the unified disk dictionary): the smallest stored literal ID whose text is `>= text`, or
+    /// `> text` when `strict`. When no stored literal qualifies it is `TermId((id_tag::LITERAL + 1) << 60)`, one past
+    /// every literal ID. `Ok(None)` means the store makes no such ordering promise (the default), and callers must
+    /// not derive ID ranges from term text. IDs of other tags (overlay deltas, inline terms) are never covered.
+    fn literal_text_bound(&self, _text: &str, _strict: bool) -> Result<Option<TermId>, StorageError> { Ok(None) }
     /// The IDs of the subject, predicate and object of triple term `id` (RDF 1.2), or `None` if `id` is not a triple
     /// term. Every part of a stored triple term is a stored term. The default resolves the term and looks up its
     /// parts; stores with a parts table answer from it.
@@ -69,7 +75,17 @@ pub trait Snapshot: Dictionary + Send + Sync {
     /// scan: `false` guarantees there is none, so outputs can stay exactly RDF 1.1. Stores without 1.2 support
     /// return `false`.
     fn has_rdf12_terms(&self) -> bool { false }
+    /// A memo the executor may fill with facts that depend only on this view's contents (range pushdown's
+    /// per-predicate check), shared by every query on it. Only an immutable view may return one; `None` (the default)
+    /// makes the executor recompute per query.
+    fn object_memo(&self) -> Option<&ObjectMemo> { None }
 }
+
+/// See `Snapshot::object_memo`: for a (predicate, datatype IRI), the predicate's stored-literal objects ascending if
+/// every one of that datatype is in canonical form, else `None`; for (predicate, "iri-only objects"), `Some` (empty)
+/// if every object of the predicate is an IRI.
+#[derive(Default)]
+pub struct ObjectMemo(pub std::sync::Mutex<std::collections::HashMap<(TermId, &'static str), Option<std::sync::Arc<[TermId]>>>>);
 
 
 /// An RDF dataset read view: the default graph plus a catalog of named graphs, all sharing one dictionary and one

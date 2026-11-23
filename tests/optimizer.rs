@@ -623,6 +623,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                     raw_ids: false,
                     general_group: false,
                     count_pushdown: true,
+                    range_pushdown: true,
                 },
             )
             .unwrap(),
@@ -637,6 +638,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                     raw_ids: false,
                     general_group: false,
                     count_pushdown: true,
+                    range_pushdown: true,
                 },
             )
             .unwrap(),
@@ -653,6 +655,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                         raw_ids: false,
                         general_group: false,
                         count_pushdown: true,
+                        range_pushdown: true,
                     },
                 )
                 .unwrap(),
@@ -790,6 +793,7 @@ fn optimizer_count_failure_reaches_query_error() {
             raw_ids: false,
             general_group: false,
             count_pushdown: true,
+            range_pushdown: true,
         },
     )
     .unwrap_err();
@@ -923,6 +927,7 @@ fn wide_high_work_bgp_preserves_original_runtime_results() {
                 raw_ids: false,
                 general_group: false,
                 count_pushdown: true,
+                range_pushdown: true,
             },
         )
         .unwrap(),
@@ -937,6 +942,7 @@ fn wide_high_work_bgp_preserves_original_runtime_results() {
                 raw_ids: false,
                 general_group: false,
                 count_pushdown: true,
+                range_pushdown: true,
             },
         )
         .unwrap(),
