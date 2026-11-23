@@ -281,3 +281,34 @@ result decoding and serialization.
 every knob" above): the same cgroup `memory.max` for every system; inside it, each system's memory knobs follow vendor guidance, stated per
 system (TripleLight: cache at half the limit). Commercial engines are excluded because their benchmark-publication
 licence terms are not accepted on the owner's behalf. (WindowsXP)
+
+## Amendment 2 (2026-11-23, before any rental measurement): scope under the rental budget
+
+The planning estimates in task #100 (WindowsXP: about 66 h per block over the seven HTTP systems at 100M and 1B; Jianlin:
+about 33 to 66 h per 1B dataset for the embedded and DuckDB arms) put the full plan at more than three weeks of machine
+time. The rental is one to two weeks. This amendment fixes, before any measurement, what is cut and in what order, so the
+cut cannot follow the results. (Kaiming)
+
+**B1. Tiers.** Run in this order. A later tier starts only when the earlier one is complete or has hit its time-box.
+1. **Tier 1, 100M (the paper's main tables).** LUBM-1000, BSBM-100M and WatDiv-100M; every admitted arm, embedded and
+   HTTP; every registered suite; six warm blocks (A5). The A4 ranking test is decided on tier 1 only.
+2. **Tier 2, 1B for the HTTP cohort and TripleLight's storage claims.** LUBM-8000 and BSBM-1B for the seven HTTP systems
+   (C1b), plus S1 to S3 and the A8 derived-order stress test for TripleLight, plus the WDBench gate and suite. Three warm
+   blocks. Rank correlations at 1B are reported descriptively, not as the A4 test.
+3. **Tier 3, 1B for the embedded and DuckDB arms.** Only if time remains after tier 2. Otherwise the paper reports
+   these arms at 100M and says that 1B was not run for lack of machine time.
+
+WatDiv runs at 100M only.
+
+**B2. Cold runs.** Cold runs are descriptive (S2). At 100M they run in blocks 1 and 4 only. At 1B they run in block 1 only.
+Warm blocks are unchanged.
+
+**B3. Four against six orders (A5 equivalence).** The 12 paired blocks for the ±10% TOST are TripleLight-only HTTP runs on
+LUBM-1000 and BSBM-100M, in tier 1. If they do not fit, the effect is reported with its interval and no equivalence claim.
+
+**B4. Time-boxes.** A load is time-boxed at 24 h per system and dataset; past it the arm is recorded as "did not finish"
+at that scale and excluded from that scale's tables (never estimated). A tier that runs out of time reports the blocks
+it completed, with the block count stated; nothing is extrapolated from a smaller scale to a larger one.
+
+**B5. Disk.** One system's store per dataset is kept at a time, and a store is deleted only after its receipts are archived. Dataset files stay until their last tier is done. The
+order of deletion is listed in `docs/eval-plan/RUNBOOK.md`.
