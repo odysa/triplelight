@@ -1,0 +1,624 @@
+{
+  "notes": {
+    "comparison": "Historical cohort receipts and the #88 matched order-count build report have different known boundaries.",
+    "duckdb": "Two Python preparation database lengths match the earlier import receipts. These rows are provenance cross-checks of the same prepared files.",
+    "rdf4j": "NativeStore workload profile explicitly selected three orders. Upstream documentation lists two as the product default.",
+    "sizes": "Per-row scope applies. These file lengths are not allocated blocks, process memory, or peak build scratch.",
+    "tdb2": "GPU is the graph-prefix-URI index on the prefixes table."
+  },
+  "rows": [
+    {
+      "build_seconds": null,
+      "dataset": "lubm",
+      "evidence": [
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p1-jena-tdb2-lubm/receipt.json",
+          "sha256": "dee7b173432dcfff4ae81d51ea7f5e49fea4552f74b0f219a61b965a79770af8"
+        },
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p2-jena-tdb2-lubm/receipt.json",
+          "sha256": "021503d45ba05bbcc0ef6a1a0602484f548a17fadecfd97ccca7dea30ff3b86c"
+        }
+      ],
+      "files": 43,
+      "profile": "JVM #37 jena-tdb2",
+      "quad_orders_observed": [
+        "GOSP",
+        "GPOS",
+        "GSPO",
+        "OSPG",
+        "POSG",
+        "SPOG"
+      ],
+      "size_scope": "prepared source snapshot, logical file lengths",
+      "store_bytes": 2284304025,
+      "triple_orders_observed": [
+        "OSP",
+        "POS",
+        "SPO"
+      ]
+    },
+    {
+      "build_seconds": null,
+      "dataset": "watdiv",
+      "evidence": [
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p1-jena-tdb2-watdiv/receipt.json",
+          "sha256": "9e8943d91f7476e21442ce83799eed9ab43051895d6465627c515ca603340d56"
+        },
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p2-jena-tdb2-watdiv/receipt.json",
+          "sha256": "5478f09961ca6f556b04163e433638e579e737d90b7eb44b3d7bfa4d90f7d2cc"
+        }
+      ],
+      "files": 43,
+      "profile": "JVM #37 jena-tdb2",
+      "quad_orders_observed": [
+        "GOSP",
+        "GPOS",
+        "GSPO",
+        "OSPG",
+        "POSG",
+        "SPOG"
+      ],
+      "size_scope": "prepared source snapshot, logical file lengths",
+      "store_bytes": 1458739252,
+      "triple_orders_observed": [
+        "OSP",
+        "POS",
+        "SPO"
+      ]
+    },
+    {
+      "build_seconds": null,
+      "dataset": "bi10m",
+      "evidence": [
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p1-jena-tdb2-bi10m/receipt.json",
+          "sha256": "5544810966ed7dfde270cec4ed9e226ae12d16f72efae20e374cfc39ff860367"
+        },
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p2-jena-tdb2-bi10m/receipt.json",
+          "sha256": "7c38821ca95fdaa6481fd691393c2f474814f7aa62df54876f5ac17e638cf054"
+        }
+      ],
+      "files": 43,
+      "profile": "JVM #37 jena-tdb2",
+      "quad_orders_observed": [
+        "GOSP",
+        "GPOS",
+        "GSPO",
+        "OSPG",
+        "POSG",
+        "SPOG"
+      ],
+      "size_scope": "prepared source snapshot, logical file lengths",
+      "store_bytes": 2276188351,
+      "triple_orders_observed": [
+        "OSP",
+        "POS",
+        "SPO"
+      ]
+    },
+    {
+      "build_seconds": null,
+      "configuration_evidence": {
+        "constructor_argument": "spoc,posc,ospc",
+        "packet": "embedded-jvm37-results-v2",
+        "path": "source/Rdf4jEngine.java",
+        "sha256": "09aab78b2f4fad5aec405bcaae227e848e753a80743863591f7b26c792aebf10"
+      },
+      "dataset": "lubm",
+      "evidence": [
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p1-rdf4j-native-lubm/receipt.json",
+          "sha256": "ddabb2f85afae4800f0d7a9f0a5c2b5ffc49608a953f0db0c6944ba4709da3fb"
+        },
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p2-rdf4j-native-lubm/receipt.json",
+          "sha256": "70c275bfbb5119ab77d2317c30966e86b8607fb21522bc2bd8a18db093f26aab"
+        }
+      ],
+      "files": 23,
+      "profile": "JVM #37 rdf4j-native",
+      "quad_orders_observed": [
+        "OSPC",
+        "POSC",
+        "SPOC"
+      ],
+      "size_scope": "prepared source snapshot, logical file lengths",
+      "store_bytes": 1890486896,
+      "triple_orders_observed": null
+    },
+    {
+      "build_seconds": null,
+      "configuration_evidence": {
+        "constructor_argument": "spoc,posc,ospc",
+        "packet": "embedded-jvm37-results-v2",
+        "path": "source/Rdf4jEngine.java",
+        "sha256": "09aab78b2f4fad5aec405bcaae227e848e753a80743863591f7b26c792aebf10"
+      },
+      "dataset": "watdiv",
+      "evidence": [
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p1-rdf4j-native-watdiv/receipt.json",
+          "sha256": "5724e83be8006c935ac00e9096bbe3dd47788451031b730fb29c15a431a4cbc1"
+        },
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p2-rdf4j-native-watdiv/receipt.json",
+          "sha256": "34528ec9c4015e9d94c76826bfbb56c24d7cbd504c2ed61bc2f48f2317454a4c"
+        }
+      ],
+      "files": 20,
+      "profile": "JVM #37 rdf4j-native",
+      "quad_orders_observed": [
+        "OSPC",
+        "POSC",
+        "SPOC"
+      ],
+      "size_scope": "prepared source snapshot, logical file lengths",
+      "store_bytes": 1237182069,
+      "triple_orders_observed": null
+    },
+    {
+      "build_seconds": null,
+      "configuration_evidence": {
+        "constructor_argument": null,
+        "packet": "embedded-jvm37-results-v2",
+        "path": "source/Rdf4jEngine.java",
+        "sha256": "09aab78b2f4fad5aec405bcaae227e848e753a80743863591f7b26c792aebf10"
+      },
+      "dataset": "lubm",
+      "evidence": [
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p1-rdf4j-lmdb-lubm/receipt.json",
+          "sha256": "baad0ffab704e781382fa31b53800e32147617bda1060596b7bc7471e17eb98d"
+        },
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p2-rdf4j-lmdb-lubm/receipt.json",
+          "sha256": "a7ae3045f4ca526b6f581bab58925f9de595ee27a5a23d39fabadd16caab4204"
+        }
+      ],
+      "files": null,
+      "profile": "JVM #37 rdf4j-lmdb",
+      "quad_orders_observed": null,
+      "size_scope": null,
+      "store_bytes": null,
+      "triple_orders_observed": null
+    },
+    {
+      "build_seconds": null,
+      "configuration_evidence": {
+        "constructor_argument": null,
+        "packet": "embedded-jvm37-results-v2",
+        "path": "source/Rdf4jEngine.java",
+        "sha256": "09aab78b2f4fad5aec405bcaae227e848e753a80743863591f7b26c792aebf10"
+      },
+      "dataset": "watdiv",
+      "evidence": [
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p1-rdf4j-lmdb-watdiv/receipt.json",
+          "sha256": "2887e052342b6dde0fa5ccb252b600610ae84e3a7b931af951449f7f083e1bfd"
+        },
+        {
+          "archive": "embedded-jvm37-results-v2/raw-cohort.tar.gz",
+          "member": "p2-rdf4j-lmdb-watdiv/receipt.json",
+          "sha256": "9e3d05af15734cda63172b2807186a06a7f88e0c63242712c47a5d25e89c79a1"
+        }
+      ],
+      "files": null,
+      "profile": "JVM #37 rdf4j-lmdb",
+      "quad_orders_observed": null,
+      "size_scope": null,
+      "store_bytes": null,
+      "triple_orders_observed": null
+    },
+    {
+      "build_seconds": null,
+      "dataset": "bi10m",
+      "evidence": [
+        {
+          "receipt": "embedded37-realstore-v1/store-identities-pre-timing.json",
+          "selector": [
+            "stores",
+            "duckdb-bi10m",
+            "files"
+          ],
+          "sha256": "fdaf8d69f7032d62acf2ba7b7810fddbd3c79de68e01be141fdad4d4988857de"
+        }
+      ],
+      "files": 1,
+      "profile": "Python #37 preparation duckdb",
+      "size_scope": "pre-timing preparation receipt, logical file lengths",
+      "store_bytes": 619196416,
+      "triple_orders_observed": null
+    },
+    {
+      "build_seconds": null,
+      "dataset": "lubm",
+      "evidence": [
+        {
+          "receipt": "embedded37-realstore-v1/store-identities-pre-timing.json",
+          "selector": [
+            "stores",
+            "duckdb-lubm",
+            "files"
+          ],
+          "sha256": "fdaf8d69f7032d62acf2ba7b7810fddbd3c79de68e01be141fdad4d4988857de"
+        }
+      ],
+      "files": 1,
+      "profile": "Python #37 preparation duckdb",
+      "size_scope": "pre-timing preparation receipt, logical file lengths",
+      "store_bytes": 344993792,
+      "triple_orders_observed": null
+    },
+    {
+      "build_seconds": null,
+      "dataset": "watdiv",
+      "evidence": [
+        {
+          "receipt": "embedded37-realstore-v1/store-identities-pre-timing.json",
+          "selector": [
+            "stores",
+            "duckdb-watdiv",
+            "files"
+          ],
+          "sha256": "fdaf8d69f7032d62acf2ba7b7810fddbd3c79de68e01be141fdad4d4988857de"
+        }
+      ],
+      "files": 1,
+      "profile": "Python #37 preparation duckdb",
+      "size_scope": "pre-timing preparation receipt, logical file lengths",
+      "store_bytes": 268185600,
+      "triple_orders_observed": null
+    },
+    {
+      "build_seconds": null,
+      "dataset": "bi10m",
+      "evidence": [
+        {
+          "receipt": "embedded37-realstore-v1/store-identities-pre-timing.json",
+          "selector": [
+            "stores",
+            "pyoxigraph-bi10m",
+            "files"
+          ],
+          "sha256": "fdaf8d69f7032d62acf2ba7b7810fddbd3c79de68e01be141fdad4d4988857de"
+        }
+      ],
+      "files": 44,
+      "profile": "Python #37 preparation pyoxigraph",
+      "size_scope": "pre-timing preparation receipt, logical file lengths",
+      "store_bytes": 1807804989,
+      "triple_orders_observed": null
+    },
+    {
+      "build_seconds": null,
+      "dataset": "lubm",
+      "evidence": [
+        {
+          "receipt": "embedded37-realstore-v1/store-identities-pre-timing.json",
+          "selector": [
+            "stores",
+            "pyoxigraph-lubm",
+            "files"
+          ],
+          "sha256": "fdaf8d69f7032d62acf2ba7b7810fddbd3c79de68e01be141fdad4d4988857de"
+        }
+      ],
+      "files": 49,
+      "profile": "Python #37 preparation pyoxigraph",
+      "size_scope": "pre-timing preparation receipt, logical file lengths",
+      "store_bytes": 1772093275,
+      "triple_orders_observed": null
+    },
+    {
+      "build_seconds": null,
+      "dataset": "watdiv",
+      "evidence": [
+        {
+          "receipt": "embedded37-realstore-v1/store-identities-pre-timing.json",
+          "selector": [
+            "stores",
+            "pyoxigraph-watdiv",
+            "files"
+          ],
+          "sha256": "fdaf8d69f7032d62acf2ba7b7810fddbd3c79de68e01be141fdad4d4988857de"
+        }
+      ],
+      "files": 35,
+      "profile": "Python #37 preparation pyoxigraph",
+      "size_scope": "pre-timing preparation receipt, logical file lengths",
+      "store_bytes": 1079387671,
+      "triple_orders_observed": null
+    },
+    {
+      "build_seconds": null,
+      "dataset": "bi10m",
+      "evidence": [
+        {
+          "receipt": "embedded37-realstore-v1/store-identities-pre-timing.json",
+          "selector": [
+            "stores",
+            "triplelight-bi10m",
+            "files"
+          ],
+          "sha256": "fdaf8d69f7032d62acf2ba7b7810fddbd3c79de68e01be141fdad4d4988857de"
+        }
+      ],
+      "files": 9,
+      "profile": "Python #37 preparation triplelight",
+      "size_scope": "pre-timing preparation receipt, logical file lengths",
+      "store_bytes": 1339051530,
+      "triple_orders_observed": [
+        "OPS",
+        "OSP",
+        "POS",
+        "PSO",
+        "SOP",
+        "SPO"
+      ]
+    },
+    {
+      "build_seconds": null,
+      "dataset": "lubm",
+      "evidence": [
+        {
+          "receipt": "embedded37-realstore-v1/store-identities-pre-timing.json",
+          "selector": [
+            "stores",
+            "triplelight-lubm",
+            "files"
+          ],
+          "sha256": "fdaf8d69f7032d62acf2ba7b7810fddbd3c79de68e01be141fdad4d4988857de"
+        }
+      ],
+      "files": 9,
+      "profile": "Python #37 preparation triplelight",
+      "size_scope": "pre-timing preparation receipt, logical file lengths",
+      "store_bytes": 569712509,
+      "triple_orders_observed": [
+        "OPS",
+        "OSP",
+        "POS",
+        "PSO",
+        "SOP",
+        "SPO"
+      ]
+    },
+    {
+      "build_seconds": null,
+      "dataset": "watdiv",
+      "evidence": [
+        {
+          "receipt": "embedded37-realstore-v1/store-identities-pre-timing.json",
+          "selector": [
+            "stores",
+            "triplelight-watdiv",
+            "files"
+          ],
+          "sha256": "fdaf8d69f7032d62acf2ba7b7810fddbd3c79de68e01be141fdad4d4988857de"
+        }
+      ],
+      "files": 9,
+      "profile": "Python #37 preparation triplelight",
+      "size_scope": "pre-timing preparation receipt, logical file lengths",
+      "store_bytes": 549729147,
+      "triple_orders_observed": [
+        "OPS",
+        "OSP",
+        "POS",
+        "PSO",
+        "SOP",
+        "SPO"
+      ]
+    },
+    {
+      "build_scope": "loader-reported preparation interval",
+      "build_seconds": 105.44008608395234,
+      "dataset": "lubm",
+      "evidence": [
+        {
+          "receipt": "aggregate72-duck-import-v1/lubm/report.json",
+          "sha256": "212964ea55f5eba78dcde4d01d7af3845c399e2742c4f4d772a6c863309f3e44"
+        }
+      ],
+      "profile": "DuckDB single-table source preparation",
+      "size_scope": "closed database file from import report, logical length",
+      "store_bytes": 344993792,
+      "triple_orders_observed": null,
+      "unique_triples": 13409395
+    },
+    {
+      "build_scope": "loader-reported preparation interval",
+      "build_seconds": 85.061712292023,
+      "dataset": "watdiv",
+      "evidence": [
+        {
+          "receipt": "aggregate72-duck-import-v1/watdiv/report.json",
+          "sha256": "6babc4d058b503a22c592a54dea729cf59f529921db31adf8ecce42483b733d2"
+        }
+      ],
+      "profile": "DuckDB single-table source preparation",
+      "size_scope": "closed database file from import report, logical length",
+      "store_bytes": 268185600,
+      "triple_orders_observed": null,
+      "unique_triples": 10914314
+    },
+    {
+      "build_scope": "loader-reported preparation interval",
+      "build_seconds": 2126.8503652499057,
+      "dataset": "bsbm100",
+      "evidence": [
+        {
+          "receipt": "matched-vm-100m-v1/duck-import.json",
+          "sha256": "8ee907188c77c96f96c40fbfa282d32db3e909402e5b3554162df4a92403ac38"
+        }
+      ],
+      "profile": "DuckDB single-table source preparation",
+      "size_scope": "closed database file from import report, logical length",
+      "store_bytes": 5975060480,
+      "triple_orders_observed": null,
+      "unique_triples": 98861444
+    },
+    {
+      "build_report": "docs/build-compare-orders-v1/README.md",
+      "build_scope": "see #88 report for per-run times and delayed BSBM six-order r4",
+      "dataset": "lubm1000",
+      "evidence": [
+        {
+          "path": "docs/build-compare-orders-v1/raw/lubm1000-o4-r2.verify.txt",
+          "repository_commit": "8cd5fabe42ccf100e83dd752008439af36ab796d",
+          "sha256": "99995ce5dd663ffed6e6868b584976ea2e825c0639be3c809a3052715836a15f"
+        },
+        {
+          "path": "docs/build-compare-orders-v1/raw/lubm1000-o4-r3.verify.txt",
+          "repository_commit": "8cd5fabe42ccf100e83dd752008439af36ab796d",
+          "sha256": "99995ce5dd663ffed6e6868b584976ea2e825c0639be3c809a3052715836a15f"
+        }
+      ],
+      "files": {
+        "MANIFEST": 170,
+        "dictionary.unified": 672136499,
+        "osp": 304533924,
+        "pos": 321319972,
+        "pso": 365033604,
+        "spo": 1500252416
+      },
+      "profile": "TripleLight #88, 4 orders",
+      "size_scope": "verified base files, logical lengths",
+      "store_bytes": 3163276585,
+      "triple_orders_observed": [
+        "OSP",
+        "POS",
+        "PSO",
+        "SPO"
+      ]
+    },
+    {
+      "build_report": "docs/build-compare-orders-v1/README.md",
+      "build_scope": "see #88 report for per-run times and delayed BSBM six-order r4",
+      "dataset": "lubm1000",
+      "evidence": [
+        {
+          "path": "docs/build-compare-orders-v1/raw/lubm1000-o6-r1.verify.txt",
+          "repository_commit": "8cd5fabe42ccf100e83dd752008439af36ab796d",
+          "sha256": "fed9794cfc6e4eef49a6547a4eb994e265bf76185711f3a3f06d0d1dc4037667"
+        },
+        {
+          "path": "docs/build-compare-orders-v1/raw/lubm1000-o6-r4.verify.txt",
+          "repository_commit": "8cd5fabe42ccf100e83dd752008439af36ab796d",
+          "sha256": "fed9794cfc6e4eef49a6547a4eb994e265bf76185711f3a3f06d0d1dc4037667"
+        }
+      ],
+      "files": {
+        "MANIFEST": 232,
+        "dictionary.unified": 672136499,
+        "ops": 302364900,
+        "osp": 304533924,
+        "pos": 321319972,
+        "pso": 365033604,
+        "sop": 1500252416,
+        "spo": 1500252416
+      },
+      "profile": "TripleLight #88, 6 orders",
+      "size_scope": "verified base files, logical lengths",
+      "store_bytes": 4965893963,
+      "triple_orders_observed": [
+        "OPS",
+        "OSP",
+        "POS",
+        "PSO",
+        "SOP",
+        "SPO"
+      ]
+    },
+    {
+      "build_report": "docs/build-compare-orders-v1/README.md",
+      "build_scope": "see #88 report for per-run times and delayed BSBM six-order r4",
+      "dataset": "bsbm100",
+      "evidence": [
+        {
+          "path": "docs/build-compare-orders-v1/raw/bsbm100-o4-r2.verify.txt",
+          "repository_commit": "8cd5fabe42ccf100e83dd752008439af36ab796d",
+          "sha256": "0f4df2b355a961206f1b2700f47e3ca4af114095c7f5b9c7c9754906522e7dd2"
+        },
+        {
+          "path": "docs/build-compare-orders-v1/raw/bsbm100-o4-r3.verify.txt",
+          "repository_commit": "8cd5fabe42ccf100e83dd752008439af36ab796d",
+          "sha256": "0f4df2b355a961206f1b2700f47e3ca4af114095c7f5b9c7c9754906522e7dd2"
+        }
+      ],
+      "files": {
+        "MANIFEST": 170,
+        "dictionary.unified": 4620210974,
+        "osp": 299437398,
+        "pos": 252863076,
+        "pso": 286142347,
+        "spo": 1104721706
+      },
+      "profile": "TripleLight #88, 4 orders",
+      "size_scope": "verified base files, logical lengths",
+      "store_bytes": 6563375671,
+      "triple_orders_observed": [
+        "OSP",
+        "POS",
+        "PSO",
+        "SPO"
+      ]
+    },
+    {
+      "build_report": "docs/build-compare-orders-v1/README.md",
+      "build_scope": "see #88 report for per-run times and delayed BSBM six-order r4",
+      "dataset": "bsbm100",
+      "evidence": [
+        {
+          "path": "docs/build-compare-orders-v1/raw/bsbm100-o6-r1.verify.txt",
+          "repository_commit": "8cd5fabe42ccf100e83dd752008439af36ab796d",
+          "sha256": "f76a94d76f417d032bd25b53228646f004320ac7402b43dc7ee32c897187e5c7"
+        },
+        {
+          "path": "docs/build-compare-orders-v1/raw/bsbm100-o6-r4.verify.txt",
+          "repository_commit": "8cd5fabe42ccf100e83dd752008439af36ab796d",
+          "sha256": "f76a94d76f417d032bd25b53228646f004320ac7402b43dc7ee32c897187e5c7"
+        }
+      ],
+      "files": {
+        "MANIFEST": 232,
+        "dictionary.unified": 4620210974,
+        "ops": 268212982,
+        "osp": 299437398,
+        "pos": 252863076,
+        "pso": 286142347,
+        "sop": 1104721706,
+        "spo": 1104721706
+      },
+      "profile": "TripleLight #88, 6 orders",
+      "size_scope": "verified base files, logical lengths",
+      "store_bytes": 7936310421,
+      "triple_orders_observed": [
+        "OPS",
+        "OSP",
+        "POS",
+        "PSO",
+        "SOP",
+        "SPO"
+      ]
+    }
+  ],
+  "scope": "Read-only extraction from prior preparation and build receipts. Null means the cited receipt has no isolated measurement."
+}
