@@ -118,11 +118,15 @@ pub(super) fn decode<const N: usize>(data: &[u8], count: usize, rotate: bool) ->
                 base[col].checked_add(delta)
             }
             .ok_or_else(|| invalid("compressed ID overflow"))?;
-            row[col] = TermId(if rotated[col] { value.rotate_right(TAG_BITS) } else { value });
+            row[col] = TermId(value);
             last = value;
         }
         if acc != 0 {
             return Err(invalid("nonzero compressed padding"));
+        }
+        // Undo the tag rotation in a separate pass, so the unpacking loop stays branch-free for every column.
+        if rotated[col] {
+            for row in &mut rows { row[col] = TermId(row[col].0.rotate_right(TAG_BITS)) }
         }
         cursor = end;
     }
