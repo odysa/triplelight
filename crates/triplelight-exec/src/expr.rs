@@ -162,9 +162,18 @@ fn bool_term(b: bool) -> Term { Literal::from(b).into() }
 
 pub(super) fn ebv(t: &Term) -> Option<bool> {
     let Term::Literal(l) = t else { return None };
-    if l.datatype() == xsd::BOOLEAN { return Some(matches!(l.value(), "true" | "1")) }
+    if l.datatype() == xsd::BOOLEAN {
+        return match l.value() {
+            "true" | "1" => Some(true),
+            "false" | "0" => Some(false),
+            _ if cfg!(feature = "rdf-12") => None,
+            _ => Some(false),
+        }
+    }
     if let Some(n) = num(t) { return Some(n.f() != 0.0 && !n.f().is_nan()) }
-    if is_stringish(l) { return Some(!l.value().is_empty()) }
+    if l.datatype() == xsd::STRING || (!cfg!(feature = "rdf-12") && l.language().is_some()) {
+        return Some(!l.value().is_empty())
+    }
     None
 }
 
@@ -774,4 +783,30 @@ pub(super) fn now_lexical() -> String {
     let month = if mp < 10 { mp + 3 } else { mp - 9 };
     let year = yoe + era * 400 + i64::from(month <= 2);
     format!("{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z", rem / 3600, rem / 60 % 60, rem % 60, d.subsec_millis())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Literal, ebv, xsd};
+
+    #[test]
+    fn ebv_of_language_tagged_strings() {
+        for (lexical, legacy_value) in [("hello", true), ("", false)] {
+            let term = Literal::new_language_tagged_literal(lexical, "en").unwrap().into();
+            let expected = if cfg!(feature = "rdf-12") { None } else { Some(legacy_value) };
+            assert_eq!(ebv(&term), expected);
+            assert_eq!(ebv(&Literal::new_simple_literal(lexical).into()), Some(legacy_value));
+        }
+    }
+
+    #[test]
+    fn ebv_of_boolean_lexicals() {
+        for (lexical, value) in [("true", true), ("1", true), ("false", false), ("0", false)] {
+            let term = Literal::new_typed_literal(lexical, xsd::BOOLEAN).into();
+            assert_eq!(ebv(&term), Some(value));
+        }
+        let invalid = Literal::new_typed_literal("z", xsd::BOOLEAN).into();
+        let expected = if cfg!(feature = "rdf-12") { None } else { Some(false) };
+        assert_eq!(ebv(&invalid), expected);
+    }
 }
