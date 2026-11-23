@@ -33,7 +33,7 @@ case $SYS in
   qlever|qlever-two-order)
     QDIR=qlever-$D; QOPT=()
     # the two-order arm builds only PSO and POS (qlever-index -o); queries with a variable predicate are then unsupported
-    [ "$SYS" = qlever-two-order ] && { QDIR=qlever-two-order-$D; QOPT=(-o); }
+    [ "$SYS" = qlever-two-order ] && { QDIR=qlever-two-order-$D; QOPT=(-o --no-patterns); }   # the has-predicate patterns need all six permutations (qlever-index says so)
     case $MODE in
       load)  mkdir -p "$T/$QDIR"
              docker run --rm "${LIM[@]}" -v "$T":/data -w /data/$QDIR --entrypoint /qlever/qlever-index "$QLEVER_IMAGE" \
@@ -73,20 +73,21 @@ case $SYS in
     esac ;;
   rdf4j-native|rdf4j-native-default)
     # RDF4J's own server (docker image eclipse/rdf4j-workbench, pinned by digest in VERSIONS), NativeStore repository "bench" created
-    # through the repository config with the registered index spec. UNTESTED: config vocabulary, upload and paths to be qualified in the rerun.
+    # through the repository config with the registered index spec. Config vocabulary (sail type openrdf:NativeStore) and the triples.prop receipt were checked by hand against the pinned image on 2026-11-23; the full upload is not yet.
     IDX=spoc,posc,ospc; [ "$SYS" = rdf4j-native-default ] && IDX=spoc,posc
     DIR=$T/$SYS-$D; mkdir -p "$DIR"
     case $MODE in
       serve) docker rm -f bench-rdf4j >/dev/null 2>&1 || true
              exec docker run --rm --name bench-rdf4j "${LIM[@]}" -e JAVA_OPTS="-Xmx${MEM}g" -p 3040:8080 -v "$DIR":/var/rdf4j "$RDF4J_IMAGE" ;;
       load)  docker rm -f bench-rdf4j-load >/dev/null 2>&1 || true
+             trap 'docker rm -f bench-rdf4j-load >/dev/null 2>&1 || true' EXIT   # a failed step must not leave the container on the port
              docker run -d --rm --name bench-rdf4j-load "${LIM[@]}" -e JAVA_OPTS="-Xmx${MEM}g" -p 3040:8080 -v "$DIR":/var/rdf4j "$RDF4J_IMAGE" >/dev/null
              until curl -sf http://127.0.0.1:3040/rdf4j-server/protocol >/dev/null 2>&1; do sleep 2; done
              cat > "$DIR/bench-config.ttl" <<TTL
 @prefix config: <tag:rdf4j.org,2023:config/> .
 [] a config:Repository ; config:rep.id "bench" ;
    config:rep.impl [ config:rep.type "openrdf:SailRepository" ;
-     config:sail.impl [ config:sail.type "rdf4j:NativeStore" ; config:native.tripleIndexes "$IDX" ] ] .
+     config:sail.impl [ config:sail.type "openrdf:NativeStore" ; config:native.tripleIndexes "$IDX" ] ] .
 TTL
              curl -sf -X PUT -H 'Content-Type: text/turtle' --data-binary @"$DIR/bench-config.ttl" http://127.0.0.1:3040/rdf4j-server/repositories/bench
              curl -sf -X POST -H 'Content-Type: application/n-triples' -T "$NT" http://127.0.0.1:3040/rdf4j-server/repositories/bench/statements
