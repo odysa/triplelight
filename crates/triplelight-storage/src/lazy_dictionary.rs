@@ -1,7 +1,7 @@
 //! Immutable on-disk dictionary indexes: the unified dictionary of current bases and the two-file layout of RDFSNAP3 (see docs/lazy-dictionary-design.md).
 use super::external_build::MAX_TERM;
 use super::term_block_codec;
-use crate::model::TermId;
+use crate::model::{id_tag, TermId};
 use triplelight_rdf::Term;
 use sha2::{Digest, Sha256};
 use std::{
@@ -60,10 +60,10 @@ fn id_kind(id: u64) -> u64 {
 fn text_kind(text: &[u8]) -> Option<u64> {
     match text.first()? {
         #[cfg(feature = "rdf-12")]
-        b'<' if text.starts_with(b"<<(") => Some(4),
-        b'<' => Some(1),
-        b'_' => Some(2),
-        b'"' => Some(3),
+        b'<' if text.starts_with(b"<<(") => Some(id_tag::TRIPLE_TERM),
+        b'<' => Some(id_tag::IRI),
+        b'_' => Some(id_tag::BLANK_NODE),
+        b'"' => Some(id_tag::LITERAL),
         _ => None,
     }
 }
@@ -413,11 +413,11 @@ impl LazyIndex {
         let kind = id_kind(rows[0].0 .0);
         for (id, term) in rows {
             let variant = match term {
-                Term::NamedNode(_) => 1,
-                Term::BlankNode(_) => 2,
-                Term::Literal(_) => 3,
+                Term::NamedNode(_) => id_tag::IRI,
+                Term::BlankNode(_) => id_tag::BLANK_NODE,
+                Term::Literal(_) => id_tag::LITERAL,
                 #[cfg(feature = "rdf-12")]
-                Term::Triple(_) => 4,
+                Term::Triple(_) => id_tag::TRIPLE_TERM,
             };
             if id_kind(id.0) != kind || variant != kind {
                 return Err(bad("dictionary block mixes kinds or a term disagrees with its kind"));
@@ -478,6 +478,20 @@ impl LazyIndex {
         for index in 0..self.entries.len() {
             let rows = self.block(index)?;
             for (id, term) in rows.iter() {
+                f(*id, term)?;
+            }
+        }
+        Ok(())
+    }
+    /// Unified order only: every entry of `kind`, in ID order. A kind's blocks are one contiguous run, so only those
+    /// blocks are read.
+    #[cfg(feature = "rdf-12")]
+    pub(super) fn for_each_of_kind(&self, kind: u64, f: &mut dyn FnMut(TermId, &Term) -> io::Result<()>) -> io::Result<()> {
+        let kind_of = |e: &Meta| id_kind(u64::from_be_bytes(e.last.as_slice().try_into().unwrap()));
+        let lo = self.entries.partition_point(|e| kind_of(e) < kind);
+        let hi = self.entries.partition_point(|e| kind_of(e) <= kind);
+        for index in lo..hi {
+            for (id, term) in self.block(index)?.iter() {
                 f(*id, term)?;
             }
         }
