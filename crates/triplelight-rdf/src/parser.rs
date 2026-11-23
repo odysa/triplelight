@@ -1,4 +1,6 @@
 // Derived from oxrdf 0.3.5 (MIT); see THIRD_PARTY_NOTICES.md.
+#[cfg(feature = "rdf-12")]
+use crate::BaseDirection;
 use crate::vocab::xsd;
 use crate::{
     BlankNode, BlankNodeIdParseError, GraphName, IriParseError, LanguageTagParseError, Literal,
@@ -92,6 +94,12 @@ impl FromStr for Quad {
             Term::Literal(_) => {
                 return Err(TermParseError::msg(
                     "Literals are not allowed in graph name position",
+                ));
+            }
+            #[cfg(feature = "rdf-12")]
+            Term::Triple(_) => {
+                return Err(TermParseError::msg(
+                    "Triple terms are not allowed in graph name position",
                 ));
             }
         }))
@@ -221,6 +229,24 @@ fn read_literal(s: &str) -> Result<(Literal, &str), TermParseError> {
                             .find(|v: char| !v.is_ascii_alphanumeric() && v != '-')
                             .unwrap_or(remain.len());
                         let (language, remain) = remain.split_at(end);
+                        #[cfg(feature = "rdf-12")]
+                        if let Some((language, direction)) = language.split_once("--") {
+                            return Ok((
+                                Literal::new_directional_language_tagged_literal(value, language, match direction {
+                                    "ltr" => BaseDirection::Ltr,
+                                    "rtl" => BaseDirection::Rtl,
+                                    _ => return Err(TermParseError(TermParseErrorKind::Msg(format!("The only two possible base directions are 'rtl' and 'ltr', found '{direction}'"))))
+                                }).map_err(
+                                    |error| {
+                                        TermParseError(TermParseErrorKind::LanguageTag {
+                                            value: language.to_owned(),
+                                            error,
+                                        })
+                                    },
+                                )?,
+                                remain,
+                            ));
+                        }
                         Ok((
                             Literal::new_language_tagged_literal(value, language).map_err(
                                 |error| {
@@ -346,6 +372,19 @@ fn read_term(s: &str, number_of_recursive_calls: usize) -> Result<(Term, &str), 
     let s = s.trim();
     #[allow(unused_variables, clippy::allow_attributes)]
     if let Some(remain) = s.strip_prefix("<<(") {
+        #[cfg(feature = "rdf-12")]
+        {
+            let (triple, remain) = read_triple(remain, number_of_recursive_calls + 1)?;
+            let remain = remain.trim_start();
+            if let Some(remain) = remain.strip_prefix(")>>") {
+                Ok((triple.into(), remain))
+            } else {
+                Err(TermParseError::msg(
+                    "Triple term serialization must be enclosed between <<( and )>>",
+                ))
+            }
+        }
+        #[cfg(not(feature = "rdf-12"))]
         {
             Err(TermParseError::msg("RDF 1.2 is not supported"))
         }
@@ -377,6 +416,12 @@ fn read_triple(
                 Term::Literal(_) => {
                     return Err(TermParseError::msg(
                         "Literals are not allowed in subject position",
+                    ));
+                }
+                #[cfg(feature = "rdf-12")]
+                Term::Triple(_) => {
+                    return Err(TermParseError::msg(
+                        "Triple terms are not allowed in subject position",
                     ));
                 }
             },

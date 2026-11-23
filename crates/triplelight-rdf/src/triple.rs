@@ -155,6 +155,8 @@ pub enum Term {
     NamedNode(NamedNode),
     BlankNode(BlankNode),
     Literal(Literal),
+    #[cfg(feature = "rdf-12")]
+    Triple(Box<Triple>),
 }
 
 impl Term {
@@ -173,6 +175,11 @@ impl Term {
         self.as_ref().is_literal()
     }
 
+    #[cfg(feature = "rdf-12")]
+    #[inline]
+    pub fn is_triple(&self) -> bool {
+        self.as_ref().is_triple()
+    }
 
     #[inline]
     pub fn as_ref(&self) -> TermRef<'_> {
@@ -180,6 +187,8 @@ impl Term {
             Self::NamedNode(node) => TermRef::NamedNode(node.as_ref()),
             Self::BlankNode(node) => TermRef::BlankNode(node.as_ref()),
             Self::Literal(literal) => TermRef::Literal(literal.as_ref()),
+            #[cfg(feature = "rdf-12")]
+            Self::Triple(triple) => TermRef::Triple(triple),
         }
     }
 }
@@ -233,8 +242,29 @@ impl From<LiteralRef<'_>> for Term {
     }
 }
 
+#[cfg(feature = "rdf-12")]
+impl From<Triple> for Term {
+    #[inline]
+    fn from(triple: Triple) -> Self {
+        Self::Triple(Box::new(triple))
+    }
+}
 
+#[cfg(feature = "rdf-12")]
+impl From<Box<Triple>> for Term {
+    #[inline]
+    fn from(node: Box<Triple>) -> Self {
+        Self::Triple(node)
+    }
+}
 
+#[cfg(feature = "rdf-12")]
+impl From<TripleRef<'_>> for Term {
+    #[inline]
+    fn from(triple: TripleRef<'_>) -> Self {
+        triple.into_owned().into()
+    }
+}
 
 impl From<NamedOrBlankNode> for Term {
     #[inline]
@@ -313,6 +343,11 @@ impl TryFrom<Term> for NamedOrBlankNode {
                 term,
                 target: "NamedOrBlankNode",
             }),
+            #[cfg(feature = "rdf-12")]
+            Term::Triple(_) => Err(TryFromTermError {
+                term,
+                target: "Triple",
+            }),
         }
     }
 }
@@ -322,6 +357,8 @@ pub enum TermRef<'a> {
     NamedNode(NamedNodeRef<'a>),
     BlankNode(BlankNodeRef<'a>),
     Literal(LiteralRef<'a>),
+    #[cfg(feature = "rdf-12")]
+    Triple(&'a Triple),
 }
 
 impl TermRef<'_> {
@@ -340,6 +377,11 @@ impl TermRef<'_> {
         matches!(self, Self::Literal(_))
     }
 
+    #[cfg(feature = "rdf-12")]
+    #[inline]
+    pub fn is_triple(&self) -> bool {
+        matches!(self, Self::Triple(_))
+    }
 
     #[inline]
     pub fn into_owned(self) -> Term {
@@ -347,6 +389,8 @@ impl TermRef<'_> {
             Self::NamedNode(node) => Term::NamedNode(node.into_owned()),
             Self::BlankNode(node) => Term::BlankNode(node.into_owned()),
             Self::Literal(literal) => Term::Literal(literal.into_owned()),
+            #[cfg(feature = "rdf-12")]
+            Self::Triple(triple) => Term::Triple(Box::new(triple.clone())),
         }
     }
 }
@@ -358,6 +402,10 @@ impl fmt::Display for TermRef<'_> {
             Self::NamedNode(node) => node.fmt(f),
             Self::BlankNode(node) => node.fmt(f),
             Self::Literal(literal) => literal.fmt(f),
+            #[cfg(feature = "rdf-12")]
+            Self::Triple(triple) => {
+                write!(f, "<<( {triple} )>>")
+            }
         }
     }
 }
@@ -404,6 +452,13 @@ impl<'a> From<&'a Literal> for TermRef<'a> {
     }
 }
 
+#[cfg(feature = "rdf-12")]
+impl<'a> From<&'a Triple> for TermRef<'a> {
+    #[inline]
+    fn from(node: &'a Triple) -> Self {
+        Self::Triple(node)
+    }
+}
 
 impl<'a> From<NamedOrBlankNodeRef<'a>> for TermRef<'a> {
     #[inline]

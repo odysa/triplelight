@@ -7,10 +7,16 @@ pub mod rdf {
         NamedNodeRef::new_unchecked("http://www.w3.org/1999/02/22-rdf-syntax-ns#Alt");
     pub const BAG: NamedNodeRef<'_> =
         NamedNodeRef::new_unchecked("http://www.w3.org/1999/02/22-rdf-syntax-ns#Bag");
+    #[cfg(feature = "rdf-12")]
+    pub const DIR_LANG_STRING: NamedNodeRef<'_> =
+        NamedNodeRef::new_unchecked("http://www.w3.org/1999/02/22-rdf-syntax-ns#dirLangString");
     pub const FIRST: NamedNodeRef<'_> =
         NamedNodeRef::new_unchecked("http://www.w3.org/1999/02/22-rdf-syntax-ns#first");
     pub const HTML: NamedNodeRef<'_> =
         NamedNodeRef::new_unchecked("http://www.w3.org/1999/02/22-rdf-syntax-ns#HTML");
+    #[cfg(feature = "rdf-12")]
+    pub const JSON: NamedNodeRef<'_> =
+        NamedNodeRef::new_unchecked("http://www.w3.org/1999/02/22-rdf-syntax-ns#JSON");
     pub const LANG_STRING: NamedNodeRef<'_> =
         NamedNodeRef::new_unchecked("http://www.w3.org/1999/02/22-rdf-syntax-ns#langString");
     pub const LIST: NamedNodeRef<'_> =
@@ -23,6 +29,9 @@ pub mod rdf {
         NamedNodeRef::new_unchecked("http://www.w3.org/1999/02/22-rdf-syntax-ns#predicate");
     pub const PROPERTY: NamedNodeRef<'_> =
         NamedNodeRef::new_unchecked("http://www.w3.org/1999/02/22-rdf-syntax-ns#Property");
+    #[cfg(feature = "rdf-12")]
+    pub const REIFIES: NamedNodeRef<'_> =
+        NamedNodeRef::new_unchecked("http://www.w3.org/1999/02/22-rdf-syntax-ns#reifies");
     pub const REST: NamedNodeRef<'_> =
         NamedNodeRef::new_unchecked("http://www.w3.org/1999/02/22-rdf-syntax-ns#rest");
     pub const SEQ: NamedNodeRef<'_> =
