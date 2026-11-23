@@ -1,0 +1,101 @@
+{
+  "bi_workload_qualified": false,
+  "branches": 639,
+  "dataset": "bi10m",
+  "diagnostic_complete": true,
+  "original_attempt": {
+    "answers": 0,
+    "timed_out": 1,
+    "unvisited": 59
+  },
+  "q5_mapping_audit": {
+    "cause": "unresolved",
+    "iri_join_predicate_rows": {
+      "http://purl.org/stuff/rev#reviewer": 285000,
+      "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/country": 15408,
+      "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/product": 570000,
+      "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/reviewFor": 285000
+    },
+    "jena_distinct_products": 8,
+    "price_datatype": "http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/USD",
+    "price_language": null,
+    "price_rows": 570000,
+    "products_with_numeric_anchors": 30,
+    "q4_same_price_cast_policy_pass": true,
+    "target_class_rows": 30
+  },
+  "rdf_type_branches": 593,
+  "rows": 10102032,
+  "scored": false,
+  "table": [
+    {
+      "answer": "timeout",
+      "native-sql": "complete",
+      "native_sql_bytes": 1352456,
+      "request": "m000_p00_q1.rq",
+      "template": 1,
+      "union_tokens": 592
+    },
+    {
+      "answer": "exact",
+      "jena_rows": 10,
+      "native-sql": "complete",
+      "native_sql_bytes": 1223,
+      "ontop_rows": 10,
+      "request": "m000_p02_q2.rq",
+      "template": 2,
+      "union_tokens": 0
+    },
+    {
+      "answer": "query_error",
+      "native-sql": "query-error",
+      "request": "m000_p01_q3.rq",
+      "template": 3
+    },
+    {
+      "answer": "binary32_difference",
+      "jena_rows": 10,
+      "native-sql": "complete",
+      "native_sql_bytes": 6135,
+      "ontop_rows": 10,
+      "request": "m000_p04_q4.rq",
+      "template": 4,
+      "union_tokens": 0
+    },
+    {
+      "answer": "policy_failure",
+      "jena_rows": 14,
+      "native-sql": "query-error",
+      "ontop_rows": 0,
+      "request": "m000_p05_q5.rq",
+      "template": 5
+    },
+    {
+      "answer": "lexical_only",
+      "jena_rows": 14,
+      "native-sql": "complete",
+      "native_sql_bytes": 6275,
+      "ontop_rows": 14,
+      "request": "m000_p07_q6.rq",
+      "template": 6,
+      "union_tokens": 6
+    },
+    {
+      "answer": "exact",
+      "jena_rows": 0,
+      "native-sql": "complete",
+      "native_sql_bytes": 1557,
+      "ontop_rows": 0,
+      "request": "m000_p11_q7.rq",
+      "template": 7,
+      "union_tokens": 0
+    },
+    {
+      "answer": "query_error",
+      "native-sql": "query-error",
+      "request": "m000_p12_q8.rq",
+      "template": 8
+    }
+  ],
+  "verified_members": 421
+}
