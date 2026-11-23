@@ -114,13 +114,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         if let Some((id, dir)) = link
             && let Some(c) = self.csr(id, dir, false)
         {
-            let mut cache = self.csr.borrow_mut();
-            let seen = cache.scratch(c.nodes.len());
-            let mut queue = Vec::new();
-            return match c.dense(x) {
-                None => if zero { vec![x] } else { Vec::new() },
-                Some(d) => { c.closure_into(d, zero, seen, &mut queue); queue.iter().map(|&z| c.nodes[z as usize]).collect() }
-            };
+            return self.csr.borrow_mut().closure(&c, x, zero);
         }
         let mut seen = HashSet::new();
         let mut order = Vec::new();
@@ -188,46 +182,15 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     }
 
     /// The CSR of `p` traversed forward (`rev = false`) or backward over the active graph, or `None` to keep the
-    /// seeks: the option is off, `p` is over a cap, or (`eager = false`) the seeks spent on it so far in this query
-    /// are still below `edges / seek_divisor`.
+    /// seeks (`CsrCache::lookup`; `eager`: an all-pairs closure, which builds without waiting for seeks to add up).
     fn csr(&self, p: TermId, rev: bool, eager: bool) -> Option<Arc<Csr>> {
-        if !self.csr_paths { return None }
-        let graph = self.graph_token();
-        let key = (p, rev, graph);
-        let mut cache = self.csr.borrow_mut();
-        let limits = cache.limits;
-        let known = match cache.slots.get(&key) {
-            Some(CsrSlot::Built(c)) => return Some(c.clone()),
-            Some(CsrSlot::Off) => return None,
-            Some(&CsrSlot::Seeks { done, edges }) => Some((done, edges)),
-            None => None,
-        };
-        let (done, edges) = known.unwrap_or_else(|| {
-            // Exact: for a FROM union this is a merged scan, done once per predicate, direction and graph.
-            let edges = self.count(Perm::Pso, &[p]);
-            cache.slots.insert(key, CsrSlot::Seeks { done: 0, edges });
-            (0, edges)
-        });
-        if !eager && done < edges / limits.seek_divisor { return None }
-        let other = match cache.slots.get(&(p, !rev, graph)) { Some(CsrSlot::Built(c)) => Some(c.clone()), _ => None };
-        let cost = edges.saturating_mul(if other.is_some() { 8 } else { 16 });
-        if edges > limits.max_edges || cache.bytes.saturating_add(cost) > limits.budget_bytes {
-            cache.slots.insert(key, CsrSlot::Off);
-            return None;
-        }
-        let c = Arc::new(match other {
-            Some(o) => o.transpose(),
-            None => { let f = self.build_csr(p); if rev { f.transpose() } else { f } }
-        });
-        cache.bytes += cost;
-        cache.slots.insert(key, CsrSlot::Built(c.clone()));
-        Some(c)
+        // Exact: for a FROM union `count` is a merged scan; the cache asks for it once per key.
+        self.csr.borrow_mut().lookup(CsrKey::new(p, rev, self.graph_token()), || self.count(Perm::Pso, &[p]), eager, || self.build_csr(p))
     }
 
     /// Records `n` seeks spent by a seek-based closure over `p` in direction `rev` (see `csr`).
     fn note_seeks(&self, p: TermId, rev: bool, n: u64) {
-        if !self.csr_paths { return }
-        if let Some(CsrSlot::Seeks { done, .. }) = self.csr.borrow_mut().slots.get_mut(&(p, rev, self.graph_token())) { *done += n }
+        self.csr.borrow_mut().note_seeks(CsrKey::new(p, rev, self.graph_token()), n)
     }
 
     /// Forward CSR of `p`'s edges in the active graph, from one PSO scan (rows sorted by subject, then object).
@@ -354,7 +317,17 @@ impl Default for CsrLimits {
     fn default() -> Self { CsrLimits { max_edges: 50_000_000, budget_bytes: 2 << 30, seek_divisor: 32 } }
 }
 
-pub(crate) enum CsrSlot {
+/// An adjacency's identity within a query: predicate, direction (`rev`: backward) and active graph
+/// (`Ctx::graph_token`).
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct CsrKey { p: TermId, rev: bool, graph: usize }
+impl CsrKey {
+    fn new(p: TermId, rev: bool, graph: usize) -> Self { CsrKey { p, rev, graph } }
+    /// The same predicate and graph traversed the other way.
+    fn reversed(self) -> Self { CsrKey { rev: !self.rev, ..self } }
+}
+
+enum CsrSlot {
     /// Not built yet: seeks spent so far by bound-endpoint closures, and the predicate's edge count.
     Seeks { done: u64, edges: u64 },
     Built(Arc<Csr>),
@@ -362,20 +335,80 @@ pub(crate) enum CsrSlot {
     Off,
 }
 
-/// `Ctx::csr`: the query's adjacencies by (predicate, direction, active graph), and a visited bitset reused by
-/// bound-endpoint closures (kept all-zero between closures).
-#[derive(Default)]
+/// `Ctx::csr`: the query's CSR adjacencies and the whole policy for them: whether to use one at all
+/// (`Options::csr_paths`), when to build it (eagerly, or once seeks add up), the caps and the per-query budget, and
+/// reusing a cached direction's transpose. Also keeps the visited bitset bound-endpoint closures share (all-zero
+/// between closures).
 pub(crate) struct CsrCache {
-    pub slots: HashMap<(TermId, bool, usize), CsrSlot>,
-    pub bytes: u64,
-    pub limits: CsrLimits,
+    enabled: bool,
+    limits: CsrLimits,
+    slots: HashMap<CsrKey, CsrSlot>,
+    /// Estimated bytes of the adjacencies built so far, against `limits.budget_bytes`.
+    bytes: u64,
     seen: Vec<u64>,
 }
 impl CsrCache {
-    fn scratch(&mut self, nodes: usize) -> &mut [u64] {
-        let words = nodes.div_ceil(64);
+    /// `enabled = false` (`--ablate=csrpaths`): `lookup` always answers `None`, so every closure seeks.
+    pub(crate) fn new(enabled: bool, limits: CsrLimits) -> Self {
+        CsrCache { enabled, limits, slots: HashMap::new(), bytes: 0, seen: Vec::new() }
+    }
+
+    /// The adjacency for `key`, or `None` to keep the seeks: disabled, over a cap, or (`eager = false`) the seeks
+    /// recorded for `key` in this query (`note_seeks`) still below `edges / seek_divisor`. `edges` counts the
+    /// predicate's edges and is asked once per key. `forward` scans the predicate into its forward adjacency; it is
+    /// called only when the other direction is not cached (otherwise the answer is that one's transpose).
+    fn lookup(&mut self, key: CsrKey, edges: impl FnOnce() -> u64, eager: bool, forward: impl FnOnce() -> Csr) -> Option<Arc<Csr>> {
+        if !self.enabled { return None }
+        let known = match self.slots.get(&key) {
+            Some(CsrSlot::Built(c)) => return Some(c.clone()),
+            Some(CsrSlot::Off) => return None,
+            Some(&CsrSlot::Seeks { done, edges }) => Some((done, edges)),
+            None => None,
+        };
+        let (done, edges) = known.unwrap_or_else(|| {
+            let edges = edges();
+            self.slots.insert(key, CsrSlot::Seeks { done: 0, edges });
+            (0, edges)
+        });
+        if !eager && done < edges / self.limits.seek_divisor { return None }
+        let other = match self.slots.get(&key.reversed()) { Some(CsrSlot::Built(c)) => Some(c.clone()), _ => None };
+        let cost = edges.saturating_mul(if other.is_some() { 8 } else { 16 });
+        if edges > self.limits.max_edges || self.bytes.saturating_add(cost) > self.limits.budget_bytes {
+            self.slots.insert(key, CsrSlot::Off);
+            return None;
+        }
+        let c = Arc::new(match other {
+            Some(o) => o.transpose(),
+            None => { let f = forward(); if key.rev { f.transpose() } else { f } }
+        });
+        self.bytes += cost;
+        self.slots.insert(key, CsrSlot::Built(c.clone()));
+        Some(c)
+    }
+
+    /// Records `n` seeks a seek-based closure spent on `key`, toward `lookup`'s build threshold.
+    fn note_seeks(&mut self, key: CsrKey, n: u64) {
+        if let Some(CsrSlot::Seeks { done, .. }) = self.slots.get_mut(&key) { *done += n }
+    }
+
+    /// The closure from `x` over `c` in discovery order (`Csr::ends`), on the shared bitset.
+    fn closure(&mut self, c: &Csr, x: TermId, zero: bool) -> Vec<TermId> {
+        let words = c.bitset_words();
         if self.seen.len() < words { self.seen.resize(words, 0) }
-        &mut self.seen[..words]
+        let mut out = Vec::new();
+        c.ends(x, zero, &mut self.seen[..words], &mut Vec::new(), |z| out.push(z));
+        out
+    }
+
+    /// `"seeks"`, `"built"`, `"off"`, or `"none"` before the first lookup of `key`.
+    #[cfg(test)]
+    fn state(&self, key: CsrKey) -> &'static str {
+        match self.slots.get(&key) {
+            None => "none",
+            Some(CsrSlot::Seeks { .. }) => "seeks",
+            Some(CsrSlot::Built(_)) => "built",
+            Some(CsrSlot::Off) => "off",
+        }
     }
 }
 
@@ -389,6 +422,18 @@ pub(crate) struct Csr {
 
 impl Csr {
     fn dense(&self, x: TermId) -> Option<u32> { self.nodes.binary_search(&x).ok().map(|i| i as u32) }
+
+    /// Words of a visited bitset over the nodes.
+    fn bitset_words(&self) -> usize { self.nodes.len().div_ceil(64) }
+
+    /// Calls `emit` for the closure from `x` in discovery order (`closure_into`); `x` need not be a node: then it
+    /// is its own only end for `*` and has none for `+`.
+    fn ends(&self, x: TermId, zero: bool, seen: &mut [u64], queue: &mut Vec<u32>, mut emit: impl FnMut(TermId)) {
+        match self.dense(x) {
+            None => if zero { emit(x) },
+            Some(d) => { self.closure_into(d, zero, seen, queue); for &z in queue.iter() { emit(self.nodes[z as usize]) } }
+        }
+    }
 
     fn nbrs(&self, d: u32) -> &[u32] { &self.targets[self.offsets[d as usize] as usize..self.offsets[d as usize + 1] as usize] }
 
@@ -443,11 +488,12 @@ impl Csr {
     /// (start, end) for every start in order, its closure in discovery order; starts run in parallel.
     fn all_pairs(&self, starts: &[TermId], zero: bool, out: &mut Vec<(TermId, TermId)>) {
         use rayon::prelude::*;
-        let words = self.nodes.len().div_ceil(64);
+        let words = self.bitset_words();
         let parts: Vec<Vec<(TermId, TermId)>> = starts.par_iter().with_min_len(64)
-            .map_init(|| (vec![0u64; words], Vec::new()), |(seen, queue), &x| match self.dense(x) {
-                None => if zero { vec![(x, x)] } else { Vec::new() },
-                Some(d) => { self.closure_into(d, zero, seen, queue); queue.iter().map(|&z| (x, self.nodes[z as usize])).collect() }
+            .map_init(|| (vec![0u64; words], Vec::new()), |(seen, queue), &x| {
+                let mut v = Vec::new();
+                self.ends(x, zero, seen, queue, |z| v.push((x, z)));
+                v
             })
             .collect();
         out.reserve(parts.iter().map(Vec::len).sum());
@@ -521,16 +567,14 @@ mod csr_tests {
     }
 
     fn ctx(snap: &Triples, csr: bool, limits: CsrLimits) -> Ctx<'_, Triples> {
-        let mut c = Ctx::new(snap);
-        c.csr_paths = csr;
-        c.csr.borrow_mut().limits = limits;
-        c
+        Ctx::new(snap, CsrCache::new(csr, limits))
     }
 
     /// Build at the first closure, so every bound-endpoint closure runs on the CSR.
     fn eager() -> CsrLimits { CsrLimits { seek_divisor: u64::MAX, ..CsrLimits::default() } }
 
-    fn built(c: &Ctx<'_, Triples>, p: u64, rev: bool) -> bool { matches!(c.csr.borrow().slots.get(&(TermId(p), rev, 0)), Some(CsrSlot::Built(_))) }
+    fn state(c: &Ctx<'_, Triples>, p: u64, rev: bool) -> &'static str { c.csr.borrow().state(CsrKey::new(TermId(p), rev, 0)) }
+    fn built(c: &Ctx<'_, Triples>, p: u64, rev: bool) -> bool { state(c, p, rev) == "built" }
 
     #[test]
     fn csr_closures_match_seeks_in_order() {
@@ -549,7 +593,7 @@ mod csr_tests {
             assert!(built(&on, P1, false) && built(&on, P1, true), "both directions of p+ ran on the CSR");
             let off = ctx(&snap, false, eager());
             answers(&off, &paths()[0].1);
-            assert!(off.csr.borrow().slots.is_empty(), "off never builds");
+            assert!(state(&off, P1, false) == "none" && state(&off, P1, true) == "none", "off never builds");
         }
     }
 
@@ -567,7 +611,7 @@ mod csr_tests {
             }
             let on = ctx(&snap, true, limits);
             answers(&on, &paths()[0].1);
-            assert!(matches!(on.csr.borrow().slots.get(&(TermId(P1), false, 0)), Some(CsrSlot::Off)), "over the cap: seeks");
+            assert_eq!(state(&on, P1, false), "off", "over the cap: seeks");
             assert!(!built(&on, P1, true));
         }
         // At the cap it builds.

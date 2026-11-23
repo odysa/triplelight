@@ -227,7 +227,7 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     let (from, named) = match dataset { Some(ds) => resolve_dataset(snap, ds, spec.as_ref())?, None => (Vec::new(), Vec::new()) };
     let empty = dataset::EmptyGraph { dict: snap as &dyn Snapshot };
     let union = (from.len() > 1).then(|| dataset::UnionGraph { members: from.clone() });
-    let mut ctx = Ctx::new(snap);
+    let mut ctx = Ctx::new(snap, path::CsrCache::new(opts.csr_paths, path::CsrLimits::default()));
     ctx.dataset = dataset;
     ctx.named = named;
     if spec.is_some() && dataset.is_some() {
@@ -241,7 +241,6 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     ctx.range_pushdown = opts.range_pushdown;
     ctx.char_pairs = opts.char_pairs;
     ctx.sorted_probe = opts.sorted_probe;
-    ctx.csr_paths = opts.csr_paths;
     // With FROM / FROM NAMED the default graph is not `snap`, so nothing is marked (the pushdown also stays off
     // whenever the active graph is not `snap`).
     if ctx.range_pushdown && spec.is_none() {
@@ -405,9 +404,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     char_pairs: bool,
     /// `Options::sorted_probe`.
     sorted_probe: bool,
-    /// `Options::csr_paths`.
-    csr_paths: bool,
-    /// Per-query CSR adjacencies of single-predicate closures, by (predicate, direction, active graph) (`path.rs`).
+    /// CSR adjacencies of single-predicate closures for this query and their policy, including `Options::csr_paths`
+    /// (`path.rs`).
     csr: RefCell<path::CsrCache>,
     /// Range pushdown's per-predicate check (`range.rs`), per query, in front of the snapshot's `object_memo`: the
     /// stored-literal objects of a predicate if its literals of that datatype are all canonical, else `None`.
@@ -437,8 +435,9 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
 }
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
-    fn new(snap: &'a S) -> Self {
-        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, csr: RefCell::new(path::CsrCache::default()), range_checks: RefCell::new(HashMap::new()), range_reorderable: HashSet::new(), order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
+    /// `csr`: the query's CSR policy (`Options::csr_paths`), fixed for its duration.
+    fn new(snap: &'a S, csr: path::CsrCache) -> Self {
+        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr: RefCell::new(csr), range_checks: RefCell::new(HashMap::new()), range_reorderable: HashSet::new(), order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
