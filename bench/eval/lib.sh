@@ -26,7 +26,8 @@ start_system() {  # start_system <system> <dataset> [budget args...]; waits unti
   "$HERE/systems.sh" "$s" serve "$d" "$@" > "$OUT/$s.server.log" 2>&1 &
   echo $! > "$(PIDFILE "$s")"
   local t0; t0=$(date +%s)
-  until curl -s -o /dev/null --data-urlencode 'query=ASK{?s ?p ?o}' "$(url_of "$s")"; do
+  # readiness probe with a constant predicate: QLever's two-order index cannot answer a variable predicate and drops the connection
+  until curl -sf -o /dev/null --data-urlencode 'query=ASK{?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?o}' "$(url_of "$s")"; do
     sleep 2; kill -0 "$(cat "$(PIDFILE "$s")")" 2>/dev/null || { echo "$s exited while starting" >&2; return 1; }
   done
   echo "$s ready after $(( $(date +%s) - t0 ))s" >> "$OUT/$s.server.log"
