@@ -88,19 +88,29 @@ struct Entry {
 /// (clearing the reference bits it passes). FIFO or LRU miss on every access of a repeated pass larger than the
 /// shard; this keeps roughly capacity/working-set of such a pass while a hit-protected hot set survives. The
 /// generator has a fixed per-shard seed, so a single reader replays the same decisions.
+///
+/// A rejected miss is remembered in a bounded ghost set (keys only, no rows). A second miss on a ghost key is admitted
+/// for certain (#105): a block a query touches twice, such as a repeated query's output terms after earlier queries
+/// filled the shard, gets in on its second touch instead of one time in four. A one-shot pass still stays at one in
+/// four, so it cannot flush the hot set.
 struct Cache {
     entries: HashMap<(usize, usize), Entry>,
     keys: Vec<(usize, usize)>,
     used: usize,
     seed: u64,
     rng: u64,
+    ghost: std::collections::HashSet<(usize, usize)>,
+    ghost_order: std::collections::VecDeque<(usize, usize)>,
 }
+/// The ghost set holds at most this many keys per resident block (and at least `GHOST_MIN`).
+const GHOST_PER_RESIDENT: usize = 2;
+const GHOST_MIN: usize = 256;
 const ADMIT_ONE_IN: u64 = 4;
 const EVICTION_SAMPLE: usize = 8;
 impl Cache {
     fn new(shard: usize) -> Self {
         let seed = (0x9e37_79b9_7f4a_7c15 ^ (shard as u64).wrapping_mul(0xbf58_476d_1ce4_e5b9)) | 1;
-        Self { entries: HashMap::new(), keys: Vec::new(), used: 0, seed, rng: seed }
+        Self { entries: HashMap::new(), keys: Vec::new(), used: 0, seed, rng: seed, ghost: Default::default(), ghost_order: Default::default() }
     }
     /// xorshift64*: cheap, deterministic, and good enough for sampling and admission coin flips.
     fn next(&mut self) -> u64 {
@@ -150,7 +160,18 @@ impl Cache {
         if size > budget || self.entries.contains_key(&key) {
             return Ok(0);
         }
-        if self.used + size > budget && !self.next().is_multiple_of(ADMIT_ONE_IN) {
+        if self.used + size > budget && !self.ghost.remove(&key) && !self.next().is_multiple_of(ADMIT_ONE_IN) {
+            // Rejected: remember the key, so its next miss is admitted.
+            if self.ghost.insert(key) { self.ghost_order.push_back(key) }
+            let cap = (self.keys.len() * GHOST_PER_RESIDENT).max(GHOST_MIN);
+            while self.ghost.len() > cap {
+                match self.ghost_order.pop_front() { Some(old) => { self.ghost.remove(&old); } None => break }
+            }
+            // Keys removed from `ghost` by an admission leave stale entries in `ghost_order`; drop them as they reach
+            // the front so the queue stays within a constant factor of the set.
+            while self.ghost_order.len() > 2 * cap.max(self.ghost.len()) {
+                if let Some(old) = self.ghost_order.pop_front() { if !self.ghost.contains(&old) { continue } self.ghost_order.push_back(old); break }
+            }
             return Ok(0);
         }
         let mut evicted = 0;
@@ -169,6 +190,8 @@ impl Cache {
         self.keys.clear();
         self.used = 0;
         self.rng = self.seed;
+        self.ghost.clear();
+        self.ghost_order.clear();
     }
 }
 pub(super) struct DictionaryCache {
@@ -1310,6 +1333,25 @@ mod admission_cache_tests {
         }
         assert!((850..=1150).contains(&admitted), "admitted {admitted} of 4000, expected about 1000");
         assert_eq!(c.insert((7, 99_999), &r, 101, 100).unwrap(), 0, "a block larger than the shard is never cached");
+    }
+
+    #[test]
+    fn a_second_miss_on_a_rejected_block_is_admitted_and_one_shot_passes_stay_at_one_in_four() {
+        let mut c = Cache::new(5);
+        let r = rows();
+        for i in 0..10 { c.insert((7, i), &r, 10, 100).unwrap(); }
+        // A repeated set of 40 blocks into a full shard: every block is resident after its second miss at the latest.
+        for _ in 0..2 { for i in 100..140 { c.insert((7, i), &r, 10, 100).unwrap(); } }
+        let resident = (100..140).filter(|i| c.entries.contains_key(&(7, *i))).count();
+        assert!(resident >= 10 - 1, "the shard holds 10 blocks and they are now the repeated ones: {resident}");
+        // Single misses on fresh keys are still admitted about one time in four.
+        let mut admitted = 0;
+        for i in 1000..5000 { c.insert((7, i), &r, 10, 100).unwrap(); admitted += u32::from(c.entries.contains_key(&(7, i))); }
+        assert!((850..=1150).contains(&admitted), "admitted {admitted} of 4000");
+        assert!(c.ghost.len() <= GHOST_MIN.max(c.keys.len() * GHOST_PER_RESIDENT));
+        assert!(c.ghost_order.len() <= 4 * GHOST_MIN, "ghost queue stays bounded: {}", c.ghost_order.len());
+        c.clear();
+        assert!(c.ghost.is_empty() && c.ghost_order.is_empty());
     }
 
     #[test]
