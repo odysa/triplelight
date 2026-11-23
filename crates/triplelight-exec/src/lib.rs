@@ -130,8 +130,10 @@ pub struct Options<'a> {
     pub count_pushdown: bool,
     /// Range-filter pushdown (`range.rs`): a pattern `?s <p> ?d` under FILTER bounds on `?d` with `xsd:date`
     /// constants scans only the object IDs that can pass them, when the store orders literal IDs by text and `<p>`'s
-    /// dates are canonical. The filter still runs, so turning it off gives identical answers; it exists for
-    /// ablations (`--ablate=range`) and differential checks.
+    /// dates are canonical, the range holds at most 15% of `<p>`'s triples, and the BGP's solution order cannot
+    /// reach the answers (no SUM/AVG/MIN/MAX/SAMPLE/GROUP_CONCAT above it, no LIMIT/OFFSET over an ORDER BY that may
+    /// tie). The filter still runs, so turning it off gives the same answers; it exists for ablations
+    /// (`--ablate=range`) and differential checks.
     pub range_pushdown: bool,
 }
 impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true } } }
@@ -224,6 +226,11 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     ctx.general_group = opts.general_group;
     ctx.count_pushdown = opts.count_pushdown;
     ctx.range_pushdown = opts.range_pushdown;
+    if ctx.range_pushdown {
+        let pattern = match q { Query::Select { pattern, .. } | Query::Ask { pattern, .. } | Query::Construct { pattern, .. } | Query::Describe { pattern, .. } => pattern };
+        let nodes = |p: &triplelight_rdf::NamedNode| range::iri_objects(snap, p);
+        range::reorderable_bgps(pattern, true, &nodes, &mut ctx.range_reorderable);
+    }
     let stats = opts.stats;
     ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
     match q {
@@ -379,6 +386,9 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// Range pushdown's per-predicate check (`range.rs`), per query, in front of the snapshot's `object_memo`: the
     /// stored-literal objects of a predicate if its literals of that datatype are all canonical, else `None`.
     range_checks: RefCell<HashMap<(TermId, &'static str), Option<std::sync::Arc<[TermId]>>>>,
+    /// BGPs (by the address of their pattern list in the query) whose solution order cannot change the answers:
+    /// the only ones range pushdown may reorder (`range::reorderable_bgps`).
+    range_reorderable: HashSet<usize>,
     /// LIMIT (+OFFSET) of a Slice directly above the next ORDER BY (through at most a Project): lets ORDER BY keep
     /// only the first `k` rows (stable top-k) instead of sorting everything. Taken by that ORDER BY.
     order_limit: std::cell::Cell<Option<usize>>,
@@ -402,7 +412,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, general_group: false, count_pushdown: true, range_pushdown: true, range_checks: RefCell::new(HashMap::new()), order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
+        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, general_group: false, count_pushdown: true, range_pushdown: true, range_checks: RefCell::new(HashMap::new()), range_reorderable: HashSet::new(), order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -870,7 +880,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             return if all { rows } else { Vec::new() };
         }
         let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
-        let ranges = self.object_ranges(&pats, filters, &rows[0]);
+        let ranges = self.object_ranges(patterns, &pats, filters, &rows[0]);
         let flat: Vec<TermId> = rows.concat();
         let out = on_data!(self, |g| {
             let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges) };

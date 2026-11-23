@@ -39,14 +39,19 @@
 //! A range is pushed only if it holds at most `MAX_FRACTION` of the predicate's triples (exact per-object counts
 //! against `count(POS, [p])`); a denser one leaves the BGP's plan exactly as without the pushdown. Each decision is
 //! logged on the server's `phase_trace` line (`range_pushdown=on:0.031,...`) under `TRIPLELIGHT_TRACE_PHASES`.
+//!
+//! A pushed range changes the join order and the order of the BGP's rows, never their multiset. It is therefore
+//! applied only to BGPs whose solution order cannot reach the answers (`reorderable_bgps`, computed once per query):
+//! not under SUM, AVG, MIN, MAX, SAMPLE, GROUP_CONCAT or a custom aggregate, nor under a LIMIT/OFFSET unless the
+//! ORDER BY it slices is provably tie-free (`tie_free`).
 use super::bgp::Slot;
 use super::{storage_failure, Ctx, UNBOUND};
 use crate::model::{id_tag, Perm, TermId};
-use crate::sparql::Expression;
+use crate::sparql::{AggregateExpression, AggregateFunction, Expression, GraphPattern};
 use crate::storage::Snapshot;
 use triplelight_rdf::vocab::xsd;
-use triplelight_rdf::{Literal, TermRef};
-use std::collections::HashMap;
+use triplelight_rdf::{Literal, NamedNode, TermRef};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 /// Distinct stored-literal objects of one predicate decoded for the canonical-form check; above this the pushdown is
@@ -85,6 +90,125 @@ fn canonical_date(v: &str) -> bool {
 fn ordered_constant(l: &Literal) -> Option<&'static str> {
     let dt = xsd::DATE.as_str();
     (l.datatype().as_str() == dt && canonical(dt, l.value())).then_some(dt)
+}
+
+/// Adds to `out` the BGPs of `p` (by the address of their pattern list) whose solution order cannot change the
+/// query's answers, so a range pushdown, which changes join order and row order, may apply to them. `free` says
+/// whether the solutions of `p` itself may be reordered (true at the top: SPARQL leaves solution order unspecified).
+///
+/// Order matters below a LIMIT/OFFSET without ORDER BY (which rows are selected) and below a GROUP with any aggregate
+/// but COUNT: SUM and AVG fold left to right (integer overflow is an error, floats round by order), MIN and MAX keep
+/// the first or last of numerically equal terms of different types, SAMPLE and GROUP_CONCAT take input order, and
+/// a custom aggregate is unknown. A Group's own output order follows its input, so its input is free only if the
+/// group's output is. Everything else passes `free` down; EXISTS patterns and anything this walk does not reach
+/// (rewritten patterns) are never marked, so they keep the unranged plan.
+pub(super) fn reorderable_bgps(p: &GraphPattern, free: bool, nodes: &dyn Fn(&NamedNode) -> bool, out: &mut HashSet<usize>) {
+    match p {
+        GraphPattern::Bgp { patterns } => { if free && !patterns.is_empty() { out.insert(patterns.as_ptr() as usize); } }
+        GraphPattern::Path { .. } | GraphPattern::Values { .. } => {}
+        GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right }
+        | GraphPattern::LeftJoin { left, right, .. } => { reorderable_bgps(left, free, nodes, out); reorderable_bgps(right, free, nodes, out) }
+        GraphPattern::Filter { inner, .. } | GraphPattern::Graph { inner, .. } | GraphPattern::Extend { inner, .. }
+        | GraphPattern::OrderBy { inner, .. } | GraphPattern::Project { inner, .. } | GraphPattern::Distinct { inner }
+        | GraphPattern::Reduced { inner } | GraphPattern::Service { inner, .. } => reorderable_bgps(inner, free, nodes, out),
+        GraphPattern::Slice { inner, .. } => {
+            // Which rows a slice keeps depends on their order unless an ORDER BY under it (through projection and
+            // duplicate removal) orders them without ties: the executor breaks ties by input order.
+            let mut below = &**inner;
+            while let GraphPattern::Project { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } = below { below = inner.as_ref() }
+            reorderable_bgps(inner, free && tie_free(below, nodes), nodes, out)
+        }
+        GraphPattern::Group { inner, aggregates, .. } => {
+            let counts_only = aggregates.iter().all(|(_, a)| matches!(a,
+                AggregateExpression::CountSolutions { .. } | AggregateExpression::FunctionCall { name: AggregateFunction::Count, .. }));
+            reorderable_bgps(inner, free && counts_only, nodes, out)
+        }
+    }
+}
+
+/// Whether every object of predicate `p` in `snap` (the merged view, so delta inserts count) is a stored IRI: POS
+/// keeps `p`'s objects in ID order and the tag is the top four bits, so the first object must carry `id_tag::IRI` and
+/// no object may be at or above the next tag (blank nodes, literals, triple terms, and delta, scratch and inline IDs
+/// all are, so any of those refuses; tag 0 is never a stored ID but refuses too). Two seeks, memoized per snapshot
+/// in its `object_memo`. An absent predicate binds nothing, so it qualifies.
+pub(super) fn iri_objects<S: Snapshot + ?Sized>(snap: &S, p: &NamedNode) -> bool {
+    let Ok(found) = snap.lookup(&p.clone().into()) else { return false };
+    let Some(pid) = found else { return true };
+    let key = (pid, "iri-only objects");
+    let memo = snap.object_memo();
+    if let Some(r) = memo.and_then(|m| { let memo = m.0.lock().ok()?; memo.get(&key).cloned() }) { return r.is_some() }
+    let seek = |t: u64| snap.seek(Perm::Pos, &[pid], TermId(t));
+    let ok = match (seek(1), seek((id_tag::IRI + 1) << 60)) {
+        (Ok(first), Ok(None)) => first.is_none_or(|x| id_tag::of(x) == id_tag::IRI),
+        _ => false,
+    };
+    if let Some(m) = memo && let Ok(mut m) = m.0.lock() { m.insert(key, ok.then(|| Arc::<[TermId]>::from(Vec::new()))); }
+    ok
+}
+
+/// Whether `p` is an ORDER BY that provably has no ties: its input rows are unique on a set of variables (`unique_on`)
+/// that are all plain keys of the ORDER BY, and each of those can only be bound to IRIs or blank nodes
+/// (`node_only`; as an object, only IRIs: `iri_objects`). The one case accepted is rows from GROUP BY (or a join
+/// of grouped subqueries), ordered by every grouping variable.
+///
+/// Why nodes only: `expr::order_cmp` orders two IRIs, and two blank nodes, by their text, which differs for distinct
+/// stored terms, so distinct values never tie (and unbound only ties with unbound, i.e. the same group). Literals can
+/// tie while distinct (integer 1 and decimal 1.0 compare equal but are different group keys).
+fn tie_free(p: &GraphPattern, nodes: &dyn Fn(&NamedNode) -> bool) -> bool {
+    let GraphPattern::OrderBy { inner, expression } = p else { return false };
+    let keys: Vec<&str> = expression.iter().filter_map(|o| {
+        let (crate::sparql::OrderExpression::Asc(e) | crate::sparql::OrderExpression::Desc(e)) = o;
+        if let Expression::Variable(v) = e { Some(v.as_str()) } else { None }
+    }).collect();
+    unique_on(inner).is_some_and(|vs| vs.iter().all(|(v, grouped)| keys.contains(v) && node_only(v, grouped, nodes)))
+}
+
+/// Whether every way `p` can bind `v` binds an IRI or a blank node: subject, predicate or GRAPH name, or the object of
+/// a constant predicate whose objects are all IRIs (`nodes`, i.e. `iri_objects`). A path endpoint, VALUES, BIND,
+/// aggregate result, SERVICE or (RDF 1.2) triple-term pattern is not proven.
+fn node_only(v: &str, p: &GraphPattern, nodes: &dyn Fn(&NamedNode) -> bool) -> bool {
+    use crate::sparql::{NamedNodePattern, TermPattern};
+    let is = |t: &TermPattern| matches!(t, TermPattern::Variable(x) if x.as_str() == v);
+    match p {
+        GraphPattern::Bgp { patterns } => patterns.iter().all(|t| {
+            #[cfg(feature = "rdf-12")]
+            if matches!(t.subject, TermPattern::Triple(_)) || matches!(t.object, TermPattern::Triple(_)) { return false }
+            !is(&t.object) || matches!(&t.predicate, NamedNodePattern::NamedNode(n) if nodes(n))
+        }),
+        GraphPattern::Path { subject, object, .. } => !is(subject) && !is(object),
+        GraphPattern::Values { variables, .. } => variables.iter().all(|x| x.as_str() != v),
+        GraphPattern::Service { .. } => false,
+        GraphPattern::Extend { inner, variable, .. } => variable.as_str() != v && node_only(v, inner, nodes),
+        GraphPattern::Group { inner, aggregates, .. } => aggregates.iter().all(|(x, _)| x.as_str() != v) && node_only(v, inner, nodes),
+        GraphPattern::Join { left, right } | GraphPattern::Union { left, right } | GraphPattern::Minus { left, right }
+        | GraphPattern::LeftJoin { left, right, .. } => node_only(v, left, nodes) && node_only(v, right, nodes),
+        GraphPattern::Filter { inner, .. } | GraphPattern::Graph { inner, .. } | GraphPattern::OrderBy { inner, .. }
+        | GraphPattern::Project { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner }
+        | GraphPattern::Slice { inner, .. } => node_only(v, inner, nodes),
+    }
+}
+
+/// Variables on which the rows of `p` are unique (no two rows agree on all of them), if provable: a GROUP BY's keys
+/// (no keys: one row), kept through FILTER, BIND, DISTINCT/REDUCED and a projection that keeps them; a join of two
+/// such inputs is unique on the union (each row is one row of each side).
+fn unique_on(p: &GraphPattern) -> Option<Vec<(&str, &GraphPattern)>> {
+    match p {
+        // The empty group has exactly one solution (the identity of a join of subqueries).
+        GraphPattern::Bgp { patterns } if patterns.is_empty() => Some(Vec::new()),
+        GraphPattern::Group { inner, variables, .. } => Some(variables.iter().map(|v| (v.as_str(), &**inner)).collect()),
+        GraphPattern::Filter { inner, .. } | GraphPattern::Extend { inner, .. } | GraphPattern::Distinct { inner }
+        | GraphPattern::Reduced { inner } => unique_on(inner),
+        GraphPattern::Project { inner, variables } => {
+            unique_on(inner).filter(|vs| vs.iter().all(|(v, _)| variables.iter().any(|x| x.as_str() == *v)))
+        }
+        GraphPattern::Join { left, right } => {
+            // A key of both sides must be proven a node on both (an unbound left key takes the right one's value).
+            let mut vs = unique_on(left)?;
+            vs.extend(unique_on(right)?);
+            Some(vs)
+        }
+        _ => None,
+    }
 }
 
 /// One side of an interval, from one FILTER conjunct.
@@ -135,9 +259,11 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     /// is off, inside GRAPH / FROM (the active graph is not `snap`), or nothing applies.
     /// Patterns whose subject or object `first` (the first input row) binds are skipped: they are read through the
     /// bound value, and computing their range would only cost (e.g. once per row of an EXISTS).
-    pub(super) fn object_ranges(&self, pats: &[[Slot; 3]], filters: &[(&Expression, Vec<usize>)], first: &[TermId]) -> Ranges {
+    pub(super) fn object_ranges(&self, patterns: &[crate::sparql::TriplePattern], pats: &[[Slot; 3]], filters: &[(&Expression, Vec<usize>)], first: &[TermId]) -> Ranges {
         let mut out = Ranges::new();
         if !self.range_pushdown || filters.is_empty() || self.data.get().is_some() { return out }
+        // Only BGPs whose solution order cannot reach the answers (`reorderable_bgps`).
+        if !self.range_reorderable.contains(&(patterns.as_ptr() as usize)) { return out }
         let mut bounds: HashMap<usize, Vec<Bound>> = HashMap::new();
         for (e, _) in filters {
             if let Some((col, b)) = self.range_bound(e) { bounds.entry(col).or_default().push(b) }
@@ -157,13 +283,14 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let datatype = bounds[0].datatype;
         // Bounds of different datatypes cannot all hold; leave such a conjunction to the filter.
         if bounds.iter().any(|b| b.datatype != datatype) { return None }
-        let literals = self.ordered_literal_objects(p, datatype)?;
+        // The text bounds first: a store that cannot promise them (`None`) skips the object enumeration below.
         let (mut lo, mut hi) = (FIRST_LITERAL, END_LITERAL);
         for b in bounds {
             let strict = match b.side { Side::Lower { strict } => strict, Side::Upper { inclusive } => inclusive };
             let id = self.snap.literal_text_bound(&b.text, strict).unwrap_or_else(|e| storage_failure(e))?;
             match b.side { Side::Lower { .. } => lo = lo.max(id), Side::Upper { .. } => hi = hi.min(id) }
         }
+        let literals = self.ordered_literal_objects(p, datatype)?;
         let mut objects: Vec<TermId> = if lo < hi {
             let a = literals.partition_point(|&x| x < lo);
             let b = literals.partition_point(|&x| x < hi);

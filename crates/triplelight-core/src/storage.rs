@@ -82,7 +82,8 @@ pub trait Snapshot: Dictionary + Send + Sync {
 }
 
 /// See `Snapshot::object_memo`: for a (predicate, datatype IRI), the predicate's stored-literal objects ascending if
-/// every one of that datatype is in canonical form, else `None`.
+/// every one of that datatype is in canonical form, else `None`; for (predicate, "iri-only objects"), `Some` (empty)
+/// if every object of the predicate is an IRI.
 #[derive(Default)]
 pub struct ObjectMemo(pub std::sync::Mutex<std::collections::HashMap<(TermId, &'static str), Option<std::sync::Arc<[TermId]>>>>);
 

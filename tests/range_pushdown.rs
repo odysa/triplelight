@@ -68,6 +68,14 @@ fn answers<S: Snapshot>(s: &S, q: &str, o: &Options<'_>) -> Vec<String> {
     }
 }
 
+/// Solutions as display strings in result order.
+fn ordered<S: Snapshot>(s: &S, q: &str, o: &Options<'_>) -> Vec<String> {
+    match query_with(s, q, o).unwrap_or_else(|e| panic!("{q}: {e}")) {
+        QueryResult::Solutions { rows, .. } => rows.iter().map(|r| r.iter().map(|t| t.as_ref().map_or("-".into(), |t| t.to_string())).collect::<Vec<_>>().join(" ")).collect(),
+        r => panic!("{r:?}"),
+    }
+}
+
 /// Answers with the pushdown on and off (which must agree) and the triples scanned by each.
 fn on_off(s: &dyn Snapshot, q: &str) -> (Vec<String>, usize, usize) {
     let (on, off) = (counting(s), counting(s));
@@ -352,6 +360,97 @@ fn a_range_over_the_fraction_takes_the_unranged_plan() {
     }
 }
 
+/// Jianlin's fixture (PR #202 review): in subject order the three selected values are MAX, 1, -1 (the checked SUM
+/// overflows: unbound); in date order MAX, -1, 1 (the SUM is MAX). SUM is order-sensitive, so the BGP under it is not
+/// pushed and the answer is the unranged plan's. (Jianlin's 20 filler dates are 200 here, so that the pushed COUNT
+/// reads its three rows by object rather than through the dense-range scan.)
+#[test]
+fn an_order_sensitive_sum_is_not_pushed() {
+    let mut nt = String::new();
+    for (s, date) in [("a", "2007-01-01"), ("b", "2007-01-03"), ("c", "2007-01-02")] { nt += &format!("<urn:{s}> <urn:date> {} .\n", d(date)); }
+    for i in 0..200 { nt += &format!("<urn:z{i:03}> <urn:date> {} .\n", d("2008-01-01")); }
+    let q = "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT (SUM(IF(?s = <urn:a>, 9223372036854775807, IF(?s = <urn:b>, 1, -1))) AS ?total)
+WHERE { ?s <urn:date> ?d . FILTER(?d < \"2008-01-01\"^^xsd:date) }";
+    let base = disk("ordered-sum", &nt);
+    let (got, on, off) = on_off(&base.snap, q);
+    assert_eq!((on, off), (203, 203), "the SUM's BGP was pushed down");
+    assert_eq!(got, vec!["-".to_string()], "the checked SUM over MAX, 1, -1 overflows");
+    assert_eq!(ordered(&base.snap, q, &opts(true)), ordered(&memory(&nt), q, &opts(true)));
+    // The same BGP under COUNT is pushed (three rows read).
+    let count = "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT (COUNT(*) AS ?n) WHERE { ?s <urn:date> ?d . FILTER(?d < \"2008-01-01\"^^xsd:date) }";
+    let (got, on, _) = on_off(&base.snap, count);
+    assert_eq!(on, 3);
+    assert_eq!(got.len(), 1);
+}
+
+/// Which consumers allow the pushdown: plain SELECT and COUNT (through a subquery too) do; SUM, AVG, MIN, MAX,
+/// SAMPLE and GROUP_CONCAT do not, in a multi-pattern BGP with statistics on; nor a LIMIT without ORDER BY, or an
+/// ORDER BY that can tie (a plain variable, or a group key bound to literals).
+#[test]
+fn only_order_insensitive_consumers_are_pushed() {
+    let mut nt = base_nt();
+    for i in 0..REVIEWS {
+        nt += &format!("<urn:r{i}> <urn:n> \"{}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n", i % 5);
+        // A group key that is 1 for some reviews and 1.0 for others: distinct keys that ORDER BY ties.
+        let k = if i % 2 == 0 { "\"1\"^^<http://www.w3.org/2001/XMLSchema#integer>" } else { "\"1.0\"^^<http://www.w3.org/2001/XMLSchema#decimal>" };
+        nt += &format!("<urn:r{i}> <urn:key> {k} .\n");
+    }
+    let base = disk("consumers", &nt);
+    let stats = Stats::from_snapshot(&base.snap).unwrap();
+    let range = format!("?d >= {} && ?d < {}", d("2007-10-10"), d("2007-10-15"));
+    let bgp = format!("?r <urn:for> ?p . ?r <urn:date> ?d . ?r <urn:n> ?n FILTER({range})");
+    let run = |q: &str, on: bool, stats_on: bool| {
+        let s = counting(&base.snap);
+        let o = Options { stats: stats_on.then_some(&stats), ..opts(on) };
+        let got = ordered(&s, q, &o);
+        (got, s.rows.load(Ordering::Relaxed), s.scans.load(Ordering::Relaxed))
+    };
+    let q3 = format!(
+        "SELECT ?p ?a ?b WHERE {{ {{ SELECT ?p (COUNT(?r) AS ?a) WHERE {{ ?r <urn:for> ?p . ?r <urn:date> ?d FILTER({range}) }} GROUP BY ?p }} \
+         {{ SELECT ?p (COUNT(?r) AS ?b) WHERE {{ ?r <urn:for> ?p . ?r <urn:date> ?d FILTER(?d >= {} && ?d < {}) }} GROUP BY ?p HAVING (COUNT(?r) > 0) }} }} \
+         ORDER BY DESC(?a / ?b) ?p LIMIT 10", d("2007-10-01"), d("2007-10-10"));
+    let pushed = [
+        format!("SELECT ?r ?p ?n WHERE {{ {bgp} }}"),
+        format!("SELECT ?p (COUNT(?r) AS ?c) (COUNT(DISTINCT ?n) AS ?k) WHERE {{ {bgp} }} GROUP BY ?p"),
+        format!("ASK {{ {bgp} }}"),
+        format!("SELECT ?p (COUNT(*) AS ?c) WHERE {{ {bgp} }} GROUP BY ?p ORDER BY ?p LIMIT 2"),
+        // BSBM BI q3's shape: two COUNT subqueries joined on their key, ordered by the key under LIMIT.
+        q3,
+    ];
+    let not_pushed = [
+        format!("SELECT ?p (SUM(?n) AS ?x) WHERE {{ {bgp} }} GROUP BY ?p"),
+        format!("SELECT ?p (AVG(?n) AS ?x) WHERE {{ {bgp} }} GROUP BY ?p"),
+        format!("SELECT ?p (MIN(?n) AS ?x) WHERE {{ {bgp} }} GROUP BY ?p"),
+        format!("SELECT ?p (MAX(?n) AS ?x) WHERE {{ {bgp} }} GROUP BY ?p"),
+        format!("SELECT ?p (SAMPLE(?n) AS ?x) WHERE {{ {bgp} }} GROUP BY ?p"),
+        format!("SELECT ?p (GROUP_CONCAT(?n) AS ?x) WHERE {{ {bgp} }} GROUP BY ?p"),
+        format!("SELECT ?p (COUNT(?r) AS ?c) (SUM(?n) AS ?x) WHERE {{ {bgp} }} GROUP BY ?p"),
+        // SUM over a COUNT subquery: the subquery's group order reaches the fold.
+        format!("SELECT (SUM(?c) AS ?x) WHERE {{ {{ SELECT ?p (COUNT(?r) AS ?c) WHERE {{ {bgp} }} GROUP BY ?p }} }}"),
+        // LIMIT without ORDER BY, and ORDER BY with ties under LIMIT.
+        format!("SELECT ?r WHERE {{ {bgp} }} LIMIT 1"),
+        format!("SELECT ?r WHERE {{ {bgp} }} ORDER BY ?d LIMIT 1"),
+        // Group key bound to literals (1 and 1.0 are distinct groups that ORDER BY ties).
+        format!("SELECT ?k (COUNT(?r) AS ?c) WHERE {{ ?r <urn:date> ?d . ?r <urn:key> ?k FILTER({range}) }} GROUP BY ?k ORDER BY ?k LIMIT 1"),
+    ];
+    for stats_on in [false, true] {
+        for q in &pushed {
+            let ((a, on, _), (b, off, _)) = (run(q, true, stats_on), run(q, false, stats_on));
+            assert_eq!(sorted(a), sorted(b), "{q}");
+            assert!(on < off, "{q} (stats {stats_on}) was not pushed: {on} rows vs {off}");
+        }
+        for q in &not_pushed {
+            let ((a, on_rows, on_scans), (b, off_rows, off_scans)) = (run(q, true, stats_on), run(q, false, stats_on));
+            assert_eq!(a, b, "{q}");
+            assert_eq!((on_rows, on_scans), (off_rows, off_scans), "{q} (stats {stats_on}) was pushed down");
+        }
+    }
+}
+
+fn sorted(mut v: Vec<String>) -> Vec<String> { v.sort(); v }
+
 /// xorshift64*, as in the storage tests: deterministic and dependency-free.
 struct Rng(u64);
 impl Rng {
@@ -386,6 +485,11 @@ fn differential_random_ranges() {
             }
         }
         nt += &format!("<urn:s{s}> <urn:for> <urn:p{}> .\n", rng.below(9));
+        // Values whose SUM and AVG depend on the fold order: an integer overflow near i64::MAX, floats that cancel.
+        let v = ["9223372036854775807", "9223372036854775806", "1", "-1", "-2", "3"][rng.below(6) as usize];
+        let f = ["1e16", "1.0e0", "-1e16", "0.5e0"][rng.below(4) as usize];
+        nt += &format!("<urn:s{s}> <urn:val> \"{v}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n");
+        nt += &format!("<urn:s{s}> <urn:fval> \"{f}\"^^<http://www.w3.org/2001/XMLSchema#double> .\n");
     }
     let base = disk("random", &nt);
     let reference = memory(&nt);
@@ -405,20 +509,28 @@ fn differential_random_ranges() {
             _ => { let (a, b) = (bound(v, rng), bound(v, rng)); format!("{a} && {b}") }
         };
         let c = cond("?d", &mut rng);
-        let q = match trial % 4 {
+        let q = match trial % 6 {
             0 => format!("SELECT ?s ?d WHERE {{ ?s <urn:date> ?d FILTER({c}) }}"),
             1 => format!("SELECT ?s ?d ?p WHERE {{ ?s <urn:date> ?d . ?s <urn:for> ?p FILTER({c}) }}"),
             2 => { let e = cond("?e", &mut rng); format!("SELECT ?s ?d ?e WHERE {{ ?s <urn:date> ?d . ?s <urn:date2> ?e FILTER({c} && {e}) }}") }
-            _ => format!("SELECT ?p (COUNT(?s) AS ?n) WHERE {{ ?s <urn:for> ?p . ?s <urn:date> ?d FILTER({c}) }} GROUP BY ?p"),
+            3 => format!("SELECT ?p (COUNT(?s) AS ?n) WHERE {{ ?s <urn:for> ?p . ?s <urn:date> ?d FILTER({c}) }} GROUP BY ?p"),
+            4 => format!("SELECT ?p (MIN(?d) AS ?lo) (MAX(?d) AS ?hi) (COUNT(*) AS ?n) WHERE {{ ?s <urn:for> ?p . ?s <urn:date> ?d FILTER({c}) }} GROUP BY ?p"),
+            _ => format!("SELECT ?p (SUM(?v) AS ?t) (AVG(?f) AS ?a) WHERE {{ ?s <urn:date> ?d . ?s <urn:val> ?v . ?s <urn:fval> ?f . ?s <urn:for> ?p FILTER({c}) }} GROUP BY ?p"),
         };
         let (got, on, off) = on_off(&base.snap, &q);
         if on < off { pushed += 1 }
-        assert_eq!(got, answers(&reference, &q, &opts(true)), "{q}");
+        if trial % 6 >= 4 {
+            // Order-sensitive aggregates are never pushed: the same scans, and the same values in the same order.
+            assert_eq!(on, off, "{q} was pushed down");
+            assert_eq!(ordered(&base.snap, &q, &opts(true)), ordered(&base.snap, &q, &opts(false)), "{q}");
+        }
+        // The memory store folds in its own order, so SUM/AVG are compared with it only on the same plan.
+        if trial % 6 != 5 { assert_eq!(got, answers(&reference, &q, &opts(true)), "{q}"); }
         let with_stats = |on: bool| Options { stats: Some(&stats), ..opts(on) };
         assert_eq!(answers(&base.snap, &q, &with_stats(true)), got, "{q} (planner)");
         assert_eq!(answers(&base.snap, &q, &with_stats(false)), got, "{q} (planner, off)");
     }
-    assert!(pushed > 50, "the pushdown was taken in only {pushed} trials");
+    assert!(pushed > 30, "the pushdown was taken in only {pushed} trials");
 }
 
 /// Large enough for the cost-based planner (estimated greedy work >= 100,000), which must plan the ranged pattern
