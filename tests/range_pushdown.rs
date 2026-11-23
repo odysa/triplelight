@@ -189,7 +189,7 @@ fn other_datatypes_and_negations_are_not_pushed() {
         format!("?d >= \"2007-10-15T00:00:00\"^^{dt}"),
         format!("?d >= {}", d("2007-10-10Z")),
         format!("?d >= {}", d("-2007-10-10")),
-        format!("?d >= \"2007-10-15\"^^<urn:mydate>"),
+        "?d >= \"2007-10-15\"^^<urn:mydate>".to_string(),
         // Negation and disjunction are not bounds.
         format!("!(?d < {})", d("2007-10-10")),
         format!("?d < {} || ?d > {}", d("2007-02-01"), d("2007-10-10")),
