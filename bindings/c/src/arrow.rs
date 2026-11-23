@@ -46,10 +46,20 @@ fn owned(t: TermRef<'_>) -> Result<Owned, ArrowError> {
             kind: "literal",
             value: l.value().to_string(),
             datatype: Some(l.datatype().as_str().to_string()),
-            language: l.language().map(str::to_string),
+            // an RDF 1.2 base direction is appended in Turtle form ("en--ltr"): no schema change, lossy by choice
+            language: l.language().map(|lang| {
+                #[cfg(feature = "rdf-12")]
+                if let Some(d) = l.direction() {
+                    return format!("{lang}--{}", match d { triplelight::rdf::BaseDirection::Ltr => "ltr", triplelight::rdf::BaseDirection::Rtl => "rtl" });
+                }
+                lang.to_string()
+            }),
         },
+        // an RDF 1.2 triple term is one string column value, `<<( s p o )>>` in Turtle form, kind "triple"
+        #[cfg(feature = "rdf-12")]
+        TermRef::Triple(t) => Owned { kind: "triple", value: triplelight::rdf::Term::from(t.clone()).to_string(), datatype: None, language: None },
         #[allow(unreachable_patterns)]
-        _ => return Err(ArrowError::NotYetImplemented("RDF-star terms are not supported".into())),
+        _ => return Err(ArrowError::NotYetImplemented("unsupported term kind".into())),
     })
 }
 
