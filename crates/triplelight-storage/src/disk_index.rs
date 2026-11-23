@@ -688,7 +688,9 @@ fn cgroup_memory_limit(groups: &str, read: &dyn Fn(&str) -> Option<String>) -> O
             }
             found
         } else if controllers.split(',').any(|c| c == "memory") {
-            number(format!("/sys/fs/cgroup/memory{path}/memory.limit_in_bytes")).into_iter().collect()
+            // The group's own path, or, inside a v1 container whose memory mount is its own group, the mount root.
+            let own = number(format!("/sys/fs/cgroup/memory{path}/memory.limit_in_bytes"));
+            own.or_else(|| number("/sys/fs/cgroup/memory/memory.limit_in_bytes".to_string())).into_iter().collect()
         } else {
             Vec::new()
         };
@@ -755,6 +757,8 @@ mod tests {
         assert_eq!(cgroup_memory_limit("0::/x", &files(&[("/sys/fs/cgroup/x/memory.max", "max")])), None);
         let v1 = files(&[("/sys/fs/cgroup/memory/docker/abc/memory.limit_in_bytes", "2147483648")]);
         assert_eq!(cgroup_memory_limit("12:cpu,cpuacct:/docker/abc\n11:memory:/docker/abc\n", &v1), Some(2 << 30));
+        let v1_container = files(&[("/sys/fs/cgroup/memory/memory.limit_in_bytes", "1073741824")]);
+        assert_eq!(cgroup_memory_limit("11:memory:/docker/abc\n", &v1_container), Some(1 << 30), "a v1 container sees its group at the mount root");
         assert_eq!(cgroup_memory_limit("", &files(&[])), None);
         assert_eq!(cgroup_memory_limit("garbage\n", &files(&[])), None);
     }
