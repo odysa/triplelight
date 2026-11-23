@@ -73,7 +73,9 @@ fn curated_documents_agree() {
         "@prefix : <http://ex/> . graph :g { :a :b :c }", "@prefix : <http://ex/> . _:g { :a :b :c }", "@prefix : <http://ex/> . [] { :a :b :c }",
         "@prefix : <http://ex/> . GRAPH [] { :a :b :c }", "@prefix : <http://ex/> . GRAPH [ :p :o ] { :a :b :c }", "@prefix : <http://ex/> . :g { } { }",
         "@prefix : <http://ex/> . :g { :a :b :c } .", "@prefix : <http://ex/> . :g { [ :p :o ] . ( :x ) :y :z }", "@prefix : <http://ex/> . :g { @prefix x: <y> . }",
-        "@prefix : <http://ex/> . :g { :a :b :c .. }", "@prefix : <http://ex/> . { . }", "<< <a> <b> <c> >> <d> <e> .", "<http://a> <http://b> <http://c> {| <http://d> <http://e> |} .",
+        "@prefix : <http://ex/> . :g { :a :b :c .. }", "@prefix : <http://ex/> . { . }", "<< <a> <b> <c> >> <d> <e> .",
+        #[cfg(not(feature = "rdf-12"))]
+        "<http://a> <http://b> <http://c> {| <http://d> <http://e> |} .",
         "\u{feff}<http://a> <http://b> <http://c> .", "<http://a> <http://b> \"\u{ff}\" .", "<http://a> <http://b> <http://c> ~ .",
     ];
     for doc in docs { for trig in [false, true] { assert_eq!(ours(doc.as_bytes(), trig), theirs(doc.as_bytes(), trig), "{doc:?} (trig: {trig})") } }
@@ -88,7 +90,12 @@ fn random_documents_agree() {
     const PIECES: &[&str] = &[
         "@prefix : <http://ex/> .", "PREFIX p: <http://ex/p/>", "@base <http://ex/b/> .", "BASE <http://ex/c>", ":a", ":b", "p:x", "p:", ":", "<x>", "<http://a>",
         "_:b", "_:b.", "[", "]", "[]", "(", ")", "()", "{", "}", "GRAPH", "a", "A", ";", ",", ".", "..", "1", "-1.5", ".5e2", "1.", "true", "\"s\"", "'t'",
-        "\"\"\"l\"\"\"", "@en", "@prefix", "^^", "^^:d", "#c\n", "\n", " ", " ", " ", "\t", ":a.b", ":a\\.", "%20", "?v", "<<", ">>", "~", "{|", "|}",
+        "\"\"\"l\"\"\"", "@en", "@prefix", "^^", "^^:d", "#c\n", "\n", " ", " ", " ", "\t", ":a.b", ":a\\.", "%20", "?v",
+        #[cfg(not(feature = "rdf-12"))] "<<",
+        #[cfg(not(feature = "rdf-12"))] ">>",
+        #[cfg(not(feature = "rdf-12"))] "~",
+        #[cfg(not(feature = "rdf-12"))] "{|",
+        #[cfg(not(feature = "rdf-12"))] "|}",
     ];
     let mut rng = 0x2545f4914f6cdd1du64;
     let mut next = move || { rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17; rng };
