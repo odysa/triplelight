@@ -8,6 +8,8 @@ use std::collections::{HashMap, HashSet};
 
 /// Rows per parallel work unit.
 const MORSEL: usize = 1024;
+/// Input rows from which a probe join sorts its rows by the probe key first (`Bgp::sorted_probe`).
+const SORTED_PROBE_MIN_ROWS: usize = 16 * 1024;
 /// Cost of one index probe (a seek plus a short range read) in scanned rows, for choosing between one probe per input
 /// row and one scan of the whole range (`extend_hash`'s semi-join).
 const PROBE_ROWS: u64 = 20;
@@ -22,6 +24,8 @@ pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
     /// Patterns whose object scan is restricted by a pushed-down range filter (`range.rs`), by (predicate, object
     /// variable). Used only when the pattern's subject and object are unbound.
     pub ranges: Option<&'a super::range::Ranges>,
+    /// Sort-then-probe (`Options::sorted_probe`): see `extend_sorted`.
+    pub sorted_probe: bool,
 }
 
 /// Appends `row` extended by one matching index row, where `value(k)` is that row's value at key position `k`.
@@ -146,6 +150,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         if let Some(out) = self.extend_range(pat, rows) { return out }
         if let Some(out) = self.extend_member_set(pat, rows) { return out }
         if let Some(out) = self.extend_hash(pat, rows) { return out }
+        if let Some(out) = self.extend_sorted(pat, rows) { return out }
         if rows.len() / w.max(1) >= 2 * MORSEL {
             let parts: Vec<Vec<TermId>> = rows.par_chunks(w * MORSEL).map(|c| self.extend_seq(pat, c)).collect();
             parts.concat()
@@ -243,39 +248,97 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         Some(out)
     }
 
+    /// Sort-then-probe: a probe join of many rows (at least `SORTED_PROBE_MIN_ROWS`) whose pattern has exactly one
+    /// variable bound (the key, bound in every row) probes the rows in key order, so consecutive probes read nearby
+    /// index blocks instead of jumping across the index (e.g. reviews arriving in product order, probed by review
+    /// in SPO). The output is put back in input-row order, each row's extensions in index order as `extend_seq`
+    /// gives them, so the result is identical to the unsorted probe join. The cost is a stable sort of row indices,
+    /// one copy of the input and one gather of the output. `None` (the caller probes in input order) when off, the
+    /// input is small, has no single bound key, or is already in key order.
+    fn extend_sorted(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
+        let w = self.w;
+        if !self.sorted_probe || w == 0 { return None }
+        let n = rows.len() / w;
+        if n < SORTED_PROBE_MIN_ROWS || n > u32::MAX as usize { return None }
+        let first = &rows[..w];
+        let mut key = None;
+        for s in pat {
+            if let Slot::Var(v) = *s && first[v] != UNBOUND {
+                if key.is_some_and(|k| k != v) { return None }
+                key = Some(v);
+            }
+        }
+        let kv = key?;
+        if rows.chunks_exact(w).any(|r| r[kv] == UNBOUND) { return None }
+        if rows.chunks_exact(w).map(|r| r[kv]).is_sorted() { return None }
+        let mut order: Vec<u32> = (0..n as u32).collect();
+        order.par_sort_by_key(|&i| rows[i as usize * w + kv]);
+        let mut sorted = Vec::with_capacity(rows.len());
+        for &i in &order {
+            let i = i as usize;
+            sorted.extend_from_slice(&rows[i * w..(i + 1) * w]);
+        }
+        // Per morsel of sorted rows: its output and where each row's extensions end in it.
+        let parts: Vec<(Vec<TermId>, Vec<usize>)> = sorted.par_chunks(w * MORSEL).map(|chunk| {
+            let mut out = Vec::with_capacity(chunk.len());
+            let mut ends = Vec::with_capacity(chunk.len() / w);
+            for row in chunk.chunks_exact(w) {
+                self.probe_row(pat, row, &mut out);
+                ends.push(out.len());
+            }
+            (out, ends)
+        }).collect();
+        // Input row -> (morsel, start, end) of its extensions, then gather in input order.
+        let mut segment = vec![(0u32, 0usize, 0usize); n];
+        let mut j = 0;
+        for (p, (_, ends)) in parts.iter().enumerate() {
+            let mut start = 0;
+            for &end in ends {
+                segment[order[j] as usize] = (p as u32, start, end);
+                start = end;
+                j += 1;
+            }
+        }
+        let mut out = Vec::with_capacity(parts.iter().map(|p| p.0.len()).sum());
+        for &(p, start, end) in &segment { out.extend_from_slice(&parts[p as usize].0[start..end]) }
+        Some(out)
+    }
+
     fn extend_seq(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> {
         let w = self.w;
         let mut out = Vec::with_capacity(rows.len());
-        for row in rows.chunks_exact(w.max(1)) {
-            let row = &row[..w];
-            let fixed: [Option<TermId>; 3] = std::array::from_fn(|i| match pat[i] {
-                Slot::Const(c) => c,
-                Slot::Var(v) => (row[v] != UNBOUND).then_some(row[v]),
-            });
-            let (perm, prefix, n) = choose_perm(&fixed);
-            if n == 3 {
-                // Fully bound: a membership probe, no scan.
-                if self.count(perm, &prefix) > 0 { out.extend_from_slice(row) }
-                continue;
-            }
-            let order = perm.order();
-            // Compact layout: rows without their first key column; `t[k - 1]` is key position `k` (k >= n >= 1).
-            if let Some(tails) = self.snap.matching_tail(perm, &prefix[..n]) {
-                for t in tails { push_extension(&mut out, row, pat, &order, n, |k| t[k - 1]); }
-                continue;
-            }
-            if let Some(rows) = self.snap.matching_rows(perm, &prefix[..n]) {
-                for t in rows { push_extension(&mut out, row, pat, &order, n, |k| t[k]); }
-                continue;
-            }
-            // Which key columns bind new variables, and which must equal an already-bound value (repeated variable).
-            for batch in self.snap.scan(perm, &prefix[..n]) {
-                let batch = batch.unwrap_or_else(|e| storage_failure(e));
-                #[allow(clippy::needless_range_loop)] // columnar batch: one row across several columns
-                for i in 0..batch.len() { push_extension(&mut out, row, pat, &order, n, |k| batch.cols[k][i]); }
-            }
-        }
+        for row in rows.chunks_exact(w.max(1)) { self.probe_row(pat, &row[..w], &mut out) }
         out
+    }
+
+    /// Appends `row`'s extensions by `pat` (one index probe), in index order.
+    fn probe_row(&self, pat: &[Slot; 3], row: &[TermId], out: &mut Vec<TermId>) {
+        let fixed: [Option<TermId>; 3] = std::array::from_fn(|i| match pat[i] {
+            Slot::Const(c) => c,
+            Slot::Var(v) => (row[v] != UNBOUND).then_some(row[v]),
+        });
+        let (perm, prefix, n) = choose_perm(&fixed);
+        if n == 3 {
+            // Fully bound: a membership probe, no scan.
+            if self.count(perm, &prefix) > 0 { out.extend_from_slice(row) }
+            return;
+        }
+        let order = perm.order();
+        // Compact layout: rows without their first key column; `t[k - 1]` is key position `k` (k >= n >= 1).
+        if let Some(tails) = self.snap.matching_tail(perm, &prefix[..n]) {
+            for t in tails { push_extension(out, row, pat, &order, n, |k| t[k - 1]); }
+            return;
+        }
+        if let Some(rows) = self.snap.matching_rows(perm, &prefix[..n]) {
+            for t in rows { push_extension(out, row, pat, &order, n, |k| t[k]); }
+            return;
+        }
+        // Which key columns bind new variables, and which must equal an already-bound value (repeated variable).
+        for batch in self.snap.scan(perm, &prefix[..n]) {
+            let batch = batch.unwrap_or_else(|e| storage_failure(e));
+            #[allow(clippy::needless_range_loop)] // columnar batch: one row across several columns
+            for i in 0..batch.len() { push_extension(out, row, pat, &order, n, |k| batch.cols[k][i]); }
+        }
     }
 
     /// Exact match count of each pattern's constant prefix (its candidate rows before any join).
@@ -599,5 +662,110 @@ mod extension_bench {
         let (o, nw) = (old_ns[old_ns.len() / 2], new_ns[new_ns.len() / 2]);
         eprintln!("extend loop, ns per index row (median of 9, interleaved): old {o:.2}, new {nw:.2}, ratio {:.3}", nw / o);
         assert!(nw <= o * 1.05, "new is more than 5% slower");
+    }
+}
+
+#[cfg(test)]
+mod sorted_probe_tests {
+    use super::*;
+    use crate::storage::{Dictionary, StorageError};
+    use triplelight_rdf::{Term, TermRef};
+
+    /// Triples in every key order, scanned from sorted arrays: just enough of a store for `extend`.
+    struct Triples { by_perm: Vec<(Perm, Vec<[TermId; 3]>)> }
+    impl Triples {
+        fn new(t: &[[u64; 3]]) -> Self {
+            let by_perm = Perm::ALL.into_iter().map(|perm| {
+                let o = perm.order();
+                let mut rows: Vec<[TermId; 3]> = t.iter().map(|x| o.map(|i| TermId(x[i]))).collect();
+                rows.sort();
+                rows.dedup();
+                (perm, rows)
+            }).collect();
+            Self { by_perm }
+        }
+        fn matching(&self, perm: Perm, prefix: &[TermId]) -> Vec<[TermId; 3]> {
+            let rows = &self.by_perm.iter().find(|(p, _)| *p == perm).unwrap().1;
+            let k = prefix.len();
+            let lo = rows.partition_point(|r| &r[..k] < prefix);
+            let hi = rows.partition_point(|r| &r[..k] <= prefix);
+            rows[lo..hi].to_vec()
+        }
+    }
+    impl Dictionary for Triples {
+        fn lookup(&self, _: &Term) -> Result<Option<TermId>, StorageError> { Ok(None) }
+        fn resolve(&self, _: TermId) -> Result<Term, StorageError> { Err(StorageError::other("encoded-only fixture")) }
+        fn with_term(&self, _: TermId, _: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> { Err(StorageError::other("encoded-only fixture")) }
+    }
+    impl Snapshot for Triples {
+        fn scan<'b>(&'b self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'b> {
+            let mut b = TripleBatch::default();
+            for r in self.matching(perm, prefix) {
+                for (i, id) in r.into_iter().enumerate() { b.cols[i].push(id) }
+            }
+            Box::new(std::iter::once(Ok(b)))
+        }
+        fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> { Ok(self.matching(perm, prefix).len() as u64) }
+        fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
+            Ok(self.matching(perm, prefix).into_iter().map(|r| r[prefix.len()]).find(|id| *id >= target))
+        }
+    }
+
+    #[test]
+    fn sorted_probe_output_is_identical_and_in_input_order() {
+        let mut rng = 0x2545_f491_4f6c_dd1du64;
+        let mut next = |m: u64| {
+            rng ^= rng << 13;
+            rng ^= rng >> 7;
+            rng ^= rng << 17;
+            rng % m
+        };
+        // Subjects 1..=300 with predicates 1000..=1002; objects 1..=400, so many objects are subjects too.
+        let mut t = Vec::new();
+        for s in 1..=300u64 {
+            for _ in 0..1 + next(4) { t.push([s, 1000 + next(3), 1 + next(400)]) }
+        }
+        let snap = Triples::new(&t);
+        let w = 3;
+        let n = SORTED_PROBE_MIN_ROWS + 3000;
+        // ?0 bound (duplicates; some keys without matches), ?1 unbound, ?2 sometimes bound (a repeated-variable
+        // check against the index value), sometimes UNBOUND.
+        let mut rows = Vec::with_capacity(n * w);
+        for _ in 0..n {
+            rows.push(TermId(1 + next(350)));
+            rows.push(UNBOUND);
+            rows.push(if next(3) == 0 { TermId(1 + next(400)) } else { UNBOUND });
+        }
+        rows[2] = UNBOUND; // the first row decides the key: only ?0 bound
+        rows[w] = rows[0]; // a duplicate key next to it
+        let on = Bgp { snap: &snap, w, ranges: None, sorted_probe: true };
+        let off = Bgp { snap: &snap, w, ranges: None, sorted_probe: false };
+        let patterns = [
+            [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)], // key as subject
+            [Slot::Var(1), Slot::Const(Some(TermId(1001))), Slot::Var(0)], // key as object
+            [Slot::Var(0), Slot::Var(1), Slot::Var(2)],                    // ?2 bound in some rows only
+            [Slot::Var(0), Slot::Const(Some(TermId(1002))), Slot::Var(0)], // repeated key variable
+        ];
+        for pat in &patterns {
+            let sorted = on.extend_sorted(pat, &rows).expect("unsorted input with a single bound key");
+            assert_eq!(sorted, off.extend_seq(pat, &rows), "{pat:?}");
+            assert_eq!(on.extend(pat, &rows), off.extend(pat, &rows), "{pat:?}");
+        }
+        // Not taken: an UNBOUND key in some row, two bound key variables, input already in key order, or off.
+        let mut holes = rows.clone();
+        holes[w * 5] = UNBOUND;
+        assert!(on.extend_sorted(&patterns[0], &holes).is_none());
+        assert_eq!(on.extend(&patterns[0], &holes), off.extend(&patterns[0], &holes));
+        let mut both = rows.clone();
+        both[2] = TermId(7); // first row binds ?2 too
+        assert!(on.extend_sorted(&patterns[2], &both).is_none());
+        let mut in_order: Vec<TermId> = Vec::with_capacity(rows.len());
+        let mut keyed: Vec<&[TermId]> = rows.chunks_exact(w).collect();
+        keyed.sort_by_key(|r| r[0]);
+        for r in keyed { in_order.extend_from_slice(r) }
+        assert!(on.extend_sorted(&patterns[0], &in_order).is_none());
+        assert!(off.extend_sorted(&patterns[0], &rows).is_none());
+        // Below the threshold.
+        assert!(on.extend_sorted(&patterns[0], &rows[..w * (SORTED_PROBE_MIN_ROWS - 1)]).is_none());
     }
 }

@@ -138,8 +138,12 @@ pub struct Options<'a> {
     /// Let the cost-based planner use the statistics' characteristic pairs (`Stats::set_char_pairs`) to estimate
     /// subject-to-object joins between stars. Plans only; off (`--ablate=charpairs`) gives the pre-pairs plans.
     pub char_pairs: bool,
+    /// Sort-then-probe (`bgp::Bgp::extend_sorted`): a probe join of at least 16k rows with a single bound key probes
+    /// them in key order and restores the input order afterwards. Answers are identical; off
+    /// (`--ablate=sortprobe`) probes in input order.
+    pub sorted_probe: bool,
 }
-impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true } } }
+impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true } } }
 
 pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     catching_storage(|| run(snap, None, text, opts))
@@ -230,6 +234,7 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     ctx.count_pushdown = opts.count_pushdown;
     ctx.range_pushdown = opts.range_pushdown;
     ctx.char_pairs = opts.char_pairs;
+    ctx.sorted_probe = opts.sorted_probe;
     // With FROM / FROM NAMED the default graph is not `snap`, so nothing is marked (the pushdown also stays off
     // whenever the active graph is not `snap`).
     if ctx.range_pushdown && spec.is_none() {
@@ -391,6 +396,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     range_pushdown: bool,
     /// `Options::char_pairs`.
     char_pairs: bool,
+    /// `Options::sorted_probe`.
+    sorted_probe: bool,
     /// Range pushdown's per-predicate check (`range.rs`), per query, in front of the snapshot's `object_memo`: the
     /// stored-literal objects of a predicate if its literals of that datatype are all canonical, else `None`.
     range_checks: RefCell<HashMap<(TermId, &'static str), Option<std::sync::Arc<[TermId]>>>>,
@@ -420,7 +427,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, range_checks: RefCell::new(HashMap::new()), range_reorderable: HashSet::new(), order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
+        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, range_checks: RefCell::new(HashMap::new()), range_reorderable: HashSet::new(), order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -928,7 +935,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let ranges = self.object_ranges(patterns, &pats, filters, &rows[0]);
         let flat: Vec<TermId> = rows.concat();
         let out = on_data!(self, |g| {
-            let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges) };
+            let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges), sorted_probe: self.sorted_probe };
             if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(bgp::no_repeated_var) && bgp::cyclic(&pats) {
                 let mut out = bgp.leapfrog(&pats, &flat, self.variable_order(&pats));
                 if !filters.is_empty() { let all: HashSet<usize> = (0..w).collect(); self.apply_filters(&mut out, w, filters, &all, &mut vec![false; filters.len()]) }

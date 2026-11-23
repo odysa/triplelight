@@ -261,9 +261,10 @@ pub(crate) fn run(cmd: &str, args: &[String]) {
     serve_memory(args);
 }
 
-/// Benchmark ablations, all off by default and answer-preserving: `--ablate=wcoj,count,fast-group,range,charpairs`
-/// disables the leapfrog triejoin, the exact index-count aggregates, the ID hash-aggregation fast path, the
-/// range-filter pushdown and the planner's characteristic-pair join estimates. (`--no-stats` turns
+/// Benchmark ablations, all off by default and answer-preserving:
+/// `--ablate=wcoj,count,fast-group,range,charpairs,sortprobe` disables the leapfrog triejoin, the exact index-count
+/// aggregates, the ID hash-aggregation fast path, the range-filter pushdown, the planner's characteristic-pair join
+/// estimates and sort-then-probe. (`--no-stats` turns
 /// off the cost-based planner.) Unknown names are refused so a typo cannot silently measure the default.
 fn ablations(args: &[String]) -> Options<'static> {
     let mut opts = Options::default();
@@ -274,11 +275,12 @@ fn ablations(args: &[String]) -> Options<'static> {
             "fast-group" => opts.general_group = true,
             "range" => opts.range_pushdown = false,
             "charpairs" => opts.char_pairs = false,
-            other => { eprintln!("unknown --ablate name {other:?} (expected wcoj, count, fast-group, range, charpairs)"); std::process::exit(2) }
+            "sortprobe" => opts.sorted_probe = false,
+            other => { eprintln!("unknown --ablate name {other:?} (expected wcoj, count, fast-group, range, charpairs, sortprobe)"); std::process::exit(2) }
         }
     }
     if args.iter().any(|a| a.starts_with("--ablate=")) {
-        eprintln!("ablations: wcoj={} count_pushdown={} fast_group={} range_pushdown={} char_pairs={}", opts.wcoj, opts.count_pushdown, !opts.general_group, opts.range_pushdown, opts.char_pairs);
+        eprintln!("ablations: wcoj={} count_pushdown={} fast_group={} range_pushdown={} char_pairs={} sorted_probe={}", opts.wcoj, opts.count_pushdown, !opts.general_group, opts.range_pushdown, opts.char_pairs, opts.sorted_probe);
     }
     opts
 }

@@ -207,6 +207,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         count_pushdown: true,
                         range_pushdown: true,
                         char_pairs: true,
+                        sorted_probe: true,
                     },
                 )?
                 else {
