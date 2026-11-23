@@ -73,6 +73,12 @@ The script is idempotent: rerun it after a failure. It writes every step, versio
 Then confirm by hand that `docker run --network host` is not used for any timed arm unless the W3 control (section 4)
 chose it.
 
+Once the first stores are loaded, and before any timed large-answer run, do one more check by hand for each of the
+seven HTTP systems. Send LUBM Q6 twice with `curl -s -o /dev/null -w '%{size_download}'`, and confirm the two byte
+counts are equal. B8 (#205) times large answers by draining the body and requires each run's byte count to match the
+hashed warm-up, so a system whose response carries timing or other variable metadata would be `unstable` on every
+large query. Record the counts in the session log.
+
 ## 2. Datasets (about 6–8 h of wall time on day one, before any timed run)
 
 ```sh
