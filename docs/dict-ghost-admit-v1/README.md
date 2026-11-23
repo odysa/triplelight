@@ -48,3 +48,29 @@ recover q14's cost and is the follow-up if it matters.
 from extra work on q14's path, and the net is strongly positive. The TinyLFU sketch is the named follow-up, to be done
 if a rental suite shows the q14 pattern mattering. The replay times are curl to `/dev/null`, timed to the last byte
 with no hashing, the same as #205's drained timing.
+
+## Scan resistance: q13 × 4, Q6 × 4, q13 × 4, Q14 × 4, q13 × 4 (`replay-scan.sh`, ABBA)
+
+This is Kaiming's test: does one large pass between q13 runs flush q13's blocks?
+
+- **Cache of 6,144 MB (`scan-6144/`):** a fresh server's shards never fill, so every block stays and both arms are
+  equal. There are no q13 misses after the first pass.
+- **Cache of 1,024 MB (`scan-1024/`):** Q6 and Q14 each touch about 45,000 to 51,000 dictionary blocks per run, far
+  more than the cache holds.
+
+q13's dictionary misses per request after each large pass (both sessions per arm agree within 1%):
+
+| | after Q6: warm-up, t1, t2, t3 | after Q14: warm-up, t1, t2, t3 |
+| --- | --- | --- |
+| main | 2,138 / 1,610 / 1,236 / 947 | 2,109 / 1,600 / 1,240 / 949 |
+| ghost | 2,164 / 1,220 / 153 / 49 | 2,157 / 1,255 / 173 / 51 |
+
+q13's timed median after the large passes is about 120 ms on main and about 22 ms with the ghost set.
+
+- **Q6 and Q14 times:** within noise. On main and ghost respectively, Q6 runs 1.90–1.99 s and 1.93–2.00 s, and
+  Q14 1.92–2.00 s and 1.94–1.98 s.
+- **What a large pass does to q13:** in both arms it evicts about 87% of q13's blocks, so the existing sampled
+  eviction's scan resistance, against a pass 15× the cache, is the same with and without the change.
+- **What changes:** q13's recovery afterwards. It takes three runs to drop back to about 50 misses with the ghost
+  set, against a slow quarter-by-quarter decline on main. Protecting a hot set across a pass that large would need a
+  frequency-based admission (the TinyLFU follow-up above).
