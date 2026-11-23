@@ -497,8 +497,6 @@ fn subquery_hash_join_matches_nested_loop() {
     assert_eq!(r.iter().map(|x| x.replace("\"1\"^^<http://www.w3.org/2001/XMLSchema#integer>", "N")).collect::<Vec<_>>(), flat.iter().map(|x| x.replace("\"1\"^^<http://www.w3.org/2001/XMLSchema#integer>", "N")).collect::<Vec<_>>());
 }
 
-/// NOT EXISTS / EXISTS results are memoized per binding of the pattern's variables; rows that share those
-/// bindings but differ elsewhere must still get the right answer.
 #[test]
 fn expression_uses_query_values_and_correlated_row() {
     let result = rows(r#"
@@ -520,6 +518,8 @@ fn expression_uses_query_values_and_correlated_row() {
     assert_eq!(result[1][3], "\"false\"^^<http://www.w3.org/2001/XMLSchema#boolean>");
 }
 
+/// NOT EXISTS / EXISTS results are memoized per binding of the pattern's variables; rows that share those
+/// bindings but differ elsewhere must still get the right answer.
 #[test]
 fn exists_memo_matches_per_row_semantics() {
     let mut data = String::new();
