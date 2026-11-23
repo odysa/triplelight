@@ -19,6 +19,7 @@ T=${TOOLS:-$ROOT/bench/tools}; NT=$T/$D.nt
 [ -f "$NT" ] || { echo "missing $NT" >&2; exit 1; }
 # --memory-swap equal to --memory: no swap, the same as the native servers' systemd scope (MemorySwapMax=0)
 LIM=(--memory="${MEM}g" --memory-swap="${MEM}g" --cpus="$CPUS")
+echo "limits: memory ${MEM}g, memory-swap ${MEM}g (no swap), cpus $CPUS" >&2   # recorded in each load and server log
 case $SYS in
   triplelight)
     BIN=${TRIPLELIGHT_BIN:-$ROOT/target/release/triplelight}
