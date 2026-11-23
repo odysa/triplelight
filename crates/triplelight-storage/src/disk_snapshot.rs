@@ -797,6 +797,24 @@ impl super::derived_order::KeptOrders for DiskGraph {
     }
 }
 
+/// Builds a base from N-Triples, choosing the in-memory writer (`DiskSnapshot::create`, `RDFSNAP3`) when the build
+/// budget allows it and the input has no RDF 1.2 terms, and the external sort (`external_build`) otherwise.
+pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io::Result<()> {
+    if let Some(path) = source
+        && super::external_build::in_memory_fits(path)?
+    {
+        eprintln!("disk build strategy: in-memory (estimated 3x input; not an RSS limit)");
+        let snapshot = MemorySnapshot::from_ntriples_parallel_file(path, workers.max(1))?;
+        // That path writes RDFSNAP3, which has no RDF 1.2 flag: such input takes the external builder instead.
+        if !snapshot.has_rdf12_terms() { return DiskSnapshot::create(dir, &snapshot) }
+        eprintln!("disk build strategy: input holds RDF 1.2 terms; using the external sort");
+        drop(snapshot);
+        return super::external_build::from_nt_parallel(dir, source, workers.max(1));
+    }
+    eprintln!("disk build strategy: external sort (budget is advisory, not an RSS limit)");
+    super::external_build::from_nt_parallel(dir, source, workers.max(1))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1665,20 +1683,3 @@ mod tests {
     }
 }
 
-/// Builds a base from N-Triples, choosing the in-memory writer (`DiskSnapshot::create`, `RDFSNAP3`) when the build
-/// budget allows it and the input has no RDF 1.2 terms, and the external sort (`external_build`) otherwise.
-pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io::Result<()> {
-    if let Some(path) = source
-        && super::external_build::in_memory_fits(path)?
-    {
-        eprintln!("disk build strategy: in-memory (estimated 3x input; not an RSS limit)");
-        let snapshot = MemorySnapshot::from_ntriples_parallel_file(path, workers.max(1))?;
-        // That path writes RDFSNAP3, which has no RDF 1.2 flag: such input takes the external builder instead.
-        if !snapshot.has_rdf12_terms() { return DiskSnapshot::create(dir, &snapshot) }
-        eprintln!("disk build strategy: input holds RDF 1.2 terms; using the external sort");
-        drop(snapshot);
-        return super::external_build::from_nt_parallel(dir, source, workers.max(1));
-    }
-    eprintln!("disk build strategy: external sort (budget is advisory, not an RSS limit)");
-    super::external_build::from_nt_parallel(dir, source, workers.max(1))
-}
