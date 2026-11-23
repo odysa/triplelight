@@ -1,0 +1,8 @@
+# build output of the paper (tectonic); never commit
+*.pdf
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.xdv
