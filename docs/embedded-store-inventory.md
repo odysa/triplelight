@@ -91,9 +91,8 @@ The initial candidate list was not exhaustive. A maintenance label alone is not 
 - The Ontop workload mapping will qualify the remaining aggregate and BI queries against their reference
   answers. The [distinct-count diagnostic](ontop-distinct-diagnostic-v3/README.md) explains why WatDiv
   `distinct_L2.rq` needs a separate domain check.
-- A separate production-schema fixture used Ontop 5.5.0 with DuckDB JDBC 2.0.0.0 on macOS ARM64. JDBC
-  loaded all nine rows and the invalid-row control behaved as registered. Ontop rejected the nested field
-  `o.kind` during R2RML mapping initialization, before any SPARQL query ran. The next qualification uses a
-  non-materialized DuckDB view that exposes the nested fields as columns over the same base table. This
-  changes the logical schema seen by the Ontop mapping. Report the view SQL with any eventual comparison.
+- The [Ontop production-schema qualification](ontop-production-view-v2/README.md) passed four
+  required typed checks on a nine-row DuckDB fixture using a view that exposes the object fields as
+  columns. Direct nested-field mapping stopped at initialization. The mixed-term distinct count
+  returned 8 against a typed reference of 9. Workload admission and timing remain pending.
 - The six-copy DuckDB profile needs tiny-fixture admission and a registered runtime before workload measurements.
