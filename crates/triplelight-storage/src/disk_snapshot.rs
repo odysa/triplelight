@@ -893,6 +893,27 @@ mod tests {
             }
         };
         check(&*full, &*derived, "default");
+        // Bounded regroup: every group above 1, 7 or 300 rows goes through the external sorter in a private scratch
+        // directory; the answers must not change, and no scratch may survive a finished or abandoned scan.
+        let scratch = parent.join("spill");
+        fs::create_dir(&scratch).unwrap();
+        for limit in [1usize, 7, 300] {
+            crate::derived_order::spill_on_this_thread(Some(limit), Some(scratch.clone()));
+            check(&*full, &*derived, &format!("spill above {limit}"));
+            assert_eq!(fs::read_dir(&scratch).unwrap().count(), 0, "scratch left after spill above {limit}");
+        }
+        {
+            // Dropped after one batch, mid-way through a spilled group (the 5,000-row `sink` group): its scratch goes
+            // with it.
+            crate::derived_order::spill_on_this_thread(Some(1), Some(scratch.clone()));
+            let sink = derived.lookup(&iri("sink").into()).unwrap().unwrap();
+            let g1 = derived.graph_view(derived.lookup(&iri("g1").into()).unwrap().unwrap()).unwrap();
+            let mut it = g1.scan(Perm::Ops, &[sink]);
+            assert!(!it.next().unwrap().unwrap().is_empty());
+            assert!(fs::read_dir(&scratch).unwrap().count() > 0, "a group is spilled");
+        }
+        assert_eq!(fs::read_dir(&scratch).unwrap().count(), 0, "scratch left after an abandoned scan");
+        crate::derived_order::spill_on_this_thread(None, None);
         for g in full.graph_names() {
             let (f, d) = (full.graph_view(g).unwrap(), derived.graph_view(g).unwrap());
             if rows(&f, Perm::Spo, &[]).len() > 4096 { check(&f, &d, "g1") }
