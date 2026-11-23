@@ -51,7 +51,7 @@ class ArrowStreamTest {
             case Term.Literal l -> new Cell(true, "literal", l.value(), l.datatype(),
                     l.language().isEmpty() ? null : l.language() + (l.direction().isEmpty() ? "" : "--" + l.direction()));
             // an RDF 1.2 triple term is one value in Turtle form, "<<( s p o )>>", with kind "triple" and no datatype or language
-            case Term.Triple t -> new Cell(true, "triple", turtle(t), null, null);
+            case Term.Triple tr -> new Cell(true, "triple", turtle(tr), null, null);
         };
     }
 
