@@ -345,3 +345,19 @@ mod rdf_12 {
     }
 }
 
+
+/// `MAX_TRIPLE_TERM_DEPTH` is exactly the deepest triple term that `Term::from_str` reads back, so a term any 1.2
+/// reader accepts can always be re-read from the store's dictionary text.
+#[test]
+fn max_triple_term_depth_matches_from_str() {
+    use std::str::FromStr;
+    let nested = |depth: usize| {
+        let mut t = "<http://o>".to_string();
+        for _ in 0..depth { t = format!("<<( <http://s> <http://p> {t} )>>") }
+        t
+    };
+    let max = tl::MAX_TRIPLE_TERM_DEPTH;
+    let ok = tl::Term::from_str(&nested(max)).expect("the limit itself reads back");
+    assert_eq!(tl::triple_term_depth(ok.as_ref()), max);
+    assert!(tl::Term::from_str(&nested(max + 1)).is_err(), "one deeper is refused");
+}

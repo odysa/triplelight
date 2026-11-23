@@ -19,6 +19,8 @@ pub use crate::blank_node::{BlankNode, BlankNodeIdParseError, BlankNodeRef};
 pub use crate::langtag::LanguageTagParseError;
 #[cfg(feature = "rdf-12")]
 pub use crate::literal::BaseDirection;
+#[cfg(feature = "rdf-12")]
+pub use crate::triple::{triple_term_depth, MAX_TRIPLE_TERM_DEPTH};
 pub use crate::literal::{Literal, LiteralRef};
 pub use crate::named_node::{IriParseError, NamedNode, NamedNodeRef};
 pub use crate::parser::TermParseError;
