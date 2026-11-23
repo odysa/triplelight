@@ -730,11 +730,11 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }
         if groups.is_empty() && keys.is_empty() { groups.push((vec![], vec![])); }
         let parallel = self.try_parallel_expression_group(&groups, aggs);
-        groups.into_iter().enumerate().map(|(i, (k, members))| {
+        groups.into_iter().enumerate().map(|(group_index, (k, members))| {
             let mut out = self.empty_row();
             for (i, &ki) in kidx.iter().enumerate() { out[ki] = k[i]; }
             if let Some((col, values)) = &parallel {
-                if let Some(value) = values[i] { out[*col] = self.intern(&value.term()); }
+                if let Some(value) = values[group_index] { out[*col] = self.intern(&value.term()); }
             } else {
                 for (v, agg) in aggs {
                     if let Some(t) = self.aggregate(agg, &members) { out[self.var(v)] = self.intern(&t); }
