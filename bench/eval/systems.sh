@@ -67,7 +67,9 @@ case $SYS in
              rm -rf "$T/jena-tdb2-$D"; JVM_ARGS="-Xmx${MEM}g" "$J/bin/tdb2.tdbloader" --loc "$T/jena-tdb2-$D" "$NT"
              # optimizer statistics (tdb2.tdbstats): without them TDB2 plans with fixed heuristics. UNTESTED: the target path
              # (Data-0001/stats.opt) and the tool name must be checked in the qualification rerun
-             "$J/bin/tdb2.tdbstats" --loc "$T/jena-tdb2-$D" > "$T/jena-tdb2-$D/Data-0001/stats.opt" ;;
+             "$J/bin/tdb2.tdbstats" --loc "$T/jena-tdb2-$D" > "$T/jena-tdb2-$D/Data-0001/stats.opt"
+             # the first rerun found this file empty (Jena logged "Empty stats file"): fail loudly instead of benchmarking without statistics
+             [ -s "$T/jena-tdb2-$D/Data-0001/stats.opt" ] || { echo "tdb2.tdbstats wrote no statistics" >&2; exit 1; } ;;
       serve) echo "budget: JVM heap only (-Xmx${MEM}g); CPUs not enforced" >&2
              JVM_ARGS="-Xmx${MEM}g" exec "$F/fuseki-server" --loc="$T/jena-tdb2-$D" --port=3030 /ds ;;
     esac ;;
