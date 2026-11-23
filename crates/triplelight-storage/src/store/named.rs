@@ -448,7 +448,7 @@ impl Overlay {
         let graphs = named.into_iter().map(|(g, view)| {
             (g, NamedGraph { base: base.clone(), delta: delta.clone(), stored: Some(view), rows: Arc::default() })
         }).collect();
-        Overlay { base, delta, named: Arc::new(Catalog { graphs, stored_graphs }) }
+        Overlay { base, delta, named: Arc::new(Catalog { graphs, stored_graphs }), object_memo: Default::default() }
     }
 
     /// Whether the named graphs are exactly those of the base (none created, dropped or changed since).
@@ -499,7 +499,7 @@ impl Overlay {
             if gw.reset || !gw.touched.is_empty() { changes_of.insert(g, (gw.touched, gw.reset)); }
             (g, NamedGraph { base: self.base.clone(), delta: delta.clone(), stored: gw.stored, rows: gw.rows })
         }).collect();
-        let next = Overlay { base: self.base.clone(), delta, named: Arc::new(Catalog { graphs, stored_graphs: self.named.stored_graphs }) };
+        let next = Overlay { base: self.base.clone(), delta, named: Arc::new(Catalog { graphs, stored_graphs: self.named.stored_graphs }), object_memo: Default::default() };
         let rec = if record { self.net_record(&next, touched, cleared, changes_of)? } else { Vec::new() };
         Ok((next, changed, rec))
     }

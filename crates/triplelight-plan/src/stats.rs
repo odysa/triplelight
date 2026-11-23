@@ -243,6 +243,15 @@ impl Stats {
         self.planning_domains.clear();
         Ok(())
     }
+    /// Replace the exact row count of `pattern` with `rows`, the rows the executor will actually scan for it (e.g. an
+    /// object ID range pushed down from a FILTER). Call after `cache_pattern_counts`; star estimates keep using the
+    /// synopsis, so this only changes the pattern's own scan estimate.
+    pub fn set_exact_count(&mut self, pattern: TriplePattern, rows: u64) {
+        self.exact_counts.insert(pattern, rows);
+        self.exact_object_cs_counts.remove(&pattern);
+        self.star_estimates.clear();
+        self.planning_domains.clear();
+    }
     pub fn estimate_pattern(&self, pattern: &TriplePattern) -> Estimate {
         if let Some(n) = self.exact_counts.get(pattern) {
             return Estimate {

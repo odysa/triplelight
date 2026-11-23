@@ -96,11 +96,11 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 0
             } else {
                 on_data!(self, |g| {
-                    let join=bgp::Bgp { snap:g,w:self.vars.len() };
+                    let join=bgp::Bgp { snap:g,w:self.vars.len(),ranges:None };
                     if self.wcoj && pats.len()>=3 && bgp::cyclic(&pats) {
                         join.count_leapfrog(&pats,self.variable_order(&pats))
                     } else {
-                        join.count_binary(&pats,self.planned_order(&pats,input).as_deref())
+                        join.count_binary(&pats,self.planned_order(&pats,input,&crate::range::Ranges::new()).as_deref())
                     }
                 })
             };

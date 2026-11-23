@@ -45,6 +45,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         raw_ids: false,
         general_group: false,
         count_pushdown: true,
+        range_pushdown: true,
     };
     let mut paths: Vec<_> = fs::read_dir(&a[2])?
         .map(|p| p.map(|e| e.path()))

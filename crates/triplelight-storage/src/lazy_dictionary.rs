@@ -527,6 +527,26 @@ impl LazyIndex {
         let at = rows.partition_point(|(_, t)| t.to_string().as_bytes() < text);
         Ok(rows.get(at).filter(|(_, t)| t.to_string().as_bytes() == text).cloned())
     }
+    /// Unified order only: the smallest ID of `kind` whose term text is `>= text` (`> text` if `strict`), or `None`
+    /// when every term of that kind is smaller. Inside a kind, ID order is text order, so this is the same block
+    /// search as `find_term`, returning the position instead of requiring an exact match.
+    pub(super) fn text_lower_bound(&self, kind: u64, text: &[u8], strict: bool) -> io::Result<Option<TermId>> {
+        if !matches!(self.order, Order::Unified) {
+            return Err(bad("wrong dictionary index"));
+        }
+        let kind_of = |e: &Meta| id_kind(u64::from_be_bytes(e.last.as_slice().try_into().unwrap()));
+        let lo = self.entries.partition_point(|e| kind_of(e) < kind);
+        let hi = self.entries.partition_point(|e| kind_of(e) <= kind);
+        let below = |t: &[u8]| if strict { t <= text } else { t < text };
+        // The first block of the kind whose last text qualifies holds the answer: every earlier block is below.
+        let i = lo + self.entries[lo..hi].partition_point(|e| below(e.last_text.as_slice()));
+        if i == hi {
+            return Ok(None);
+        }
+        let rows = self.block_traced(i, 6)?;
+        let at = rows.partition_point(|(_, t)| below(t.to_string().as_bytes()));
+        rows.get(at).map(|(id, _)| Some(*id)).ok_or_else(|| bad("invalid dictionary block order"))
+    }
     /// Group requests by on-disk block. Callback positions are original input indices.
     pub(super) fn with_ids(
         &self,

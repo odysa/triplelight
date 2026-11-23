@@ -14,6 +14,7 @@ pub(crate) enum Backend { Memory(MemorySnapshot), Disk(DiskSnapshot) }
 macro_rules! each { ($self:ident, $s:ident => $e:expr) => { match $self { Backend::Memory($s) => $e, Backend::Disk($s) => $e } } }
 impl Dictionary for Backend {
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { each!(self, s => s.lookup(term)) }
+    fn literal_text_bound(&self, text: &str, strict: bool) -> Result<Option<TermId>, StorageError> { each!(self, s => s.literal_text_bound(text, strict)) }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> { each!(self, s => s.resolve(id)) }
     fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> { each!(self, s => s.with_term(id, f)) }
     fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, TermRef<'_>)) -> Result<(), StorageError> { each!(self, s => s.with_terms(ids, f)) }
@@ -25,6 +26,7 @@ impl Snapshot for Backend {
     fn seek(&self, p: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> { each!(self, s => s.seek(p, prefix, target)) }
     fn matching_rows(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> { each!(self, s => s.matching_rows(p, prefix)) }
     fn matching_tail(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 2]]> { each!(self, s => s.matching_tail(p, prefix)) }
+    fn object_memo(&self) -> Option<&triplelight::storage::ObjectMemo> { each!(self, s => s.object_memo()) }
 }
 use std::time::Instant;
 
