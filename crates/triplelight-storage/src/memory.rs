@@ -98,6 +98,8 @@ struct TermArena {
     rdf12: bool,
 }
 impl TermArena {
+    /// The arena slot the next non-inline term takes: non-inline IDs are dense.
+    fn next_direct_index(&self) -> usize { self.direct.len() }
     fn hash(&self, (kind, value, aux): (u8, &str, &str)) -> u64 {
         use std::hash::{BuildHasher, Hasher};
         let mut h = self.hasher.build_hasher();
@@ -253,6 +255,11 @@ struct PermIndex {
     tails: Vec<[TermId; 2]>,
 }
 impl PermIndex {
+    /// The smallest first-column key that is at least `target`.
+    fn first_key_at_least(&self, target: TermId) -> Option<TermId> {
+        let i = self.keys.partition_point(|&(k, _)| k < target);
+        self.keys.get(i).map(|&(k, _)| k)
+    }
     /// From rows sorted by the full key (and deduplicated).
     fn from_sorted(rows: &[[TermId; 3]]) -> Self {
         let mut keys: Vec<(TermId, usize)> = Vec::new();
@@ -553,7 +560,7 @@ impl MemorySnapshot {
             self.intern(t.subject.as_ref().into());
             self.intern(t.predicate.as_ref().into());
             self.intern(t.object.as_ref());
-            let index = self.arena.direct.len();
+            let index = self.arena.next_direct_index();
             let id = TermId((crate::model::id_tag::TRIPLE_TERM << 60) | index as u64);
             self.arena.push_triple(index, id, t);
             return id;
@@ -569,7 +576,7 @@ impl MemorySnapshot {
             return id;
         }
         // Non-inline IDs are dense: the next one is the next arena slot.
-        let index = self.arena.direct.len();
+        let index = self.arena.next_direct_index();
         let id = TermId((tag_of(key.0) << 60) | index as u64);
         self.arena.push_direct(index, id, key, hash);
         id
@@ -649,8 +656,7 @@ impl Snapshot for MemorySnapshot {
         let index = self.index(perm);
         Ok(match prefix.len() {
             0 => {
-                let i = index.keys.partition_point(|&(k, _)| k < target);
-                index.keys.get(i).map(|&(k, _)| k)
+                index.first_key_at_least(target)
             }
             1 | 2 => {
                 let tails = index.tail(prefix);
