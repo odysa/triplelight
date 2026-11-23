@@ -300,7 +300,7 @@ pub fn serialize_tsv(r: &QueryResult) -> Option<(&'static str, String)> {
         }
         out.push('\n');
     }
-    Some(("text/tab-separated-values", out))
+    Some(("text/tab-separated-values; charset=utf-8", out))
 }
 
 /// SPARQL Results CSV for a solutions result: a header of variable names, then one row per solution, fields in lexical form
@@ -317,7 +317,7 @@ pub fn serialize_csv(r: &QueryResult) -> Option<(&'static str, String)> {
         }
         out.push_str("\r\n");
     }
-    Some(("text/csv", out))
+    Some(("text/csv; charset=utf-8", out))
 }
 
 #[cfg(test)]
@@ -350,14 +350,14 @@ mod tests {
     #[test]
     fn tsv_follows_the_spec_example() {
         let (ct, body) = serialize_tsv(&mixed()).unwrap();
-        assert_eq!(ct, "text/tab-separated-values");
+        assert_eq!(ct, "text/tab-separated-values; charset=utf-8");
         assert_eq!(body, "?x\t?literal\n<http://example/x>\t\"String\"\n<http://example/x>\t\"String-with-dquote\\\"\"\n_:b0\t\"Blank node\"\n\t\"Missing 'x'\"\n\t\n<http://example/x>\t\n_:b1\t\"String-with-lang\"@en\n_:b1\t123\n");
     }
 
     #[test]
     fn csv_follows_the_spec_example() {
         let (ct, body) = serialize_csv(&mixed()).unwrap();
-        assert_eq!(ct, "text/csv");
+        assert_eq!(ct, "text/csv; charset=utf-8");
         assert_eq!(lf(&body), "x,literal\nhttp://example/x,String\nhttp://example/x,\"String-with-dquote\"\"\"\n_:b0,Blank node\n,Missing 'x'\n,\nhttp://example/x,\n_:b1,String-with-lang\n_:b1,123\n");
     }
 
@@ -414,6 +414,14 @@ mod tests {
             let (ct, body) = serialize(&mixed());
             assert_eq!(ct, "application/sparql-results+json");
             assert!(!body.contains("version"), "{body}");
+        }
+
+        #[test]
+        fn non_ascii_directional_literal_through_both_writers() {
+            let dir: Term = Literal::new_directional_language_tagged_literal("שלום", "he", BaseDirection::Rtl).unwrap().into();
+            let r = result(&["l"], vec![vec![Some(dir)]]);
+            assert_eq!(serialize_tsv(&r).unwrap().1, "?l\n\"שלום\"@he--rtl\n");
+            assert_eq!(lf(&serialize_csv(&r).unwrap().1), "l\nשלום\n");
         }
 
         #[test]
