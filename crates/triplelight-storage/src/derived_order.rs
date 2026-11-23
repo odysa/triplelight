@@ -45,6 +45,8 @@ pub(super) trait KeptOrders {
     fn seek_kept(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError>;
     /// The memo for one-column-prefix seeks on a derived order.
     fn seek_memo(&self) -> &SeekMemo;
+    /// Where a large regroup spills (the store's directory).
+    fn scratch_dir(&self) -> &std::path::Path;
 }
 
 /// The sorted distinct second-column values of the last group a one-column-prefix seek on a derived order read.
@@ -77,7 +79,7 @@ pub(super) fn scan<'a, O: KeptOrders>(o: &'a O, perm: Perm, prefix: &[TermId]) -
         return Box::new(o.scan_kept(twin, &swapped(prefix, 0, 1)).map(|b| b.map(|mut b| { b.cols.swap(0, 1); b })));
     }
     trace::add(&trace::REGROUP_SCANS, 1);
-    Box::new(Regroup::new(o.scan_kept(sibling, prefix)))
+    Box::new(Regroup::new(o.scan_kept(sibling, prefix), spill_dir(o.scratch_dir())))
 }
 
 pub(super) fn count<O: KeptOrders>(o: &O, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
@@ -99,13 +101,18 @@ pub(super) fn seek<O: KeptOrders>(o: &O, perm: Perm, prefix: &[TermId], target: 
             let values = match cached {
                 Some(v) => { trace::add(&trace::MEMO_HITS, 1); v }
                 None => {
-                    let mut v = Vec::new();
-                    for batch in o.scan_kept(sibling, prefix) { v.extend_from_slice(&batch?.cols[2]) }
+                    // Distinct values only, collected as they come: memory is the number of distinct second-column
+                    // values (an object's predicates for OPS, a subject's objects for SOP), not the group's rows.
+                    let (mut set, mut rows) = (std::collections::BTreeSet::new(), 0u64);
+                    for batch in o.scan_kept(sibling, prefix) {
+                        let batch = batch?;
+                        rows += batch.len() as u64;
+                        set.extend(batch.cols[2].iter().copied());
+                    }
                     trace::add(&trace::MEMO_MISSES, 1);
-                    trace::add(&trace::MEMO_ROWS, v.len() as u64);
-                    trace::max(&trace::MAX_GROUP, v.len() as u64);
-                    v.sort_unstable();
-                    v.dedup();
+                    trace::add(&trace::MEMO_ROWS, rows);
+                    trace::max(&trace::MAX_GROUP, rows);
+                    let v: Vec<TermId> = set.into_iter().collect();
                     let v = std::sync::Arc::new(v);
                     *memo.lock().unwrap() = Some((perm, prefix[0], std::sync::Arc::clone(&v)));
                     v
@@ -136,6 +143,7 @@ struct Regroup<'a> {
     /// The current group once it outgrew `spill_limit` rows: its rows go to the external sorter instead of `group`.
     spill: Option<(super::fixed_sort::FixedSort<24>, u64)>,
     spill_limit: usize,
+    spill_dir: std::path::PathBuf,
     done: bool,
 }
 /// Finished, sorted rows: in memory (returned from `pos` on), or a spilled group streamed from the sorter's output (the
@@ -159,10 +167,12 @@ pub(super) fn spill_on_this_thread(rows: Option<usize>, dir: Option<std::path::P
     SPILL_ROWS_ON_THIS_THREAD.with(|c| c.set(rows));
     SPILL_DIR_ON_THIS_THREAD.with(|c| *c.borrow_mut() = dir);
 }
-fn spill_dir() -> std::path::PathBuf {
+/// Where a group spills: `TRIPLELIGHT_SCRATCH_DIR` if set, else the store's own directory (its device, and inside the
+/// tree S3 samples), not the system temporary directory, which is often a tmpfs charged to the cgroup as memory.
+fn spill_dir(store: &std::path::Path) -> std::path::PathBuf {
     #[cfg(test)]
     if let Some(d) = SPILL_DIR_ON_THIS_THREAD.with(|c| c.borrow().clone()) { return d }
-    std::env::temp_dir()
+    std::env::var_os("TRIPLELIGHT_SCRATCH_DIR").map(std::path::PathBuf::from).unwrap_or_else(|| store.to_path_buf())
 }
 /// The largest group sorted in memory: a quarter of the block-cache budget in rows, so one group never needs more than
 /// a fraction of what the store may use, and never less than `SPILL_FLOOR_ROWS`.
@@ -184,15 +194,15 @@ fn decode(r: &[u8; 24]) -> [TermId; 3] {
     [id(0), id(1), id(2)]
 }
 impl<'a> Regroup<'a> {
-    fn new(rows: Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a>) -> Self {
-        Self { rows, out: Default::default(), ready: 0, key: None, group: Vec::new(), spill: None, spill_limit: spill_rows(), done: false }
+    fn new(rows: Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a>, spill_dir: std::path::PathBuf) -> Self {
+        Self { rows, out: Default::default(), ready: 0, key: None, group: Vec::new(), spill: None, spill_limit: spill_rows(), spill_dir, done: false }
     }
     fn add(&mut self, row: [TermId; 3]) -> Result<(), StorageError> {
         if let Some((sort, n)) = &mut self.spill { *n += 1; return sort.push(encode(row)) }
         self.group.push(row);
         if self.group.len() > self.spill_limit {
             // Outgrew memory: move what is buffered to the external sorter and keep pushing there.
-            let mut sort = super::fixed_sort::FixedSort::<24>::new(&spill_dir(), SPILL_SORT_BYTES)?;
+            let mut sort = super::fixed_sort::FixedSort::<24>::new(&self.spill_dir, SPILL_SORT_BYTES)?;
             let n = self.group.len() as u64;
             for row in self.group.drain(..) { sort.push(encode(row))? }
             self.group = Vec::new();
