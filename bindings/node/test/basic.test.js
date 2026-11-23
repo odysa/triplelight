@@ -94,3 +94,24 @@ test("variables named like Object.prototype members are ordinary bindings", asyn
   assert.strictEqual(b.constructor.value, "y");
   db.close();
 });
+
+test("RDF 1.2 triple terms and base direction (skipped on a build without the rdf-12 feature)", async (t) => {
+  const db = tl.Database.inMemory();
+  try {
+    await db.update('INSERT DATA { <urn:a> <urn:says> <<( <urn:b> <urn:p> "v" )>> . <urn:a> <urn:label> "שלום"@he--rtl }');
+  } catch (e) {
+    t.skip("built without the rdf-12 feature");
+    return;
+  }
+  const r = await db.query("SELECT ?p ?o WHERE { <urn:a> ?p ?o }");
+  const byP = Object.fromEntries(r.bindings.map((b) => [b.p.value, b.o]));
+  const q = byP["urn:says"];
+  assert.strictEqual(q.termType, "Quad");
+  assert.strictEqual(q.subject.value, "urn:b");
+  assert.strictEqual(q.predicate.value, "urn:p");
+  assert.strictEqual(q.object.value, "v");
+  assert.strictEqual(q.graph.termType, "DefaultGraph");
+  assert.strictEqual(byP["urn:label"].language, "he");
+  assert.strictEqual(byP["urn:label"].direction, "rtl");
+  db.close();
+});

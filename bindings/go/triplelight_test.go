@@ -148,3 +148,25 @@ func TestConcurrentQueriesAndClose(t *testing.T) {
 	db.Close()
 	wg.Wait()
 }
+
+func TestRDF12TripleTermsAndDirection(t *testing.T) {
+	db := mustMem(t)
+	if _, err := db.Update(`INSERT DATA { <urn:a> <urn:says> <<( <urn:b> <urn:p> "v" )>> . <urn:a> <urn:label> "שלום"@he--rtl }`); err != nil {
+		t.Skip("built without the rdf-12 feature: ", err)
+	}
+	r, err := db.Query(`SELECT ?p ?o WHERE { <urn:a> ?p ?o }`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]*Term{}
+	for _, row := range r.Rows {
+		got[row[0].Value] = row[1]
+	}
+	tr := got["urn:says"]
+	if tr == nil || tr.Kind != Triple || tr.Subject.Value != "urn:b" || tr.Predicate.Value != "urn:p" || tr.Object.Value != "v" {
+		t.Fatalf("triple term: %+v", tr)
+	}
+	if l := got["urn:label"]; l == nil || l.Language != "he" || l.Direction != "rtl" {
+		t.Fatalf("directional literal: %+v", l)
+	}
+}
