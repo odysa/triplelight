@@ -4,8 +4,8 @@
 //!
 //! 1. `full_<order>`: a prefix-free scan of every kept order (first pass: block-cache misses; second pass: hits while
 //!    the cache holds the order, else misses again);
-//! 2. `prefix1_<order>` / `prefix2_<order>`: scans on `--keys` sampled one- and two-column prefixes (spread evenly
-//!    over the order), the shape of index nested-loop probes;
+//! 2. `prefix1_<order>` / `prefix2_<order>`: the first batch (up to 4096 rows) of scans on `--keys` sampled one- and
+//!    two-column prefixes (spread evenly over the order), the shape of index nested-loop probes;
 //! 3. `seek_<order>`: `seek` with a one-column prefix and a rising target, the shape of leapfrog joins.
 //!
 //!   cargo run --release -p triplelight-storage --example scan_bench -- <base-dir> [--keys 20000] [--passes 2]
@@ -17,8 +17,13 @@ use triplelight_core::model::{Perm, TermId};
 use triplelight_storage::{DiskSnapshot, Snapshot};
 
 fn drain(snap: &DiskSnapshot, perm: Perm, prefix: &[TermId], sum: &mut u64) -> std::io::Result<u64> {
+    drain_batches(snap, perm, prefix, usize::MAX, sum)
+}
+
+/// Reads at most `batches` batches (4096 rows each): a probe reads the start of a range, not all of a huge group.
+fn drain_batches(snap: &DiskSnapshot, perm: Perm, prefix: &[TermId], batches: usize, sum: &mut u64) -> std::io::Result<u64> {
     let mut rows = 0u64;
-    for batch in snap.scan(perm, prefix) {
+    for batch in snap.scan(perm, prefix).take(batches) {
         let b = batch?;
         rows += b.len() as u64;
         for c in &b.cols { for v in c { *sum = sum.wrapping_mul(31).wrapping_add(v.0) } }
@@ -60,7 +65,7 @@ fn main() -> std::io::Result<()> {
         }
         for width in [1usize, 2] {
             let (t, mut sum, mut rows) = (Instant::now(), 0u64, 0u64);
-            for row in &sample { rows += drain(&snap, perm, &key(row)[..width], &mut sum)? }
+            for row in &sample { rows += drain_batches(&snap, perm, &key(row)[..width], 1, &mut sum)? }
             report(format!("prefix{width}_{perm:?}"), t.elapsed().as_secs_f64(), rows, sample.len() as u64, sum);
         }
         let (t, mut sum, mut calls) = (Instant::now(), 0u64, 0u64);

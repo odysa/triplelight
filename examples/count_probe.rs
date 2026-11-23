@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             fs::write(answers.join(format!("{name}.json")),triplelight::exec::results::serialize(&warm).1)?;
         }
         let expected = normalize(warm)?;
-        let hash = format!("{:x}", Sha256::digest(expected.join("\n").as_bytes()));
+        let hash: String = Sha256::digest(expected.join("\n").as_bytes()).iter().map(|b| format!("{b:02x}")).collect();
         if expected.len() <= 32 {
             fs::write(answers.join(format!("{name}.txt")), expected.join("\n"))?;
         }
