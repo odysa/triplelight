@@ -27,6 +27,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
+name = "memchr"
+version = "2.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
+
+[[package]]
 name = "oxilangtag"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -50,6 +56,19 @@ dependencies = [
  "oxilangtag",
  "oxiri",
  "rand",
+ "thiserror",
+]
+
+[[package]]
+name = "oxttl"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2f5a5c0e82734bb66c9e2a82839bafca5cc129531c51b92f428a4f43405793d"
+dependencies = [
+ "memchr",
+ "oxilangtag",
+ "oxiri",
+ "oxrdf",
  "thiserror",
 ]
 
@@ -187,6 +206,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "triplelight-core"
+version = "0.1.0"
+dependencies = [
+ "triplelight-iri",
+ "triplelight-rdf",
+]
+
+[[package]]
 name = "triplelight-iri"
 version = "0.1.0"
 
@@ -203,6 +230,8 @@ name = "triplelight-rdf12-diff"
 version = "0.0.0"
 dependencies = [
  "oxrdf",
+ "oxttl",
+ "triplelight-core",
  "triplelight-rdf",
 ]
 

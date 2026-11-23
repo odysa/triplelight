@@ -9,7 +9,7 @@ use std::collections::{HashMap, VecDeque};
 use std::io::BufRead;
 use triplelight_iri::Iri;
 #[cfg(feature = "rdf-12")]
-use triplelight_rdf::{BaseDirection, Triple};
+use triplelight_rdf::{BaseDirection, MAX_TRIPLE_TERM_DEPTH, Triple, triple_term_depth};
 
 const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 /// The most input appended to the buffer per refill.
@@ -538,6 +538,8 @@ struct Parser {
     objects: Vec<Term>,
     graph: GraphName,
     prefixes: HashMap<String, Iri>,
+    #[cfg(feature = "rdf-12")]
+    triple_term_depth: usize,
     with_graph: bool,
     /// The statements of the token being processed, in production order.
     batch: Vec<Quad>,
@@ -545,7 +547,18 @@ struct Parser {
 
 impl Parser {
     fn new(with_graph: bool) -> Self {
-        Parser { stack: vec![State::TriGDoc], subjects: Vec::new(), predicates: Vec::new(), objects: Vec::new(), graph: GraphName::DefaultGraph, prefixes: HashMap::new(), with_graph, batch: Vec::new() }
+        Parser {
+            stack: vec![State::TriGDoc],
+            subjects: Vec::new(),
+            predicates: Vec::new(),
+            objects: Vec::new(),
+            graph: GraphName::DefaultGraph,
+            prefixes: HashMap::new(),
+            #[cfg(feature = "rdf-12")]
+            triple_term_depth: 0,
+            with_graph,
+            batch: Vec::new(),
+        }
     }
     fn emit(&mut self) {
         let q = Quad::new(self.subjects.last().unwrap().clone(), self.predicates.last().unwrap().clone(), self.objects.last().unwrap().clone(), self.graph.clone());
@@ -566,18 +579,24 @@ impl Parser {
         self.stack.push(State::QuotedSubject(mode));
     }
     #[cfg(feature = "rdf-12")]
-    fn emit_reification(&mut self, reifier: NamedOrBlankNode, triple: Triple) {
+    fn emit_reification(&mut self, reifier: NamedOrBlankNode, triple: Triple) -> R<()> {
+        // Reification adds one stored triple-term node around the parsed object.
+        if triple_term_depth(triple.object.as_ref()) >= MAX_TRIPLE_TERM_DEPTH {
+            return Err(format!("Triple term depth exceeds {MAX_TRIPLE_TERM_DEPTH}").into());
+        }
         self.batch.push(Quad::new(reifier, rdf("reifies"), triple, self.graph.clone()));
+        Ok(())
     }
     #[cfg(feature = "rdf-12")]
-    fn finish_reifier(&mut self, target: ReifierTarget, triple: Triple, reifier: NamedOrBlankNode) {
+    fn finish_reifier(&mut self, target: ReifierTarget, triple: Triple, reifier: NamedOrBlankNode) -> R<()> {
         match target {
             ReifierTarget::Quoted(target) => self.stack.push(State::ReifiedEnd { target, triple, reifier }),
             ReifierTarget::Annotation => {
-                self.emit_reification(reifier.clone(), triple);
+                self.emit_reification(reifier.clone(), triple)?;
                 self.stack.push(State::AnnotationBlock { reifier: Some(reifier) });
             }
         }
+        Ok(())
     }
     fn resolve_pname(&self, prefix: &str, local: &str, might_be_invalid: bool) -> R<NamedNode> {
         let Some(start) = self.prefixes.get(prefix) else { return Err(Fail::Syntax(format!("The prefix {prefix}: has not been declared"))) };
@@ -813,12 +832,14 @@ impl Parser {
                             continue;
                         }
                         Tok::Punct("{|") => {
-                            let reifier = reifier.unwrap_or_else(|| {
+                            let reifier = if let Some(reifier) = reifier {
+                                reifier
+                            } else {
                                 let reifier = NamedOrBlankNode::from(BlankNode::default());
                                 let triple = Triple::new(self.subjects.last().unwrap().clone(), self.predicates.last().unwrap().clone(), self.objects.last().unwrap().clone());
-                                self.emit_reification(reifier.clone(), triple);
+                                self.emit_reification(reifier.clone(), triple)?;
                                 reifier
-                            });
+                            };
                             self.subjects.push(reifier);
                             self.stack.push(State::AnnotationEnd);
                             self.stack.push(State::PredicateObjectList);
@@ -858,6 +879,10 @@ impl Parser {
                     }
                     #[cfg(feature = "rdf-12")]
                     Tok::Punct("<<(") => {
+                        if self.triple_term_depth == MAX_TRIPLE_TERM_DEPTH {
+                            return Err(format!("Triple term depth exceeds {MAX_TRIPLE_TERM_DEPTH}").into());
+                        }
+                        self.triple_term_depth += 1;
                         self.stack.push(State::TripleTermEnd(mode));
                         self.begin_quoted(ObjectMode::TripleTerm);
                     }
@@ -899,6 +924,7 @@ impl Parser {
                 #[cfg(feature = "rdf-12")]
                 State::TripleTermEnd(mode) => {
                     if token != Tok::Punct(")>>") { return Err("A triple term must end with )>>".into()); }
+                    self.triple_term_depth -= 1;
                     let triple = self.quoted_triple();
                     self.finish_object(triple.into(), mode);
                 }
@@ -908,14 +934,14 @@ impl Parser {
                     if token == Tok::Punct("~") {
                         self.stack.push(State::Reifier { target: ReifierTarget::Quoted(target), triple });
                     } else {
-                        self.finish_reifier(ReifierTarget::Quoted(target), triple, BlankNode::default().into());
+                        self.finish_reifier(ReifierTarget::Quoted(target), triple, BlankNode::default().into())?;
                         again(&mut pending, token);
                     }
                 }
                 #[cfg(feature = "rdf-12")]
                 State::ReifiedEnd { target, triple, reifier } => {
                     if token != Tok::Punct(">>") { return Err("A reified triple must end with >>".into()); }
-                    self.emit_reification(reifier.clone(), triple);
+                    self.emit_reification(reifier.clone(), triple)?;
                     match target {
                         ReifiedTarget::Subject => self.subjects.push(reifier),
                         ReifiedTarget::Object(mode) => self.finish_object(reifier.into(), mode),
@@ -924,12 +950,12 @@ impl Parser {
                 #[cfg(feature = "rdf-12")]
                 State::Reifier { target, triple } => match token {
                     Tok::Punct("[") => self.stack.push(State::ReifierAnonEnd { target, triple }),
-                    Tok::BNode(label) => self.finish_reifier(target, triple, BlankNode::new_unchecked(label).into()),
+                    Tok::BNode(label) => self.finish_reifier(target, triple, BlankNode::new_unchecked(label).into())?,
                     t => {
                         if let Some(iri) = self.iri_of(&t) {
-                            self.finish_reifier(target, triple, iri?.into());
+                            self.finish_reifier(target, triple, iri?.into())?;
                         } else {
-                            self.finish_reifier(target, triple, BlankNode::default().into());
+                            self.finish_reifier(target, triple, BlankNode::default().into())?;
                             again(&mut pending, t);
                         }
                     }
@@ -937,7 +963,7 @@ impl Parser {
                 #[cfg(feature = "rdf-12")]
                 State::ReifierAnonEnd { target, triple } => {
                     if token != Tok::Punct("]") { return Err("A reifier accepts an empty blank node property list".into()); }
-                    self.finish_reifier(target, triple, BlankNode::default().into());
+                    self.finish_reifier(target, triple, BlankNode::default().into())?;
                 }
                 State::ObjectBlankNodePropertyListCurrent => {
                     if token == Tok::Punct("]") {
@@ -1094,6 +1120,38 @@ mod tests {
             r#"<urn:s> <urn:p> <urn:o> {| |} ."#,
         ] {
             assert!(read_turtle_slice(bad.as_bytes()).any(|row| row.is_err()), "{bad}");
+        }
+    }
+
+    #[cfg(feature = "rdf-12")]
+    #[test]
+    fn rdf12_terse_depth_matches_dictionary() {
+        let object = |depth| format!("{}<urn:o>{}", "<<( <urn:s> <urn:p> ".repeat(depth), " )>>".repeat(depth));
+        let documents = [
+            (MAX_TRIPLE_TERM_DEPTH, "<urn:s> <urn:p> ", " ."),
+            (MAX_TRIPLE_TERM_DEPTH - 1, "<< <urn:s> <urn:p> ", " ~ <urn:r> >> ."),
+            (MAX_TRIPLE_TERM_DEPTH - 1, "<urn:s> <urn:p> ", " {| <urn:q> <urn:o> |} ."),
+            (MAX_TRIPLE_TERM_DEPTH - 1, "<urn:s> <urn:p> ", " ~ <urn:r> ."),
+        ];
+        for (limit, prefix, suffix) in documents {
+            for depth in [limit, limit + 1] {
+                let text = format!("{prefix}{}{suffix}", object(depth));
+                let dataset = format!("<urn:g> {{ {text} }}");
+                let turtle = read_turtle_slice(text.as_bytes())
+                    .map(|row| row.map(|triple| triple.in_graph(GraphName::DefaultGraph)))
+                    .collect::<Result<Vec<_>, _>>();
+                let trig = read_trig(dataset.as_bytes()).collect::<Result<Vec<_>, _>>();
+                for result in [turtle, trig] {
+                    if depth == limit {
+                        let rows = result.unwrap();
+                        let depth = rows.iter().map(|q| triple_term_depth(q.object.as_ref())).max();
+                        assert_eq!(depth, Some(MAX_TRIPLE_TERM_DEPTH));
+                        assert!(rows.iter().all(|q| q.object.to_string().parse::<Term>().is_ok_and(|term| term == q.object)));
+                    } else {
+                        assert!(matches!(result, Err(ReadError::Syntax(message)) if message.contains("Triple term depth")));
+                    }
+                }
+            }
         }
     }
 
