@@ -290,6 +290,33 @@ fn parallel_expression_group_matches_serial_typed_rows() {
     }
 }
 
+#[test]
+fn projected_order_expression_keeps_ties_and_unbound_results() {
+    let snapshot = store();
+    let run = |order| {
+        let query_text = format!(
+            "SELECT ?s (?n / ?d AS ?ratio) WHERE {{
+               VALUES (?s ?n ?d) {{
+                 (<urn:z> 6 3) (<urn:a> 4 2) (<urn:middle> 4 4)
+                 (<urn:zero> 1 0) (<urn:missing> 1 UNDEF)
+               }}
+             }} ORDER BY DESC({order}) OFFSET 1 LIMIT 3"
+        );
+        match query(&snapshot, &query_text).unwrap() {
+            QueryResult::Solutions { rows, .. } => rows,
+            other => panic!("expected solution rows, got {other:?}"),
+        }
+    };
+    let reused = run("?n / ?d");
+    let evaluated = run("IF(true, ?n / ?d, 0)");
+    assert_eq!(reused, evaluated);
+    assert_eq!(reused.len(), 3);
+    for (row, expected) in reused.iter().zip(["<urn:a>", "<urn:middle>", "<urn:zero>"]) {
+        assert_eq!(row[0].as_ref().unwrap().to_string(), expected);
+    }
+    assert!(reused[2][1].is_none());
+}
+
 /// xsd:float is its own type in numeric promotion (integer < decimal < float < double), not folded into double.
 #[test]
 fn float_promotion_and_aggregates() {
