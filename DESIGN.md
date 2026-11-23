@@ -73,6 +73,8 @@ Details and formats: [docs/persistence.md](docs/persistence.md).
    `MINUS`, `EXISTS`, subqueries and named graphs (`GRAPH`, `FROM`, `FROM NAMED`) are supported.
 5. **Return** results, which are materialized before output: SPARQL JSON, owned rows in each binding's types, or
    Arrow C streams from the C, Go and Java bindings.
+   The HTTP server also writes SPARQL CSV and TSV (chosen from `Accept`). With the `rdf-12` feature, results can hold triple
+   terms and base-direction literals (SPARQL 1.2 JSON, CSV and TSV; see the README).
 
 Optimizer details: [docs/optimizer.md](docs/optimizer.md).
 
