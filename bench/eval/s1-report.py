@@ -6,12 +6,21 @@ Per query: peak anon and file during its timed runs, device bytes read and major
 and whether an OOM kill happened in them. A run whose server was OOM-killed is reported as a failure, never as a time."""
 import json, sys
 res = json.load(open(sys.argv[1]))
-rows = []
+rows = []   # a `restart` row starts a new cgroup whose counters begin at zero: it is kept as a segment boundary
 for line in open(sys.argv[2]):
     if line.startswith("#") or not line.strip(): continue
     f = line.rstrip("\n").split("\t")
+    if len(f) > 1 and f[1] == "restart": rows.append([float(f[0]), None]); continue
     try: rows.append([float(f[0])] + [int(x) if x else 0 for x in f[1:]])
     except ValueError: continue
+def increase(w, i):
+    """Total increase of counter column i over w, summed within segments (restart rows split them)."""
+    total, prev = 0, None
+    for r in w:
+        if r[1] is None: prev = None; continue
+        if prev is not None and r[i] >= prev: total += r[i] - prev
+        prev = r[i]
+    return total
 def window(t0, t1):
     w = [r for r in rows if t0 - 0.5 <= r[0] <= t1 + 0.5]
     return w
@@ -20,12 +29,13 @@ for name, e in res["queries"].items():
     runs = [r for r in e.get("runs", []) if "t0" in r]
     if not runs or not rows: out["queries"][name] = {"note": "no samples"}; continue
     w = window(runs[0]["t0"], runs[-1]["t1"])
-    if not w: out["queries"][name] = {"note": "no samples in the query's window"}; continue
+    data = [r for r in w if r[1] is not None]
+    if not data: out["queries"][name] = {"note": "no samples in the query's window"}; continue
     out["queries"][name] = {
         "class": e.get("class"), "median_s": e.get("median_s"),
-        "peak_anon_bytes": max(r[3] for r in w), "peak_file_bytes": max(r[4] for r in w),
-        "major_faults": w[-1][5] - w[0][5], "device_read_bytes": w[-1][6] - w[0][6],
-        "oom_kill": w[-1][7] - w[0][7] > 0,
+        "peak_anon_bytes": max(r[3] for r in data), "peak_file_bytes": max(r[4] for r in data),
+        "major_faults": increase(w, 5), "device_read_bytes": increase(w, 6),
+        "oom_kill": increase(w, 7) > 0, "restarts_in_window": sum(1 for r in w if r[1] is None),
     }
     if out["queries"][name]["oom_kill"]: out["queries"][name]["class"] = "oom-killed"
 json.dump(out, sys.stdout, indent=1)

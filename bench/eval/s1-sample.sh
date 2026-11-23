@@ -23,7 +23,16 @@ cg() {
 CG=${S1_CGROUP:-$(cg)}   # S1_CGROUP overrides the lookup (tests)
 [ -n "$CG" ] && [ -f "$CG/memory.current" ] || { echo "# no cgroup found for $SYS: the S1 run is unmeasured" > "$OUTF"; echo "s1-sample: no cgroup for $SYS" >&2; exit 1; }
 printf '# cgroup %s\n# epoch\tcurrent\tpeak\tanon\tfile\tpgmajfault\trbytes\toom_kill\n' "$CG" > "$OUTF"
-while [ -f "$CG/memory.current" ]; do
+# Runs until killed (session.sh). A cold run or a restart after a timeout stops the server and starts a new scope or
+# container: the old cgroup disappears, a `restart` row is written, and the path is resolved again (its counters and
+# memory.peak start from zero, which s1-report.py handles per segment).
+while :; do
+  if [ ! -f "$CG/memory.current" ]; then
+    printf '%s\trestart\n' "$(date +%s.%N)" >> "$OUTF"
+    while :; do sleep 0.5; CG=${S1_CGROUP:-$(cg)}; [ -n "$CG" ] && [ -f "$CG/memory.current" ] && break; done
+    printf '# cgroup %s\n' "$CG" >> "$OUTF"
+    continue
+  fi
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s.%N)" "$(cat "$CG/memory.current")" "$(cat "$CG/memory.peak" 2>/dev/null)" \
     "$(awk '$1=="anon"{print $2}' "$CG/memory.stat")" "$(awk '$1=="file"{print $2}' "$CG/memory.stat")" \
     "$(awk '$1=="pgmajfault"{print $2}' "$CG/memory.stat")" \
