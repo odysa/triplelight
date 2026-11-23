@@ -1,0 +1,24 @@
+sop_prefix_scan: 0.000 s, 70 rows, 5 calls, remap_calls=0 regroup_scans=5 regroup_rows=70 regroup_groups=5 max_group=14 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=1417 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+ops_prefix_scan: 1.731 s, 30759983 rows, 5 calls, remap_calls=0 regroup_scans=5 regroup_rows=30759983 regroup_groups=5 max_group=11168009 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=591320875 regroup_spills=3 spill_rows=27156135 peak_spill_bytes=268032216
+sop_seek_walk: 0.000 s, 0 rows, 65 calls, remap_calls=0 regroup_scans=0 regroup_rows=0 regroup_groups=0 max_group=14 memo_hits=65 memo_misses=5 memo_rows=70 sort_ns=0 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+ops_seek_walk: 0.595 s, 0 rows, 5 calls, remap_calls=0 regroup_scans=0 regroup_rows=0 regroup_groups=0 max_group=11168009 memo_hits=5 memo_misses=5 memo_rows=30759983 sort_ns=0 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+sop_full_scan: 9.781 s, 133613894 rows, 1 calls, remap_calls=0 regroup_scans=1 regroup_rows=133613894 regroup_groups=21735128 max_group=14 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=780581366 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+ops_full_scan: 5.941 s, 133613894 rows, 1 calls, remap_calls=0 regroup_scans=1 regroup_rows=133613894 regroup_groups=16156826 max_group=11168009 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=1430227305 regroup_spills=3 spill_rows=27156135 peak_spill_bytes=268032216
+       29.44 real        27.57 user         1.85 sys
+          1678524416  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              126076  page reclaims
+                   0  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  12  voluntary context switches
+                 224  involuntary context switches
+        385352081815  instructions retired
+         94814787337  cycles elapsed
+          1678739328  peak memory footprint
