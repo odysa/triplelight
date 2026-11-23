@@ -210,6 +210,8 @@ pub struct DiskSnapshot {
     /// ascending by ID.
     named: Option<NamedBase>,
     seek_memo: super::derived_order::SeekMemo,
+    /// `Snapshot::object_memo`: a base never changes, so the memo lives as long as it.
+    object_memo: triplelight_core::storage::ObjectMemo,
     /// The base holds an RDF 1.2 term (manifest `RDFSNAP7`).
     rdf12: bool,
     /// `RDFSNAP7` only: rows `(triple term, s, p, o)` sorted by term ID (`Dictionary::triple_term_parts`).
@@ -384,6 +386,7 @@ impl DiskSnapshot {
             indexes,
             named,
             seek_memo: Default::default(),
+            object_memo: Default::default(),
             dir: dir.to_path_buf(),
             rdf12: version == 7,
             triple_terms,
@@ -648,6 +651,7 @@ impl Dictionary for DiskSnapshot {
 
 impl Snapshot for DiskSnapshot {
     fn has_rdf12_terms(&self) -> bool { self.rdf12 }
+    fn object_memo(&self) -> Option<&triplelight_core::storage::ObjectMemo> { Some(&self.object_memo) }
     fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
         super::derived_order::scan(self, perm, prefix)
     }

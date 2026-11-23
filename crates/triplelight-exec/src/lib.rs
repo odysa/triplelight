@@ -376,9 +376,9 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     count_pushdown: bool,
     /// `Options::range_pushdown`.
     range_pushdown: bool,
-    /// Range pushdown's per-predicate check (`range.rs`), per query: the stored-literal objects of a predicate if
-    /// its literals of that datatype are all canonical, else `None`.
-    range_checks: RefCell<HashMap<(TermId, &'static str), Option<Vec<TermId>>>>,
+    /// Range pushdown's per-predicate check (`range.rs`), per query, in front of the snapshot's `object_memo`: the
+    /// stored-literal objects of a predicate if its literals of that datatype are all canonical, else `None`.
+    range_checks: RefCell<HashMap<(TermId, &'static str), Option<std::sync::Arc<[TermId]>>>>,
     /// LIMIT (+OFFSET) of a Slice directly above the next ORDER BY (through at most a Project): lets ORDER BY keep
     /// only the first `k` rows (stable top-k) instead of sorting everything. Taken by that ORDER BY.
     order_limit: std::cell::Cell<Option<usize>>,

@@ -72,6 +72,8 @@ pub struct Overlay {
     delta: Arc<Delta>,
     /// The named graphs (task #36): every graph in the catalog, empty ones included, over this overlay's dictionary.
     named: Arc<named::Catalog>,
+    /// `Snapshot::object_memo` for this overlay's own contents (an overlay never changes once published).
+    object_memo: triplelight_core::storage::ObjectMemo,
 }
 
 impl Overlay {
@@ -147,6 +149,11 @@ impl Dictionary for Overlay {
 impl Snapshot for Overlay {
     #[cfg(feature = "rdf-12")]
     fn has_rdf12_terms(&self) -> bool { self.delta.rdf12 || self.base.has_rdf12_terms() }
+    /// Without changes the overlay's contents are the base's, so it shares the base's memo (which then survives
+    /// commits that publish new overlays only until the first change).
+    fn object_memo(&self) -> Option<&triplelight_core::storage::ObjectMemo> {
+        if self.delta.is_empty() { self.base.object_memo() } else { Some(&self.object_memo) }
+    }
     fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> {
         if self.delta.is_empty() { self.base.matching_rows(perm, prefix) } else { None }
     }
@@ -759,7 +766,7 @@ fn default_changes(changes: &[(Change, Triple)]) -> Vec<DatasetChange> {
 impl Overlay {
     /// A read snapshot over `base` with no pending changes: the starting point of an in-memory, non-durable store
     /// (used by the WebAssembly build, which has no file system).
-    pub fn from_base(base: Arc<dyn Snapshot>) -> Overlay { Overlay { base, delta: Arc::new(Delta::default()), named: Default::default() } }
+    pub fn from_base(base: Arc<dyn Snapshot>) -> Overlay { Overlay { base, delta: Arc::new(Delta::default()), named: Default::default(), object_memo: Default::default() } }
 
     /// This snapshot with `changes` applied, in memory and without a WAL, plus the number of triples that actually
     /// changed.

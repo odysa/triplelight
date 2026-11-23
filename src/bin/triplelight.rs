@@ -26,6 +26,7 @@ impl Snapshot for Backend {
     fn seek(&self, p: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> { each!(self, s => s.seek(p, prefix, target)) }
     fn matching_rows(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> { each!(self, s => s.matching_rows(p, prefix)) }
     fn matching_tail(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 2]]> { each!(self, s => s.matching_tail(p, prefix)) }
+    fn object_memo(&self) -> Option<&triplelight::storage::ObjectMemo> { each!(self, s => s.object_memo()) }
 }
 use std::time::Instant;
 

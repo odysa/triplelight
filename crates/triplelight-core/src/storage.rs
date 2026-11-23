@@ -75,7 +75,16 @@ pub trait Snapshot: Dictionary + Send + Sync {
     /// scan: `false` guarantees there is none, so outputs can stay exactly RDF 1.1. Stores without 1.2 support
     /// return `false`.
     fn has_rdf12_terms(&self) -> bool { false }
+    /// A memo the executor may fill with facts that depend only on this view's contents (range pushdown's
+    /// per-predicate check), shared by every query on it. Only an immutable view may return one; `None` (the default)
+    /// makes the executor recompute per query.
+    fn object_memo(&self) -> Option<&ObjectMemo> { None }
 }
+
+/// See `Snapshot::object_memo`: for a (predicate, datatype IRI), the predicate's stored-literal objects ascending if
+/// every one of that datatype is in canonical form, else `None`.
+#[derive(Default)]
+pub struct ObjectMemo(pub std::sync::Mutex<std::collections::HashMap<(TermId, &'static str), Option<std::sync::Arc<[TermId]>>>>);
 
 
 /// An RDF dataset read view: the default graph plus a catalog of named graphs, all sharing one dictionary and one

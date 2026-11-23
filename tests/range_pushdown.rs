@@ -33,9 +33,9 @@ fn disk(name: &str, nt: &str) -> Disk {
 }
 fn memory(nt: &str) -> MemorySnapshot { MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap() }
 
-/// Forwards everything to `inner` and counts the triples its scans return.
-struct Counting<'a> { inner: &'a dyn Snapshot, rows: AtomicUsize }
-fn counting(inner: &dyn Snapshot) -> Counting<'_> { Counting { inner, rows: AtomicUsize::new(0) } }
+/// Forwards everything to `inner` and counts its scans and the triples they return.
+struct Counting<'a> { inner: &'a dyn Snapshot, rows: AtomicUsize, scans: AtomicUsize }
+fn counting(inner: &dyn Snapshot) -> Counting<'_> { Counting { inner, rows: AtomicUsize::new(0), scans: AtomicUsize::new(0) } }
 impl Dictionary for Counting<'_> {
     fn lookup(&self, t: &Term) -> Result<Option<TermId>, StorageError> { self.inner.lookup(t) }
     fn literal_text_bound(&self, text: &str, strict: bool) -> Result<Option<TermId>, StorageError> { self.inner.literal_text_bound(text, strict) }
@@ -45,6 +45,7 @@ impl Dictionary for Counting<'_> {
 }
 impl Snapshot for Counting<'_> {
     fn scan<'a>(&'a self, p: Perm, k: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+        self.scans.fetch_add(1, Ordering::Relaxed);
         Box::new(self.inner.scan(p, k).inspect(|b| if let Ok(b) = b { self.rows.fetch_add(b.len(), Ordering::Relaxed); }))
     }
     fn scan_for_stats(&self) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + '_> { self.inner.scan_for_stats() }
@@ -265,27 +266,59 @@ fn updates_in_the_delta_are_returned() {
         "INSERT DATA {{ <urn:new1> <urn:date> {} . <urn:new2> <urn:date> {} . <urn:new3> <urn:date> {} . <urn:new4> <urn:date> \"2007-10-30\" . <urn:new1> <urn:for> <urn:p0> }}",
         // A date first seen in the delta (no day 29 is in the base), one already in the base dictionary, and a
         // non-canonical one in the delta (delta IDs are always scanned, so it does not need the check).
-        d("2007-10-29"), d(&form(263)), d("2007-10-13Z"),
+        d("2007-10-29"), d(&form(272)), d("2007-10-23Z"),
     )).unwrap();
     // A base triple in the range deleted in the delta.
-    store.update(&format!("DELETE DATA {{ <urn:r262> <urn:date> {} }}", d(&form(262)))).unwrap();
-    let cond = format!("?d >= {} && ?d <= {}", d("2007-10-10"), d("2007-10-31"));
+    store.update(&format!("DELETE DATA {{ <urn:r273> <urn:date> {} }}", d(&form(273)))).unwrap();
+    // Narrow enough (8 stored dates and 3 delta objects) to be read by one probe per object.
+    let cond = format!("?d >= {} && ?d <= {}", d("2007-10-20"), d("2007-10-31"));
     let q = select(&cond);
     let check = |snap: &dyn Snapshot, pushed: bool| {
         let (got, on, off) = on_off(snap, &q);
         for s in ["<urn:new1>", "<urn:new2>", "<urn:new3>"] { assert!(got.iter().any(|r| r.starts_with(s)), "{s} missing: {got:?}") }
-        for s in ["<urn:new4>", "<urn:r262>"] { assert!(!got.iter().any(|r| r.starts_with(s)), "{s} present: {got:?}") }
+        for s in ["<urn:new4>", "<urn:r273>"] { assert!(!got.iter().any(|r| r.starts_with(s)), "{s} present: {got:?}") }
         assert_eq!(on < off, pushed, "pushed down: {on} rows vs {off}");
         let joined = format!("SELECT ?r ?p WHERE {{ ?r <urn:date> ?d . ?r <urn:for> ?p FILTER({cond}) }}");
         assert!(on_off(snap, &joined).0.iter().any(|r| r.starts_with("<urn:new1>")));
         got
     };
     let before = check(&*store.snapshot(), true);
-    // After compaction "2007-10-13Z" is a base literal: no pushdown, same answers.
+    // After compaction "2007-10-23Z" is a base literal: no pushdown, same answers.
     store.compact().unwrap();
     assert_eq!(check(&*store.snapshot(), false), before);
     drop(store);
     let _ = std::fs::remove_dir_all(dir);
+}
+
+/// A dense range (almost every date) in front of a join whose other pattern has many more rows than the range: the
+/// shape of BSBM BI q3 on its dense windows, where reading the range first and then probing once per review was
+/// slower than scanning both patterns. Work counts each scan call (one index probe) as `PROBE_ROWS` = 20 rows,
+/// the executor's own cost model; the ranged plan must do no more work than the plan without the range.
+#[test]
+fn a_dense_range_costs_no_more_than_no_range() {
+    let reviews = 3000;
+    let mut nt = String::new();
+    for i in 0..reviews { nt += &format!("<urn:r{i}> <urn:date> {} .\n<urn:r{i}> <urn:for> <urn:p{}> .\n", d(&form(i)), i % 50); }
+    // Many more <urn:for> triples than reviews, so joining by probes and joining by one scan really differ.
+    for i in 0..3 * reviews { nt += &format!("<urn:o{i}> <urn:for> <urn:p{}> .\n", i % 50); }
+    let base = disk("dense", &nt);
+    let reference = memory(&nt);
+    let work = |q: &str, on: bool| {
+        let s = counting(&base.snap);
+        let got = answers(&s, q, &opts(on));
+        (got, s.rows.load(Ordering::Relaxed) + 20 * s.scans.load(Ordering::Relaxed))
+    };
+    for cond in [format!("?d >= {}", d("2007-01-05")), format!("?d > {} && ?d <= {}", d("2007-01-01"), d("2008-01-01")), format!("?d < {}", d("2007-11-20"))] {
+        for q in [
+            format!("SELECT ?r ?p WHERE {{ ?r <urn:for> ?p . ?r <urn:date> ?d FILTER({cond}) }}"),
+            format!("SELECT ?p (COUNT(?r) AS ?n) WHERE {{ ?r <urn:date> ?d . ?r <urn:for> ?p FILTER({cond}) }} GROUP BY ?p"),
+        ] {
+            let ((a, on), (b, off)) = (work(&q, true), work(&q, false));
+            assert_eq!(a, b, "{q}");
+            assert_eq!(a, answers(&reference, &q, &opts(true)), "{q}");
+            assert!(on <= off, "{q}: work {on} with the range, {off} without");
+        }
+    }
 }
 
 /// xorshift64*, as in the storage tests: deterministic and dependency-free.

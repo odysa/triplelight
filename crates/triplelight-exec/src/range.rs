@@ -26,10 +26,11 @@
 //!    longer string) but its text sorts first (space < `"`); `"2007-10-1\n"` satisfies `?d < "2007-10-11"` but its
 //!    text sorts after (the escape `\` > `1`); negative, five-digit-year or timezoned forms do not sort like their
 //!    values. If any `xsd:date` object of `<p>` is not canonical, the pattern keeps its full scan.
-//! 4. The condition is checked per predicate and query, by enumerating the distinct stored-literal objects of `<p>`
-//!    with index seeks and decoding them once (at most `CHECK_LIMIT`; more, and the pushdown is off). That needs no
-//!    statistics or format change and holds for exactly the rows the pattern can produce. It is what costs: the
-//!    pushdown is meant for predicates such as `dc:date` with few distinct values.
+//! 4. The condition is checked per predicate by enumerating the distinct stored-literal objects of `<p>` with index
+//!    seeks and decoding them once (at most `CHECK_LIMIT`; more, and the pushdown is off). The result is kept in the
+//!    snapshot's `object_memo` (disk bases, and overlays of their own contents), so a store pays for it once per
+//!    predicate, not per query. That needs no statistics or format change and holds for exactly the rows the
+//!    pattern can produce.
 //! 5. IDs that are not base dictionary literals are not in text order: overlay delta terms (`id_tag::DELTA`),
 //!    scratch and inline IDs. All of them sit above every literal and triple-term tag, so the pattern also scans every
 //!    object at or above `id_tag::DELTA` unrestricted; the residual filter decides those. Triples inserted with an
@@ -42,6 +43,7 @@ use crate::storage::Snapshot;
 use triplelight_rdf::vocab::xsd;
 use triplelight_rdf::{Literal, TermRef};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Distinct stored-literal objects of one predicate decoded for the canonical-form check; above this the pushdown is
 /// off for that predicate.
@@ -182,9 +184,20 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     }
 
     /// The stored-literal objects of `p`, ascending, if every one of `datatype` is in canonical form (condition 3 of
-    /// the module documentation); `None` otherwise or above `CHECK_LIMIT` objects. Cached per query.
-    fn ordered_literal_objects(&self, p: TermId, datatype: &'static str) -> Option<Vec<TermId>> {
-        if let Some(r) = self.range_checks.borrow().get(&(p, datatype)) { return r.clone() }
+    /// the module documentation); `None` otherwise or above `CHECK_LIMIT` objects. Cached in the snapshot's
+    /// `object_memo` (immutable views only), else per query.
+    fn ordered_literal_objects(&self, p: TermId, datatype: &'static str) -> Option<Arc<[TermId]>> {
+        let key = (p, datatype);
+        if let Some(r) = self.range_checks.borrow().get(&key) { return r.clone() }
+        let memo = self.snap.object_memo();
+        let cached = memo.and_then(|m| m.0.lock().ok()?.get(&key).cloned());
+        let r = match cached { Some(r) => r, None => self.check_literal_objects(p, datatype) };
+        if let Some(m) = memo && let Ok(mut m) = m.0.lock() { m.insert(key, r.clone()); }
+        self.range_checks.borrow_mut().insert(key, r.clone());
+        r
+    }
+
+    fn check_literal_objects(&self, p: TermId, datatype: &'static str) -> Option<Arc<[TermId]>> {
         let mut ids = Vec::new();
         let mut ok = self.objects_until(p, FIRST_LITERAL, Some(END_LITERAL), CHECK_LIMIT, &mut ids);
         if ok {
@@ -192,9 +205,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 if let TermRef::Literal(l) = t && l.datatype().as_str() == datatype && !canonical(datatype, l.value()) { ok = false }
             }).unwrap_or_else(|e| storage_failure(e));
         }
-        let r = ok.then_some(ids);
-        self.range_checks.borrow_mut().insert((p, datatype), r.clone());
-        r
+        ok.then(|| ids.into())
     }
 }
 
