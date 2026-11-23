@@ -2,7 +2,7 @@
 
 `deslop-please` 0.1.3 (`cargo install --locked`, with the `rust-analyzer` component) on a clean checkout of main `141b0735`.
 It reported **33 errors** and exited 1; indexing was verified (no "scip failed" in the output, summary line present, 315 lines of
-output; see `results.txt`). Files: `lint.txt` is the raw output, `baseline.allow` the allow file written by `--update-allow`
+output; see `results.txt`). Files: `lint.txt` is the raw output, `baseline.allow` (now `.deslop-please.allow` at the repository root) the allow file written by `--update-allow`
 (the CI gate uses it as the baseline, and it may only shrink).
 
 ## Counts by rule
