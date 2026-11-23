@@ -1,13 +1,13 @@
 Mon Nov 23 04:29:20 UTC 2026
-tp-live-swegym-sgym7bsft-sg-getmoto-6190-6 Up 15 minutes
-tp-live-swegym-sgym7bsft-sg-getmoto-6127-6 Up 22 minutes
-tp-live-swegym-sgym7bsft-sg-getmoto-5920-6 Up 38 minutes
-tp-live-swegym-sgym7bsft-sg-getmoto-6409-5 Up About an hour
-raft-review-raft Up 11 days (healthy)
-raft-review Up 11 days (healthy)
-docker-rdf4j-1 Up 2 weeks
+<external container 1> Up 15 minutes
+<external container 2> Up 22 minutes
+<external container 3> Up 38 minutes
+<external container 4> Up About an hour
+<external container 5> Up 11 days (healthy)
+<external container 6> Up 11 days (healthy)
+<external container 7> Up 2 weeks
  %CPU COMM
- 14.1 /Applications/OrbStack.app/Contents/Frameworks/OrbStack Helper.app/Contents/MacOS/OrbStack Helper
+ 14.1 <external process>
  10.7 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
   1.3 /sbin/launchd
   0.9 /System/Library/DriverExtensions/com.apple.DriverKit-AppleBCMWLAN.dext/com.apple.DriverKit-AppleBCMWLAN

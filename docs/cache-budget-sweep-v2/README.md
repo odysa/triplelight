@@ -24,7 +24,7 @@ small, so nothing changed there.
 ## Timing: the sweep's own times are not comparable
 
 In the sweep, LUBM-1000 warm times came out 1.8 to 2.5 times slower than in #83 across all queries, tiny ones
-included. While it ran, another workload's containers (`tp-live-swegym-*`, not this project's) were running on the
+included. While it ran, another workload's containers (not this project's; names redacted, see `PROVENANCE.md`) were running on the
 laptop's Docker VM, at about 180% CPU. So the sweep's times are not used.
 
 ## Same-session A/B (`ab/`)
