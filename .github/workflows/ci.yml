@@ -36,6 +36,11 @@ jobs:
         run: cargo test --locked --workspace --features server,async
       - name: Third-party notices are in sync with the binding packages
         run: python3 ci/check_notices.py
+      - name: RDF 1.2 term types (feature rdf-12, task #103)
+        run: |
+          cargo clippy --locked -p triplelight-rdf --all-targets --features rdf-12 -- -D warnings
+          cargo test --locked -p triplelight-rdf --features rdf-12
+          cd conformance/rdf12-diff && cargo test --locked --release
 
   w3c:
     name: W3C SPARQL 1.1 query suite
