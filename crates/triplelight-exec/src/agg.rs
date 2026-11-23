@@ -10,6 +10,7 @@ use super::{expr, Ctx, Row, UNBOUND};
 use crate::model::TermId;
 use crate::storage::Snapshot;
 use expr::Num;
+use rayon::prelude::*;
 use triplelight_rdf::{Literal, Term, Variable};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression};
 use std::cell::RefCell;
@@ -30,6 +31,57 @@ enum State {
 }
 
 impl<S: Snapshot + ?Sized> Ctx<'_, S> {
+    /// Parallelize independent groups while retaining the serial numeric fold within each group.
+    /// Evaluate single-variable expressions on the query thread, where the local term dictionary lives.
+    pub(super) fn try_parallel_expression_group(
+        &self,
+        groups: &[(Vec<TermId>, Vec<Row>)],
+        aggs: &[(Variable, AggregateExpression)],
+    ) -> Option<(usize, Vec<Option<Num>>)> {
+        let [(out, AggregateExpression::FunctionCall { name, expr, distinct: false })] = aggs else {
+            return None;
+        };
+        if self.general_group || groups.len() < 2
+            || !matches!(name, AggregateFunction::Sum | AggregateFunction::Avg)
+            || super::impure(expr)
+        {
+            return None;
+        }
+        let variables = super::expr_vars(expr);
+        let [var] = variables.as_slice() else { return None };
+        let &col = self.vars.get(var)?;
+        // Only large inputs amortize preparing a shared cache and dispatching workers.
+        if groups.iter().map(|(_, members)| members.len()).sum::<usize>() < 16_384
+            || rayon::current_num_threads() < 2
+        {
+            return None;
+        }
+
+        let mut values = HashMap::new();
+        for row in groups.iter().flat_map(|(_, members)| members) {
+            let id = row[col];
+            if values.len() == super::MEMO_CAP && !values.contains_key(&id) {
+                return None;
+            }
+            values.entry(id).or_insert_with(|| {
+                self.value(expr, row).as_ref().and_then(expr::term_num)
+            });
+        }
+
+        let avg = matches!(name, AggregateFunction::Avg);
+        let results = groups.par_iter().map(|(_, members)| {
+            let sum = members.iter().try_fold(Num::Int(0), |acc, row| {
+                expr::num_add(acc, values[&row[col]]?)
+            })?;
+            if avg && !members.is_empty() {
+                expr::num_div_count(sum, members.len() as i64)
+            } else {
+                Some(sum)
+            }
+        }).collect();
+        Some((self.var(out), results))
+    }
+
     /// Fast GROUP BY over already evaluated rows; `None` if some aggregate isn't supported here.
     pub(super) fn try_fast_group(&self, rows: &[Row], kidx: &[usize], aggs: &[(Variable, AggregateExpression)]) -> Option<Vec<Row>> {
         let mut specs = Vec::with_capacity(aggs.len());
