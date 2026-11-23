@@ -4,7 +4,7 @@
 #   s3-build.sh <system> <dataset> <tag> [--mem GB] [--cpus N]
 # Writes $OUT/<system>-<dataset>-<tag>/{build.log,samples.tsv,receipt.json}. OUT defaults to bench/results/s3.
 #
-# What is measured, every 2 s while the loader runs:
+# What is measured while the loader runs (memory every 0.5 s, directory sizes every 2 s):
 #   - the store directory's size (du), which includes the loader's scratch when it writes it there, and free space on its
 #     volume; the receipt keeps the peak and the final size;
 #   - memory: on Linux, the cgroup of the loader: the systemd scope this script starts (native loaders) and the Docker
@@ -23,9 +23,10 @@
 #                          on macOS the peak RSS of the loader's process tree plus the container (dry run only).
 #                          memory.peak is kept as `cgroup_memory_peak_bytes` but is not the headline: it counts the page
 #                          cache, which a bulk load fills up to the limit.
-#                          The headline is sampled every 2 s, so it is a lower bound (a short burst can fall between
-#                          samples; cgroup v2 keeps no anon high-water mark); memory.peak is an upper bound. Native loaders
-#                          also get the time utility's exact max RSS (client_max_rss_kb).
+#                          The headline is sampled every 0.5 s, so it is a lower bound (a shorter burst can fall between
+#                          samples; cgroup v2 keeps no anon high-water mark) and memory.peak is an upper bound: the true
+#                          peak lies between the two, and the paper's build table reports both. Native loaders also get
+#                          the time utility's exact max RSS (client_max_rss_kb).
 #   peak_store_dir_kib     peak of the store directory (all of the system's scratch is configured to live there; see
 #                          SCRATCH below), at least the final size; final_store_kib after the load.
 #   tmp_growth_kib         peak growth of $TMPDIR during the load: a nonzero value means scratch escaped the store tree.
@@ -96,8 +97,14 @@ START=$(date +%s.%N 2>/dev/null || date +%s)
 "${TIMEFMT[@]}" ${RUN[@]+"${RUN[@]}"} "$HERE/systems.sh" "$SYS" load "$D" --mem "$MEM" --cpus "$CPUS" > "$OUT/build.log" 2>&1 &
 PID=$!
 CG=
+TICK=0
 while kill -0 $PID 2>/dev/null; do
-  s=$(du -sk "$STORE" 2>/dev/null | cut -f1); f=$(df -k "$T" | awk 'NR==2{print $4}')
+  # memory every 0.5 s, the (slower) directory size every 2 s; between du ticks the last size is repeated
+  if [ $((TICK % 4)) = 0 ]; then
+    s=$(du -sk "$STORE" 2>/dev/null | cut -f1); f=$(df -k "$T" | awk 'NR==2{print $4}')
+    tg=$(( $(du -sk "$TMPD" 2>/dev/null | cut -f1) - TMP0 ))
+  fi
+  TICK=$((TICK + 1))
   mem_kb=; anon=; file=; peak=
   if [ $LINUX = 1 ]; then
     # resolved again whenever it is missing: a Docker loader's container appears a few seconds in, and a loader that
@@ -117,19 +124,18 @@ while kill -0 $PID 2>/dev/null; do
     fi
   fi
   # On the Linux machine an unmeasured build is a failure, not an empty field (Kaiming): no cgroup within the first 60 s,
-  # or 3 consecutive misses (6 s) after the first successful sample. Any successful sample resets the count.
+  # or 12 consecutive misses (6 s at 0.5 s) after the first successful sample. Any successful sample resets the count.
   if [ $LINUX = 1 ]; then
     if [ -n "$peak" ]; then SEEN=1; MISS=0
     elif [ -z "${SEEN:-}" ]; then
       if [ $(( $(date +%s) - ${START%.*} )) -ge 60 ]; then echo "no cgroup for $SYS within 60 s ($CNAME_FILTER / $SCOPE): stopping, the build would be unmeasured" >&2; kill_tree $PID; exit 9; fi
     else
       MISS=$(( ${MISS:-0} + 1 ))
-      if [ $MISS -ge 3 ]; then echo "lost the cgroup of $SYS for 6 s: stopping, the build would be unmeasured" >&2; kill_tree $PID; exit 9; fi
+      if [ $MISS -ge 12 ]; then echo "lost the cgroup of $SYS for 6 s: stopping, the build would be unmeasured" >&2; kill_tree $PID; exit 9; fi
     fi
   fi
-  tg=$(( $(du -sk "$TMPD" 2>/dev/null | cut -f1) - TMP0 ))
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date -u +%H:%M:%S)" "${s:-0}" "$f" "${peak:-}" "${anon:-}" "${file:-}" "${mem_kb:-}" "$tg" >> "$OUT/samples.tsv"
-  sleep 2
+  sleep 0.5
 done
 set +e; wait $PID; RC=$?; set -e
 END=$(date +%s.%N 2>/dev/null || date +%s)
