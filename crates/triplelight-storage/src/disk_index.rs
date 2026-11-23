@@ -12,8 +12,13 @@ use std::sync::{Arc, OnceLock, RwLock};
 
 const MAGIC_V2: &[u8; 8] = b"RDFIDX02";
 const MAGIC_V3: &[u8; 8] = b"RDFIDX03";
+/// `RDFIDX03` plus tag-rotated columns in blocks (`block_codec::ROTATED`, task #105). Written by default; `RDFIDX03`
+/// files stay readable.
+const MAGIC_V4: &[u8; 8] = b"RDFIDX04";
 /// Graph-first quad indexes (task #36): four IDs per row, otherwise the `RDFIDX03` layout.
 const MAGIC_QUAD_V1: &[u8; 8] = b"RDFQIX01";
+/// `RDFQIX01` plus tag-rotated columns, as `RDFIDX04` is to `RDFIDX03`.
+const MAGIC_QUAD_V2: &[u8; 8] = b"RDFQIX02";
 const HEADER: u64 = 24;
 /// Cache shares of a triple-only snapshot (see `DiskIndex::open_with_share`).
 pub const DEFAULT_SHARES: usize = 9;
@@ -98,17 +103,23 @@ fn invalid(reason: &'static str) -> io::Error {
 /// width has its own per-thread block memo, so the triple index's hot path is unchanged.
 pub struct Width<const N: usize>;
 pub trait SupportedWidth<const N: usize> {
+    /// The compressed format written, which allows tag-rotated columns.
     #[doc(hidden)]
     const MAGIC: &'static [u8; 8];
+    /// The previous compressed format (no rotated columns), still read.
+    #[doc(hidden)]
+    const OLDER: &'static [u8; 8];
     #[doc(hidden)]
     fn memo() -> &'static std::thread::LocalKey<std::cell::RefCell<[MemoEntry<N>; MEMO_SLOTS]>>;
 }
 impl SupportedWidth<3> for Width<3> {
-    const MAGIC: &'static [u8; 8] = MAGIC_V3;
+    const MAGIC: &'static [u8; 8] = MAGIC_V4;
+    const OLDER: &'static [u8; 8] = MAGIC_V3;
     fn memo() -> &'static std::thread::LocalKey<std::cell::RefCell<[MemoEntry<3>; MEMO_SLOTS]>> { &BLOCK_MEMO }
 }
 impl SupportedWidth<4> for Width<4> {
-    const MAGIC: &'static [u8; 8] = MAGIC_QUAD_V1;
+    const MAGIC: &'static [u8; 8] = MAGIC_QUAD_V2;
+    const OLDER: &'static [u8; 8] = MAGIC_QUAD_V1;
     fn memo() -> &'static std::thread::LocalKey<std::cell::RefCell<[MemoEntry<4>; MEMO_SLOTS]>> { &BLOCK_MEMO_QUAD }
 }
 /// Bytes of one uncompressed row of width `N`.
@@ -181,15 +192,49 @@ where
 
 /// Write a sorted stream whose exact row count is known; propagate source read errors.
 pub fn write_index_stream<const N: usize>(
-    mut out: impl Write,
+    out: impl Write,
     count: u64,
     rows: impl Iterator<Item = io::Result<[TermId; N]>>,
 ) -> io::Result<()>
 where
     Width<N>: SupportedWidth<N>,
 {
+    #[cfg(test)]
+    if WRITE_OLDER_ON_THIS_THREAD.with(|c| c.get()) { return write_index_format(out, count, rows, false) }
+    write_index_format(out, count, rows, true)
+}
+#[cfg(test)]
+thread_local! {
+    static WRITE_OLDER_ON_THIS_THREAD: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+/// Tests: every index this thread writes uses the previous format (`RDFIDX03`/`RDFQIX01`), as an older binary would.
+#[cfg(test)]
+pub(super) fn write_older_format_on_this_thread(on: bool) { WRITE_OLDER_ON_THIS_THREAD.with(|c| c.set(on)) }
+/// The test-only format switch of this thread, carried by the build into its worker threads (always `false`
+/// outside tests).
+pub(super) fn index_format_of_this_thread() -> bool {
+    #[cfg(test)]
+    return WRITE_OLDER_ON_THIS_THREAD.with(|c| c.get());
+    #[cfg(not(test))]
+    false
+}
+pub(super) fn set_index_format_of_this_thread(_older: bool) {
+    #[cfg(test)]
+    WRITE_OLDER_ON_THIS_THREAD.with(|c| c.set(_older));
+}
+/// `rotate`: the current format (`SupportedWidth::MAGIC`, tag-rotated columns allowed); otherwise the previous one
+/// (`OLDER`), which tests use to check that older files stay readable.
+fn write_index_format<const N: usize>(
+    mut out: impl Write,
+    count: u64,
+    rows: impl Iterator<Item = io::Result<[TermId; N]>>,
+    rotate: bool,
+) -> io::Result<()>
+where
+    Width<N>: SupportedWidth<N>,
+{
     let mut header = [0u8; 24];
-    header[..8].copy_from_slice(<Width<N> as SupportedWidth<N>>::MAGIC);
+    header[..8].copy_from_slice(if rotate { <Width<N> as SupportedWidth<N>>::MAGIC } else { <Width<N> as SupportedWidth<N>>::OLDER });
     header[8..16].copy_from_slice(&count.to_le_bytes());
     header[16..].copy_from_slice(&BLOCK_ROWS.to_le_bytes());
     out.write_all(&header)?;
@@ -202,7 +247,7 @@ where
             if block.is_empty() {
                 return Ok(());
             }
-            let bytes = super::block_codec::encode(block)?;
+            let bytes = super::block_codec::encode(block, rotate)?;
             for id in block.last().unwrap() {
                 meta.extend_from_slice(&id.0.to_le_bytes());
             }
@@ -282,6 +327,8 @@ pub struct DiskIndex<const N: usize = 3> {
     identity: [u8; 32],
     blocks: Vec<BlockMeta<N>>,
     compressed: bool,
+    /// The format allows tag-rotated block columns (`RDFIDX04`/`RDFQIX02`).
+    rotated: bool,
     cache: Vec<RwLock<CacheShard<N>>>,
     shard_capacity: usize,
     trace_slot: Option<usize>,
@@ -313,9 +360,10 @@ where
         let file = File::open(path)?;
         let mut header = [0; 24];
         read_exact_at(&file, &mut header, 0)?;
-        let compressed = match &header[..8] {
-            m if N == 3 && m == MAGIC_V2 => false,
-            m if m == <Width<N> as SupportedWidth<N>>::MAGIC => true,
+        let (compressed, rotated) = match &header[..8] {
+            m if N == 3 && m == MAGIC_V2 => (false, false),
+            m if m == <Width<N> as SupportedWidth<N>>::OLDER => (true, false),
+            m if m == <Width<N> as SupportedWidth<N>>::MAGIC => (true, true),
             _ => return Err(invalid("bad index magic or version")),
         };
         let rows = u64::from_le_bytes(header[8..16].try_into().unwrap());
@@ -399,6 +447,7 @@ where
             identity: footer,
             blocks: entries,
             compressed,
+            rotated,
             cache: (0..16)
                 .map(|_| {
                     RwLock::new(CacheShard {
@@ -528,7 +577,7 @@ where
             return Err(invalid("index block checksum mismatch"));
         }
         let rows: Vec<_> = if self.compressed {
-            super::block_codec::decode::<N>(&bytes, n)?
+            super::block_codec::decode::<N>(&bytes, n, self.rotated)?
         } else {
             bytes.chunks_exact(row_bytes(N) as usize).map(decode_row::<N>).collect()
         };
@@ -874,6 +923,31 @@ mod tests {
         assert!(index.cache[2 % index.cache.len()].read().unwrap().entries.contains_key(&2));
         std::fs::remove_file(path).unwrap();
     }
+    /// `RDFIDX03` files (no rotated columns) stay readable, and `RDFIDX04` stores mixed-tag columns in less space.
+    #[test]
+    fn older_and_current_formats_read_the_same_rows_and_mixed_tags_shrink() {
+        // Objects mix IRIs (tag 1), literals (tag 3) and inline numbers (tag 0xf), as in an SPO order.
+        let tag = |t: u64, rank: u64| TermId((t << 60) | rank);
+        let rows: Vec<[TermId; 3]> = (0..2000u64)
+            .map(|i| [tag(1, 10 + i / 6), tag(1, 3 + i % 6), tag([1, 3, 0xf][(i % 3) as usize], 1 + i * 37)])
+            .collect();
+        let (mut current, mut older) = (Vec::new(), Vec::new());
+        write_index_format(&mut current, rows.len() as u64, rows.iter().copied().map(Ok), true).unwrap();
+        write_index_format(&mut older, rows.len() as u64, rows.iter().copied().map(Ok), false).unwrap();
+        assert_eq!(&current[..8], MAGIC_V4);
+        assert_eq!(&older[..8], MAGIC_V3);
+        assert!(current.len() * 3 < older.len() * 2, "rotated object columns: {} against {} bytes", current.len(), older.len());
+        for (name, bytes) in [("current", &current), ("older", &older)] {
+            let path = std::env::temp_dir().join(format!("rdf-index-format-{name}-{}", std::process::id()));
+            std::fs::write(&path, bytes).unwrap();
+            let index = DiskIndex::<3>::open(&path).unwrap();
+            index.validate().unwrap();
+            let got: Vec<[TermId; 3]> = (0..index.len()).map(|i| index.get(i).unwrap()).collect();
+            assert_eq!(got, rows, "{name}");
+            let r = index.range(&[rows[700][0]]).unwrap(); assert_eq!(r.end - r.start, 6, "{name}");
+            std::fs::remove_file(&path).unwrap();
+        }
+    }
     /// A graph-first quad index answers `range`, `seek_value`, `get` and block reads like a sorted row model, across
     /// block boundaries, and each width refuses the other's files.
     #[test]
@@ -890,7 +964,7 @@ mod tests {
         assert!(rows.len() > 2 * BLOCK_ROWS as usize, "spans several blocks: {}", rows.len());
         let mut bytes = Vec::new();
         write_index(&mut bytes, rows.clone().into_iter()).unwrap();
-        assert_eq!(&bytes[..8], MAGIC_QUAD_V1);
+        assert_eq!(&bytes[..8], MAGIC_QUAD_V2);
         std::fs::write(&path, &bytes).unwrap();
         let index = DiskIndex::<4>::open(&path).unwrap();
         index.validate().unwrap();
