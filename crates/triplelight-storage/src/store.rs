@@ -80,7 +80,12 @@ impl Overlay {
     /// Nothing to compact: no pending changes, and the named graphs are exactly the base's.
     pub(crate) fn matches_base(&self) -> bool { self.delta.is_empty() && self.named_graphs_match_base() }
     pub fn delta_len(&self) -> usize { self.delta.len() }
-    pub fn base(&self) -> &dyn Snapshot { &*self.base }
+    #[cfg(test)]
+    pub(crate) fn base(&self) -> &dyn Snapshot { &*self.base }
+    /// The base's triples in SPO order, ignoring the delta: statistics describe the base, and `base_id` says which base.
+    pub fn scan_base_for_stats(&self) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + '_> { self.base.scan_for_stats() }
+    /// The number of triples in the base alone.
+    pub fn base_triples(&self) -> Result<u64, StorageError> { self.base.count(Perm::Spo, &[]) }
     /// Identity of the base (stable across overlays sharing it).
     pub fn base_id(&self) -> usize { Arc::as_ptr(&self.base).cast::<()>() as usize }
 
