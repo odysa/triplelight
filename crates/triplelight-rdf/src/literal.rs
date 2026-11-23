@@ -16,6 +16,12 @@ enum LiteralContent {
         value: String,
         language: String,
     },
+    #[cfg(feature = "rdf-12")]
+    DirectionalLanguageTaggedString {
+        value: String,
+        language: String,
+        direction: BaseDirection,
+    },
     TypedLiteral {
         value: String,
         datatype: NamedNode,
@@ -63,7 +69,35 @@ impl Literal {
         })
     }
 
+    #[cfg(feature = "rdf-12")]
+    #[inline]
+    pub fn new_directional_language_tagged_literal(
+        value: impl Into<String>,
+        language: impl Into<String>,
+        direction: impl Into<BaseDirection>,
+    ) -> Result<Self, LanguageTagParseError> {
+        let mut language = language.into();
+        language.make_ascii_lowercase();
+        Ok(Self::new_directional_language_tagged_literal_unchecked(
+            value,
+            langtag::parse(language)?,
+            direction,
+        ))
+    }
 
+    #[cfg(feature = "rdf-12")]
+    #[inline]
+    pub fn new_directional_language_tagged_literal_unchecked(
+        value: impl Into<String>,
+        language: impl Into<String>,
+        direction: impl Into<BaseDirection>,
+    ) -> Self {
+        Self(LiteralContent::DirectionalLanguageTaggedString {
+            value: value.into(),
+            language: language.into(),
+            direction: direction.into(),
+        })
+    }
 
     #[inline]
     pub fn value(&self) -> &str {
@@ -75,6 +109,11 @@ impl Literal {
         self.as_ref().language()
     }
 
+    #[cfg(feature = "rdf-12")]
+    #[inline]
+    pub fn direction(&self) -> Option<BaseDirection> {
+        self.as_ref().direction()
+    }
 
     #[inline]
     pub fn datatype(&self) -> NamedNodeRef<'_> {
@@ -95,6 +134,16 @@ impl Literal {
             LiteralContent::LanguageTaggedString { value, language } => {
                 LiteralRefContent::LanguageTaggedString { value, language }
             }
+            #[cfg(feature = "rdf-12")]
+            LiteralContent::DirectionalLanguageTaggedString {
+                value,
+                language,
+                direction,
+            } => LiteralRefContent::DirectionalLanguageTaggedString {
+                value,
+                language,
+                direction: *direction,
+            },
             LiteralContent::TypedLiteral { value, datatype } => LiteralRefContent::TypedLiteral {
                 value,
                 datatype: datatype.as_ref(),
@@ -102,7 +151,31 @@ impl Literal {
         })
     }
 
+    #[cfg(feature = "rdf-12")]
+    #[inline]
+    pub fn destruct(
+        self,
+    ) -> (
+        String,
+        Option<NamedNode>,
+        Option<String>,
+        Option<BaseDirection>,
+    ) {
+        match self.0 {
+            LiteralContent::String(s) => (s, None, None, None),
+            LiteralContent::LanguageTaggedString { value, language } => {
+                (value, None, Some(language), None)
+            }
+            LiteralContent::DirectionalLanguageTaggedString {
+                value,
+                language,
+                direction,
+            } => (value, None, Some(language), Some(direction)),
+            LiteralContent::TypedLiteral { value, datatype } => (value, Some(datatype), None, None),
+        }
+    }
 
+    #[cfg(not(feature = "rdf-12"))]
     #[inline]
     pub fn destruct(self) -> (String, Option<NamedNode>, Option<String>) {
         match self.0 {
@@ -281,6 +354,12 @@ enum LiteralRefContent<'a> {
         value: &'a str,
         language: &'a str,
     },
+    #[cfg(feature = "rdf-12")]
+    DirectionalLanguageTaggedString {
+        value: &'a str,
+        language: &'a str,
+        direction: BaseDirection,
+    },
     TypedLiteral {
         value: &'a str,
         datatype: NamedNodeRef<'a>,
@@ -308,6 +387,19 @@ impl<'a> LiteralRef<'a> {
         LiteralRef(LiteralRefContent::LanguageTaggedString { value, language })
     }
 
+    #[cfg(feature = "rdf-12")]
+    #[inline]
+    pub const fn new_directional_language_tagged_literal_unchecked(
+        value: &'a str,
+        language: &'a str,
+        direction: BaseDirection,
+    ) -> Self {
+        LiteralRef(LiteralRefContent::DirectionalLanguageTaggedString {
+            value,
+            language,
+            direction,
+        })
+    }
 
     #[inline]
     pub const fn value(self) -> &'a str {
@@ -315,6 +407,8 @@ impl<'a> LiteralRef<'a> {
             LiteralRefContent::String(value)
             | LiteralRefContent::LanguageTaggedString { value, .. }
             | LiteralRefContent::TypedLiteral { value, .. } => value,
+            #[cfg(feature = "rdf-12")]
+            LiteralRefContent::DirectionalLanguageTaggedString { value, .. } => value,
         }
     }
 
@@ -322,16 +416,28 @@ impl<'a> LiteralRef<'a> {
     pub const fn language(self) -> Option<&'a str> {
         match self.0 {
             LiteralRefContent::LanguageTaggedString { language, .. } => Some(language),
+            #[cfg(feature = "rdf-12")]
+            LiteralRefContent::DirectionalLanguageTaggedString { language, .. } => Some(language),
             _ => None,
         }
     }
 
+    #[cfg(feature = "rdf-12")]
+    #[inline]
+    pub const fn direction(self) -> Option<BaseDirection> {
+        match self.0 {
+            LiteralRefContent::DirectionalLanguageTaggedString { direction, .. } => Some(direction),
+            _ => None,
+        }
+    }
 
     #[inline]
     pub const fn datatype(self) -> NamedNodeRef<'a> {
         match self.0 {
             LiteralRefContent::String(_) => xsd::STRING,
             LiteralRefContent::LanguageTaggedString { .. } => rdf::LANG_STRING,
+            #[cfg(feature = "rdf-12")]
+            LiteralRefContent::DirectionalLanguageTaggedString { .. } => rdf::DIR_LANG_STRING,
             LiteralRefContent::TypedLiteral { datatype, .. } => datatype,
         }
     }
@@ -355,6 +461,16 @@ impl<'a> LiteralRef<'a> {
                     language: language.to_owned(),
                 }
             }
+            #[cfg(feature = "rdf-12")]
+            LiteralRefContent::DirectionalLanguageTaggedString {
+                value,
+                language,
+                direction,
+            } => LiteralContent::DirectionalLanguageTaggedString {
+                value: value.to_owned(),
+                language: language.to_owned(),
+                direction,
+            },
             LiteralRefContent::TypedLiteral { value, datatype } => LiteralContent::TypedLiteral {
                 value: value.to_owned(),
                 datatype: datatype.into_owned(),
@@ -362,6 +478,7 @@ impl<'a> LiteralRef<'a> {
         })
     }
 
+    #[cfg(not(feature = "rdf-12"))]
     #[inline]
     #[deprecated(
         note = "Use directly .value(), .datatype() and .language()",
@@ -386,6 +503,15 @@ impl fmt::Display for LiteralRef<'_> {
             LiteralRefContent::LanguageTaggedString { value, language } => {
                 print_quoted_str(value, f)?;
                 write!(f, "@{language}")
+            }
+            #[cfg(feature = "rdf-12")]
+            LiteralRefContent::DirectionalLanguageTaggedString {
+                value,
+                language,
+                direction,
+            } => {
+                print_quoted_str(value, f)?;
+                write!(f, "@{language}--{direction}")
             }
             LiteralRefContent::TypedLiteral { value, datatype } => {
                 print_quoted_str(value, f)?;
@@ -449,4 +575,21 @@ pub fn print_quoted_str(string: &str, f: &mut impl Write) -> fmt::Result {
         }?;
     }
     f.write_char('"')
+}
+
+#[cfg(feature = "rdf-12")]
+#[derive(Eq, PartialEq, Debug, Clone, Copy, Hash)]
+pub enum BaseDirection {
+    Ltr,
+    Rtl,
+}
+
+#[cfg(feature = "rdf-12")]
+impl fmt::Display for BaseDirection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Ltr => "ltr",
+            Self::Rtl => "rtl",
+        })
+    }
 }

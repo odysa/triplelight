@@ -1,0 +1,14 @@
+Mon Nov 23 06:19:00 UTC 2026
+<external container 9> Up 12 minutes
+<external container 10> Up 13 minutes
+<external container 8> Up 33 minutes
+<external container 4> Up About an hour
+<external container 5> Up 11 days (healthy)
+<external container 6> Up 12 days (healthy)
+<external container 7> Up 2 weeks
+ %CPU COMM
+ 29.4 /System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow
+ 22.7 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  7.4 <external process>
+  2.2 <external process>
+  1.1 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd

@@ -1,4 +1,5 @@
 import tempfile, os
+import pytest
 import triplelight
 
 def test_roundtrip_and_types():
@@ -71,3 +72,19 @@ def test_lock_load_and_json():
     import json
     j = json.loads(db.query_json("SELECT ?p WHERE { <urn:s> ?p ?o }"))
     assert len(j["results"]["bindings"]) == 2
+
+
+def test_rdf12_triple_terms_and_direction():
+    """Needs a build with the `rdf-12` feature; a plain build refuses the 1.2 syntax and the test skips."""
+    db = triplelight.Database.in_memory()
+    try:
+        db.update('INSERT DATA { <urn:a> <urn:says> <<( <urn:b> <urn:p> "v" )>> . <urn:a> <urn:label> "שלום"@he--rtl }')
+    except triplelight.TripleLightError:
+        if os.environ.get("TRIPLELIGHT_EXPECT_RDF12"):
+            raise            # the build is supposed to have rdf-12: a refusal is a failure, not a skip
+        pytest.skip("built without the rdf-12 feature")
+    rows = {row["p"]: row["o"] for row in db.query("SELECT ?p ?o WHERE { <urn:a> ?p ?o }")}
+    t = rows["urn:says"]
+    assert isinstance(t, triplelight.Triple)
+    assert t.subject == triplelight.IRI("urn:b") and t.predicate == triplelight.IRI("urn:p") and t.object == "v"
+    assert rows["urn:label"] == triplelight.Literal("שלום", None, "he", "rtl")

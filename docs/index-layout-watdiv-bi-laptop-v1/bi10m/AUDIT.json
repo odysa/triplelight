@@ -1,0 +1,43 @@
+{
+  "answers_by_arm": {
+    "always-spo": {
+      "collected": 60,
+      "errors": [],
+      "exact_typed": 24,
+      "primary": 60,
+      "value_ranking": 60
+    },
+    "longest-constant-prefix": {
+      "collected": 60,
+      "errors": [],
+      "exact_typed": 24,
+      "primary": 60,
+      "value_ranking": 60
+    },
+    "single": {
+      "collected": 60,
+      "errors": [],
+      "exact_typed": 24,
+      "primary": 60,
+      "value_ranking": 60
+    }
+  },
+  "archive_files_verified": 552,
+  "dataset": "bi10m",
+  "db_bytes": {
+    "candidate": 2508206080,
+    "control": 618672128
+  },
+  "orders": [
+    "ops",
+    "osp",
+    "pos",
+    "pso",
+    "sop",
+    "spo"
+  ],
+  "qualified": true,
+  "query_timing_collected": false,
+  "rows_per_order": 10102032,
+  "scored": false
+}

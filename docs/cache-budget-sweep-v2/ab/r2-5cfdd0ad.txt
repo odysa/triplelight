@@ -1,0 +1,8 @@
+budget 0: done, rss 6.73 GiB
+budget 0: done, rss 6.41 GiB
+budget 0: done, rss 7.75 GiB
+r2-5cfdd0ad: budget_mb warm_gm cold_gm worst_warm warm_total_ms idle_rss_gib peak_rss_gib footprint_gib open_s
+       0 1.000 1.000 q1.rq=1.0 7077.1 0.214 6.733 8.242 1.03
+       0 1.105 0.929 q9.rq=2.064 7447.7 0.214 6.409 7.173 1.04
+       0 (control) 0.590 0.631 q10.rq=0.934 4320.3 0.214 7.746 7.512 1.03
+answers match at every budget

@@ -39,6 +39,9 @@ fn term(
             .lookup(&Term::NamedNode(n.clone()))?
             .map(Slot::Const),
         TermPattern::Literal(l) => snapshot.lookup(&Term::Literal(l.clone()))?.map(Slot::Const),
+        // Triple-term patterns need the executor's per-solution unification, which this reference-count probe lacks.
+        #[cfg(feature = "rdf-12")]
+        TermPattern::Triple(_) => return Err(io::Error::new(io::ErrorKind::Unsupported, "triple-term patterns are not supported by this probe")),
     })
 }
 
@@ -201,6 +204,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         wcoj,
                         raw_ids: false,
                         general_group: false,
+                        count_pushdown: true,
                     },
                 )?
                 else {

@@ -1,4 +1,4 @@
-   Compiling rdfdb v0.1.0 (/Users/odysa/.slock/agents/76bebfc0-1788-44d5-aca6-b9123fed40bb/rdfdb)
+   Compiling rdfdb v0.1.0 (<workspace>/rdfdb)
     Finished `test` profile [unoptimized + debuginfo] target(s) in 11.14s
      Running unittests src/lib.rs (target/debug/deps/rdfdb-0237d7aa1af3e222)
 

@@ -32,11 +32,11 @@
       "sha256": "ab684f6f3f1fd25b511bfbd8f8e4800223485ea44ad2611ae786238725e3d879",
       "bytes": 3315
     },
-    "/Users/odysa/.slock/agents/b438313f-6338-4d86-ab3e-5995a1bde6c3/rdfdb/bench/tools/rdfdb-disk-lubm100/MANIFEST": {
+    "<workspace>/rdfdb/bench/tools/rdfdb-disk-lubm100/MANIFEST": {
       "sha256": "7731de215c9ac57680f600e9417664cf836b310fcc500bdee41ec64ed6904755",
       "bytes": 264
     },
-    "/Users/odysa/.slock/agents/b438313f-6338-4d86-ab3e-5995a1bde6c3/rdfdb/bench/tools/rdfdb-disk-watdiv100/MANIFEST": {
+    "<workspace>/rdfdb/bench/tools/rdfdb-disk-watdiv100/MANIFEST": {
       "sha256": "dc53f607f83d8c3c0f84f2588c9574addaa6e9b103fcacafac805ada260be665",
       "bytes": 264
     }

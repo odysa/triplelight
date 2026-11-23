@@ -12,6 +12,30 @@
 use crate::model::{Perm, TermId, TripleBatch};
 use crate::storage::StorageError;
 
+/// Coverage counters for the derived-order paths (pilot 2, task #98). Off unless `TRIPLELIGHT_TRACE_DERIVED` is set;
+/// when off, each call costs one relaxed load. Logging only: no answer or plan depends on them.
+pub mod trace {
+    use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
+    use std::sync::OnceLock;
+    pub(crate) fn on() -> bool {
+        static ON: OnceLock<bool> = OnceLock::new();
+        *ON.get_or_init(|| std::env::var_os("TRIPLELIGHT_TRACE_DERIVED").is_some())
+    }
+    macro_rules! counters { ($($name:ident),*) => {
+        $(pub(crate) static $name: AtomicU64 = AtomicU64::new(0);)*
+        /// Counter values since the last `take`, then reset (one line per query in the server).
+        pub fn take() -> String {
+            let mut s = String::new();
+            $( s.push_str(&format!("{}={} ", stringify!($name).to_lowercase(), $name.swap(0, Relaxed))); )*
+            s.pop(); s
+        }
+    } }
+    counters!(REMAP_CALLS, REGROUP_SCANS, REGROUP_ROWS, REGROUP_GROUPS, MAX_GROUP, MEMO_HITS, MEMO_MISSES, MEMO_ROWS, SORT_NS);
+    pub(crate) fn add(c: &AtomicU64, n: u64) { if on() { c.fetch_add(n, Relaxed); } }
+    pub(crate) fn max(c: &AtomicU64, n: u64) { if on() { c.fetch_max(n, Relaxed); } }
+    pub fn enabled() -> bool { on() }
+}
+
 /// The orders a base serves directly. A base implements this; the free functions answer every order from it.
 pub(super) trait KeptOrders {
     fn has(&self, perm: Perm) -> bool;
@@ -48,15 +72,17 @@ pub(super) fn scan<'a, O: KeptOrders>(o: &'a O, perm: Perm, prefix: &[TermId]) -
     if o.has(perm) { return o.scan_kept(perm, prefix) }
     let (twin, sibling) = route(perm);
     if prefix.len() >= 2 {
+        trace::add(&trace::REMAP_CALLS, 1);
         return Box::new(o.scan_kept(twin, &swapped(prefix, 0, 1)).map(|b| b.map(|mut b| { b.cols.swap(0, 1); b })));
     }
+    trace::add(&trace::REGROUP_SCANS, 1);
     Box::new(Regroup { rows: o.scan_kept(sibling, prefix), pending: Vec::new(), group: Vec::new(), done: false })
 }
 
 pub(super) fn count<O: KeptOrders>(o: &O, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
     if o.has(perm) { return o.count_kept(perm, prefix) }
     let (twin, sibling) = route(perm);
-    if prefix.len() >= 2 { o.count_kept(twin, &swapped(prefix, 0, 1)) } else { o.count_kept(sibling, prefix) }
+    if prefix.len() >= 2 { trace::add(&trace::REMAP_CALLS, 1); o.count_kept(twin, &swapped(prefix, 0, 1)) } else { o.count_kept(sibling, prefix) }
 }
 
 pub(super) fn seek<O: KeptOrders>(o: &O, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
@@ -70,10 +96,13 @@ pub(super) fn seek<O: KeptOrders>(o: &O, perm: Perm, prefix: &[TermId], target: 
             let memo = &o.seek_memo().0;
             let cached = memo.lock().unwrap().as_ref().filter(|(p, g, _)| *p == perm && *g == prefix[0]).map(|(.., v)| std::sync::Arc::clone(v));
             let values = match cached {
-                Some(v) => v,
+                Some(v) => { trace::add(&trace::MEMO_HITS, 1); v }
                 None => {
                     let mut v = Vec::new();
                     for batch in o.scan_kept(sibling, prefix) { v.extend_from_slice(&batch?.cols[2]) }
+                    trace::add(&trace::MEMO_MISSES, 1);
+                    trace::add(&trace::MEMO_ROWS, v.len() as u64);
+                    trace::max(&trace::MAX_GROUP, v.len() as u64);
                     v.sort_unstable();
                     v.dedup();
                     let v = std::sync::Arc::new(v);
@@ -83,7 +112,7 @@ pub(super) fn seek<O: KeptOrders>(o: &O, perm: Perm, prefix: &[TermId], target: 
             };
             Ok(values.get(values.partition_point(|&v| v < target)).copied())
         }
-        _ => o.seek_kept(twin, &swapped(prefix, 0, 1), target),
+        _ => { trace::add(&trace::REMAP_CALLS, 1); o.seek_kept(twin, &swapped(prefix, 0, 1), target) }
     }
 }
 
@@ -99,7 +128,12 @@ struct Regroup<'a> {
 }
 impl Regroup<'_> {
     fn close_group(&mut self) {
+        let t = trace::on().then(std::time::Instant::now);
+        trace::add(&trace::REGROUP_GROUPS, 1);
+        trace::add(&trace::REGROUP_ROWS, self.group.len() as u64);
+        trace::max(&trace::MAX_GROUP, self.group.len() as u64);
         self.group.sort_unstable();
+        if let Some(t) = t { trace::add(&trace::SORT_NS, t.elapsed().as_nanos() as u64) }
         self.pending.append(&mut self.group);
     }
     fn batch(&mut self) -> TripleBatch {

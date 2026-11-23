@@ -1,0 +1,20 @@
+[package]
+name = "triplelight-rdf12-diff"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "RDF 1.2 differential tests: triplelight-rdf (rdf-12) against oxrdf (rdf-12)"
+
+# Not a member of the main workspace (see tests/differential12.rs).
+[workspace]
+
+[dependencies]
+
+[dev-dependencies]
+triplelight = { path = "../..", features = ["rdf-12"] }
+sparesults = { version = "=0.3.5", features = ["sparql-12"] }
+triplelight-core = { path = "../../crates/triplelight-core", features = ["rdf-12"] }
+oxttl = { version = "=0.2.5", features = ["rdf-12"] }
+triplelight-sparql = { path = "../../crates/triplelight-sparql", features = ["sparql-12"] }
+triplelight-rdf = { path = "../../crates/triplelight-rdf", features = ["rdf-12"] }
+oxrdf = { version = "0.3.5", features = ["rdf-12"] }

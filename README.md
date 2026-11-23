@@ -120,6 +120,28 @@ output from the C, Go and Java bindings; persisted optimizer statistics (in the
 with a saved statistics file, versus 20.5–25.8 s with a rebuild scan); and an optional HTTP server whose updates are
 off by default and can be enabled with a token or, on loopback only, without one.
 
+### RDF 1.2 and SPARQL 1.2 (drafts, behind a build feature)
+
+TripleLight implements the W3C RDF 1.2 and SPARQL 1.2 drafts when built with the `rdf-12` Cargo feature, which is off by default. The
+drafts are still moving and this build is pinned to these versions: RDF 1.2 Concepts (Candidate Recommendation Draft, 2026-11-16),
+SPARQL 1.2 Query (Working Draft, 2026-11-19), Query Results JSON (2026-11-19), Query Results CSV and TSV (2026-11-16), N-Triples 1.2
+(2026-11-22) and Turtle 1.2 (2026-11-11). It adds triple terms (`<<( s p o )>>`), literals with a base direction (`"x"@en--ltr`), and in results:
+
+- **JSON:** a triple term is `{"type":"triple","value":{"subject":…,"predicate":…,"object":…}}` and a base direction is `"its:dir"`.
+  A result that contains a 1.2 term announces `"version":"1.2"` in its head; any other result is byte-identical to the 1.1 output.
+- **Bindings:** Python `Triple` and `Literal.direction`; Node an RDF/JS `Quad` term in the default graph and `direction`; Java `Term.Triple` and
+  `Literal.direction`; Go `Triple` terms and `Direction`; C `TL_TERM_TRIPLE` and a direction byte; Arrow a `triple` kind with the Turtle-form
+  value, and the direction appended to the language tag (`en--ltr`), which is lossy by choice.
+
+A store that contains 1.2 terms is marked, and a build without the feature refuses to open it. Conformance with the 1.2 test suites is tracked separately
+and is not claimed here.
+
+### CSV and TSV results
+
+The HTTP server answers `SELECT` queries as SPARQL CSV or TSV when the `Accept` header explicitly names `text/csv` or `text/tab-separated-values` with a
+higher `q` than SPARQL JSON, or the same `q` and an earlier position (`q=0` excludes a type). Wildcard ranges such as `*/*` are not interpreted: they and
+a missing header give SPARQL JSON. `ASK` and graph results keep their own formats.
+
 ### Current limits
 
 - The query and update surface excludes `LOAD`, `SERVICE` and `BNODE(string)`.

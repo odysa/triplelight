@@ -198,18 +198,27 @@ public final class Database implements AutoCloseable {
             String lastDatatype = null;
             for (int i = 0; i < nTerms; i++) {
                 long base = i * Native.TERM.byteSize();
-                String value = str(bytes, ts, base + 8);
+                String value = ts.get(JAVA_BYTE, base) == 4 ? "" : str(bytes, ts, base + 8);
                 terms[i] = switch (ts.get(JAVA_BYTE, base)) {
                     case 1 -> new Term.Iri(value);
                     case 2 -> new Term.BlankNode(value);
+                    // RDF 1.2 triple term: resolved after the loop (its parts can come later in the table)
+                    case 4 -> null;
                     default -> {
                         String language = str(bytes, ts, base + 24);
                         String datatype = str(bytes, ts, base + 40);
                         // Datatypes repeat; keep one String instance for equal consecutive values.
                         if (datatype.equals(lastDatatype)) datatype = lastDatatype; else lastDatatype = datatype;
-                        yield new Term.Literal(value, language, datatype);
+                        byte dir = ts.get(JAVA_BYTE, base + 1); // TL_DIR_*: 0 none, 1 ltr, 2 rtl
+                        yield new Term.Literal(value, language, datatype, dir == 1 ? "ltr" : dir == 2 ? "rtl" : "");
                     }
                 };
+            }
+        }
+        if (nTerms > 0) {
+            MemorySegment ts = v.get(ADDRESS, Native.VIEW_TERMS).reinterpret(Native.TERM.byteSize() * nTerms);
+            for (int i = 0; i < nTerms; i++) {
+                if (terms[i] == null && ts.get(JAVA_BYTE, (long) i * Native.TERM.byteSize()) == 4) terms[i] = resolveTriple(ts, terms, i);
             }
         }
         long nCells = (long) nRows * nVars;
@@ -255,4 +264,16 @@ public final class Database implements AutoCloseable {
 
     @Override
     public String toString() { return "Database" + (handle == null ? "(closed)" : ""); }
+
+    /** Decodes triple term {@code i}: its three part indices (1-based) are stored in value.off, value.len and language.off. */
+    private static Term resolveTriple(MemorySegment ts, Term[] terms, int i) {
+        long base = (long) i * Native.TERM.byteSize();
+        Term[] parts = new Term[3];
+        for (int k = 0; k < 3; k++) {
+            int j = Math.toIntExact(ts.get(JAVA_LONG, base + 8 + 8L * k)) - 1;
+            if (terms[j] == null) terms[j] = resolveTriple(ts, terms, j);   // a nested triple term (depth is bounded by the store)
+            parts[k] = terms[j];
+        }
+        return new Term.Triple(parts[0], parts[1], parts[2]);
+    }
 }

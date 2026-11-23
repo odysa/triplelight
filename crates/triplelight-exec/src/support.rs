@@ -68,6 +68,9 @@ fn function_unsupported(f: &Function) -> Option<String> {
         | Contains | StrStarts | StrEnds | StrBefore | StrAfter | Concat | SubStr | Regex | Replace | Abs | Ceil
         | Floor | Round | Year | Month | Day | Hours | Minutes | Seconds | Timezone | Tz | Now | Rand | Uuid | StrUuid
         | BNode | Md5 | Sha1 | Sha256 | Sha384 | Sha512 | StrLang | StrDt | EncodeForUri => None,
+        // SPARQL 1.2 triple-term and base-direction functions (`expr::call`).
+        #[cfg(feature = "rdf-12")]
+        Triple | Subject | Predicate | Object | IsTriple | LangDir | HasLang | HasLangDir | StrLangDir => None,
         Custom(iri) => match iri.as_str().strip_prefix("http://www.w3.org/2001/XMLSchema#") {
             Some(t) if XSD_CASTS.contains(&t) => None,
             _ => Some(format!("function <{}> is not supported", iri.as_str())),

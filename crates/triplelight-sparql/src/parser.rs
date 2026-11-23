@@ -1,9 +1,18 @@
 //! Recursive-descent parser for SPARQL 1.1 queries and updates (grammar §19), translating directly to the algebra
 //! of §18.2. Static checks required by the grammar notes (§19.8) are enforced here: blank-node label scope, BIND and
 //! SELECT-expression variable reuse, grouping of projected variables, aggregate placement and DATA restrictions.
+//!
+//! With the `sparql-12` feature it parses SPARQL 1.2 (W3C Working Draft 2026-11-19, grammar §19.7): `VERSION`,
+//! triple terms `<<( s p o )>>` (pattern, `VALUES` and expression forms), reified triples `<< s p o ~ r >>`,
+//! reifiers and annotation blocks after objects, `@lang--dir` literals and the new built-in functions. The
+//! reification syntax is expanded as in §4.3.1–4.3.2: each reifier `r` (a fresh blank node when none is written)
+//! contributes `r rdf:reifies <<( s p o )>>` and the annotation block's triples with `r` as subject. Fresh blank nodes
+//! here are like `[]`: in a WHERE clause the executor treats them as fresh, unprojected variables (§18.3.2.2).
 use super::algebra::*;
 use super::lexer::{tokenize, Spanned, Tok};
 use crate::rdf::{BlankNode, Literal, NamedNode, NamedOrBlankNode, Term, Variable};
+#[cfg(feature = "sparql-12")]
+use crate::rdf::{BaseDirection, Triple};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
@@ -205,6 +214,15 @@ impl<'a> Parser<'a> {
                 let Tok::Iri(i) = self.next() else { return self.err("expected an IRI in PREFIX") };
                 let iri = self.resolve(&i)?;
                 self.prefixes.insert(p, iri.into_string());
+            } else if cfg!(feature = "sparql-12") && self.is_kw("VERSION") {
+                // VersionDecl (SPARQL 1.2 §19.7 [7]–[8]): 'VERSION' (STRING_LITERAL1 | STRING_LITERAL2). The label is
+                // accepted and not recorded: §4.4 lets processors treat unknown labels as a warning, and TripleLight
+                // parses the whole SPARQL 1.2 syntax ("1.2") whatever the label says.
+                self.next();
+                let pos = self.toks[self.i].pos;
+                let long = self.src[pos..].starts_with("\"\"\"") || self.src[pos..].starts_with("'''");
+                if long || !matches!(self.peek(), Tok::Str(_)) { return self.err("expected a short string literal after VERSION") }
+                self.next();
             } else { return Ok(()) }
         }
     }
@@ -249,6 +267,8 @@ impl<'a> Parser<'a> {
                 match self.peek() {
                     Tok::LangTag(_) => {
                         let Tok::LangTag(t) = self.next() else { unreachable!() };
+                        #[cfg(feature = "sparql-12")]
+                        if let Some((lang, dir)) = t.split_once("--") { return self.directional_literal(s, lang, dir).map(Some) }
                         match Literal::new_language_tagged_literal(s, t.clone()) { Ok(l) => l, Err(_) => return self.err(format!("invalid language tag @{t}")) }
                     }
                     Tok::Punct("^^") => { self.next(); let dt = self.iri()?; Literal::new_typed_literal(s, dt) }
@@ -274,6 +294,17 @@ impl<'a> Parser<'a> {
             _ => return Ok(None),
         };
         Ok(Some(lit))
+    }
+
+    /// `"…"@lang--dir` (LANG_DIR, SPARQL 1.2): the direction is `ltr` or `rtl`, always lower case (§2.3.1).
+    #[cfg(feature = "sparql-12")]
+    fn directional_literal(&self, value: String, lang: &str, dir: &str) -> R<Literal> {
+        let direction = match dir {
+            "ltr" => BaseDirection::Ltr,
+            "rtl" => BaseDirection::Rtl,
+            _ => return self.err(format!("invalid base direction --{dir} (expected --ltr or --rtl)")),
+        };
+        Literal::new_directional_language_tagged_literal(value, lang, direction).or_else(|_| self.err(format!("invalid language tag @{lang}")))
     }
 
     fn var(&mut self) -> R<Variable> {
@@ -690,7 +721,13 @@ impl<'a> Parser<'a> {
         } else {
             if !matches!(self.peek(), Tok::Nil) {
                 self.expect_punct("(")?;
-                while !self.eat_punct(")") { variables.push(self.var()?) }
+                while !self.eat_punct(")") {
+                    let v = self.var()?;
+                    // SPARQL 1.2 (§19.8 notes): a variable may appear only once in a VALUES header.
+                    #[cfg(feature = "sparql-12")]
+                    if variables.contains(&v) { return self.err(format!("variable ?{} appears twice in the VALUES clause", v.as_str())) }
+                    variables.push(v);
+                }
             } else { self.next(); }
             self.expect_punct("{")?;
             while !self.eat_punct("}") {
@@ -708,9 +745,25 @@ impl<'a> Parser<'a> {
 
     fn data_block_value(&mut self) -> R<Option<GroundTerm>> {
         if self.eat_kw("UNDEF") { return Ok(None) }
+        #[cfg(feature = "sparql-12")]
+        if self.is_punct("<<(") { return Ok(Some(GroundTerm::Triple(Box::new(self.nested(Self::triple_term_data)?)))) }
         if let Some(i) = self.try_iri()? { return Ok(Some(GroundTerm::NamedNode(i))) }
         if let Some(l) = self.try_literal()? { return Ok(Some(GroundTerm::Literal(l))) }
         self.err(format!("expected a VALUES term, found {}", self.peek()))
+    }
+
+    /// TripleTermData (SPARQL 1.2 §19.7 [122]–[124]): `<<( iri (iri | 'a') (iri | literal | TripleTermData) )>>`.
+    #[cfg(feature = "sparql-12")]
+    fn triple_term_data(&mut self) -> R<GroundTriple> {
+        self.expect_punct("<<(")?;
+        let subject = self.iri()?;
+        let predicate = if self.eat_kw_a() { rdf("type") } else { self.iri()? };
+        let object = if self.is_punct("<<(") { GroundTerm::Triple(Box::new(self.nested(Self::triple_term_data)?)) }
+            else if let Some(i) = self.try_iri()? { GroundTerm::NamedNode(i) }
+            else if let Some(l) = self.try_literal()? { GroundTerm::Literal(l) }
+            else { return self.err(format!("expected an IRI, a literal or a triple term, found {}", self.peek())) };
+        self.expect_punct(")>>")?;
+        Ok(GroundTriple { subject, predicate, object })
     }
 
     // ---------- triples ----------
@@ -731,11 +784,102 @@ impl<'a> Parser<'a> {
             Tok::BNode(_) => { let Tok::BNode(b) = self.next() else { unreachable!() }; self.note_bnode(&b)?; Ok(Some(TermPattern::BlankNode(BlankNode::new_unchecked(b)))) }
             Tok::Anon => { self.next(); Ok(Some(TermPattern::BlankNode(self.fresh_bnode()))) }
             Tok::Nil => { self.next(); Ok(Some(TermPattern::NamedNode(rdf("nil")))) }
+            #[cfg(feature = "sparql-12")]
+            Tok::Punct("<<(") => self.nested(Self::triple_term).map(Some),
             _ => {
                 if let Some(i) = self.try_iri()? { return Ok(Some(TermPattern::NamedNode(i))) }
                 if let Some(l) = self.try_literal()? { return Ok(Some(TermPattern::Literal(l))) }
                 Ok(None)
             }
+        }
+    }
+
+    /// Verb (§19.7 [84]) outside paths: `VarOrIri | 'a'`.
+    #[cfg(feature = "sparql-12")]
+    fn verb_simple(&mut self) -> R<NamedNodePattern> {
+        if self.eat_kw_a() { return Ok(NamedNodePattern::NamedNode(rdf("type"))) }
+        self.var_or_iri()
+    }
+
+    /// TripleTermSubject / TripleTermObject and the terms of ReifiedTripleSubject / ReifiedTripleObject (SPARQL 1.2
+    /// §19.7 [117]–[121]): `Var | iri | RDFLiteral | NumericLiteral | BooleanLiteral | BlankNode | TripleTerm`. No NIL,
+    /// collections or `[ … ]`.
+    #[cfg(feature = "sparql-12")]
+    fn triple_term_part(&mut self) -> R<TermPattern> {
+        match self.peek() {
+            Tok::Var(_) => Ok(TermPattern::Variable(self.var()?)),
+            Tok::BNode(_) => { let Tok::BNode(b) = self.next() else { unreachable!() }; self.note_bnode(&b)?; Ok(TermPattern::BlankNode(BlankNode::new_unchecked(b))) }
+            Tok::Anon => { self.next(); Ok(TermPattern::BlankNode(self.fresh_bnode())) }
+            Tok::Punct("<<(") => self.nested(Self::triple_term),
+            _ => {
+                if let Some(i) = self.try_iri()? { return Ok(TermPattern::NamedNode(i)) }
+                if let Some(l) = self.try_literal()? { return Ok(TermPattern::Literal(l)) }
+                self.err(format!("expected an RDF term or a variable, found {}", self.peek()))
+            }
+        }
+    }
+
+    /// TripleTerm (SPARQL 1.2 §19.7 [119]): `<<( s Verb o )>>`.
+    #[cfg(feature = "sparql-12")]
+    fn triple_term(&mut self) -> R<TermPattern> {
+        self.expect_punct("<<(")?;
+        let subject = self.triple_term_part()?;
+        let predicate = self.verb_simple()?;
+        let object = self.triple_term_part()?;
+        self.expect_punct(")>>")?;
+        Ok(TermPattern::Triple(Box::new(TriplePattern { subject, predicate, object })))
+    }
+
+    /// VarOrReifierId (SPARQL 1.2 §19.7 [70]–[71]) after `~`: `Var | iri | BlankNode`, or a fresh blank node when
+    /// none is written.
+    #[cfg(feature = "sparql-12")]
+    fn reifier_id(&mut self) -> R<TermPattern> {
+        match self.peek() {
+            Tok::Var(_) => Ok(TermPattern::Variable(self.var()?)),
+            Tok::BNode(_) => { let Tok::BNode(b) = self.next() else { unreachable!() }; self.note_bnode(&b)?; Ok(TermPattern::BlankNode(BlankNode::new_unchecked(b))) }
+            Tok::Anon => { self.next(); Ok(TermPattern::BlankNode(self.fresh_bnode())) }
+            Tok::Iri(_) | Tok::PName(..) => Ok(TermPattern::NamedNode(self.iri()?)),
+            _ => Ok(TermPattern::BlankNode(self.fresh_bnode())),
+        }
+    }
+
+    /// ReifiedTriple (SPARQL 1.2 §19.7 [116]): `<< s Verb o Reifier? >>`, expanded (§4.3.1) to
+    /// `r rdf:reifies <<( s p o )>>` in `out` with `r` the reifier (a fresh blank node when none is given); the term
+    /// standing for it is `r`. Nested reified triples are expanded first, so their triples precede this one's.
+    #[cfg(feature = "sparql-12")]
+    fn reified_triple(&mut self, out: &mut Vec<Elem>) -> R<TermPattern> {
+        self.expect_punct("<<")?;
+        let subject = self.reified_triple_part(out)?;
+        let predicate = self.verb_simple()?;
+        let object = self.reified_triple_part(out)?;
+        let reifier = if self.eat_punct("~") { self.reifier_id()? } else { TermPattern::BlankNode(self.fresh_bnode()) };
+        self.expect_punct(">>")?;
+        out.push(Elem::Triples(vec![reifies(reifier.clone(), TriplePattern { subject, predicate, object })]));
+        Ok(reifier)
+    }
+
+    #[cfg(feature = "sparql-12")]
+    fn reified_triple_part(&mut self, out: &mut Vec<Elem>) -> R<TermPattern> {
+        if self.is_punct("<<") { return self.nested(|p| p.reified_triple(out)) }
+        self.triple_term_part()
+    }
+
+    /// Annotation / AnnotationPath (SPARQL 1.2 §19.7 [109]–[112]): `( Reifier | AnnotationBlock )*` after an object.
+    /// Each item is a reifier and the triples of its annotation block (subject: that reifier). A block directly after
+    /// `~ r` belongs to `r`; any other block gets a fresh blank node of its own (§4.3.2).
+    #[cfg(feature = "sparql-12")]
+    fn annotation(&mut self, paths: bool) -> R<Vec<(TermPattern, Vec<Elem>)>> {
+        let mut items = Vec::new();
+        loop {
+            let reifier = if self.eat_punct("~") { self.reifier_id()? }
+                else if self.is_punct("{|") { TermPattern::BlankNode(self.fresh_bnode()) }
+                else { return Ok(items) };
+            let mut block = Vec::new();
+            if self.eat_punct("{|") {
+                self.nested(|p| p.property_list_not_empty(&reifier, &mut block, paths))?;
+                self.expect_punct("|}")?;
+            }
+            items.push((reifier, block));
         }
     }
 
@@ -746,6 +890,8 @@ impl<'a> Parser<'a> {
 
     fn graph_node_inner(&mut self, out: &mut Vec<Elem>, paths: bool) -> R<TermPattern> {
         if let Some(t) = self.try_var_or_term()? { return Ok(t) }
+        #[cfg(feature = "sparql-12")]
+        if self.is_punct("<<") { return self.reified_triple(out) }
         if self.eat_punct("[") {
             let b = TermPattern::BlankNode(self.fresh_bnode());
             self.property_list_not_empty(&b, out, paths)?;
@@ -771,7 +917,8 @@ impl<'a> Parser<'a> {
     }
 
     fn triples_same_subject_path(&mut self, out: &mut Vec<Elem>) -> R<()> {
-        let starts_node = matches!(self.peek(), Tok::Punct("[") | Tok::Punct("("));
+        // TriplesNodePath and (SPARQL 1.2) ReifiedTripleBlockPath take an optional property list.
+        let starts_node = matches!(self.peek(), Tok::Punct("[") | Tok::Punct("(")) || self.starts_reified_triple();
         let s = self.graph_node(out, true)?;
         if starts_node && (self.is_punct(".") || self.is_punct("}") || self.starts_not_triples()) { return Ok(()) }
         self.property_list_not_empty(&s, out, true)
@@ -779,15 +926,43 @@ impl<'a> Parser<'a> {
 
     fn property_list_not_empty(&mut self, s: &TermPattern, out: &mut Vec<Elem>, paths: bool) -> R<()> {
         loop {
+            #[cfg(feature = "sparql-12")]
+            let verb_start = self.i;
             let verb = if let Tok::Var(_) = self.peek() { Verb::Var(self.var()?) }
                 else if paths { Verb::Path(self.path()?) }
                 else if self.eat_kw_a() { Verb::Path(PropertyPathExpression::NamedNode(rdf("type"))) }
                 else { Verb::Path(PropertyPathExpression::NamedNode(self.iri()?)) };
+            // SPARQL 1.2: a reifier or annotation needs a simple predicate (an IRI, 'a' or a variable; §19.7 notes).
+            #[cfg(feature = "sparql-12")]
+            // "Written as" a simple predicate: one token. A parenthesised `(<p>)` lowers to the same path but is not
+            // simple in the grammar, so it is refused here.
+            let one_token = self.i == verb_start + 1;
+            #[cfg(feature = "sparql-12")]
+            let simple = match &verb {
+                Verb::Var(v) => Some(NamedNodePattern::Variable(v.clone())),
+                Verb::Path(PropertyPathExpression::NamedNode(n)) if one_token => Some(NamedNodePattern::NamedNode(n.clone())),
+                Verb::Path(_) => None,
+            };
             loop {
                 let o = self.graph_node(out, paths)?;
+                // Expansion order follows §4.3.2: the asserted triple, then per reifier its `rdf:reifies` triple and
+                // its annotation block.
+                #[cfg(feature = "sparql-12")]
+                let reified = if self.is_punct("~") || self.is_punct("{|") {
+                    let Some(p) = simple.clone() else { return self.err("a reifier or annotation is only allowed after a triple whose predicate is an IRI, 'a' or a variable") };
+                    let triple = TriplePattern { subject: s.clone(), predicate: p, object: o.clone() };
+                    Some((triple, self.annotation(paths)?))
+                } else { None };
                 match &verb {
                     Verb::Var(v) => out.push(Elem::Triples(vec![TriplePattern { subject: s.clone(), predicate: NamedNodePattern::Variable(v.clone()), object: o }])),
                     Verb::Path(p) => self.translate_path(s.clone(), p.clone(), o, out),
+                }
+                #[cfg(feature = "sparql-12")]
+                if let Some((triple, items)) = reified {
+                    for (reifier, block) in items {
+                        out.push(Elem::Triples(vec![reifies(reifier, triple.clone())]));
+                        out.extend(block);
+                    }
                 }
                 if !self.eat_punct(",") { break }
             }
@@ -797,6 +972,9 @@ impl<'a> Parser<'a> {
                 || (paths && (self.is_punct("^") || self.is_punct("!") || self.is_punct("(")))) { return Ok(()) }
         }
     }
+
+    /// At `<<` (SPARQL 1.2 ReifiedTriple); never with the feature off, where `<<` is not a token.
+    fn starts_reified_triple(&self) -> bool { cfg!(feature = "sparql-12") && self.is_punct("<<") }
 
     fn eat_kw_a(&mut self) -> bool { if matches!(self.peek(), Tok::Name(n) if n == "a") { self.next(); true } else { false } }
 
@@ -872,7 +1050,7 @@ impl<'a> Parser<'a> {
         loop {
             // `GRAPH` can follow a dot in quad data and templates: `Quads ::= TriplesTemplate? (QuadsNotTriples '.'? TriplesTemplate?)*`.
             if self.is_punct("}") || self.is_kw("GRAPH") { break }
-            let starts_node = matches!(self.peek(), Tok::Punct("[") | Tok::Punct("("));
+            let starts_node = matches!(self.peek(), Tok::Punct("[") | Tok::Punct("(")) || self.starts_reified_triple();
             let s = self.graph_node(&mut out, false)?;
             if !(starts_node && (self.is_punct(".") || self.is_punct("}"))) { self.property_list_not_empty(&s, &mut out, false)?; }
             if !self.eat_punct(".") { break }
@@ -963,6 +1141,10 @@ impl<'a> Parser<'a> {
         }
     }
     fn unary(&mut self) -> R<Expression> {
+        // SPARQL 1.2's UnaryExpression lets `!` apply to a UnaryExpression (`!!?x`); SPARQL 1.1 only to a primary.
+        #[cfg(feature = "sparql-12")]
+        if self.eat_punct("!") { return Ok(Expression::Not(Box::new(self.nested(|p| p.unary())?))) }
+        #[cfg(not(feature = "sparql-12"))]
         if self.eat_punct("!") { return Ok(Expression::Not(Box::new(self.primary()?))) }
         if self.eat_punct("+") { return Ok(Expression::UnaryPlus(Box::new(self.primary()?))) }
         if self.eat_punct("-") { return Ok(Expression::UnaryMinus(Box::new(self.primary()?))) }
@@ -970,6 +1152,8 @@ impl<'a> Parser<'a> {
     }
     fn primary(&mut self) -> R<Expression> {
         if self.is_punct("(") { return self.bracketted() }
+        #[cfg(feature = "sparql-12")]
+        if self.is_punct("<<(") { return self.nested(Self::expr_triple_term) }
         if let Tok::Var(_) = self.peek() { return Ok(Expression::Variable(self.var()?)) }
         if let Some(l) = self.try_literal()? { return Ok(Expression::Literal(l)) }
         if matches!(self.peek(), Tok::Iri(_) | Tok::PName(..)) {
@@ -979,6 +1163,25 @@ impl<'a> Parser<'a> {
         }
         if let Some(e) = self.try_builtin()? { return Ok(e) }
         self.err(format!("expected an expression, found {}", self.peek()))
+    }
+
+    /// ExprTripleTerm (SPARQL 1.2 §19.7 [137]–[139]): `<<( (iri | Var) Verb (iri | literal | Var | ExprTripleTerm) )>>`,
+    /// translated to `TRIPLE(s, p, o)` (§4.4 gives `BIND(<<( ?s ?p ?o )>> AS ?tt)` and `BIND(TRIPLE(?s, ?p, ?o) AS ?tt)`
+    /// as the same query).
+    #[cfg(feature = "sparql-12")]
+    fn expr_triple_term(&mut self) -> R<Expression> {
+        self.expect_punct("<<(")?;
+        let s = if let Tok::Var(_) = self.peek() { Expression::Variable(self.var()?) }
+            else if let Some(i) = self.try_iri()? { Expression::NamedNode(i) }
+            else { return self.err(format!("expected an IRI or a variable as the subject of a triple term, found {}", self.peek())) };
+        let p = match self.verb_simple()? { NamedNodePattern::NamedNode(n) => Expression::NamedNode(n), NamedNodePattern::Variable(v) => Expression::Variable(v) };
+        let o = if self.is_punct("<<(") { self.nested(Self::expr_triple_term)? }
+            else if let Tok::Var(_) = self.peek() { Expression::Variable(self.var()?) }
+            else if let Some(i) = self.try_iri()? { Expression::NamedNode(i) }
+            else if let Some(l) = self.try_literal()? { Expression::Literal(l) }
+            else { return self.err(format!("expected the object of a triple term, found {}", self.peek())) };
+        self.expect_punct(")>>")?;
+        Ok(Expression::FunctionCall(Function::Triple, vec![s, p, o]))
     }
 
     fn expression_list(&mut self) -> R<Vec<Expression>> {
@@ -1068,6 +1271,24 @@ impl<'a> Parser<'a> {
             "STRLANG" => (Function::StrLang, (2, 2)), "STRDT" => (Function::StrDt, (2, 2)), "ISIRI" | "ISURI" => (Function::IsIri, (1, 1)),
             "ISBLANK" => (Function::IsBlank, (1, 1)), "ISLITERAL" => (Function::IsLiteral, (1, 1)), "ISNUMERIC" => (Function::IsNumeric, (1, 1)),
             "REGEX" => (Function::Regex, (2, 3)),
+            #[cfg(feature = "sparql-12")]
+            "TRIPLE" => (Function::Triple, (3, 3)),
+            #[cfg(feature = "sparql-12")]
+            "SUBJECT" => (Function::Subject, (1, 1)),
+            #[cfg(feature = "sparql-12")]
+            "PREDICATE" => (Function::Predicate, (1, 1)),
+            #[cfg(feature = "sparql-12")]
+            "OBJECT" => (Function::Object, (1, 1)),
+            #[cfg(feature = "sparql-12")]
+            "ISTRIPLE" => (Function::IsTriple, (1, 1)),
+            #[cfg(feature = "sparql-12")]
+            "LANGDIR" => (Function::LangDir, (1, 1)),
+            #[cfg(feature = "sparql-12")]
+            "HASLANG" => (Function::HasLang, (1, 1)),
+            #[cfg(feature = "sparql-12")]
+            "HASLANGDIR" => (Function::HasLangDir, (1, 1)),
+            #[cfg(feature = "sparql-12")]
+            "STRLANGDIR" => (Function::StrLangDir, (3, 3)),
             "BOUND" => {
                 self.next();
                 self.expect_punct("(")?;
@@ -1160,7 +1381,12 @@ impl<'a> Parser<'a> {
             for (s, p, o, g) in quads {
                 let subject = match s { TermPattern::NamedNode(n) => NamedOrBlankNode::NamedNode(n), TermPattern::BlankNode(b) => NamedOrBlankNode::BlankNode(b), _ => return self.err("invalid subject in INSERT DATA") };
                 let NamedNodePattern::NamedNode(predicate) = p else { return self.err("variables are not allowed in INSERT DATA") };
-                let object: Term = match o { TermPattern::NamedNode(n) => n.into(), TermPattern::BlankNode(b) => b.into(), TermPattern::Literal(l) => l.into(), TermPattern::Variable(_) => return self.err("variables are not allowed in INSERT DATA") };
+                let object: Term = match o {
+                    TermPattern::NamedNode(n) => n.into(), TermPattern::BlankNode(b) => b.into(), TermPattern::Literal(l) => l.into(),
+                    TermPattern::Variable(_) => return self.err("variables are not allowed in INSERT DATA"),
+                    #[cfg(feature = "sparql-12")]
+                    TermPattern::Triple(t) => Term::Triple(Box::new(self.data_triple(*t)?)),
+                };
                 let graph_name = match g { GraphNamePattern::NamedNode(n) => GraphName::NamedNode(n), GraphNamePattern::DefaultGraph => GraphName::DefaultGraph, GraphNamePattern::Variable(_) => return self.err("variables are not allowed in INSERT DATA") };
                 data.push(Quad { subject, predicate, object, graph_name });
             }
@@ -1173,7 +1399,12 @@ impl<'a> Parser<'a> {
             for (s, p, o, g) in quads {
                 let TermPattern::NamedNode(subject) = s else { return self.err("invalid subject in DELETE DATA") };
                 let NamedNodePattern::NamedNode(predicate) = p else { return self.err("variables are not allowed in DELETE DATA") };
-                let object = match o { TermPattern::NamedNode(n) => GroundTerm::NamedNode(n), TermPattern::Literal(l) => GroundTerm::Literal(l), _ => return self.err("blank nodes and variables are not allowed in DELETE DATA") };
+                let object = match o {
+                    TermPattern::NamedNode(n) => GroundTerm::NamedNode(n), TermPattern::Literal(l) => GroundTerm::Literal(l),
+                    #[cfg(feature = "sparql-12")]
+                    TermPattern::Triple(t) => GroundTerm::Triple(Box::new(self.ground_triple(*t)?)),
+                    TermPattern::BlankNode(_) | TermPattern::Variable(_) => return self.err("blank nodes and variables are not allowed in DELETE DATA"),
+                };
                 let graph_name = match g { GraphNamePattern::NamedNode(n) => GraphName::NamedNode(n), GraphNamePattern::DefaultGraph => GraphName::DefaultGraph, GraphNamePattern::Variable(_) => return self.err("variables are not allowed in DELETE DATA") };
                 data.push(GroundQuad { subject, predicate, object, graph_name });
             }
@@ -1209,15 +1440,54 @@ impl<'a> Parser<'a> {
     }
 
     fn ground_patterns(&self, quads: &[(TermPattern, NamedNodePattern, TermPattern, GraphNamePattern)]) -> R<Vec<GroundQuadPattern>> {
-        let g = |t: &TermPattern| -> R<GroundTermPattern> {
-            match t {
-                TermPattern::NamedNode(n) => Ok(GroundTermPattern::NamedNode(n.clone())),
-                TermPattern::Literal(l) => Ok(GroundTermPattern::Literal(l.clone())),
-                TermPattern::Variable(v) => Ok(GroundTermPattern::Variable(v.clone())),
-                TermPattern::BlankNode(_) => self.err("blank nodes are not allowed in DELETE templates"),
-            }
-        };
+        let g = |t: &TermPattern| self.ground_term_pattern(t);
         quads.iter().map(|(s, p, o, gr)| Ok(GroundQuadPattern { subject: g(s)?, predicate: p.clone(), object: g(o)?, graph_name: gr.clone() })).collect()
+    }
+
+    fn ground_term_pattern(&self, t: &TermPattern) -> R<GroundTermPattern> {
+        match t {
+            TermPattern::NamedNode(n) => Ok(GroundTermPattern::NamedNode(n.clone())),
+            TermPattern::Literal(l) => Ok(GroundTermPattern::Literal(l.clone())),
+            TermPattern::Variable(v) => Ok(GroundTermPattern::Variable(v.clone())),
+            TermPattern::BlankNode(_) => self.err("blank nodes are not allowed in DELETE templates"),
+            #[cfg(feature = "sparql-12")]
+            TermPattern::Triple(t) => Ok(GroundTermPattern::Triple(Box::new(GroundTriplePattern {
+                subject: self.ground_term_pattern(&t.subject)?,
+                predicate: t.predicate.clone(),
+                object: self.ground_term_pattern(&t.object)?,
+            }))),
+        }
+    }
+
+    /// A triple term of `INSERT DATA` as an RDF 1.2 triple (subject an IRI or blank node, no variables).
+    #[cfg(feature = "sparql-12")]
+    fn data_triple(&self, t: TriplePattern) -> R<Triple> {
+        let subject = match t.subject {
+            TermPattern::NamedNode(n) => NamedOrBlankNode::NamedNode(n),
+            TermPattern::BlankNode(b) => NamedOrBlankNode::BlankNode(b),
+            TermPattern::Literal(_) | TermPattern::Triple(_) => return self.err("the subject of a triple term in INSERT DATA must be an IRI or a blank node"),
+            TermPattern::Variable(_) => return self.err("variables are not allowed in INSERT DATA"),
+        };
+        let NamedNodePattern::NamedNode(predicate) = t.predicate else { return self.err("variables are not allowed in INSERT DATA") };
+        let object: Term = match t.object {
+            TermPattern::NamedNode(n) => n.into(), TermPattern::BlankNode(b) => b.into(), TermPattern::Literal(l) => l.into(),
+            TermPattern::Triple(t) => Term::Triple(Box::new(self.data_triple(*t)?)),
+            TermPattern::Variable(_) => return self.err("variables are not allowed in INSERT DATA"),
+        };
+        Ok(Triple::new(subject, predicate, object))
+    }
+
+    /// A triple term of `DELETE DATA`: an IRI subject, no blank nodes or variables.
+    #[cfg(feature = "sparql-12")]
+    fn ground_triple(&self, t: TriplePattern) -> R<GroundTriple> {
+        let TermPattern::NamedNode(subject) = t.subject else { return self.err("the subject of a triple term in DELETE DATA must be an IRI") };
+        let NamedNodePattern::NamedNode(predicate) = t.predicate else { return self.err("variables are not allowed in DELETE DATA") };
+        let object = match t.object {
+            TermPattern::NamedNode(n) => GroundTerm::NamedNode(n), TermPattern::Literal(l) => GroundTerm::Literal(l),
+            TermPattern::Triple(t) => GroundTerm::Triple(Box::new(self.ground_triple(*t)?)),
+            TermPattern::BlankNode(_) | TermPattern::Variable(_) => return self.err("blank nodes and variables are not allowed in DELETE DATA"),
+        };
+        Ok(GroundTriple { subject, predicate, object })
     }
 
     /// `{ triples (GRAPH g { triples })* }` of update data and templates.
@@ -1277,8 +1547,24 @@ impl<'a> Parser<'a> {
 
 fn out_labels_this_op(out: &[(TermPattern, NamedNodePattern, TermPattern, GraphNamePattern)]) -> HashSet<String> {
     let mut s = HashSet::new();
-    for (a, _, b, _) in out { for t in [a, b] { if let TermPattern::BlankNode(x) = t { s.insert(x.as_str().to_string()); } } }
+    for (a, _, b, _) in out { for t in [a, b] { term_bnode_labels(t, &mut s) } }
     s
+}
+
+/// Blank-node labels of a term, including those nested in triple terms.
+fn term_bnode_labels(t: &TermPattern, out: &mut HashSet<String>) {
+    match t {
+        TermPattern::BlankNode(x) => { out.insert(x.as_str().to_string()); }
+        #[cfg(feature = "sparql-12")]
+        TermPattern::Triple(t) => { term_bnode_labels(&t.subject, out); term_bnode_labels(&t.object, out) }
+        TermPattern::NamedNode(_) | TermPattern::Literal(_) | TermPattern::Variable(_) => {}
+    }
+}
+
+/// `r rdf:reifies <<( s p o )>>` (SPARQL 1.2 §4.3.1).
+#[cfg(feature = "sparql-12")]
+fn reifies(reifier: TermPattern, triple: TriplePattern) -> TriplePattern {
+    TriplePattern { subject: reifier, predicate: NamedNodePattern::NamedNode(rdf("reifies")), object: TermPattern::Triple(Box::new(triple)) }
 }
 
 #[derive(Clone, Copy)]
@@ -1341,10 +1627,24 @@ fn expr_vars(e: &Expression, out: &mut Vec<Variable>) {
     }
 }
 
+/// Variables of a term in source order, including those of nested triple terms (SPARQL 1.2 §18.3.1: "variable
+/// occurrence within BGPs and paths includes variables that occur within nested triple patterns"). Recursion depth is
+/// bounded by the parser's triple-term nesting limit (`MAX_NESTING`).
+fn term_vars<'a>(t: &'a TermPattern, out: &mut Vec<&'a Variable>) {
+    match t {
+        TermPattern::Variable(v) => out.push(v),
+        #[cfg(feature = "sparql-12")]
+        TermPattern::Triple(t) => {
+            term_vars(&t.subject, out);
+            if let NamedNodePattern::Variable(v) = &t.predicate { out.push(v) }
+            term_vars(&t.object, out);
+        }
+        TermPattern::NamedNode(_) | TermPattern::BlankNode(_) | TermPattern::Literal(_) => {}
+    }
+}
+
 /// In-scope variables of a pattern (§18.2.1), in order of first appearance; internal variables are not included.
 /// Iterative, because it runs during parsing, before the algebra depth has been checked.
-fn term_var(t: &TermPattern) -> Option<&Variable> { if let TermPattern::Variable(v) = t { Some(v) } else { None } }
-
 pub fn in_scope(p: &GraphPattern) -> Vec<Variable> {
     enum W<'a> { P(&'a GraphPattern), V(&'a Variable) }
     let mut out: Vec<Variable> = Vec::new();
@@ -1359,11 +1659,18 @@ pub fn in_scope(p: &GraphPattern) -> Vec<Variable> {
         let mut items: Vec<W<'_>> = Vec::new();
         match p {
             GraphPattern::Bgp { patterns } => for t in patterns {
-                items.extend(term_var(&t.subject).map(W::V));
-                if let NamedNodePattern::Variable(v) = &t.predicate { items.push(W::V(v)) }
-                items.extend(term_var(&t.object).map(W::V));
+                let mut vs = Vec::new();
+                term_vars(&t.subject, &mut vs);
+                if let NamedNodePattern::Variable(v) = &t.predicate { vs.push(v) }
+                term_vars(&t.object, &mut vs);
+                items.extend(vs.into_iter().map(W::V));
             },
-            GraphPattern::Path { subject, object, .. } => { items.extend(term_var(subject).map(W::V)); items.extend(term_var(object).map(W::V)) }
+            GraphPattern::Path { subject, object, .. } => {
+                let mut vs = Vec::new();
+                term_vars(subject, &mut vs);
+                term_vars(object, &mut vs);
+                items.extend(vs.into_iter().map(W::V));
+            }
             GraphPattern::Join { left, right } | GraphPattern::LeftJoin { left, right, .. } | GraphPattern::Union { left, right } => {
                 items.push(W::P(left)); items.push(W::P(right));
             }

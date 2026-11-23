@@ -17,6 +17,7 @@ macro_rules! on_data {
     };
 }
 
+pub mod phase;
 mod agg;
 mod bgp;
 mod count;
@@ -24,6 +25,8 @@ mod dataset;
 mod path;
 mod expr;
 mod support;
+#[cfg(feature = "rdf-12")]
+mod triple_term;
 use bgp::Slot;
 pub mod results;
 
@@ -38,7 +41,7 @@ use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
 pub const UNBOUND: TermId = TermId(0);
-const SCRATCH: u64 = 0xe << 60;
+const SCRATCH: u64 = crate::model::id_tag::SCRATCH << 60;
 
 pub type Row = Vec<TermId>;
 
@@ -120,8 +123,12 @@ pub struct Options<'a> {
     /// with the former process-global `TRIPLELIGHT_LEGACY_GROUP` environment variable this replaces. Answers are
     /// identical; this exists for differential verification (tests, release checks, benchmark controls).
     pub general_group: bool,
+    /// Answer eligible aggregates by exact index counts (`try_count_group`: index-range counts, last-level counts,
+    /// products of disconnected parts). Turning it off evaluates them by full enumeration with identical answers;
+    /// it exists for ablations and differential checks.
+    pub count_pushdown: bool,
 }
-impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false } } }
+impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true } } }
 
 pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     catching_storage(|| run(snap, None, text, opts))
@@ -139,7 +146,7 @@ fn catching_storage<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, Q
 }
 
 fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
-    let q = crate::sparql::parse_query(text, None).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
+    let q = phase::timed(&phase::PARSE_NS, || crate::sparql::parse_query(text, None)).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
     run_query(snap, dataset, &q, opts)
 }
 
@@ -209,6 +216,7 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     ctx.base = match q { Query::Select { base_iri, .. } | Query::Ask { base_iri, .. } | Query::Construct { base_iri, .. } | Query::Describe { base_iri, .. } => base_iri.clone() };
     ctx.wcoj = opts.wcoj;
     ctx.general_group = opts.general_group;
+    ctx.count_pushdown = opts.count_pushdown;
     let stats = opts.stats;
     ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
     match q {
@@ -258,14 +266,29 @@ fn run_construct<S: Snapshot>(ctx: &mut Ctx<'_, S>, template: &[TriplePattern], 
     // collide with a blank node from the data that a solution binds (e.g. an input `_:tr0`), or one output node could
     // stand for two different nodes. Collect the labels of every blank node the solutions bind, stored or computed.
     // A template without blank nodes generates no labels, so there is nothing to reserve.
+    #[cfg(not(feature = "rdf-12"))]
     let has_template_blanks = template.iter().any(|t| matches!(t.subject, TermPattern::BlankNode(_)) || matches!(t.object, TermPattern::BlankNode(_)));
+    // Blank nodes nested in template triple terms are fresh per solution too.
+    #[cfg(feature = "rdf-12")]
+    let has_template_blanks = template.iter().any(|t| triple_term::has_blank(&t.subject) || triple_term::has_blank(&t.object));
     let mut bound_ids = HashSet::new();
     if has_template_blanks {
+        #[cfg(not(feature = "rdf-12"))]
         for r in &rows { for &id in r { if id != UNBOUND && matches!(id.0 >> 60, 2 | 0xe) { bound_ids.insert(id); } } }
+        // Triple terms (tag 4) can carry blank nodes too; overlay delta IDs (tag 0xd) can be either.
+        #[cfg(feature = "rdf-12")]
+        for r in &rows { for &id in r { if id != UNBOUND && matches!(id.0 >> 60, 2 | 4 | 0xd | 0xe) { bound_ids.insert(id); } } }
     }
+    #[cfg(not(feature = "rdf-12"))]
     let input_labels: HashSet<String> = bound_ids.into_iter()
         .filter_map(|id| match ctx.resolve(id) { Term::BlankNode(b) => Some(b.as_str().to_string()), _ => None })
         .collect();
+    #[cfg(feature = "rdf-12")]
+    let input_labels: HashSet<String> = {
+        let mut labels = HashSet::new();
+        for id in bound_ids { triple_term::blank_labels(&ctx.resolve(id), &mut labels) }
+        labels
+    };
     // A deterministic label per (template label, row). The text after the last `r` is the row number, so base labels
     // are distinct from one another; on a collision, `_<k>` (no `r`, not all digits) keeps it distinct from every
     // base label and from other suffixed ones.
@@ -281,6 +304,9 @@ fn run_construct<S: Snapshot>(ctx: &mut Ctx<'_, S>, template: &[TriplePattern], 
             let inst = |tp: &TermPattern| -> Option<Term> {
                 match tp {
                     TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(fresh(b.as_str(), n)).into()),
+                    // A template triple term `<<( s p o )>>` emits a triple term (SPARQL 1.2).
+                    #[cfg(feature = "rdf-12")]
+                    TermPattern::Triple(t) => ctx.instantiate_triple(t, r, &|b: &BlankNode| -> Term { BlankNode::new_unchecked(fresh(b.as_str(), n)).into() }),
                     tp => ctx.term_slot(tp, r).and_then(|id| (id != UNBOUND).then(|| ctx.resolve(id))),
                 }
             };
@@ -339,6 +365,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     wcoj: bool,
     /// `Options::general_group`.
     general_group: bool,
+    /// `Options::count_pushdown`.
+    count_pushdown: bool,
     /// LIMIT (+OFFSET) of a Slice directly above the next ORDER BY (through at most a Project): lets ORDER BY keep
     /// only the first `k` rows (stable top-k) instead of sorting everything. Taken by that ORDER BY.
     order_limit: std::cell::Cell<Option<usize>>,
@@ -362,7 +390,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn new(snap: &'a S) -> Self {
-        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, general_group: false, order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
+        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, general_group: false, count_pushdown: true, order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -416,7 +444,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         for n in names { self.var_name(&n); }
     }
     fn register_triple(&mut self, t: &TriplePattern) {
+        #[cfg(not(feature = "rdf-12"))]
         for tp in [&t.subject, &t.object] { if let TermPattern::Variable(v) = tp { self.var_name(v.as_str()); } }
+        // Variables nested in template triple terms too.
+        #[cfg(feature = "rdf-12")]
+        for tp in [&t.subject, &t.object] {
+            let mut names = Vec::new();
+            triple_term::term_names(tp, false, &mut |n: String| names.push(n));
+            for n in names { self.var_name(&n); }
+        }
         if let NamedNodePattern::Variable(v) = &t.predicate { self.var_name(v.as_str()); }
     }
     fn collect_visible(&self, p: &GraphPattern) -> Vec<Variable> {
@@ -424,7 +460,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         walk_vars(p, &mut names);
         names.into_iter().filter(|n| !crate::sparql::is_internal_variable(n)).map(Variable::new_unchecked).collect()
     }
-    /// For CONSTRUCT templates: value of a template slot under solution `row`.
+    /// For CONSTRUCT templates: value of a template slot under solution `row`. Blank nodes and (SPARQL 1.2) triple
+    /// terms are instantiated by the caller (`run_construct`, `instantiate_triple`), which owns the fresh labels.
     fn term_slot(&self, tp: &TermPattern, row: &Row) -> Option<TermId> {
         match tp {
             TermPattern::Variable(v) => Some(row[self.var(v)]),
@@ -574,8 +611,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 let mut r = row.clone();
                 for (k, v) in b.iter().enumerate() {
                     let Some(v) = v else { continue };
-                    let t: Term = match v { GroundTerm::NamedNode(n) => n.clone().into(), GroundTerm::Literal(l) => l.clone().into() };
-                    let id = self.intern(&t);
+                    let id = self.intern(&ground_to_term(v));
                     if r[idx[k]] != UNBOUND && r[idx[k]] != id { continue 'b }
                     r[idx[k]] = id;
                 }
@@ -588,6 +624,13 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn eval_order_by(&self, inner: &GraphPattern, expression: &[OrderExpression], input: Vec<Row>) -> Vec<Row> {
         let limit = self.order_limit.take();
         let rows = self.eval(inner, input);
+        let started = phase::enabled().then(std::time::Instant::now);
+        let out = self.sort_rows(expression, limit, rows);
+        if let Some(t) = started { phase::SORT_NS.fetch_add(t.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed); }
+        out
+    }
+
+    fn sort_rows(&self, expression: &[OrderExpression], limit: Option<usize>, rows: Vec<Row>) -> Vec<Row> {
         // Sort keys: a plain variable is decoded once per distinct ID; other expressions per row.
         let mut memo: HashMap<TermId, Option<Term>> = HashMap::new();
         let keys: Vec<Vec<Option<Term>>> = rows.iter().map(|r| expression.iter().map(|e| {
@@ -666,8 +709,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
 
     fn eval_group(&self, inner: &GraphPattern, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], input: Vec<Row>) -> Vec<Row> {
-        if let Some(rows) = self.try_count_group(inner, keys, aggs, &input) { return rows; }
+        if self.count_pushdown && let Some(rows) = phase::timed(&phase::COUNT_NS, || self.try_count_group(inner, keys, aggs, &input)) { return rows; }
         let rows = self.eval(inner, input);
+        let started = phase::enabled().then(std::time::Instant::now);
+        let out = self.group_rows(keys, aggs, rows);
+        if let Some(t) = started { phase::GROUP_NS.fetch_add(t.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed); }
+        out
+    }
+
+    fn group_rows(&self, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], rows: Vec<Row>) -> Vec<Row> {
         let kidx: Vec<usize> = keys.iter().map(|v| self.var(v)).collect();
         if !self.general_group
             && let Some(out) = self.try_fast_group(&rows, &kidx, aggs) { return out; }
@@ -758,13 +808,32 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             TermPattern::BlankNode(b) => Slot::Var(self.vars[&format!("_:b{}", b.as_str())]),
             TermPattern::NamedNode(n) => Slot::Const(self.lookup(&n.clone().into())),
             TermPattern::Literal(l) => Slot::Const(self.lookup(&l.clone().into())),
+            // A ground triple term is a constant; any other stands for its hidden variable, unified afterwards
+            // (`triple_term::eval_bgp_triple_terms`).
+            #[cfg(feature = "rdf-12")]
+            TermPattern::Triple(t) => match triple_term::hidden_var(t) {
+                Some(h) => Slot::Var(self.vars[&h]),
+                None => Slot::Const(triple_term::ground_term(t).and_then(|term| self.lookup(&term))),
+            },
         }
     }
 
     fn eval_bgp(&self, patterns: &[TriplePattern], rows: Vec<Row>) -> Vec<Row> { self.eval_bgp_filtered(patterns, rows, &[]) }
 
     /// BGP evaluation that applies each filter in `filters` as soon as all its variables are bound.
+    /// Timed as the `bgp` phase (S6): every BGP evaluation, with or without pushed-down FILTER conjuncts, goes through here.
     fn eval_bgp_filtered(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<Row> {
+        phase::bgp(|| self.eval_bgp_filtered_untimed(patterns, rows, filters))
+    }
+
+    fn eval_bgp_filtered_untimed(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<Row> {
+        #[cfg(feature = "rdf-12")]
+        if patterns.iter().any(triple_term::has_triple_term) { return self.eval_bgp_triple_terms(patterns, rows, filters) }
+        self.eval_bgp_slots(patterns, rows, filters)
+    }
+
+    /// `eval_bgp_filtered` over patterns whose terms are all plain slots (variables and constants).
+    fn eval_bgp_slots(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<Row> {
         let pats: Vec<[Slot; 3]> = patterns.iter().map(|t| {
             let p = match &t.predicate {
                 NamedNodePattern::Variable(v) => Slot::Var(self.var(v)),
@@ -812,6 +881,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         };
         let (Expression::Variable(a), Expression::Variable(b)) = (x.as_ref(), y.as_ref()) else { return None };
         if a == b { return None }
+        // Renaming would change the hidden variables of triple-term patterns (named by the pattern text), which are
+        // registered before evaluation; such BGPs keep the general path.
+        #[cfg(feature = "rdf-12")]
+        if patterns.iter().any(triple_term::has_triple_term) { return None }
         let non_literal = |v: &Variable| -> bool {
             let mut seen = false;
             for t in patterns {
@@ -1111,10 +1184,18 @@ fn certainly_bound(p: &GraphPattern) -> HashSet<String> {
             walk_vars(&GraphPattern::Bgp { patterns: patterns.clone() }, &mut v);
             v.into_iter().collect()
         }
+        #[cfg(not(feature = "rdf-12"))]
         GraphPattern::Path { subject, object, .. } => [subject, object].into_iter().filter_map(|t| match t {
             TermPattern::Variable(v) => Some(v.as_str().to_string()),
             _ => None,
         }).collect(),
+        // Variables nested in a triple-term endpoint are bound by its unification too.
+        #[cfg(feature = "rdf-12")]
+        GraphPattern::Path { subject, object, .. } => {
+            let mut b = HashSet::new();
+            for t in [subject, object] { triple_term::term_names(t, false, &mut |n: String| { b.insert(n); }) }
+            b
+        }
         GraphPattern::Values { variables, bindings } => variables.iter().enumerate()
             .filter(|(i, _)| bindings.iter().all(|row| row.get(*i).is_some_and(Option::is_some)))
             .map(|(_, v)| v.as_str().to_string()).collect(),
@@ -1164,6 +1245,13 @@ fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
                 match tp {
                     TermPattern::Variable(v) => add(v.as_str().to_string()),
                     TermPattern::BlankNode(b) => add(format!("_:b{}", b.as_str())),
+                    // Variables and blank nodes nested in a triple-term pattern (SPARQL 1.2 §18.3.1), then the hidden
+                    // variable of its slot.
+                    #[cfg(feature = "rdf-12")]
+                    TermPattern::Triple(tt) => {
+                        triple_term::term_names(tp, true, &mut add);
+                        if let Some(h) = triple_term::hidden_var(tt) { add(h) }
+                    }
                     _ => {}
                 }
             }
@@ -1174,6 +1262,11 @@ fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
                 TermPattern::Variable(v) => add(v.as_str().to_string()),
                 // The parser splits `a (p|q)/r ?x` into two paths joined on a fresh blank node.
                 TermPattern::BlankNode(b) => add(format!("_:b{}", b.as_str())),
+                #[cfg(feature = "rdf-12")]
+                TermPattern::Triple(tt) => {
+                    triple_term::term_names(tp, true, &mut add);
+                    if let Some(h) = triple_term::hidden_var(tt) { add(h) }
+                }
                 _ => {}
             }
         },
@@ -1279,8 +1372,7 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
             },
             Op::DeleteData { data } => for q in data {
                 if q.graph_name != GraphName::DefaultGraph { return Err(unsupported("named graphs")) }
-                let o: Term = match &q.object { GroundTerm::NamedNode(n) => n.clone().into(), GroundTerm::Literal(l) => l.clone().into() };
-                out.push((Change::Delete, Triple::new(q.subject.clone(), q.predicate.clone(), o)));
+                out.push((Change::Delete, Triple::new(q.subject.clone(), q.predicate.clone(), ground_to_term(&q.object))));
             },
             Op::DeleteInsert { delete, insert, with, using, pattern } => {
                 if using.is_some() { return Err(unsupported("USING")) }
@@ -1296,12 +1388,16 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                         GroundTermPattern::NamedNode(x) => Some(x.clone().into()),
                         GroundTermPattern::Literal(x) => Some(x.clone().into()),
                         GroundTermPattern::Variable(v) => var(v),
+                        #[cfg(feature = "rdf-12")]
+                        GroundTermPattern::Triple(t) => ground_triple_template(t, &var),
                     } };
                     let term = |t: &TermPattern| -> Option<Term> { match t {
                         TermPattern::NamedNode(x) => Some(x.clone().into()),
                         TermPattern::Literal(x) => Some(x.clone().into()),
                         TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(format!("{}u{n}", b.as_str())).into()),
                         TermPattern::Variable(v) => var(v),
+                        #[cfg(feature = "rdf-12")]
+                        TermPattern::Triple(t) => triple_template(t, &var, &|b: &BlankNode| BlankNode::new_unchecked(format!("{}u{n}", b.as_str()))),
                     } };
                     let pred = |p: &NamedNodePattern| -> Option<triplelight_rdf::NamedNode> { match p {
                         NamedNodePattern::NamedNode(x) => Some(x.clone()),
@@ -1358,12 +1454,11 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
     match op {
         Op::InsertData { data } => for q in data {
             let subject = match &q.subject { NamedOrBlankNode::BlankNode(b) => fresh(b, None).into(), s => s.clone() };
-            let object = match &q.object { Term::BlankNode(b) => fresh(b, None).into(), o => o.clone() };
+            let object = map_blank_nodes(q.object.clone(), &mut |b: &BlankNode| fresh(b, None));
             out.push(DatasetChange::Quad(target(&q.graph_name), Change::Insert, Triple::new(subject, q.predicate.clone(), object)));
         },
         Op::DeleteData { data } => for q in data {
-            let o: Term = match &q.object { GroundTerm::NamedNode(n) => n.clone().into(), GroundTerm::Literal(l) => l.clone().into() };
-            out.push(DatasetChange::Quad(target(&q.graph_name), Change::Delete, Triple::new(q.subject.clone(), q.predicate.clone(), o)));
+            out.push(DatasetChange::Quad(target(&q.graph_name), Change::Delete, Triple::new(q.subject.clone(), q.predicate.clone(), ground_to_term(&q.object))));
         },
         Op::DeleteInsert { delete, insert, with, using, pattern } => {
             // WITH <g> makes <g> the default graph of the WHERE clause (GRAPH patterns inside it still range over the
@@ -1382,12 +1477,16 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
                     GroundTermPattern::NamedNode(x) => Some(x.clone().into()),
                     GroundTermPattern::Literal(x) => Some(x.clone().into()),
                     GroundTermPattern::Variable(v) => var(v),
+                    #[cfg(feature = "rdf-12")]
+                    GroundTermPattern::Triple(t) => ground_triple_template(t, &var),
                 } };
                 let term = |t: &TermPattern| -> Option<Term> { match t {
                     TermPattern::NamedNode(x) => Some(x.clone().into()),
                     TermPattern::Literal(x) => Some(x.clone().into()),
                     TermPattern::BlankNode(b) => Some(fresh(b, Some(n)).into()),
                     TermPattern::Variable(v) => var(v),
+                    #[cfg(feature = "rdf-12")]
+                    TermPattern::Triple(t) => triple_template(t, &var, &|b: &BlankNode| fresh(b, Some(n))),
                 } };
                 let pred = |p: &NamedNodePattern| -> Option<triplelight_rdf::NamedNode> { match p {
                     NamedNodePattern::NamedNode(x) => Some(x.clone()),
@@ -1478,6 +1577,71 @@ fn graph_triples<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &crate::sp
     }).collect())
 }
 
+/// The term of a VALUES / DELETE DATA constant.
+fn ground_to_term(g: &GroundTerm) -> Term {
+    match g {
+        GroundTerm::NamedNode(n) => n.clone().into(),
+        GroundTerm::Literal(l) => l.clone().into(),
+        #[cfg(feature = "rdf-12")]
+        GroundTerm::Triple(t) => triplelight_rdf::Triple::new(t.subject.clone(), t.predicate.clone(), ground_to_term(&t.object)).into(),
+    }
+}
+
+/// `term` with every blank node `b` replaced by `f(b)`, including (SPARQL 1.2 / RDF 1.2) blank nodes inside triple
+/// terms. Used to scope blank-node labels of inserted and loaded data.
+pub fn map_blank_nodes(term: Term, f: &mut dyn FnMut(&BlankNode) -> BlankNode) -> Term {
+    match term {
+        Term::BlankNode(b) => Term::BlankNode(f(&b)),
+        #[cfg(feature = "rdf-12")]
+        Term::Triple(t) => {
+            let t = *t;
+            let subject = match t.subject { triplelight_rdf::NamedOrBlankNode::BlankNode(b) => triplelight_rdf::NamedOrBlankNode::BlankNode(f(&b)), s => s };
+            triplelight_rdf::Triple::new(subject, t.predicate, map_blank_nodes(t.object, f)).into()
+        }
+        t => t,
+    }
+}
+
+/// The predicate of an update template under a solution (`var`); `None` if unbound or not an IRI.
+#[cfg(feature = "rdf-12")]
+fn template_predicate(p: &NamedNodePattern, var: &dyn Fn(&Variable) -> Option<Term>) -> Option<triplelight_rdf::NamedNode> {
+    match p {
+        NamedNodePattern::NamedNode(x) => Some(x.clone()),
+        NamedNodePattern::Variable(v) => match var(v) { Some(Term::NamedNode(x)) => Some(x), _ => None },
+    }
+}
+
+/// A triple term of an INSERT template under a solution (`var`), template blank nodes mapped by `blank`; `None` if a
+/// slot is unbound or ill-typed (the template quad is then skipped).
+#[cfg(feature = "rdf-12")]
+fn triple_template(t: &TriplePattern, var: &dyn Fn(&Variable) -> Option<Term>, blank: &dyn Fn(&BlankNode) -> BlankNode) -> Option<Term> {
+    let term = |x: &TermPattern| -> Option<Term> { match x {
+        TermPattern::NamedNode(n) => Some(n.clone().into()),
+        TermPattern::Literal(l) => Some(l.clone().into()),
+        TermPattern::BlankNode(b) => Some(blank(b).into()),
+        TermPattern::Variable(v) => var(v),
+        TermPattern::Triple(t) => triple_template(t, var, blank),
+    } };
+    let s = triplelight_rdf::NamedOrBlankNode::try_from(term(&t.subject)?).ok()?;
+    let p = template_predicate(&t.predicate, var)?;
+    Some(triplelight_rdf::Triple::new(s, p, term(&t.object)?).into())
+}
+
+/// A triple term of a DELETE template under a solution (`var`).
+#[cfg(feature = "rdf-12")]
+fn ground_triple_template(t: &crate::sparql::GroundTriplePattern, var: &dyn Fn(&Variable) -> Option<Term>) -> Option<Term> {
+    use crate::sparql::GroundTermPattern as G;
+    let term = |x: &G| -> Option<Term> { match x {
+        G::NamedNode(n) => Some(n.clone().into()),
+        G::Literal(l) => Some(l.clone().into()),
+        G::Variable(v) => var(v),
+        G::Triple(t) => ground_triple_template(t, var),
+    } };
+    let s = triplelight_rdf::NamedOrBlankNode::try_from(term(&t.subject)?).ok()?;
+    let p = template_predicate(&t.predicate, var)?;
+    Some(triplelight_rdf::Triple::new(s, p, term(&t.object)?).into())
+}
+
 fn conjuncts(e: &Expression) -> Vec<&Expression> {
     match e { Expression::And(a, b) => { let mut v = conjuncts(a); v.extend(conjuncts(b)); v } e => vec![e] }
 }
@@ -1494,7 +1658,13 @@ fn impure(e: &Expression) -> bool {
 
 /// `t` with variable `from` replaced by `to` (subject, predicate and object positions).
 fn rename_var(t: &TriplePattern, from: &Variable, to: &Variable) -> TriplePattern {
-    let tp = |x: &TermPattern| match x { TermPattern::Variable(v) if v == from => TermPattern::Variable(to.clone()), x => x.clone() };
+    // Also inside triple-term patterns (SPARQL 1.2).
+    let tp = |x: &TermPattern| match x {
+        TermPattern::Variable(v) if v == from => TermPattern::Variable(to.clone()),
+        #[cfg(feature = "rdf-12")]
+        TermPattern::Triple(t) => TermPattern::Triple(Box::new(rename_var(t, from, to))),
+        x => x.clone(),
+    };
     let pp = match &t.predicate { NamedNodePattern::Variable(v) if v == from => NamedNodePattern::Variable(to.clone()), p => p.clone() };
     TriplePattern { subject: tp(&t.subject), predicate: pp, object: tp(&t.object) }
 }

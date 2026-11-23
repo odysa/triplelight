@@ -1,8 +1,8 @@
 07:14:36 INFO  Fuseki          :: Apache Jena Fuseki 6.2.0
-07:14:36 INFO  Config          :: Fuseki Base = /Users/odysa/.slock/agents/b438313f-6338-4d86-ab3e-5995a1bde6c3/rdfdb/bench/run
+07:14:36 INFO  Config          :: Fuseki Base = <workspace>/rdfdb/bench/run
 07:14:36 INFO  Config          :: Database: /ds
 07:14:36 INFO  Config          :: UI Base: fuseki-server.jar
-07:14:36 INFO  Shiro           :: Shiro configuration: file:/Users/odysa/.slock/agents/b438313f-6338-4d86-ab3e-5995a1bde6c3/rdfdb/bench/run/shiro.ini
+07:14:36 INFO  Shiro           :: Shiro configuration: file:<workspace>/rdfdb/bench/run/shiro.ini
 07:14:36 INFO  Server          :: Path = /ds
 07:14:36 INFO  Server          :: System
 07:14:36 INFO  Server          ::   Memory: 24.0 GiB

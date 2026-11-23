@@ -35,7 +35,7 @@ observed layouts from published product defaults.
 | Jena TDB2 6.2.0, native Java tiny fixture | The retained B+ tree filenames show SPO, POS and OSP for triples, and GSPO, GPOS, GOSP, SPOG, POSG and OSPG for quads. The observation applies to the tiny fixture. [File inventory](benchmark-index-receipts.json) |
 | Oxigraph and PyOxigraph disk | The upstream RocksDB design documents SPO, POS and OSP for default-graph triples and six orders for named-graph quads. This describes the disk design. The in-memory backends use different structures. [Oxigraph architecture](https://github.com/oxigraph/oxigraph/wiki/Architecture#how-are-data-encoded-in-rocksdb) |
 | Virtuoso 7 HTTP | The documented default has two full quad indexes, PSOG and POGS, and three partial indexes, SP, OP and GS. The benchmark receipts do not bind the full index catalog for each historical run. [Virtuoso index scheme](https://docs.openlinksw.com/virtuoso/rdfperfrdfscheme/) |
-| RDF4J NativeStore | Its documented defaults are SPOC and POSC. The [native Java cohort](https://app.raft.build/artifacts/4FiCDWgEyXpz3b3fRS8GLk) also covers separate LMDBStore and MemoryStore profiles. [RDF4J storage configuration](https://rdf4j.org/documentation/reference/configuration/#native-store) |
+| RDF4J NativeStore | Its documented defaults are SPOC and POSC. The measured workload profile did not use the defaults: it created the store with the index list `spoc,posc,ospc`, three orders (receipt: `rows[3]` and `rows[4]`, constructor argument in `source/Rdf4jEngine.java`). The [native Java cohort](https://app.raft.build/artifacts/4FiCDWgEyXpz3b3fRS8GLk) also covers separate LMDBStore and MemoryStore profiles. [Receipt supplement](benchmark-index-receipts-supplement.json) (SHA-256 `05e17cc4…`) · [RDF4J storage configuration](https://rdf4j.org/documentation/reference/configuration/#native-store) |
 
 The two RDFSNAP4 BSBM-100M builds have the same file lengths. Their six orders occupy 3,316,099,215 bytes,
 the dictionary 4,620,210,974 bytes and the manifest 232 bytes. The preceding format used two dictionary files.
@@ -87,8 +87,17 @@ The initial candidate list was not exhaustive. A maintenance label alone is not 
 
 ## Work in preparation
 
-- Full-workload qualification follows the [matched Java 25 fixture](blazegraph-matched-java25-qualification-v1/README.md). Blazegraph and TripleLight each loaded and reopened nine triples, then passed three typed answer checks on the same Linux ARM64 runtime.
+- The [matched Java 25 LUBM-100 qualification](blazegraph-matched-java25-lubm100-v1/README.md)
+  passed all 30 exact typed checks per engine after both Blazegraph and TripleLight reopened with
+  13,409,395 triples. This follows the [nine-triple fixture](blazegraph-matched-java25-qualification-v1/README.md).
+  Query timing requires a separate registration.
 - The Ontop workload mapping will qualify the remaining aggregate and BI queries against their reference
   answers. The [distinct-count diagnostic](ontop-distinct-diagnostic-v3/README.md) explains why WatDiv
   `distinct_L2.rq` needs a separate domain check.
-- The six-copy DuckDB profile needs tiny-fixture admission and a registered runtime before workload measurements.
+- The [Ontop production-schema qualification](ontop-production-view-v2/README.md) passed four
+  required typed checks on a nine-row DuckDB fixture using a view that exposes the object fields as
+  columns. Direct nested-field mapping stopped at initialization. The mixed-term distinct count
+  returned 8 against a typed reference of 9. Workload admission and timing remain pending.
+- The [LUBM-100 DuckDB layout qualification](duckdb-layout-lubm100-v1/README.md) passed all 90 typed
+  checks across the single-table, fixed-SPO and routed arms. All six sorted tables reopened with
+  13,409,395 rows and matched the control relation. WatDiv and BSBM BI qualification remain pending.

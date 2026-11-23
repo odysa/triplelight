@@ -103,4 +103,22 @@ class DatabaseTest {
         for (Future<?> f : fs) f.get();
         pool.shutdown();
     }
+
+    @Test
+    void rdf12TripleTermsAndDirection() {
+        try (Database db = Database.inMemory()) {
+            try {
+                db.update("INSERT DATA { <urn:a> <urn:says> <<( <urn:b> <urn:p> \"v\" )>> . <urn:a> <urn:label> \"שלום\"@he--rtl }");
+            } catch (TripleLightException e) {
+                if (System.getenv("TRIPLELIGHT_EXPECT_RDF12") != null) throw e; // the build is supposed to have rdf-12
+                org.junit.jupiter.api.Assumptions.assumeTrue(false, "built without the rdf-12 feature");
+            }
+            Result r = db.query("SELECT ?p ?o WHERE { <urn:a> ?p ?o }");
+            Map<String, Term> byP = r.rows().stream().collect(Collectors.toMap(row -> row[0].value(), row -> row[1]));
+            assertEquals(new Term.Triple(new Term.Iri("urn:b"), new Term.Iri("urn:p"), new Term.Literal("v", "", XSD + "string")), byP.get("urn:says"));
+            Term.Literal label = (Term.Literal) byP.get("urn:label");
+            assertEquals("he", label.language());
+            assertEquals("rtl", label.direction());
+        }
+    }
 }

@@ -55,6 +55,13 @@ fn literal(env: &Env, l: &Literal) -> Result<JsObject> {
     o.set_named_property("value", env.create_string(l.value())?)?;
     o.set_named_property("language", env.create_string(l.language().unwrap_or(""))?)?;
     o.set_named_property("datatype", named(env, l.datatype().as_str())?)?;
+    // RDF 1.2 base direction: "ltr" or "rtl"
+    // set only when present, so a build with the feature on keeps the exact 1.1 shape for every other literal
+    #[cfg(feature = "rdf-12")]
+    if let Some(dir) = l.direction() {
+        let dir = match dir { triplelight::rdf::BaseDirection::Ltr => "ltr", triplelight::rdf::BaseDirection::Rtl => "rtl" };
+        o.set_named_property("direction", env.create_string(dir)?)?;
+    }
     Ok(o)
 }
 
@@ -68,8 +75,25 @@ fn term(env: &Env, t: &Term) -> Result<JsObject> {
             Ok(o)
         }
         Term::Literal(l) => literal(env, l),
+        // RDF 1.2 triple term: an RDF/JS Quad term in the default graph, parts converted recursively
+        #[cfg(feature = "rdf-12")]
+        Term::Triple(t) => {
+            let mut o = env.create_object()?;
+            o.set_named_property("termType", env.create_string("Quad")?)?;
+            o.set_named_property("value", env.create_string("")?)?;
+            let subject: Term = t.subject.clone().into();
+            let predicate: Term = t.predicate.clone().into();
+            o.set_named_property("subject", term(env, &subject)?)?;
+            o.set_named_property("predicate", term(env, &predicate)?)?;
+            o.set_named_property("object", term(env, &t.object)?)?;
+            let mut g = env.create_object()?;
+            g.set_named_property("termType", env.create_string("DefaultGraph")?)?;
+            g.set_named_property("value", env.create_string("")?)?;
+            o.set_named_property("graph", g)?;
+            Ok(o)
+        }
         #[allow(unreachable_patterns)]
-        _ => Err(Error::new(Status::GenericFailure, "UnsupportedError: RDF-star terms are not supported".to_string())),
+        _ => Err(Error::new(Status::GenericFailure, "UnsupportedError: unsupported term kind".to_string())),
     }
 }
 

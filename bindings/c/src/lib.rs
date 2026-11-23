@@ -38,6 +38,10 @@ pub const TL_RESULT_TRIPLES: u32 = 2;
 pub const TL_TERM_IRI: u8 = 1;
 pub const TL_TERM_BLANK: u8 = 2;
 pub const TL_TERM_LITERAL: u8 = 3;
+pub const TL_TERM_TRIPLE: u8 = 4;
+pub const TL_DIR_NONE: u8 = 0;
+pub const TL_DIR_LTR: u8 = 1;
+pub const TL_DIR_RTL: u8 = 2;
 
 /// An open database. Safe to use from several threads at once; `tl_close` must not race with other calls on it.
 pub struct TlDb(Database);
@@ -54,7 +58,7 @@ pub struct TlStr { pub off: u64, pub len: u64 }
 /// is language-tagged; for IRIs and blank nodes both are empty.
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
-pub struct TlTerm { pub kind: u8, pub _pad: [u8; 7], pub value: TlStr, pub language: TlStr, pub datatype: TlStr }
+pub struct TlTerm { pub kind: u8, pub direction: u8, pub _pad: [u8; 6], pub value: TlStr, pub language: TlStr, pub datatype: TlStr }
 
 /// Read-only view of a result. Pointers stay valid until `tl_result_free`.
 #[repr(C)]
@@ -104,10 +108,22 @@ impl Builder {
                 let value = self.push(l.value());
                 let language = match l.language() { Some(lang) => self.shared(lang), None => TlStr::default() };
                 let datatype = self.shared(l.datatype().as_str());
-                TlTerm { kind: TL_TERM_LITERAL, value, language, datatype, ..Default::default() }
+                #[cfg(feature = "rdf-12")]
+                let direction = match l.direction() { Some(triplelight::rdf::BaseDirection::Ltr) => TL_DIR_LTR, Some(triplelight::rdf::BaseDirection::Rtl) => TL_DIR_RTL, None => TL_DIR_NONE };
+                #[cfg(not(feature = "rdf-12"))]
+                let direction = TL_DIR_NONE;
+                TlTerm { kind: TL_TERM_LITERAL, direction, value, language, datatype, ..Default::default() }
+            }
+            // RDF 1.2 triple term: the three parts are terms of their own (recursively), referenced by 1-based index.
+            #[cfg(feature = "rdf-12")]
+            Term::Triple(tr) => {
+                let s: Term = tr.subject.clone().into();
+                let p: Term = tr.predicate.clone().into();
+                let (si, pi, oi) = (self.term(&s)?, self.term(&p)?, self.term(&tr.object)?);
+                TlTerm { kind: TL_TERM_TRIPLE, value: TlStr { off: si as u64, len: pi as u64 }, language: TlStr { off: oi as u64, len: 0 }, ..Default::default() }
             }
             #[allow(unreachable_patterns)]
-            _ => return Err(TlError { kind: TL_ERR_UNSUPPORTED, message: "RDF-star terms are not supported".into() }),
+            _ => return Err(TlError { kind: TL_ERR_UNSUPPORTED, message: "unsupported term kind".into() }),
         };
         self.terms.push(entry);
         let i = u32::try_from(self.terms.len())
@@ -174,6 +190,10 @@ fn build_ids(snap: &ReadSnapshot, sol: IdSolutions) -> Result<Box<TlResult>, TlE
     u32::try_from(distinct.len()).map_err(|_| TlError { kind: TL_ERR_INTERNAL, message: "more than 4,294,967,295 distinct terms".into() })?;
     b.terms = vec![TlTerm::default(); distinct.len()];
     let mut unsupported = false;
+    // RDF 1.2 triple terms stored in the dictionary: their parts are added to the term table after the closure (a part may not
+    // be among the distinct IDs of this result), then the triple's own slot is filled with the indices of its parts.
+    #[cfg(feature = "rdf-12")]
+    let mut pending: Vec<(usize, Term)> = Vec::new();
     {
         let Builder { bytes, terms, strings, .. } = &mut b;
         let mut push = |s: &str| { let off = bytes.len() as u64; bytes.extend_from_slice(s.as_bytes()); TlStr { off, len: s.len() as u64 } };
@@ -186,14 +206,28 @@ fn build_ids(snap: &ReadSnapshot, sol: IdSolutions) -> Result<Box<TlResult>, TlE
                     let mut shared = |s: &str| match strings.get(s) { Some(r) => *r, None => { let r = push(s); strings.insert(s.to_string(), r); r } };
                     let language = l.language().map(&mut shared).unwrap_or_default();
                     let datatype = shared(l.datatype().as_str());
-                    TlTerm { kind: TL_TERM_LITERAL, value, language, datatype, ..Default::default() }
+                    #[cfg(feature = "rdf-12")]
+                    let direction = match l.direction() { Some(triplelight::rdf::BaseDirection::Ltr) => TL_DIR_LTR, Some(triplelight::rdf::BaseDirection::Rtl) => TL_DIR_RTL, None => TL_DIR_NONE };
+                    #[cfg(not(feature = "rdf-12"))]
+                    let direction = TL_DIR_NONE;
+                    TlTerm { kind: TL_TERM_LITERAL, direction, value, language, datatype, ..Default::default() }
                 }
+                #[cfg(feature = "rdf-12")]
+                TermRef::Triple(t) => { pending.push((i, Term::from(t.clone()))); TlTerm::default() }
                 #[allow(unreachable_patterns)]
                 _ => { unsupported = true; TlTerm::default() }
             };
         }).map_err(db_error)?;
     }
-    if unsupported { return Err(TlError { kind: TL_ERR_UNSUPPORTED, message: "RDF-star terms are not supported".into() }) }
+    #[cfg(feature = "rdf-12")]
+    for (i, t) in pending {
+        let Term::Triple(tr) = &t else { continue };
+        let subject: Term = tr.subject.clone().into();
+        let predicate: Term = tr.predicate.clone().into();
+        let (si, pi, oi) = (b.term(&subject)?, b.term(&predicate)?, b.term(&tr.object)?);
+        b.terms[i] = TlTerm { kind: TL_TERM_TRIPLE, value: TlStr { off: si as u64, len: pi as u64 }, language: TlStr { off: oi as u64, len: 0 }, ..Default::default() };
+    }
+    if unsupported { return Err(TlError { kind: TL_ERR_UNSUPPORTED, message: "unsupported term kind".into() }) }
     let width = sol.vars.len();
     let total = sol.rows.checked_mul(width).ok_or_else(|| TlError { kind: TL_ERR_INTERNAL, message: "result too large".into() })?;
     let mut cells = Vec::with_capacity(total);
