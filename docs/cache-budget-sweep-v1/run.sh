@@ -1,9 +1,9 @@
 #!/bin/bash
 # #83 cache-budget sweep driver. Takes and releases /tmp/rdf-bench.lock itself.
 set -u
-OUT=/Users/odysa/.slock/agents/78888e08-1e35-4024-96d3-04d2a9dfaf6c/deliverables/cache-sweep-83
-REPO=/Users/odysa/.slock/agents/78888e08-1e35-4024-96d3-04d2a9dfaf6c/triplelight-named-storage
-DATA=/Users/odysa/.slock/agents/b438313f-6338-4d86-ab3e-5995a1bde6c3/rdfdb/bench/tools
+OUT=${OUT_DIR:?set OUT_DIR to the directory for the logs and results}
+REPO=${REPO_DIR:?set REPO_DIR to the repository checkout the binaries are built from}
+DATA=${DATA_DIR:?set DATA_DIR to the directory holding the .nt datasets}
 SHA=a03774f2
 WORK=/tmp/sweep83
 log() { echo "$(date -u +%H:%M:%S) $*" | tee -a "$OUT/progress.log"; }
