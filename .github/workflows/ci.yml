@@ -72,6 +72,36 @@ jobs:
           name: w3c-results
           path: w3c.json
 
+  w3c12:
+    name: W3C RDF and SPARQL 1.2 conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain (from rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: conformance/rdf12-diff
+      - name: Fetch pinned W3C 1.2 fixtures
+        run: |
+          git init -q rdf-tests-12
+          git -C rdf-tests-12 remote add origin https://github.com/w3c/rdf-tests.git
+          git -C rdf-tests-12 sparse-checkout set rdf/rdf12 sparql/sparql12
+          git -C rdf-tests-12 fetch -q --depth 1 --filter=blob:none origin 56076c0efec4c353efcae2971be8f6005294ac64
+          git -C rdf-tests-12 checkout -q --detach FETCH_HEAD
+      - name: Run the 1.2 suites and check the floors
+        working-directory: conformance/rdf12-diff
+        shell: bash
+        env:
+          TL_RDF_TESTS: ${{ github.workspace }}/rdf-tests-12
+          CARGO_TERM_COLOR: never
+        run: cargo test --locked --release --no-fail-fast -- --include-ignored --nocapture --test-threads=1 2>&1 | tee ../../w3c12.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: w3c12-results
+          path: w3c12.log
+
   python:
     name: Python binding
     runs-on: ubuntu-latest

@@ -1036,6 +1036,13 @@ impl<I: BufRead> TurtleReader<I> {
         let src = Src { input, buf: Vec::new(), pos: 0, eof: false, capped, token_start: 0 };
         TurtleReader { lex: Lexer { src, base: None, peeked: None }, parser: Parser::new(with_graph), out: VecDeque::new(), done: false }
     }
+    /// Streams a document with an external base IRI. An in-document BASE can override it.
+    pub fn with_base(input: I, with_graph: bool, base: &str) -> Result<Self, ReadError> {
+        let mut reader = Self::new(input, with_graph, true);
+        reader.lex.base = Some(Iri::parse(base).map_err(|error| ReadError::Syntax(error.to_string()))?);
+        Ok(reader)
+    }
+
     fn step(&mut self) -> R<bool> {
         let token = self.lex.next()?;
         if token == Tok::Eof { self.parser.end()?; return Ok(false) }
