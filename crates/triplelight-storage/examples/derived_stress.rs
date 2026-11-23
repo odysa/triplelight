@@ -22,7 +22,7 @@ fn top_keys(snap: &DiskSnapshot, perm: Perm, n: usize) -> std::io::Result<Vec<(T
     // One pass over the order whose first column is the key, counting each key's run.
     let mut best: Vec<(u64, TermId)> = Vec::new();
     let (mut cur, mut len) = (None::<TermId>, 0u64);
-    let mut push = |k: Option<TermId>, len: u64, best: &mut Vec<(u64, TermId)>| {
+    let push = |k: Option<TermId>, len: u64, best: &mut Vec<(u64, TermId)>| {
         if let Some(k) = k {
             best.push((len, k));
             if best.len() > 4 * n { best.sort_unstable_by(|a, b| b.cmp(a)); best.truncate(n); }
