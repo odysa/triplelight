@@ -198,16 +198,21 @@ public final class Database implements AutoCloseable {
             String lastDatatype = null;
             for (int i = 0; i < nTerms; i++) {
                 long base = i * Native.TERM.byteSize();
-                String value = str(bytes, ts, base + 8);
+                String value = ts.get(JAVA_BYTE, base) == 4 ? "" : str(bytes, ts, base + 8);
                 terms[i] = switch (ts.get(JAVA_BYTE, base)) {
                     case 1 -> new Term.Iri(value);
                     case 2 -> new Term.BlankNode(value);
+                    // RDF 1.2 triple term: 1-based indices of its parts in value.off, value.len and language.off. A term's
+                    // parts are always earlier in the table than the term, so they are decoded already.
+                    case 4 -> new Term.Triple(terms[(int) ts.get(JAVA_LONG, base + 8) - 1], terms[(int) ts.get(JAVA_LONG, base + 16) - 1],
+                            terms[(int) ts.get(JAVA_LONG, base + 24) - 1]);
                     default -> {
                         String language = str(bytes, ts, base + 24);
                         String datatype = str(bytes, ts, base + 40);
                         // Datatypes repeat; keep one String instance for equal consecutive values.
                         if (datatype.equals(lastDatatype)) datatype = lastDatatype; else lastDatatype = datatype;
-                        yield new Term.Literal(value, language, datatype);
+                        byte dir = ts.get(JAVA_BYTE, base + 1); // TL_DIR_*: 0 none, 1 ltr, 2 rtl
+                        yield new Term.Literal(value, language, datatype, dir == 1 ? "ltr" : dir == 2 ? "rtl" : "");
                     }
                 };
             }

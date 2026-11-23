@@ -3,8 +3,10 @@
 
 export interface NamedNode { termType: "NamedNode"; value: string }
 export interface BlankNode { termType: "BlankNode"; value: string }
-export interface Literal { termType: "Literal"; value: string; language: string; datatype: NamedNode }
-export type Term = NamedNode | BlankNode | Literal;
+export interface Literal { termType: "Literal"; value: string; language: string; datatype: NamedNode; direction?: "ltr" | "rtl" | "" }
+/** RDF 1.2 triple term (only with the `rdf-12` build): an RDF/JS Quad in the default graph; `value` is "". */
+export interface Quad { termType: "Quad"; value: ""; subject: NamedNode | BlankNode | Quad; predicate: NamedNode; object: Term; graph: { termType: "DefaultGraph"; value: "" } }
+export type Term = NamedNode | BlankNode | Literal | Quad;
 
 /** SELECT: one object per solution (with a null prototype); unbound variables are absent from it. */
 export interface BindingsResult { type: "bindings"; variables: string[]; bindings: Array<Record<string, Term>> }
