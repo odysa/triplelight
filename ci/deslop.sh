@@ -14,7 +14,7 @@ cargo install --list | grep -q "^deslop-please v$VERSION:" || { echo "deslop-ple
 out=$(mktemp); now=$(mktemp); trap 'rm -f "$out" "$now"' EXIT
 deslop-please --allow .deslop-please.allow > "$out" 2>&1; rc=$?
 if grep -q "scip failed" "$out"; then cat "$out"; echo "deslop: rust-analyzer indexing failed; the run checked nothing" >&2; exit 2; fi
-grep -Eq '^deslop-please: ([0-9]+ errors|ok)' "$out" || { cat "$out"; echo "deslop: no summary line; the run did not complete" >&2; exit 2; }
+grep -Eq '^deslop-please: ([0-9]+ errors?|ok)' "$out" || { cat "$out"; echo "deslop: no summary line; the run did not complete" >&2; exit 2; }
 if [ $rc -ne 0 ]; then cat "$out"; echo "deslop: new structure findings (fix them from first principles, see AGENTS.md)" >&2; exit 1; fi
 deslop-please --update-allow "$now" > /dev/null 2>&1
 if ! diff <(grep -v '^#' .deslop-please.allow | sort) <(grep -v '^#' "$now" | sort) > /dev/null; then
