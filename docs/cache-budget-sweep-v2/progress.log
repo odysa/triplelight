@@ -1,0 +1,10 @@
+23:05:54 building binary at a08e3440
+23:06:51 building lubm1000 store (default four orders)
+23:22:00 built lubm1000: 3.0G
+23:22:00 building bsbm100 store (default four orders)
+23:38:48 built bsbm100: 6.1G
+23:38:48 sweep lubm1000 (ascending)
+00:03:23 lubm1000 exit 0
+00:03:23 sweep bsbm100 (descending)
+00:05:01 bsbm100 exit 0
+00:05:02 ALL-DONE
