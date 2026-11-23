@@ -38,6 +38,8 @@ mod fixed_sort;
 
 #[cfg(unix)]
 pub mod external_build;
+#[cfg(all(test, unix))]
+mod external_build_tests;
 
 #[cfg(unix)]
 mod derived_order;

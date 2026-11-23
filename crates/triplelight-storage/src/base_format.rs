@@ -10,3 +10,9 @@ pub const ALL_ORDERS: u8 = 0b11_1111;
 pub const REQUIRED_ORDERS: u8 = 0b01_1101;
 /// The RDF 1.2 triple-term parts table of an `RDFSNAP7` base.
 pub(crate) const TRIPLE_TERMS_FILE: &str = "triple_terms";
+/// The files of a triple base: the dictionary, then the six orders in `Perm::ALL` order.
+pub(crate) const FILES: [&str; 7] = ["dictionary", "spo", "sop", "pso", "pos", "osp", "ops"];
+/// The graph-first quad orders of an `RDFSNAP5`/`RDFSNAP6` base (task #36), in `Perm::ALL` order of their triple part.
+pub(crate) const QUAD_FILES: [&str; 6] = ["gspo", "gsop", "gpso", "gpos", "gosp", "gops"];
+/// The graph catalog of an `RDFSNAP5` base: every named graph's ID and triple count, empty graphs included.
+pub(crate) const CATALOG_FILE: &str = "graphs";
