@@ -53,30 +53,6 @@ fn format_from_accept(accept: &str) -> Format {
     best.map_or(Format::Json, |(_, f)| f)
 }
 
-#[cfg(test)]
-mod accept_tests {
-    use super::*;
-
-    #[test]
-    fn q_zero_is_not_acceptable() {
-        assert!(format_from_accept("text/csv;q=0, application/sparql-results+json") == Format::Json);
-    }
-    #[test]
-    fn first_listed_wins_a_tie_and_higher_q_wins_otherwise() {
-        assert!(format_from_accept("text/csv, text/tab-separated-values") == Format::Csv);
-        assert!(format_from_accept("text/tab-separated-values, text/csv") == Format::Tsv);
-        assert!(format_from_accept("text/csv;q=0.5, text/tab-separated-values;q=0.9") == Format::Tsv);
-    }
-    #[test]
-    fn whole_media_types_only_and_json_is_the_default() {
-        assert!(format_from_accept("") == Format::Json);
-        assert!(format_from_accept("*/*") == Format::Json);
-        assert!(format_from_accept("text/csv-schema") == Format::Json);
-        assert!(format_from_accept("application/sparql-results+json;q=0.2, text/csv;q=0.8") == Format::Csv);
-        assert!(format_from_accept("TEXT/CSV; charset=utf-8") == Format::Csv);
-    }
-}
-
 fn accept_of(req: &tiny_http::Request) -> Format {
     format_from_accept(&req.headers().iter().find(|h| h.field.equiv("Accept")).map(|h| h.value.as_str().to_string()).unwrap_or_default())
 }
@@ -331,3 +307,26 @@ fn serve_memory(args: &[String]) {
             }); } });
 }
 
+#[cfg(test)]
+mod accept_tests {
+    use super::*;
+
+    #[test]
+    fn q_zero_is_not_acceptable() {
+        assert!(format_from_accept("text/csv;q=0, application/sparql-results+json") == Format::Json);
+    }
+    #[test]
+    fn first_listed_wins_a_tie_and_higher_q_wins_otherwise() {
+        assert!(format_from_accept("text/csv, text/tab-separated-values") == Format::Csv);
+        assert!(format_from_accept("text/tab-separated-values, text/csv") == Format::Tsv);
+        assert!(format_from_accept("text/csv;q=0.5, text/tab-separated-values;q=0.9") == Format::Tsv);
+    }
+    #[test]
+    fn whole_media_types_only_and_json_is_the_default() {
+        assert!(format_from_accept("") == Format::Json);
+        assert!(format_from_accept("*/*") == Format::Json);
+        assert!(format_from_accept("text/csv-schema") == Format::Json);
+        assert!(format_from_accept("application/sparql-results+json;q=0.2, text/csv;q=0.8") == Format::Csv);
+        assert!(format_from_accept("TEXT/CSV; charset=utf-8") == Format::Csv);
+    }
+}
