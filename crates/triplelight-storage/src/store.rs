@@ -335,6 +335,10 @@ fn lock_directory(file: &File) -> std::io::Result<()> {
     }
 }
 
+/// The store root's scratch directory, beside the bases: large derived-order regroups spill here (`derived_order.rs`).
+/// Emptied at every open, which holds the directory lock.
+pub(crate) const SCRATCH_DIR: &str = "scratch";
+
 /// A persistent store: base file + WAL in a directory.
 pub struct Store {
     dir: PathBuf,
@@ -395,6 +399,8 @@ impl Store {
             }
             Err(e) => return Err(e),
         };
+        // Spill scratch of a process that ended mid-regroup (derived orders): nothing in it outlives that process.
+        let _ = std::fs::remove_dir_all(dir.join(SCRATCH_DIR));
         // Leftovers of crashed compactions or superseded bases.
         for entry in std::fs::read_dir(&dir)? {
             let name = entry?.file_name().to_string_lossy().into_owned();
@@ -1355,6 +1361,38 @@ mod dataset_wal_tests {
         assert_eq!(state(&store.snapshot()), want);
     }
 
+    /// A large derived-order regroup on a store spills into `<store>/scratch/` (beside the bases, never inside one),
+    /// leaves nothing there once the scan is done, and the next open removes the directory.
+    #[cfg(unix)]
+    #[test]
+    fn derived_order_spill_uses_the_store_scratch() {
+        use crate::model::Perm;
+        let dir = std::env::temp_dir().join(format!("rdf-spill-store-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let open = || Store::open_with(&dir, None, Box::new(crate::DiskBase { workers: 1 })).unwrap();
+        let iri = |s: String| triplelight_rdf::NamedNode::new(format!("http://ex/{s}")).unwrap();
+        {
+            let store = open();
+            let changes: Vec<_> = (0..3000).map(|i| (Change::Insert, Triple::new(iri(format!("s{i}")), iri(format!("p{}", i % 3)), iri("o".into())))).collect();
+            store.commit(&changes).unwrap();
+            store.compact().unwrap();
+            crate::derived_order::spill_on_this_thread(Some(1), None);
+            let snap = store.snapshot();
+            let o = snap.lookup(&iri("o".into()).into()).unwrap().unwrap();
+            let rows: usize = snap.base().scan(Perm::Ops, &[o]).map(|b| b.unwrap().len()).sum();
+            crate::derived_order::spill_on_this_thread(None, None);
+            assert_eq!(rows, 3000);
+            let scratch = dir.join(SCRATCH_DIR);
+            assert!(scratch.is_dir(), "the spill used the store's scratch directory");
+            assert_eq!(std::fs::read_dir(&scratch).unwrap().count(), 0, "nothing left once the scan is done");
+            let generation = std::fs::read_to_string(dir.join("CURRENT")).unwrap();
+            let base = dir.join(generation.trim().rsplit(' ').next().unwrap());
+            assert!(std::fs::read_dir(&base).unwrap().all(|e| !e.unwrap().file_name().to_string_lossy().starts_with(".rdf-")), "the base is untouched");
+        }
+        drop(open());
+        assert!(!dir.join(SCRATCH_DIR).exists(), "open empties the scratch");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
     #[test]
     fn current_parsing() {
         assert_eq!(parse_current("base-7\n").unwrap(), Some((7, false, false)));
