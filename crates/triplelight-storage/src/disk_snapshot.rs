@@ -589,6 +589,17 @@ impl Dictionary for DiskSnapshot {
             DictionaryBackend::Unified(unified) => Ok(unified.find_term(term.to_string().as_bytes())?.map(|v| v.0)),
         }
     }
+    /// Only the unified dictionary (`RDFSNAP4` and later) keeps a kind's IDs in term-text order; the legacy and
+    /// two-file layouts number terms in load order.
+    fn literal_text_bound(&self, text: &str, strict: bool) -> Result<Option<TermId>, StorageError> {
+        use crate::model::id_tag::LITERAL;
+        match &self.dictionary {
+            DictionaryBackend::Unified(unified) => Ok(Some(
+                unified.text_lower_bound(LITERAL, text.as_bytes(), strict)?.unwrap_or(TermId((LITERAL + 1) << 60)),
+            )),
+            DictionaryBackend::Legacy { .. } | DictionaryBackend::Lazy { .. } => Ok(None),
+        }
+    }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> {
         let mut value = None;
         self.with_term(id, &mut |v| value = Some(v.into_owned()))?;
@@ -734,6 +745,7 @@ impl Dictionary for DiskGraph {
     #[cfg(feature = "rdf-12")]
     fn triple_term_parts(&self, id: TermId) -> Result<Option<[TermId; 3]>, StorageError> { self.snap.triple_term_parts(id) }
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { self.snap.lookup(term) }
+    fn literal_text_bound(&self, text: &str, strict: bool) -> Result<Option<TermId>, StorageError> { self.snap.literal_text_bound(text, strict) }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> { self.snap.resolve(id) }
     fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.snap.with_term(id, f) }
     fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> {

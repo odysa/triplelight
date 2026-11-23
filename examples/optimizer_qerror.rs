@@ -205,6 +205,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         raw_ids: false,
                         general_group: false,
                         count_pushdown: true,
+                        range_pushdown: true,
                     },
                 )?
                 else {

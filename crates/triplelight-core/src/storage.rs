@@ -22,6 +22,12 @@ pub trait Dictionary {
         }
         Ok(())
     }
+    /// For stores whose stored literal IDs (tag `id_tag::LITERAL`) ascend with the literals' N-Triples text
+    /// (`Term::to_string()`, the unified disk dictionary): the smallest stored literal ID whose text is `>= text`, or
+    /// `> text` when `strict`. When no stored literal qualifies it is `TermId((id_tag::LITERAL + 1) << 60)`, one past
+    /// every literal ID. `Ok(None)` means the store makes no such ordering promise (the default), and callers must
+    /// not derive ID ranges from term text. IDs of other tags (overlay deltas, inline terms) are never covered.
+    fn literal_text_bound(&self, _text: &str, _strict: bool) -> Result<Option<TermId>, StorageError> { Ok(None) }
     /// The IDs of the subject, predicate and object of triple term `id` (RDF 1.2), or `None` if `id` is not a triple
     /// term. Every part of a stored triple term is a stored term. The default resolves the term and looks up its
     /// parts; stores with a parts table answer from it.

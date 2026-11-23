@@ -16,6 +16,9 @@ pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
     pub snap: &'a S,
     /// Row width (number of query variables).
     pub w: usize,
+    /// Patterns whose object scan is restricted by a pushed-down range filter (`range.rs`), by (predicate, object
+    /// variable). Used only when the pattern's subject and object are unbound.
+    pub ranges: Option<&'a super::range::Ranges>,
 }
 
 /// Appends `row` extended by one matching index row, where `value(k)` is that row's value at key position `k`.
@@ -87,15 +90,51 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             Slot::Var(v) if bound.contains(&v) => Some(sample[v]),
             _ => None,
         });
-        let (perm, prefix, n) = choose_perm(&fixed);
-        let c = self.count(perm, &prefix[..n]) as f64;
+        let c = match self.ranged(pat, |v| bound.contains(&v)) {
+            Some(r) => r.rows as f64,
+            None => { let (perm, prefix, n) = choose_perm(&fixed); self.count(perm, &prefix[..n]) as f64 }
+        };
         let connected = pat.iter().any(|s| matches!(s, Slot::Var(v) if bound.contains(v)));
         if bound.is_empty() || connected { c } else { c * 1e6 } // avoid cross products
+    }
+
+    /// The pushed-down object range of `pat` if it has one and neither its subject nor its object is bound
+    /// (`is_bound`); otherwise the pattern is read through its bound positions as usual.
+    fn ranged(&self, pat: &[Slot; 3], is_bound: impl Fn(usize) -> bool) -> Option<&'a super::range::ObjRange> {
+        let [Slot::Var(s), Slot::Const(Some(p)), Slot::Var(o)] = *pat else { return None };
+        if is_bound(o) || is_bound(s) { return None }
+        self.ranges?.get(&(p, o))
+    }
+
+    /// `pat` read through its pushed-down object range: POS with the predicate and each candidate object bound, so
+    /// only triples whose object can pass the range filter are produced (the filter itself still runs afterwards).
+    fn extend_range(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
+        let w = self.w;
+        if w == 0 || rows.is_empty() { return None }
+        let first = &rows[..w];
+        let r = self.ranged(pat, |v| first[v] != UNBOUND)?;
+        let [Slot::Var(s), Slot::Const(Some(p)), Slot::Var(o)] = *pat else { return None };
+        if rows.chunks_exact(w).any(|row| row[o] != UNBOUND || row[s] != UNBOUND) { return None }
+        // POS key order: predicate, object, subject.
+        let order = Perm::Pos.order();
+        let mut matches: Vec<[TermId; 3]> = Vec::with_capacity(r.rows.min(1 << 24) as usize);
+        for &obj in &r.objects {
+            for b in self.snap.scan(Perm::Pos, &[p, obj]) {
+                let b = b.unwrap_or_else(|e| storage_failure(e));
+                matches.extend((0..b.len()).map(|i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]));
+            }
+        }
+        let mut out = Vec::with_capacity(matches.len() * (rows.len() / w));
+        for row in rows.chunks_exact(w) {
+            for t in &matches { push_extension(&mut out, row, pat, &order, 1, |k| t[k]) }
+        }
+        Some(out)
     }
 
     /// Index nested-loop join of `rows` with one pattern: one index range read per input row.
     pub fn extend(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> {
         let w = self.w;
+        if let Some(out) = self.extend_range(pat, rows) { return out }
         if let Some(out) = self.extend_member_set(pat, rows) { return out }
         if let Some(out) = self.extend_hash(pat, rows) { return out }
         if rows.len() / w.max(1) >= 2 * MORSEL {

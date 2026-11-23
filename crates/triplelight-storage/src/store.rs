@@ -111,6 +111,11 @@ impl Dictionary for DictRef<'_> {
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> {
         Ok(self.base.lookup(term)?.or_else(|| self.delta.terms.get(term).copied()))
     }
+    /// The base's literal IDs keep their order; terms first seen in the delta have the delta tag and are outside
+    /// every range this returns (callers cover them separately).
+    fn literal_text_bound(&self, text: &str, strict: bool) -> Result<Option<TermId>, StorageError> {
+        self.base.literal_text_bound(text, strict)
+    }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> {
         if id.0 >> 60 == DELTA_TAG { Ok(self.delta_term(id)?.clone()) } else { self.base.resolve(id) }
     }
@@ -131,6 +136,7 @@ impl Dictionary for Overlay {
     #[cfg(feature = "rdf-12")]
     fn triple_term_parts(&self, id: TermId) -> Result<Option<[TermId; 3]>, StorageError> { self.dict().triple_term_parts(id) }
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { self.dict().lookup(term) }
+    fn literal_text_bound(&self, text: &str, strict: bool) -> Result<Option<TermId>, StorageError> { self.dict().literal_text_bound(text, strict) }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> { self.dict().resolve(id) }
     fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> { self.dict().with_term(id, f) }
     fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, TermRef<'_>)) -> Result<(), StorageError> {
