@@ -12,8 +12,13 @@ use std::sync::{Arc, OnceLock, RwLock};
 
 const MAGIC_V2: &[u8; 8] = b"RDFIDX02";
 const MAGIC_V3: &[u8; 8] = b"RDFIDX03";
+/// `RDFIDX03` plus tag-rotated columns in blocks (`block_codec::ROTATED`, task #105). Written by default; `RDFIDX03`
+/// files stay readable.
+const MAGIC_V4: &[u8; 8] = b"RDFIDX04";
 /// Graph-first quad indexes (task #36): four IDs per row, otherwise the `RDFIDX03` layout.
 const MAGIC_QUAD_V1: &[u8; 8] = b"RDFQIX01";
+/// `RDFQIX01` plus tag-rotated columns, as `RDFIDX04` is to `RDFIDX03`.
+const MAGIC_QUAD_V2: &[u8; 8] = b"RDFQIX02";
 const HEADER: u64 = 24;
 /// Cache shares of a triple-only snapshot (see `DiskIndex::open_with_share`).
 pub const DEFAULT_SHARES: usize = 9;
@@ -98,17 +103,23 @@ fn invalid(reason: &'static str) -> io::Error {
 /// width has its own per-thread block memo, so the triple index's hot path is unchanged.
 pub struct Width<const N: usize>;
 pub trait SupportedWidth<const N: usize> {
+    /// The compressed format written, which allows tag-rotated columns.
     #[doc(hidden)]
     const MAGIC: &'static [u8; 8];
+    /// The previous compressed format (no rotated columns), still read.
+    #[doc(hidden)]
+    const OLDER: &'static [u8; 8];
     #[doc(hidden)]
     fn memo() -> &'static std::thread::LocalKey<std::cell::RefCell<[MemoEntry<N>; MEMO_SLOTS]>>;
 }
 impl SupportedWidth<3> for Width<3> {
-    const MAGIC: &'static [u8; 8] = MAGIC_V3;
+    const MAGIC: &'static [u8; 8] = MAGIC_V4;
+    const OLDER: &'static [u8; 8] = MAGIC_V3;
     fn memo() -> &'static std::thread::LocalKey<std::cell::RefCell<[MemoEntry<3>; MEMO_SLOTS]>> { &BLOCK_MEMO }
 }
 impl SupportedWidth<4> for Width<4> {
-    const MAGIC: &'static [u8; 8] = MAGIC_QUAD_V1;
+    const MAGIC: &'static [u8; 8] = MAGIC_QUAD_V2;
+    const OLDER: &'static [u8; 8] = MAGIC_QUAD_V1;
     fn memo() -> &'static std::thread::LocalKey<std::cell::RefCell<[MemoEntry<4>; MEMO_SLOTS]>> { &BLOCK_MEMO_QUAD }
 }
 /// Bytes of one uncompressed row of width `N`.
@@ -202,7 +213,7 @@ where
             if block.is_empty() {
                 return Ok(());
             }
-            let bytes = super::block_codec::encode(block)?;
+            let bytes = super::block_codec::encode(block, true)?;
             for id in block.last().unwrap() {
                 meta.extend_from_slice(&id.0.to_le_bytes());
             }
@@ -282,6 +293,8 @@ pub struct DiskIndex<const N: usize = 3> {
     identity: [u8; 32],
     blocks: Vec<BlockMeta<N>>,
     compressed: bool,
+    /// The format allows tag-rotated block columns (`RDFIDX04`/`RDFQIX02`).
+    rotated: bool,
     cache: Vec<RwLock<CacheShard<N>>>,
     shard_capacity: usize,
     trace_slot: Option<usize>,
@@ -313,9 +326,10 @@ where
         let file = File::open(path)?;
         let mut header = [0; 24];
         read_exact_at(&file, &mut header, 0)?;
-        let compressed = match &header[..8] {
-            m if N == 3 && m == MAGIC_V2 => false,
-            m if m == <Width<N> as SupportedWidth<N>>::MAGIC => true,
+        let (compressed, rotated) = match &header[..8] {
+            m if N == 3 && m == MAGIC_V2 => (false, false),
+            m if m == <Width<N> as SupportedWidth<N>>::OLDER => (true, false),
+            m if m == <Width<N> as SupportedWidth<N>>::MAGIC => (true, true),
             _ => return Err(invalid("bad index magic or version")),
         };
         let rows = u64::from_le_bytes(header[8..16].try_into().unwrap());
@@ -399,6 +413,7 @@ where
             identity: footer,
             blocks: entries,
             compressed,
+            rotated,
             cache: (0..16)
                 .map(|_| {
                     RwLock::new(CacheShard {
@@ -528,7 +543,7 @@ where
             return Err(invalid("index block checksum mismatch"));
         }
         let rows: Vec<_> = if self.compressed {
-            super::block_codec::decode::<N>(&bytes, n)?
+            super::block_codec::decode::<N>(&bytes, n, self.rotated)?
         } else {
             bytes.chunks_exact(row_bytes(N) as usize).map(decode_row::<N>).collect()
         };
@@ -890,7 +905,7 @@ mod tests {
         assert!(rows.len() > 2 * BLOCK_ROWS as usize, "spans several blocks: {}", rows.len());
         let mut bytes = Vec::new();
         write_index(&mut bytes, rows.clone().into_iter()).unwrap();
-        assert_eq!(&bytes[..8], MAGIC_QUAD_V1);
+        assert_eq!(&bytes[..8], MAGIC_QUAD_V2);
         std::fs::write(&path, &bytes).unwrap();
         let index = DiskIndex::<4>::open(&path).unwrap();
         index.validate().unwrap();

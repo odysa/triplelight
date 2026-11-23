@@ -74,12 +74,15 @@ before it, and the manifest holds that same checksum.
 written by a pre-release `rdf-12` build (main e51312ec, before #168) has no `triple_terms` table and is refused with
 "RDFSNAP7 base without a triple-term table: rebuild it".
 
-- **Triple orders** are the files `spo`, `sop`, `pso`, `pos`, `osp`, `ops` (format `RDFIDX03`; `RDFIDX02` is still
-  read). Each holds the triples sorted by its key, in blocks of 256 rows. A block is compressed (the first column is
-  delta-coded, the others are stored relative to the block minimum, and each column is bit-packed to its widest
-  value) and has its own SHA-256. The block directory, holding each block's last key, SHA-256 and byte length, is read
+- **Triple orders** are the files `spo`, `sop`, `pso`, `pos`, `osp`, `ops` (format `RDFIDX04`; `RDFIDX03` and
+  `RDFIDX02` are still read). Each holds the triples sorted by its key, in blocks of 256 rows. A block is compressed
+  (the first column is delta-coded, the others are stored relative to the block minimum, and each column is bit-packed
+  to its widest value) and has its own SHA-256. In `RDFIDX04`, a column other than the first may be stored with each
+  ID's 4-bit kind tag rotated to the low bits, flagged by the top bit of its width byte. The encoder does this when it
+  is narrower, as for an SPO object column that mixes IRIs, literals and inline numbers; `RDFIDX03` readers refuse such
+  a file by its magic. The block directory, holding each block's last key, SHA-256 and byte length, is read
   at open.
-- **Quad orders** (`RDFSNAP5`/`6`) are the files `gspo` … `gops` (format `RDFQIX01`): the same layout with four IDs
+- **Quad orders** (`RDFSNAP5`/`6`) are the files `gspo` … `gops` (format `RDFQIX02`; `RDFQIX01` is still read): the same layout with four IDs
   per row, graph first. The **catalog** `graphs` (`RDFGRA01`) lists every named graph's ID and triple count, empty
   graphs included.
 - **The unified dictionary** (`RDFDID02`) is one front-coded file in ID order. IDs carry their kind in the top four

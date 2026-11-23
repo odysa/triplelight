@@ -9,13 +9,34 @@ fn invalid(message: &'static str) -> io::Error {
 /// Bytes before the packed columns of an `N`-column block: `N` bases and `N` bit widths.
 pub(super) const fn header_len(n: usize) -> usize { n * 9 }
 
+/// Width-byte flag (`RDFIDX04`/`RDFQIX02` and later): the column's values are stored as `id.rotate_left(TAG_BITS)`,
+/// which moves the 4-bit term tag (`id >> 60`) to the bottom. A block whose column mixes term kinds (an SPO object
+/// column holding IRIs, literals and inline numbers) then spans the kinds' rank ranges instead of about 2^62. Widths
+/// are at most 64, so the top bit of the width byte is free; older formats reject it.
+const ROTATED: u8 = 0x80;
+const TAG_BITS: u32 = 4;
+
+fn bit_width(span: u64) -> u8 { (64 - span.leading_zeros()) as u8 }
+
 /// `N` 64-bit bases, `N` bit widths, then `N` tightly packed columns (`N` = 3 for triples, 4 for quads; the 3-column
-/// layout is unchanged). First column is delta-coded from the preceding row; the others use block minima.
-pub(super) fn encode<const N: usize>(rows: &[[TermId; N]]) -> io::Result<Vec<u8>> {
+/// layout is unchanged). First column is delta-coded from the preceding row; the others use block minima, of the IDs
+/// or, if `rotate` allows and it is narrower, of the tag-rotated IDs (flag `ROTATED` in that column's width byte).
+pub(super) fn encode<const N: usize>(rows: &[[TermId; N]], rotate: bool) -> io::Result<Vec<u8>> {
     if rows.is_empty() || rows.len() > 256 {
         return Err(invalid("invalid block row count"));
     }
-    let base: [u64; N] = std::array::from_fn(|c| if c == 0 { rows[0][0].0 } else { rows.iter().map(|r| r[c].0).min().unwrap() });
+    // Per column after the first: rotate when that gives a narrower span (ties keep the plain IDs).
+    let rotated: [bool; N] = std::array::from_fn(|c| {
+        c > 0 && rotate && {
+            let span = |f: &dyn Fn(u64) -> u64| {
+                let (lo, hi) = rows.iter().fold((u64::MAX, 0), |(l, h), r| (l.min(f(r[c].0)), h.max(f(r[c].0))));
+                hi - lo
+            };
+            bit_width(span(&|v| v.rotate_left(TAG_BITS))) < bit_width(span(&|v| v))
+        }
+    });
+    let stored = |c: usize, v: u64| if rotated[c] { v.rotate_left(TAG_BITS) } else { v };
+    let base: [u64; N] = std::array::from_fn(|c| if c == 0 { rows[0][0].0 } else { rows.iter().map(|r| stored(c, r[c].0)).min().unwrap() });
     let mut values: [Vec<u64>; N] = std::array::from_fn(|_| Vec::with_capacity(rows.len()));
     let mut prev = base[0];
     for row in rows {
@@ -26,7 +47,7 @@ pub(super) fn encode<const N: usize>(rows: &[[TermId; N]]) -> io::Result<Vec<u8>
         values[0].push(first);
         prev = row[0].0;
         for c in 1..N {
-            values[c].push(row[c].0 - base[c]);
+            values[c].push(stored(c, row[c].0) - base[c]);
         }
     }
     let widths = values
@@ -36,7 +57,7 @@ pub(super) fn encode<const N: usize>(rows: &[[TermId; N]]) -> io::Result<Vec<u8>
     for n in base {
         out.extend_from_slice(&n.to_le_bytes());
     }
-    out.extend_from_slice(&widths);
+    out.extend(widths.iter().zip(rotated).map(|(w, r)| if r { w | ROTATED } else { *w }));
     for col in 0..N {
         let width = widths[col] as usize;
         let mut acc = 0u128;
@@ -57,13 +78,16 @@ pub(super) fn encode<const N: usize>(rows: &[[TermId; N]]) -> io::Result<Vec<u8>
     Ok(out)
 }
 
-pub(super) fn decode<const N: usize>(data: &[u8], count: usize) -> io::Result<Vec<[TermId; N]>> {
+/// `rotate`: the file's format allows tag-rotated columns (`RDFIDX04`/`RDFQIX02`); older blocks never set the flag.
+pub(super) fn decode<const N: usize>(data: &[u8], count: usize, rotate: bool) -> io::Result<Vec<[TermId; N]>> {
     if count == 0 || count > 256 || data.len() < header_len(N) {
         return Err(invalid("invalid compressed block"));
     }
     let base: [u64; N] = std::array::from_fn(|i| u64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap()));
-    let widths: [u8; N] = std::array::from_fn(|i| data[N * 8 + i]);
-    if widths.iter().any(|w| *w > 64) {
+    let flags: [u8; N] = std::array::from_fn(|i| data[N * 8 + i]);
+    let rotated: [bool; N] = std::array::from_fn(|i| flags[i] & ROTATED != 0);
+    let widths: [u8; N] = std::array::from_fn(|i| flags[i] & !ROTATED);
+    if widths.iter().any(|w| *w > 64) || (rotated.iter().any(|r| *r) && !rotate) || rotated[0] {
         return Err(invalid("invalid column bit width"));
     }
     let mut rows = vec![[TermId(0); N]; count];
@@ -94,7 +118,7 @@ pub(super) fn decode<const N: usize>(data: &[u8], count: usize) -> io::Result<Ve
                 base[col].checked_add(delta)
             }
             .ok_or_else(|| invalid("compressed ID overflow"))?;
-            row[col] = TermId(value);
+            row[col] = TermId(if rotated[col] { value.rotate_right(TAG_BITS) } else { value });
             last = value;
         }
         if acc != 0 {
@@ -124,10 +148,10 @@ mod tests {
                 first += rng & 31;
                 rows.push([TermId(first), TermId((rng & 0xffff) + 1), TermId(rng | 1)]);
             }
-            let data = encode(&rows).unwrap();
-            assert_eq!(decode::<3>(&data, count).unwrap(), rows);
+            let data = encode(&rows, true).unwrap();
+            assert_eq!(decode::<3>(&data, count, true).unwrap(), rows);
             for cut in [0, 26, data.len() - 1] {
-                assert!(decode::<3>(&data[..cut], count).is_err());
+                assert!(decode::<3>(&data[..cut], count, true).is_err());
             }
         }
     }
@@ -143,15 +167,15 @@ mod tests {
                 first += rng & 3;
                 [TermId(first), TermId((rng & 0xff) + 1), TermId(rng | 1), TermId((rng >> 3) | 1)]
             }).collect();
-            let data = encode(&rows).unwrap();
+            let data = encode(&rows, true).unwrap();
             assert_eq!(data[..8], first_base(&rows));
-            assert_eq!(decode::<4>(&data, count).unwrap(), rows);
-            assert!(decode::<4>(&data[..header_len(4) - 1], count).is_err());
-            assert!(decode::<4>(&data[..data.len() - 1], count).is_err());
+            assert_eq!(decode::<4>(&data, count, true).unwrap(), rows);
+            assert!(decode::<4>(&data[..header_len(4) - 1], count, true).is_err());
+            assert!(decode::<4>(&data[..data.len() - 1], count, true).is_err());
         }
         // The triple layout is byte-for-byte the pre-generic one: bases, widths, then packed columns.
         let rows = [[TermId(3), TermId(5), TermId(9)], [TermId(4), TermId(6), TermId(9)]];
-        assert_eq!(encode(&rows).unwrap(), [
+        assert_eq!(encode(&rows, true).unwrap(), [
             3, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, // bases
             1, 1, 0, // widths: first-column deltas 0,1; second column 0,1; third column constant
             0b10, 0b10, // packed columns 0 and 1 (two 1-bit values each); column 2 has width 0
@@ -165,16 +189,38 @@ mod tests {
             [TermId(1), TermId(8), TermId(1)],
             [TermId(u64::MAX), TermId(u64::MAX), TermId(9)],
         ];
-        let bytes = encode(&rows).unwrap();
-        assert_eq!(decode::<3>(&bytes, rows.len()).unwrap(), rows);
+        let bytes = encode(&rows, true).unwrap();
+        assert_eq!(decode::<3>(&bytes, rows.len(), true).unwrap(), rows);
         let same = vec![[TermId(5), TermId(6), TermId(7)]; 256];
-        assert_eq!(decode::<3>(&encode(&same).unwrap(), 256).unwrap(), same);
-        assert!(decode::<3>(&bytes[..26], rows.len()).is_err());
+        assert_eq!(decode::<3>(&encode(&same, true).unwrap(), 256, true).unwrap(), same);
+        assert!(decode::<3>(&bytes[..26], rows.len(), true).is_err());
         let mut bad = bytes.clone();
         bad[24] = 65;
-        assert!(decode::<3>(&bad, rows.len()).is_err());
+        assert!(decode::<3>(&bad, rows.len(), true).is_err());
         let mut bad = bytes;
         bad.push(0);
-        assert!(decode::<3>(&bad, rows.len()).is_err());
+        assert!(decode::<3>(&bad, rows.len(), true).is_err());
+    }
+    #[test]
+    fn mixed_tag_columns_rotate_and_older_formats_reject_the_flag() {
+        // An SPO-like block: subjects ascend, predicates are IRIs, objects mix IRIs (tag 1), literals (tag 3) and
+        // inline numbers (tag 0xf).
+        let tag = |t: u64, rank: u64| TermId((t << 60) | rank);
+        let rows: Vec<[TermId; 3]> = (0..256u64)
+            .map(|i| [tag(1, 1000 + i / 8), tag(1, 7 + i % 8), tag([1, 3, 0xf][(i % 3) as usize], 50_000 + i * 13)])
+            .collect();
+        let data = encode(&rows, true).unwrap();
+        assert_eq!(data[24 + 2] & ROTATED, ROTATED, "the object column is rotated");
+        assert_eq!(data[24 + 1] & ROTATED, 0, "a single-tag column is not");
+        assert!((data[24 + 2] & !ROTATED) < 32, "rotation narrows the column from about 62 bits");
+        assert_eq!(decode::<3>(&data, 256, true).unwrap(), rows);
+        assert!(decode::<3>(&data, 256, false).is_err(), "RDFIDX03 readers reject a rotated block");
+        let plain = encode(&rows, false).unwrap();
+        assert!(plain.len() > data.len() + 256 * 3, "the plain encoding needs about 62 bits per object");
+        assert_eq!(decode::<3>(&plain, 256, false).unwrap(), rows);
+        assert_eq!(decode::<3>(&plain, 256, true).unwrap(), rows, "new readers read old blocks");
+        let mut bad = data.clone();
+        bad[24] |= ROTATED;
+        assert!(decode::<3>(&bad, 256, true).is_err(), "the delta-coded first column is never rotated");
     }
 }
