@@ -1,9 +1,9 @@
 #!/bin/bash
 # #83 cache-budget sweep driver. Takes and releases /tmp/rdf-bench.lock itself.
 set -u
-OUT=<workspace>/deliverables/cache-sweep-83
-REPO=<workspace>/triplelight-named-storage
-DATA=<workspace>/rdfdb/bench/tools
+OUT=${OUT:?set OUT; on the test laptop it was <workspace>/deliverables/cache-sweep-83}
+REPO=${REPO:?set REPO; on the test laptop it was <workspace>/triplelight-named-storage}
+DATA=${DATA:?set DATA; on the test laptop it was <workspace>/rdfdb/bench/tools}
 SHA=a03774f2
 WORK=/tmp/sweep83
 log() { echo "$(date -u +%H:%M:%S) $*" | tee -a "$OUT/progress.log"; }
