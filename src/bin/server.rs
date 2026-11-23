@@ -65,7 +65,7 @@ fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax
 /// never an empty result in place of a failure.
 fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>, fmt: Format) -> Resp {
     let before = triplelight::storage::disk_index::cache_trace_enabled().then(triplelight::storage::disk_index::cache_trace_snapshot);
-    let phases = triplelight::exec::phase::enabled().then(|| { triplelight::exec::phase::take(); Instant::now() });
+    let phases = triplelight::exec::phase::enabled().then(|| { triplelight::exec::phase::take(); triplelight::exec::phase::take_ranges(); Instant::now() });
     let exec_done = std::cell::Cell::new(None::<Instant>);
     let shape = std::cell::Cell::new((0usize, 0usize));
     let derived = triplelight::storage::derived_trace::enabled().then(|| { triplelight::storage::derived_trace::take(); Instant::now() });
@@ -103,11 +103,12 @@ fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'
     if let Some(t0) = phases {
         let end = Instant::now();
         let [parse, bgp, group, count, sort] = triplelight::exec::phase::take();
+        let ranges = triplelight::exec::phase::take_ranges();
         let exec_us = exec_done.get().map_or(0, |e| (e - t0).as_micros());
         let output_us = exec_done.get().map_or(0, |e| (end - e).as_micros());
         let (rows, cols) = shape.get();
         let head: String = q.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
-        eprintln!("phase_trace total_us={} parse_us={parse} bgp_us={bgp} group_us={group} count_us={count} sort_us={sort} exec_us={exec_us} output_us={output_us} rows={rows} cols={cols} query={head:?}", (end - t0).as_micros());
+        eprintln!("phase_trace total_us={} parse_us={parse} bgp_us={bgp} group_us={group} count_us={count} sort_us={sort} exec_us={exec_us} output_us={output_us} rows={rows} cols={cols} range_pushdown={ranges} query={head:?}", (end - t0).as_micros());
     }
     if let Some(t) = derived {
         let head: String = q.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();

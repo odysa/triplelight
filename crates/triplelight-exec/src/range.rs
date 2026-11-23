@@ -35,6 +35,10 @@
 //!    scratch and inline IDs. All of them sit above every literal and triple-term tag, so the pattern also scans every
 //!    object at or above `id_tag::DELTA` unrestricted; the residual filter decides those. Triples inserted with an
 //!    already stored literal object carry a base ID and are found by the merged overlay scan inside the interval.
+//!
+//! A range is pushed only if it holds at most `MAX_FRACTION` of the predicate's triples (exact per-object counts
+//! against `count(POS, [p])`); a denser one leaves the BGP's plan exactly as without the pushdown. Each decision is
+//! logged on the server's `phase_trace` line (`range_pushdown=on:0.031,...`) under `TRIPLELIGHT_TRACE_PHASES`.
 use super::bgp::Slot;
 use super::{storage_failure, Ctx, UNBOUND};
 use crate::model::{id_tag, Perm, TermId};
@@ -50,6 +54,8 @@ use std::sync::Arc;
 const CHECK_LIMIT: usize = 1 << 16;
 const FIRST_LITERAL: TermId = TermId(id_tag::LITERAL << 60);
 const END_LITERAL: TermId = TermId((id_tag::LITERAL + 1) << 60);
+/// The largest share of a predicate's triples a pushed range may hold (the selectivity gate in `object_range`).
+const MAX_FRACTION: f64 = 0.15;
 /// IDs from here up (delta, scratch, inline) are not in base dictionary order.
 const FIRST_UNORDERED: TermId = TermId(id_tag::DELTA << 60);
 
@@ -164,8 +170,20 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             literals[a..b].to_vec()
         } else { Vec::new() };
         self.objects_until(p, FIRST_UNORDERED, None, usize::MAX, &mut objects);
-        let rows = objects.iter().map(|&o| self.snap.count(Perm::Pos, &[p, o]).unwrap_or_else(|e| storage_failure(e))).sum();
-        Some(ObjRange { objects, rows })
+        // Selectivity gate: a range holding more than `MAX_FRACTION` of the predicate's triples is not pushed, so the
+        // pattern keeps exactly the unranged plan (reading most of a predicate object by object, then joining in
+        // object order, loses to its subject-ordered scan). Exact counts, one per object, stopping past the limit.
+        let total = self.snap.count(Perm::Pos, &[p]).unwrap_or_else(|e| storage_failure(e));
+        let limit = (total as f64 * MAX_FRACTION) as u64;
+        let mut rows = 0u64;
+        for &o in &objects {
+            rows += self.snap.count(Perm::Pos, &[p, o]).unwrap_or_else(|e| storage_failure(e));
+            if rows > limit { break }
+        }
+        let frac = if total == 0 { 0.0 } else { rows as f64 / total as f64 };
+        let pushed = rows <= limit;
+        super::phase::range_decision(pushed, frac);
+        pushed.then_some(ObjRange { objects, rows })
     }
 
     /// Appends the distinct objects of `p` in `[from, to)` (`to = None`: no upper end), ascending, found by index

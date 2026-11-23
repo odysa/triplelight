@@ -321,6 +321,37 @@ fn a_dense_range_costs_no_more_than_no_range() {
     }
 }
 
+/// The selectivity gate: a range holding more than 15% of the predicate's triples is not pushed, so the scans are
+/// exactly those of the unranged plan; at or below it, the range is pushed.
+#[test]
+fn a_range_over_the_fraction_takes_the_unranged_plan() {
+    let base = disk("fraction", &base_nt());
+    let scans = |q: &str, on: bool| {
+        let s = counting(&base.snap);
+        let got = answers(&s, q, &opts(on));
+        (got, s.rows.load(Ordering::Relaxed), s.scans.load(Ordering::Relaxed))
+    };
+    // <urn:date> has 306 triples (300 dates and 6 others), so the gate is 45 rows. From 2007-06-01 on is 160 dates
+    // plus 5 other literals in the ID interval, March-April and January-February 56 dates each: not pushed.
+    // 2007-10-10 to 2007-10-14 is 5 dates (under 2%): pushed.
+    for (cond, pushed) in [
+        (format!("?d >= {}", d("2007-06-01")), false),
+        (format!("?d >= {} && ?d < {}", d("2007-03-01"), d("2007-05-01")), false),
+        (format!("?d < {}", d("2007-03-01")), false),
+        (format!("?d >= {} && ?d <= {}", d("2007-10-10"), d("2007-10-14")), true),
+    ] {
+        for q in [select(&cond), format!("SELECT ?r ?p WHERE {{ ?r <urn:for> ?p . ?r <urn:date> ?d FILTER({cond}) }}")] {
+            let ((a, on_rows, on_scans), (b, off_rows, off_scans)) = (scans(&q, true), scans(&q, false));
+            assert_eq!(a, b, "{q}");
+            if pushed {
+                assert!(on_rows < off_rows, "{q}: not pushed ({on_rows} rows vs {off_rows})");
+            } else {
+                assert_eq!((on_rows, on_scans), (off_rows, off_scans), "{q}: a dense range changed the plan");
+            }
+        }
+    }
+}
+
 /// xorshift64*, as in the storage tests: deterministic and dependency-free.
 struct Rng(u64);
 impl Rng {
