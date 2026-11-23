@@ -104,7 +104,8 @@ import sys, json, re, os
 out, sys_, d, tag, mem, cpus, rc, start, end, w0, w1, final, linux = sys.argv[1:]
 rows = [l.rstrip("\n").split("\t") for l in open(os.path.join(out, "samples.tsv")) if l.strip()]
 num = lambda x: int(x) if x and x.isdigit() else None
-peak_dir = max([num(r[1]) or 0 for r in rows], default=0)
+# A load shorter than one sample interval can finish between samples; the final size is a lower bound on the peak.
+peak_dir = max([num(r[1]) or 0 for r in rows] + [int(final)])
 min_free = min([num(r[2]) for r in rows if num(r[2]) is not None], default=None)
 mem_peak = max([num(r[3]) for r in rows if num(r[3]) is not None], default=None)
 at = max(rows, key=lambda r: (num(r[4]) or 0) + (num(r[5]) or 0), default=None)
