@@ -382,7 +382,7 @@ impl ReadSnapshot {
     }
     /// Serializes SELECT IDs returned by this snapshot with batched dictionary access.
     pub fn serialize_ids(&self, ids: &exec::IdSolutions) -> Result<String, DatabaseError> {
-        Ok(exec::results::serialize_ids(ids, &*self.snapshot)?)
+        Ok(exec::results::serialize_ids_v(ids, &*self.snapshot, crate::storage::Snapshot::has_rdf12_terms(&*self.snapshot))?)
     }
     /// Serializes SELECT or ASK as SPARQL Results JSON; graph results are not JSON results.
     pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> {

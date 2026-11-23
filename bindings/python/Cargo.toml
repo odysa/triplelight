@@ -14,3 +14,7 @@ triplelight = { path = "../.." }
 
 # Built on its own (own toolchain and lockfile), not as a member of the root workspace.
 [workspace]
+
+[features]
+# SPARQL 1.2 / RDF 1.2 terms (triple terms, base direction), forwarded to the engine. Off by default.
+rdf-12 = ["triplelight/rdf-12"]

@@ -16,7 +16,7 @@ from typing import Iterator, Optional
 from . import _triplelight
 from ._triplelight import GraphStateError, LockedError, TripleLightError, StorageError, SyntaxError, UnsupportedError
 
-__all__ = ["Database", "Snapshot", "IRI", "BNode", "Literal", "Result",
+__all__ = ["Database", "Snapshot", "IRI", "BNode", "Literal", "Triple", "Result",
            "TripleLightError", "SyntaxError", "UnsupportedError", "StorageError", "LockedError", "GraphStateError"]
 
 
@@ -39,6 +39,16 @@ class Literal:
     value: str
     datatype: Optional[str] = None
     lang: Optional[str] = None
+    direction: Optional[str] = None  # RDF 1.2 base direction, "ltr" or "rtl", only with `lang`
+
+
+@dataclass(frozen=True)
+class Triple:
+    """An RDF 1.2 triple term (`<<( s p o )>>`): subject, predicate and object are themselves terms (IRI, BNode, a Python
+    value, Literal or Triple), so triple terms nest. Only appears when TripleLight is built with the `rdf-12` feature."""
+    subject: object
+    predicate: object
+    object: object
 
 
 class Row(tuple):
