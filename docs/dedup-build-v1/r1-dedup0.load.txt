@@ -1,14 +1,14 @@
 Mon Nov 23 05:41:05 UTC 2026
-tp-live-swegym-sgym7bsft-sg-getmoto-5835-7 Up 6 minutes
-tp-live-swegym-sgym7bsft-sg-getmoto-6618-6 Up 28 minutes
-tp-live-swegym-sgym7bsft-sg-getmoto-6409-6 Up 28 minutes
-tp-live-swegym-sgym7bsft-sg-getmoto-6376-6 Up 29 minutes
-raft-review-raft Up 11 days (healthy)
-raft-review Up 12 days (healthy)
-docker-rdf4j-1 Up 2 weeks
+<external container 1> Up 6 minutes
+<external container 2> Up 28 minutes
+<external container 3> Up 28 minutes
+<external container 4> Up 29 minutes
+<external container 5> Up 11 days (healthy)
+<external container 6> Up 12 days (healthy)
+<external container 7> Up 2 weeks
  %CPU COMM
  48.8 /opt/homebrew/Cellar/python@3.14/3.14.5/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python
  46.1 /usr/libexec/aned
- 32.8 /Applications/OrbStack.app/Contents/Frameworks/OrbStack Helper.app/Contents/MacOS/OrbStack Helper
+ 32.8 <external process>
  19.2 /usr/libexec/mobileassetd
  18.6 /usr/libexec/hybridsearchd

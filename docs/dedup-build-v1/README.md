@@ -21,7 +21,7 @@ One binary, external builds (`--build-external`, checked in each log), every sto
 ## LUBM-1000 ABBA (23.9 GB, 133.6M triples)
 
 Four-order external builds with dedup off, on, on, off, one at a time, each followed by `verify`. The same four
-external containers (`tp-live-swegym-*`, not this project's) ran in every arm (`r*.load.txt`).
+external containers (not this project's; names redacted, see `PROVENANCE.md`) ran in every arm (`r*.load.txt`).
 
 | | off r1 | on r2 | on r3 | off r4 |
 | --- | --- | --- | --- | --- |

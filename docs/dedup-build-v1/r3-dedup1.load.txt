@@ -1,11 +1,11 @@
 Mon Nov 23 06:12:45 UTC 2026
-tp-live-swegym-sgym7bsft-sg-getmoto-6190-7 Up 6 minutes
-tp-live-swegym-sgym7bsft-sg-getmoto-6127-7 Up 6 minutes
-tp-live-swegym-sgym7bsft-sg-getmoto-5920-7 Up 26 minutes
-tp-live-swegym-sgym7bsft-sg-getmoto-6376-6 Up About an hour
-raft-review-raft Up 11 days (healthy)
-raft-review Up 12 days (healthy)
-docker-rdf4j-1 Up 2 weeks
+<external container 9> Up 6 minutes
+<external container 10> Up 6 minutes
+<external container 8> Up 26 minutes
+<external container 4> Up About an hour
+<external container 5> Up 11 days (healthy)
+<external container 6> Up 12 days (healthy)
+<external container 7> Up 2 weeks
  %CPU COMM
  36.9 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds
  36.3 /System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent
