@@ -24,7 +24,7 @@ mod dataset;
 mod path;
 mod expr;
 mod support;
-#[cfg(feature = "sparql-12")]
+#[cfg(feature = "rdf-12")]
 mod triple_term;
 use bgp::Slot;
 pub mod results;
@@ -265,24 +265,24 @@ fn run_construct<S: Snapshot>(ctx: &mut Ctx<'_, S>, template: &[TriplePattern], 
     // collide with a blank node from the data that a solution binds (e.g. an input `_:tr0`), or one output node could
     // stand for two different nodes. Collect the labels of every blank node the solutions bind, stored or computed.
     // A template without blank nodes generates no labels, so there is nothing to reserve.
-    #[cfg(not(feature = "sparql-12"))]
+    #[cfg(not(feature = "rdf-12"))]
     let has_template_blanks = template.iter().any(|t| matches!(t.subject, TermPattern::BlankNode(_)) || matches!(t.object, TermPattern::BlankNode(_)));
     // Blank nodes nested in template triple terms are fresh per solution too.
-    #[cfg(feature = "sparql-12")]
+    #[cfg(feature = "rdf-12")]
     let has_template_blanks = template.iter().any(|t| triple_term::has_blank(&t.subject) || triple_term::has_blank(&t.object));
     let mut bound_ids = HashSet::new();
     if has_template_blanks {
-        #[cfg(not(feature = "sparql-12"))]
+        #[cfg(not(feature = "rdf-12"))]
         for r in &rows { for &id in r { if id != UNBOUND && matches!(id.0 >> 60, 2 | 0xe) { bound_ids.insert(id); } } }
         // Triple terms (tag 4) can carry blank nodes too; overlay delta IDs (tag 0xd) can be either.
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         for r in &rows { for &id in r { if id != UNBOUND && matches!(id.0 >> 60, 2 | 4 | 0xd | 0xe) { bound_ids.insert(id); } } }
     }
-    #[cfg(not(feature = "sparql-12"))]
+    #[cfg(not(feature = "rdf-12"))]
     let input_labels: HashSet<String> = bound_ids.into_iter()
         .filter_map(|id| match ctx.resolve(id) { Term::BlankNode(b) => Some(b.as_str().to_string()), _ => None })
         .collect();
-    #[cfg(feature = "sparql-12")]
+    #[cfg(feature = "rdf-12")]
     let input_labels: HashSet<String> = {
         let mut labels = HashSet::new();
         for id in bound_ids { triple_term::blank_labels(&ctx.resolve(id), &mut labels) }
@@ -304,7 +304,7 @@ fn run_construct<S: Snapshot>(ctx: &mut Ctx<'_, S>, template: &[TriplePattern], 
                 match tp {
                     TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(fresh(b.as_str(), n)).into()),
                     // A template triple term `<<( s p o )>>` emits a triple term (SPARQL 1.2).
-                    #[cfg(feature = "sparql-12")]
+                    #[cfg(feature = "rdf-12")]
                     TermPattern::Triple(t) => ctx.instantiate_triple(t, r, &|b: &BlankNode| -> Term { BlankNode::new_unchecked(fresh(b.as_str(), n)).into() }),
                     tp => ctx.term_slot(tp, r).and_then(|id| (id != UNBOUND).then(|| ctx.resolve(id))),
                 }
@@ -443,10 +443,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         for n in names { self.var_name(&n); }
     }
     fn register_triple(&mut self, t: &TriplePattern) {
-        #[cfg(not(feature = "sparql-12"))]
+        #[cfg(not(feature = "rdf-12"))]
         for tp in [&t.subject, &t.object] { if let TermPattern::Variable(v) = tp { self.var_name(v.as_str()); } }
         // Variables nested in template triple terms too.
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         for tp in [&t.subject, &t.object] {
             let mut names = Vec::new();
             triple_term::term_names(tp, false, &mut |n: String| names.push(n));
@@ -795,7 +795,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             TermPattern::Literal(l) => Slot::Const(self.lookup(&l.clone().into())),
             // A ground triple term is a constant; any other stands for its hidden variable, unified afterwards
             // (`triple_term::eval_bgp_triple_terms`).
-            #[cfg(feature = "sparql-12")]
+            #[cfg(feature = "rdf-12")]
             TermPattern::Triple(t) => match triple_term::hidden_var(t) {
                 Some(h) => Slot::Var(self.vars[&h]),
                 None => Slot::Const(triple_term::ground_term(t).and_then(|term| self.lookup(&term))),
@@ -807,7 +807,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     /// BGP evaluation that applies each filter in `filters` as soon as all its variables are bound.
     fn eval_bgp_filtered(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<Row> {
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         if patterns.iter().any(triple_term::has_triple_term) { return self.eval_bgp_triple_terms(patterns, rows, filters) }
         self.eval_bgp_slots(patterns, rows, filters)
     }
@@ -863,7 +863,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         if a == b { return None }
         // Renaming would change the hidden variables of triple-term patterns (named by the pattern text), which are
         // registered before evaluation; such BGPs keep the general path.
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         if patterns.iter().any(triple_term::has_triple_term) { return None }
         let non_literal = |v: &Variable| -> bool {
             let mut seen = false;
@@ -1164,13 +1164,13 @@ fn certainly_bound(p: &GraphPattern) -> HashSet<String> {
             walk_vars(&GraphPattern::Bgp { patterns: patterns.clone() }, &mut v);
             v.into_iter().collect()
         }
-        #[cfg(not(feature = "sparql-12"))]
+        #[cfg(not(feature = "rdf-12"))]
         GraphPattern::Path { subject, object, .. } => [subject, object].into_iter().filter_map(|t| match t {
             TermPattern::Variable(v) => Some(v.as_str().to_string()),
             _ => None,
         }).collect(),
         // Variables nested in a triple-term endpoint are bound by its unification too.
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         GraphPattern::Path { subject, object, .. } => {
             let mut b = HashSet::new();
             for t in [subject, object] { triple_term::term_names(t, false, &mut |n: String| { b.insert(n); }) }
@@ -1227,7 +1227,7 @@ fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
                     TermPattern::BlankNode(b) => add(format!("_:b{}", b.as_str())),
                     // Variables and blank nodes nested in a triple-term pattern (SPARQL 1.2 §18.3.1), then the hidden
                     // variable of its slot.
-                    #[cfg(feature = "sparql-12")]
+                    #[cfg(feature = "rdf-12")]
                     TermPattern::Triple(tt) => {
                         triple_term::term_names(tp, true, &mut add);
                         if let Some(h) = triple_term::hidden_var(tt) { add(h) }
@@ -1242,7 +1242,7 @@ fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
                 TermPattern::Variable(v) => add(v.as_str().to_string()),
                 // The parser splits `a (p|q)/r ?x` into two paths joined on a fresh blank node.
                 TermPattern::BlankNode(b) => add(format!("_:b{}", b.as_str())),
-                #[cfg(feature = "sparql-12")]
+                #[cfg(feature = "rdf-12")]
                 TermPattern::Triple(tt) => {
                     triple_term::term_names(tp, true, &mut add);
                     if let Some(h) = triple_term::hidden_var(tt) { add(h) }
@@ -1368,7 +1368,7 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                         GroundTermPattern::NamedNode(x) => Some(x.clone().into()),
                         GroundTermPattern::Literal(x) => Some(x.clone().into()),
                         GroundTermPattern::Variable(v) => var(v),
-                        #[cfg(feature = "sparql-12")]
+                        #[cfg(feature = "rdf-12")]
                         GroundTermPattern::Triple(t) => ground_triple_template(t, &var),
                     } };
                     let term = |t: &TermPattern| -> Option<Term> { match t {
@@ -1376,7 +1376,7 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                         TermPattern::Literal(x) => Some(x.clone().into()),
                         TermPattern::BlankNode(b) => Some(BlankNode::new_unchecked(format!("{}u{n}", b.as_str())).into()),
                         TermPattern::Variable(v) => var(v),
-                        #[cfg(feature = "sparql-12")]
+                        #[cfg(feature = "rdf-12")]
                         TermPattern::Triple(t) => triple_template(t, &var, &|b: &BlankNode| BlankNode::new_unchecked(format!("{}u{n}", b.as_str()))),
                     } };
                     let pred = |p: &NamedNodePattern| -> Option<triplelight_rdf::NamedNode> { match p {
@@ -1457,7 +1457,7 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
                     GroundTermPattern::NamedNode(x) => Some(x.clone().into()),
                     GroundTermPattern::Literal(x) => Some(x.clone().into()),
                     GroundTermPattern::Variable(v) => var(v),
-                    #[cfg(feature = "sparql-12")]
+                    #[cfg(feature = "rdf-12")]
                     GroundTermPattern::Triple(t) => ground_triple_template(t, &var),
                 } };
                 let term = |t: &TermPattern| -> Option<Term> { match t {
@@ -1465,7 +1465,7 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
                     TermPattern::Literal(x) => Some(x.clone().into()),
                     TermPattern::BlankNode(b) => Some(fresh(b, Some(n)).into()),
                     TermPattern::Variable(v) => var(v),
-                    #[cfg(feature = "sparql-12")]
+                    #[cfg(feature = "rdf-12")]
                     TermPattern::Triple(t) => triple_template(t, &var, &|b: &BlankNode| fresh(b, Some(n))),
                 } };
                 let pred = |p: &NamedNodePattern| -> Option<triplelight_rdf::NamedNode> { match p {
@@ -1562,7 +1562,7 @@ fn ground_to_term(g: &GroundTerm) -> Term {
     match g {
         GroundTerm::NamedNode(n) => n.clone().into(),
         GroundTerm::Literal(l) => l.clone().into(),
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         GroundTerm::Triple(t) => triplelight_rdf::Triple::new(t.subject.clone(), t.predicate.clone(), ground_to_term(&t.object)).into(),
     }
 }
@@ -1572,7 +1572,7 @@ fn ground_to_term(g: &GroundTerm) -> Term {
 pub fn map_blank_nodes(term: Term, f: &mut dyn FnMut(&BlankNode) -> BlankNode) -> Term {
     match term {
         Term::BlankNode(b) => Term::BlankNode(f(&b)),
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         Term::Triple(t) => {
             let t = *t;
             let subject = match t.subject { triplelight_rdf::NamedOrBlankNode::BlankNode(b) => triplelight_rdf::NamedOrBlankNode::BlankNode(f(&b)), s => s };
@@ -1583,7 +1583,7 @@ pub fn map_blank_nodes(term: Term, f: &mut dyn FnMut(&BlankNode) -> BlankNode) -
 }
 
 /// The predicate of an update template under a solution (`var`); `None` if unbound or not an IRI.
-#[cfg(feature = "sparql-12")]
+#[cfg(feature = "rdf-12")]
 fn template_predicate(p: &NamedNodePattern, var: &dyn Fn(&Variable) -> Option<Term>) -> Option<triplelight_rdf::NamedNode> {
     match p {
         NamedNodePattern::NamedNode(x) => Some(x.clone()),
@@ -1593,7 +1593,7 @@ fn template_predicate(p: &NamedNodePattern, var: &dyn Fn(&Variable) -> Option<Te
 
 /// A triple term of an INSERT template under a solution (`var`), template blank nodes mapped by `blank`; `None` if a
 /// slot is unbound or ill-typed (the template quad is then skipped).
-#[cfg(feature = "sparql-12")]
+#[cfg(feature = "rdf-12")]
 fn triple_template(t: &TriplePattern, var: &dyn Fn(&Variable) -> Option<Term>, blank: &dyn Fn(&BlankNode) -> BlankNode) -> Option<Term> {
     let term = |x: &TermPattern| -> Option<Term> { match x {
         TermPattern::NamedNode(n) => Some(n.clone().into()),
@@ -1608,7 +1608,7 @@ fn triple_template(t: &TriplePattern, var: &dyn Fn(&Variable) -> Option<Term>, b
 }
 
 /// A triple term of a DELETE template under a solution (`var`).
-#[cfg(feature = "sparql-12")]
+#[cfg(feature = "rdf-12")]
 fn ground_triple_template(t: &crate::sparql::GroundTriplePattern, var: &dyn Fn(&Variable) -> Option<Term>) -> Option<Term> {
     use crate::sparql::GroundTermPattern as G;
     let term = |x: &G| -> Option<Term> { match x {
@@ -1641,7 +1641,7 @@ fn rename_var(t: &TriplePattern, from: &Variable, to: &Variable) -> TriplePatter
     // Also inside triple-term patterns (SPARQL 1.2).
     let tp = |x: &TermPattern| match x {
         TermPattern::Variable(v) if v == from => TermPattern::Variable(to.clone()),
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         TermPattern::Triple(t) => TermPattern::Triple(Box::new(rename_var(t, from, to))),
         x => x.clone(),
     };
