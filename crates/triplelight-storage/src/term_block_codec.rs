@@ -84,7 +84,8 @@ pub(super) fn encode(entries: &[(TermId, Term)], lean: bool) -> io::Result<Vec<u
 /// `canonical`: also require every term to re-serialize to exactly its stored text. That re-serializes all 256 terms
 /// of a block, so the read path (block-cache misses) skips it: the block's SHA-256 and the parse already reject
 /// corruption, and the text was canonical when the build wrote it. `verify` (`check_text_order`) runs it on every
-/// block.
+/// block. If a store's text were ever noncanonical (an old or buggy writer), the read path would still decode it, but
+/// lookups of a term's canonical form could miss its ID; that is why `verify` refuses such a store.
 pub(super) fn decode(data: &[u8], lean: bool, canonical: bool) -> io::Result<Vec<(TermId, Term)>> {
     if data.len() > MAX_BLOCK {
         return Err(bad("term block too large"));
