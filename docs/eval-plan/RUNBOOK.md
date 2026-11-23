@@ -7,15 +7,22 @@ dataset, as Jianlin asked, and record each change in the session log with its re
 
 ## 1. Day one: provisioning (about 1 h)
 
-Run as root on a fresh Debian trixie host, from a checkout of the commit under test:
+The repository is private, so the default puts no GitHub credential on the rented host. On the laptop, bundle
+the commit under test and copy the bundle over:
 
 ```sh
-git clone https://github.com/odysa/triplelight.git ~/tl && cd ~/tl && git checkout <sha>   # private: needs access,
-# or copy a bundle made on the laptop (`git bundle create tl.bundle main`) and pass --repo ~/tl.bundle below
+# laptop
+git bundle create tl.bundle main && git bundle verify tl.bundle && scp tl.bundle root@<host>:
+# host, as root, on a fresh Debian trixie
+git clone ~/tl.bundle ~/tl && cd ~/tl && git checkout --detach <sha>
 lsblk                                   # pick the instance-store NVMe, not the root volume
-bench/eval/provision.sh --device /dev/nvme1n1 --data /data --commit <sha>
+bench/eval/provision.sh --device /dev/nvme1n1 --data /data --repo ~/tl.bundle --commit <sha>
 . /data/eval.env
 ```
+
+For a later commit, copy a new bundle and rerun with the new `--commit`. Cloning from GitHub (the script's default
+without `--repo`) is only an alternative, and it needs the owner's own access on the host, which only the owner sets
+up. Agents never put a credential on the machine.
 
 The script is idempotent: rerun it after a failure. It writes every step, version, checksum and setting to
 `/data/receipts/provision.txt`, and stops on any mismatch. It does the following:
@@ -71,7 +78,7 @@ chose it.
 ```sh
 . /data/eval.env
 nohup bench/eval/datasets.sh bsbm1b > /data/receipts/gen-bsbm1b.log 2>&1 &          # longest, single-threaded: start first
-bench/eval/datasets.sh lubm1000 bsbm100m watdiv100m                                   # tier 1, about 1–2 h
+bench/eval/datasets.sh lubm1000 bsbm100m watdiv-sf1000                                # tier 1, about 1–2 h
 bench/eval/datasets.sh lubm8000                                                       # 16 shards
 bench/eval/datasets.sh wdbench=/data/datasets/<archive from Figshare>                 # or wdbench=<direct URL>
 ```
@@ -87,7 +94,7 @@ bytes, lines and the file's sha256. A finished dataset is skipped on a rerun.
 | LUBM-8000 | UBA 1.7 | `-univ 8000 -seed 0`, 16 shards by `-index` | about 182 GB, about 1.1B lines | 1–2 h |
 | BSBM-100M | BSBM tools 0.2 (`40f5e59b…`) | `generate -fc -pc 284826 -s nt` | 24.8 GB (laptop) | 0.5–1 h |
 | BSBM-1B | BSBM tools 0.2 | `generate -fc -pc 2848260 -s nt` | about 250 GB | 4–6 h, single thread |
-| WatDiv-100M | WatDiv v0.6 (`fb8d930b…`), seeds patched to 20261112 | `watdiv -d model/wsdbm-data-model.txt 1000` | about 15 GB, about 110M lines | 1 h |
+| WatDiv SF1000 (about 110M triples) | WatDiv v0.6 (`fb8d930b…`), seeds patched to 20261112 | `watdiv -d model/wsdbm-data-model.txt 1000` | about 15 GB, about 110M lines | 1 h |
 | WDBench | the Figshare item `50b7544ad6b1f51de060` (2021-06-23 direct properties) | stream-decompressed; exactly 1,257,169,959 lines, or the script stops | about 165 GB, plus the archive | download plus 0.5 h |
 
 Notes:
@@ -96,8 +103,8 @@ Notes:
   run. Files are converted in university and department order, so the output is deterministic.
 - **BSBM:** the test driver's `td_data-<name>/` is kept next to the data. BSBM's query constants come from it, and the
   BI constants are generated on each graph (plan, analytical section).
-- **WatDiv:** scale factor 1000 gives the 100M class. The laptop's `watdiv100.nt` is SF100 (11.0M lines), so its
-  queries are re-instantiated with `watdiv -q` against the SF1000 saved state, which `datasets.sh` keeps as
+- **WatDiv:** scale factor 1000, about 110M triples. Label it by its scale factor everywhere, never "WatDiv-100M"
+  (Kaiming). The laptop's `watdiv100.nt` is SF100 (10.9M triples), so its queries are re-instantiated with `watdiv -q` against the SF1000 saved state, which `datasets.sh` keeps as
   `watdiv-saved-sf1000.txt`. Debian's word list differs from the laptop's macOS one. Its hash is in the receipt.
   WatDiv-1B is not generated (Amendment 2).
 - **WDBench:** Figshare's private link needs a browser session. The owner downloads the archive (or gets its direct
@@ -108,13 +115,13 @@ Notes:
 
 ## 3. Disk budget and delete order
 
-Usable space after formatting is about 3.4 TiB. Keep at least **300 GB free** at all times; this floor is my choice and
+Usable space after formatting is about 3.4 TiB. One dataset's full set of stores is on disk at a time (Kaiming, confirming the reading below). Keep at least **300 GB free** at all times; this floor is my choice and
 covers logs, result files and an unexpected spill. Before every build, compare `df` with the remaining inputs plus the
 next store and its scratch allowance plus the floor, as Jianlin asked, and write that line into the session log.
 
 | Item | Size (estimate) | Kept until |
 | --- | ---: | --- |
-| Tier-1 inputs (LUBM-1000, BSBM-100M, WatDiv-100M) | about 63 GB | the end of tier 3, or the end of the rental if tier 3 is not run |
+| Tier-1 inputs (LUBM-1000, BSBM-100M, WatDiv SF1000) | about 63 GB | the end of tier 3, or the end of the rental if tier 3 is not run |
 | Tier-2 inputs (LUBM-8000, BSBM-1B, WDBench) | about 600 GB | the end of their last tier |
 | A 100M store, any system | 10–60 GB | that dataset's last block and archive |
 | A 1B store | 60–600 GB (QLever and TripleLight smallest; TDB2 and Oxigraph largest) | the same |
@@ -165,8 +172,9 @@ the order Amendment 2 gives (B4 for loads); do not cut a tier-1 block.
 
 ### Tier 2: 1B for the HTTP cohort and TripleLight's storage claims (about 9 days, B5)
 
-Run LUBM-8000 completely before BSBM-1B, and both before WDBench, so that a rental that ends early leaves whole
-datasets rather than half of each.
+Run the datasets in this order: LUBM-8000, then WDBench, then BSBM-1B (Kaiming, within B1's tier). Real data answers
+the synthetic-benchmark limitation, and BSBM's ranking claim is already decided at 100M. Finish each dataset before
+starting the next, so that a rental that ends early leaves whole datasets rather than half of each.
 
 | # | Block | Estimate | Owner |
 | --- | --- | ---: | --- |
@@ -175,12 +183,11 @@ datasets rather than half of each.
 | 3 | HTTP suites, three warm blocks, with cold runs in block 1 only | about 17 h per block per dataset | WindowsXP |
 | 4 | S1: TripleLight at 8 and 16 GB, `S1_SAMPLE=1` | 3–5 h per dataset (my estimate) | Alex |
 | 5 | W9 / A8 derived-order stress, `derived_stress --top 50` on the four- and six-order stores | 1–2 h per dataset (my estimate; the laptop's full LUBM-1000 OPS scan takes 5.1 s) | Alex |
-| 6 | WDBench: loads, the 30-request gate on Jena's references (3–6 h, unscored), then the suite | not in B5's tier-2 estimate (see below) | Jianlin (workload), Alex (load), WindowsXP (suite) |
+| 6 | WDBench (second dataset): loads, the 30-request gate on Jena's references (3–6 h, unscored), then the suite | not in B5's tier-2 estimate (see below) | Jianlin (workload), Alex (load), WindowsXP (suite) |
+| 7 | Extra, only if time remains after BSBM-1B: QLever under S1 at 8 GB on LUBM-8000. Otherwise the paper says S1 covers TripleLight only. | 3–5 h (my estimate) | Alex, WindowsXP |
 
 **A gap to flag:** WindowsXP's tier-2 load estimate (about 5 days) covers LUBM-8000 and BSBM-1B only. WDBench's
-seven loads would add up to 2–3 days at the same rates, and that is not in B5's nine days. Under B4, WDBench gets
-whatever remains after BSBM-1B, its loads take the same 24 h time-box, and an arm that does not finish is reported as
-"did not finish".
+seven loads would add up to 2–3 days at the same rates, and that is not in B5's nine days. Because WDBench now runs before BSBM-1B, the shortfall falls on BSBM-1B. Every load keeps the 24 h time-box, an arm that does not finish is reported as "did not finish", and BSBM-1B reports the blocks it completed, with the block count stated (B4).
 
 ### Tier 3: 1B for the embedded and DuckDB arms (only if time remains)
 
@@ -194,11 +201,11 @@ have been deleted: DuckDB's 1 TB reservation does not fit next to all seven 1B s
 | 0 | Provisioning, all datasets, the day-one checks |
 | 1–7 | Tier 1 |
 | 8–12 | Tier 2: LUBM-8000 (loads, S3, three blocks, S1, W9) |
-| 12–16 | Tier 2: BSBM-1B, then WDBench |
+| 12–16 | Tier 2: WDBench, then BSBM-1B |
 | after 16 | Tier 3, if the rental allows |
 
-A one-week rental covers day 0 and most of tier 1. Two weeks cover tier 1 and LUBM-8000 at 1B, with BSBM-1B partly
-done.
+A one-week rental covers day 0 and most of tier 1. Two weeks cover tier 1, LUBM-8000 at 1B and most of WDBench,
+with BSBM-1B likely partial.
 
 ## 5. Coordination
 

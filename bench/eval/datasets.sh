@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Generate (or fetch) the evaluation datasets on the dedicated machine (docs/eval-plan/RUNBOOK.md; owner Alex).
 # Run after provision.sh, as any user that can write $DATA:   . /data/eval.env; bench/eval/datasets.sh <name>...
-# Names: lubm1000 lubm8000 bsbm100m bsbm1b watdiv100m wdbench=<archive path or direct URL>; for a qualification at a
+# Names: lubm1000 lubm8000 bsbm100m bsbm1b watdiv-sf1000 wdbench=<archive path or direct URL>; for a qualification at a
 # small size: lubm:<universities> bsbm:<products> watdiv:<scale factor>
 # Each dataset becomes one N-Triples file $DATA/datasets/<name>.nt (one input file per dataset for every system, plan
 # "Loading"), with a receipt $DATA/receipts/dataset-<name>.txt: generator, its archive hash, the exact command, wall
@@ -111,7 +111,7 @@ wdbench() {  # wdbench <archive path or URL>: the 2021-06-23 direct-property gra
 for d in "$@"; do case $d in
   lubm1000) lubm 1000;; lubm8000) lubm 8000;;
   bsbm100m) bsbm bsbm100m 284826;; bsbm1b) bsbm bsbm1b 2848260;;
-  watdiv100m) watdiv watdiv100m 1000;;   # scale factor 1000 is about 110M triples (SF100, the laptop file, is 11M)
+  watdiv-sf1000) watdiv watdiv-sf1000 1000;;   # about 110M triples; label it by scale factor (the laptop file is SF100, 10.9M)
   wdbench=*) wdbench "${d#wdbench=}";;
   lubm:*) lubm "${d#lubm:}";; bsbm:*) bsbm "bsbm-pc${d#bsbm:}" "${d#bsbm:}";; watdiv:*) watdiv "watdiv-sf${d#watdiv:}" "${d#watdiv:}";;  # small qualification sizes
   *) echo "unknown dataset $d" >&2; exit 2;; esac; done
