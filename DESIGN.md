@@ -87,7 +87,9 @@ Optimizer details: [docs/optimizer.md](docs/optimizer.md).
 
 ## Known limits
 
-- Building a disk store is mostly single-threaded and needs tens of gigabytes of scratch disk at 100M triples.
+- Disk builds parse shards in parallel and overlap index builds (an average of 2.9 of 10 cores busy on LUBM-1000,
+  [docs/build-profile-v1](docs/build-profile-v1/README.md)), and need scratch disk of about 1.7 to 2.1 times the input at the peak
+  ([docs/build-compare-orders-v1](docs/build-compare-orders-v1/README.md)).
 - Results are materialized before output.
 - One process per store directory, enforced by a file lock.
 - `LOAD`, `SERVICE`, `BNODE(string)` and blank-node graph names are not supported.
