@@ -30,7 +30,7 @@ case $SYS in
              # fail fast if this binary was built without the server feature (a later plain `cargo test` or `cargo build` rebuilds it that way)
              if "$BIN" serve /nonexistent 0 2>&1 | grep -q "does not include"; then echo "$BIN has no server feature: cargo build --release --features server" >&2; exit 3; fi
              # cache budget: half of the memory limit, as in the frozen plan (S1), recorded in the receipt
-             exec "$BIN" serve "$T/triplelight-$D" 7979 --disk --cache-mb "$((MEM * 1024 / 2))" ;;
+             TRIPLELIGHT_HOST=127.0.0.1 exec "$BIN" serve "$T/triplelight-$D" 7979 --disk --cache-mb "$((MEM * 1024 / 2))" ;;
     esac ;;
   qlever|qlever-two-order)
     QDIR=qlever-$D; QOPT=()
@@ -42,7 +42,7 @@ case $SYS in
                -i "$D" -f "/data/$D.nt" -F nt -p true "${QOPT[@]}" ;;
       # Result cache off (-c/-e/-E 1MB) so repeated runs measure execution, not cache hits.
       serve) docker rm -f bench-qlever >/dev/null 2>&1 || true
-             exec docker run --rm --name bench-qlever "${LIM[@]}" -p 7001:7001 -v "$T":/data -w /data/$QDIR \
+             exec docker run --rm --name bench-qlever "${LIM[@]}" -p 127.0.0.1:7001:7001 -v "$T":/data -w /data/$QDIR \
                --entrypoint /qlever/qlever-server "$QLEVER_IMAGE" -i "$D" -p 7001 -m "${MEM}G" -c 1MB -e 1MB -E 1MB ;;
     esac ;;
   virtuoso)
@@ -53,7 +53,7 @@ case $SYS in
          -e VIRT_SPARQL_ResultSetMaxRows=1000000000 -e VIRT_SPARQL_MaxQueryExecutionTime=0)
     case $MODE in
       serve) docker rm -f bench-virtuoso >/dev/null 2>&1 || true
-             exec docker run --rm --name bench-virtuoso "${LIM[@]}" -p 8890:8890 "${ENV[@]}" -v "$DIR":/database -v "$T":/import "$VIRTUOSO_IMAGE" ;;
+             exec docker run --rm --name bench-virtuoso "${LIM[@]}" -p 127.0.0.1:8890:8890 "${ENV[@]}" -v "$DIR":/database -v "$T":/import "$VIRTUOSO_IMAGE" ;;
       load)  docker rm -f bench-virtuoso-load >/dev/null 2>&1 || true
              docker run -d --rm --name bench-virtuoso-load "${LIM[@]}" "${ENV[@]}" -v "$DIR":/database -v "$T":/import "$VIRTUOSO_IMAGE" >/dev/null
              until docker exec bench-virtuoso-load isql 1111 dba dba exec="status();" >/dev/null 2>&1; do sleep 2; done
@@ -73,7 +73,7 @@ case $SYS in
              # the first rerun found this file empty (Jena logged "Empty stats file"): fail loudly instead of benchmarking without statistics
              [ -s "$T/jena-tdb2-$D/Data-0001/stats.opt" ] || { echo "tdb2.tdbstats wrote no statistics" >&2; exit 1; } ;;
       serve) echo "budget: JVM heap only (-Xmx${MEM}g); CPUs not enforced" >&2
-             JVM_ARGS="-Xmx${MEM}g" exec "$F/fuseki-server" --loc="$T/jena-tdb2-$D" --port=3030 /ds ;;
+             JVM_ARGS="-Xmx${MEM}g" exec "$F/fuseki-server" --loc="$T/jena-tdb2-$D" --localhost --port=3030 /ds ;;
     esac ;;
   rdf4j-native|rdf4j-native-default)
     # RDF4J's own server (docker image eclipse/rdf4j-workbench, pinned by digest in VERSIONS), NativeStore repository "bench" created
@@ -82,10 +82,10 @@ case $SYS in
     DIR=$T/$SYS-$D; mkdir -p "$DIR"
     case $MODE in
       serve) docker rm -f bench-rdf4j >/dev/null 2>&1 || true
-             exec docker run --rm --name bench-rdf4j "${LIM[@]}" -e JAVA_OPTS="-Xmx${MEM}g" -p 3040:8080 -v "$DIR":/var/rdf4j "$RDF4J_IMAGE" ;;
+             exec docker run --rm --name bench-rdf4j "${LIM[@]}" -e JAVA_OPTS="-Xmx${MEM}g" -p 127.0.0.1:3040:8080 -v "$DIR":/var/rdf4j "$RDF4J_IMAGE" ;;
       load)  docker rm -f bench-rdf4j-load >/dev/null 2>&1 || true
              trap 'docker rm -f bench-rdf4j-load >/dev/null 2>&1 || true' EXIT   # a failed step must not leave the container on the port
-             docker run -d --rm --name bench-rdf4j-load "${LIM[@]}" -e JAVA_OPTS="-Xmx${MEM}g" -p 3040:8080 -v "$DIR":/var/rdf4j "$RDF4J_IMAGE" >/dev/null
+             docker run -d --rm --name bench-rdf4j-load "${LIM[@]}" -e JAVA_OPTS="-Xmx${MEM}g" -p 127.0.0.1:3040:8080 -v "$DIR":/var/rdf4j "$RDF4J_IMAGE" >/dev/null
              until curl -sf http://127.0.0.1:3040/rdf4j-server/protocol >/dev/null 2>&1; do sleep 2; done
              cat > "$DIR/bench-config.ttl" <<TTL
 @prefix config: <tag:rdf4j.org,2023:config/> .
@@ -111,7 +111,7 @@ TTL
              rm -rf "$DIR/db"
              docker run --rm "${LIM[@]}" -v "$DIR":/data "$IMG" mdb import "/data/in/$D.ttl" /data/db ;;
       serve) docker rm -f bench-mdb >/dev/null 2>&1 || true
-             exec docker run --rm --name bench-mdb "${LIM[@]}" -p 1234:1234 -v "$DIR":/data "$IMG" mdb server /data/db ;;
+             exec docker run --rm --name bench-mdb "${LIM[@]}" -p 127.0.0.1:1234:1234 -v "$DIR":/data "$IMG" mdb server /data/db ;;
     esac ;;
   oxigraph)
     O=$T/oxigraph

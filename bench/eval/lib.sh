@@ -49,6 +49,10 @@ start_system() {  # start_system <system> <dataset> [budget args...]; waits unti
     sleep 2; kill -0 "$(cat "$(PIDFILE "$s")")" 2>/dev/null || { echo "$s exited while starting" >&2; return 1; }
   done
   echo "$s ready after $(( $(date +%s) - t0 ))s" >> "$OUT/$s.server.log"
+  # no server may listen on a public interface (a cloud machine would expose it; Virtuoso ships a default dba account)
+  if lsof -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | awk 'NR>1{print $9}' | grep -Eq '^(\*|0\.0\.0\.0|\[::\]):'; then
+    echo "$s listens on a non-loopback address (port $port); refusing to measure" >&2; return 1
+  fi
   if [ "$s" = triplelight ] && grep -q "building in background" "$OUT/$s.server.log"; then
     until grep -qE "statistics (ready|failed)" "$OUT/$s.server.log"; do sleep 2; done
   fi
