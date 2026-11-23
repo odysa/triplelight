@@ -1,0 +1,16 @@
+q1       pass              0.0039
+q2       pass              0.791
+q3       pass              0.0038
+q4       pass              0.0084
+q5       pass              0.0097
+q6       pass              21.1449
+q7       pass              0.0081
+q8       pass              0.0822
+q9       pass              0.7506
+q10      pass              0.0038
+q11      pass              0.0039
+q12      pass              0.0184
+q13      pass              0.0299
+q14      pass              21.2286
+fatal: not a git repository (or any of the parent directories): .git
+summary: {'pass': 14}
