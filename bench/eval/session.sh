@@ -27,6 +27,9 @@ for s in "${OK[@]}"; do
   echo "== $s"
   # shellcheck disable=SC2086
   if ! start_system "$s" "$D" $BUDGET; then echo "$s: start failed (see $s.server.log)" >> "$OUT/failures.txt"; stop_system "$s" || true; continue; fi
+  # S1: sample the server's cgroup (memory, page cache, device reads, major faults) for the whole measurement.
+  SAMPLER=
+  if [ "${S1_SAMPLE:-0}" = 1 ]; then "$HERE/s1-sample.sh" "$s" "$OUT/$s.s1.tsv" & SAMPLER=$!; fi
   if [ ! -f "$OUT/reference.json" ]; then
     [ "$s" = jena-tdb2 ] || { echo "the reference answers come from jena-tdb2: list it first" >&2; exit 2; }
     python3 "$HERE/driver.py" reference --queries "$QDIR" --url "$(url_of "$s")" --out "$OUT/reference.json" --timeout "$TIMEOUT" > "$OUT/reference.log"
@@ -42,6 +45,7 @@ for s in "${OK[@]}"; do
       echo "$s: cold run failed (see $s.cold.log)" >> "$OUT/failures.txt"
     fi
   fi
+  [ -n "$SAMPLER" ] && { kill "$SAMPLER" 2>/dev/null || true; wait "$SAMPLER" 2>/dev/null || true; }
   stop_system "$s"
 done
 echo "session done: $OUT"

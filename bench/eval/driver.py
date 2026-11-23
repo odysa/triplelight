@@ -245,10 +245,12 @@ def cmd_run(a):
             restart_after_timeout(a, rec, entry)
             runs = a.runs
         for _ in range(runs):
+            t0 = time.time()   # wall-clock bounds of the run, so S1's cgroup samples can be joined per query (s1-report.py)
             rec, secs = one_run(a.url, q, a.timeout)
+            t1 = time.time()
             restart_after_timeout(a, rec, entry)
             cls = classify(rec, r)
-            entry["runs"].append({"class": cls, "seconds": round(secs, 4), **{k: rec[k] for k in ("rows", "bag", "seq") if k in rec},
+            entry["runs"].append({"class": cls, "seconds": round(secs, 4), "t0": round(t0, 3), "t1": round(t1, 3), **{k: rec[k] for k in ("rows", "bag", "seq") if k in rec},
                                   **({"detail": rec["detail"]} if "detail" in rec else {})})
         classes = {x["class"] for x in entry["runs"]}
         entry["class"] = classes.pop() if len(classes) == 1 else "unstable"

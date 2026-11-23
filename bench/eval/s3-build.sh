@@ -83,7 +83,7 @@ else
   RUN=(); TIMEFMT=(/usr/bin/time -l)
 fi
 START=$(date +%s.%N 2>/dev/null || date +%s)
-"${TIMEFMT[@]}" "${RUN[@]}" "$HERE/systems.sh" "$SYS" load "$D" --mem "$MEM" --cpus "$CPUS" > "$OUT/build.log" 2>&1 &
+"${TIMEFMT[@]}" ${RUN[@]+"${RUN[@]}"} "$HERE/systems.sh" "$SYS" load "$D" --mem "$MEM" --cpus "$CPUS" > "$OUT/build.log" 2>&1 &
 PID=$!
 CG=
 while kill -0 $PID 2>/dev/null; do
