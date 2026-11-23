@@ -11,10 +11,7 @@ use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::Path;
 
 pub(super) const FILES: [&str; 7] = ["dictionary", "spo", "sop", "pso", "pos", "osp", "ops"];
-/// Which triple (and quad) orders a base keeps, as bits of their `Perm::ALL` positions (task #73).
-pub const ALL_ORDERS: u8 = 0b11_1111;
-/// SPO, PSO, POS and OSP: kept by every base. SOP and OPS are served from them when absent (`derived_order`).
-pub const REQUIRED_ORDERS: u8 = 0b01_1101;
+use super::base_format::{ALL_ORDERS, REQUIRED_ORDERS};
 /// The graph-first quad orders of an `RDFSNAP5`/`RDFSNAP6` base (task #36), in `Perm::ALL` order of their triple part.
 pub(super) const QUAD_FILES: [&str; 6] = ["gspo", "gsop", "gpso", "gpos", "gosp", "gops"];
 /// The graph catalog of an `RDFSNAP5` base: every named graph's ID and triple count, empty graphs included.
@@ -219,7 +216,7 @@ pub struct DiskSnapshot {
     triple_terms: Option<DiskIndex<4>>,
 }
 /// File name of the triple-term parts table of an `RDFSNAP7` base.
-pub(super) const TRIPLE_TERMS_FILE: &str = "triple_terms";
+use super::base_format::TRIPLE_TERMS_FILE;
 struct NamedBase {
     /// The graph-first quad orders, in `Perm::ALL` order of their triple part; `None` as for `indexes`.
     quads: Vec<Option<DiskIndex<4>>>,

@@ -14,8 +14,7 @@ use std::{
     path::Path,
 };
 const MEMORY: usize = 128 * 1024 * 1024;
-/// The longest N-Triples term text a base can hold (task #45: the WAL refuses longer terms at commit).
-pub(crate) const MAX_TERM: usize = triplelight_core::ntriples::MAX_TOKEN;
+use super::base_format::MAX_TERM;
 /// Row ID and position of a term record that belongs to no row (an RDF 1.2 triple-term part, `Builder::push_parts`).
 /// Real row IDs are far smaller (at most `8 << 56` in a sharded build), so these assignments sort after every row.
 #[cfg_attr(not(feature = "rdf-12"), allow(dead_code))]
@@ -44,7 +43,7 @@ fn kept_orders_setting() -> u8 {
 /// six-order `RDFSNAP4`/`RDFSNAP5` layout byte for byte, which older binaries can open. Compaction keeps the order set
 /// of the base it replaces instead. The set must contain `REQUIRED_ORDERS`.
 pub fn set_kept_orders(orders: u8) -> io::Result<()> {
-    use super::disk_snapshot::{ALL_ORDERS, REQUIRED_ORDERS};
+    use super::base_format::{ALL_ORDERS, REQUIRED_ORDERS};
     if orders & !ALL_ORDERS != 0 || orders & REQUIRED_ORDERS != REQUIRED_ORDERS {
         return Err(io::Error::new(io::ErrorKind::InvalidInput, "an order set must keep SPO, PSO, POS and OSP"));
     }
@@ -668,7 +667,7 @@ fn write_triple_terms(dir: &Path) -> io::Result<[u8; 32]> {
         rows.push([id, id_of(t.subject.into())?, id_of(t.predicate.into())?, id_of(t.object)?]);
         Ok(())
     })?;
-    let path = dir.join(super::disk_snapshot::TRIPLE_TERMS_FILE);
+    let path = dir.join(super::base_format::TRIPLE_TERMS_FILE);
     let mut out = BufWriter::new(OpenOptions::new().write(true).create_new(true).open(&path)?);
     super::disk_index::write_index::<4>(&mut out, rows.into_iter())?;
     out.flush()?;

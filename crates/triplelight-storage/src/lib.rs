@@ -19,6 +19,9 @@ pub use memory::MemorySnapshot;
 pub mod disk_index;
 
 #[cfg(unix)]
+mod base_format;
+
+#[cfg(unix)]
 mod block_codec;
 
 #[cfg(unix)]
@@ -44,4 +47,6 @@ pub use derived_order::trace as derived_trace;
 #[cfg(unix)]
 mod disk_snapshot;
 #[cfg(unix)]
-pub use disk_snapshot::{ALL_ORDERS, REQUIRED_ORDERS, DiskBase, DiskGraph, DiskSnapshot, build_disk_snapshot, build_disk_snapshot_with_workers, write_disk_dataset, write_disk_snapshot};
+pub use base_format::{ALL_ORDERS, REQUIRED_ORDERS};
+#[cfg(unix)]
+pub use disk_snapshot::{DiskBase, DiskGraph, DiskSnapshot, build_disk_snapshot, build_disk_snapshot_with_workers, write_disk_dataset, write_disk_snapshot};
