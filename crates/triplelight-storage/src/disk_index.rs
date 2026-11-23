@@ -199,8 +199,17 @@ pub fn write_index_stream<const N: usize>(
 where
     Width<N>: SupportedWidth<N>,
 {
+    #[cfg(test)]
+    if WRITE_OLDER_ON_THIS_THREAD.with(|c| c.get()) { return write_index_format(out, count, rows, false) }
     write_index_format(out, count, rows, true)
 }
+#[cfg(test)]
+thread_local! {
+    static WRITE_OLDER_ON_THIS_THREAD: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+/// Tests: every index this thread writes uses the previous format (`RDFIDX03`/`RDFQIX01`), as an older binary would.
+#[cfg(test)]
+pub(super) fn write_older_format_on_this_thread(on: bool) { WRITE_OLDER_ON_THIS_THREAD.with(|c| c.set(on)) }
 /// `rotate`: the current format (`SupportedWidth::MAGIC`, tag-rotated columns allowed); otherwise the previous one
 /// (`OLDER`), which tests use to check that older files stay readable.
 fn write_index_format<const N: usize>(

@@ -825,6 +825,51 @@ mod tests {
             fs::remove_dir_all(&dir).unwrap();
         }
     }
+    /// A base whose index files are in the previous format (`RDFIDX03`, as an older binary wrote them) reads the
+    /// same IDs in the same order, for every order and prefix, as one written in the current format.
+    #[test]
+    fn a_base_written_in_the_older_index_format_reads_the_same() {
+        // Objects mix IRIs, literals and inline integers, so the current format rotates SPO's object column.
+        let iri = |s: &str| NamedNode::new(format!("http://ex/{s}")).unwrap();
+        let mut triples = Vec::new();
+        for i in 0..3000u32 {
+            let o: triplelight_rdf::Term = match i % 3 {
+                0 => iri(&format!("o{}", i % 101)).into(),
+                1 => Literal::new_simple_literal(format!("name {}", i % 211)).into(),
+                _ => Literal::new_typed_literal(format!("{}", i % 97), NamedNode::new("http://www.w3.org/2001/XMLSchema#integer").unwrap()).into(),
+            };
+            triples.push(Triple::new(iri(&format!("s{}", i / 7)), iri(&format!("p{}", i % 4)), o));
+        }
+        let source = MemorySnapshot::from_triples(triples);
+        let parent = std::env::temp_dir().join(format!("rdf-older-index-format-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&parent);
+        fs::create_dir(&parent).unwrap();
+        let (older, current) = (parent.join("older"), parent.join("current"));
+        super::super::disk_index::write_older_format_on_this_thread(true);
+        let written = write_disk_snapshot(&older, &source);
+        super::super::disk_index::write_older_format_on_this_thread(false);
+        written.unwrap();
+        write_disk_snapshot(&current, &source).unwrap();
+        assert_eq!(&fs::read(older.join("spo")).unwrap()[..8], b"RDFIDX03");
+        assert_eq!(&fs::read(current.join("spo")).unwrap()[..8], b"RDFIDX04");
+        assert!(fs::metadata(current.join("spo")).unwrap().len() < fs::metadata(older.join("spo")).unwrap().len());
+        let (a, b) = (DiskSnapshot::open(&older).unwrap(), DiskSnapshot::open(&current).unwrap());
+        a.verify().unwrap();
+        b.verify().unwrap();
+        let rows = |v: &DiskSnapshot, p: Perm, prefix: &[TermId]| -> Vec<[TermId; 3]> {
+            let mut out = Vec::new();
+            for batch in v.scan(p, prefix) { let batch = batch.unwrap(); out.extend((0..batch.len()).map(|i| [batch.cols[0][i], batch.cols[1][i], batch.cols[2][i]])) }
+            out
+        };
+        for p in Perm::ALL {
+            let all = rows(&a, p, &[]);
+            assert_eq!(all, rows(&b, p, &[]), "{p:?}: same IDs in the same order");
+            for r in all.iter().step_by(53) {
+                for k in 1..=2 { assert_eq!(rows(&a, p, &r[..k]), rows(&b, p, &r[..k]), "{p:?} {:?}", &r[..k]) }
+            }
+        }
+        fs::remove_dir_all(&parent).unwrap();
+    }
     /// Task #73: a base without SOP and OPS answers every scan, count and seek on them exactly as the same base with
     /// all six orders, for the default graph and every named graph. The fixture has a subject and an object with more
     /// than one batch (4096 rows) of triples, so regrouped groups span batches.
