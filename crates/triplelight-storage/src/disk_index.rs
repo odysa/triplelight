@@ -923,7 +923,7 @@ mod tests {
             index.validate().unwrap();
             let got: Vec<[TermId; 3]> = (0..index.len()).map(|i| index.get(i).unwrap()).collect();
             assert_eq!(got, rows, "{name}");
-            assert_eq!(index.range(&[rows[700][0]]).unwrap().len(), 6, "{name}");
+            let r = index.range(&[rows[700][0]]).unwrap(); assert_eq!(r.end - r.start, 6, "{name}");
             std::fs::remove_file(&path).unwrap();
         }
     }
