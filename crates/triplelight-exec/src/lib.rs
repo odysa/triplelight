@@ -623,24 +623,61 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     fn eval_order_by(&self, inner: &GraphPattern, expression: &[OrderExpression], input: Vec<Row>) -> Vec<Row> {
         let limit = self.order_limit.take();
+        let alias = self.order_alias(inner, expression, &input);
         let rows = self.eval(inner, input);
         let started = phase::enabled().then(std::time::Instant::now);
-        let out = self.sort_rows(expression, limit, rows);
+        let out = self.sort_rows(expression, limit, rows, alias);
         if let Some(t) = started { phase::SORT_NS.fetch_add(t.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed); }
         out
     }
 
-    fn sort_rows(&self, expression: &[OrderExpression], limit: Option<usize>, rows: Vec<Row>) -> Vec<Row> {
-        // Sort keys: a plain variable is decoded once per distinct ID; other expressions per row.
+    /// A fresh alias computed immediately below ORDER BY can supply the same pure expression.
+    fn order_alias<'p>(
+        &self,
+        inner: &'p GraphPattern,
+        keys: &[OrderExpression],
+        input: &[Row],
+    ) -> Option<(&'p Expression, usize)> {
+        let GraphPattern::Extend { inner, variable, expression } = inner else { return None };
+        if !keys.iter().any(|key| match key {
+            OrderExpression::Asc(e) | OrderExpression::Desc(e) => e == expression,
+        }) || impure(expression) {
+            return None;
+        }
+        let col = self.var(variable);
+        if input.iter().any(|row| row[col] != UNBOUND) {
+            return None;
+        }
+        let mut names = Vec::new();
+        walk_vars(inner, &mut names);
+        walk_expr(expression, &mut names);
+        // If the expression errors, Extend leaves this fresh column unbound. The operand columns
+        // are unchanged, so ordering by the alias reproduces both values and expression errors.
+        (!names.iter().any(|name| name == variable.as_str())).then_some((expression, col))
+    }
+
+    fn sort_rows(
+        &self,
+        expression: &[OrderExpression],
+        limit: Option<usize>,
+        rows: Vec<Row>,
+        alias: Option<(&Expression, usize)>,
+    ) -> Vec<Row> {
+        let keys_by_column: Vec<_> = expression.iter().map(|key| {
+            let e = match key { OrderExpression::Asc(e) | OrderExpression::Desc(e) => e };
+            let column = match e {
+                Expression::Variable(v) => self.vars.get(v.as_str()).copied(),
+                e => alias.filter(|(bound, _)| *bound == e).map(|(_, col)| col),
+            };
+            (e, column)
+        }).collect();
+        // Column keys decode once per distinct ID. Other expressions are evaluated per row.
         let mut memo: HashMap<TermId, Option<Term>> = HashMap::new();
-        let keys: Vec<Vec<Option<Term>>> = rows.iter().map(|r| expression.iter().map(|e| {
-            let e = match e { OrderExpression::Asc(e) | OrderExpression::Desc(e) => e };
-            match e {
-                Expression::Variable(v) => match self.vars.get(v.as_str()).map(|&i| r[i]) {
-                    Some(id) if id != UNBOUND => memo.entry(id).or_insert_with(|| Some(self.resolve(id))).clone(),
-                    _ => None,
-                },
-                e => self.value(e, r),
+        let keys: Vec<Vec<Option<Term>>> = rows.iter().map(|r| keys_by_column.iter().map(|&(e, column)| {
+            match column {
+                Some(i) if r[i] == UNBOUND => None,
+                Some(i) => memo.entry(r[i]).or_insert_with(|| Some(self.resolve(r[i]))).clone(),
+                None => self.value(e, r),
             }
         }).collect()).collect();
         let cmp = |a: &usize, b: &usize| -> std::cmp::Ordering {
