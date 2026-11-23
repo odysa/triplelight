@@ -316,3 +316,10 @@ loads. A one-week rental covers tier 1; two weeks cover tier 1 and most of tier 
 
 **B6. Disk.** One system's store per dataset is kept at a time, and a store is deleted only after its receipts are archived. Dataset files stay until their last tier is done. The
 order of deletion is listed in `docs/eval-plan/RUNBOOK.md`.
+
+**B7. Result caches (registered 2026-11-23, before any rental measurement).** A warm run keeps buffers, the page cache and
+indexes warm, but no system may answer from a result cache. QLever's `-c/-e/-E 1MB` flags do not turn its cache off (any result
+under the limits is cached; `docs/qlever-cache-check-v1`), so the driver empties it with `cmd=clear-cache-complete` before every
+request, warm-up included, and stops the run if the call fails. Every earlier laptop warm number for QLever on small-result
+queries is invalid as an execution time. TripleLight has no result cache. The other servers document none and the rental
+re-checks that on day one.
