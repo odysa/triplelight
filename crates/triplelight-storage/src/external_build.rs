@@ -82,7 +82,11 @@ pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io:
             eprintln!("disk build strategy: in-memory (estimated 3x input; not an RSS limit)");
             let snapshot =
                 super::MemorySnapshot::from_ntriples_parallel_file(path, workers.max(1))?;
-            return super::DiskSnapshot::create(dir, &snapshot);
+            // That path writes RDFSNAP3, which has no RDF 1.2 flag: such input takes the external builder instead.
+            if !snapshot.has_rdf12_terms() { return super::DiskSnapshot::create(dir, &snapshot) }
+            eprintln!("disk build strategy: input holds RDF 1.2 terms; using the external sort");
+            drop(snapshot);
+            return from_nt_parallel(dir, source, workers.max(1));
         }
     }
     eprintln!("disk build strategy: external sort (budget is advisory, not an RSS limit)");
@@ -247,6 +251,10 @@ impl Builder {
         let mut previous = Vec::new();
         let mut current = TermId(0);
         let mut unique = 0u64;
+        // Whether any RDF 1.2 term (triple term or directional literal) is in the dictionary: the base is then
+        // written as RDFSNAP7, which carries `has_rdf12_terms` and which builds without RDF 1.2 support refuse.
+        #[cfg_attr(not(feature = "rdf-12"), allow(unused_mut))]
+        let mut rdf12 = false;
         while let Some(r) = stream.next_record()? {
             if r.len() < 10 || r[r.len() - 10] != 0 {
                 return Err(bad("malformed term run"));
@@ -260,6 +268,8 @@ impl Builder {
                 if unique >= (1u64 << 60) {
                     return Err(bad("too many RDF terms"));
                 }
+                #[cfg(feature = "rdf-12")]
+                if matches!(&term, Term::Triple(_)) || matches!(&term, Term::Literal(l) if l.direction().is_some()) { rdf12 = true }
                 let kind = match term {
                     Term::NamedNode(_) => 1u64,
                     Term::BlankNode(_) => 2,
@@ -394,7 +404,12 @@ impl Builder {
         );
         // RDFSNAP5 (task #36) = RDFSNAP4 plus six quad orders and the graph catalog. RDFSNAP6 (task #73) = either,
         // with only the kept orders, after the order set and the named-graph flag.
-        if orders == super::disk_snapshot::ALL_ORDERS {
+        // RDFSNAP7 (task #101): the RDFSNAP6 layout for any order set, for a base holding RDF 1.2 terms. A base without
+        // one is written exactly as before.
+        if rdf12 {
+            manifest.write_all(b"RDFSNAP7")?;
+            manifest.write_all(&[orders, u8::from(named)])?;
+        } else if orders == super::disk_snapshot::ALL_ORDERS {
             manifest.write_all(if named { b"RDFSNAP5" } else { b"RDFSNAP4" })?;
         } else {
             manifest.write_all(b"RDFSNAP6")?;

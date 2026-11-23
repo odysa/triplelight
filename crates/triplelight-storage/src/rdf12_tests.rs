@@ -68,8 +68,8 @@ fn external_disk_build() {
     crate::external_build::from_nt(&out, Some(&input)).unwrap();
     let disk = crate::DiskSnapshot::open(&out).unwrap();
     disk.verify().unwrap();
-    // The flag is the RDFSNAP7 follow-up's; the dictionary content is checked here.
-    for t in sample() { assert!(disk.lookup(&t.object).unwrap().is_some(), "{t}") }
+    assert_eq!(&std::fs::read(out.join("MANIFEST")).unwrap()[..10], b"RDFSNAP7\x1d\x00", "1.2 terms make an RDFSNAP7 base");
+    check(&disk, "disk");
     let inside = disk.lookup(&iri("only-inside").into()).unwrap();
     assert!(inside.is_some(), "a part that occurs only inside a triple term is a dictionary term");
     assert_eq!(inside.unwrap().0 >> 60, 1);
@@ -78,14 +78,21 @@ fn external_disk_build() {
     std::fs::remove_dir_all(dir).unwrap();
 }
 
+/// Both base formats: N-Triples bases (`Store::open`) and disk bases (`DiskBase`). On the disk format, compaction
+/// writes an RDFSNAP7 base, and the store still reports `has_rdf12_terms` from the base alone once the WAL is empty.
 #[cfg(unix)]
 #[test]
 fn wal_replay_compaction_and_the_fence() {
-    let dir = std::env::temp_dir().join(format!("rdf12-store-{}", std::process::id()));
+    wal_case("nt", &|dir| Store::open(dir, None, 1).unwrap());
+    wal_case("disk", &|dir| Store::open_with(dir, None, Box::new(crate::DiskBase { workers: 1 })).unwrap());
+}
+#[cfg(unix)]
+fn wal_case(format: &str, open: &dyn Fn(&std::path::Path) -> Store) {
+    let dir = std::env::temp_dir().join(format!("rdf12-store-{format}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let current = || std::fs::read_to_string(dir.join("CURRENT")).unwrap();
     {
-        let store = Store::open(&dir, None, 1).unwrap();
+        let store = open(&dir);
         store.commit(&[(Change::Insert, Triple::new(iri("s"), iri("p"), iri("o")))]).unwrap();
         assert!(!current().starts_with("rdf12-1 "), "a 1.1 record does not fence");
         assert!(!store.snapshot().has_rdf12_terms());
@@ -95,13 +102,19 @@ fn wal_replay_compaction_and_the_fence() {
         check(&*store.snapshot(), "delta");
     }
     {
-        let store = Store::open(&dir, None, 1).unwrap();
+        let store = open(&dir);
         check(&*store.snapshot(), "WAL replay");
         store.compact().unwrap();
         assert!(current().starts_with("rdf12-1 "), "compaction keeps the fence: {}", current());
         check(&*store.snapshot(), "compacted");
+        assert_eq!(store.snapshot().delta_len(), 0);
+        assert!(store.snapshot().base().has_rdf12_terms(), "{format}: the compacted base itself carries the 1.2 flag");
+        if format == "disk" {
+            let base = current().trim().rsplit(' ').next().unwrap().to_string();
+            assert_eq!(&std::fs::read(dir.join(base).join("MANIFEST")).unwrap()[..8], b"RDFSNAP7");
+        }
     }
-    let store = Store::open(&dir, None, 1).unwrap();
+    let store = open(&dir);
     check(&*store.snapshot(), "compacted and reopened");
     drop(store);
     std::fs::remove_dir_all(dir).unwrap();
