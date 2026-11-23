@@ -17,6 +17,8 @@ const ID_MAGIC: &[u8; 8] = b"RDFDID01";
 /// One file in ID order whose directory also carries each block's last term text, so term lookups can search a
 /// kind's run of blocks (inside a kind, ID order is term-text order).
 const UNIFIED_MAGIC: &[u8; 8] = b"RDFDID02";
+/// The unified layout with lean entry framing (`term_block_codec`, #105). Written by default; `RDFDID02` stays readable.
+const UNIFIED_LEAN_MAGIC: &[u8; 8] = b"RDFDID03";
 /// File name of the unified dictionary inside a snapshot directory.
 pub(super) const UNIFIED_FILE: &str = "dictionary.unified";
 /// Largest encoded block, and the byte budget a block is filled to: one maximum-length term plus its codec overhead.
@@ -41,9 +43,14 @@ impl Order {
         match self {
             Self::Term => TERM_MAGIC,
             Self::Id => ID_MAGIC,
-            Self::Unified => UNIFIED_MAGIC,
+            Self::Unified => UNIFIED_LEAN_MAGIC,
         }
     }
+    /// Whether this order's current format uses lean entry framing. Tests can make a thread (and the build's workers)
+    /// write the previous unified format, as an older binary would (`disk_index::write_older_format_on_this_thread`).
+    fn lean(self) -> bool { matches!(self, Self::Unified) && !super::disk_index::index_format_of_this_thread() }
+    /// The magic this process writes for the order.
+    fn write_magic(self) -> &'static [u8; 8] { if matches!(self, Self::Unified) && !self.lean() { UNIFIED_MAGIC } else { self.magic() } }
     fn key(self, id: TermId, term: &Term) -> Vec<u8> {
         match self {
             Self::Term => term.to_string().into_bytes(),
@@ -211,6 +218,8 @@ pub(super) struct LazyIndex {
     entries: Vec<Meta>,
     identity: [u8; 32],
     cache: Arc<DictionaryCache>,
+    /// Blocks use lean entry framing (`RDFDID03`).
+    lean: bool,
 }
 fn exact(file: &File, bytes: &mut [u8], offset: u64) -> io::Result<()> {
     exact_traced(file, bytes, offset, None)
@@ -257,9 +266,13 @@ impl LazyIndex {
         }
         let mut header = [0; 8];
         exact(&file, &mut header, 0)?;
-        if &header != order.magic() {
+        let lean = if &header == order.magic() {
+            matches!(order, Order::Unified)
+        } else if matches!(order, Order::Unified) && &header == UNIFIED_MAGIC {
+            false
+        } else {
             return Err(bad("bad dictionary index magic"));
-        }
+        };
         let mut footer = [0; 40];
         exact(&file, &mut footer, len - 40)?;
         let dlen = u64::from_le_bytes(footer[..8].try_into().unwrap());
@@ -367,6 +380,7 @@ impl LazyIndex {
             order,
             entries,
             identity,
+            lean,
             cache,
         })
     }
@@ -403,7 +417,7 @@ impl LazyIndex {
         if Sha256::digest(&bytes).as_slice() != meta.hash {
             return Err(bad("dictionary block checksum mismatch"));
         }
-        let rows = term_block_codec::decode(&bytes)?;
+        let rows = term_block_codec::decode(&bytes, self.lean)?;
         let keys: Vec<_> = rows.iter().map(|(id, t)| self.order.key(*id, t)).collect();
         if keys.windows(2).any(|w| w[0] >= w[1])
             || keys.last() != Some(&meta.last)
@@ -663,7 +677,7 @@ impl<W: Write> BlockWriter<W> {
         if self.block.is_empty() {
             return Ok(());
         }
-        let bytes = term_block_codec::encode(&self.block)?;
+        let bytes = term_block_codec::encode(&self.block, self.order.lean())?;
         let (id, t) = self.block.last().unwrap();
         let key = self.order.key(*id, t);
         self.out.write_all(&bytes)?;
@@ -686,7 +700,7 @@ fn write_index_checked(
 ) -> io::Result<()> {
     let mut out =
         std::io::BufWriter::new(OpenOptions::new().write(true).create_new(true).open(path)?);
-    let header = order.magic();
+    let header = order.write_magic();
     out.write_all(header)?;
     let mut writer = BlockWriter { out, order, block: Vec::new(), entries: Vec::new(), offset: 8 };
     let mut previous_key: Option<Vec<u8>> = None;

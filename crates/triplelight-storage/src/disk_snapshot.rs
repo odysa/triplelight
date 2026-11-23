@@ -841,8 +841,9 @@ mod tests {
             fs::remove_dir_all(&dir).unwrap();
         }
     }
-    /// A base whose index files are in the previous format (`RDFIDX03`, as an older binary wrote them) reads the
-    /// same IDs in the same order, for every order and prefix, as one written in the current format.
+    /// A base whose index files and dictionary are in the previous formats (`RDFIDX03`, `RDFDID02`, as an older binary
+    /// wrote them) reads the same IDs in the same order, for every order and prefix, and resolves the same terms, as one
+    /// written in the current formats.
     #[test]
     fn a_base_written_in_the_older_index_format_reads_the_same() {
         // Objects mix IRIs, literals and inline integers, so the current format rotates SPO's object column.
@@ -868,6 +869,9 @@ mod tests {
         write_disk_snapshot(&current, &source).unwrap();
         assert_eq!(&fs::read(older.join("spo")).unwrap()[..8], b"RDFIDX03");
         assert_eq!(&fs::read(current.join("spo")).unwrap()[..8], b"RDFIDX04");
+        assert_eq!(&fs::read(older.join("dictionary.unified")).unwrap()[..8], b"RDFDID02");
+        assert_eq!(&fs::read(current.join("dictionary.unified")).unwrap()[..8], b"RDFDID03");
+        assert!(fs::metadata(current.join("dictionary.unified")).unwrap().len() < fs::metadata(older.join("dictionary.unified")).unwrap().len());
         assert!(fs::metadata(current.join("spo")).unwrap().len() < fs::metadata(older.join("spo")).unwrap().len());
         let (a, b) = (DiskSnapshot::open(&older).unwrap(), DiskSnapshot::open(&current).unwrap());
         a.verify().unwrap();
@@ -877,6 +881,10 @@ mod tests {
             for batch in v.scan(p, prefix) { let batch = batch.unwrap(); out.extend((0..batch.len()).map(|i| [batch.cols[0][i], batch.cols[1][i], batch.cols[2][i]])) }
             out
         };
+        // Every ID resolves to the same term in both dictionaries, and every term looks up to the same ID.
+        for r in rows(&a, Perm::Spo, &[]).iter().step_by(11) {
+            for id in r { let t = a.resolve(*id).unwrap(); assert_eq!(t, b.resolve(*id).unwrap()); assert_eq!(b.lookup(&t).unwrap(), Some(*id)) }
+        }
         for p in Perm::ALL {
             let all = rows(&a, p, &[]);
             assert_eq!(all, rows(&b, p, &[]), "{p:?}: same IDs in the same order");
