@@ -1,0 +1,27 @@
+disk build strategy: external sort (budget is advisory, not an RSS limit)
+[dedup shard 1] triples=17273643 local_ids=4143401 flushes=15 record_bytes_to_sort=298744463
+[dedup shard 2] triples=17273177 local_ids=4143405 flushes=15 record_bytes_to_sort=298750165
+[dedup shard 0] triples=17405039 local_ids=4175564 flushes=15 record_bytes_to_sort=297455433
+[dedup shard 3] triples=17272579 local_ids=4142632 flushes=15 record_bytes_to_sort=298687210
+[dedup shard 7] triples=17273121 local_ids=4143792 flushes=15 record_bytes_to_sort=298814893
+[dedup shard 6] triples=17273272 local_ids=4143668 flushes=15 record_bytes_to_sort=298758229
+[dedup shard 5] triples=17273778 local_ids=4143898 flushes=15 record_bytes_to_sort=298781101
+[dedup shard 4] triples=17273805 local_ids=4143004 flushes=15 record_bytes_to_sort=298723352
+      269.44 real       661.37 user       143.88 sys
+          1844740096  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              318114  page reclaims
+                  45  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+             1459531  voluntary context switches
+             3008333  involuntary context switches
+       4588819893484  instructions retired
+       1193640139611  cycles elapsed
+          1564182160  peak memory footprint
