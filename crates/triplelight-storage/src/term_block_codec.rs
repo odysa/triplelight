@@ -7,14 +7,40 @@ const MAX_BLOCK: usize = MAX_TERM + 8192;
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(ErrorKind::InvalidData, s)
 }
+fn put_varint(out: &mut Vec<u8>, mut v: u64) {
+    while v >= 0x80 { out.push(v as u8 | 0x80); v >>= 7 }
+    out.push(v as u8);
+}
+fn get_varint(data: &[u8], pos: &mut usize) -> io::Result<u64> {
+    let mut v = 0u64;
+    for shift in (0..64).step_by(7) {
+        let b = *data.get(*pos).ok_or_else(|| bad("truncated term header"))?;
+        *pos += 1;
+        if shift == 63 && b > 1 { return Err(bad("varint overflow")) }
+        v |= u64::from(b & 0x7f) << shift;
+        if b & 0x80 == 0 {
+            // One canonical encoding per value: no trailing zero groups.
+            if b == 0 && shift > 0 { return Err(bad("noncanonical varint")) }
+            return Ok(v);
+        }
+    }
+    Err(bad("varint overflow"))
+}
+
 /// Encode at most 256 ID/term pairs. The caller determines and validates order.
-pub(super) fn encode(entries: &[(TermId, Term)]) -> io::Result<Vec<u8>> {
+///
+/// `lean` (`RDFDID03`, #105): each entry is `varint(ID - previous ID)` (the block's first entry: `varint(ID)`), then
+/// `varint(prefix)`, `varint(suffix length)` and the suffix bytes. IDs ascend within a block, and 99.6% of entries are
+/// the previous ID + 1, so the framing is usually 3 bytes instead of 16. Otherwise (`RDFDID01`/`RDFDID02`): an 8-byte
+/// ID and two 4-byte lengths.
+pub(super) fn encode(entries: &[(TermId, Term)], lean: bool) -> io::Result<Vec<u8>> {
     if entries.is_empty() || entries.len() > 256 {
         return Err(bad("invalid term block count"));
     }
     let mut result = Vec::new();
     result.extend_from_slice(&(entries.len() as u16).to_le_bytes());
     let mut previous = Vec::new();
+    let mut previous_id: Option<u64> = None;
     for (id, term) in entries {
         if id.0 == 0 {
             return Err(bad("zero term ID"));
@@ -30,9 +56,20 @@ pub(super) fn encode(entries: &[(TermId, Term)]) -> io::Result<Vec<u8>> {
             .take_while(|(a, b)| a == b)
             .count();
         let suffix = &text[prefix..];
-        result.extend_from_slice(&id.0.to_le_bytes());
-        result.extend_from_slice(&(prefix as u32).to_le_bytes());
-        result.extend_from_slice(&(suffix.len() as u32).to_le_bytes());
+        if lean {
+            let delta = match previous_id {
+                None => id.0,
+                Some(p) => id.0.checked_sub(p).filter(|d| *d > 0).ok_or_else(|| bad("term IDs not ascending in a block"))?,
+            };
+            put_varint(&mut result, delta);
+            put_varint(&mut result, prefix as u64);
+            put_varint(&mut result, suffix.len() as u64);
+        } else {
+            result.extend_from_slice(&id.0.to_le_bytes());
+            result.extend_from_slice(&(prefix as u32).to_le_bytes());
+            result.extend_from_slice(&(suffix.len() as u32).to_le_bytes());
+        }
+        previous_id = Some(id.0);
         result.extend_from_slice(suffix);
         if result.len() > MAX_BLOCK {
             return Err(bad("term block too large"));
@@ -42,8 +79,8 @@ pub(super) fn encode(entries: &[(TermId, Term)]) -> io::Result<Vec<u8>> {
     }
     Ok(result)
 }
-/// Strictly decode a complete bounded block; no unchecked parsing of disk bytes.
-pub(super) fn decode(data: &[u8]) -> io::Result<Vec<(TermId, Term)>> {
+/// Strictly decode a complete bounded block; no unchecked parsing of disk bytes. `lean` as for `encode`.
+pub(super) fn decode(data: &[u8], lean: bool) -> io::Result<Vec<(TermId, Term)>> {
     if data.len() > MAX_BLOCK {
         return Err(bad("term block too large"));
     }
@@ -57,14 +94,29 @@ pub(super) fn decode(data: &[u8]) -> io::Result<Vec<(TermId, Term)>> {
     let mut pos = 2usize;
     let mut previous = Vec::new();
     let mut result = Vec::with_capacity(count);
+    let mut previous_id: Option<u64> = None;
     for _ in 0..count {
-        let header = pos
-            .checked_add(16)
-            .filter(|v| *v <= data.len())
-            .ok_or_else(|| bad("truncated term header"))?;
-        let id = TermId(u64::from_le_bytes(data[pos..pos + 8].try_into().unwrap()));
-        let prefix = u32::from_le_bytes(data[pos + 8..pos + 12].try_into().unwrap()) as usize;
-        let suffix = u32::from_le_bytes(data[pos + 12..header].try_into().unwrap()) as usize;
+        let (id, prefix, suffix, header) = if lean {
+            let mut p = pos;
+            let delta = get_varint(data, &mut p)?;
+            let id = match previous_id {
+                None => delta,
+                Some(prev) => prev.checked_add(delta).filter(|_| delta > 0).ok_or_else(|| bad("invalid term block prefix or ID"))?,
+            };
+            let prefix = usize::try_from(get_varint(data, &mut p)?).map_err(|_| bad("term too large"))?;
+            let suffix = usize::try_from(get_varint(data, &mut p)?).map_err(|_| bad("term too large"))?;
+            (TermId(id), prefix, suffix, p)
+        } else {
+            let header = pos
+                .checked_add(16)
+                .filter(|v| *v <= data.len())
+                .ok_or_else(|| bad("truncated term header"))?;
+            let id = TermId(u64::from_le_bytes(data[pos..pos + 8].try_into().unwrap()));
+            let prefix = u32::from_le_bytes(data[pos + 8..pos + 12].try_into().unwrap()) as usize;
+            let suffix = u32::from_le_bytes(data[pos + 12..header].try_into().unwrap()) as usize;
+            (id, prefix, suffix, header)
+        };
+        previous_id = Some(id.0);
         let end = header
             .checked_add(suffix)
             .filter(|v| *v <= data.len())
@@ -113,16 +165,40 @@ mod tests {
                 Literal::new_simple_literal("hello world").into(),
             ),
         ];
-        let bytes = encode(&terms).unwrap();
-        assert_eq!(decode(&bytes).unwrap(), terms);
+        let bytes = encode(&terms, false).unwrap();
+        assert_eq!(decode(&bytes, false).unwrap(), terms);
         for n in 0..bytes.len() {
-            assert!(decode(&bytes[..n]).is_err());
+            assert!(decode(&bytes[..n], false).is_err());
         }
         let mut badbytes = bytes.clone();
         badbytes[10..14].copy_from_slice(&u32::MAX.to_le_bytes());
-        assert!(decode(&badbytes).is_err());
+        assert!(decode(&badbytes, false).is_err());
         let mut extra = bytes;
         extra.push(0);
-        assert!(decode(&extra).is_err());
+        assert!(decode(&extra, false).is_err());
+    }
+    #[test]
+    fn lean_blocks_roundtrip_shrink_and_reject_malformed_input() {
+        let iri = |i: u64| -> Term { NamedNode::new(format!("http://example.org/resource/item{i:06}")).unwrap().into() };
+        // Consecutive IDs, as in most blocks, plus a gap and a large final ID.
+        let mut terms: Vec<(TermId, Term)> = (0..200u64).map(|i| (TermId((1 << 60) | (i + 1)), iri(i))).collect();
+        terms.push((TermId((1 << 60) | 10_000), iri(10_000)));
+        terms.push((TermId(u64::MAX), Literal::new_simple_literal("é and a long tail".repeat(20)).into()));
+        let lean = encode(&terms, true).unwrap();
+        let old = encode(&terms, false).unwrap();
+        assert_eq!(decode(&lean, true).unwrap(), terms);
+        assert_eq!(decode(&old, false).unwrap(), terms);
+        assert!(old.len() - lean.len() >= 12 * 200, "framing shrinks by about 13 bytes per entry: {} against {}", lean.len(), old.len());
+        for n in 0..lean.len() { assert!(decode(&lean[..n], true).is_err(), "truncated at {n}") }
+        let mut extra = lean.clone();
+        extra.push(0);
+        assert!(decode(&extra, true).is_err());
+        // A zero ID delta (a repeated ID) and a noncanonical varint are refused.
+        let mut dup = vec![2, 0];
+        for (id, _) in [(5u64, ()), (0, ())] { put_varint(&mut dup, id); put_varint(&mut dup, 0); put_varint(&mut dup, 3); dup.extend_from_slice(b"<a>") }
+        assert!(decode(&dup, true).is_err());
+        let mut pos = 0;
+        assert!(get_varint(&[0x81, 0x00], &mut pos).is_err());
+        assert!(encode(&[(TermId(5), iri(1)), (TermId(5), iri(2))], true).is_err(), "IDs must ascend in a lean block");
     }
 }
