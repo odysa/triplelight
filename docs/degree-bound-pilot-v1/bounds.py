@@ -1,5 +1,6 @@
 # Bounds for #99 as registered in the task thread (rule fixed before statistics were computed).
-import json, re, sys, math, glob
+import json, re, sys, math, glob, os
+QDIR = os.environ.get("LUBM_QUERY_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "bench", "lubm"))  # q1.rq..q14.rq
 st = json.load(open("stats.json")); P = st["preds"]; CC = st["class_counts"]; K = st["const"]
 UB = "http://swat.cse.lehigh.edu/onto/univ-bench.owl#"; RDFT = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
 def pred(name): return P["<" + (RDFT if name == "rdf:type" else UB + name.split(":")[1]) + ">"]
@@ -58,7 +59,7 @@ def l2_first(atoms, order):
     return na * nb
 rows = []
 for i in range(1, 15):
-    q = open(f"/private/tmp/wxp-tl/triplelight/bench/lubm/q{i}.rq").read()
+    q = open(os.path.join(QDIR, f"q{i}.rq")).read()
     at = parse(q); order, fac = run(at)
     a = 1
     for f in fac: a *= f

@@ -1,4 +1,6 @@
 # Independent offline oracle for #99: exact result counts (set semantics, distinct triples) by in-memory joins.
+import os
+QDIR = os.environ.get("LUBM_QUERY_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "bench", "lubm"))  # q1.rq..q14.rq
 import sys, re, json, collections
 sys.path.insert(0, ".")
 f = sys.argv[1]
@@ -35,7 +37,7 @@ def solve(atoms):
     return rec(0, {})
 out = {}
 for i in range(1, 15):
-    q = open(f"/private/tmp/wxp-tl/triplelight/bench/lubm/q{i}.rq").read()
+    q = open(os.path.join(QDIR, f"q{i}.rq")).read()
     body = re.search(r"WHERE\s*\{(.*)\}", q, re.S).group(1)
     at = [tuple(t.split()) for t in re.split(r"\s\.\s*", body.strip().rstrip("."))]
     # reorder: constants-bearing atoms first, then connected (so backtracking stays selective); count is order-independent

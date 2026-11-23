@@ -10,6 +10,14 @@ start from the atom of smallest exact cardinality; add next the connected atom w
 the max degree D_s(p) or D_o(p), or the exact count when an end is a constant. Bound (b) would replace the first join with the l2 (Cauchy-Schwarz) bound.
 In this rule every query's first join involves a constant or an `rdf:type` atom, so (b) never applied and the reported bound is (a). Implemented in `bounds.py`.
 
+**Statement counts.** The statistics (`stats.py`, and so the greedy join order and the bounds) use statement counts, including the duplicate
+statements of the file (13,879,970 statements, 13,409,395 distinct triples). The registration called for exact relation cardinalities; the extra statements
+only loosen the bounds, never invalidate them.
+
+**Replay.** `python3 -I bounds.py` reads `stats.json` and the 14 query files from `bench/lubm` of this repository (override with `LUBM_QUERY_DIR`) and rewrites
+`bounds.json`; it reproduces the saved file exactly. `stats.py <lubm100.nt> stats.json` and `truth.py <lubm100.nt>` regenerate the statistics and the Python oracle
+(about 30 s and a few minutes on one core). Run the scripts from this directory.
+
 **Truth.** `truth.py`: exact set-semantics counts by in-memory index joins in Python (an offline oracle, independent of the engine).
 The registered engine `COUNT(*)` run (`engine_counts.txt`, release binary of main at `fbffe93`, queries wrapped as `SELECT (COUNT(*) AS ?n) WHERE {...}` over `lubm100.nt`, run under the lock) reproduces all 14 counts in `truth_py.json` exactly. The file has 13,409,395 distinct triples out of 13,879,970 statements.
 
