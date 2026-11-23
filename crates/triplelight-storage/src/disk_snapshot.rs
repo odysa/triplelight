@@ -10,15 +10,7 @@ use std::fs::{self, File};
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::Path;
 
-pub(super) const FILES: [&str; 7] = ["dictionary", "spo", "sop", "pso", "pos", "osp", "ops"];
-/// Which triple (and quad) orders a base keeps, as bits of their `Perm::ALL` positions (task #73).
-pub const ALL_ORDERS: u8 = 0b11_1111;
-/// SPO, PSO, POS and OSP: kept by every base. SOP and OPS are served from them when absent (`derived_order`).
-pub const REQUIRED_ORDERS: u8 = 0b01_1101;
-/// The graph-first quad orders of an `RDFSNAP5`/`RDFSNAP6` base (task #36), in `Perm::ALL` order of their triple part.
-pub(super) const QUAD_FILES: [&str; 6] = ["gspo", "gsop", "gpso", "gpos", "gosp", "gops"];
-/// The graph catalog of an `RDFSNAP5` base: every named graph's ID and triple count, empty graphs included.
-pub(super) const CATALOG_FILE: &str = "graphs";
+use super::base_format::{ALL_ORDERS, CATALOG_FILE, FILES, QUAD_FILES, REQUIRED_ORDERS};
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, s)
 }
@@ -130,7 +122,7 @@ pub fn write_disk_dataset(dir: impl AsRef<Path>, source: &dyn triplelight_core::
 }
 /// Build a new immutable disk snapshot from N-Triples using scratch-backed sorting.
 pub fn build_disk_snapshot(dir: impl AsRef<Path>, source: Option<&Path>) -> io::Result<()> {
-    super::external_build::adaptive(
+    adaptive(
         dir.as_ref(),
         source,
         std::thread::available_parallelism().map_or(1, |n| n.get()),
@@ -139,7 +131,7 @@ pub fn build_disk_snapshot(dir: impl AsRef<Path>, source: Option<&Path>) -> io::
 /// Build from N-Triples with an explicit number of ingestion workers.
 pub fn build_disk_snapshot_with_workers(dir: impl AsRef<Path>, source: Option<&Path>, workers: usize) -> io::Result<()> {
     if workers == 0 { return Err(io::Error::new(io::ErrorKind::InvalidInput, "workers must be positive")); }
-    super::external_build::adaptive(dir.as_ref(), source, workers)
+    adaptive(dir.as_ref(), source, workers)
 }
 /// The orders the base in `dir` keeps (bits of `Perm::ALL` positions): its RDFSNAP6 order set, or all six.
 pub(super) fn kept_orders(dir: &Path) -> io::Result<u8> {
@@ -159,7 +151,7 @@ impl crate::store::BaseFormat for DiskBase {
         write_disk_snapshot(dir, src)
     }
     fn import(&self, dir: &Path, ntriples: Option<&Path>) -> io::Result<()> {
-        super::external_build::adaptive(dir, ntriples, self.workers)
+        adaptive(dir, ntriples, self.workers)
     }
     fn open(&self, dir: &Path) -> io::Result<std::sync::Arc<dyn Snapshot>> {
         Ok(std::sync::Arc::new(DiskSnapshot::open(dir)?))
@@ -219,7 +211,7 @@ pub struct DiskSnapshot {
     triple_terms: Option<DiskIndex<4>>,
 }
 /// File name of the triple-term parts table of an `RDFSNAP7` base.
-pub(super) const TRIPLE_TERMS_FILE: &str = "triple_terms";
+use super::base_format::TRIPLE_TERMS_FILE;
 struct NamedBase {
     /// The graph-first quad orders, in `Perm::ALL` order of their triple part; `None` as for `indexes`.
     quads: Vec<Option<DiskIndex<4>>>,
@@ -803,6 +795,24 @@ impl super::derived_order::KeptOrders for DiskGraph {
         if prefix.len() >= 3 { return Ok(None) }
         self.index(perm).seek_value(&self.key(prefix), target)
     }
+}
+
+/// Builds a base from N-Triples, choosing the in-memory writer (`DiskSnapshot::create`, `RDFSNAP3`) when the build
+/// budget allows it and the input has no RDF 1.2 terms, and the external sort (`external_build`) otherwise.
+pub(super) fn adaptive(dir: &Path, source: Option<&Path>, workers: usize) -> io::Result<()> {
+    if let Some(path) = source
+        && super::external_build::in_memory_fits(path)?
+    {
+        eprintln!("disk build strategy: in-memory (estimated 3x input; not an RSS limit)");
+        let snapshot = MemorySnapshot::from_ntriples_parallel_file(path, workers.max(1))?;
+        // That path writes RDFSNAP3, which has no RDF 1.2 flag: such input takes the external builder instead.
+        if !snapshot.has_rdf12_terms() { return DiskSnapshot::create(dir, &snapshot) }
+        eprintln!("disk build strategy: input holds RDF 1.2 terms; using the external sort");
+        drop(snapshot);
+        return super::external_build::from_nt_parallel(dir, source, workers.max(1));
+    }
+    eprintln!("disk build strategy: external sort (budget is advisory, not an RSS limit)");
+    super::external_build::from_nt_parallel(dir, source, workers.max(1))
 }
 
 #[cfg(test)]
@@ -1672,3 +1682,4 @@ mod tests {
         fs::remove_dir_all(dir).unwrap();
     }
 }
+

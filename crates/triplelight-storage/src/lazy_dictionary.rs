@@ -1,5 +1,5 @@
 //! Immutable on-disk dictionary indexes: the unified dictionary of current bases and the two-file layout of RDFSNAP3 (see docs/lazy-dictionary-design.md).
-use super::external_build::MAX_TERM;
+use super::base_format::MAX_TERM;
 use super::term_block_codec;
 use crate::model::{id_tag, TermId};
 use triplelight_rdf::Term;

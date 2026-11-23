@@ -2,7 +2,7 @@
 use crate::model::TermId;
 use triplelight_rdf::Term;
 use std::io::{self, ErrorKind};
-use super::external_build::MAX_TERM;
+use super::base_format::MAX_TERM;
 const MAX_BLOCK: usize = MAX_TERM + 8192;
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(ErrorKind::InvalidData, s)

@@ -729,7 +729,7 @@ fn check_term_size(term: triplelight_rdf::TermRef<'_>) -> std::io::Result<()> {
             return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("triple term nested {depth} deep exceeds the limit of {}", triplelight_rdf::MAX_TRIPLE_TERM_DEPTH)));
         }
     }
-    // The same limit as the base writer (`external_build::MAX_TERM`, Unix only) and the streaming parsers.
+    // The same limit as the base writer (`base_format::MAX_TERM`, Unix only) and the streaming parsers.
     let limit = triplelight_core::ntriples::MAX_TOKEN;
     // Cheap upper bound first: escaping turns one byte into at most six (`\u0000`), plus quotes and the suffix.
     let bound = match term {
@@ -1341,7 +1341,7 @@ mod dataset_wal_tests {
     #[cfg(unix)]
     #[test]
     fn oversized_terms_are_refused_at_commit() {
-        let limit = crate::external_build::MAX_TERM;
+        let limit = crate::base_format::MAX_TERM;
         let dir = Dir::new("term-limit");
         let open = || Store::open_with(&dir.0, None, Box::new(crate::DiskBase { workers: 1 })).unwrap();
         let store = open();
