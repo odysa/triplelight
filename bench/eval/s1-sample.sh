@@ -9,6 +9,7 @@ set -u
 SYS=$1; OUTF=$2
 HERE=$(cd "$(dirname "$0")" && pwd); . "$HERE/lib.sh"
 if [ "$(uname)" != Linux ] || [ ! -f /sys/fs/cgroup/cgroup.controllers ]; then echo "# no cgroup v2 here: S1 sampling skipped" > "$OUTF"; exit 0; fi
+cg_container_name() { case $SYS in qlever|qlever-two-order) echo bench-qlever;; virtuoso) echo bench-virtuoso;; rdf4j-native|rdf4j-native-default) echo bench-rdf4j;; millenniumdb) echo bench-mdb;; esac; }
 cg() {
   local id
   case $SYS in
@@ -28,7 +29,14 @@ printf '# cgroup %s\n# epoch\tcurrent\tpeak\tanon\tfile\tpgmajfault\trbytes\toom
 # memory.peak start from zero, which s1-report.py handles per segment).
 while :; do
   if [ ! -f "$CG/memory.current" ]; then
-    printf '%s\trestart\n' "$(date +%s.%N)" >> "$OUTF"
+    # Why the old cgroup went away: an OOM kill removes the whole scope or container at once, so memory.events cannot
+    # show it; systemd's unit result (native) or Docker's OOMKilled flag (containers) can.
+    case $SYS in
+      qlever|qlever-two-order|virtuoso|rdf4j-native|rdf4j-native-default|millenniumdb)
+        why=$(docker inspect -f '{{if .State.OOMKilled}}oom-kill{{else}}exit{{end}}' "$(cg_container_name)" 2>/dev/null || echo gone);;
+      *) why=$(systemctl show -p Result --value "bench-$SYS.scope" 2>/dev/null || echo gone);;
+    esac
+    printf '%s\trestart\t%s\n' "$(date +%s.%N)" "${why:-gone}" >> "$OUTF"
     while :; do sleep 0.5; CG=${S1_CGROUP:-$(cg)}; [ -n "$CG" ] && [ -f "$CG/memory.current" ] && break; done
     printf '# cgroup %s\n' "$CG" >> "$OUTF"
     continue
@@ -36,7 +44,7 @@ while :; do
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s.%N)" "$(cat "$CG/memory.current")" "$(cat "$CG/memory.peak" 2>/dev/null)" \
     "$(awk '$1=="anon"{print $2}' "$CG/memory.stat")" "$(awk '$1=="file"{print $2}' "$CG/memory.stat")" \
     "$(awk '$1=="pgmajfault"{print $2}' "$CG/memory.stat")" \
-    "$(awk '{for(i=2;i<=NF;i++) if ($i ~ /^rbytes=/) {split($i,a,"="); s+=a[2]}} END {print s+0}' "$CG/io.stat" 2>/dev/null)" \
+    "$(awk '{for(i=2;i<=NF;i++) if ($i ~ /^rbytes=/) {split($i,a,"="); s+=a[2]}} END {print s+0}' "$CG/io.stat" 2>/dev/null || echo 0)" \
     "$(awk '$1=="oom_kill"{print $2}' "$CG/memory.events")" >> "$OUTF"
   sleep 0.5
 done

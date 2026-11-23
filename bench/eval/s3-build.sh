@@ -59,14 +59,19 @@ case $SYS in
 esac
 TMPD=${TMPDIR:-/tmp}; TMP0=$(du -sk "$TMPD" 2>/dev/null | cut -f1)
 LINUX=0; [ "$(uname)" = Linux ] && [ -f /sys/fs/cgroup/cgroup.controllers ] && LINUX=1
+sha256() { if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1; }
 dev_written() {   # sectors written on the device that holds $T (Linux), else 0
   [ $LINUX = 1 ] || { echo 0; return; }
   local dev; dev=$(basename "$(df --output=source "$T" | tail -1)")
-  awk -v d="$dev" '$3==d {print $10}' /proc/diskstats
+  awk -v d="$dev" '$3==d {print $10; f=1} END {if (!f) print 0}' /proc/diskstats
 }
 cg_of_container() {   # cgroup v2 directory of a running container, or nothing
   local id; id=$(docker ps -q --no-trunc --filter "$CNAME_FILTER" | head -1); [ -n "$id" ] || return 0
   for d in /sys/fs/cgroup/system.slice/docker-$id.scope /sys/fs/cgroup/docker/$id; do [ -d "$d" ] && { echo "$d"; return; }; done
+}
+kill_tree() {   # the process and every descendant (the loader runs below time and systems.sh)
+  local kids; kids=$(ps -Ao pid=,ppid= | awk -v p="$1" '$2==p {print $1}')
+  for k in $kids; do kill_tree "$k"; done; kill "$1" 2>/dev/null || true
 }
 tree_rss_kb() {   # RSS of a process and all its descendants, in KiB
   ps -Ao pid=,ppid=,rss= | awk -v root="$1" '{p[$1]=$2; r[$1]=$3} END {s=0; for (q in r) {x=q; while (x != "" && x != root && x != 1 && x != 0) x=p[x]; if (x == root) s+=r[q]} print s}'
@@ -78,10 +83,11 @@ SCOPE=s3-$SYS-$D-$TAG-$$
 if [ $LINUX = 1 ] && command -v systemd-run >/dev/null; then
   # The native loaders are charged to this scope; Docker loaders to their container's cgroup (sampled below).
   RUN=(systemd-run --scope --quiet --unit="$SCOPE" -p MemoryMax="${MEM}G" -p MemorySwapMax=0 --)
-  TIMEFMT=(/usr/bin/time -v)
 else
-  RUN=(); TIMEFMT=(/usr/bin/time -l)
+  RUN=()
 fi
+# GNU time on Linux, BSD time on macOS (the flag follows the OS, not whether systemd-run exists)
+if [ "$(uname)" = Linux ]; then TIMEFMT=(/usr/bin/time -v); else TIMEFMT=(/usr/bin/time -l); fi
 START=$(date +%s.%N 2>/dev/null || date +%s)
 "${TIMEFMT[@]}" ${RUN[@]+"${RUN[@]}"} "$HERE/systems.sh" "$SYS" load "$D" --mem "$MEM" --cpus "$CPUS" > "$OUT/build.log" 2>&1 &
 PID=$!
@@ -106,7 +112,7 @@ while kill -0 $PID 2>/dev/null; do
   # On the Linux machine an unmeasured build is a failure, not an empty field (Kaiming).
   if [ $LINUX = 1 ] && [ -z "$peak" ]; then
     MISS=$(( ${MISS:-0} + 1 ))
-    if [ $MISS -ge 3 ]; then echo "no cgroup found for $SYS ($CNAME_FILTER / $SCOPE): stopping, the build would be unmeasured" >&2; kill $PID; pkill -f "systems.sh $SYS load" || true; exit 9; fi
+    if [ $MISS -ge 3 ]; then echo "no cgroup found for $SYS ($CNAME_FILTER / $SCOPE): stopping, the build would be unmeasured" >&2; kill_tree $PID; exit 9; fi
   fi
   tg=$(( $(du -sk "$TMPD" 2>/dev/null | cut -f1) - TMP0 ))
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date -u +%H:%M:%S)" "${s:-0}" "$f" "${peak:-}" "${anon:-}" "${file:-}" "${mem_kb:-}" "$tg" >> "$OUT/samples.tsv"
@@ -119,8 +125,8 @@ FINAL=$(du -sk "$STORE" 2>/dev/null | cut -f1)
 # Provenance: the exact load command, the pinned versions, the harness and binary hashes, the repository commit.
 { echo "command=$HERE/systems.sh $SYS load $D --mem $MEM --cpus $CPUS"
   echo "repo_commit=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)"
-  echo "systems_sh_sha256=$(shasum -a 256 "$HERE/systems.sh" | cut -d' ' -f1)"
-  [ "$SYS" = triplelight ] && echo "triplelight_bin_sha256=$(shasum -a 256 "${TRIPLELIGHT_BIN:-$ROOT/target/release/triplelight}" | cut -d' ' -f1)"
+  echo "systems_sh_sha256=$(sha256 "$HERE/systems.sh")"
+  [ "$SYS" = triplelight ] && echo "triplelight_bin_sha256=$(sha256 "${TRIPLELIGHT_BIN:-$ROOT/target/release/triplelight}")"
   [ "$SYS" = oxigraph ] && echo "oxigraph_version=$("$T/oxigraph" --version)"
   grep -E '^[A-Z_]+=' "$HERE/VERSIONS"
 } > "$OUT/provenance.txt"

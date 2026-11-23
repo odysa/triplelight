@@ -34,7 +34,8 @@ start_system() {  # start_system <system> <dataset> [budget args...]; waits unti
     local mem; mem=$(printf '%s\n' "$@" | awk 'p{print; exit} $0=="--mem"{p=1}')
     [ -n "$mem" ] || { echo "start_system $s: no --mem in the budget; refusing to start a native server without a memory limit" >&2; return 1; }
     echo "start_system $s: native server in scope bench-$s, MemoryMax=${mem}G, no swap" >> "$OUT/$s.server.log"
-    systemctl stop "bench-$s.scope" >/dev/null 2>&1 || true
+    # a scope that ended badly (e.g. OOM-killed) stays as a failed unit and blocks its name until reset
+    systemctl stop "bench-$s.scope" >/dev/null 2>&1 || true; systemctl reset-failed "bench-$s.scope" >/dev/null 2>&1 || true
     scope=(systemd-run --scope --quiet --unit="bench-$s" -p MemoryMax="${mem}G" -p MemorySwapMax=0 --)
   fi
   ${scope[@]+"${scope[@]}"} "$HERE/systems.sh" "$s" serve "$d" "$@" > "$OUT/$s.server.log" 2>&1 &

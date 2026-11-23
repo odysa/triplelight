@@ -10,7 +10,7 @@ rows = []   # a `restart` row starts a new cgroup whose counters begin at zero: 
 for line in open(sys.argv[2]):
     if line.startswith("#") or not line.strip(): continue
     f = line.rstrip("\n").split("\t")
-    if len(f) > 1 and f[1] == "restart": rows.append([float(f[0]), None]); continue
+    if len(f) > 1 and f[1] == "restart": rows.append([float(f[0]), None, f[2] if len(f) > 2 else ""]); continue
     try: rows.append([float(f[0])] + [int(x) if x else 0 for x in f[1:]])
     except ValueError: continue
 def increase(w, i):
@@ -35,7 +35,7 @@ for name, e in res["queries"].items():
         "class": e.get("class"), "median_s": e.get("median_s"),
         "peak_anon_bytes": max(r[3] for r in data), "peak_file_bytes": max(r[4] for r in data),
         "major_faults": increase(w, 5), "device_read_bytes": increase(w, 6),
-        "oom_kill": increase(w, 7) > 0, "restarts_in_window": sum(1 for r in w if r[1] is None),
+        "oom_kill": increase(w, 7) > 0 or any(r[1] is None and r[2] == "oom-kill" for r in w), "restarts_in_window": sum(1 for r in w if r[1] is None),
     }
     if out["queries"][name]["oom_kill"]: out["queries"][name]["class"] = "oom-killed"
 json.dump(out, sys.stdout, indent=1)
