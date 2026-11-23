@@ -163,14 +163,11 @@ impl Cache {
         if self.used + size > budget && !self.ghost.remove(&key) && !self.next().is_multiple_of(ADMIT_ONE_IN) {
             // Rejected: remember the key, so its next miss is admitted.
             if self.ghost.insert(key) { self.ghost_order.push_back(key) }
+            // FIFO: the oldest keys go first. An admission removes its key from `ghost` but leaves it in
+            // `ghost_order`, so the queue is bounded by its own length (stale fronts are simply dropped).
             let cap = (self.keys.len() * GHOST_PER_RESIDENT).max(GHOST_MIN);
-            while self.ghost.len() > cap {
+            while self.ghost.len() > cap || self.ghost_order.len() > 2 * cap {
                 match self.ghost_order.pop_front() { Some(old) => { self.ghost.remove(&old); } None => break }
-            }
-            // Keys removed from `ghost` by an admission leave stale entries in `ghost_order`; drop them as they reach
-            // the front so the queue stays within a constant factor of the set.
-            while self.ghost_order.len() > 2 * cap.max(self.ghost.len()) {
-                if let Some(old) = self.ghost_order.pop_front() { if !self.ghost.contains(&old) { continue } self.ghost_order.push_back(old); break }
             }
             return Ok(0);
         }
