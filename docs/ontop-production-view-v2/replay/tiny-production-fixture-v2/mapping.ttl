@@ -1,0 +1,31 @@
+@prefix rr: <http://www.w3.org/ns/r2rml#> .
+
+<urn:ontop-workload:map:1> a rr:TriplesMap;
+  rr:logicalTable [ rr:sqlQuery "SELECT s, p, lexical AS lex FROM ontop_triples WHERE kind = 0 AND datatype IS NULL AND lang IS NULL" ];
+  rr:subjectMap [ rr:column "s"; rr:termType rr:IRI ];
+  rr:predicateObjectMap [ rr:predicateMap [ rr:column "p"; rr:termType rr:IRI ];
+    rr:objectMap [ rr:column "lex"; rr:termType rr:IRI ] ].
+
+<urn:ontop-workload:map:2> a rr:TriplesMap;
+  rr:logicalTable [ rr:sqlQuery "SELECT s, p, lexical AS lex FROM ontop_triples WHERE kind = 2 AND datatype = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString' AND lang = 'fr'" ];
+  rr:subjectMap [ rr:column "s"; rr:termType rr:IRI ];
+  rr:predicateObjectMap [ rr:predicateMap [ rr:column "p"; rr:termType rr:IRI ];
+    rr:objectMap [ rr:column "lex"; rr:language "fr" ] ].
+
+<urn:ontop-workload:map:3> a rr:TriplesMap;
+  rr:logicalTable [ rr:sqlQuery "SELECT s, p, lexical AS lex FROM ontop_triples WHERE kind = 2 AND datatype = 'http://www.w3.org/2001/XMLSchema#date' AND lang IS NULL" ];
+  rr:subjectMap [ rr:column "s"; rr:termType rr:IRI ];
+  rr:predicateObjectMap [ rr:predicateMap [ rr:column "p"; rr:termType rr:IRI ];
+    rr:objectMap [ rr:column "lex"; rr:datatype <http://www.w3.org/2001/XMLSchema#date> ] ].
+
+<urn:ontop-workload:map:4> a rr:TriplesMap;
+  rr:logicalTable [ rr:sqlQuery "SELECT s, p, lexical AS lex FROM ontop_triples WHERE kind = 2 AND datatype = 'http://www.w3.org/2001/XMLSchema#integer' AND lang IS NULL" ];
+  rr:subjectMap [ rr:column "s"; rr:termType rr:IRI ];
+  rr:predicateObjectMap [ rr:predicateMap [ rr:column "p"; rr:termType rr:IRI ];
+    rr:objectMap [ rr:column "lex"; rr:datatype <http://www.w3.org/2001/XMLSchema#integer> ] ].
+
+<urn:ontop-workload:map:5> a rr:TriplesMap;
+  rr:logicalTable [ rr:sqlQuery "SELECT s, p, lexical AS lex FROM ontop_triples WHERE kind = 2 AND datatype = 'http://www.w3.org/2001/XMLSchema#string' AND lang IS NULL" ];
+  rr:subjectMap [ rr:column "s"; rr:termType rr:IRI ];
+  rr:predicateObjectMap [ rr:predicateMap [ rr:column "p"; rr:termType rr:IRI ];
+    rr:objectMap [ rr:column "lex"; rr:datatype <http://www.w3.org/2001/XMLSchema#string> ] ].
