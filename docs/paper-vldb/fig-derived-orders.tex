@@ -1,0 +1,32 @@
+% Figure: exact derived orders (Section 3.1). \input{fig-derived-orders} inside a figure; needs tikz with the
+% positioning and arrows.meta libraries.
+\begin{tikzpicture}[
+  font=\sffamily\footnotesize, >={Stealth[length=1.6mm,width=1.2mm]},
+  kept/.style={rectangle, rounded corners=1.5pt, draw=black!80, line width=0.6pt, fill=black!6,
+               minimum width=13mm, minimum height=6mm},
+  derived/.style={kept, dashed, fill=white, draw=orange!80!black},
+  twin/.style={->, line width=0.7pt, draw=blue!70!black},
+  sib/.style={->, line width=0.7pt, draw=green!45!black, dash pattern=on 2.5pt off 1.5pt},
+  lab/.style={font=\sffamily\scriptsize, fill=white, inner sep=1pt, align=center},
+  node distance=6mm and 13mm]
+  % stored orders, top row; derived orders, bottom row
+  \node[kept] (spo) {SPO};
+  \node[kept, right=of spo] (osp) {OSP};
+  \node[kept, right=of osp] (pos) {POS};
+  \node[kept, right=6mm of pos] (pso) {PSO};
+  \node[derived, below=16mm of osp] (sop) {SOP};
+  \node[derived, below=16mm of pos] (ops) {OPS};
+  % twin remap: first two key columns bound
+  \draw[twin] (osp.south) -- node[lab, pos=0.5] {twin: swap\\cols 0,1} (sop.north);
+  \draw[twin] (pos.south) -- node[lab, pos=0.5] {twin: swap\\cols 0,1} (ops.north);
+  % regroup: zero or one key column bound
+  \draw[sib] (spo.south) to[bend right=18] node[lab, pos=0.62] {regroup\\by $s$} (sop.west);
+  \draw[sib] (osp.south east) to[bend left=12] node[lab, pos=0.30] {regroup\\by $o$} (ops.west);
+  % legend
+  \node[kept, minimum width=7mm, minimum height=4mm, right=9mm of ops, yshift=3mm] (lk) {};
+  \node[right=1mm of lk, font=\sffamily\scriptsize, anchor=west] {stored};
+  \node[derived, minimum width=7mm, minimum height=4mm, below=1.5mm of lk] (ld) {};
+  \node[right=1mm of ld, font=\sffamily\scriptsize, anchor=west] {derived, same rows and order};
+  \draw[twin] ([yshift=-4mm]ld.south west) -- ++(7mm,0) node[right, font=\sffamily\scriptsize, black] {$\ge$2 key columns bound};
+  \draw[sib] ([yshift=-8mm]ld.south west) -- ++(7mm,0) node[right, font=\sffamily\scriptsize, black] {0--1 bound: one group at a time};
+\end{tikzpicture}
