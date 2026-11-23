@@ -36,6 +36,8 @@ jobs:
         run: cargo test --locked --workspace --features server,async
       - name: Third-party notices are in sync with the binding packages
         run: python3 ci/check_notices.py
+      - name: No absolute local paths in the evidence files
+        run: python3 ci/check_paths.py
       - name: RDF 1.2 (feature rdf-12) across the workspace, plus the term-type differential
         run: |
           cargo clippy --locked --workspace --all-targets --features server,async,rdf-12 -- -D warnings

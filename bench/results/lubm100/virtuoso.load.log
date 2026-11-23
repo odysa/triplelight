@@ -1,5 +1,5 @@
 
-*** Error 39000: [Virtuoso Driver][Virtuoso Server]FA020: Unable to list files in '/Users/odysa/.slock/agents/b438313f-6338-4d86-ab3e-5995a1bde6c3/rdfdb/bench/tools/virtuoso-lubm100/../tools': No such file or directory
+*** Error 39000: [Virtuoso Driver][Virtuoso Server]FA020: Unable to list files in '<workspace>/rdfdb/bench/tools/virtuoso-lubm100/../tools': No such file or directory
 at line 0 of Top-Level:
-ld_dir('/Users/odysa/.slock/agents/b438313f-6338-4d86-ab3e-5995a1bde6c3/rdfdb/bench/tools/virtuoso-lubm100/../tools', 'lubm100.nt', 'http://bench/lubm100')
+ld_dir('<workspace>/rdfdb/bench/tools/virtuoso-lubm100/../tools', 'lubm100.nt', 'http://bench/lubm100')
 real 0
