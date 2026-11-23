@@ -12,9 +12,8 @@
 \maketitle
 
 \noindent\textbf{Status of this draft.} Every number cites its evidence file (\texttt{docs/...} in the repository).
-Papers marked~\unread\ were not read in full; they are named from their abstracts or from a source we read and must be re-checked before
-submission. Timing results are deliberately absent: they are measured once, on one dedicated machine, under a registered protocol
-(\texttt{docs/eval-plan/PLAN.md}). Per the VLDB 2027 submission guidelines (checked by Jianlin): research review is single-blind, so author names and affiliations appear on page one; regular research papers may use 12 pages excluding references; the February~1 cycle needs an abstract by January~25 and the March~1 cycle one by February~25.
+All cited papers were read in full, except web documentation cited as such (project READMEs and wikis, release notes). Timing results are deliberately absent: they are measured once, on one dedicated machine, under a registered protocol (\texttt{docs/eval-plan/PLAN.md}).
+Per the VLDB 2027 submission guidelines (checked by Jianlin): research review is single-blind, so author names and affiliations appear on page one; regular research papers may use 12 pages excluding references; the February~1 cycle needs an abstract by January~25 and the March~1 cycle one by February~25.
 
 \begin{abstract}
 Applications that need analytical queries over RDF data today run a database server or load the data into a general-purpose
@@ -49,6 +48,7 @@ RDF stores and a SQL engine (C1a); and as an HTTP SPARQL server, against QLever,
 The individual techniques draw on earlier work, and Section~3 credits each source. TripleLight also implements the RDF 1.2 and SPARQL 1.2 drafts, which Oxigraph and Jena already do; we describe our design in Section~3.6 and make no priority claim.
 
 \section{Architecture}
+Figure~\ref{fig:arch} shows the pipeline.
 TripleLight is a Cargo workspace of focused crates (\texttt{DESIGN.md}): RDF terms and parsers, IRI handling, a core of term IDs and storage traits,
 a SPARQL parser and algebra, a planner with statistics, an executor, a storage layer, and the embedded API with an optional HTTP server.
 No Oxigraph crate is a runtime dependency; the parsers and term types were written to match \texttt{oxrdf}, \texttt{oxiri} and \texttt{oxttl} and are tested
@@ -69,6 +69,13 @@ Execution runs on IDs with index nested-loop joins, filter pushdown, hash aggreg
 with a saved file they were ready 0.74 to 0.91\,s after open, against 20.5 to 25.8\,s when rebuilt by a scan (\texttt{docs/startup36-persisted-stats}; laptop, single session, preliminary: to be replaced by dedicated-machine numbers).
 Execution is intra-query parallel through Rayon: morsel-parallel BGP extension, parallel counting at the last join level, a parallel first level for leapfrog, and parallel result decoding and serialization; aggregation and the other operators run serially (code audit in task \#100; a thread-scaling run is planned on the dedicated machine). There is one writer and one process per store.
 Correctness is gated on answers matching Apache Jena under each benchmark's declared checks and on at least 323 passing W3C SPARQL~1.1 query tests in CI (\texttt{DESIGN.md}).
+
+\begin{figure}[t]
+\centering
+\resizebox{\linewidth}{!}{\input{fig-architecture}}
+\caption{Architecture. A query passes the parser, the planner and the executor, which work on term IDs through one snapshot interface; the snapshot is an immutable base plus an overlay, read through a block cache that shares one memory budget.}
+\label{fig:arch}
+\end{figure}
 
 \section{Techniques and Their Sources}
 \subsection{Four orders with exact derivation}
@@ -100,12 +107,19 @@ scan(order, prefix):
 \emph{Measured.} The default stores are 36\% smaller on LUBM-1000 (4.97 to 3.16\,GB) and 17\% smaller on BSBM-100M (7.94 to 6.56\,GB) than six-order stores (\texttt{docs/build-compare-orders-v1}). Build time does not improve measurably, because order builds run in batches of at most three. Across 255 benchmark queries, a trace recorded no regroup scans or memo misses and 18 twin remaps (a two-column-prefix rewrite that costs what a kept order costs), all on LUBM (\texttt{docs/ablation-qual-v1}); the counters cover only the expensive paths, since a one-column-prefix count on a derived order is answered from the sibling order and is not counted. Any latency effect is left to the timed four-against-six comparison in Section~4.4, and the rental's stress test measures the regroup path on the 50 highest-degree subjects and objects. How often real query logs reach a derived order is open (Section~5).
 
 \subsection{Counting from index metadata and ID-level aggregation}
-Aggregation runs on IDs and decodes only the output. For supported counts the executor reads exact range counts from the index instead of enumerating matches:
+\begin{figure}[t]
+\centering
+\resizebox{\linewidth}{!}{\input{fig-worked-query}}
+\caption{A worked query: a grouped count answered from index prefix metadata (this form is the \texttt{rdf:type}-by-class grouping of the count-pushdown evidence, \texttt{docs/count-pushdown}).}
+\label{fig:worked}
+\end{figure}
+
+Aggregation runs on IDs and decodes only the output (Figure~\ref{fig:worked}). For supported counts the executor reads exact range counts from the index instead of enumerating matches:
 a single-pattern \texttt{COUNT} is a prefix count, and a group-by on a permutation prefix counts each run (\texttt{docs/count-pushdown}). RDF-3X precomputes such counts as separate aggregated indexes~\cite{neumann2008};
 ours use the exact prefix metadata of the stored orders and need no extra index. Kùzu's factorized query processor keeps the intermediate relations of many-to-many joins as Cartesian products instead of flat tuples~\cite{feng2023}, so it also avoids enumerating a product; the shortcut here is narrower, a count for one pattern or a prefix group, or at the last join level, taken from an index range. The effect is measured as an ablation (Section~4.6).
 
 \subsection{Leapfrog triejoin with characteristic-set planning}
-Cyclic patterns use leapfrog triejoin~\cite{veldhuizen2014}, a worst-case-optimal join that requires its inputs as sorted iterators, so each variable order needs an index in the matching permutation. The planner estimates cardinalities with characteristic sets and predicate counts (Neumann and Moerkotte\unread), orders joins by subset dynamic programming, and picks a variable order for trie joins;
+Cyclic patterns use leapfrog triejoin~\cite{veldhuizen2014}, a worst-case-optimal join that requires its inputs as sorted iterators, so each variable order needs an index in the matching permutation. The planner estimates cardinalities with predicate counts and characteristic sets, the distinct sets of predicates that subjects have, which Neumann and Moerkotte use to estimate the cardinality of star joins~\cite{neumann2011}, orders joins by subset dynamic programming, and picks a variable order for trie joins;
 it replaces the greedy order only when statistics exist, the pattern has two to seven triples and the estimated greedy work is at least 100,000 (\texttt{docs/optimizer.md}).
 Its costs are heuristic work units, not calibrated against elapsed time (\texttt{docs/optimizer.md}).
 
@@ -150,7 +164,7 @@ Execution is parallel inside a query for joins, counting and result output, but 
 Results are materialized before output. One process per store directory and one writer. Aggregation and the other operators beyond joins, counting and result output run serially, which a thread-scaling run in Section~4 quantifies. \texttt{LOAD}, \texttt{SERVICE}, \texttt{BNODE(string)} and blank-node graph names are unsupported (\texttt{DESIGN.md}).
 The cost of the derived orders on real query logs is not measured. LUBM, BSBM and WatDiv are synthetic and their structure is nearly fixed and unlike real RDF data~\cite{duan2011}; WDBench, built from Wikidata, partly answers that for the HTTP comparison.
 \paragraph{Related work.} \emph{Embedded analytics.} DuckDB sets the requirements for embedded analytical systems~\cite{raasveldt2020} and is described in a SIGMOD 2019 demonstration paper~\cite{raasveldt2019}; Kùzu is a disk-based, embeddable graph database queried in Cypher~\cite{feng2023}, so it is outside the SPARQL comparison. \todo{Confirm Kùzu's current maintenance status before saying more.}
-\emph{RDF engines.} RDF-3X~\cite{neumann2008}, Hexastore~\cite{weiss2008} and QLever~\cite{bast2017} are the index designs we compare in Section~3.1; Jena TDB stores its six orders in B+-trees~\cite{arroyuelo2021}; Oxigraph stores its indexes in a RocksDB key-value store~\cite{oxigraphwiki}; Oxigraph (pyoxigraph 0.5.13) and Jena 6.1 already support RDF 1.2 and SPARQL 1.2~\cite{oxigraphrdf12,jenarelease}. HDT\unread{} is a compact, read-only binary RDF format (header, dictionary and triples) for publishing and exchange, where TripleLight is a queryable store with updates. Tentris\unread{} keeps a graph in memory as a sparse tensor in one structure (the hypertrie) that replaces several indexes; TripleLight keeps ordinary sorted blocks on disk. gStore\unread{} answers SPARQL by subgraph matching over a graph index. MillenniumDB~\cite{vrgoc2021} and RDF Fusion~\cite{schwarzinger2025} are the engines closest in aim, described in Section~1. EmptyHeaded\unread{} compiles multiway worst-case-optimal joins in a relational engine for graph analytics and is not an RDF store. Comunica\unread{} and rdflib\unread{} are library-level SPARQL engines over pluggable sources and stores, not analytical disk stores.
+\emph{RDF engines.} RDF-3X~\cite{neumann2008}, Hexastore~\cite{weiss2008} and QLever~\cite{bast2017} are the index designs we compare in Section~3.1; Jena TDB stores its six orders in B+-trees~\cite{arroyuelo2021}; Oxigraph stores its indexes in a RocksDB key-value store~\cite{oxigraphwiki}; Oxigraph (pyoxigraph 0.5.13) and Jena 6.1 already support RDF 1.2 and SPARQL 1.2~\cite{oxigraphrdf12,jenarelease}. HDT~\cite{fernandez2013} is a compact binary RDF representation, split into a header, a dictionary and the triples, designed for publication and exchange with native support for simple query patterns; TripleLight is a queryable store with updates. Tentris~\cite{bigerl2020} is an in-memory triple store that keeps the graph as a sparse tensor in one structure (the hypertrie) that replaces several indexes, and evaluates joins with a worst-case-optimal multi-join algorithm; TripleLight keeps ordinary sorted blocks on disk. gStore~\cite{zou2011} stores RDF as a graph in a disk-based adjacency-list table with a signature-based index and answers SPARQL by subgraph matching. MillenniumDB~\cite{vrgoc2021} and RDF Fusion~\cite{schwarzinger2025} are the engines closest in aim, described in Section~1. EmptyHeaded~\cite{aberger2017} compiles multiway worst-case-optimal joins in a relational engine for graph analytics and is not an RDF store. Comunica~\cite{taelman2018} is a modular meta query engine for querying heterogeneous Web sources, and rdflib is a Python library whose stores are pluggable backends without a common index layout (\texttt{docs/embedded-store-inventory.md}); neither is a disk-resident analytical store.
 \emph{Layout and benchmarks.} Sidirourgos et al.\ re-evaluated the vertical-partitioning proposal on MonetDB/SQL and an anonymized commercial row-store DBMS (``DBX''), and found that clustering the triple table on PSO instead of the original SPO improved queries by factors of two to five on the row store~\cite{sidirourgos2008};
 Duan et al.\ showed that benchmark data differ from real RDF data in structuredness~\cite{duan2011}.
 
@@ -175,6 +189,12 @@ The code, the scripts and the data needed to reproduce every number are in the r
 \bibitem{oxigraphwiki} Oxigraph project wiki, ``Architecture'', github.com/oxigraph/oxigraph/wiki/Architecture (accessed 2026-11-23).
 \bibitem{oxigraphrdf12} Oxigraph v0.5.13: \texttt{python/Cargo.toml} (the \texttt{rdf-12} feature) and \texttt{lib/oxigraph/src/storage/numeric\_encoder.rs}, github.com/oxigraph/oxigraph (checked 2026-11-23).
 \bibitem{jenarelease} Apache Jena 6.1.0 release notes (\texttt{CHANGES.txt}), github.com/apache/jena/blob/jena-6.1.0/CHANGES.txt (checked 2026-11-23).
+\bibitem{neumann2011} T.~Neumann, G.~Moerkotte. Characteristic sets: accurate cardinality estimation for RDF queries with multiple joins. \emph{ICDE}, 2011. DOI 10.1109/ICDE.2011.5767868.
+\bibitem{fernandez2013} J.~D.~Fern{\'a}ndez, M.~A.~Mart{\'\i}nez-Prieto, C.~Guti{\'e}rrez, A.~Polleres, M.~Arias. Binary RDF representation for publication and exchange (HDT). \emph{J.\ Web Semantics} 19, 2013.
+\bibitem{bigerl2020} A.~Bigerl, F.~Conrads, C.~Behning, M.~A.~Sherif, M.~Saleem, A.-C.~Ngonga Ngomo. Tentris -- a tensor-based triple store. \emph{ISWC}, 2020.
+\bibitem{zou2011} L.~Zou, J.~Mo, L.~Chen, M.~T.~{\"O}zsu, D.~Zhao. gStore: answering SPARQL queries via subgraph matching. \emph{PVLDB} 4(8), 2011.
+\bibitem{aberger2017} C.~R.~Aberger, S.~Tu, K.~Olukotun, C.~R{\'e}. EmptyHeaded: a relational engine for graph processing. \emph{ACM TODS} 42(4), 2017 (arXiv:1503.02368).
+\bibitem{taelman2018} R.~Taelman, J.~Van Herwegen, M.~Vander Sande, R.~Verborgh. Comunica: a modular SPARQL query engine for the Web. \emph{ISWC}, 2018.
 \bibitem{duan2011} S.~Duan, A.~Kementsietsidis, K.~Srinivas, O.~Udrea. Apples and oranges: a comparison of RDF benchmarks and real RDF datasets. \emph{SIGMOD}, 2011.
 \end{thebibliography}
 \end{document}

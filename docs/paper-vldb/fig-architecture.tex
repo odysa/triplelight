@@ -1,0 +1,20 @@
+% Architecture of TripleLight (DESIGN.md). Needs tikz with arrows.meta.
+\begin{tikzpicture}[font=\small,
+  box/.style={draw, rounded corners=1pt, minimum height=8mm, align=center, inner sep=3pt},
+  stbox/.style={draw, rounded corners=1pt, minimum height=8mm, align=center, inner sep=3pt, fill=black!6},
+  arr/.style={-{Stealth[length=2mm]}, thick}]
+  \node[box] (app) at (0,0) {Application\\{\scriptsize Rust, Python, Node, Java,}\\{\scriptsize Go, C, WASM}};
+  \node[box] (parse) at (3.6,0) {SPARQL parser,\\algebra};
+  \node[box] (plan) at (7,0) {Planner\\{\scriptsize statistics, join order}};
+  \node[box] (exec) at (10.8,0) {Executor\\{\scriptsize joins, counts,}\\{\scriptsize aggregation on IDs}};
+  \node[box] (http) at (3.6,1.7) {HTTP server (optional)\\{\scriptsize SPARQL protocol: JSON, CSV, TSV}};
+  \node[box] (sn) at (7,-1.9) {Snapshot interface\\{\scriptsize orders, dictionary, counts, seeks}};
+  \node[stbox] (bs) at (1.8,-4.1) {Base (immutable)\\{\scriptsize SPO PSO POS OSP; SOP, OPS derived;}\\{\scriptsize one ID-ordered dictionary; statistics}};
+  \node[stbox] (dl) at (8.2,-4.1) {Overlay + write-ahead log\\{\scriptsize inserts and deletes over the base;}\\{\scriptsize compaction writes a new base}};
+  \node[box] (ch) at (12.3,-4.1) {Block cache\\{\scriptsize one memory budget,}\\{\scriptsize cgroup-aware}};
+  \draw[arr] (app) -- (parse); \draw[arr] (parse) -- (plan); \draw[arr] (plan) -- (exec);
+  \draw[arr] (http) -- (parse);
+  \draw[arr] (exec.south) -- ++(0,-0.5) -| (sn.east);
+  \draw[arr] (plan) -- (sn);
+  \draw[arr] (sn) -- (bs); \draw[arr] (sn) -- (dl); \draw[arr] (sn) -- (ch);
+\end{tikzpicture}

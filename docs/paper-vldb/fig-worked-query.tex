@@ -1,0 +1,13 @@
+% Worked query: a grouped count answered from index prefix metadata. Needs tikz with arrows.meta.
+\begin{tikzpicture}[font=\small,
+  stp/.style={draw, rounded corners=1pt, align=left, inner sep=4pt, text width=46mm, minimum height=17mm},
+  arr/.style={-{Stealth[length=2mm]}, thick}]
+  \node[stp] (q) at (0,0) {\textbf{1. Query}\\[1pt]{\scriptsize\texttt{SELECT ?c (COUNT(*) AS ?n)}\\ \scriptsize\texttt{WHERE \{ ?s rdf:type ?c \}}\\ \scriptsize\texttt{GROUP BY ?c}}};
+  \node[stp] (alg) at (5.9,0) {\textbf{2. Algebra}\\[1pt]{\scriptsize Group by ?c with COUNT over one triple pattern, $(?s,\ \texttt{rdf:type},\ ?c)$}};
+  \node[stp] (ids) at (11.8,0) {\textbf{3. Constants to IDs}\\[1pt]{\scriptsize \texttt{rdf:type} is looked up in the dictionary and becomes one 64-bit ID}};
+  \node[stp] (ord) at (0,-2.5) {\textbf{4. Order}\\[1pt]{\scriptsize The predicate is bound and the group key is the object: prefix $[p]$ of POS, one run of equal objects per class}};
+  \node[stp] (cnt) at (5.9,-2.5) {\textbf{5. Count}\\[1pt]{\scriptsize Each run's size comes from the index's block metadata; no triple is enumerated}};
+  \node[stp] (out) at (11.8,-2.5) {\textbf{6. Decode}\\[1pt]{\scriptsize Only the class IDs of the result groups are turned into text}};
+  \draw[arr] (q) -- (alg); \draw[arr] (alg) -- (ids); \draw[arr] (ids.south) -- ++(0,-0.5) -| (ord.north);
+  \draw[arr] (ord) -- (cnt); \draw[arr] (cnt) -- (out);
+\end{tikzpicture}
