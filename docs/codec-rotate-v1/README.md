@@ -30,6 +30,11 @@ as before.
 | dictionary | 672,136,499 | 672,136,499 | 1.00 |
 | **store total** | 3,163,276,415 | 2,623,283,152 | **0.83** |
 
+**LUBM-1000, six orders on the new codec** (`lubm-six-sizes.txt`, `build-disk --orders=6`, same binary): spo
+960.3 MB, sop 960.3 MB, pso 365.0 MB, pos 321.3 MB, osp 304.5 MB, ops 302.4 MB, dictionary 672.1 MB, 3.89 GB in
+total. The four-order store (2.62 GB, above) is 0.675× of it, 32.5% smaller. That replaces the 36% measured with the
+earlier codec, where SPO's larger blocks made the two extra orders count for more.
+
 **BSBM-100M** on the new codec (`bsbm-sizes.txt`; the same build binary as the LUBM store, `build-disk` and
 `build-disk --orders=6`):
 
