@@ -33,7 +33,7 @@ pub fn property<'a>(
     value
 }
 
-fn node(term: TermRef<'_>) -> NamedOrBlankNodeRef<'_> {
+pub fn node(term: TermRef<'_>) -> NamedOrBlankNodeRef<'_> {
     match term {
         TermRef::NamedNode(value) => value.into(),
         TermRef::BlankNode(value) => value.into(),

@@ -1,11 +1,12 @@
 //! The W3C RDF 1.2 syntax and evaluation suites for the four line/terse formats.
-use oxrdf::{CanonicalizationAlgorithm, Dataset};
+use oxrdf::Dataset;
 use std::path::Path;
-use triplelight_core::ntriples::{read_nquads, read_ntriples};
-use triplelight_core::turtle::TurtleReader;
 use triplelight_rdf as tl;
 
+#[path = "w3c/terms.rs"]
+mod terms;
 mod w3c;
+use terms::{isomorphic, parse_native, quad};
 use w3c::{MF, RDF, entries, fixture, iri, load_manifest, pinned_checkout, property};
 
 const RDFT: &str = "http://www.w3.org/ns/rdftest#";
@@ -20,93 +21,6 @@ const SUITES: &[(&str, &str, usize)] = &[
     ("rdf-trig/syntax", "Trig", 38),
     ("rdf-trig/eval", "Trig", 26),
 ];
-
-fn named(node: tl::NamedNode) -> oxrdf::NamedNode {
-    oxrdf::NamedNode::new_unchecked(node.into_string())
-}
-
-fn blank(node: tl::BlankNode) -> oxrdf::BlankNode {
-    oxrdf::BlankNode::new_unchecked(node.into_string())
-}
-
-fn subject(node: tl::NamedOrBlankNode) -> oxrdf::NamedOrBlankNode {
-    match node {
-        tl::NamedOrBlankNode::NamedNode(node) => named(node).into(),
-        tl::NamedOrBlankNode::BlankNode(node) => blank(node).into(),
-    }
-}
-
-fn term(value: tl::Term) -> oxrdf::Term {
-    match value {
-        tl::Term::NamedNode(node) => named(node).into(),
-        tl::Term::BlankNode(node) => blank(node).into(),
-        tl::Term::Triple(node) => {
-            let node = *node;
-            oxrdf::Triple::new(
-                subject(node.subject),
-                named(node.predicate),
-                term(node.object),
-            )
-            .into()
-        }
-        tl::Term::Literal(value) => {
-            let (value, datatype, language, direction) = value.destruct();
-            match (datatype, language, direction) {
-                (_, Some(language), Some(direction)) => {
-                    let direction = match direction {
-                        tl::BaseDirection::Ltr => oxrdf::BaseDirection::Ltr,
-                        tl::BaseDirection::Rtl => oxrdf::BaseDirection::Rtl,
-                    };
-                    oxrdf::Literal::new_directional_language_tagged_literal_unchecked(
-                        value, language, direction,
-                    )
-                }
-                (_, Some(language), None) => {
-                    oxrdf::Literal::new_language_tagged_literal_unchecked(value, language)
-                }
-                (Some(datatype), None, None) => {
-                    oxrdf::Literal::new_typed_literal(value, named(datatype))
-                }
-                (None, None, None) => oxrdf::Literal::new_simple_literal(value),
-                (_, None, Some(_)) => unreachable!("direction requires a language"),
-            }
-            .into()
-        }
-    }
-}
-
-fn quad(value: tl::Quad) -> oxrdf::Quad {
-    let graph = match value.graph_name {
-        tl::GraphName::NamedNode(node) => oxrdf::GraphName::NamedNode(named(node)),
-        tl::GraphName::BlankNode(node) => oxrdf::GraphName::BlankNode(blank(node)),
-        tl::GraphName::DefaultGraph => oxrdf::GraphName::DefaultGraph,
-    };
-    oxrdf::Quad::new(
-        subject(value.subject),
-        named(value.predicate),
-        term(value.object),
-        graph,
-    )
-}
-
-fn parse(data: &[u8], format: &str, base: &str) -> Result<Dataset, tl::ReadError> {
-    match format {
-        "NTriples" => read_ntriples(data)
-            .map(|result| result.map(|value| quad(value.in_graph(tl::GraphName::DefaultGraph))))
-            .collect(),
-        "NQuads" => read_nquads(data).map(|result| result.map(quad)).collect(),
-        "Turtle" | "Trig" => TurtleReader::with_base(data, format == "Trig", base)?
-            .map(|result| result.map(quad))
-            .collect(),
-        _ => unreachable!("unknown format {format}"),
-    }
-}
-
-fn isomorphic(mut expected: Dataset, mut actual: Dataset) -> bool {
-    expected.canonicalize(CanonicalizationAlgorithm::Unstable);
-    actual.canonicalize(CanonicalizationAlgorithm::Unstable);
-    expected == actual
-}
 
 fn expected_output(root: &Path, path: &str) -> Dataset {
     let data = fixture(root, path);
@@ -164,7 +78,7 @@ fn rdf12_w3c_syntax_and_evaluation() {
         for entry in cases {
             let data = iri(property(&graph, entry, MF, "action"));
             let kind = iri(property(&graph, entry, RDF, "type"));
-            let outcome = parse(&fixture(&root, data), format, data);
+            let outcome = parse_native(&fixture(&root, data), format, data);
             let suffix = kind
                 .strip_prefix(RDFT)
                 .and_then(|kind| kind.strip_prefix("Test"))
@@ -182,7 +96,8 @@ fn rdf12_w3c_syntax_and_evaluation() {
                         expected_output(&root, iri(property(&graph, entry, MF, "result")));
                     match outcome {
                         Ok(actual) => {
-                            (!isomorphic(expected, actual)).then(|| "dataset differs".into())
+                            (!isomorphic(expected, actual.into_iter().map(quad).collect()))
+                                .then(|| "dataset differs".into())
                         }
                         Err(error) => Some(error.to_string()),
                     }

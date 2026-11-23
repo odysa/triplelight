@@ -1,4 +1,8 @@
-//! The SPARQL 1.2 parser-only arms. Evaluation entries are counted for inventory.
+//! The pinned W3C SPARQL 1.2 query and update tests.
+#[path = "w3c/eval.rs"]
+mod eval;
+#[path = "w3c/terms.rs"]
+mod terms;
 mod w3c;
 
 use triplelight_sparql::{parse_query, parse_update};
@@ -76,6 +80,49 @@ fn sparql12_w3c_query_and_update_syntax() {
     assert!(
         failures.is_empty(),
         "{}/203 failed: {failures:?}",
+        failures.len()
+    );
+}
+
+#[test]
+#[ignore = "requires the exact W3C rdf-tests checkout in TL_RDF_TESTS"]
+fn sparql12_w3c_query_and_update_evaluation() {
+    let root = pinned_checkout();
+    let mut queries = 0;
+    let mut updates = 0;
+    let mut failures = Vec::new();
+    for &(suite, count) in SUITES {
+        let graph = load_manifest(&root, &format!("sparql/sparql12/{suite}/manifest.ttl"));
+        let cases = entries(&graph);
+        assert_eq!(cases.len(), count, "{suite}");
+        for entry in cases {
+            let kind = iri(property(&graph, entry, RDF, "type"))
+                .strip_prefix(MF)
+                .unwrap();
+            let update = match kind {
+                "QueryEvaluationTest" => {
+                    queries += 1;
+                    false
+                }
+                "UpdateEvaluationTest" => {
+                    updates += 1;
+                    true
+                }
+                _ => continue,
+            };
+            match eval::evaluate(&root, &graph, entry, update) {
+                Ok(()) => println!("PASS {entry}"),
+                Err(error) => {
+                    eprintln!("FAIL {entry} {error}");
+                    failures.push(entry.to_string());
+                }
+            }
+        }
+    }
+    assert_eq!((queries, updates), (65, 3));
+    assert!(
+        failures.is_empty(),
+        "{}/68 failed: {failures:?}",
         failures.len()
     );
 }
