@@ -95,4 +95,6 @@ The initial candidate list was not exhaustive. A maintenance label alone is not 
   required typed checks on a nine-row DuckDB fixture using a view that exposes the object fields as
   columns. Direct nested-field mapping stopped at initialization. The mixed-term distinct count
   returned 8 against a typed reference of 9. Workload admission and timing remain pending.
-- The six-copy DuckDB profile needs tiny-fixture admission and a registered runtime before workload measurements.
+- The [LUBM-100 DuckDB layout qualification](duckdb-layout-lubm100-v1/README.md) passed all 90 typed
+  checks across the single-table, fixed-SPO and routed arms. All six sorted tables reopened with
+  13,409,395 rows and matched the control relation. WatDiv and BSBM BI qualification remain pending.
