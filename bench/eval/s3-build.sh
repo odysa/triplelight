@@ -12,6 +12,8 @@
 #     (page cache counts against memory.max, so both are kept); elsewhere, RSS of the process tree plus `docker stats`
 #     memory, labelled as such;
 #   - device writes (Linux): /proc/diskstats sectors written on the store's device, before and after.
+# Every system goes through the same sampler on its own store directory, so peak scratch and final size are measured the
+# same way (a loader whose scratch lives elsewhere, e.g. in /tmp, would be noted in the receipt).
 # Wall, user and system CPU come from the time utility around `systems.sh` (for Docker loaders that is the client, so the
 # receipt also keeps the container's cpu.stat on Linux). The page cache is dropped first (lib.sh drop_caches).
 # On a laptop this is a dry run of the same path: numbers are correctness evidence only, never timing claims.
@@ -89,6 +91,14 @@ set +e; wait $PID; RC=$?; set -e
 END=$(date +%s.%N 2>/dev/null || date +%s)
 W1=$(dev_written)
 FINAL=$(du -sk "$STORE" 2>/dev/null | cut -f1)
+# Provenance: the exact load command, the pinned versions, the harness and binary hashes, the repository commit.
+{ echo "command=$HERE/systems.sh $SYS load $D --mem $MEM --cpus $CPUS"
+  echo "repo_commit=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)"
+  echo "systems_sh_sha256=$(shasum -a 256 "$HERE/systems.sh" | cut -d' ' -f1)"
+  [ "$SYS" = triplelight ] && echo "triplelight_bin_sha256=$(shasum -a 256 "${TRIPLELIGHT_BIN:-$ROOT/target/release/triplelight}" | cut -d' ' -f1)"
+  [ "$SYS" = oxigraph ] && echo "oxigraph_version=$("$T/oxigraph" --version)"
+  grep -E '^[A-Z_]+=' "$HERE/VERSIONS"
+} > "$OUT/provenance.txt"
 python3 -I - "$OUT" "$SYS" "$D" "$TAG" "$MEM" "$CPUS" "$RC" "$START" "$END" "$W0" "$W1" "${FINAL:-0}" "$LINUX" <<'EOF'
 import sys, json, re, os
 out, sys_, d, tag, mem, cpus, rc, start, end, w0, w1, final, linux = sys.argv[1:]
@@ -112,6 +122,7 @@ rec = {
     "device_written_bytes": (int(w1) - int(w0)) * 512 if linux == "1" else None,
     "memory_source": "cgroup" if linux == "1" else "process-tree RSS + docker stats (laptop dry run)",
     "page_cache": open(os.path.join(out, "drop_caches.txt")).read().strip(),
+    "provenance": dict(l.rstrip("\n").split("=", 1) for l in open(os.path.join(out, "provenance.txt")) if "=" in l),
 }
 json.dump(rec, open(os.path.join(out, "receipt.json"), "w"), indent=1)
 print(json.dumps(rec))
