@@ -198,7 +198,8 @@ def run_hook(hook, url):
     ok = r.returncode == 0
     deadline = time.time() + 600
     while time.time() < deadline:
-        rec, _ = one_run(url, "ASK { ?s ?p ?o }", 30)
+        # constant predicate: QLever's two-order index cannot answer a variable predicate, so ASK { ?s ?p ?o } would never succeed there
+        rec, _ = one_run(url, "ASK { ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?o }", 30)
         if rec["status"] == "ok": break
         time.sleep(2)
     else: ok = False
