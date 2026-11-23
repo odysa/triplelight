@@ -973,11 +973,12 @@ fn count_pushdown_switch_changes_the_access_path() {
         let s = Probe(MemorySnapshot::from_ntriples(data.as_bytes()).unwrap(), AtomicUsize::new(0), AtomicUsize::new(0));
         let opts = triplelight::exec::Options { count_pushdown, ..Default::default() };
         let rows = match triplelight::exec::query_with(&s, q, &opts).unwrap() { QueryResult::Solutions { rows, .. } => rows, r => panic!("{r:?}") };
-        (format!("{rows:?}"), s.1.load(Ordering::Relaxed), s.2.load(Ordering::Relaxed))
+        (rows, s.1.load(Ordering::Relaxed), s.2.load(Ordering::Relaxed))
     };
     let (on, on_rows, on_counts) = run(true);
     let (off, off_rows, _) = run(false);
-    assert!(on.contains("\"3\"") && on.contains("integer"), "known typed answer: {on}");
+    let three: triplelight_rdf::Term = triplelight_rdf::Literal::new_typed_literal("3", triplelight_rdf::vocab::xsd::INTEGER).into();
+    assert_eq!(on, vec![vec![Some(three)]], "known typed answer");
     assert_eq!(on, off);
     assert_eq!(on_rows, 0, "pushdown on reads no triples");
     assert!(on_counts > 0, "pushdown on uses index counts");
