@@ -96,7 +96,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 0
             } else {
                 on_data!(self, |g| {
-                    let join=bgp::Bgp { snap:g,w:self.vars.len(),ranges:None };
+                    let join=bgp::Bgp { snap:g,w:self.vars.len(),ranges:None,sorted_probe:self.sorted_probe };
                     if self.wcoj && pats.len()>=3 && bgp::cyclic(&pats) {
                         join.count_leapfrog(&pats,self.variable_order(&pats))
                     } else {
