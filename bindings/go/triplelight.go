@@ -211,6 +211,8 @@ const (
 	IRI       TermKind = C.TL_TERM_IRI
 	BlankNode TermKind = C.TL_TERM_BLANK
 	Literal   TermKind = C.TL_TERM_LITERAL
+	// Triple is an RDF 1.2 triple term (builds with the rdf-12 feature only); its parts are Subject, Predicate and Object.
+	Triple TermKind = C.TL_TERM_TRIPLE
 )
 
 // Term is an RDF term. For literals Datatype is always set and Language is empty unless language-tagged.
@@ -219,6 +221,10 @@ type Term struct {
 	Value    string
 	Language string
 	Datatype string
+	// Direction is the RDF 1.2 base direction of a language-tagged literal: "ltr", "rtl" or "" (none).
+	Direction string
+	// Subject, Predicate and Object are set when Kind is Triple (they point into the same result's term table).
+	Subject, Predicate, Object *Term
 }
 
 // ResultKind says which fields of a Result are set.
@@ -277,6 +283,17 @@ func decode(v *C.tl_result_view) *Result {
 	terms := make([]Term, int(v.n_terms))
 	for i, t := range unsafe.Slice(v.terms, int(v.n_terms)) {
 		terms[i] = Term{Kind: TermKind(t.kind), Value: str(t.value), Language: str(t.language), Datatype: str(t.datatype)}
+		switch t.direction {
+		case C.TL_DIR_LTR:
+			terms[i].Direction = "ltr"
+		case C.TL_DIR_RTL:
+			terms[i].Direction = "rtl"
+		}
+		if TermKind(t.kind) == Triple {
+			// a triple term stores the 1-based indices of its parts in value.off, value.len and language.off
+			terms[i].Value, terms[i].Language = "", ""
+			terms[i].Subject, terms[i].Predicate, terms[i].Object = &terms[t.value.off-1], &terms[t.value.len-1], &terms[t.language.off-1]
+		}
 	}
 	width := int(v.n_vars)
 	cells := unsafe.Slice(v.cells, int(v.n_rows)*width)
