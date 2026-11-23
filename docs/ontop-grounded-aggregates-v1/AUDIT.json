@@ -1,0 +1,141 @@
+{
+  "archive_files_verified": 283,
+  "datasets": {
+    "lubm": {
+      "after_grounding": {
+        "classes": {
+          "exact": {
+            "count": 30,
+            "labels": [
+              "lubm/all_q1.rq",
+              "lubm/all_q10.rq",
+              "lubm/all_q11.rq",
+              "lubm/all_q12.rq",
+              "lubm/all_q13.rq",
+              "lubm/all_q14.rq",
+              "lubm/all_q2.rq",
+              "lubm/all_q3.rq",
+              "lubm/all_q4.rq",
+              "lubm/all_q5.rq",
+              "lubm/all_q6.rq",
+              "lubm/all_q7.rq",
+              "lubm/all_q8.rq",
+              "lubm/all_q9.rq",
+              "lubm/distinct_q1.rq",
+              "lubm/distinct_q10.rq",
+              "lubm/distinct_q11.rq",
+              "lubm/distinct_q12.rq",
+              "lubm/distinct_q13.rq",
+              "lubm/distinct_q14.rq",
+              "lubm/distinct_q2.rq",
+              "lubm/distinct_q3.rq",
+              "lubm/distinct_q4.rq",
+              "lubm/distinct_q5.rq",
+              "lubm/distinct_q6.rq",
+              "lubm/distinct_q7.rq",
+              "lubm/distinct_q8.rq",
+              "lubm/distinct_q9.rq",
+              "lubm/group_advisors.rq",
+              "lubm/group_type.rq"
+            ]
+          }
+        },
+        "complete": true,
+        "dataset": "lubm",
+        "requests_started": 30,
+        "scheduled": 30,
+        "stop": null,
+        "unexpected_files": []
+      },
+      "before_grounding": {
+        "phase": "mapping-initialization",
+        "queries_reached": 0,
+        "scheduled": 30,
+        "view_rows": 13409395
+      },
+      "classes": {
+        "exact": 30
+      },
+      "count_compatible": 30,
+      "exact": 30,
+      "maps": 32,
+      "rows": 13409395
+    },
+    "watdiv": {
+      "after_grounding": {
+        "classes": {
+          "exact": {
+            "count": 41,
+            "labels": [
+              "watdiv/all_C1.rq",
+              "watdiv/all_C2.rq",
+              "watdiv/all_C3.rq",
+              "watdiv/all_F1.rq",
+              "watdiv/all_F2.rq",
+              "watdiv/all_F3.rq",
+              "watdiv/all_F4.rq",
+              "watdiv/all_F5.rq",
+              "watdiv/all_L1.rq",
+              "watdiv/all_L2.rq",
+              "watdiv/all_L3.rq",
+              "watdiv/all_L4.rq",
+              "watdiv/all_L5.rq",
+              "watdiv/all_S1.rq",
+              "watdiv/all_S2.rq",
+              "watdiv/all_S3.rq",
+              "watdiv/all_S4.rq",
+              "watdiv/all_S5.rq",
+              "watdiv/all_S6.rq",
+              "watdiv/all_S7.rq",
+              "watdiv/distinct_C1.rq",
+              "watdiv/distinct_C2.rq",
+              "watdiv/distinct_C3.rq",
+              "watdiv/distinct_F1.rq",
+              "watdiv/distinct_F2.rq",
+              "watdiv/distinct_F3.rq",
+              "watdiv/distinct_F4.rq",
+              "watdiv/distinct_F5.rq",
+              "watdiv/distinct_L1.rq",
+              "watdiv/distinct_L3.rq",
+              "watdiv/distinct_L4.rq",
+              "watdiv/distinct_L5.rq",
+              "watdiv/distinct_S1.rq",
+              "watdiv/distinct_S2.rq",
+              "watdiv/distinct_S3.rq",
+              "watdiv/distinct_S4.rq",
+              "watdiv/distinct_S5.rq",
+              "watdiv/distinct_S6.rq",
+              "watdiv/distinct_S7.rq",
+              "watdiv/group_age.rq",
+              "watdiv/group_gender.rq"
+            ]
+          }
+        },
+        "complete": true,
+        "dataset": "watdiv",
+        "requests_started": 41,
+        "scheduled": 41,
+        "stop": null,
+        "unexpected_files": []
+      },
+      "before_grounding": {
+        "phase": "mapping-initialization",
+        "queries_reached": 0,
+        "scheduled": 41,
+        "view_rows": 10914314
+      },
+      "classes": {
+        "exact": 41
+      },
+      "count_compatible": 41,
+      "exact": 41,
+      "maps": 124,
+      "rows": 10914314
+    }
+  },
+  "prior_watdiv_console_stop": {
+    "exact_before_stop": 4,
+    "interrupted_request": "watdiv/all_F2.rq"
+  },
+  "scored": false
+}
