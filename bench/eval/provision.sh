@@ -3,14 +3,16 @@
 # Debian trixie host. Idempotent: every step checks before it acts, so a rerun after a failure resumes. Every step and
 # every version, checksum and setting lands in $DATA/receipts/provision.txt; $DATA/eval.env holds the paths for later
 # shells (`. /data/eval.env`).
-#   provision.sh [--device /dev/nvme1n1] [--data /data] [--commit <sha>] [--dry-run] [--skip-images]
+#   provision.sh [--device /dev/nvme1n1] [--data /data] [--commit <sha>] [--repo <url|path|bundle>] [--dry-run] [--skip-images]
+# --repo: where to clone TripleLight from (default the GitHub repository, which is private: set up access first, or pass
+#   a git bundle copied to the machine).
 # --dry-run: the laptop check in a privileged container: skip the disk format/mount and CPU tuning, keep the rest.
 # --skip-images: skip the Docker image pulls and the MillenniumDB image build (the slowest step; dry runs only).
 set -euo pipefail
-DEVICE=; DATA=/data; COMMIT=; DRY=0; IMAGES=1
+DEVICE=; DATA=/data; COMMIT=; DRY=0; IMAGES=1; REPO_URL=
 while [ $# -gt 0 ]; do case $1 in
   --device) DEVICE=$2; shift 2;; --data) DATA=$2; shift 2;; --commit) COMMIT=$2; shift 2;; --dry-run) DRY=1; shift;;
-  --skip-images) IMAGES=0; shift;;
+  --skip-images) IMAGES=0; shift;; --repo) REPO_URL=$2; shift 2;;
   *) echo "unknown option $1" >&2; exit 2;; esac; done
 [ "$(id -u)" = 0 ] || { echo "run as root (systemd-run scopes and drop_caches need it)" >&2; exit 2; }
 ARCH=$(uname -m)
@@ -36,7 +38,7 @@ RDF_FUSION_VERSION=0.3.1   # crate rdf-fusion-cli, built --locked with $RUST_TOO
 # compared with this hash of the installed file (fetched 2026-11-23 from community-extensions.duckdb.org/v2.0.1/<arch>/).
 DUCKDB_RDF_SHA_linux_amd64=ce9422545435945979ef489bd51f40c43ef188b8d05ac024d880017827906cfe
 DUCKDB_RDF_SHA_linux_arm64=ce15ec9e46ed045205a1cf5c28a6cb977a90247b376b1c00fe4f035375a70a5d
-REPO_URL=https://github.com/odysa/triplelight.git
+REPO_URL=${REPO_URL:-https://github.com/odysa/triplelight.git}
 
 R=$DATA/receipts/provision.txt
 step() { echo; echo "== $*"; mkdir -p "$(dirname "$R")"; echo "== $(date -u +%FT%TZ) $*" >> "$R"; }
@@ -83,7 +85,7 @@ note "cgroup: $(stat -fc %T /sys/fs/cgroup)  (cgroup2fs expected)"
 # --- 3. packages ----------------------------------------------------------------------------------------------------------
 step "packages"
 export DEBIAN_FRONTEND=noninteractive
-pkgs=(curl ca-certificates git build-essential pkg-config python3 python3-venv python3-dev time procps lsof jq
+pkgs=(curl ca-certificates git build-essential pkg-config libssl-dev cmake python3 python3-venv python3-dev time procps lsof jq
       iproute2 unzip bzip2 lbzip2 gawk wamerican maven libboost-dev docker.io)
 apt-cache show docker-cli >/dev/null 2>&1 && pkgs+=(docker-cli)   # a separate package on trixie
 need=(); for p in "${pkgs[@]}"; do dpkg -s "$p" >/dev/null 2>&1 || need+=("$p"); done
@@ -147,7 +149,7 @@ note "duckdb rdf extension sha256 ok ($DARCH)"
 step "repository and images"
 SRC=$DATA/triplelight
 [ -d "$SRC/.git" ] || git clone -q "$REPO_URL" "$SRC"
-git -C "$SRC" fetch -q origin
+git -C "$SRC" fetch -q origin "+refs/heads/*:refs/remotes/origin/*"
 if [ -n "$COMMIT" ]; then git -C "$SRC" checkout -q --detach "$COMMIT"; fi
 note "triplelight $(git -C "$SRC" rev-parse HEAD)"
 ( cd "$SRC" && cargo +$RUST_TOOLCHAIN build -q --release --locked --features server --bin triplelight )
