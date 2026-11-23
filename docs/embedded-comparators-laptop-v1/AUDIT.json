@@ -1,0 +1,20 @@
+{
+  "duck_rdf_v3": {
+    "cases": 13,
+    "completed": true,
+    "failed_cases": [
+      "project-nine",
+      "distinct-nine",
+      "count-nine",
+      "distinct-count-nine"
+    ],
+    "necessary_fixture_checks_pass": false,
+    "tagged_distinct_exact_typed_bag": true
+  },
+  "rdf_fusion_v3": {
+    "completed": true,
+    "exact_typed_bag": true,
+    "quads": 9,
+    "rows": 9
+  }
+}
