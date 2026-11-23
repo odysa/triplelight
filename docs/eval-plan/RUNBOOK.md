@@ -211,7 +211,7 @@ done.
 - **Between blocks:** whoever finishes a block checks `df` against the floor, archives its results, and names the
   next owner in the session log.
 
-## 6. Laptop dry run (2026-11-23)
+## 6. Laptop dry run (2026-11-23; receipts in [`provision-dryrun-v1/`](provision-dryrun-v1/))
 
 `provision.sh --dry-run --skip-images --repo <bundle> --commit <sha>` ran in a privileged Debian trixie container with
 systemd on the laptop (ARM64, 10 CPUs, Docker 26.1.5 inside). It skipped the disk format, the CPU tuning and the image

@@ -1,0 +1,219 @@
+== 2026-11-23T10:28:49Z data disk none -> /data
+   dry run: no format/mount
+   overlay         168G   98G   70G  59% /
+== 2026-11-23T10:28:49Z CPU frequency and kernel
+   governor: performance
+   no_turbo: n/a; boost: n/a
+   kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty, aarch64, 10 CPUs, 16414236 kB, swap 17462804 kB
+   cpu: -
+   cgroup: cgroup2fs  (cgroup2fs expected)
+== 2026-11-23T10:28:49Z packages
+   python 3.13.5, git 2.47.3, maven 3.9.9, boost 1.83.0.2+b2
+== 2026-11-23T10:29:18Z docker
+   docker 26.1.5+dfsg1, cgroup driver systemd v2
+== 2026-11-23T10:29:19Z toolchains
+   rustc 1.100.0 (0ef1bc386 2026-11-09)
+   jdk25.tar.gz sha256 ok
+   openjdk version "25.0.5.1" 2026-11-17 LTS
+   venv Python 3.13.5: duckdb==2.0.1 maturin==1.16.0 pyarrow==26.0.1 pyoxigraph==0.5.13 
+== 2026-11-23T10:29:41Z systems
+   jena.tar.gz sha512 ok
+   fuseki.tar.gz sha512 ok
+   oxigraph sha256 ok
+   oxigraph 0.5.13
+   blazegraph-jar-2.1.5.jar sha256 ok
+== 2026-11-23T10:30:16Z data disk none -> /data
+   dry run: no format/mount
+   overlay         167G  100G   68G  60% /
+== 2026-11-23T10:30:16Z CPU frequency and kernel
+   governor: performance
+   no_turbo: n/a; boost: n/a
+   kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty, aarch64, 10 CPUs, 16414236 kB, swap 17462804 kB
+   cpu: -
+   cgroup: cgroup2fs  (cgroup2fs expected)
+== 2026-11-23T10:30:16Z packages
+   python 3.13.5, git 2.47.3, maven 3.9.9, boost 1.83.0.2+b2
+== 2026-11-23T10:30:16Z docker
+   docker 26.1.5+dfsg1, cgroup driver systemd v2
+== 2026-11-23T10:30:16Z toolchains
+   rustc 1.100.0 (0ef1bc386 2026-11-09)
+   openjdk version "25.0.5.1" 2026-11-17 LTS
+   venv Python 3.13.5: duckdb==2.0.1 maturin==1.16.0 pyarrow==26.0.1 pyoxigraph==0.5.13 
+== 2026-11-23T10:30:17Z systems
+   oxigraph sha256 ok
+   oxigraph 0.5.13
+   blazegraph-jar-2.1.5.jar sha256 ok
+== 2026-11-23T10:30:23Z data disk none -> /data
+   dry run: no format/mount
+   overlay         167G  100G   68G  60% /
+== 2026-11-23T10:30:23Z CPU frequency and kernel
+   governor: performance
+   no_turbo: n/a; boost: n/a
+   kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty, aarch64, 10 CPUs, 16414236 kB, swap 17462804 kB
+   cpu: -
+   cgroup: cgroup2fs  (cgroup2fs expected)
+== 2026-11-23T10:30:23Z packages
+   python 3.13.5, git 2.47.3, maven 3.9.9, boost 1.83.0.2+b2
+== 2026-11-23T10:30:28Z docker
+   docker 26.1.5+dfsg1, cgroup driver systemd v2
+== 2026-11-23T10:30:28Z toolchains
+   rustc 1.100.0 (0ef1bc386 2026-11-09)
+   openjdk version "25.0.5.1" 2026-11-17 LTS
+   venv Python 3.13.5: duckdb==2.0.1 maturin==1.16.0 pyarrow==26.0.1 pyoxigraph==0.5.13 
+== 2026-11-23T10:30:29Z systems
+   oxigraph sha256 ok
+   oxigraph 0.5.13
+   blazegraph-jar-2.1.5.jar sha256 ok
+== 2026-11-23T10:32:23Z data disk none -> /data
+   dry run: no format/mount
+   overlay         168G  101G   67G  61% /
+== 2026-11-23T10:32:23Z CPU frequency and kernel
+   governor: performance
+   no_turbo: n/a; boost: n/a
+   kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty, aarch64, 10 CPUs, 16414236 kB, swap 17462804 kB
+   cpu: -
+   cgroup: cgroup2fs  (cgroup2fs expected)
+== 2026-11-23T10:32:23Z packages
+   python 3.13.5, git 2.47.3, maven 3.9.9, boost 1.83.0.2+b2
+== 2026-11-23T10:32:23Z docker
+   docker 26.1.5+dfsg1, cgroup driver systemd v2
+== 2026-11-23T10:32:23Z toolchains
+   rustc 1.100.0 (0ef1bc386 2026-11-09)
+   openjdk version "25.0.5.1" 2026-11-17 LTS
+   venv Python 3.13.5: duckdb==2.0.1 maturin==1.16.0 pyarrow==26.0.1 pyoxigraph==0.5.13 
+== 2026-11-23T10:32:24Z systems
+   oxigraph sha256 ok
+   oxigraph 0.5.13
+   blazegraph-jar-2.1.5.jar sha256 ok
+== 2026-11-23T10:32:25Z data disk none -> /data
+   dry run: no format/mount
+   overlay         168G  101G   67G  61% /
+== 2026-11-23T10:32:25Z CPU frequency and kernel
+   governor: performance
+   no_turbo: n/a; boost: n/a
+   kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty, aarch64, 10 CPUs, 16414236 kB, swap 17462804 kB
+   cpu: -
+   cgroup: cgroup2fs  (cgroup2fs expected)
+== 2026-11-23T10:32:25Z packages
+   python 3.13.5, git 2.47.3, maven 3.9.9, boost 1.83.0.2+b2
+== 2026-11-23T10:32:29Z docker
+   docker 26.1.5+dfsg1, cgroup driver systemd v2
+== 2026-11-23T10:32:29Z toolchains
+   rustc 1.100.0 (0ef1bc386 2026-11-09)
+   openjdk version "25.0.5.1" 2026-11-17 LTS
+   venv Python 3.13.5: duckdb==2.0.1 maturin==1.16.0 pyarrow==26.0.1 pyoxigraph==0.5.13 
+== 2026-11-23T10:32:31Z systems
+   oxigraph sha256 ok
+   oxigraph 0.5.13
+   blazegraph-jar-2.1.5.jar sha256 ok
+   rdf-fusion-cli 0.3.1 sha256 0832dea6b82fcf06eef7db188690512a1f272127a2a2d4ab4a1612d22c8f6b52
+   duckdb 2.0.1 rdf v2.9.0 at /data/tools/duckdb-ext/v2.0.1/linux_arm64/rdf.duckdb_extension
+   duckdb rdf extension sha256 ok (linux_arm64)
+== 2026-11-23T10:42:01Z repository and images
+   rdf-fusion-cli 0.3.1 sha256 0832dea6b82fcf06eef7db188690512a1f272127a2a2d4ab4a1612d22c8f6b52
+   duckdb 2.0.1 rdf v2.9.0 at /data/tools/duckdb-ext/v2.0.1/linux_arm64/rdf.duckdb_extension
+   duckdb rdf extension sha256 ok (linux_arm64)
+== 2026-11-23T10:42:18Z repository and images
+== 2026-11-23T10:42:19Z data disk none -> /data
+   dry run: no format/mount
+   overlay         168G  101G   67G  61% /
+== 2026-11-23T10:42:19Z CPU frequency and kernel
+   governor: performance
+   no_turbo: n/a; boost: n/a
+   kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty, aarch64, 10 CPUs, 16414236 kB, swap 17462804 kB
+   cpu: -
+   cgroup: cgroup2fs  (cgroup2fs expected)
+== 2026-11-23T10:42:19Z packages
+   python 3.13.5, git 2.47.3, maven 3.9.9, boost 1.83.0.2+b2
+== 2026-11-23T10:42:20Z docker
+   docker 26.1.5+dfsg1, cgroup driver systemd v2
+== 2026-11-23T10:42:20Z toolchains
+   rustc 1.100.0 (0ef1bc386 2026-11-09)
+   openjdk version "25.0.5.1" 2026-11-17 LTS
+   venv Python 3.13.5: duckdb==2.0.1 maturin==1.16.0 pyarrow==26.0.1 pyoxigraph==0.5.13 
+== 2026-11-23T10:42:21Z systems
+   oxigraph sha256 ok
+   oxigraph 0.5.13
+   blazegraph-jar-2.1.5.jar sha256 ok
+   rdf-fusion-cli 0.3.1 sha256 0832dea6b82fcf06eef7db188690512a1f272127a2a2d4ab4a1612d22c8f6b52
+   duckdb 2.0.1 rdf v2.9.0 at /data/tools/duckdb-ext/v2.0.1/linux_arm64/rdf.duckdb_extension
+   duckdb rdf extension sha256 ok (linux_arm64)
+== 2026-11-23T10:42:21Z repository and images
+== 2026-11-23T10:42:45Z data disk none -> /data
+   dry run: no format/mount
+   overlay         168G  101G   67G  61% /
+== 2026-11-23T10:42:45Z CPU frequency and kernel
+   governor: performance
+   no_turbo: n/a; boost: n/a
+   kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty, aarch64, 10 CPUs, 16414236 kB, swap 17462804 kB
+   cpu: -
+   cgroup: cgroup2fs  (cgroup2fs expected)
+== 2026-11-23T10:42:45Z packages
+   python 3.13.5, git 2.47.3, maven 3.9.9, boost 1.83.0.2+b2
+== 2026-11-23T10:42:46Z docker
+   docker 26.1.5+dfsg1, cgroup driver systemd v2
+== 2026-11-23T10:42:46Z toolchains
+   rustc 1.100.0 (0ef1bc386 2026-11-09)
+   openjdk version "25.0.5.1" 2026-11-17 LTS
+   venv Python 3.13.5: duckdb==2.0.1 maturin==1.16.0 pyarrow==26.0.1 pyoxigraph==0.5.13 
+== 2026-11-23T10:42:47Z systems
+   oxigraph sha256 ok
+   oxigraph 0.5.13
+   blazegraph-jar-2.1.5.jar sha256 ok
+   rdf-fusion-cli 0.3.1 sha256 0832dea6b82fcf06eef7db188690512a1f272127a2a2d4ab4a1612d22c8f6b52
+   duckdb 2.0.1 rdf v2.9.0 at /data/tools/duckdb-ext/v2.0.1/linux_arm64/rdf.duckdb_extension
+   duckdb rdf extension sha256 ok (linux_arm64)
+== 2026-11-23T10:42:47Z repository and images
+   triplelight f7354b69e8e3a88c48d6f4b49027b1f17217ff24
+   triplelight binary sha256 90702e16ed612c4374c1490d089bc699b39f4af945e5d852f6f0d0994790421c
+   triplelight wheel triplelight-0.1.0-cp39-abi3-manylinux_2_34_aarch64.whl sha256 d7988c50d62f3fd4109d15c1e33afd0d65bf2103bfb9f51886903a1800906ef2
+   java artifact libtriplelight_c.so sha256 93e29b509761bf8d954506387fff0958f740e6f2048c572fc52f9137aee85f11
+   java artifact triplelight-0.1.0.jar sha256 ff202401ecd49b96032635f2e694bdc0516ec181760d7aaaad21ccf4293f85e3
+   images skipped (--skip-images)
+   env file /data/eval.env
+== 2026-11-23T10:43:46Z checks
+   native scope ok: memory.max 268435456 swap.max 0 cpuset 0
+   docker cgroup ok: memory.max 268435456 swap.max 0 cpuset 0
+   drop_caches ok
+   listeners before the run: 127.0.0.1:40479 
+   free on /data: 66 GB
+== 2026-11-23T10:43:54Z done (receipt /data/receipts/provision.txt)
+== 2026-11-23T10:43:54Z data disk none -> /data
+   dry run: no format/mount
+   overlay         168G  102G   66G  61% /
+== 2026-11-23T10:43:55Z CPU frequency and kernel
+   governor: performance
+   no_turbo: n/a; boost: n/a
+   kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty, aarch64, 10 CPUs, 16414236 kB, swap 17462804 kB
+   cpu: -
+   cgroup: cgroup2fs  (cgroup2fs expected)
+== 2026-11-23T10:43:55Z packages
+   python 3.13.5, git 2.47.3, maven 3.9.9, boost 1.83.0.2+b2
+== 2026-11-23T10:43:55Z docker
+   docker 26.1.5+dfsg1, cgroup driver systemd v2
+== 2026-11-23T10:43:55Z toolchains
+   rustc 1.100.0 (0ef1bc386 2026-11-09)
+   openjdk version "25.0.5.1" 2026-11-17 LTS
+   venv Python 3.13.5: duckdb==2.0.1 maturin==1.16.0 pyarrow==26.0.1 pyoxigraph==0.5.13 triplelight @ file:///data/tools/wheels/triplelight-0.1.0-cp39-abi3-manylinux_2_34_aarch64.whl#sha256=d7988c50d62f3fd4109d15c1e33afd0d65bf2103bfb9f51886903a1800906ef2 
+== 2026-11-23T10:43:56Z systems
+   oxigraph sha256 ok
+   oxigraph 0.5.13
+   blazegraph-jar-2.1.5.jar sha256 ok
+   rdf-fusion-cli 0.3.1 sha256 0832dea6b82fcf06eef7db188690512a1f272127a2a2d4ab4a1612d22c8f6b52
+   duckdb 2.0.1 rdf v2.9.0 at /data/tools/duckdb-ext/v2.0.1/linux_arm64/rdf.duckdb_extension
+   duckdb rdf extension sha256 ok (linux_arm64)
+== 2026-11-23T10:43:57Z repository and images
+   triplelight f7354b69e8e3a88c48d6f4b49027b1f17217ff24
+   triplelight binary sha256 90702e16ed612c4374c1490d089bc699b39f4af945e5d852f6f0d0994790421c
+   triplelight wheel triplelight-0.1.0-cp39-abi3-manylinux_2_34_aarch64.whl sha256 05179a1a14992a05a5c0d4478a15338c060fb3c8c02c9a5572740d1f787129e7
+   java artifact libtriplelight_c.so sha256 93e29b509761bf8d954506387fff0958f740e6f2048c572fc52f9137aee85f11
+   java artifact triplelight-0.1.0.jar sha256 ff202401ecd49b96032635f2e694bdc0516ec181760d7aaaad21ccf4293f85e3
+   images skipped (--skip-images)
+   env file /data/eval.env
+== 2026-11-23T10:43:58Z checks
+   native scope ok: memory.max 268435456 swap.max 0 cpuset 0
+   docker cgroup ok: memory.max 268435456 swap.max 0 cpuset 0
+   drop_caches ok
+   listeners before the run: 127.0.0.1:40479 
+   free on /data: 66 GB
+== 2026-11-23T10:44:02Z done (receipt /data/receipts/provision.txt)
