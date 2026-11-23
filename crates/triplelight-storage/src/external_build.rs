@@ -886,9 +886,9 @@ mod tests {
         fs::write(&file, &text).unwrap();
         let reference = root.join("plain");
         from_nt_parallel_with(&reference, Some(&file), 8, Dedup::Off).unwrap();
-        for (label, budget) in [("one-byte", 1usize), ("small", 4096), ("default", 256 << 20)] {
+        for (label, mode) in [("one-byte", Dedup::Map(1)), ("small", Dedup::Map(4096)), ("large", Dedup::Map(256 << 20)), ("auto", Dedup::Auto)] {
             let out = root.join(label);
-            from_nt_parallel_with(&out, Some(&file), 8, Dedup::Map(budget)).unwrap();
+            from_nt_parallel_with(&out, Some(&file), 8, mode).unwrap();
             for name in FILES[1..].iter().copied().chain(["dictionary.unified", "MANIFEST"]) {
                 assert_eq!(fs::read(reference.join(name)).unwrap(), fs::read(out.join(name)).unwrap(), "{label}: {name}");
             }
