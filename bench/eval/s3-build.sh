@@ -28,8 +28,9 @@
 #   tmp_growth_kib         peak growth of $TMPDIR during the load: a nonzero value means scratch escaped the store tree.
 set -eu
 SYS=$1; D=$2; TAG=$3; shift 3
-MEM=12; CPUS=8
+MEM=; CPUS=8
 while [ $# -gt 0 ]; do case $1 in --mem) MEM=$2; shift 2;; --cpus) CPUS=$2; shift 2;; *) echo "unknown option $1" >&2; exit 2;; esac; done
+[ -n "$MEM" ] || { echo "s3-build: --mem is required (every system gets the same memory.max)" >&2; exit 2; }
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../.." && pwd)
 T=${TOOLS:-$ROOT/bench/tools}
 OUT=${OUT:-$ROOT/bench/results/s3}/$SYS-$D-$TAG
@@ -82,7 +83,7 @@ W0=$(dev_written)
 SCOPE=s3-$SYS-$D-$TAG-$$
 if [ $LINUX = 1 ] && command -v systemd-run >/dev/null; then
   # The native loaders are charged to this scope; Docker loaders to their container's cgroup (sampled below).
-  RUN=(systemd-run --scope --quiet --unit="$SCOPE" -p MemoryMax="${MEM}G" -p MemorySwapMax=0 -p CPUQuota="$((CPUS * 100))%" --)
+  RUN=(systemd-run --scope --quiet --unit="$SCOPE" -p MemoryMax="${MEM}G" -p MemorySwapMax=0 -p AllowedCPUs="0-$((CPUS - 1))" --)
 else
   RUN=()
 fi
@@ -96,8 +97,11 @@ while kill -0 $PID 2>/dev/null; do
   s=$(du -sk "$STORE" 2>/dev/null | cut -f1); f=$(df -k "$T" | awk 'NR==2{print $4}')
   mem_kb=; anon=; file=; peak=
   if [ $LINUX = 1 ]; then
-    [ -n "$CNAME_FILTER" ] && [ -z "$CG" ] && CG=$(cg_of_container)
-    [ -z "$CNAME_FILTER" ] && CG=/sys/fs/cgroup/system.slice/$SCOPE.scope
+    # resolved again whenever it is missing: a Docker loader's container appears a few seconds in, and a loader that
+    # starts a second container moves to a new cgroup
+    if [ -z "$CG" ] || [ ! -f "$CG/memory.peak" ]; then
+      if [ -n "$CNAME_FILTER" ]; then CG=$(cg_of_container); else CG=/sys/fs/cgroup/system.slice/$SCOPE.scope; fi
+    fi
     if [ -n "$CG" ] && [ -f "$CG/memory.peak" ]; then
       peak=$(cat "$CG/memory.peak"); anon=$(awk '$1=="anon"{print $2}' "$CG/memory.stat"); file=$(awk '$1=="file"{print $2}' "$CG/memory.stat")
       cat "$CG/cpu.stat" > "$OUT/cpu.stat.last" 2>/dev/null || true
@@ -109,10 +113,16 @@ while kill -0 $PID 2>/dev/null; do
       [ -n "$c" ] && mem_kb="$mem_kb+docker:$c"
     fi
   fi
-  # On the Linux machine an unmeasured build is a failure, not an empty field (Kaiming).
-  if [ $LINUX = 1 ] && [ -z "$peak" ]; then
-    MISS=$(( ${MISS:-0} + 1 ))
-    if [ $MISS -ge 3 ]; then echo "no cgroup found for $SYS ($CNAME_FILTER / $SCOPE): stopping, the build would be unmeasured" >&2; kill_tree $PID; exit 9; fi
+  # On the Linux machine an unmeasured build is a failure, not an empty field (Kaiming): no cgroup within the first 60 s,
+  # or 3 consecutive misses (6 s) after the first successful sample. Any successful sample resets the count.
+  if [ $LINUX = 1 ]; then
+    if [ -n "$peak" ]; then SEEN=1; MISS=0
+    elif [ -z "${SEEN:-}" ]; then
+      if [ $(( $(date +%s) - ${START%.*} )) -ge 60 ]; then echo "no cgroup for $SYS within 60 s ($CNAME_FILTER / $SCOPE): stopping, the build would be unmeasured" >&2; kill_tree $PID; exit 9; fi
+    else
+      MISS=$(( ${MISS:-0} + 1 ))
+      if [ $MISS -ge 3 ]; then echo "lost the cgroup of $SYS for 6 s: stopping, the build would be unmeasured" >&2; kill_tree $PID; exit 9; fi
+    fi
   fi
   tg=$(( $(du -sk "$TMPD" 2>/dev/null | cut -f1) - TMP0 ))
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date -u +%H:%M:%S)" "${s:-0}" "$f" "${peak:-}" "${anon:-}" "${file:-}" "${mem_kb:-}" "$tg" >> "$OUT/samples.tsv"
@@ -144,7 +154,7 @@ log = open(os.path.join(out, "build.log"), errors="replace").read()
 def grab(pat):
     m = re.search(pat, log); return float(m.group(1)) if m else None
 rec = {
-    "system": sys_, "dataset": d, "tag": tag, "mem_gb": int(mem), "swap_gb": 0, "cpus": int(cpus), "cpu_limit": "Docker --cpus / systemd CPUQuota, both a CFS quota of this many CPUs", "exit": int(rc),
+    "system": sys_, "dataset": d, "tag": tag, "mem_gb": int(mem), "swap_gb": 0, "cpus": int(cpus), "cpuset": f"0-{int(cpus) - 1}", "cpu_limit": "the same CPU set for every system: Docker --cpuset-cpus, systemd AllowedCPUs", "exit": int(rc),
     "wall_s": round(float(end) - float(start), 2),
     "user_s": grab(r"User time \(seconds\): ([\d.]+)") or grab(r"([\d.]+) user"),
     "sys_s": grab(r"System time \(seconds\): ([\d.]+)") or grab(r"([\d.]+) sys"),
