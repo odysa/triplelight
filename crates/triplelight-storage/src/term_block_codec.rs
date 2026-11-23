@@ -80,7 +80,12 @@ pub(super) fn encode(entries: &[(TermId, Term)], lean: bool) -> io::Result<Vec<u
     Ok(result)
 }
 /// Strictly decode a complete bounded block; no unchecked parsing of disk bytes. `lean` as for `encode`.
-pub(super) fn decode(data: &[u8], lean: bool) -> io::Result<Vec<(TermId, Term)>> {
+///
+/// `canonical`: also require every term to re-serialize to exactly its stored text. That re-serializes all 256 terms
+/// of a block, so the read path (block-cache misses) skips it: the block's SHA-256 and the parse already reject
+/// corruption, and the text was canonical when the build wrote it. `verify` (`check_text_order`) runs it on every
+/// block.
+pub(super) fn decode(data: &[u8], lean: bool, canonical: bool) -> io::Result<Vec<(TermId, Term)>> {
     if data.len() > MAX_BLOCK {
         return Err(bad("term block too large"));
     }
@@ -133,7 +138,7 @@ pub(super) fn decode(data: &[u8], lean: bool) -> io::Result<Vec<(TermId, Term)>>
         text.extend_from_slice(&data[header..end]);
         let strval = std::str::from_utf8(&text).map_err(|_| bad("invalid term UTF-8"))?;
         let term: Term = strval.parse().map_err(|_| bad("invalid RDF term"))?;
-        if term.to_string() != strval {
+        if canonical && term.to_string() != strval {
             return Err(bad("noncanonical RDF term"));
         }
         result.push((id, term));
@@ -166,16 +171,16 @@ mod tests {
             ),
         ];
         let bytes = encode(&terms, false).unwrap();
-        assert_eq!(decode(&bytes, false).unwrap(), terms);
+        assert_eq!(decode(&bytes, false, true).unwrap(), terms);
         for n in 0..bytes.len() {
-            assert!(decode(&bytes[..n], false).is_err());
+            assert!(decode(&bytes[..n], false, true).is_err());
         }
         let mut badbytes = bytes.clone();
         badbytes[10..14].copy_from_slice(&u32::MAX.to_le_bytes());
-        assert!(decode(&badbytes, false).is_err());
+        assert!(decode(&badbytes, false, true).is_err());
         let mut extra = bytes;
         extra.push(0);
-        assert!(decode(&extra, false).is_err());
+        assert!(decode(&extra, false, true).is_err());
     }
     #[test]
     fn lean_blocks_roundtrip_shrink_and_reject_malformed_input() {
@@ -186,17 +191,17 @@ mod tests {
         terms.push((TermId(u64::MAX), Literal::new_simple_literal("é and a long tail".repeat(20)).into()));
         let lean = encode(&terms, true).unwrap();
         let old = encode(&terms, false).unwrap();
-        assert_eq!(decode(&lean, true).unwrap(), terms);
-        assert_eq!(decode(&old, false).unwrap(), terms);
+        assert_eq!(decode(&lean, true, true).unwrap(), terms);
+        assert_eq!(decode(&old, false, true).unwrap(), terms);
         assert!(old.len() - lean.len() >= 12 * 200, "framing shrinks by about 13 bytes per entry: {} against {}", lean.len(), old.len());
-        for n in 0..lean.len() { assert!(decode(&lean[..n], true).is_err(), "truncated at {n}") }
+        for n in 0..lean.len() { assert!(decode(&lean[..n], true, true).is_err(), "truncated at {n}") }
         let mut extra = lean.clone();
         extra.push(0);
-        assert!(decode(&extra, true).is_err());
+        assert!(decode(&extra, true, true).is_err());
         // A zero ID delta (a repeated ID) and a noncanonical varint are refused.
         let mut dup = vec![2, 0];
         for (id, _) in [(5u64, ()), (0, ())] { put_varint(&mut dup, id); put_varint(&mut dup, 0); put_varint(&mut dup, 3); dup.extend_from_slice(b"<a>") }
-        assert!(decode(&dup, true).is_err());
+        assert!(decode(&dup, true, true).is_err());
         let mut pos = 0;
         assert!(get_varint(&[0x81, 0x00], &mut pos).is_err());
         assert!(encode(&[(TermId(5), iri(1)), (TermId(5), iri(2))], true).is_err(), "IDs must ascend in a lean block");

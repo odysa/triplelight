@@ -417,7 +417,7 @@ impl LazyIndex {
         if Sha256::digest(&bytes).as_slice() != meta.hash {
             return Err(bad("dictionary block checksum mismatch"));
         }
-        let rows = term_block_codec::decode(&bytes, self.lean)?;
+        let rows = term_block_codec::decode(&bytes, self.lean, false)?;
         let keys: Vec<_> = rows.iter().map(|(id, t)| self.order.key(*id, t)).collect();
         if keys.windows(2).any(|w| w[0] >= w[1])
             || keys.last() != Some(&meta.last)
@@ -475,6 +475,16 @@ impl LazyIndex {
     pub(super) fn check_text_order(&self) -> io::Result<u64> {
         if !matches!(self.order, Order::Unified) {
             return Err(bad("wrong dictionary index"));
+        }
+        // Canonical text, which the read path does not re-check (`term_block_codec::decode`): every block, read
+        // directly (not through the cache) and decoded with the full check.
+        for meta in &self.entries {
+            let mut bytes = vec![0; meta.length];
+            exact(&self.file, &mut bytes, meta.offset)?;
+            if Sha256::digest(&bytes).as_slice() != meta.hash {
+                return Err(bad("dictionary block checksum mismatch"));
+            }
+            term_block_codec::decode(&bytes, self.lean, true)?;
         }
         let mut previous: Option<(u64, String)> = None;
         let mut count = 0u64;
