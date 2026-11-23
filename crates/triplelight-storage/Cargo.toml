@@ -10,6 +10,10 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+# RDF 1.2 terms in the stores (task #101, docs/rdf12-storage-design.md).
+rdf-12 = ["triplelight-core/rdf-12", "triplelight-rdf/rdf-12"]
+
 [dependencies]
 triplelight-core.workspace = true
 triplelight-rdf.workspace = true
