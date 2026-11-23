@@ -5,12 +5,47 @@
 //! set of nodes reachable from each start node, so they never repeat a pair. A zero-length path (`*`, `?`) matches a
 //! bound endpoint to itself even if that term is not in the graph, and with both endpoints unbound it matches every
 //! subject and object of the graph to itself.
+//!
+//! # CSR adjacency (`Options::csr_paths`)
+//!
+//! `p+` / `p*` over a single predicate, possibly reversed (`^p+`, `(^p)*`, `^(p+)`), the common shape
+//! (`subOrganizationOf+`, WDBench), can run over a compressed sparse row array of `p`'s edges instead of one index
+//! seek per visited node. The array is built from one PSO scan of `p` over the active graph and kept in `Ctx::csr`
+//! for the rest of the query, keyed by (predicate, direction, active graph), so a path used in several places (or
+//! under many bindings) is built once.
+//!
+//! * Nodes are the distinct subjects and objects of `p`, sorted by ID and numbered densely by binary search, so
+//!   dense order is ID order. `offsets` / `targets` are `u32`. Each direction holds 4 bytes per edge plus 4 bytes
+//!   per node of offsets; the node table (8 bytes per node) is shared by both directions. Building peaks at about
+//!   20 bytes per edge (the scanned objects, their sorted copy, the mapped targets). Only the direction a closure
+//!   needs is built; the other is the transpose of a cached one, without another scan, if one is cached.
+//! * Caps: `CsrLimits::max_edges` (50M edges of `p`) and a per-query budget (`budget_bytes`, 2 GiB, estimated at
+//!   16 bytes per edge for a scan build and 8 for a transpose). Over either, the closure keeps today's seeks.
+//! * A closure from one bound endpoint builds the array only once the seeks spent on that (predicate, direction,
+//!   graph) in this query reach `edges / seek_divisor` (1/32): a lookup that reaches a handful of nodes stays a
+//!   handful of seeks. All-pairs closures (both endpoints unbound) build it immediately.
+//!
+//! Order is the same as the seek BFS, row for row. That BFS emits, level by level, the first occurrence of each
+//! unseen node in the concatenated `step` lists of the previous level, and a node's `step` over a link is an index
+//! range (SPO `[x, p]` forward, POS `[p, x]` backward), so its neighbours come in ascending ID order. Dense order is
+//! ID order, and the forward targets of a subject are its PSO row's objects in scan order (ascending); the reverse
+//! targets are filled by a counting sort over ascending sources. So each node's CSR neighbour list is its `step`
+//! list. Marking a node when it is pushed instead of when it is popped emits the same sequence: every node of level
+//! L is pushed while level L - 1 is expanded, before any level L node is expanded, so the set a push is checked
+//! against is the set the pop would have been checked against. The output is the queue itself. All-pairs keeps
+//! today's start order (`+`: nodes with an outgoing step, in the order `all_pairs` of the step lists them, i.e. ID
+//! order forward and (first source, ID) backward; `*`: `graph_nodes()`), runs the starts in parallel with one
+//! reused bitset per rayon job, and concatenates in start order.
+//!
+//! Follow-up, not done here: condensing strongly connected components (one closure per component, shared by every
+//! member) for all-pairs over cyclic predicates.
 use super::{storage_failure, Ctx, Row, UNBOUND};
 use crate::model::{Perm, TermId};
 use crate::storage::Snapshot;
 use crate::sparql::PropertyPathExpression as Ppe;
 use crate::sparql::TermPattern;
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 /// A path with its IRIs resolved to IDs (`None` = not in the store, so that link never matches).
 enum P {
@@ -75,6 +110,12 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     /// Distinct nodes reachable from `x` by `*` / `+` / `?` over `q`, in discovery order.
     fn closure(&self, p: &P, q: &P, rev: bool, x: TermId) -> Vec<TermId> {
         let zero = matches!(p, P::Star(_) | P::Opt(_));
+        let link = if matches!(p, P::Star(_) | P::Plus(_)) { simple_link(q, rev) } else { None };
+        if let Some((id, dir)) = link
+            && let Some(c) = self.csr(id, dir, false)
+        {
+            return self.csr.borrow_mut().closure(&c, x, zero);
+        }
         let mut seen = HashSet::new();
         let mut order = Vec::new();
         if zero { seen.insert(x); order.push(x); }
@@ -95,6 +136,8 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             }
             frontier = grown;
         }
+        // One seek per expanded node (the start, then every node emitted).
+        if let Some((id, dir)) = link { self.note_seeks(id, dir, order.len() as u64 + 1) }
         order
     }
 
@@ -119,6 +162,10 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 self.scan_each(Perm::Spo, &[], |s, pr, o| if !excluded.contains(&pr) { out.push((s, o)) })
             }
             P::Plus(q) => {
+                if let Some((c, dir)) = simple_link(q, false).and_then(|(id, dir)| Some((self.csr(id, dir, true)?, dir))) {
+                    c.all_pairs(&c.plus_starts(dir), false, out);
+                    return;
+                }
                 // Start nodes are those with at least one outgoing step.
                 let mut firsts = Vec::new();
                 self.all_pairs(q, &mut firsts);
@@ -127,9 +174,46 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 for x in starts { out.extend(self.closure(p, q, false, x).into_iter().map(|z| (x, z))) }
             }
             P::Star(q) | P::Opt(q) => {
+                let csr = match p { P::Star(_) => simple_link(q, false).and_then(|(id, dir)| self.csr(id, dir, true)), _ => None };
+                if let Some(c) = csr { c.all_pairs(&self.graph_nodes(), true, out); return }
                 for x in self.graph_nodes() { out.extend(self.closure(p, q, false, x).into_iter().map(|z| (x, z))) }
             }
         }
+    }
+
+    /// The CSR of `p` traversed forward (`rev = false`) or backward over the active graph, or `None` to keep the
+    /// seeks (`CsrCache::lookup`; `eager`: an all-pairs closure, which builds without waiting for seeks to add up).
+    fn csr(&self, p: TermId, rev: bool, eager: bool) -> Option<Arc<Csr>> {
+        // Exact: for a FROM union `count` is a merged scan; the cache asks for it once per key.
+        self.csr.borrow_mut().lookup(CsrKey::new(p, rev, self.graph_token()), || self.count(Perm::Pso, &[p]), eager, || self.build_csr(p))
+    }
+
+    /// Records `n` seeks spent by a seek-based closure over `p` in direction `rev` (see `csr`).
+    fn note_seeks(&self, p: TermId, rev: bool, n: u64) {
+        self.csr.borrow_mut().note_seeks(CsrKey::new(p, rev, self.graph_token()), n)
+    }
+
+    /// Forward CSR of `p`'s edges in the active graph, from one PSO scan (rows sorted by subject, then object).
+    fn build_csr(&self, p: TermId) -> Csr {
+        let mut subjects: Vec<(TermId, u32)> = Vec::new(); // distinct subjects with their out-degree, ascending
+        let mut objects: Vec<TermId> = Vec::new();
+        self.scan_each(Perm::Pso, &[p], |_, s, o| {
+            if subjects.last().is_some_and(|&(last, _)| last == s) { subjects.last_mut().unwrap().1 += 1 } else { subjects.push((s, 1)) }
+            objects.push(o);
+        });
+        let mut nodes: Vec<TermId> = Vec::with_capacity(objects.len() + subjects.len());
+        nodes.extend_from_slice(&objects);
+        nodes.extend(subjects.iter().map(|&(s, _)| s));
+        nodes.sort_unstable();
+        nodes.dedup();
+        nodes.shrink_to_fit();
+        let dense = |t: TermId| nodes.binary_search(&t).expect("every edge endpoint is a node") as u32;
+        let targets: Vec<u32> = objects.iter().map(|&o| dense(o)).collect();
+        drop(objects);
+        let mut offsets = vec![0u32; nodes.len() + 1];
+        for &(s, n) in &subjects { offsets[dense(s) as usize + 1] = n }
+        prefix_sum(&mut offsets);
+        Csr { nodes: nodes.into(), offsets, targets }
     }
 
     fn is_graph_node(&self, x: TermId) -> bool {
@@ -210,7 +294,345 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     }
 }
 
+/// `q` as one predicate link after peeling `^`s, with the direction a traversal in direction `rev` takes over it.
+fn simple_link(q: &P, rev: bool) -> Option<(TermId, bool)> {
+    match q {
+        P::Link(Some(id)) => Some((*id, rev)),
+        P::Rev(inner) => simple_link(inner, !rev),
+        _ => None,
+    }
+}
+
+/// Limits on CSR adjacencies (module docs). Tests lower them.
+#[derive(Clone, Copy)]
+pub(crate) struct CsrLimits {
+    /// Most edges of one predicate to build an adjacency for.
+    pub max_edges: u64,
+    /// Estimated bytes of all adjacencies one query may build.
+    pub budget_bytes: u64,
+    /// A bound-endpoint closure builds once its predicate's seeks in this query reach `edges / seek_divisor`.
+    pub seek_divisor: u64,
+}
+impl Default for CsrLimits {
+    fn default() -> Self { CsrLimits { max_edges: 50_000_000, budget_bytes: 2 << 30, seek_divisor: 32 } }
+}
+
+/// An adjacency's identity within a query: predicate, direction (`rev`: backward) and active graph
+/// (`Ctx::graph_token`).
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct CsrKey { p: TermId, rev: bool, graph: usize }
+impl CsrKey {
+    fn new(p: TermId, rev: bool, graph: usize) -> Self { CsrKey { p, rev, graph } }
+    /// The same predicate and graph traversed the other way.
+    fn reversed(self) -> Self { CsrKey { rev: !self.rev, ..self } }
+}
+
+enum CsrSlot {
+    /// Not built yet: seeks spent so far by bound-endpoint closures, and the predicate's edge count.
+    Seeks { done: u64, edges: u64 },
+    Built(Arc<Csr>),
+    /// Over a cap: always seek.
+    Off,
+}
+
+/// `Ctx::csr`: the query's CSR adjacencies and the whole policy for them: whether to use one at all
+/// (`Options::csr_paths`), when to build it (eagerly, or once seeks add up), the caps and the per-query budget, and
+/// reusing a cached direction's transpose. Also keeps the visited bitset bound-endpoint closures share (all-zero
+/// between closures).
+pub(crate) struct CsrCache {
+    enabled: bool,
+    limits: CsrLimits,
+    slots: HashMap<CsrKey, CsrSlot>,
+    /// Estimated bytes of the adjacencies built so far, against `limits.budget_bytes`.
+    bytes: u64,
+    seen: Vec<u64>,
+}
+impl CsrCache {
+    /// `enabled = false` (`--ablate=csrpaths`): `lookup` always answers `None`, so every closure seeks.
+    pub(crate) fn new(enabled: bool, limits: CsrLimits) -> Self {
+        CsrCache { enabled, limits, slots: HashMap::new(), bytes: 0, seen: Vec::new() }
+    }
+
+    /// The adjacency for `key`, or `None` to keep the seeks: disabled, over a cap, or (`eager = false`) the seeks
+    /// recorded for `key` in this query (`note_seeks`) still below `edges / seek_divisor`. `edges` counts the
+    /// predicate's edges and is asked once per key. `forward` scans the predicate into its forward adjacency; it is
+    /// called only when the other direction is not cached (otherwise the answer is that one's transpose).
+    fn lookup(&mut self, key: CsrKey, edges: impl FnOnce() -> u64, eager: bool, forward: impl FnOnce() -> Csr) -> Option<Arc<Csr>> {
+        if !self.enabled { return None }
+        let known = match self.slots.get(&key) {
+            Some(CsrSlot::Built(c)) => return Some(c.clone()),
+            Some(CsrSlot::Off) => return None,
+            Some(&CsrSlot::Seeks { done, edges }) => Some((done, edges)),
+            None => None,
+        };
+        let (done, edges) = known.unwrap_or_else(|| {
+            let edges = edges();
+            self.slots.insert(key, CsrSlot::Seeks { done: 0, edges });
+            (0, edges)
+        });
+        if !eager && done < edges / self.limits.seek_divisor { return None }
+        let other = match self.slots.get(&key.reversed()) { Some(CsrSlot::Built(c)) => Some(c.clone()), _ => None };
+        let cost = edges.saturating_mul(if other.is_some() { 8 } else { 16 });
+        if edges > self.limits.max_edges || self.bytes.saturating_add(cost) > self.limits.budget_bytes {
+            self.slots.insert(key, CsrSlot::Off);
+            return None;
+        }
+        let c = Arc::new(match other {
+            Some(o) => o.transpose(),
+            None => { let f = forward(); if key.rev { f.transpose() } else { f } }
+        });
+        self.bytes += cost;
+        self.slots.insert(key, CsrSlot::Built(c.clone()));
+        Some(c)
+    }
+
+    /// Records `n` seeks a seek-based closure spent on `key`, toward `lookup`'s build threshold.
+    fn note_seeks(&mut self, key: CsrKey, n: u64) {
+        if let Some(CsrSlot::Seeks { done, .. }) = self.slots.get_mut(&key) { *done += n }
+    }
+
+    /// The closure from `x` over `c` in discovery order (`Csr::ends`), on the shared bitset.
+    fn closure(&mut self, c: &Csr, x: TermId, zero: bool) -> Vec<TermId> {
+        let words = c.bitset_words();
+        if self.seen.len() < words { self.seen.resize(words, 0) }
+        let mut out = Vec::new();
+        c.ends(x, zero, &mut self.seen[..words], &mut Vec::new(), |z| out.push(z));
+        out
+    }
+
+    /// `"seeks"`, `"built"`, `"off"`, or `"none"` before the first lookup of `key`.
+    #[cfg(test)]
+    fn state(&self, key: CsrKey) -> &'static str {
+        match self.slots.get(&key) {
+            None => "none",
+            Some(CsrSlot::Seeks { .. }) => "seeks",
+            Some(CsrSlot::Built(_)) => "built",
+            Some(CsrSlot::Off) => "off",
+        }
+    }
+}
+
+/// Compressed sparse row adjacency of one predicate in one direction: node `d`'s neighbours are
+/// `targets[offsets[d]..offsets[d + 1]]`, ascending. Dense node numbers index `nodes`, which is sorted by ID.
+pub(crate) struct Csr {
+    nodes: Arc<[TermId]>,
+    offsets: Vec<u32>,
+    targets: Vec<u32>,
+}
+
+impl Csr {
+    fn dense(&self, x: TermId) -> Option<u32> { self.nodes.binary_search(&x).ok().map(|i| i as u32) }
+
+    /// Words of a visited bitset over the nodes.
+    fn bitset_words(&self) -> usize { self.nodes.len().div_ceil(64) }
+
+    /// Calls `emit` for the closure from `x` in discovery order (`closure_into`); `x` need not be a node: then it
+    /// is its own only end for `*` and has none for `+`.
+    fn ends(&self, x: TermId, zero: bool, seen: &mut [u64], queue: &mut Vec<u32>, mut emit: impl FnMut(TermId)) {
+        match self.dense(x) {
+            None => if zero { emit(x) },
+            Some(d) => { self.closure_into(d, zero, seen, queue); for &z in queue.iter() { emit(self.nodes[z as usize]) } }
+        }
+    }
+
+    fn nbrs(&self, d: u32) -> &[u32] { &self.targets[self.offsets[d as usize] as usize..self.offsets[d as usize + 1] as usize] }
+
+    /// The same edges in the other direction; each node's new neighbours (its sources) come out ascending.
+    fn transpose(&self) -> Csr {
+        let n = self.nodes.len();
+        let mut offsets = vec![0u32; n + 1];
+        for &t in &self.targets { offsets[t as usize + 1] += 1 }
+        prefix_sum(&mut offsets);
+        let mut fill = offsets[..n].to_vec();
+        let mut targets = vec![0u32; self.targets.len()];
+        for s in 0..n as u32 {
+            for &t in self.nbrs(s) {
+                let f = &mut fill[t as usize];
+                targets[*f as usize] = s;
+                *f += 1;
+            }
+        }
+        Csr { nodes: self.nodes.clone(), offsets, targets }
+    }
+
+    /// Fills `queue` with the closure from `x` in the seek BFS's discovery order (module docs): `x` first if `zero`
+    /// (`*`), else `x` only if a cycle returns to it (`+`). `seen` must be all-zero and is left all-zero.
+    fn closure_into(&self, x: u32, zero: bool, seen: &mut [u64], queue: &mut Vec<u32>) {
+        fn mark(seen: &mut [u64], d: u32) -> bool {
+            let (w, b) = ((d >> 6) as usize, 1u64 << (d & 63));
+            let new = seen[w] & b == 0;
+            seen[w] |= b;
+            new
+        }
+        queue.clear();
+        if zero { mark(seen, x); queue.push(x) }
+        for &y in self.nbrs(x) { if mark(seen, y) { queue.push(y) } }
+        let mut head = usize::from(zero);
+        while head < queue.len() {
+            let y = queue[head];
+            head += 1;
+            for &z in self.nbrs(y) { if mark(seen, z) { queue.push(z) } }
+        }
+        for &d in queue.iter() { seen[(d >> 6) as usize] &= !(1u64 << (d & 63)) }
+    }
+
+    /// Start nodes of an all-pairs `+` in the order `all_pairs` of the step would list them first: by ID for a
+    /// forward link (PSO subjects); backward, a node first appears as the object of its smallest source, so by
+    /// (smallest source, ID).
+    fn plus_starts(&self, rev: bool) -> Vec<TermId> {
+        let mut v: Vec<u32> = (0..self.nodes.len() as u32).filter(|&d| !self.nbrs(d).is_empty()).collect();
+        if rev { v.sort_unstable_by_key(|&d| (self.nbrs(d)[0], d)) }
+        v.into_iter().map(|d| self.nodes[d as usize]).collect()
+    }
+
+    /// (start, end) for every start in order, its closure in discovery order; starts run in parallel.
+    fn all_pairs(&self, starts: &[TermId], zero: bool, out: &mut Vec<(TermId, TermId)>) {
+        use rayon::prelude::*;
+        let words = self.bitset_words();
+        let parts: Vec<Vec<(TermId, TermId)>> = starts.par_iter().with_min_len(64)
+            .map_init(|| (vec![0u64; words], Vec::new()), |(seen, queue), &x| {
+                let mut v = Vec::new();
+                self.ends(x, zero, seen, queue, |z| v.push((x, z)));
+                v
+            })
+            .collect();
+        out.reserve(parts.iter().map(Vec::len).sum());
+        for part in parts { out.extend(part) }
+    }
+}
+
+/// In place: element `k` becomes the sum of elements `0..=k` (counts at `d + 1` become offsets).
+fn prefix_sum(v: &mut [u32]) {
+    let mut acc = 0;
+    for x in v { acc += *x; *x = acc }
+}
+
 fn dedup_keep_order(v: &mut Vec<TermId>) {
     let mut seen = HashSet::new();
     v.retain(|x| seen.insert(*x));
+}
+
+#[cfg(test)]
+mod csr_tests {
+    use super::*;
+    use crate::bgp::sorted_probe_tests::Triples;
+
+    const P1: u64 = 1000;
+    const P2: u64 = 1001;
+    /// An ID in no triple (a constant written in the query that is not in the graph).
+    const ABSENT: u64 = 9999;
+
+    /// Random graph over nodes 1..=60 with two predicates: cycles, self-loops, nodes 200..=209 only as objects, and
+    /// nodes that occur only under the other predicate.
+    fn graph(seed: u64) -> Vec<[u64; 3]> {
+        let mut rng = seed;
+        let mut next = |m: u64| { rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17; rng % m };
+        let mut t = Vec::new();
+        for _ in 0..150 { t.push([1 + next(60), P1 + next(2), 1 + next(60)]) }
+        for x in 1..=8 { t.push([x, P1, x]) } // self-loops
+        for x in 10..20 { t.push([x, P1, x + 1]) }
+        t.push([20, P1, 10]); // a ring
+        for x in 200..210 { t.push([1 + next(60), P1, x]) } // sinks
+        for x in 300..305 { t.push([x, P2, 1 + next(60)]) } // nodes only under P2
+        t
+    }
+
+    fn link(p: u64) -> P { P::Link(Some(TermId(p))) }
+    fn paths() -> Vec<(&'static str, P)> {
+        vec![
+            ("p+", P::Plus(Box::new(link(P1)))),
+            ("p*", P::Star(Box::new(link(P1)))),
+            ("(^p)+", P::Plus(Box::new(P::Rev(Box::new(link(P1)))))),
+            ("(^p)*", P::Star(Box::new(P::Rev(Box::new(link(P1)))))),
+            ("^(p+)", P::Rev(Box::new(P::Plus(Box::new(link(P1)))))),
+            ("q+", P::Plus(Box::new(link(P2)))),
+            ("(^^q)*", P::Star(Box::new(P::Rev(Box::new(P::Rev(Box::new(link(P2)))))))),
+        ]
+    }
+
+    /// Every answer shape of `path` (all pairs; each node and an absent ID as subject and as object), in order.
+    fn answers(ctx: &Ctx<'_, Triples>, path: &P) -> Vec<Vec<(TermId, TermId)>> {
+        let mut out = Vec::new();
+        let mut all = Vec::new();
+        ctx.all_pairs(path, &mut all);
+        out.push(all);
+        for x in (1..=60).chain(200..210).chain(300..305).chain([ABSENT]).map(TermId) {
+            for rev in [false, true] {
+                let mut v = Vec::new();
+                ctx.step(path, rev, x, &mut v);
+                out.push(v.into_iter().map(|z| (x, z)).collect());
+            }
+        }
+        out
+    }
+
+    fn ctx(snap: &Triples, csr: bool, limits: CsrLimits) -> Ctx<'_, Triples> {
+        Ctx::new(snap, CsrCache::new(csr, limits))
+    }
+
+    /// Build at the first closure, so every bound-endpoint closure runs on the CSR.
+    fn eager() -> CsrLimits { CsrLimits { seek_divisor: u64::MAX, ..CsrLimits::default() } }
+
+    fn state(c: &Ctx<'_, Triples>, p: u64, rev: bool) -> &'static str { c.csr.borrow().state(CsrKey::new(TermId(p), rev, 0)) }
+    fn built(c: &Ctx<'_, Triples>, p: u64, rev: bool) -> bool { state(c, p, rev) == "built" }
+
+    #[test]
+    fn csr_closures_match_seeks_in_order() {
+        for seed in [0x2545_f491_4f6c_dd1du64, 0x9e37_79b9_7f4a_7c15, 0xdead_beef_cafe_f00d, 7] {
+            let snap = Triples::new(&graph(seed));
+            for (name, path) in paths() {
+                let off = ctx(&snap, false, CsrLimits::default());
+                // Eager limits, then the default ones (seeks first, the CSR once they add up).
+                for limits in [eager(), CsrLimits::default()] {
+                    let on = ctx(&snap, true, limits);
+                    assert_eq!(answers(&on, &path), answers(&off, &path), "{name} seed {seed:#x}");
+                }
+            }
+            let on = ctx(&snap, true, eager());
+            answers(&on, &paths()[0].1);
+            assert!(built(&on, P1, false) && built(&on, P1, true), "both directions of p+ ran on the CSR");
+            let off = ctx(&snap, false, eager());
+            answers(&off, &paths()[0].1);
+            assert!(state(&off, P1, false) == "none" && state(&off, P1, true) == "none", "off never builds");
+        }
+    }
+
+    #[test]
+    fn csr_falls_back_to_seeks_over_the_caps() {
+        let snap = Triples::new(&graph(3));
+        let edges = snap.count(Perm::Pso, &[TermId(P1)]).unwrap();
+        let small_cap = CsrLimits { max_edges: edges - 1, ..eager() };
+        let small_budget = CsrLimits { budget_bytes: 16 * edges - 1, ..eager() };
+        for limits in [small_cap, small_budget] {
+            for (name, path) in paths() {
+                let on = ctx(&snap, true, limits);
+                let off = ctx(&snap, false, CsrLimits::default());
+                assert_eq!(answers(&on, &path), answers(&off, &path), "{name}");
+            }
+            let on = ctx(&snap, true, limits);
+            answers(&on, &paths()[0].1);
+            assert_eq!(state(&on, P1, false), "off", "over the cap: seeks");
+            assert!(!built(&on, P1, true));
+        }
+        // At the cap it builds.
+        let on = ctx(&snap, true, CsrLimits { max_edges: edges, ..eager() });
+        answers(&on, &paths()[0].1);
+        assert!(built(&on, P1, false));
+    }
+
+    #[test]
+    fn transpose_and_starts() {
+        // 1 -> {3, 5}, 2 -> {3}, 5 -> {1}: backward, 3 first appears (as the object of 1) before 5, and 1 last.
+        let snap = Triples::new(&[[1, P1, 5], [1, P1, 3], [2, P1, 3], [5, P1, 1]]);
+        let c = ctx(&snap, true, eager());
+        let f = c.build_csr(TermId(P1));
+        let ids = |v: Vec<TermId>| v.into_iter().map(|t| t.0).collect::<Vec<_>>();
+        assert_eq!(ids(f.plus_starts(false)), [1, 2, 5]);
+        assert_eq!(ids(f.transpose().plus_starts(true)), [3, 5, 1]);
+        let r = f.transpose();
+        let back = |x: u64| r.nbrs(r.dense(TermId(x)).unwrap()).iter().map(|&d| r.nodes[d as usize].0).collect::<Vec<_>>();
+        assert_eq!(back(3), [1, 2]);
+        assert_eq!(back(1), [5]);
+        assert!(back(2).is_empty());
+    }
 }
