@@ -34,7 +34,7 @@ mod named;
 pub use named::{GraphStateError, NamedGraph};
 
 /// IDs for terms first seen in the delta.
-const DELTA_TAG: u64 = 0xd;
+const DELTA_TAG: u64 = crate::model::id_tag::DELTA;
 
 fn slot(p: Perm) -> usize { Perm::ALL.iter().position(|&q| q == p).unwrap() }
 fn key(perm: Perm, spo: [TermId; 3]) -> [TermId; 3] { let o = perm.order(); [spo[o[0]], spo[o[1]], spo[o[2]]] }

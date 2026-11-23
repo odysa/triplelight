@@ -4,7 +4,7 @@ use crate::model::{Perm, TermId, TripleBatch};
 use triplelight_rdf::{Term, Triple};
 use std::collections::HashMap;
 
-const INLINE: u64 = 0xf000_0000_0000_0000;
+const INLINE: u64 = crate::model::id_tag::INLINE << 60;
 fn inline_ref(term: triplelight_rdf::TermRef<'_>) -> Option<TermId> {
     if let triplelight_rdf::TermRef::Literal(l) = term {
         let b = l.value().as_bytes();
