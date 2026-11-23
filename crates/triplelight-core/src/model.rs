@@ -1,6 +1,40 @@
 //! Shared types between storage, optimizer and executor.
 
-/// Dictionary-encoded term. The top 4 bits tag the kind; inline kinds carry their value in the low 60 bits.
+/// The values of a [`TermId`]'s top four bits. Every tag in use is listed here, so a new one cannot silently reuse
+/// an existing value (`tags_are_distinct` checks the list).
+pub mod id_tag {
+    /// An IRI in a stored dictionary (disk bases and the in-memory store).
+    pub const IRI: u64 = 1;
+    /// A blank node in a stored dictionary.
+    pub const BLANK_NODE: u64 = 2;
+    /// A literal in a stored dictionary (directional literals included).
+    pub const LITERAL: u64 = 3;
+    /// An RDF 1.2 triple term in a stored dictionary.
+    pub const TRIPLE_TERM: u64 = 4;
+    /// A term first seen in a write-ahead-log delta; it can be of any kind.
+    pub const DELTA: u64 = 0xd;
+    /// A term computed during one query (the executor's scratch table); it can be of any kind.
+    pub const SCRATCH: u64 = 0xe;
+    /// A short string literal encoded in the ID itself (in-memory store).
+    pub const INLINE: u64 = 0xf;
+    /// Every tag in use, with its name.
+    pub const ALL: [(u64, &str); 7] = [(IRI, "iri"), (BLANK_NODE, "blank node"), (LITERAL, "literal"),
+        (TRIPLE_TERM, "triple term"), (DELTA, "delta"), (SCRATCH, "scratch"), (INLINE, "inline")];
+    /// The tag of `id`.
+    pub const fn of(id: super::TermId) -> u64 { id.0 >> 60 }
+
+    #[cfg(test)]
+    #[test]
+    fn tags_are_distinct() {
+        for (i, (a, _)) in ALL.iter().enumerate() {
+            assert!(*a < 16);
+            for (b, _) in &ALL[i + 1..] { assert_ne!(a, b, "two ID kinds share tag {a}") }
+        }
+    }
+}
+
+/// Dictionary-encoded term. The top 4 bits tag the kind (see [`id_tag`]); inline kinds carry their value in the low
+/// 60 bits.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TermId(pub u64);
 

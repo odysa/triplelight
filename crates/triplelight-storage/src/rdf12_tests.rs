@@ -69,6 +69,7 @@ fn external_disk_build() {
     let disk = crate::DiskSnapshot::open(&out).unwrap();
     disk.verify().unwrap();
     assert_eq!(&std::fs::read(out.join("MANIFEST")).unwrap()[..10], b"RDFSNAP7\x1d\x00", "1.2 terms make an RDFSNAP7 base");
+    assert!(out.join("triple_terms").exists(), "an RDFSNAP7 base has the parts table");
     check(&disk, "disk");
     let inside = disk.lookup(&iri("only-inside").into()).unwrap();
     assert!(inside.is_some(), "a part that occurs only inside a triple term is a dictionary term");
