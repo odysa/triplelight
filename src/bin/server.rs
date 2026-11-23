@@ -261,9 +261,9 @@ pub(crate) fn run(cmd: &str, args: &[String]) {
     serve_memory(args);
 }
 
-/// Benchmark ablations, all off by default and answer-preserving: `--ablate=wcoj,count,fast-group,range` disables the
-/// leapfrog triejoin, the exact index-count aggregates, the ID hash-aggregation fast path and the range-filter
-/// pushdown. (`--no-stats` turns
+/// Benchmark ablations, all off by default and answer-preserving: `--ablate=wcoj,count,fast-group,range,charpairs`
+/// disables the leapfrog triejoin, the exact index-count aggregates, the ID hash-aggregation fast path, the
+/// range-filter pushdown and the planner's characteristic-pair join estimates. (`--no-stats` turns
 /// off the cost-based planner.) Unknown names are refused so a typo cannot silently measure the default.
 fn ablations(args: &[String]) -> Options<'static> {
     let mut opts = Options::default();
@@ -273,11 +273,12 @@ fn ablations(args: &[String]) -> Options<'static> {
             "count" => opts.count_pushdown = false,
             "fast-group" => opts.general_group = true,
             "range" => opts.range_pushdown = false,
-            other => { eprintln!("unknown --ablate name {other:?} (expected wcoj, count, fast-group, range)"); std::process::exit(2) }
+            "charpairs" => opts.char_pairs = false,
+            other => { eprintln!("unknown --ablate name {other:?} (expected wcoj, count, fast-group, range, charpairs)"); std::process::exit(2) }
         }
     }
     if args.iter().any(|a| a.starts_with("--ablate=")) {
-        eprintln!("ablations: wcoj={} count_pushdown={} fast_group={} range_pushdown={}", opts.wcoj, opts.count_pushdown, !opts.general_group, opts.range_pushdown);
+        eprintln!("ablations: wcoj={} count_pushdown={} fast_group={} range_pushdown={} char_pairs={}", opts.wcoj, opts.count_pushdown, !opts.general_group, opts.range_pushdown, opts.char_pairs);
     }
     opts
 }

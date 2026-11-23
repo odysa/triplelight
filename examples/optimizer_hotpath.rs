@@ -31,6 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         general_group: false,
                         count_pushdown: true,
                         range_pushdown: true,
+                        char_pairs: true,
                     },
                 )?;
                 let query_ns = start.elapsed().as_nanos();

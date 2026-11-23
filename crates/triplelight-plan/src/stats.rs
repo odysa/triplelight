@@ -10,6 +10,11 @@ use std::sync::Arc;
 const HISTOGRAM_SIZE: usize = 64;
 const MAX_CARD: f64 = 1e300;
 const MAX_CS_REFINEMENT_ROWS: u64 = 4096;
+/// Characteristic pairs kept per predicate (the rest is summed into `PredicatePairs::other`).
+pub const PAIRS_PER_PREDICATE: usize = 64;
+/// Distinct (predicate, subject CS, object CS) keys counted exactly while building; triples of keys first seen after
+/// this many go straight to their predicate's `other` bucket. Bounds the build's memory on CS-rich data.
+const MAX_PAIR_KEYS: usize = 1 << 20;
 
 #[derive(Clone, Debug)]
 struct Distinct {
@@ -106,6 +111,18 @@ pub struct CharacteristicSet {
     properties: BTreeMap<TermId, Property>,
 }
 
+/// Characteristic pairs (Gubichev and Neumann, EDBT 2014) of one predicate `p`: the triples `(s p o)` whose object
+/// is itself a subject, counted by (characteristic set of `s`, characteristic set of `o`). Literals and IRIs that are
+/// never subjects have no set and are not counted. At most `PAIRS_PER_PREDICATE` pairs are kept (the largest);
+/// the triples of the others are summed in `other`.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PredicatePairs {
+    /// (subject set index, object set index, triples), sorted by (subject set, object set); every count is positive.
+    pub pairs: Vec<(u32, u32, u64)>,
+    /// Linked triples of this predicate whose pair is not in `pairs`.
+    pub other: u64,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Stats {
     pub triple_count: u64,
@@ -120,6 +137,10 @@ pub struct Stats {
     exact_object_cs_counts: HashMap<TriplePattern, Vec<u64>>,
     star_estimates: HashMap<Vec<TriplePattern>, f64>,
     planning_domains: HashMap<TriplePattern, BTreeMap<u32, f64>>,
+    /// Characteristic pairs by predicate (empty for statistics loaded from a `TLSTATS1` payload).
+    char_pairs: Arc<BTreeMap<TermId, PredicatePairs>>,
+    /// Ablation switch: when set, `estimate_bgp` ignores `char_pairs` (the pre-pairs estimates, bit for bit).
+    char_pairs_off: bool,
 }
 
 #[derive(Debug)]
@@ -155,27 +176,63 @@ pub struct Estimate {
 
 impl Stats {
     /// Input must be lexicographically sorted SPO. Adjacent duplicate triples are ignored.
-    /// Auxiliary memory is bounded object sketches + CS/property summaries + the largest subject group.
+    /// The input is buffered: characteristic pairs need a second pass (see `from_snapshot`).
     pub fn from_spo(triples: impl IntoIterator<Item = [TermId; 3]>) -> Result<Self, StatsError> {
+        let triples: Vec<_> = triples.into_iter().collect();
         let mut builder = Builder::default();
+        for t in &triples {
+            builder.push(*t)?;
+        }
+        let (mut stats, mut pairs) = builder.finish();
         for t in triples {
-            builder.push(t)?;
+            pairs.push(t);
         }
-        Ok(builder.finish())
+        stats.char_pairs = Arc::new(pairs.finish());
+        Ok(stats)
     }
+    /// Two SPO passes. The first builds everything but the characteristic pairs, keeping each subject's set index
+    /// (12 bytes per subject, the pairs' only large auxiliary memory); the second counts the pairs, looking the
+    /// object's set up by binary search. Auxiliary memory is otherwise bounded object sketches + CS/property
+    /// summaries + the largest subject group + at most `MAX_PAIR_KEYS` pair counters.
     pub fn from_snapshot(snapshot: &dyn Snapshot) -> Result<Self, StatsError> {
-        let mut builder = Builder::default();
-        for batch in snapshot.scan_for_stats() {
-            let batch = batch?;
-            let n = batch.cols[0].len();
-            if batch.cols[1].len() != n || batch.cols[2].len() != n {
-                return Err(StatsError::UnequalBatchColumns);
+        fn each(
+            snapshot: &dyn Snapshot,
+            mut f: impl FnMut([TermId; 3]) -> Result<(), StatsError>,
+        ) -> Result<(), StatsError> {
+            for batch in snapshot.scan_for_stats() {
+                let batch = batch?;
+                let n = batch.cols[0].len();
+                if batch.cols[1].len() != n || batch.cols[2].len() != n {
+                    return Err(StatsError::UnequalBatchColumns);
+                }
+                for i in 0..n {
+                    f([batch.cols[0][i], batch.cols[1][i], batch.cols[2][i]])?;
+                }
             }
-            for i in 0..n {
-                builder.push([batch.cols[0][i], batch.cols[1][i], batch.cols[2][i]])?;
-            }
+            Ok(())
         }
-        Ok(builder.finish())
+        let mut builder = Builder::default();
+        each(snapshot, |t| builder.push(t))?;
+        let (mut stats, mut pairs) = builder.finish();
+        each(snapshot, |t| {
+            pairs.push(t);
+            Ok(())
+        })?;
+        stats.char_pairs = Arc::new(pairs.finish());
+        Ok(stats)
+    }
+    /// Use (`true`, the default) or ignore the characteristic pairs in `estimate_bgp` (an ablation switch; with
+    /// `false`, or with no pairs, every estimate is the pre-pairs one).
+    pub fn set_char_pairs(&mut self, on: bool) {
+        self.char_pairs_off = !on;
+    }
+    /// Whether `estimate_bgp` uses characteristic pairs: switched on and present.
+    pub fn uses_char_pairs(&self) -> bool {
+        !self.char_pairs_off && !self.char_pairs.is_empty()
+    }
+    /// The characteristic pairs of predicate `p`, if any of its objects is a subject.
+    pub fn char_pairs(&self, p: TermId) -> Option<&PredicatePairs> {
+        self.char_pairs.get(&p)
     }
     /// Fill query-specific exact prefix counts without retaining the snapshot or copying triples.
     /// Repeated-variable patterns need equality filtering; their estimates remain synopsis-based.
@@ -333,8 +390,25 @@ impl Stats {
             };
             by_subject.entry(key).or_default().push(p);
         }
+        let by_subject: Vec<Vec<TriplePattern>> = by_subject.into_values().collect();
         let mut groups = Vec::new();
-        for group in by_subject.into_values() {
+        let mut merged = vec![false; by_subject.len()];
+        if self.uses_char_pairs() {
+            // Stars linked subject-to-object become one group whose rows come from the characteristic pairs; the
+            // loop below joins it to the rest exactly as it joins any other group.
+            for (members, rows) in self.pair_components(&by_subject) {
+                let mut patterns = Vec::new();
+                for g in members {
+                    merged[g] = true;
+                    patterns.extend_from_slice(&by_subject[g]);
+                }
+                groups.push((patterns, rows));
+            }
+        }
+        for (i, group) in by_subject.into_iter().enumerate() {
+            if merged[i] {
+                continue;
+            }
             if let Some(rows) = self.estimate_star(&group) {
                 groups.push((group, rows));
             } else {
@@ -388,31 +462,248 @@ impl Stats {
         }
         let mut total = 0.0;
         for (cs_index, cs) in self.characteristic_sets.iter().enumerate() {
-            let mut rows = cs.subjects as f64;
-            for p in group {
-                let Slot::Const(pred) = p.p else {
-                    unreachable!()
-                };
-                if let Some(prop) = cs.properties.get(&pred) {
-                    let matching = match p.o {
-                        Slot::Const(o) => self.exact_object_cs_counts.get(p).map_or_else(
-                            || prop.frequencies.estimate(o),
-                            |counts| counts[cs_index] as f64,
-                        ),
-                        Slot::Var(_) => prop.triples as f64,
-                    };
-                    rows = cardinal(rows * matching / cs.subjects as f64);
-                } else {
-                    rows = 0.0;
-                    break;
-                }
-            }
-            total = cardinal(total + rows);
+            total = cardinal(total + self.cs_star_rows(cs_index, cs, group));
         }
         if matches!(group[0].s, Slot::Const(_)) {
             total /= self.subject_count.max(1) as f64;
         }
         Some(cardinal(total))
+    }
+    /// Rows of the star `group` (constant predicates) over the subjects of set `cs`: the set's subjects times each
+    /// pattern's matching triples per subject (multiplicity independence within the set); zero if a predicate is
+    /// missing from the set. A constant object uses the set's own object frequencies (or the exact per-set counts
+    /// `cache_pattern_counts` gathered).
+    fn cs_star_rows(&self, cs_index: usize, cs: &CharacteristicSet, group: &[TriplePattern]) -> f64 {
+        let mut rows = cs.subjects as f64;
+        for p in group {
+            let Slot::Const(pred) = p.p else {
+                unreachable!()
+            };
+            if let Some(prop) = cs.properties.get(&pred) {
+                let matching = match p.o {
+                    Slot::Const(o) => self.exact_object_cs_counts.get(p).map_or_else(
+                        || prop.frequencies.estimate(o),
+                        |counts| counts[cs_index] as f64,
+                    ),
+                    Slot::Var(_) => prop.triples as f64,
+                };
+                rows = cardinal(rows * matching / cs.subjects as f64);
+            } else {
+                return 0.0;
+            }
+        }
+        rows
+    }
+    /// Per characteristic set, the rows of star `group` over that set's subjects. A single pattern with an exact
+    /// count is scaled to sum to it (the sets then only say where its rows are).
+    fn star_vector(&self, group: &[TriplePattern]) -> Vec<f64> {
+        let mut w: Vec<f64> = self
+            .characteristic_sets
+            .iter()
+            .enumerate()
+            .map(|(i, cs)| self.cs_star_rows(i, cs, group))
+            .collect();
+        if group.len() == 1
+            && let Some(&n) = self.exact_counts.get(&group[0])
+        {
+            let sum: f64 = w.iter().sum();
+            if sum > 0.0 {
+                let scale = n as f64 / sum;
+                for x in &mut w {
+                    *x = cardinal(*x * scale);
+                }
+            }
+        }
+        w
+    }
+    /// Characteristic-pair estimates (Gubichev and Neumann, EDBT 2014) for the parts of a BGP where stars are joined
+    /// subject-to-object. `groups` are the BGP's patterns grouped by subject. A star is a group with a variable
+    /// subject and constant predicates, no pattern `?x p ?x` and no object variable repeated inside it. A link is a
+    /// pattern `?a p ?b` of star A whose object `?b` is the subject of another star B and occurs nowhere else in the
+    /// BGP. Linked stars form components; each component that is a tree, and whose other variables each occur once
+    /// in it, is estimated as
+    ///
+    ///   sum over an assignment of a characteristic set to every star of
+    ///     prod over stars S of rows_S(cs_S) * prod over links (A -p-> B) of pairs_p(cs_A, cs_B) / (triples_p(cs_A) * subjects(cs_B))
+    ///
+    /// where `rows_S(cs)` is `cs_star_rows` (so constant objects are filtered with the per-set object statistics,
+    /// which is what tells producers' `country` from reviewers'), `pairs_p` the pair counts, `triples_p(cs)` the
+    /// set's `p` triples (the link's own multiplicity in `rows_A`, replaced by the pair count) and `subjects(cs)` the
+    /// set's subjects. A sum-product over the tree computes it in one pass per link. The `other` bucket is spread
+    /// independently: in proportion to the subject set's `p` triples and the object set's subjects. Sets incompatible
+    /// with a star's predicates have `rows_S = 0`, so only compatible pairs count. A component whose estimate is zero
+    /// (or not finite), or with a link predicate without pairs, is not returned: its stars keep the independence
+    /// estimate.
+    fn pair_components(&self, groups: &[Vec<TriplePattern>]) -> Vec<(Vec<usize>, f64)> {
+        let star_ok = |g: &[TriplePattern]| {
+            let mut objects = BTreeSet::new();
+            matches!(g[0].s, Slot::Var(_))
+                && g.iter().all(|p| {
+                    matches!(p.p, Slot::Const(_))
+                        && p.s != p.o
+                        && match p.o {
+                            Slot::Var(v) => objects.insert(v),
+                            Slot::Const(_) => true,
+                        }
+                })
+        };
+        let eligible: Vec<bool> = groups.iter().map(|g| star_ok(g.as_slice())).collect();
+        let mut star_of: BTreeMap<u32, usize> = BTreeMap::new();
+        for (i, g) in groups.iter().enumerate() {
+            if let (true, Slot::Var(v)) = (eligible[i], g[0].s) {
+                star_of.insert(v, i);
+            }
+        }
+        let mut occurrences: BTreeMap<u32, usize> = BTreeMap::new();
+        for p in groups.iter().flatten() {
+            for v in slots(p).into_iter().filter_map(|s| if let Slot::Var(v) = s { Some(v) } else { None }) {
+                *occurrences.entry(v).or_default() += 1;
+            }
+        }
+        let mut links = Vec::new();
+        for (a, g) in groups.iter().enumerate() {
+            if !eligible[a] {
+                continue;
+            }
+            for (k, p) in g.iter().enumerate() {
+                if let Slot::Var(v) = p.o
+                    && let Some(&b) = star_of.get(&v)
+                    && b != a
+                    && occurrences[&v] == groups[b].len() + 1
+                {
+                    links.push(Link { from: a, pattern: k, to: b });
+                }
+            }
+        }
+        if links.is_empty() {
+            return Vec::new();
+        }
+        // Components of the link graph (union-find over group indices).
+        let mut parent: Vec<usize> = (0..groups.len()).collect();
+        fn find(parent: &mut [usize], mut i: usize) -> usize {
+            while parent[i] != i {
+                parent[i] = parent[parent[i]];
+                i = parent[i];
+            }
+            i
+        }
+        for l in &links {
+            let (x, y) = (find(&mut parent, l.from), find(&mut parent, l.to));
+            if x != y {
+                parent[x] = y;
+            }
+        }
+        let mut components: BTreeMap<usize, (Vec<usize>, Vec<Link>)> = BTreeMap::new();
+        for l in &links {
+            let r = find(&mut parent, l.from);
+            components.entry(r).or_default().1.push(*l);
+        }
+        for g in 0..groups.len() {
+            let r = find(&mut parent, g);
+            if let Some(c) = components.get_mut(&r) {
+                c.0.push(g);
+            }
+        }
+        let mut out = Vec::new();
+        for (members, links) in components.into_values() {
+            if links.len() + 1 != members.len() {
+                continue; // a cycle of links: keep the independence estimate
+            }
+            // Every variable of the component: a star subject occurs in its star (plus once if linked into);
+            // any other variable occurs once. Otherwise a join inside the component would be ignored.
+            let mut inside: BTreeMap<u32, usize> = BTreeMap::new();
+            for &g in &members {
+                for p in &groups[g] {
+                    for v in slots(p).into_iter().filter_map(|s| if let Slot::Var(v) = s { Some(v) } else { None }) {
+                        *inside.entry(v).or_default() += 1;
+                    }
+                }
+            }
+            let consistent = inside.iter().all(|(v, n)| match star_of.get(v) {
+                Some(&b) if members.contains(&b) => {
+                    *n == groups[b].len() + usize::from(links.iter().any(|l| l.to == b))
+                }
+                _ => *n == 1,
+            });
+            if !consistent {
+                continue;
+            }
+            let vectors: BTreeMap<usize, Vec<f64>> =
+                members.iter().map(|&g| (g, self.star_vector(&groups[g]))).collect();
+            let Some(w) = self.absorb(members[0], None, groups, &links, &vectors) else {
+                continue;
+            };
+            let rows = cardinal(w.iter().sum());
+            if rows > 0.0 && rows.is_finite() {
+                out.push((members, rows));
+            }
+        }
+        out
+    }
+    /// The sum-product step of `pair_components`: star `node`'s per-set rows with every subtree hanging off it
+    /// (except through `parent_link`) folded in. `None` if a link predicate has no pairs.
+    fn absorb(
+        &self,
+        node: usize,
+        parent_link: Option<usize>,
+        groups: &[Vec<TriplePattern>],
+        links: &[Link],
+        vectors: &BTreeMap<usize, Vec<f64>>,
+    ) -> Option<Vec<f64>> {
+        let sets = &self.characteristic_sets;
+        let mut w = vectors[&node].clone();
+        for (li, l) in links.iter().enumerate() {
+            if Some(li) == parent_link || (l.from != node && l.to != node) {
+                continue;
+            }
+            let Slot::Const(pred) = groups[l.from][l.pattern].p else {
+                unreachable!()
+            };
+            let table = self.char_pairs.get(&pred)?;
+            let total_triples = self.predicates.get(&pred)?.triples.max(1) as f64;
+            let subject_count = self.subject_count.max(1) as f64;
+            let triples_in = |cs: usize| sets[cs].properties.get(&pred).map_or(0.0, |p| p.triples as f64);
+            let subjects_in = |cs: usize| sets[cs].subjects.max(1) as f64;
+            let mut msg = vec![0.0; sets.len()];
+            if l.from == node {
+                // Node is the subject side: per subject set, the object-side rows each `p` triple reaches.
+                let child = self.absorb(l.to, Some(li), groups, links, vectors)?;
+                for &(cs, co, n) in &table.pairs {
+                    let (cs, co) = (cs as usize, co as usize);
+                    msg[cs] += n as f64 * child[co] / subjects_in(co);
+                }
+                if table.other > 0 {
+                    let per = table.other as f64 * child.iter().sum::<f64>() / subject_count / total_triples;
+                    for (cs, m) in msg.iter_mut().enumerate() {
+                        *m += per * triples_in(cs);
+                    }
+                }
+                for (cs, x) in w.iter_mut().enumerate() {
+                    let t = triples_in(cs);
+                    *x = if *x > 0.0 && t > 0.0 { cardinal(*x * msg[cs] / t) } else { 0.0 };
+                }
+            } else {
+                // Node is the object side: per object set, the subject-side rows whose `p` triples reach it.
+                let child = self.absorb(l.from, Some(li), groups, links, vectors)?;
+                for &(cs, co, n) in &table.pairs {
+                    let (cs, co) = (cs as usize, co as usize);
+                    let t = triples_in(cs);
+                    if t > 0.0 {
+                        msg[co] += n as f64 * child[cs] / t;
+                    }
+                }
+                if table.other > 0 {
+                    let per = table.other as f64 * child.iter().sum::<f64>() / total_triples / subject_count;
+                    for (co, m) in msg.iter_mut().enumerate() {
+                        *m += per * sets[co].subjects as f64;
+                    }
+                }
+                for (co, x) in w.iter_mut().enumerate() {
+                    *x = if *x > 0.0 { cardinal(*x * msg[co] / subjects_in(co)) } else { 0.0 };
+                }
+            }
+        }
+        Some(w)
     }
     /// Compile star-subset estimates once for a bounded DP query. Each CS property
     /// is looked up once per pattern; subset products reuse the same ascending
@@ -547,12 +838,24 @@ impl Stats {
     }
 }
 
+/// A subject-to-object join between two stars of a BGP: pattern `pattern` of group `from` has as object the
+/// subject of group `to`.
+#[derive(Clone, Copy, Debug)]
+struct Link {
+    from: usize,
+    pattern: usize,
+    to: usize,
+}
+
 #[derive(Default)]
 struct Builder {
     stats: Stats,
     last: Option<[TermId; 3]>,
     current: Vec<[TermId; 3]>,
     cs_index: BTreeMap<Vec<TermId>, usize>,
+    /// Every subject in SPO order, and its characteristic set (for the characteristic-pair pass).
+    subjects: Vec<TermId>,
+    subject_sets: Vec<u32>,
 }
 impl Builder {
     fn push(&mut self, t: [TermId; 3]) -> Result<(), StatsError> {
@@ -605,13 +908,16 @@ impl Builder {
             });
             self.stats.characteristic_sets.len() - 1
         });
+        self.subjects.push(self.current[0][0]);
+        self.subject_sets.push(index as u32);
         let cs = &mut Arc::make_mut(&mut self.stats.characteristic_sets)[index];
         cs.subjects += 1;
         for t in self.current.drain(..) {
             cs.properties.entry(t[1]).or_default().add(t);
         }
     }
-    fn finish(mut self) -> Stats {
+    /// The statistics without pairs, and the pair pass seeded with every subject's set.
+    fn finish(mut self) -> (Stats, PairBuilder) {
         self.flush_subject();
         self.stats.cs_lookup = Arc::new(
             self.stats
@@ -621,7 +927,72 @@ impl Builder {
                 .map(|(i, cs)| (cs.predicates.clone(), i))
                 .collect(),
         );
-        self.stats
+        let pairs = PairBuilder {
+            subjects: self.subjects,
+            subject_sets: self.subject_sets,
+            ..PairBuilder::default()
+        };
+        (self.stats, pairs)
+    }
+}
+
+/// Second pass over the same sorted SPO input: counts characteristic pairs.
+#[derive(Default)]
+struct PairBuilder {
+    subjects: Vec<TermId>,
+    subject_sets: Vec<u32>,
+    /// Position of the current subject in `subjects` (the pass visits subjects in the same order).
+    at: usize,
+    last: Option<[TermId; 3]>,
+    counts: HashMap<(TermId, u32, u32), u64>,
+    other: BTreeMap<TermId, u64>,
+}
+impl PairBuilder {
+    fn push(&mut self, t: [TermId; 3]) {
+        if self.last == Some(t) {
+            return;
+        }
+        self.last = Some(t);
+        while self.at < self.subjects.len() && self.subjects[self.at] < t[0] {
+            self.at += 1;
+        }
+        // The first pass saw the same input, so the subject is always found; skip rather than panic if not.
+        if self.subjects.get(self.at) != Some(&t[0]) {
+            return;
+        }
+        let Ok(o) = self.subjects.binary_search(&t[2]) else {
+            return;
+        };
+        let key = (t[1], self.subject_sets[self.at], self.subject_sets[o]);
+        if let Some(n) = self.counts.get_mut(&key) {
+            *n += 1;
+        } else if self.counts.len() < MAX_PAIR_KEYS {
+            self.counts.insert(key, 1);
+        } else {
+            *self.other.entry(t[1]).or_default() += 1;
+        }
+    }
+    /// Keep the `PAIRS_PER_PREDICATE` largest pairs of each predicate (ties by set indices), the rest into `other`.
+    fn finish(self) -> BTreeMap<TermId, PredicatePairs> {
+        let mut by_predicate: BTreeMap<TermId, Vec<(u32, u32, u64)>> = BTreeMap::new();
+        for ((p, cs, co), n) in self.counts {
+            by_predicate.entry(p).or_default().push((cs, co, n));
+        }
+        let mut out: BTreeMap<TermId, PredicatePairs> = self
+            .other
+            .into_iter()
+            .map(|(p, other)| (p, PredicatePairs { pairs: Vec::new(), other }))
+            .collect();
+        for (p, mut pairs) in by_predicate {
+            pairs.sort_by(|a, b| b.2.cmp(&a.2).then((a.0, a.1).cmp(&(b.0, b.1))));
+            let rest: u64 = pairs.iter().skip(PAIRS_PER_PREDICATE).map(|x| x.2).sum();
+            pairs.truncate(PAIRS_PER_PREDICATE);
+            pairs.sort_by_key(|x| (x.0, x.1));
+            let entry = out.entry(p).or_default();
+            entry.pairs = pairs;
+            entry.other += rest;
+        }
+        out
     }
 }
 
@@ -744,6 +1115,65 @@ mod sketch_tests {
             }
         }
     }
+    fn set_of(stats: &Stats, predicates: &[u64]) -> u32 {
+        let key: Vec<_> = predicates.iter().map(|&p| TermId(p)).collect();
+        stats.cs_lookup[&key] as u32
+    }
+    #[test]
+    fn characteristic_pairs_count_linked_triples_by_set() {
+        let mut t: Vec<[TermId; 3]> = Vec::new();
+        let mut add = |s: u64, p: u64, o: u64| t.push([TermId(s), TermId(p), TermId(o)]);
+        // Products 1..=4 {10 type, 11 producer}; producers 101, 102 {12 country}; reviews 201..=206
+        // {13 reviewFor, 14 reviewer}; reviewers 301, 302 {12 country, 15 name}.
+        for i in 1..=4 { add(i, 10, 900); add(i, 11, 100 + 1 + i % 2); }
+        for i in 101..=102 { add(i, 12, 950); }
+        for i in 201..=206 { add(i, 13, 1 + i % 4); add(i, 14, 301 + i % 2); }
+        for i in 301..=302 { add(i, 12, 951); add(i, 15, 990 + i); }
+        t.sort();
+        let st = Stats::from_spo(t).unwrap();
+        let (product, producer, review, reviewer) =
+            (set_of(&st, &[10, 11]), set_of(&st, &[12]), set_of(&st, &[13, 14]), set_of(&st, &[12, 15]));
+        let pairs = |p: u64| st.char_pairs(TermId(p)).cloned();
+        assert_eq!(pairs(11), Some(PredicatePairs { pairs: vec![(product, producer, 4)], other: 0 }));
+        assert_eq!(pairs(13), Some(PredicatePairs { pairs: vec![(review, product, 6)], other: 0 }));
+        assert_eq!(pairs(14), Some(PredicatePairs { pairs: vec![(review, reviewer, 6)], other: 0 }));
+        // Objects that are never subjects (classes, countries, names) have no set: no pairs.
+        for p in [10, 12, 15] { assert_eq!(pairs(p), None, "{p}") }
+        // The pairs survive persistence.
+        let back = Stats::decode(&st.encode(), st.triple_count).unwrap();
+        assert_eq!(back.char_pairs, st.char_pairs);
+    }
+    #[test]
+    fn characteristic_pairs_keep_the_top_k_and_bucket_the_rest() {
+        let n = PAIRS_PER_PREDICATE as u64 + 6;
+        let mut t: Vec<[TermId; 3]> = Vec::new();
+        let mut next = 10_000;
+        for i in 0..n {
+            // Object 1000 + i has its own set {2000 + i}; i + 1 linking subjects (all of set {5}) point at it.
+            t.push([TermId(1000 + i), TermId(2000 + i), TermId(1)]);
+            for _ in 0..=i {
+                t.push([TermId(next), TermId(5), TermId(1000 + i)]);
+                next += 1;
+            }
+        }
+        t.sort();
+        let st = Stats::from_spo(t).unwrap();
+        let pp = st.char_pairs(TermId(5)).unwrap();
+        assert_eq!(pp.pairs.len(), PAIRS_PER_PREDICATE);
+        // The six smallest pairs (1 + 2 + ... + 6 triples) are bucketed.
+        assert_eq!(pp.other, 21);
+        let linking = set_of(&st, &[5]);
+        let mut kept: Vec<u64> = pp.pairs.iter().map(|&(cs, co, c)| {
+            assert_eq!(cs, linking);
+            let i = st.characteristic_sets[co as usize].predicates[0].0 - 2000;
+            assert_eq!(c, i + 1);
+            c
+        }).collect();
+        kept.sort();
+        assert_eq!(kept, (7..=n).collect::<Vec<_>>());
+        assert!(pp.pairs.windows(2).all(|w| (w[0].0, w[0].1) < (w[1].0, w[1].1)));
+        assert_eq!(pp.pairs.iter().map(|x| x.2).sum::<u64>() + pp.other, n * (n + 1) / 2);
+    }
     #[test]
     fn hll_is_bounded_and_reasonable_for_tagged_sequential_terms() {
         let mut d = Distinct::default();
@@ -758,7 +1188,12 @@ mod sketch_tests {
 // ---------- persistence (task #34): the scan-derived core, without the lazily filled query caches ----------
 
 /// Byte-format and statistics-semantics version. Bump when either the layout or the meaning of a field changes.
-pub const STATS_FORMAT: &[u8; 8] = b"TLSTATS1";
+/// Version 2 is version 1's layout followed by the characteristic pairs:
+/// `u64 n`, then per predicate (ascending) `u64 predicate, u64 other, u64 k`, then `k` times
+/// `u64 subject set, u64 object set, u64 triples` (ascending by sets).
+pub const STATS_FORMAT: &[u8; 8] = b"TLSTATS2";
+/// The previous version, without characteristic pairs. It still decodes (with no pairs: the pre-pairs estimates).
+pub const STATS_FORMAT_V1: &[u8; 8] = b"TLSTATS1";
 
 /// Why a persisted statistics payload was rejected (the caller then rescans; never a query error).
 #[derive(Debug, PartialEq, Eq)]
@@ -781,6 +1216,13 @@ impl Writer {
     fn properties(&mut self, m: &BTreeMap<TermId, Property>) {
         self.u64(m.len() as u64);
         for (id, p) in m { self.u64(id.0); self.property(p) }
+    }
+    fn pairs(&mut self, m: &BTreeMap<TermId, PredicatePairs>) {
+        self.u64(m.len() as u64);
+        for (id, pp) in m {
+            self.u64(id.0); self.u64(pp.other); self.u64(pp.pairs.len() as u64);
+            for &(cs, co, n) in &pp.pairs { self.u64(u64::from(cs)); self.u64(u64::from(co)); self.u64(n) }
+        }
     }
 }
 
@@ -818,6 +1260,36 @@ impl Reader<'_> {
         for e in &mut equality { *e = self.u64()? }
         Ok(Property { triples, subjects, objects, frequencies: Frequencies { counts, rounds }, equality })
     }
+    /// The pair section, checked against the already decoded sets and predicates.
+    fn pairs(&mut self, sets: &[CharacteristicSet], predicates: &BTreeMap<TermId, Property>) -> Result<BTreeMap<TermId, PredicatePairs>, DecodeError> {
+        let bad = |what| DecodeError::Malformed(what);
+        let n = self.len(MAX_PREDICATES, 24)?;
+        let mut m = BTreeMap::new();
+        for _ in 0..n {
+            let id = TermId(self.u64()?);
+            let other = self.u64()?;
+            let k = self.len(PAIRS_PER_PREDICATE as u64, 24)?;
+            let prop = predicates.get(&id).ok_or(bad("pairs of an unknown predicate"))?;
+            let mut pairs = Vec::with_capacity(k);
+            let mut by_subject_set: BTreeMap<u32, u64> = BTreeMap::new();
+            let mut total = other;
+            for _ in 0..k {
+                let (cs, co, c) = (self.u64()?, self.u64()?, self.u64()?);
+                let (Ok(cs), Ok(co)) = (u32::try_from(cs), u32::try_from(co)) else { return Err(bad("pair set index")) };
+                if cs as usize >= sets.len() || co as usize >= sets.len() || c == 0 { return Err(bad("pair entry")) }
+                if pairs.last().is_some_and(|&(a, b, _)| (a, b) >= (cs, co)) { return Err(bad("pairs not sorted")) }
+                let in_set = sets[cs as usize].properties.get(&id).ok_or(bad("pair subject set lacks the predicate"))?.triples;
+                let s = by_subject_set.entry(cs).or_default();
+                *s = s.checked_add(c).ok_or(bad("overflow"))?;
+                if *s > in_set { return Err(bad("pairs exceed the set's triples")) }
+                total = total.checked_add(c).ok_or(bad("overflow"))?;
+                pairs.push((cs, co, c));
+            }
+            if total == 0 || total > prop.triples { return Err(bad("pair totals")) }
+            if m.insert(id, PredicatePairs { pairs, other }).is_some() { return Err(bad("duplicate pair predicate")) }
+        }
+        Ok(m)
+    }
     fn properties(&mut self) -> Result<BTreeMap<TermId, Property>, DecodeError> {
         let n = self.len(MAX_PREDICATES, 8 + 8 * 4 + 128 + 64)?;
         let mut m = BTreeMap::new();
@@ -834,7 +1306,17 @@ impl Stats {
     /// The scan-derived core in a self-describing little-endian encoding (magic/version first). The query-time
     /// caches (exact counts, star estimates, planning domains) are not included; they refill on demand.
     pub fn encode(&self) -> Vec<u8> {
-        let mut w = Writer(STATS_FORMAT.to_vec());
+        let mut w = self.encode_core(STATS_FORMAT);
+        w.pairs(&self.char_pairs);
+        w.0
+    }
+    /// A version-1 payload (no pairs), as statistics files written before version 2 hold.
+    #[cfg(test)]
+    pub(crate) fn encode_v1(&self) -> Vec<u8> {
+        self.encode_core(STATS_FORMAT_V1).0
+    }
+    fn encode_core(&self, magic: &[u8; 8]) -> Writer {
+        let mut w = Writer(magic.to_vec());
         w.u64(self.triple_count); w.u64(self.subject_count); w.u64(self.duplicate_triples_ignored);
         w.distinct(&self.objects);
         for e in self.equality { w.u64(e) }
@@ -846,14 +1328,16 @@ impl Stats {
             for p in &cs.predicates { w.u64(p.0) }
             w.properties(&cs.properties);
         }
-        w.0
+        w
     }
 
     /// Inverse of `encode` for a base holding `base_triples` triples (from its own metadata, not the payload).
     /// Every length is bounded by that count before allocation, and the decoded summary must satisfy the scan's
-    /// invariants (see `check_invariants`); malformed input is an error, never a panic.
+    /// invariants (see `check_invariants`); malformed input is an error, never a panic. A version-1 payload decodes
+    /// with no characteristic pairs.
     pub fn decode(buf: &[u8], base_triples: u64) -> Result<Self, DecodeError> {
-        if buf.len() < 8 || &buf[..8] != STATS_FORMAT { return Err(DecodeError::BadMagic) }
+        if buf.len() < 8 { return Err(DecodeError::BadMagic) }
+        let with_pairs = if &buf[..8] == STATS_FORMAT { true } else if &buf[..8] == STATS_FORMAT_V1 { false } else { return Err(DecodeError::BadMagic) };
         let mut r = Reader { buf, at: 8, max_entries: base_triples };
         let (triple_count, subject_count, duplicate_triples_ignored) = (r.u64()?, r.u64()?, r.u64()?);
         let objects = r.distinct()?;
@@ -871,13 +1355,14 @@ impl Stats {
             let properties = r.properties()?;
             sets.push(CharacteristicSet { predicates: preds, subjects, properties });
         }
+        let char_pairs = if with_pairs { r.pairs(&sets, &predicates)? } else { BTreeMap::new() };
         if r.at != buf.len() { return Err(DecodeError::TrailingBytes) }
         let cs_lookup: HashMap<Vec<TermId>, usize> = sets.iter().enumerate().map(|(i, cs)| (cs.predicates.clone(), i)).collect();
         if cs_lookup.len() != sets.len() { return Err(DecodeError::Malformed("duplicate characteristic set")) }
         let st = Stats {
             triple_count, subject_count, duplicate_triples_ignored,
             characteristic_sets: Arc::new(sets), cs_lookup: Arc::new(cs_lookup), predicates: Arc::new(predicates),
-            objects, equality, ..Default::default()
+            objects, equality, char_pairs: Arc::new(char_pairs), ..Default::default()
         };
         st.check_invariants(base_triples)?;
         Ok(st)
@@ -952,6 +1437,45 @@ mod persist_tests {
         }
         let bgp = [TriplePattern { s: v(0), p: c(1000), o: v(1) }, TriplePattern { s: v(0), p: c(1002), o: v(2) }];
         assert_eq!(st.estimate_bgp(&bgp).to_bits(), back.estimate_bgp(&bgp).to_bits());
+    }
+    #[test]
+    fn version_1_payload_decodes_without_pairs() {
+        let st = sample();
+        assert!(st.uses_char_pairs(), "sample has linked triples (1001 points at its own subject)");
+        let v1 = st.encode_v1();
+        let back = Stats::decode(&v1, st.triple_count).unwrap();
+        assert!(back.char_pairs.is_empty() && !back.uses_char_pairs());
+        // Re-encoding writes version 2 with an empty pair section.
+        assert_eq!(&back.encode()[..8], STATS_FORMAT);
+        // Its estimates are the pre-pairs ones: those of the original with pairs switched off.
+        let mut off = st.clone();
+        off.set_char_pairs(false);
+        let v = |i| Slot::Var(i);
+        let c = |x| Slot::Const(TermId(x));
+        for bgp in [
+            vec![TriplePattern { s: v(0), p: c(1000), o: v(1) }, TriplePattern { s: v(0), p: c(1002), o: v(2) }],
+            vec![TriplePattern { s: v(0), p: c(1001), o: v(1) }, TriplePattern { s: v(1), p: c(1000), o: c(5003) }],
+        ] {
+            assert_eq!(off.estimate_bgp(&bgp).to_bits(), back.estimate_bgp(&bgp).to_bits(), "{bgp:?}");
+        }
+        // A version-1 payload with bytes after it is still rejected.
+        let mut extra = v1.clone(); extra.push(0);
+        assert_eq!(Stats::decode(&extra, st.triple_count).unwrap_err(), DecodeError::TrailingBytes);
+    }
+    #[test]
+    fn malformed_pairs_are_rejected() {
+        let st = sample();
+        let n_t = st.triple_count;
+        let (&p, pp) = st.char_pairs.iter().next().unwrap();
+        let mut too_many = st.clone();
+        Arc::make_mut(&mut too_many.char_pairs).get_mut(&p).unwrap().other = st.predicates[&p].triples + 1;
+        assert!(matches!(Stats::decode(&too_many.encode(), n_t), Err(DecodeError::Malformed(_))));
+        let mut bad_set = st.clone();
+        Arc::make_mut(&mut bad_set.char_pairs).get_mut(&p).unwrap().pairs[0].1 = st.characteristic_sets.len() as u32;
+        assert!(matches!(Stats::decode(&bad_set.encode(), n_t), Err(DecodeError::Malformed(_))));
+        let mut unknown = st.clone();
+        Arc::make_mut(&mut unknown.char_pairs).insert(TermId(424242), pp.clone());
+        assert!(matches!(Stats::decode(&unknown.encode(), n_t), Err(DecodeError::Malformed(_))));
     }
     #[test]
     fn malformed_payloads_are_errors_not_panics() {

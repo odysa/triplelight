@@ -624,6 +624,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                     general_group: false,
                     count_pushdown: true,
                     range_pushdown: true,
+                    char_pairs: true,
                 },
             )
             .unwrap(),
@@ -639,6 +640,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                     general_group: false,
                     count_pushdown: true,
                     range_pushdown: true,
+                    char_pairs: true,
                 },
             )
             .unwrap(),
@@ -656,6 +658,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                         general_group: false,
                         count_pushdown: true,
                         range_pushdown: true,
+                        char_pairs: true,
                     },
                 )
                 .unwrap(),
@@ -794,6 +797,7 @@ fn optimizer_count_failure_reaches_query_error() {
             general_group: false,
             count_pushdown: true,
             range_pushdown: true,
+            char_pairs: true,
         },
     )
     .unwrap_err();
@@ -928,6 +932,7 @@ fn wide_high_work_bgp_preserves_original_runtime_results() {
                 general_group: false,
                 count_pushdown: true,
                 range_pushdown: true,
+                char_pairs: true,
             },
         )
         .unwrap(),
@@ -943,6 +948,7 @@ fn wide_high_work_bgp_preserves_original_runtime_results() {
                 general_group: false,
                 count_pushdown: true,
                 range_pushdown: true,
+                char_pairs: true,
             },
         )
         .unwrap(),
@@ -976,4 +982,155 @@ fn optimizer_dictionary_lookup_failure_is_not_an_empty_result() {
             .to_string()
             .contains("planted dictionary read failure")
     );
+}
+
+// ---------- characteristic pairs: a BSBM-like graph where `country` is shared by producers and reviewers ----------
+
+const TYPE: u64 = 1;
+const PRODUCER: u64 = 2;
+const COUNTRY: u64 = 3;
+const LABEL: u64 = 4;
+const NAME: u64 = 5;
+const REVIEW_FOR: u64 = 6;
+const REVIEWER: u64 = 7;
+const PRODUCT: u64 = 10;
+const AT: u64 = 11;
+const DE: u64 = 12;
+const US: u64 = 13;
+const GB: u64 = 14;
+
+/// 2000 products {type, producer} of 100 producers {country, label} (5 in AT); 1000 reviewers {country, name}: 400 in
+/// AT, 100 in US, 500 in GB; 10000 reviews {reviewFor, reviewer}. `?producer country AT` has 405 rows, 400 of them
+/// reviewers, which only the characteristic pairs of `producer` can rule out.
+fn bsbm_like() -> Graph {
+    let mut t = Vec::new();
+    for i in 0..2000 {
+        t.push([10_000 + i, TYPE, PRODUCT]);
+        t.push([10_000 + i, PRODUCER, 20_000 + i % 100]);
+    }
+    for j in 0..100 {
+        t.push([20_000 + j, COUNTRY, if j < 5 { AT } else { DE }]);
+        t.push([20_000 + j, LABEL, 100_000 + j]);
+    }
+    for r in 0..1000 {
+        t.push([30_000 + r, COUNTRY, if r < 400 { AT } else if r < 500 { US } else { GB }]);
+        t.push([30_000 + r, NAME, 200_000 + r]);
+    }
+    for k in 0..10_000 {
+        t.push([40_000 + k, REVIEW_FOR, 10_000 + k % 2000]);
+        t.push([40_000 + k, REVIEWER, 30_000 + (k * 7) % 1000]);
+    }
+    Graph::new(t)
+}
+fn leaf_order(t: &JoinTree, out: &mut Vec<TriplePattern>) {
+    match t {
+        JoinTree::Scan { pattern, .. } => out.push(*pattern),
+        JoinTree::IndexNestedLoop { outer, pattern, .. } => {
+            leaf_order(outer, out);
+            out.push(*pattern);
+        }
+        other => panic!("index nested-loop plan expected, got {other:?}"),
+    }
+}
+
+#[test]
+fn characteristic_pairs_start_from_the_selective_producer_country() {
+    let g = bsbm_like();
+    // ?product=0 ?producer=1 ?review=2 ?reviewer=3, in the query's textual order.
+    let product_producer = p(v(0), c(PRODUCER), v(1));
+    let producer_at = p(v(1), c(COUNTRY), c(AT));
+    let review_for = p(v(2), c(REVIEW_FOR), v(0));
+    let review_reviewer = p(v(2), c(REVIEWER), v(3));
+    let reviewer_us = p(v(3), c(COUNTRY), c(US));
+    let q = [product_producer, producer_at, review_for, review_reviewer, reviewer_us];
+    // As at runtime: exact per-pattern counts first.
+    let mut on = g.stats();
+    on.cache_pattern_counts(&q, &g).unwrap();
+    assert!(on.uses_char_pairs());
+    let mut off = on.clone();
+    off.set_char_pairs(false);
+    assert!(!off.uses_char_pairs());
+
+    // The estimate the planner gets wrong without pairs: AT producers' products.
+    let join = [product_producer, producer_at];
+    assert_eq!(truth(&g, &join).len(), 100);
+    let with_pairs = on.estimate_bgp(&join);
+    assert!((with_pairs - 100.0).abs() < 1e-6, "{with_pairs}");
+    assert!(off.estimate_bgp(&join) >= 1000.0, "{}", off.estimate_bgp(&join));
+
+    let order = |stats: &Stats| {
+        let d = plan_bgp_with_options(&q, stats, PlannerOptions::default());
+        validate_plan(&d.tree);
+        let mut leaves = Vec::new();
+        leaf_order(&d.tree, &mut leaves);
+        let mut a = eval(&g, &d.tree);
+        let mut b = truth(&g, &q);
+        a.sort();
+        b.sort();
+        assert_eq!(a, b);
+        leaves
+    };
+    // Today's order: the reviewer country first.
+    assert_eq!(order(&off), vec![reviewer_us, review_reviewer, review_for, product_producer, producer_at]);
+    // With pairs: producers in AT, their products, the reviews, then the US filter.
+    assert_eq!(order(&on), vec![producer_at, product_producer, review_for, review_reviewer, reviewer_us]);
+}
+
+#[test]
+fn characteristic_pairs_do_not_change_answers() {
+    use std::fmt::Write;
+    use triplelight::exec::{Options, QueryResult, query_with};
+    use triplelight::storage::MemorySnapshot;
+    // The same shape as `bsbm_like`, larger so the runtime planner gate (`MIN_OPTIMIZER_WORK`) is passed.
+    let mut nt = String::new();
+    let rdf_type = "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>";
+    for t in 0..10 {
+        writeln!(nt, "<urn:type/{t}> {rdf_type} <urn:ProductType> .").unwrap();
+    }
+    for i in 0..4000 {
+        writeln!(nt, "<urn:product/{i}> {rdf_type} <urn:type/{}> .", i % 10).unwrap();
+        writeln!(nt, "<urn:product/{i}> <urn:producer> <urn:producer/{}> .", i % 100).unwrap();
+    }
+    for j in 0..100 {
+        writeln!(nt, "<urn:producer/{j}> <urn:country> <urn:{}> .", if j < 5 { "AT" } else { "DE" }).unwrap();
+        writeln!(nt, "<urn:producer/{j}> <urn:label> \"producer {j}\" .").unwrap();
+    }
+    for r in 0..2000 {
+        let country = if r < 800 { "AT" } else if r < 1000 { "US" } else { "GB" };
+        writeln!(nt, "<urn:reviewer/{r}> <urn:country> <urn:{country}> .").unwrap();
+        writeln!(nt, "<urn:reviewer/{r}> <urn:name> \"reviewer {r}\" .").unwrap();
+    }
+    for k in 0..40_000 {
+        writeln!(nt, "<urn:review/{k}> <urn:reviewFor> <urn:product/{}> .", k % 4000).unwrap();
+        writeln!(nt, "<urn:review/{k}> <urn:reviewer> <urn:reviewer/{}> .", (k * 7) % 2000).unwrap();
+    }
+    let snapshot = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
+    let stats = Stats::from_snapshot(&snapshot).unwrap();
+    assert!(stats.uses_char_pairs());
+    fn normalized(result: QueryResult) -> Vec<Vec<Option<String>>> {
+        let QueryResult::Solutions { rows, .. } = result else {
+            panic!("SELECT expected")
+        };
+        let mut rows: Vec<_> = rows
+            .into_iter()
+            .map(|r| r.into_iter().map(|t| t.map(|t| t.to_string())).collect())
+            .collect();
+        rows.sort();
+        rows
+    }
+    for text in [
+        "SELECT * WHERE { ?product <urn:producer> ?producer . ?producer <urn:country> <urn:AT> . ?review <urn:reviewFor> ?product . ?review <urn:reviewer> ?reviewer . ?reviewer <urn:country> <urn:US> }",
+        "SELECT * WHERE { ?productType a <urn:ProductType> . ?product a ?productType . ?product <urn:producer> ?producer . ?producer <urn:country> <urn:AT> . ?review <urn:reviewFor> ?product . ?review <urn:reviewer> ?reviewer . ?reviewer <urn:country> <urn:US> }",
+        "SELECT * WHERE { ?review <urn:reviewFor> ?product . ?product <urn:producer> ?producer . ?producer <urn:country> ?country }",
+        "SELECT * WHERE { ?review <urn:reviewer> ?reviewer . ?reviewer <urn:country> ?c . ?review <urn:reviewFor> ?product . ?product <urn:producer> ?producer . ?producer <urn:country> ?c }",
+        "SELECT ?c (COUNT(*) AS ?n) WHERE { ?review <urn:reviewFor> ?product . ?product <urn:producer> ?producer . ?producer <urn:country> ?c . ?review <urn:reviewer> ?reviewer . ?reviewer <urn:country> <urn:US> } GROUP BY ?c",
+    ] {
+        let run = |stats: Option<&Stats>, char_pairs: bool| {
+            normalized(query_with(&snapshot, text, &Options { stats, char_pairs, ..Default::default() }).unwrap())
+        };
+        let reference = run(None, true);
+        assert!(!reference.is_empty(), "{text}");
+        assert_eq!(run(Some(&stats), true), reference, "{text}");
+        assert_eq!(run(Some(&stats), false), reference, "{text}");
+    }
 }
