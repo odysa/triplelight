@@ -1,0 +1,19 @@
+{
+  "blazegraph_journal_bytes": 1714159616,
+  "exact_typed_answers": {
+    "blazegraph": 30,
+    "triplelight": 30
+  },
+  "query_timing_collected": false,
+  "reopened_triples": 13409395,
+  "stage_count": 9,
+  "triplelight_apparent_store_bytes": 312057889,
+  "triplelight_commit": "5e753fd5a02d0fb21e632b17356e958b2c6e476a",
+  "triplelight_orders": [
+    "osp",
+    "pos",
+    "pso",
+    "spo"
+  ],
+  "verified_archive_files": 208
+}
