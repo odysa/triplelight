@@ -68,6 +68,11 @@ before it, and the manifest holds that same checksum.
 | `RDFSNAP4` | `dictionary.unified` | six | no |
 | `RDFSNAP5` | `dictionary.unified` | six | six quad orders and `graphs` |
 | `RDFSNAP6` | `dictionary.unified` | the kept set (at least four) | if its named-graph flag is set: the kept quad orders and `graphs` |
+| `RDFSNAP7` | `dictionary.unified` | the kept set, as `RDFSNAP6` | as `RDFSNAP6`, then `triple_terms` (RDF 1.2 builds only; see `docs/rdf12-storage-design.md`) |
+
+`RDFSNAP7` marks a base holding RDF 1.2 terms; builds without the `rdf-12` feature refuse it. An `RDFSNAP7` base
+written by a pre-release `rdf-12` build (main e51312ec, before #168) has no `triple_terms` table and is refused with
+"RDFSNAP7 base without a triple-term table: rebuild it".
 
 - **Triple orders** are the files `spo`, `sop`, `pso`, `pos`, `osp`, `ops` (format `RDFIDX03`; `RDFIDX02` is still
   read). Each holds the triples sorted by its key, in blocks of 256 rows. A block is compressed (the first column is

@@ -74,6 +74,14 @@ fn external_disk_build() {
     let inside = disk.lookup(&iri("only-inside").into()).unwrap();
     assert!(inside.is_some(), "a part that occurs only inside a triple term is a dictionary term");
     assert_eq!(inside.unwrap().0 >> 60, 1);
+    // A pre-#168 RDFSNAP7 manifest (no table identity) is refused with a message that says what to do.
+    let manifest = std::fs::read(out.join("MANIFEST")).unwrap();
+    let old = dir.join("old");
+    std::fs::create_dir(&old).unwrap();
+    for e in std::fs::read_dir(&out).unwrap() { let e = e.unwrap(); std::fs::copy(e.path(), old.join(e.file_name())).unwrap(); }
+    std::fs::write(old.join("MANIFEST"), &manifest[..manifest.len() - 32]).unwrap();
+    let err = crate::DiskSnapshot::open(&old).err().expect("an RDFSNAP7 base without the table is refused");
+    assert!(err.to_string().contains("without a triple-term table"), "{err}");
     let tt = disk.lookup(&sample()[0].object).unwrap().unwrap();
     assert_eq!(tt.0 >> 60, 4, "triple terms have kind 4");
     std::fs::remove_dir_all(dir).unwrap();
