@@ -111,16 +111,16 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     fn closure(&self, p: &P, q: &P, rev: bool, x: TermId) -> Vec<TermId> {
         let zero = matches!(p, P::Star(_) | P::Opt(_));
         let link = if matches!(p, P::Star(_) | P::Plus(_)) { simple_link(q, rev) } else { None };
-        if let Some((id, dir)) = link {
-            if let Some(c) = self.csr(id, dir, false) {
-                let mut cache = self.csr.borrow_mut();
-                let seen = cache.scratch(c.nodes.len());
-                let mut queue = Vec::new();
-                return match c.dense(x) {
-                    None => if zero { vec![x] } else { Vec::new() },
-                    Some(d) => { c.closure_into(d, zero, seen, &mut queue); queue.iter().map(|&z| c.nodes[z as usize]).collect() }
-                };
-            }
+        if let Some((id, dir)) = link
+            && let Some(c) = self.csr(id, dir, false)
+        {
+            let mut cache = self.csr.borrow_mut();
+            let seen = cache.scratch(c.nodes.len());
+            let mut queue = Vec::new();
+            return match c.dense(x) {
+                None => if zero { vec![x] } else { Vec::new() },
+                Some(d) => { c.closure_into(d, zero, seen, &mut queue); queue.iter().map(|&z| c.nodes[z as usize]).collect() }
+            };
         }
         let mut seen = HashSet::new();
         let mut order = Vec::new();
