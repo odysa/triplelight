@@ -265,6 +265,18 @@ fn triple_cmp(m: &Triple, n: &Triple) -> Ordering {
 
 fn simple(s: impl Into<String>) -> Term { Literal::new_simple_literal(s).into() }
 
+/// Whether two string arguments have the same base direction (SPARQL 1.2 argument compatibility); always true for
+/// RDF 1.1 terms, which have none.
+fn same_dir(_a: &Term, _b: &Term) -> bool {
+    #[cfg(feature = "sparql-12")]
+    {
+        let d = |t: &Term| if let Term::Literal(l) = t { l.direction() } else { None };
+        d(_a) == d(_b)
+    }
+    #[cfg(not(feature = "sparql-12"))]
+    { true }
+}
+
 /// String result that keeps the language tag of the first argument (as SPARQL string functions require).
 fn like(src: &Term, s: String) -> Term {
     match src {
@@ -344,9 +356,6 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
         (None, Some(_)) => false,
     };
     // A result string carrying the first argument's language tag (or plain).
-    let tagged = |x: String, lang: &Option<String>| -> Term {
-        match lang { Some(l) => Literal::new_language_tagged_literal_unchecked(x, l.clone()).into(), None => simple(x) }
-    };
     match f {
         Function::Str => Some(simple(string_value(&a(0)?)?)),
         Function::Lang => Some(simple(lit(&a(0)?)?.language().unwrap_or(""))),
@@ -379,24 +388,30 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
         // No match gives the empty simple literal; a match keeps the first argument's language tag (§17.4.3.7/8).
         Function::StrBefore => {
             let ((x, lx), (y, ly)) = (sl(0)?, sl(1)?);
-            if !compat(&lx, &ly) { return None }
-            Some(match x.find(&y) { Some(i) => tagged(x[..i].to_string(), &lx), None => simple("") })
+            if !compat(&lx, &ly) || !same_dir(&a(0)?, &a(1)?) { return None }
+            Some(match x.find(&y) { Some(i) => like(&a(0)?, x[..i].to_string()), None => simple("") })
         }
         Function::StrAfter => {
             let ((x, lx), (y, ly)) = (sl(0)?, sl(1)?);
-            if !compat(&lx, &ly) { return None }
-            Some(match x.find(&y) { Some(i) => tagged(x[i + y.len()..].to_string(), &lx), None => simple("") })
+            if !compat(&lx, &ly) || !same_dir(&a(0)?, &a(1)?) { return None }
+            Some(match x.find(&y) { Some(i) => like(&a(0)?, x[i + y.len()..].to_string()), None => simple("") })
         }
         // The result keeps a language tag only if every argument has that same tag (§17.4.3.12).
         Function::Concat => {
             let mut out = String::new();
             let mut lang: Option<Option<String>> = None;
+            // SPARQL 1.2: the tag is kept only if every argument also has the same base direction.
+            let mut dir_same = true;
             for i in 0..args.len() {
                 let (x, l) = sl(i)?;
                 out.push_str(&x);
+                if i > 0 { dir_same &= same_dir(&a(0)?, &a(i)?) }
                 lang = Some(match lang { None => l, Some(prev) if prev.as_deref().map(str::to_lowercase) == l.as_deref().map(str::to_lowercase) => prev, Some(_) => None });
             }
-            Some(tagged(out, &lang.flatten()))
+            match lang.flatten() {
+                Some(_) if dir_same && !args.is_empty() => Some(like(&a(0)?, out)),
+                _ => Some(simple(out)),
+            }
         }
         Function::SubStr => {
             let t = a(0)?;
