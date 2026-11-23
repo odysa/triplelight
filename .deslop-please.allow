@@ -13,4 +13,3 @@ field-leak triplelight_exec::Ctx::range_reorderable
 field-leak triplelight_exec::Ctx::sorted_probe
 field-leak triplelight_exec::Ctx::stats
 field-leak triplelight_exec::Ctx::wcoj
-wide-directory tests/

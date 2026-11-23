@@ -1,6 +1,5 @@
 //! `serve-store` update authorization: read-only mode, bearer token, and refusal to expose open updates beyond
 //! loopback. Runs only when the `server` feature is built.
-#![cfg(all(unix, feature = "server"))]
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::process::{Child, Command, Stdio};
