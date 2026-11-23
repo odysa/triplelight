@@ -673,15 +673,16 @@ mod extension_bench {
 }
 
 #[cfg(test)]
-mod sorted_probe_tests {
+pub(crate) mod sorted_probe_tests {
     use super::*;
     use crate::storage::{Dictionary, StorageError};
     use triplelight_rdf::{Term, TermRef};
 
-    /// Triples in every key order, scanned from sorted arrays: just enough of a store for `extend`.
-    struct Triples { by_perm: Vec<(Perm, Vec<[TermId; 3]>)> }
+    /// Triples in every key order, scanned from sorted arrays: just enough of a store for `extend` (and for the
+    /// path tests in `path.rs`).
+    pub(crate) struct Triples { by_perm: Vec<(Perm, Vec<[TermId; 3]>)> }
     impl Triples {
-        fn new(t: &[[u64; 3]]) -> Self {
+        pub(crate) fn new(t: &[[u64; 3]]) -> Self {
             let by_perm = Perm::ALL.into_iter().map(|perm| {
                 let o = perm.order();
                 let mut rows: Vec<[TermId; 3]> = t.iter().map(|x| o.map(|i| TermId(x[i]))).collect();
