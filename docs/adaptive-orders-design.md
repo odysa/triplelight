@@ -75,8 +75,10 @@ about 20–40 s by my estimate, to be measured before thresholds are fixed. Serv
 use.
 
 The rule: build *X* once its decayed `derived_ns` reaches *α* × `build_ns_estimate(X)`, with *α* = 1. This is the
-classic rent-or-buy rule. With *α* = 1 the total cost is at most twice that of an offline policy that knew the future,
-and the same 2-competitive argument backs database cracking and adaptive indexing (Idreos et al.). `build_ns_estimate`
+classic rent-or-buy rule. For one order on its own, with eviction ignored, *α* = 1 keeps the total cost at most twice
+that of an offline policy that knew the future. The same argument backs database cracking and adaptive indexing
+(Idreos et al.). That bound holds per order only. With a shared disk budget and eviction (§5), the policy is a
+heuristic with no competitive guarantee, and the paper must say so. `build_ns_estimate`
 starts from the measured build throughput of the base (S3 receipts give rows per second per order) and is updated
 after every build.
 
@@ -120,8 +122,9 @@ way compaction does. The base stays immutable, and recovery stays "the base `CUR
    `Arc`.
 
 The WAL is not touched: `base-(n+1)` has the same logical content as `base-n`, so replaying the WAL on either gives
-the same state. No change to the WAL's base-sequence bookkeeping is needed, but that must be checked against
-`compact`'s WAL handling.
+the same state. A required test in step 3 of the work plan (§9) checks this against `compact`'s WAL handling: whatever
+base-sequence or generation bookkeeping the WAL records must accept a generation switch with no WAL rewrite, and
+recovery after a crash at each point in the table below must give the same triples as before the add or drop.
 
 **Drop *X*:** the same steps, with no build and without linking `X`'s file. The MANIFEST clears the bit. Check that
 the remaining set covers the floor before step 3.
@@ -146,6 +149,14 @@ new base, or is dropped if no longer justified.
   correct. New readers use the new order.
 - When an order disappears, an earlier reader keeps its open `File`. The inode lives while it is open, and
   `base-n`'s directory is not removed until the next open. New readers route through the twin or sibling.
+
+**Retired bases are reclaimed online.** Removal at `Store::open` alone is not enough: an embedded application can
+run for weeks without reopening, and every add or drop would leak the old base's order files until a restart, breaking
+the disk budget. Each opened base therefore holds a guard with its directory. When the last `Arc` on a base that
+`CURRENT` no longer names is dropped, the guard deletes that directory, under the store's directory lock so it cannot
+race an open or a switch. Shared files survive through their other hard links. Removal at open stays as the fallback
+after a crash. The disk-budget accounting counts a retired base until its guard runs, since its unshared files still
+occupy disk while a long query pins it.
 
 No reader ever sees a partially built order: an order is only visible through a MANIFEST that names a complete,
 validated file.
@@ -180,7 +191,9 @@ Each step is its own PR, with the #105 rules: identical answers, full CI, and an
 1. Per-order ledger and always-on counters. No policy yet. Measure the overhead (expected to be in the noise).
 2. Generalized routing (any missing order through its sibling or twin), with tests over all 2⁶ order sets that cover
    the floor.
-3. Add and drop one order: the protocol in §6, with fail-point tests at each crash point and a pinned-reader test.
+3. Add and drop one order: the protocol in §6, with fail-point tests at each crash point, a pinned-reader test, the
+   WAL generation-switch recovery test, and online reclaim of retired bases (a test that the directory disappears
+   when the last reader drops, and not before).
 4. The policy (§4–§5) behind `--index-policy=adaptive`, with frozen mode and receipt fields.
 5. The adaptive experiment (§7), on the laptop first.
 
