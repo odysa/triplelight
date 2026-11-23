@@ -2,6 +2,9 @@
 //! a module above both, so the builder itself depends on the reader for nothing (#107).
 use super::external_build::*;
 use super::disk_snapshot::adaptive;
+use std::fs;
+use std::path::Path;
+use super::base_format::FILES;
 use crate::{
     exec::{QueryResult, query},
     storage::DiskSnapshot,
@@ -89,19 +92,6 @@ fn sharded_nt_preserves_terms_across_boundaries() {
     for name in FILES[1..].iter().copied().chain(["dictionary.unified"]) { assert_eq!(fs::read(a.join(name)).unwrap(), fs::read(b.join(name)).unwrap(), "{name}"); }
     assert_eq!(fs::read(a.join("MANIFEST")).unwrap(), fs::read(b.join("MANIFEST")).unwrap());
     let snap = DiskSnapshot::open(&b).unwrap(); snap.verify().unwrap(); drop(snap);
-    fs::remove_dir_all(root).unwrap();
-}
-#[test]
-fn parallel_index_failure_does_not_publish_manifest() {
-    let root = std::env::temp_dir().join(format!("rdf-index-failure-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&root); fs::create_dir(&root).unwrap();
-    let mut builder = Builder::new(&root).unwrap();
-    builder.index_workers = 3;
-    builder.add(["<urn:s>".into(), "<urn:p>".into(), "<urn:o>".into()]).unwrap();
-    fs::write(root.join("spo"), b"collision").unwrap();
-    assert!(builder.finish(&root).is_err());
-    assert!(!root.join("MANIFEST").exists());
-    assert!(!fs::read_dir(&root).unwrap().any(|entry| entry.unwrap().file_name().to_string_lossy().starts_with(".rdf-sort-")));
     fs::remove_dir_all(root).unwrap();
 }
 #[test]
@@ -200,9 +190,9 @@ fn failure_after_each_early_deletion_publishes_no_manifest() {
         fs::create_dir(&dir).unwrap();
         let input = small_input(&dir);
         let out = dir.join("base");
-        FAIL_AT.with(|f| f.set(phase));
+        fail_at_on_this_thread(phase);
         let result = from_nt(&out, Some(&input));
-        FAIL_AT.with(|f| f.set(0));
+        fail_at_on_this_thread(0);
         assert!(result.is_err(), "phase {phase} should fail");
         assert!(!out.join("MANIFEST").exists(), "phase {phase} must not publish a manifest");
         assert!(DiskSnapshot::open(&out).is_err(), "phase {phase} must not open as a snapshot");

@@ -126,6 +126,9 @@ where
 // Test-only failure injection: `checkpoint(n)` fails when the test selected phase `n`. Compiled out in normal builds.
 #[cfg(test)]
 thread_local! { static FAIL_AT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+/// Tests: make the build fail at phase `n` on this thread (0: never).
+#[cfg(test)]
+pub(super) fn fail_at_on_this_thread(n: usize) { FAIL_AT.with(|f| f.set(n)) }
 #[cfg(test)]
 fn checkpoint(n: usize) -> io::Result<()> {
     if FAIL_AT.with(|f| f.get()) == n { Err(io::Error::other("injected failure")) } else { Ok(()) }
@@ -556,7 +559,7 @@ fn dedup_setting() -> Dedup {
 /// IDs before the term sort. On by default; `TRIPLELIGHT_DEDUP_TERMS=0` turns it off (an escape hatch kept for one
 /// release), and `TRIPLELIGHT_DEDUP_MAP_MB=n` fixes the map budget per shard.
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum Dedup {
+pub(super) enum Dedup {
     /// The plain parse: one sort record per term occurrence.
     Off,
     /// Each shard's term map gets what its share of the build budget leaves after its term sorter, capped at
@@ -568,7 +571,7 @@ enum Dedup {
 }
 const DEDUP_MAP_MAX: usize = 256 * 1024 * 1024;
 const DEDUP_MAP_MIN: usize = 1024 * 1024;
-fn from_nt_parallel_with(dir: &Path, path: Option<&Path>, workers: usize, dedup: Dedup) -> io::Result<()> {
+pub(super) fn from_nt_parallel_with(dir: &Path, path: Option<&Path>, workers: usize, dedup: Dedup) -> io::Result<()> {
     let Some(path) = path else { return from_nt(dir, None); };
     // A worker's merge must hold at least two maximum-length records and file buffers.
     // The global limit is an advisory allocation target, not an RSS guarantee.
@@ -846,3 +849,22 @@ pub(super) fn from_snapshot_keeping(dir: &Path, source: &dyn Snapshot, orders: u
     builder.finish(dir)
 }
 
+
+/// Unit tests of the builder's internals; tests that read a built base back are in `external_build_tests`.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn parallel_index_failure_does_not_publish_manifest() {
+        let root = std::env::temp_dir().join(format!("rdf-index-failure-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root); fs::create_dir(&root).unwrap();
+        let mut builder = Builder::new(&root).unwrap();
+        builder.index_workers = 3;
+        builder.add(["<urn:s>".into(), "<urn:p>".into(), "<urn:o>".into()]).unwrap();
+        fs::write(root.join("spo"), b"collision").unwrap();
+        assert!(builder.finish(&root).is_err());
+        assert!(!root.join("MANIFEST").exists());
+        assert!(!fs::read_dir(&root).unwrap().any(|entry| entry.unwrap().file_name().to_string_lossy().starts_with(".rdf-sort-")));
+        fs::remove_dir_all(root).unwrap();
+    }
+}
