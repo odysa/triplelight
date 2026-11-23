@@ -1,6 +1,6 @@
-//! Turtle and TriG (RDF 1.1) parsing (task #45, step 3). It accepts and rejects exactly what `oxttl` 0.2's strict
-//! parsers do and emits the same statements in the same order; blank nodes for `[]` and collections are fresh, as
-//! there. Input is read through a refillable buffer: a statement is parsed as soon as its tokens are available, and a
+//! Turtle and TriG parsing, with RDF 1.2 syntax behind the `rdf-12` feature. The RDF 1.1 parser follows
+//! `oxttl` 0.2's strict parsers, including fresh blank nodes for `[]` and collections.
+//! Input is read through a refillable buffer: a statement is parsed as soon as its tokens are available, and a
 //! streaming reader refuses a token longer than `oxttl`'s 16 MiB buffer, as it did (slices have no limit).
 //! Derived in part from oxttl (MIT); see THIRD_PARTY_NOTICES.md.
 use crate::ntriples::{pn_chars, pn_chars_base, pn_chars_u, MAX_TOKEN};
@@ -8,6 +8,8 @@ use crate::rdf::{BlankNode, GraphName, Literal, NamedNode, NamedOrBlankNode, Qua
 use std::collections::{HashMap, VecDeque};
 use std::io::BufRead;
 use triplelight_iri::Iri;
+#[cfg(feature = "rdf-12")]
+use triplelight_rdf::{BaseDirection, Triple};
 
 const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 /// The most input appended to the buffer per refill.
@@ -20,7 +22,13 @@ enum Tok {
     PName { prefix: String, local: String, might_be_invalid: bool },
     BNode(String),
     Lang(String),
-    Str(String),
+    #[cfg(feature = "rdf-12")]
+    LangDir(String, BaseDirection),
+    Str {
+        value: String,
+        #[cfg(feature = "rdf-12")]
+        long: bool,
+    },
     Integer(String),
     Decimal(String),
     Double(String),
@@ -146,6 +154,8 @@ impl<I: BufRead> Lexer<I> {
         let Some(b) = self.src.at(0)? else { return Ok(Tok::Eof) };
         let (tok, len) = match b {
             b'<' => match self.src.byte(1)? {
+                #[cfg(feature = "rdf-12")]
+                b'<' if self.src.byte(2)? == b'(' => (Tok::Punct("<<("), 3),
                 b'<' => (Tok::Punct("<<"), 2),
                 _ => self.iri()?,
             },
@@ -227,7 +237,7 @@ impl<I: BufRead> Lexer<I> {
             i = self.src.find(i, |b| b == delimiter || b == b'\\' || b == b'\n' || b == b'\r')?.ok_or("Unterminated string literal")?;
             out.push_str(std::str::from_utf8(self.src.slice(start, i)).map_err(|e| format!("Invalid UTF-8: {e}"))?);
             match self.src.byte(i)? {
-                b if b == delimiter => return Ok((Tok::Str(out), i + 1)),
+                b if b == delimiter => return Ok((Tok::Str { value: out, #[cfg(feature = "rdf-12")] long: false }, i + 1)),
                 b'\\' => {
                     let save = self.src.pos;
                     self.src.pos += i;
@@ -252,7 +262,7 @@ impl<I: BufRead> Lexer<I> {
             if self.src.byte(i)? == delimiter {
                 if self.src.at(i + 1)?.ok_or("Unterminated long string literal")? == delimiter
                     && self.src.at(i + 2)?.ok_or("Unterminated long string literal")? == delimiter {
-                    return Ok((Tok::Str(out), i + 3));
+                    return Ok((Tok::Str { value: out, #[cfg(feature = "rdf-12")] long: true }, i + 3));
                 }
                 out.push(char::from(delimiter));
                 i += 1;
@@ -282,6 +292,21 @@ impl<I: BufRead> Lexer<I> {
                 return Err("A language code should always start with a letter".into());
             } else if is_last_block_empty {
                 if c != b'-' { return self.finish_lang(1, i, i) }
+                #[cfg(feature = "rdf-12")]
+                {
+                    // i is the index of the second dash after the '@'.
+                    let from = i + 2;
+                    let direction = match (self.src.byte(from)?, self.src.byte(from + 1)?, self.src.byte(from + 2)?) {
+                        (b'l', b't', b'r') => BaseDirection::Ltr,
+                        (b'r', b't', b'l') => BaseDirection::Rtl,
+                        _ => return Err("A literal base direction must be ltr or rtl".into()),
+                    };
+                    if matches!(self.src.byte(from + 3)?, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-') {
+                        return Err("A literal base direction must be ltr or rtl".into());
+                    }
+                    return Ok((Tok::LangDir(self.validated_lang(1, i)?, direction), from + 3));
+                }
+                #[cfg(not(feature = "rdf-12"))]
                 return Err("Literal base direction are only allowed in RDF 1.2".into());
             } else if c == b'-' {
                 is_last_block_empty = true;
@@ -293,9 +318,12 @@ impl<I: BufRead> Lexer<I> {
         }
     }
     fn finish_lang(&mut self, from: usize, to: usize, consumed: usize) -> R<(Tok, usize)> {
-        let tag = std::str::from_utf8(self.src.slice(from, to)).map_err(|e| format!("Invalid UTF-8: {e}"))?.to_owned();
-        if !crate::langtag::is_well_formed(&tag) { return Err(Fail::Syntax(format!("Invalid language tag {tag:?}"))) }
-        Ok((Tok::Lang(tag), consumed))
+        Ok((Tok::Lang(self.validated_lang(from, to)?), consumed))
+    }
+    fn validated_lang(&self, from: usize, to: usize) -> R<String> {
+        let tag = std::str::from_utf8(self.src.slice(from, to)).map_err(|e| format!("Invalid UTF-8: {e}"))?;
+        if !crate::langtag::is_well_formed(tag) { return Err(Fail::Syntax(format!("Invalid language tag {tag:?}"))) }
+        Ok(tag.to_owned())
     }
 
     fn number(&mut self) -> R<(Tok, usize)> {
@@ -407,16 +435,41 @@ impl<I: BufRead> Lexer<I> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ObjectMode {
+    Asserted,
+    #[cfg(feature = "rdf-12")]
+    TripleTerm,
+    #[cfg(feature = "rdf-12")]
+    Reified,
+}
+
+#[cfg(feature = "rdf-12")]
+#[derive(Clone, Copy)]
+enum ReifiedTarget {
+    Subject,
+    Object(ObjectMode),
+}
+
+#[cfg(feature = "rdf-12")]
+enum ReifierTarget {
+    Quoted(ReifiedTarget),
+    Annotation,
+}
+
 /// The Turtle / TriG grammar over the lexer, emitting statements as `oxttl` does.
 /// The Turtle / TriG grammar as `oxttl`'s token-driven state machine (`terse.rs`, RDF 1.1 states): grammar state
 /// lives on heap stacks, so nesting depth is bounded by memory, not the call stack, and each token is processed on
 /// its own. The statements one token produces are released last-first, as `oxttl` returns them (its results are a
 /// stack), as soon as that token is processed.
-#[derive(Debug)]
 enum State {
     TriGDoc,
     ExpectDot,
     BaseExpectIri,
+    #[cfg(feature = "rdf-12")]
+    Version { expect_dot: bool },
+    #[cfg(feature = "rdf-12")]
+    VersionDot,
     PrefixExpectPrefix,
     PrefixExpectIri { name: String },
     TriplesOrGraph,
@@ -436,15 +489,43 @@ enum State {
     PredicateObjectListEnd,
     PredicateObjectListPossibleContinuation,
     ObjectsList,
-    AnnotationBlock,
+    AnnotationBlock {
+        #[cfg(feature = "rdf-12")]
+        reifier: Option<NamedOrBlankNode>,
+    },
+    #[cfg(feature = "rdf-12")]
+    AnnotationEnd,
     Verb,
-    Object,
+    Object(ObjectMode),
+    #[cfg(feature = "rdf-12")]
+    QuotedSubject(ObjectMode),
+    #[cfg(feature = "rdf-12")]
+    AnonEnd,
+    #[cfg(feature = "rdf-12")]
+    TripleTermEnd(ObjectMode),
+    #[cfg(feature = "rdf-12")]
+    ReifiedBeforeReifier(ReifiedTarget),
+    #[cfg(feature = "rdf-12")]
+    ReifiedEnd { target: ReifiedTarget, triple: Triple, reifier: NamedOrBlankNode },
+    #[cfg(feature = "rdf-12")]
+    Reifier { target: ReifierTarget, triple: Triple },
+    #[cfg(feature = "rdf-12")]
+    ReifierAnonEnd { target: ReifierTarget, triple: Triple },
     ObjectBlankNodePropertyListCurrent,
     ObjectBlankNodePropertyListEnd,
     ObjectCollectionBeginning,
     ObjectCollectionPossibleEnd,
-    LiteralPossibleSuffix { value: String },
-    LiteralExpectDatatype { value: String },
+    LiteralPossibleSuffix { value: String, mode: ObjectMode },
+    LiteralExpectDatatype { value: String, mode: ObjectMode },
+}
+
+impl State {
+    fn annotation() -> Self {
+        Self::AnnotationBlock {
+            #[cfg(feature = "rdf-12")]
+            reifier: None,
+        }
+    }
 }
 
 fn rdf(local: &str) -> NamedNode { NamedNode::new_unchecked(format!("{RDF}{local}")) }
@@ -469,6 +550,34 @@ impl Parser {
     fn emit(&mut self) {
         let q = Quad::new(self.subjects.last().unwrap().clone(), self.predicates.last().unwrap().clone(), self.objects.last().unwrap().clone(), self.graph.clone());
         self.batch.push(q);
+    }
+    fn finish_object(&mut self, object: Term, mode: ObjectMode) {
+        self.objects.push(object);
+        if mode == ObjectMode::Asserted { self.emit() }
+    }
+    #[cfg(feature = "rdf-12")]
+    fn quoted_triple(&mut self) -> Triple {
+        Triple::new(self.subjects.pop().unwrap(), self.predicates.pop().unwrap(), self.objects.pop().unwrap())
+    }
+    #[cfg(feature = "rdf-12")]
+    fn begin_quoted(&mut self, mode: ObjectMode) {
+        self.stack.push(State::Object(mode));
+        self.stack.push(State::Verb);
+        self.stack.push(State::QuotedSubject(mode));
+    }
+    #[cfg(feature = "rdf-12")]
+    fn emit_reification(&mut self, reifier: NamedOrBlankNode, triple: Triple) {
+        self.batch.push(Quad::new(reifier, rdf("reifies"), triple, self.graph.clone()));
+    }
+    #[cfg(feature = "rdf-12")]
+    fn finish_reifier(&mut self, target: ReifierTarget, triple: Triple, reifier: NamedOrBlankNode) {
+        match target {
+            ReifierTarget::Quoted(target) => self.stack.push(State::ReifiedEnd { target, triple, reifier }),
+            ReifierTarget::Annotation => {
+                self.emit_reification(reifier.clone(), triple);
+                self.stack.push(State::AnnotationBlock { reifier: Some(reifier) });
+            }
+        }
     }
     fn resolve_pname(&self, prefix: &str, local: &str, might_be_invalid: bool) -> R<NamedNode> {
         let Some(start) = self.prefixes.get(prefix) else { return Err(Fail::Syntax(format!("The prefix {prefix}: has not been declared"))) };
@@ -500,6 +609,10 @@ impl Parser {
                     self.graph = GraphName::DefaultGraph;
                     self.stack.push(State::TriGDoc);
                     match &token {
+                        #[cfg(feature = "rdf-12")]
+                        Tok::Keyword(k) if k.eq_ignore_ascii_case("version") => self.stack.push(State::Version { expect_dot: false }),
+                        #[cfg(feature = "rdf-12")]
+                        Tok::Lang(l) if l == "version" => self.stack.push(State::Version { expect_dot: true }),
                         Tok::Keyword(k) if k.eq_ignore_ascii_case("base") => self.stack.push(State::BaseExpectIri),
                         Tok::Keyword(k) if k.eq_ignore_ascii_case("prefix") => self.stack.push(State::PrefixExpectPrefix),
                         Tok::Lang(l) if l == "prefix" => { self.stack.push(State::ExpectDot); self.stack.push(State::PrefixExpectPrefix) }
@@ -512,6 +625,17 @@ impl Parser {
                 State::ExpectDot => {
                     self.subjects.pop();
                     if token != Tok::Punct(".") { return Err("A dot is expected at the end of statements".into()) }
+                }
+                #[cfg(feature = "rdf-12")]
+                State::Version { expect_dot } => {
+                    if !matches!(token, Tok::Str { long: false, .. }) {
+                        return Err("VERSION must be followed by a short string literal".into());
+                    }
+                    if expect_dot { self.stack.push(State::VersionDot); }
+                }
+                #[cfg(feature = "rdf-12")]
+                State::VersionDot => {
+                    if token != Tok::Punct(".") { return Err("@version must end with a dot".into()); }
                 }
                 State::BaseExpectIri => match token {
                     Tok::Iri(i) => *base = Some(Iri::parse(&i).map_err(|e| e.to_string())?),
@@ -526,6 +650,13 @@ impl Parser {
                     _ => return Err("The PREFIX declaration should be followed by a prefix and its value as an IRI".into()),
                 },
                 State::TriplesOrGraph => match &token {
+                    #[cfg(feature = "rdf-12")]
+                    Tok::Punct("<<") => {
+                        self.stack.push(State::ExpectDot);
+                        self.stack.push(State::SubjectBlankNodePropertyListAfter);
+                        self.stack.push(State::ReifiedBeforeReifier(ReifiedTarget::Subject));
+                        self.begin_quoted(ObjectMode::Reified);
+                    }
                     Tok::BNode(l) => self.stack.push(State::WrappedGraphOrPredicateObjectList { term: BlankNode::new_unchecked(l.clone()).into() }),
                     Tok::Punct("[") => self.stack.push(State::WrappedGraphBlankNodePropertyListCurrent),
                     Tok::Punct("(") => { self.stack.push(State::ExpectDot); self.stack.push(State::PredicateObjectList); self.stack.push(State::SubjectCollectionBeginning) }
@@ -573,7 +704,7 @@ impl Parser {
                         self.subjects.push(root.into());
                         self.predicates.push(rdf("first"));
                         self.stack.push(State::SubjectCollectionPossibleEnd);
-                        self.stack.push(State::Object);
+                        self.stack.push(State::Object(ObjectMode::Asserted));
                         again(&mut pending, token);
                     }
                 }
@@ -589,7 +720,7 @@ impl Parser {
                         self.batch.push(Quad::new(old, rdf("rest"), new.clone(), self.graph.clone()));
                         self.subjects.push(new.into());
                         self.stack.push(State::ObjectCollectionPossibleEnd);
-                        self.stack.push(State::Object);
+                        self.stack.push(State::Object(ObjectMode::Asserted));
                         again(&mut pending, token);
                     }
                 }
@@ -607,6 +738,12 @@ impl Parser {
                     }
                 }
                 State::Triples => match &token {
+                    #[cfg(feature = "rdf-12")]
+                    Tok::Punct("<<") => {
+                        self.stack.push(State::SubjectBlankNodePropertyListAfter);
+                        self.stack.push(State::ReifiedBeforeReifier(ReifiedTarget::Subject));
+                        self.begin_quoted(ObjectMode::Reified);
+                    }
                     Tok::Punct("}") => again(&mut pending, token),
                     Tok::Punct("[") => { self.subjects.push(BlankNode::default().into()); self.stack.push(State::TriplesBlankNodePropertyListCurrent) }
                     Tok::BNode(l) => { self.subjects.push(BlankNode::new_unchecked(l.clone()).into()); self.stack.push(State::PredicateObjectList) }
@@ -660,18 +797,48 @@ impl Parser {
                     }
                 }
                 State::ObjectsList => {
-                    self.stack.push(State::AnnotationBlock);
-                    self.stack.push(State::Object);
+                    self.stack.push(State::annotation());
+                    self.stack.push(State::Object(ObjectMode::Asserted));
                     again(&mut pending, token);
                 }
-                State::AnnotationBlock => {
+                State::AnnotationBlock {
+                    #[cfg(feature = "rdf-12")]
+                    reifier,
+                } => {
+                    #[cfg(feature = "rdf-12")]
+                    match token {
+                        Tok::Punct("~") => {
+                            let triple = Triple::new(self.subjects.last().unwrap().clone(), self.predicates.last().unwrap().clone(), self.objects.last().unwrap().clone());
+                            self.stack.push(State::Reifier { target: ReifierTarget::Annotation, triple });
+                            continue;
+                        }
+                        Tok::Punct("{|") => {
+                            let reifier = reifier.unwrap_or_else(|| {
+                                let reifier = NamedOrBlankNode::from(BlankNode::default());
+                                let triple = Triple::new(self.subjects.last().unwrap().clone(), self.predicates.last().unwrap().clone(), self.objects.last().unwrap().clone());
+                                self.emit_reification(reifier.clone(), triple);
+                                reifier
+                            });
+                            self.subjects.push(reifier);
+                            self.stack.push(State::AnnotationEnd);
+                            self.stack.push(State::PredicateObjectList);
+                            continue;
+                        }
+                        _ => {}
+                    }
                     self.objects.pop();
                     if token == Tok::Punct(",") {
-                        self.stack.push(State::AnnotationBlock);
-                        self.stack.push(State::Object);
+                        self.stack.push(State::annotation());
+                        self.stack.push(State::Object(ObjectMode::Asserted));
                     } else {
                         again(&mut pending, token);
                     }
+                }
+                #[cfg(feature = "rdf-12")]
+                State::AnnotationEnd => {
+                    if token != Tok::Punct("|}") { return Err("An annotation must end with |}".into()); }
+                    self.subjects.pop();
+                    self.stack.push(State::annotation());
                 }
                 State::Verb => {
                     if token == Tok::Keyword("a".into()) {
@@ -680,20 +847,98 @@ impl Parser {
                         match self.iri_of(&token) { Some(i) => self.predicates.push(i?), None => return Err("TOKEN is not a valid predicate".into()) }
                     }
                 }
-                State::Object => match token {
-                    Tok::BNode(l) => { self.objects.push(BlankNode::new_unchecked(l).into()); self.emit() }
-                    Tok::Punct("[") => self.stack.push(State::ObjectBlankNodePropertyListCurrent),
-                    Tok::Punct("(") => self.stack.push(State::ObjectCollectionBeginning),
-                    Tok::Str(value) => self.stack.push(State::LiteralPossibleSuffix { value }),
-                    Tok::Integer(v) => { self.objects.push(Literal::new_typed_literal(v, xsd("integer")).into()); self.emit() }
-                    Tok::Decimal(v) => { self.objects.push(Literal::new_typed_literal(v, xsd("decimal")).into()); self.emit() }
-                    Tok::Double(v) => { self.objects.push(Literal::new_typed_literal(v, xsd("double")).into()); self.emit() }
-                    Tok::Keyword(k) if k == "true" || k == "false" => { self.objects.push(Literal::new_typed_literal(k, xsd("boolean")).into()); self.emit() }
+                State::Object(mode) => match token {
+                    Tok::BNode(l) => self.finish_object(BlankNode::new_unchecked(l).into(), mode),
+                    Tok::Punct("[") if mode == ObjectMode::Asserted => self.stack.push(State::ObjectBlankNodePropertyListCurrent),
+                    Tok::Punct("(") if mode == ObjectMode::Asserted => self.stack.push(State::ObjectCollectionBeginning),
+                    #[cfg(feature = "rdf-12")]
+                    Tok::Punct("[") => {
+                        self.finish_object(BlankNode::default().into(), mode);
+                        self.stack.push(State::AnonEnd);
+                    }
+                    #[cfg(feature = "rdf-12")]
+                    Tok::Punct("<<(") => {
+                        self.stack.push(State::TripleTermEnd(mode));
+                        self.begin_quoted(ObjectMode::TripleTerm);
+                    }
+                    #[cfg(feature = "rdf-12")]
+                    Tok::Punct("<<") if mode != ObjectMode::TripleTerm => {
+                        self.stack.push(State::ReifiedBeforeReifier(ReifiedTarget::Object(mode)));
+                        self.begin_quoted(ObjectMode::Reified);
+                    }
+                    Tok::Str { value, .. } => self.stack.push(State::LiteralPossibleSuffix { value, mode }),
+                    Tok::Integer(v) => self.finish_object(Literal::new_typed_literal(v, xsd("integer")).into(), mode),
+                    Tok::Decimal(v) => self.finish_object(Literal::new_typed_literal(v, xsd("decimal")).into(), mode),
+                    Tok::Double(v) => self.finish_object(Literal::new_typed_literal(v, xsd("double")).into(), mode),
+                    Tok::Keyword(k) if k == "true" || k == "false" => self.finish_object(Literal::new_typed_literal(k, xsd("boolean")).into(), mode),
                     t => match self.iri_of(&t) {
-                        Some(i) => { self.objects.push(i?.into()); self.emit() }
+                        Some(i) => self.finish_object(i?.into(), mode),
                         None => return Err("TOKEN is not a valid RDF object".into()),
                     },
                 },
+                #[cfg(feature = "rdf-12")]
+                State::QuotedSubject(mode) => match token {
+                    Tok::BNode(label) => self.subjects.push(BlankNode::new_unchecked(label).into()),
+                    Tok::Punct("[") => {
+                        self.subjects.push(BlankNode::default().into());
+                        self.stack.push(State::AnonEnd);
+                    }
+                    Tok::Punct("<<") if mode == ObjectMode::Reified => {
+                        self.stack.push(State::ReifiedBeforeReifier(ReifiedTarget::Subject));
+                        self.begin_quoted(ObjectMode::Reified);
+                    }
+                    t => match self.iri_of(&t) {
+                        Some(iri) => self.subjects.push(iri?.into()),
+                        None => return Err("A quoted triple's subject must denote an IRI or blank node".into()),
+                    },
+                },
+                #[cfg(feature = "rdf-12")]
+                State::AnonEnd => {
+                    if token != Tok::Punct("]") { return Err("Only an empty blank node property list is allowed inside a quoted triple".into()); }
+                }
+                #[cfg(feature = "rdf-12")]
+                State::TripleTermEnd(mode) => {
+                    if token != Tok::Punct(")>>") { return Err("A triple term must end with )>>".into()); }
+                    let triple = self.quoted_triple();
+                    self.finish_object(triple.into(), mode);
+                }
+                #[cfg(feature = "rdf-12")]
+                State::ReifiedBeforeReifier(target) => {
+                    let triple = self.quoted_triple();
+                    if token == Tok::Punct("~") {
+                        self.stack.push(State::Reifier { target: ReifierTarget::Quoted(target), triple });
+                    } else {
+                        self.finish_reifier(ReifierTarget::Quoted(target), triple, BlankNode::default().into());
+                        again(&mut pending, token);
+                    }
+                }
+                #[cfg(feature = "rdf-12")]
+                State::ReifiedEnd { target, triple, reifier } => {
+                    if token != Tok::Punct(">>") { return Err("A reified triple must end with >>".into()); }
+                    self.emit_reification(reifier.clone(), triple);
+                    match target {
+                        ReifiedTarget::Subject => self.subjects.push(reifier),
+                        ReifiedTarget::Object(mode) => self.finish_object(reifier.into(), mode),
+                    }
+                }
+                #[cfg(feature = "rdf-12")]
+                State::Reifier { target, triple } => match token {
+                    Tok::Punct("[") => self.stack.push(State::ReifierAnonEnd { target, triple }),
+                    Tok::BNode(label) => self.finish_reifier(target, triple, BlankNode::new_unchecked(label).into()),
+                    t => {
+                        if let Some(iri) = self.iri_of(&t) {
+                            self.finish_reifier(target, triple, iri?.into());
+                        } else {
+                            self.finish_reifier(target, triple, BlankNode::default().into());
+                            again(&mut pending, t);
+                        }
+                    }
+                },
+                #[cfg(feature = "rdf-12")]
+                State::ReifierAnonEnd { target, triple } => {
+                    if token != Tok::Punct("]") { return Err("A reifier accepts an empty blank node property list".into()); }
+                    self.finish_reifier(target, triple, BlankNode::default().into());
+                }
                 State::ObjectBlankNodePropertyListCurrent => {
                     if token == Tok::Punct("]") {
                         self.objects.push(BlankNode::default().into());
@@ -722,21 +967,26 @@ impl Parser {
                         self.subjects.push(root.into());
                         self.predicates.push(rdf("first"));
                         self.stack.push(State::ObjectCollectionPossibleEnd);
-                        self.stack.push(State::Object);
+                        self.stack.push(State::Object(ObjectMode::Asserted));
                         again(&mut pending, token);
                     }
                 }
-                State::LiteralPossibleSuffix { value } => match token {
-                    Tok::Lang(l) => { self.objects.push(Literal::new_language_tagged_literal_unchecked(value, l.to_ascii_lowercase()).into()); self.emit() }
-                    Tok::Punct("^^") => self.stack.push(State::LiteralExpectDatatype { value }),
-                    t => { self.objects.push(Literal::new_simple_literal(value).into()); self.emit(); again(&mut pending, t) }
+                State::LiteralPossibleSuffix { value, mode } => match token {
+                    Tok::Lang(l) => self.finish_object(Literal::new_language_tagged_literal_unchecked(value, l.to_ascii_lowercase()).into(), mode),
+                    #[cfg(feature = "rdf-12")]
+                    Tok::LangDir(l, direction) => self.finish_object(Literal::new_directional_language_tagged_literal_unchecked(value, l.to_ascii_lowercase(), direction).into(), mode),
+                    Tok::Punct("^^") => self.stack.push(State::LiteralExpectDatatype { value, mode }),
+                    t => { self.finish_object(Literal::new_simple_literal(value).into(), mode); again(&mut pending, t) }
                 },
-                State::LiteralExpectDatatype { value } => match self.iri_of(&token) {
+                State::LiteralExpectDatatype { value, mode } => match self.iri_of(&token) {
                     Some(d) => {
                         let d = d?;
                         if d.as_str() == format!("{RDF}langString") { return Err("The datatype of a literal without a language tag must not be rdf:langString".into()) }
-                        self.objects.push(Literal::new_typed_literal(value, d).into());
-                        self.emit();
+                        #[cfg(feature = "rdf-12")]
+                        if d.as_str() == triplelight_rdf::vocab::rdf::DIR_LANG_STRING.as_str() {
+                            return Err("The datatype of a literal without a base direction must not be rdf:dirLangString".into());
+                        }
+                        self.finish_object(Literal::new_typed_literal(value, d).into(), mode);
                     }
                     None => return Err("Expecting a datatype IRI after ^^, found TOKEN".into()),
                 },
@@ -760,6 +1010,13 @@ impl<I: BufRead> TurtleReader<I> {
         let src = Src { input, buf: Vec::new(), pos: 0, eof: false, capped, token_start: 0 };
         TurtleReader { lex: Lexer { src, base: None, peeked: None }, parser: Parser::new(with_graph), out: VecDeque::new(), done: false }
     }
+    /// Streams a document with an external base IRI. An in-document BASE can override it.
+    pub fn with_base(input: I, with_graph: bool, base: &str) -> Result<Self, ReadError> {
+        let mut reader = Self::new(input, with_graph, true);
+        reader.lex.base = Some(Iri::parse(base).map_err(|error| ReadError::Syntax(error.to_string()))?);
+        Ok(reader)
+    }
+
     fn step(&mut self) -> R<bool> {
         let token = self.lex.next()?;
         if token == Tok::Eof { self.parser.end()?; return Ok(false) }
@@ -807,6 +1064,46 @@ pub fn read_trig<I: BufRead>(input: I) -> impl Iterator<Item = Result<Quad, Read
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "rdf-12")]
+    #[test]
+    fn rdf12_annotations_keep_scope_and_allocate_fresh_reifiers() {
+        let input = b"PREFIX : <urn:test:>
+            :g { :s :p :o ~ :r {| :a :v |} {| :b :v |} .
+                 << :s :p :n ~ :r2 >> . }
+            :s :p :default .";
+        let quads = read_trig(&input[..]).collect::<Result<Vec<_>, _>>().unwrap();
+        assert_eq!(quads.len(), 7);
+        assert_eq!(quads.iter().filter(|q| q.graph_name.is_default_graph()).count(), 1);
+        assert!(quads.iter().filter(|q| !q.graph_name.is_default_graph()).all(|q| {
+            q.graph_name.to_string() == "<urn:test:g>"
+        }));
+        let find = |predicate: &str| quads.iter().find(|q| q.predicate.as_str() == predicate).unwrap();
+        let a = find("urn:test:a");
+        let b = find("urn:test:b");
+        assert_eq!(a.subject.to_string(), "<urn:test:r>");
+        assert!(matches!(b.subject, NamedOrBlankNode::BlankNode(_)));
+        assert!(quads.iter().any(|q| q.subject == b.subject && q.predicate.as_str() == format!("{RDF}reifies")));
+        assert!(!quads.iter().any(|q| q.predicate.as_str() == "urn:test:p" && q.object.to_string() == "<urn:test:n>"));
+    }
+
+    #[cfg(feature = "rdf-12")]
+    #[test]
+    fn rdf12_quoted_grammar_and_version_boundaries() {
+        for bad in [
+            r#"@Version "1.2" . <urn:s> <urn:p> <urn:o> ."#,
+            r#"@version "1.2" <urn:s> <urn:p> <urn:o> ."#,
+            r#"VERSION """1.2""" <urn:s> <urn:p> <urn:o> ."#,
+            r#"VERSION "1.2" . <urn:s> <urn:p> <urn:o> ."#,
+            r#"<<( <urn:s> <urn:p> <urn:o> )>> <urn:p> <urn:o> ."#,
+            r#"<urn:s> <urn:p> <<( <urn:a> <urn:p> << <urn:s> <urn:p> <urn:o> >> )>> ."#,
+            r#"<urn:s> <urn:p> <<( [ <urn:p> <urn:o> ] <urn:p> <urn:o> )>> ."#,
+            r#"<urn:s> <urn:p> "x"@en--Long ."#,
+            r#"<urn:s> <urn:p> <urn:o> {| |} ."#,
+        ] {
+            assert!(read_turtle_slice(bad.as_bytes()).any(|row| row.is_err()), "{bad}");
+        }
+    }
+
     /// Statements are yielded as their tokens arrive: the first quads of a graph block come out before the rest of
     /// the block can be read (the reader fails after the first part).
     #[test]

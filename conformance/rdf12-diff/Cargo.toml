@@ -11,5 +11,8 @@ description = "RDF 1.2 differential tests: triplelight-rdf (rdf-12) against oxrd
 [dependencies]
 
 [dev-dependencies]
+triplelight-core = { path = "../../crates/triplelight-core", features = ["rdf-12"] }
+oxttl = { version = "=0.2.5", features = ["rdf-12"] }
+triplelight-sparql = { path = "../../crates/triplelight-sparql", features = ["sparql-12"] }
 triplelight-rdf = { path = "../../crates/triplelight-rdf", features = ["rdf-12"] }
 oxrdf = { version = "0.3.5", features = ["rdf-12"] }
