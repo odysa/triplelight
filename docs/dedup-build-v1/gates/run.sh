@@ -3,9 +3,9 @@
 # deduplicating parse off and on. LUBM-100 and BSBM-10M at four and six orders, plus LUBM-100 four orders with a 1 MB
 # term map per shard (forces constant eviction). Caller holds /tmp/rdf-bench.lock.
 set -u
-OUT=<workspace>/deliverables/dedup-91-gates
-REPO=<workspace>/triplelight-named-storage
-DATA=<workspace>/rdfdb/bench/tools
+OUT=${OUT:?set OUT; on the test laptop it was <workspace>/deliverables/dedup-91-gates}
+REPO=${REPO:?set REPO; on the test laptop it was <workspace>/triplelight-named-storage}
+DATA=${DATA:?set DATA; on the test laptop it was <workspace>/rdfdb/bench/tools}
 SHA=9770ceb3; W=/tmp/gates91
 log() { echo "$(date -u +%H:%M:%S) $*" | tee -a "$OUT/progress.log"; }
 rm -rf $W; mkdir -p $W; git -C $REPO worktree prune

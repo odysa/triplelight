@@ -4,9 +4,9 @@
 # (2 s sampler), the per-shard dedup lines (flushes, record bytes to sort), the containers before each build, and
 # the file hashes (each "on" build must equal each "off" build). Takes and releases /tmp/rdf-bench.lock.
 set -u
-OUT=<workspace>/deliverables/dedup-91-abba
-REPO=<workspace>/triplelight-named-storage
-DATA=<workspace>/rdfdb/bench/tools
+OUT=${OUT:?set OUT; on the test laptop it was <workspace>/deliverables/dedup-91-abba}
+REPO=${REPO:?set REPO; on the test laptop it was <workspace>/triplelight-named-storage}
+DATA=${DATA:?set DATA; on the test laptop it was <workspace>/rdfdb/bench/tools}
 SHA=9770ceb3; W=/tmp/abba91
 log() { echo "$(date -u +%H:%M:%S) $*" | tee -a "$OUT/progress.log"; }
 mkdir /tmp/rdf-bench.lock || { log "lock held, abort"; exit 3; }
