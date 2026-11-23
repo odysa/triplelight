@@ -86,7 +86,7 @@ fn main() -> std::io::Result<()> {
         let mean = |bits: &[u64; 3]| bits.map(|b| format!("{:.1}", b as f64 / n as f64)).join(",");
         let bytes = |bits: &[u64; 3]| bits.iter().sum::<u64>() / 8;
         println!(
-            "{{\"order\":\"{perm:?}\",\"rows\":{n},\"blocks\":{blocks},\"mean_width_current\":[{}],\"mean_width_rotated\":[{}],\"mean_bits_dict\":[-,{}],\"mean_bits_per_tag\":[-,{}],\"mean_distinct_per_block\":[-,{:.1},{:.1}],\"payload_bytes_current\":{},\"payload_bytes_rotated\":{},\"payload_bytes_best_of_four\":{},\"blocks_mixing_tags\":[0,{},{}]}}",
+            "{{\"order\":\"{perm:?}\",\"rows\":{n},\"blocks\":{blocks},\"mean_width_current\":[{}],\"mean_width_rotated\":[{}],\"mean_bits_dict\":[null,{}],\"mean_bits_per_tag\":[null,{}],\"mean_distinct_per_block\":[null,{:.1},{:.1}],\"payload_bytes_current\":{},\"payload_bytes_rotated\":{},\"payload_bytes_best_of_four\":{},\"blocks_mixing_tags\":[0,{},{}]}}",
             mean(&cur), mean(&alt), mean(&dict).split(',').skip(1).collect::<Vec<_>>().join(","), mean(&per_tag).split(',').skip(1).collect::<Vec<_>>().join(","),
             distinct_sum[1] as f64 / blocks as f64, distinct_sum[2] as f64 / blocks as f64, bytes(&cur), bytes(&alt), bytes(&best), mixed[1], mixed[2]
         );
