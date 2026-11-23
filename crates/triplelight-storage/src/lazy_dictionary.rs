@@ -55,9 +55,12 @@ impl Order {
 fn id_kind(id: u64) -> u64 {
     id >> 60
 }
-/// Kind implied by an N-Triples term text, by its first byte.
+/// Kind implied by an N-Triples term text, by its first byte (an RDF 1.2 triple term by its `<<(` opening: no IRI
+/// starts with `<<`, since `<` cannot occur inside an IRI).
 fn text_kind(text: &[u8]) -> Option<u64> {
     match text.first()? {
+        #[cfg(feature = "rdf-12")]
+        b'<' if text.starts_with(b"<<(") => Some(4),
         b'<' => Some(1),
         b'_' => Some(2),
         b'"' => Some(3),
@@ -413,6 +416,8 @@ impl LazyIndex {
                 Term::NamedNode(_) => 1,
                 Term::BlankNode(_) => 2,
                 Term::Literal(_) => 3,
+                #[cfg(feature = "rdf-12")]
+                Term::Triple(_) => 4,
             };
             if id_kind(id.0) != kind || variant != kind {
                 return Err(bad("dictionary block mixes kinds or a term disagrees with its kind"));

@@ -48,6 +48,12 @@ extern "C" {
 #define TL_TERM_IRI 1
 #define TL_TERM_BLANK 2
 #define TL_TERM_LITERAL 3
+#define TL_TERM_TRIPLE 4 /* RDF 1.2 triple term; only in builds with the rdf-12 feature */
+
+/* tl_term.direction for a language-tagged literal (RDF 1.2): 0 none, 1 ltr, 2 rtl. */
+#define TL_DIR_NONE 0
+#define TL_DIR_LTR 1
+#define TL_DIR_RTL 2
 
 typedef struct tl_db tl_db;
 typedef struct tl_result tl_result;
@@ -56,10 +62,13 @@ typedef struct tl_error tl_error;
 /* A slice of the result's byte arena. */
 typedef struct tl_str { uint64_t off; uint64_t len; } tl_str;
 
-/* One distinct term. Literals always carry a datatype IRI; `language` is empty unless language-tagged. */
+/* One distinct term. Literals always carry a datatype IRI; `language` is empty unless language-tagged.
+ * TL_TERM_TRIPLE: the subject, predicate and object are 1-based indices into the result's term table (the same numbering
+ * as result cells), stored in value.off, value.len and language.off; the other fields are zero. They are never 0. */
 typedef struct tl_term {
     uint8_t kind; /* TL_TERM_* */
-    uint8_t _pad[7];
+    uint8_t direction; /* TL_DIR_*; formerly padding, so the layout and the ABI version are unchanged */
+    uint8_t _pad[6];
     tl_str value;
     tl_str language;
     tl_str datatype;

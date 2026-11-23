@@ -73,7 +73,7 @@ pub mod store {
     pub fn quad_load_changes(quads: Vec<crate::rdf::Quad>) -> Result<Vec<crate::model::DatasetChange>, crate::exec::QueryError> {
         use crate::exec::{QueryError, QueryErrorKind};
         use crate::model::{DatasetChange, GraphTarget};
-        use crate::rdf::{BlankNode, GraphName, NamedOrBlankNode, Term, Triple};
+        use crate::rdf::{BlankNode, GraphName, NamedOrBlankNode, Triple};
         let mut scope: std::collections::HashMap<BlankNode, BlankNode> = std::collections::HashMap::new();
         let mut fresh = |b: &BlankNode| scope.entry(b.clone()).or_default().clone();
         quads.into_iter().map(|q| {
@@ -83,7 +83,8 @@ pub mod store {
                 GraphName::BlankNode(_) => return Err(QueryError::new(QueryErrorKind::Unsupported, "blank-node graph names are not supported")),
             };
             let subject = match q.subject { NamedOrBlankNode::BlankNode(b) => NamedOrBlankNode::BlankNode(fresh(&b)), s => s };
-            let object = match q.object { Term::BlankNode(b) => Term::BlankNode(fresh(&b)), o => o };
+            // Blank nodes inside RDF 1.2 triple terms are scoped to the document too.
+            let object = crate::exec::map_blank_nodes(q.object, &mut fresh);
             Ok(DatasetChange::Quad(graph, Change::Insert, Triple::new(subject, q.predicate, object)))
         }).collect()
     }

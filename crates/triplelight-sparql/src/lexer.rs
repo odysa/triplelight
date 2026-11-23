@@ -1,5 +1,8 @@
 //! Tokenizer for SPARQL 1.1 (grammar §19.8, terminals). Keywords are recognized case-insensitively by the parser
 //! from `Name` tokens; this layer only splits the text.
+//!
+//! With the `sparql-12` feature it also produces the SPARQL 1.2 terminals (§19.7): `<<(`, `)>>`, `<<`, `>>`, `{|`,
+//! `|}`, `~`, and `LANG_DIR` (`@en--ltr`), whose `LangTag` text then keeps the `--dir` suffix for the parser to check.
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -12,7 +15,7 @@ pub enum Tok {
     BNode(String),
     /// `?x` or `$x`, without the sigil.
     Var(String),
-    /// `@en-us`, without the `@`.
+    /// `@en-us`, without the `@` (with `sparql-12`, also `@en-us--rtl`: the text then contains `--`).
     LangTag(String),
     /// Numbers keep their exact lexical form.
     Integer(String),
@@ -58,6 +61,11 @@ pub struct LexError { pub message: String, pub pos: usize }
 
 const PUNCT: &[&str] = &["^^", "||", "&&", "!=", "<=", ">=", "{", "}", "(", ")", "[", "]", ".", ",", ";", "*", "+", "-", "/",
     "!", "^", "|", "=", "<", ">", "?"];
+
+/// SPARQL 1.2 punctuation, tried before `PUNCT` so the longest match wins (`<<(` over `<<` over `<`, `)>>` over `)`,
+/// `>>` over `>`, `{|` over `{`, `|}` over `|`).
+#[cfg(feature = "sparql-12")]
+const PUNCT_12: &[&str] = &["<<(", ")>>", "<<", ">>", "{|", "|}", "~"];
 
 pub fn tokenize(src: &str) -> Result<Vec<Spanned>, LexError> {
     let mut lx = Lexer { s: src, i: 0 };
@@ -120,6 +128,12 @@ impl<'a> Lexer<'a> {
                     self.bump();
                     while self.peek().is_some_and(|c| c.is_ascii_alphanumeric()) { self.bump(); }
                 }
+                // LANG_DIR (§19.7 [165]): `('--' [a-zA-Z]+)?` after the tag.
+                #[cfg(feature = "sparql-12")]
+                if self.peek() == Some('-') && self.peek_at(1) == Some('-') && self.peek_at(2).is_some_and(|c| c.is_ascii_alphabetic()) {
+                    self.i += 2;
+                    while self.peek().is_some_and(|c| c.is_ascii_alphabetic()) { self.bump(); }
+                }
                 return Ok(Tok::LangTag(self.s[start..self.i].to_string()));
             }
             '_' if self.peek_at(1) == Some(':') => {
@@ -135,6 +149,8 @@ impl<'a> Lexer<'a> {
             _ => {}
         }
         if c == ':' || is_pn_chars_base(c) { return self.name_or_pname() }
+        #[cfg(feature = "sparql-12")]
+        for p in PUNCT_12 { if self.s[self.i..].starts_with(p) { self.i += p.len(); return Ok(Tok::Punct(p)) } }
         for p in PUNCT { if self.s[self.i..].starts_with(p) { self.i += p.len(); return Ok(Tok::Punct(p)) } }
         self.err(format!("unexpected character {c:?}"))
     }

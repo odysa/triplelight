@@ -10,6 +10,10 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+# RDF 1.2 terms (oxrdf's `rdf-12`): triple terms (`Term::Triple`) and directional language-tagged literals.
+rdf-12 = []
+
 [dependencies]
 triplelight-iri.workspace = true
 # Seeds blank-node labels (`BlankNode::default`) from the OS, or from the JS host in the WebAssembly package.

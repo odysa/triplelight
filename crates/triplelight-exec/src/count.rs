@@ -44,6 +44,11 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let GraphPattern::Bgp { patterns } = inner else {
             return None;
         };
+        // Triple-term patterns need per-solution unification (`triple_term`); index counts cannot see it.
+        #[cfg(feature = "rdf-12")]
+        if patterns.iter().any(crate::triple_term::has_triple_term) {
+            return None;
+        }
         // Pattern blank nodes are existential, not visible solution variables.
         // Distinct solution counting in that case needs projection-aware state.
         if aggs

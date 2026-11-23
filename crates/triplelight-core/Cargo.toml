@@ -10,6 +10,11 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+# RDF 1.2: triple terms, directional literals and `BaseDirection` in the re-exported `rdf` module, the line
+# parsers (#102) and `Dictionary::triple_term_parts` (#101). Forwards triplelight-rdf's feature of the same name.
+rdf-12 = ["triplelight-rdf/rdf-12"]
+
 [dependencies]
 triplelight-rdf.workspace = true
 triplelight-iri.workspace = true
