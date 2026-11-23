@@ -13,9 +13,10 @@ step prep "$HERE/prep.sh" "$TOOLS" "$SRC"
 # always build with the server feature: a plain release binary has no `serve` (found in the first qualification run)
 step build-triplelight bash -c "cd $ROOT && cargo build --release --features server"
 LUBM_Q=$ROOT/bench/lubm; BSBM_Q=$ROOT/bench/bsbm
+step build-millenniumdb "$HERE/build-millenniumdb.sh" "$OUT/millenniumdb-src"
 # jena-tdb2 first: it builds the frozen reference answers.
 for pair in "lubm10:$LUBM_Q" "bsbm1:$BSBM_Q"; do
   D=${pair%%:*}; Q=${pair#*:}
-  step "session-$D" env COLD=1 RUNS=3 TIMEOUT=300 BUDGET="--mem 12 --cpus 8" "$HERE/session.sh" "$D" "$Q" "$OUT/$D" jena-tdb2 triplelight oxigraph qlever virtuoso
+  step "session-$D" env COLD=1 RUNS=3 TIMEOUT=300 BUDGET="--mem 12 --cpus 8" "$HERE/session.sh" "$D" "$Q" "$OUT/$D" jena-tdb2 triplelight oxigraph qlever qlever-two-order virtuoso rdf4j-native rdf4j-native-default millenniumdb
 done
 echo DONE >> "$OUT/results.txt"
