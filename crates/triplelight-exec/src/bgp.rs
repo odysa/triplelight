@@ -1,6 +1,7 @@
 //! Basic-graph-pattern evaluation over flat row buffers (`w` IDs per row, no per-row allocation), parallelized
 //! morsel-style: large inputs are split into chunks that rayon workers extend independently.
 use super::{storage_failure, UNBOUND};
+use super::plan_trace::Trace;
 use crate::model::{Perm, TermId, TripleBatch};
 use crate::storage::Snapshot;
 use rayon::prelude::*;
@@ -56,18 +57,21 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     }
 
     /// One join step shared by both evaluation orders: extend `rows` by pattern `pat`, mark its variables bound, then
-    /// let `post` apply whatever has become evaluable.
-    fn join_step(&self, pat: &[Slot; 3], rows: &[TermId], bound: &mut HashSet<usize>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>)) -> Vec<TermId> {
-        let mut out = self.extend(pat, rows);
+    /// let `post` apply whatever has become evaluable. With a plan trace (`plan_trace`), records the step as pattern `pi`.
+    fn join_step(&self, pat: &[Slot; 3], pi: usize, rows: &[TermId], bound: &mut HashSet<usize>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>), trace: Option<&mut Trace>) -> Vec<TermId> {
+        let t = trace.is_some().then(std::time::Instant::now);
+        let (mut out, access) = self.extend_via(pat, rows);
+        let extended = out.len();
         for s in pat { if let Slot::Var(v) = s { bound.insert(*v); } }
         post(&mut out, bound);
+        if let (Some(tr), Some(t)) = (trace, t) { let w = self.w.max(1); tr.step(Some(pi), access, rows.len() / w, extended / w, out.len() / w, t) }
         out
     }
 
     /// Greedy order with exact index counts, evaluated by index nested-loop joins.
     /// `post` runs after every join step with the set of variables bound so far (used to apply filters as early as
     /// their variables are bound).
-    pub fn eval_greedy(&self, pats: &[[Slot; 3]], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>)) -> Vec<TermId> {
+    pub fn eval_greedy(&self, pats: &[[Slot; 3]], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>), mut trace: Option<&mut Trace>) -> Vec<TermId> {
         let w = self.w;
         if rows.is_empty() { return rows }
         let mut remaining: Vec<usize> = (0..pats.len()).collect();
@@ -77,16 +81,16 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             let (k, _) = remaining.iter().enumerate().map(|(k, &pi)| (k, self.estimate(&pats[pi], &bound, &sample)))
                 .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap()).unwrap();
             let pi = remaining.remove(k);
-            rows = self.join_step(&pats[pi], &rows, &mut bound, post);
+            rows = self.join_step(&pats[pi], pi, &rows, &mut bound, post, trace.as_deref_mut());
         }
         rows
     }
 
-    pub fn eval_order(&self, pats: &[[Slot; 3]], order: &[usize], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>)) -> Vec<TermId> {
+    pub fn eval_order(&self, pats: &[[Slot; 3]], order: &[usize], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>), mut trace: Option<&mut Trace>) -> Vec<TermId> {
         let mut bound = if rows.is_empty() { HashSet::new() } else { self.bound_in_every_row(&rows) };
         for &pi in order {
             if rows.is_empty() { break }
-            rows = self.join_step(&pats[pi], &rows, &mut bound, post);
+            rows = self.join_step(&pats[pi], pi, &rows, &mut bound, post, trace.as_deref_mut());
         }
         rows
     }
@@ -145,17 +149,20 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     }
 
     /// Index nested-loop join of `rows` with one pattern: one index range read per input row.
-    pub fn extend(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> {
+    pub fn extend(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> { self.extend_via(pat, rows).0 }
+
+    /// `extend`, also naming the access path it took (for `plan_trace`).
+    fn extend_via(&self, pat: &[Slot; 3], rows: &[TermId]) -> (Vec<TermId>, &'static str) {
         let w = self.w;
-        if let Some(out) = self.extend_range(pat, rows) { return out }
-        if let Some(out) = self.extend_member_set(pat, rows) { return out }
-        if let Some(out) = self.extend_hash(pat, rows) { return out }
-        if let Some(out) = self.extend_sorted(pat, rows) { return out }
+        if let Some(out) = self.extend_range(pat, rows) { return (out, "range") }
+        if let Some(out) = self.extend_member_set(pat, rows) { return (out, "member-set") }
+        if let Some(out) = self.extend_hash(pat, rows) { return (out, "hash") }
+        if let Some(out) = self.extend_sorted(pat, rows) { return (out, "sorted") }
         if rows.len() / w.max(1) >= 2 * MORSEL {
             let parts: Vec<Vec<TermId>> = rows.par_chunks(w * MORSEL).map(|c| self.extend_seq(pat, c)).collect();
-            parts.concat()
+            (parts.concat(), "probe-par")
         } else {
-            self.extend_seq(pat, rows)
+            (self.extend_seq(pat, rows), "probe")
         }
     }
 
