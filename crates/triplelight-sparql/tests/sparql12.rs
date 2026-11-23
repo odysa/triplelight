@@ -484,3 +484,18 @@ mod sparql11 {
         ok("SELECT * { ?s :p|:q ?o }");
     }
 }
+
+/// W3C SPARQL 1.2 conformance fixes: `!!?x` parses (UnaryExpression recursion), and a VALUES header with a repeated
+/// variable is a syntax error.
+#[cfg(feature = "sparql-12")]
+mod w3c_fixes {
+    #[test]
+    fn double_negation_parses() {
+        assert!(triplelight_sparql::parse_query("SELECT ?e { VALUES ?v { true } BIND(!!?v AS ?e) }", None).is_ok());
+    }
+    #[test]
+    fn duplicated_values_variable_is_rejected() {
+        assert!(triplelight_sparql::parse_query("SELECT * WHERE { VALUES (?a ?a) { (1 1) } }", None).is_err());
+        assert!(triplelight_sparql::parse_query("SELECT * WHERE { VALUES (?a ?b) { (1 1) } }", None).is_ok());
+    }
+}
