@@ -500,6 +500,27 @@ fn subquery_hash_join_matches_nested_loop() {
 /// NOT EXISTS / EXISTS results are memoized per binding of the pattern's variables; rows that share those
 /// bindings but differ elsewhere must still get the right answer.
 #[test]
+fn expression_uses_query_values_and_correlated_row() {
+    let result = rows(r#"
+        BASE <https://example.org/base/>
+        SELECT ?x ?iri ?time ?hit WHERE {
+            VALUES ?x { <http://ex/alice> <http://ex/bob> }
+            BIND(IRI("item") AS ?iri)
+            BIND(NOW() AS ?time)
+            BIND(EXISTS { ?x <http://ex/knows> <http://ex/bob> } AS ?hit)
+        }
+    "#);
+    assert_eq!(result.len(), 2);
+    for row in &result {
+        assert_eq!(row[1], "<https://example.org/base/item>");
+        assert!(row[2].ends_with("^^<http://www.w3.org/2001/XMLSchema#dateTime>"));
+    }
+    assert_eq!(result[0][2], result[1][2]);
+    assert_eq!(result[0][3], "\"true\"^^<http://www.w3.org/2001/XMLSchema#boolean>");
+    assert_eq!(result[1][3], "\"false\"^^<http://www.w3.org/2001/XMLSchema#boolean>");
+}
+
+#[test]
 fn exists_memo_matches_per_row_semantics() {
     let mut data = String::new();
     let ty = "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>";
