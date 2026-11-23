@@ -44,7 +44,7 @@
 //! applied only to BGPs whose solution order cannot reach the answers (`reorderable_bgps`, computed once per query):
 //! not under SUM, AVG, MIN, MAX, SAMPLE, GROUP_CONCAT or a custom aggregate, nor under a LIMIT/OFFSET unless the
 //! ORDER BY it slices is provably tie-free (`tie_free`).
-use super::bgp::Slot;
+use super::pattern::Slot;
 use super::{storage_failure, Ctx, UNBOUND};
 use crate::model::{id_tag, Perm, TermId};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression, GraphPattern};

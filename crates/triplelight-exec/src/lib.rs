@@ -24,12 +24,13 @@ mod bgp;
 mod count;
 mod dataset;
 mod path;
+mod pattern;
 mod range;
 mod expr;
 mod support;
 #[cfg(feature = "rdf-12")]
 mod triple_term;
-use bgp::Slot;
+use pattern::Slot;
 pub mod results;
 
 use crate::model::{Perm, TermId};
@@ -953,7 +954,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         if let Some(tr) = tr.as_mut() { tr.note("ranges", ranges.len()); tr.note("filters", filters.len()) }
         let (out, strategy) = on_data!(self, |g| {
             let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges), sorted_probe: self.sorted_probe };
-            if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(bgp::no_repeated_var) && bgp::cyclic(&pats) {
+            if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(pattern::no_repeated_var) && pattern::cyclic(&pats) {
                 let given = self.variable_order(&pats);
                 let t = tr.as_mut().map(|tr| {
                     tr.note("var_order", given.as_deref().map_or_else(|| "default".to_string(), |o| plan_trace::var_names(o, &self.vars)));
