@@ -190,6 +190,10 @@ fn build_ids(snap: &ReadSnapshot, sol: IdSolutions) -> Result<Box<TlResult>, TlE
     u32::try_from(distinct.len()).map_err(|_| TlError { kind: TL_ERR_INTERNAL, message: "more than 4,294,967,295 distinct terms".into() })?;
     b.terms = vec![TlTerm::default(); distinct.len()];
     let mut unsupported = false;
+    // RDF 1.2 triple terms stored in the dictionary: their parts are added to the term table after the closure (a part may not
+    // be among the distinct IDs of this result), then the triple's own slot is filled with the indices of its parts.
+    #[cfg(feature = "rdf-12")]
+    let mut pending: Vec<(usize, Term)> = Vec::new();
     {
         let Builder { bytes, terms, strings, .. } = &mut b;
         let mut push = |s: &str| { let off = bytes.len() as u64; bytes.extend_from_slice(s.as_bytes()); TlStr { off, len: s.len() as u64 } };
@@ -208,14 +212,22 @@ fn build_ids(snap: &ReadSnapshot, sol: IdSolutions) -> Result<Box<TlResult>, TlE
                     let direction = TL_DIR_NONE;
                     TlTerm { kind: TL_TERM_LITERAL, direction, value, language, datatype, ..Default::default() }
                 }
-                // TODO(#104/#101): a triple term stored in the dictionary needs its parts added to this table; until the storage
-                // side exists (#101) the only triple terms are computed ones, which take the `Builder::term` path above.
+                #[cfg(feature = "rdf-12")]
+                TermRef::Triple(t) => { pending.push((i, Term::from(t.clone()))); TlTerm::default() }
                 #[allow(unreachable_patterns)]
                 _ => { unsupported = true; TlTerm::default() }
             };
         }).map_err(db_error)?;
     }
-    if unsupported { return Err(TlError { kind: TL_ERR_UNSUPPORTED, message: "stored RDF 1.2 triple terms are not supported by this path yet (task #104)".into() }) }
+    #[cfg(feature = "rdf-12")]
+    for (i, t) in pending {
+        let Term::Triple(tr) = &t else { continue };
+        let subject: Term = tr.subject.clone().into();
+        let predicate: Term = tr.predicate.clone().into();
+        let (si, pi, oi) = (b.term(&subject)?, b.term(&predicate)?, b.term(&tr.object)?);
+        b.terms[i] = TlTerm { kind: TL_TERM_TRIPLE, value: TlStr { off: si as u64, len: pi as u64 }, language: TlStr { off: oi as u64, len: 0 }, ..Default::default() };
+    }
+    if unsupported { return Err(TlError { kind: TL_ERR_UNSUPPORTED, message: "unsupported term kind".into() }) }
     let width = sol.vars.len();
     let total = sol.rows.checked_mul(width).ok_or_else(|| TlError { kind: TL_ERR_INTERNAL, message: "result too large".into() })?;
     let mut cells = Vec::with_capacity(total);
