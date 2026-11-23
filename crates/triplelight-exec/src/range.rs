@@ -190,7 +190,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let key = (p, datatype);
         if let Some(r) = self.range_checks.borrow().get(&key) { return r.clone() }
         let memo = self.snap.object_memo();
-        let cached = memo.and_then(|m| m.0.lock().ok()?.get(&key).cloned());
+        let cached = memo.and_then(|m| { let memo = m.0.lock().ok()?; memo.get(&key).cloned() });
         let r = match cached { Some(r) => r, None => self.check_literal_objects(p, datatype) };
         if let Some(m) = memo && let Ok(mut m) = m.0.lock() { m.insert(key, r.clone()); }
         self.range_checks.borrow_mut().insert(key, r.clone());
