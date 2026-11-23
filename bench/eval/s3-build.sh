@@ -17,6 +17,15 @@
 # Wall, user and system CPU come from the time utility around `systems.sh` (for Docker loaders that is the client, so the
 # receipt also keeps the container's cpu.stat on Linux). The page cache is dropped first (lib.sh drop_caches).
 # On a laptop this is a dry run of the same path: numbers are correctness evidence only, never timing claims.
+#
+# Receipt schema (receipt.json), the same rule for every system:
+#   headline_memory_bytes  the build's own memory: the peak of the cgroup's memory.stat `anon` over the samples (Linux);
+#                          on macOS the peak RSS of the loader's process tree plus the container (dry run only).
+#                          memory.peak is kept as `cgroup_memory_peak_bytes` but is not the headline: it counts the page
+#                          cache, which a bulk load fills up to the limit.
+#   peak_store_dir_kib     peak of the store directory (all of the system's scratch is configured to live there; see
+#                          SCRATCH below), at least the final size; final_store_kib after the load.
+#   tmp_growth_kib         peak growth of $TMPDIR during the load: a nonzero value means scratch escaped the store tree.
 set -eu
 SYS=$1; D=$2; TAG=$3; shift 3
 MEM=12; CPUS=8
@@ -39,6 +48,16 @@ case $SYS in   # the container a Docker loader runs in (empty: native loader)
   millenniumdb) CNAME_FILTER="ancestor=mdb" ;;
   *) CNAME_FILTER= ;;
 esac
+# Where each loader writes scratch, all inside the sampled store directory (checked by tmp_growth_kib):
+#   triplelight: external-sort runs in the output directory; qlever: index .tmp files beside the index in its -w dir;
+#   virtuoso: temp and transaction log in the database directory (/database = the store dir); jena-tdb2: tdb2.tdbloader
+#   works in place in --loc; oxigraph: RocksDB in --location.
+case $SYS in
+  triplelight) SCRATCH="output directory (external sort)";; qlever|qlever-two-order) SCRATCH="index directory (.tmp files)";;
+  virtuoso) SCRATCH="database directory (temp, transaction log)";; jena-tdb2) SCRATCH="--loc (in-place loader)";;
+  oxigraph) SCRATCH="--location (RocksDB)";; *) SCRATCH="store directory (unverified)";;
+esac
+TMPD=${TMPDIR:-/tmp}; TMP0=$(du -sk "$TMPD" 2>/dev/null | cut -f1)
 LINUX=0; [ "$(uname)" = Linux ] && [ -f /sys/fs/cgroup/cgroup.controllers ] && LINUX=1
 dev_written() {   # sectors written on the device that holds $T (Linux), else 0
   [ $LINUX = 1 ] || { echo 0; return; }
@@ -84,7 +103,13 @@ while kill -0 $PID 2>/dev/null; do
       [ -n "$c" ] && mem_kb="$mem_kb+docker:$c"
     fi
   fi
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date -u +%H:%M:%S)" "${s:-0}" "$f" "${peak:-}" "${anon:-}" "${file:-}" "${mem_kb:-}" >> "$OUT/samples.tsv"
+  # On the Linux machine an unmeasured build is a failure, not an empty field (Kaiming).
+  if [ $LINUX = 1 ] && [ -z "$peak" ]; then
+    MISS=$(( ${MISS:-0} + 1 ))
+    if [ $MISS -ge 3 ]; then echo "no cgroup found for $SYS ($CNAME_FILTER / $SCOPE): stopping, the build would be unmeasured" >&2; kill $PID; pkill -f "systems.sh $SYS load" || true; exit 9; fi
+  fi
+  tg=$(( $(du -sk "$TMPD" 2>/dev/null | cut -f1) - TMP0 ))
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date -u +%H:%M:%S)" "${s:-0}" "$f" "${peak:-}" "${anon:-}" "${file:-}" "${mem_kb:-}" "$tg" >> "$OUT/samples.tsv"
   sleep 2
 done
 set +e; wait $PID; RC=$?; set -e
@@ -99,7 +124,7 @@ FINAL=$(du -sk "$STORE" 2>/dev/null | cut -f1)
   [ "$SYS" = oxigraph ] && echo "oxigraph_version=$("$T/oxigraph" --version)"
   grep -E '^[A-Z_]+=' "$HERE/VERSIONS"
 } > "$OUT/provenance.txt"
-python3 -I - "$OUT" "$SYS" "$D" "$TAG" "$MEM" "$CPUS" "$RC" "$START" "$END" "$W0" "$W1" "${FINAL:-0}" "$LINUX" <<'EOF'
+S3_SCRATCH="$SCRATCH" python3 -I - "$OUT" "$SYS" "$D" "$TAG" "$MEM" "$CPUS" "$RC" "$START" "$END" "$W0" "$W1" "${FINAL:-0}" "$LINUX" <<'EOF'
 import sys, json, re, os
 out, sys_, d, tag, mem, cpus, rc, start, end, w0, w1, final, linux = sys.argv[1:]
 rows = [l.rstrip("\n").split("\t") for l in open(os.path.join(out, "samples.tsv")) if l.strip()]
@@ -121,6 +146,11 @@ rec = {
     "cgroup_memory_peak_bytes": mem_peak, "anon_at_peak_bytes": num(at[4]) if at else None, "file_at_peak_bytes": num(at[5]) if at else None,
     "peak_store_dir_kib": peak_dir, "final_store_kib": int(final), "min_free_kib": min_free,
     "device_written_bytes": (int(w1) - int(w0)) * 512 if linux == "1" else None,
+    "headline_memory_bytes": (max([num(r[4]) for r in rows if num(r[4]) is not None], default=None) if linux == "1"
+        else max([sum(int(float(x[:-3]) * {"KiB": 1024, "MiB": 2**20, "GiB": 2**30}[x[-3:]]) if x[-3:] in ("KiB", "MiB", "GiB") else int(x) * 1024
+                      for x in r[6].replace("docker:", "").split("+") if x) for r in rows if r[6]], default=None)),
+    "tmp_growth_kib": max([int(r[7]) for r in rows if len(r) > 7 and r[7].lstrip("-").isdigit()] + [0]),
+    "scratch_location": os.environ.get("S3_SCRATCH", ""),
     "memory_source": "cgroup" if linux == "1" else "process-tree RSS + docker stats (laptop dry run)",
     "page_cache": open(os.path.join(out, "drop_caches.txt")).read().strip(),
     "provenance": dict(l.rstrip("\n").split("=", 1) for l in open(os.path.join(out, "provenance.txt")) if "=" in l),
