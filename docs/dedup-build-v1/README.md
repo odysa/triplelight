@@ -36,8 +36,9 @@ external containers (`tp-live-swegym-*`, not this project's) ran in every arm (`
 - **Mechanism:** sys CPU falls about 4× (less term-sort I/O), user CPU about 1.7×, and the peak build directory about
   halves (47 → 20 GB on average). The peak was the parse-phase shard term sort (`docs/build-compare-orders-v1`).
 - **Cost:** peak RSS rises by about 2.5 GB, for the eight shard maps at 256 MB plus hash-table overhead.
-- **Eviction was not exercised:** each shard reports `flushes=1`, about 4.1M local IDs for 17.3M triples, which fits
-  the map. The 1 MB gate above covers eviction's correctness, not its speed.
+- **Eviction was barely exercised:** each shard reports `flushes=1`, which counts the map evictions during the parse
+  (the final drain is not counted). So each shard evicted its map once, about 4.1M local IDs for 17.3M triples. The
+  1 MB gate above covers eviction under constant pressure for correctness, but not for speed.
 
 ## Limits
 
