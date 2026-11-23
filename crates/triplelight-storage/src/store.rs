@@ -689,6 +689,15 @@ fn sync_dir(dir: &Path) -> std::io::Result<()> { File::open(dir)?.sync_all() }
 /// Without this, the commit would be acknowledged, but no compaction could ever write the store's next base.
 /// Checked before anything is applied, so a refused update changes nothing.
 fn check_term_size(term: triplelight_rdf::TermRef<'_>) -> std::io::Result<()> {
+    // RDF 1.2: a base parses its dictionary text back with `Term::from_str`, which reads at most
+    // `MAX_TRIPLE_TERM_DEPTH` nested triple terms; a deeper one would block every later compaction.
+    #[cfg(feature = "rdf-12")]
+    {
+        let depth = triplelight_rdf::triple_term_depth(term);
+        if depth > triplelight_rdf::MAX_TRIPLE_TERM_DEPTH {
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("triple term nested {depth} deep exceeds the limit of {}", triplelight_rdf::MAX_TRIPLE_TERM_DEPTH)));
+        }
+    }
     // The same limit as the base writer (`external_build::MAX_TERM`, Unix only) and the streaming parsers.
     let limit = triplelight_core::ntriples::MAX_TOKEN;
     // Cheap upper bound first: escaping turns one byte into at most six (`\u0000`), plus quotes and the suffix.

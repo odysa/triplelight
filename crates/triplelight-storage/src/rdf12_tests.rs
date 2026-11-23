@@ -106,3 +106,33 @@ fn wal_replay_compaction_and_the_fence() {
     drop(store);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+/// Commit refuses a triple term nested deeper than `MAX_TRIPLE_TERM_DEPTH` before applying anything, and accepts the
+/// deepest allowed one, which survives WAL replay and compaction (whose dictionary pass parses it back).
+#[cfg(unix)]
+#[test]
+fn commit_refuses_triple_terms_nested_too_deep() {
+    let nest = |depth: usize| {
+        let mut object: Term = iri("leaf").into();
+        for _ in 0..depth { object = Term::Triple(Box::new(Triple::new(iri("a"), iri("b"), object))) }
+        Triple::new(iri("s"), iri("deep"), object)
+    };
+    let max = triplelight_rdf::MAX_TRIPLE_TERM_DEPTH;
+    let dir = std::env::temp_dir().join(format!("rdf12-depth-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    {
+        let store = Store::open(&dir, None, 1).unwrap();
+        let err = store.commit(&[(Change::Insert, iri_triple()), (Change::Insert, nest(max + 1))]).unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+        assert_eq!(store.snapshot().count(crate::model::Perm::Spo, &[]).unwrap(), 0, "a refused commit applies nothing");
+        store.commit(&[(Change::Insert, nest(max))]).unwrap();
+    }
+    let store = Store::open(&dir, None, 1).unwrap();
+    store.compact().unwrap();
+    let deepest = store.snapshot().lookup(&nest(max).object).unwrap();
+    assert!(deepest.is_some(), "the deepest allowed term survives replay and compaction");
+    drop(store);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+fn iri_triple() -> Triple { Triple::new(iri("s"), iri("p"), iri("o")) }
