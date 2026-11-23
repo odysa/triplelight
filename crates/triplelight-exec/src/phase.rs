@@ -1,6 +1,8 @@
 //! Per-query phase timing for the evaluation's "where the time goes" breakdown (plan amendment 1, S6, task #100).
 //! Off unless `TRIPLELIGHT_TRACE_PHASES` is set; when off, each hook costs one cached flag read. Logging only: no answer
 //! or plan depends on it. Counters are process-global and reset by `take`, so they are exact for single-client runs.
+//! `exec` (in the server's line) includes `parse`. A count-shortcut attempt that declines (falls back to evaluation)
+//! still counts its attempt as `count` time.
 //! Phases are exclusive of each other: BGP time is measured only at the outermost BGP call on a thread (a FILTER
 //! EXISTS inside a BGP is not counted twice), grouping and sorting are timed after their input is evaluated.
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};

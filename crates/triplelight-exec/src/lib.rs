@@ -783,10 +783,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }
     }
 
-    fn eval_bgp(&self, patterns: &[TriplePattern], rows: Vec<Row>) -> Vec<Row> { phase::bgp(|| self.eval_bgp_filtered(patterns, rows, &[])) }
+    fn eval_bgp(&self, patterns: &[TriplePattern], rows: Vec<Row>) -> Vec<Row> { self.eval_bgp_filtered(patterns, rows, &[]) }
 
     /// BGP evaluation that applies each filter in `filters` as soon as all its variables are bound.
+    /// Timed as the `bgp` phase (S6): every BGP evaluation, with or without pushed-down FILTER conjuncts, goes through here.
     fn eval_bgp_filtered(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<Row> {
+        phase::bgp(|| self.eval_bgp_filtered_untimed(patterns, rows, filters))
+    }
+
+    fn eval_bgp_filtered_untimed(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<Row> {
         let pats: Vec<[Slot; 3]> = patterns.iter().map(|t| {
             let p = match &t.predicate {
                 NamedNodePattern::Variable(v) => Slot::Var(self.var(v)),
