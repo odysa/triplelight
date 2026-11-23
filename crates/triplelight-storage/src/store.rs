@@ -98,6 +98,16 @@ impl DictRef<'_> {
 }
 
 impl Dictionary for DictRef<'_> {
+    /// A base ID is answered by the base (one block read on a disk base with the `triple_terms` table); a delta
+    /// triple term's parts were interned with it, so the default lookup finds them.
+    #[cfg(feature = "rdf-12")]
+    fn triple_term_parts(&self, id: TermId) -> Result<Option<[TermId; 3]>, StorageError> {
+        if id.0 >> 60 != DELTA_TAG { return self.base.triple_term_parts(id) }
+        let Term::Triple(t) = self.delta_term(id)? else { return Ok(None) };
+        let t = (**t).clone();
+        let part = |term: Term| self.lookup(&term)?.ok_or_else(|| StorageError::other("triple-term part missing from the dictionary"));
+        Ok(Some([part(t.subject.into())?, part(t.predicate.into())?, part(t.object)?]))
+    }
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> {
         Ok(self.base.lookup(term)?.or_else(|| self.delta.terms.get(term).copied()))
     }
@@ -118,6 +128,8 @@ impl Dictionary for DictRef<'_> {
 }
 
 impl Dictionary for Overlay {
+    #[cfg(feature = "rdf-12")]
+    fn triple_term_parts(&self, id: TermId) -> Result<Option<[TermId; 3]>, StorageError> { self.dict().triple_term_parts(id) }
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { self.dict().lookup(term) }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> { self.dict().resolve(id) }
     fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> { self.dict().with_term(id, f) }

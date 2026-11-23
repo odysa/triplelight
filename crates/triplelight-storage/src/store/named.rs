@@ -74,6 +74,8 @@ impl NamedGraph {
 }
 
 impl Dictionary for NamedGraph {
+    #[cfg(feature = "rdf-12")]
+    fn triple_term_parts(&self, id: TermId) -> Result<Option<[TermId; 3]>, StorageError> { self.dict().triple_term_parts(id) }
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { self.dict().lookup(term) }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> { self.dict().resolve(id) }
     fn with_term(&self, id: TermId, f: &mut dyn FnMut(TermRef<'_>)) -> Result<(), StorageError> { self.dict().with_term(id, f) }

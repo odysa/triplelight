@@ -209,7 +209,12 @@ pub struct DiskSnapshot {
     seek_memo: super::derived_order::SeekMemo,
     /// The base holds an RDF 1.2 term (manifest `RDFSNAP7`).
     rdf12: bool,
+    /// `RDFSNAP7` only: rows `(triple term, s, p, o)` sorted by term ID (`Dictionary::triple_term_parts`).
+    #[cfg_attr(not(feature = "rdf-12"), allow(dead_code))] // only RDF 1.2 builds open RDFSNAP7
+    triple_terms: Option<DiskIndex<4>>,
 }
+/// File name of the triple-term parts table of an `RDFSNAP7` base.
+pub(super) const TRIPLE_TERMS_FILE: &str = "triple_terms";
 struct NamedBase {
     /// The graph-first quad orders, in `Perm::ALL` order of their triple part; `None` as for `indexes`.
     quads: Vec<Option<DiskIndex<4>>>,
@@ -288,7 +293,7 @@ impl DiskSnapshot {
         // a six-order base), so a base that keeps fewer orders gives the rest more cache instead of leaving it unused.
         let shares = 3 + order_count + if named_graphs { order_count } else { 0 };
         // RDFSNAP5: the RDFSNAP4 identities, then six quad orders and the catalog.
-        let mut expected = vec![[0u8; 32]; if version == 3 { 2 } else { 1 } + order_count + if named_graphs { order_count + 1 } else { 0 }];
+        let mut expected = vec![[0u8; 32]; if version == 3 { 2 } else { 1 } + order_count + if named_graphs { order_count + 1 } else { 0 } + usize::from(version == 7)];
         for item in &mut expected {
             manifest.read_exact(item)?;
         }
@@ -353,12 +358,23 @@ impl DiskSnapshot {
         } else {
             None
         };
+        // RDFSNAP7: the triple-term parts table, the last identity.
+        let triple_terms = if version == 7 {
+            let index = DiskIndex::<4>::open(dir.join(TRIPLE_TERMS_FILE))?;
+            if Some(&index.identity()) != identities.next() {
+                return Err(bad("triple-term table checksum mismatch"));
+            }
+            Some(index)
+        } else {
+            None
+        };
         Ok(Self {
             dictionary,
             indexes,
             named,
             seek_memo: Default::default(),
             rdf12: version == 7,
+            triple_terms,
         })
     }
     /// Exhaustive, exact verification. The phases run in this order because the later ones rely on the earlier:
@@ -382,6 +398,25 @@ impl DiskSnapshot {
             let count = unified.check_text_order()?;
             if count == 0 && !self.index(Perm::Spo).is_empty() {
                 return Err(bad("dictionary is empty but the indexes are not"));
+            }
+            // RDFSNAP7: the parts table has exactly one row per triple term (kind 4), in ID order, and each row's
+            // parts are that term's subject, predicate and object.
+            #[cfg(feature = "rdf-12")]
+            if let Some(table) = &self.triple_terms {
+                table.validate()?;
+                let mut row = 0u64;
+                unified.for_each_of_kind(crate::model::id_tag::TRIPLE_TERM, &mut |id, term| {
+                    let Term::Triple(t) = term else { return Err(bad("kind 4 entry is not a triple term")) };
+                    if row >= table.len() { return Err(bad("triple-term table is missing a row")) }
+                    let [tt, s, p, o] = table.get(row)?;
+                    let parts: [Term; 3] = [t.subject.clone().into(), t.predicate.clone().into(), t.object.clone()];
+                    if tt != id || [s, p, o].iter().zip(&parts).any(|(&pid, part)| self.resolve(pid).ok().as_ref() != Some(part)) {
+                        return Err(bad("triple-term table disagrees with the dictionary"));
+                    }
+                    row += 1;
+                    Ok(())
+                })?;
+                if row != table.len() { return Err(bad("triple-term table has extra rows")) }
             }
         }
         if let DictionaryBackend::Lazy { by_term, by_id } = &self.dictionary {
@@ -523,6 +558,16 @@ impl DiskSnapshot {
     }
 }
 impl Dictionary for DiskSnapshot {
+    /// From the `triple_terms` table: one block read. A base without the table (anything but `RDFSNAP7`) holds no
+    /// triple term.
+    #[cfg(feature = "rdf-12")]
+    fn triple_term_parts(&self, id: TermId) -> Result<Option<[TermId; 3]>, StorageError> {
+        let Some(table) = &self.triple_terms else { return Ok(None) };
+        let range = table.range(&[id])?;
+        if range.is_empty() { return Ok(None) }
+        let [_, s, p, o] = table.get(range.start)?;
+        Ok(Some([s, p, o]))
+    }
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> {
         match &self.dictionary {
             DictionaryBackend::Legacy { forward, .. } => Ok(forward.get(term).copied()),
@@ -673,6 +718,8 @@ impl DiskGraph {
     }
 }
 impl Dictionary for DiskGraph {
+    #[cfg(feature = "rdf-12")]
+    fn triple_term_parts(&self, id: TermId) -> Result<Option<[TermId; 3]>, StorageError> { self.snap.triple_term_parts(id) }
     fn lookup(&self, term: &Term) -> Result<Option<TermId>, StorageError> { self.snap.lookup(term) }
     fn resolve(&self, id: TermId) -> Result<Term, StorageError> { self.snap.resolve(id) }
     fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.snap.with_term(id, f) }
