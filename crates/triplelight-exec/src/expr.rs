@@ -3,7 +3,7 @@ use super::{Ctx, Row};
 use crate::storage::Snapshot;
 use triplelight_rdf::vocab::xsd;
 use triplelight_rdf::{Literal, NamedNode, Term};
-#[cfg(feature = "sparql-12")]
+#[cfg(feature = "rdf-12")]
 use triplelight_rdf::{BaseDirection, NamedOrBlankNode, Triple};
 use crate::sparql::{Expression, Function};
 use std::cmp::Ordering;
@@ -186,16 +186,16 @@ fn compare(a: &Term, b: &Term) -> Option<Ordering> {
 }
 
 /// Two literals have the same base direction (SPARQL 1.2): `"a"@en--ltr` and `"a"@en--rtl` are different values.
-#[cfg(feature = "sparql-12")]
+#[cfg(feature = "rdf-12")]
 fn same_direction(x: &Literal, y: &Literal) -> bool { x.direction() == y.direction() }
-#[cfg(not(feature = "sparql-12"))]
+#[cfg(not(feature = "rdf-12"))]
 fn same_direction(_: &Literal, _: &Literal) -> bool { true }
 
 fn equal(a: &Term, b: &Term) -> Option<bool> {
     if a == b { return Some(true) }
     // SPARQL 1.2 sameValue (§17.4.2.2) on two triple terms: component-wise; true if every pair is equal, an error if
     // any pair is an error, otherwise false. (A triple term and any other term are simply unequal, below.)
-    #[cfg(feature = "sparql-12")]
+    #[cfg(feature = "rdf-12")]
     if let (Term::Triple(x), Term::Triple(y)) = (a, b) {
         let parts = [
             equal(&x.subject.clone().into(), &y.subject.clone().into()),
@@ -221,7 +221,7 @@ pub(super) fn order_cmp(a: Option<&Term>, b: Option<&Term>) -> Ordering {
     fn class(t: Option<&Term>) -> u8 {
         match t {
             None => 0, Some(Term::BlankNode(_)) => 1, Some(Term::NamedNode(_)) => 2,
-            #[cfg(feature = "sparql-12")]
+            #[cfg(feature = "rdf-12")]
             Some(Term::Triple(_)) => 4,
             _ => 3,
         }
@@ -232,18 +232,18 @@ pub(super) fn order_cmp(a: Option<&Term>, b: Option<&Term>) -> Ordering {
             match (x, y) {
                 (Term::NamedNode(m), Term::NamedNode(n)) => m.as_str().cmp(n.as_str()),
                 (Term::BlankNode(m), Term::BlankNode(n)) => m.as_str().cmp(n.as_str()),
-                #[cfg(not(feature = "sparql-12"))]
+                #[cfg(not(feature = "rdf-12"))]
                 (Term::Literal(m), Term::Literal(n)) => m.value().cmp(n.value()).then_with(|| m.datatype().as_str().cmp(n.datatype().as_str())),
                 // Language tag and base direction break the remaining ties, so `"a"@en--ltr`, `"a"@en--rtl` and
                 // `"a"@fr--ltr` never sort as equal.
-                #[cfg(feature = "sparql-12")]
+                #[cfg(feature = "rdf-12")]
                 (Term::Literal(m), Term::Literal(n)) => m.value().cmp(n.value())
                     .then_with(|| m.datatype().as_str().cmp(n.datatype().as_str()))
                     .then_with(|| m.language().cmp(&n.language()))
                     .then_with(|| direction_rank(m.direction()).cmp(&direction_rank(n.direction()))),
                 // The draft leaves two triple terms unordered; order them component-wise (subject, predicate,
                 // object), recursively, so distinct triple terms never tie.
-                #[cfg(feature = "sparql-12")]
+                #[cfg(feature = "rdf-12")]
                 (Term::Triple(m), Term::Triple(n)) => triple_cmp(m, n),
                 _ => Ordering::Equal,
             }
@@ -252,10 +252,10 @@ pub(super) fn order_cmp(a: Option<&Term>, b: Option<&Term>) -> Ordering {
     }
 }
 
-#[cfg(feature = "sparql-12")]
+#[cfg(feature = "rdf-12")]
 fn direction_rank(d: Option<BaseDirection>) -> u8 { match d { None => 0, Some(BaseDirection::Ltr) => 1, Some(BaseDirection::Rtl) => 2 } }
 
-#[cfg(feature = "sparql-12")]
+#[cfg(feature = "rdf-12")]
 fn triple_cmp(m: &Triple, n: &Triple) -> Ordering {
     let subject = |t: &Triple| -> Term { t.subject.clone().into() };
     order_cmp(Some(&subject(m)), Some(&subject(n)))
@@ -268,12 +268,12 @@ fn simple(s: impl Into<String>) -> Term { Literal::new_simple_literal(s).into() 
 /// Whether two string arguments have the same base direction (SPARQL 1.2 argument compatibility); always true for
 /// RDF 1.1 terms, which have none.
 fn same_dir(_a: &Term, _b: &Term) -> bool {
-    #[cfg(feature = "sparql-12")]
+    #[cfg(feature = "rdf-12")]
     {
         let d = |t: &Term| if let Term::Literal(l) = t { l.direction() } else { None };
         d(_a) == d(_b)
     }
-    #[cfg(not(feature = "sparql-12"))]
+    #[cfg(not(feature = "rdf-12"))]
     { true }
 }
 
@@ -281,7 +281,7 @@ fn same_dir(_a: &Term, _b: &Term) -> bool {
 fn like(src: &Term, s: String) -> Term {
     match src {
         // SPARQL 1.2: the base direction is kept along with the language tag.
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         Term::Literal(l) if l.direction().is_some() => Literal::new_directional_language_tagged_literal_unchecked(s, l.language().unwrap(), l.direction().unwrap()).into(),
         Term::Literal(l) if l.language().is_some() => Literal::new_language_tagged_literal_unchecked(s, l.language().unwrap()).into(),
         _ => simple(s),
@@ -514,31 +514,31 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
         Function::Custom(f) => xsd_cast(f.as_str(), &a(0)?),
         // SPARQL 1.2 §17.4.6: TRIPLE errors unless (s, p, o) is an RDF triple (IRI or blank-node subject, IRI
         // predicate); SUBJECT / PREDICATE / OBJECT error on anything but a triple term.
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         Function::Triple => {
             let s = match a(0)? { Term::NamedNode(n) => NamedOrBlankNode::NamedNode(n), Term::BlankNode(b) => NamedOrBlankNode::BlankNode(b), _ => return None };
             let Term::NamedNode(p) = a(1)? else { return None };
             Some(Triple::new(s, p, a(2)?).into())
         }
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         Function::Subject => match a(0)? { Term::Triple(t) => { let t = *t; Some(t.subject.into()) } _ => None },
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         Function::Predicate => match a(0)? { Term::Triple(t) => { let t = *t; Some(t.predicate.into()) } _ => None },
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         Function::Object => match a(0)? { Term::Triple(t) => { let t = *t; Some(t.object) } _ => None },
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         Function::IsTriple => Some(bool_term(matches!(a(0)?, Term::Triple(_)))),
         // §17.4.2.9-11: LANGDIR takes a literal ("" without a direction; a non-literal is an error); hasLANG and
         // hasLANGDIR are false for anything that is not a literal with a language tag / base direction.
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         Function::LangDir => Some(simple(lit(&a(0)?)?.direction().map_or_else(String::new, |d| d.to_string()))),
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         Function::HasLang => Some(bool_term(matches!(a(0)?, Term::Literal(l) if l.language().is_some()))),
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         Function::HasLangDir => Some(bool_term(matches!(a(0)?, Term::Literal(l) if l.direction().is_some()))),
         // §17.4.2.17: plain-string arguments; a non-empty, well-formed language tag; direction exactly "ltr" or "rtl"
         // (case-sensitive).
-        #[cfg(feature = "sparql-12")]
+        #[cfg(feature = "rdf-12")]
         Function::StrLangDir => {
             let dir = match plain(2)?.as_str() { "ltr" => BaseDirection::Ltr, "rtl" => BaseDirection::Rtl, _ => return None };
             let lang = plain(1)?;

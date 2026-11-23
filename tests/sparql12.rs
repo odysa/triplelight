@@ -2,7 +2,7 @@
 //! nodes), the reified-triple and annotation syntax end to end, the triple-term and base-direction functions,
 //! ORDER BY and `=` over triple terms and directional literals, VALUES and CONSTRUCT with triple terms, and INSERT /
 //! DELETE DATA with triple terms through the update path.
-#![cfg(feature = "sparql-12")]
+#![cfg(feature = "rdf-12")]
 use triplelight::exec::{query, QueryResult};
 use triplelight::storage::MemorySnapshot;
 
