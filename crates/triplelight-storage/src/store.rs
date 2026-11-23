@@ -672,6 +672,9 @@ fn check_term_size(term: triplelight_rdf::TermRef<'_>) -> std::io::Result<()> {
         triplelight_rdf::TermRef::NamedNode(n) => n.as_str().len() + 2,
         triplelight_rdf::TermRef::BlankNode(b) => b.as_str().len() + 2,
         triplelight_rdf::TermRef::Literal(l) => l.value().len() * 6 + l.datatype().as_str().len() + l.language().map_or(0, str::len) + 8,
+        // Nested parts make any cheap bound loose; triple terms are rare, so render them.
+        #[cfg(feature = "rdf-12")]
+        triplelight_rdf::TermRef::Triple(_) => usize::MAX,
     };
     if bound <= limit { return Ok(()) }
     let len = term.to_string().len();
