@@ -1,0 +1,4 @@
+?x	?triple
+"Alice"	<<( <http://example/alice> <http://example/knows> <http://example/bob> )>>
+"Bob"	<<( <http://example/bob> <http://example/knows> <http://example/alice> )>>
+"Carol"	<<( <http://example/carol> <http://example/says> "Hello world, my name is \"Alice\"." )>>
