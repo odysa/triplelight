@@ -1,5 +1,7 @@
-use oxrdf::{CanonicalizationAlgorithm, Dataset};
+use oxrdf::Dataset;
+use oxrdf::dataset::CanonicalizationAlgorithm;
 use triplelight_core::ntriples::{read_nquads, read_ntriples};
+use triplelight_core::rdf::ReadError;
 use triplelight_core::turtle::TurtleReader;
 use triplelight_rdf as tl;
 
@@ -71,7 +73,7 @@ pub fn quad(value: tl::Quad) -> oxrdf::Quad {
     )
 }
 
-pub fn parse_native(data: &[u8], format: &str, base: &str) -> Result<Vec<tl::Quad>, tl::ReadError> {
+pub fn parse_native(data: &[u8], format: &str, base: &str) -> Result<Vec<tl::Quad>, ReadError> {
     match format {
         "NTriples" => read_ntriples(data)
             .map(|result| result.map(|value| value.in_graph(tl::GraphName::DefaultGraph)))

@@ -1,7 +1,7 @@
 //! The W3C RDF 1.2 syntax and evaluation suites for the four line/terse formats.
 use oxrdf::Dataset;
 use std::path::Path;
-use triplelight_rdf as tl;
+use triplelight_core::rdf::ReadError;
 
 #[path = "w3c/terms.rs"]
 mod terms;
@@ -87,7 +87,7 @@ fn rdf12_w3c_syntax_and_evaluation() {
             let failure = match suffix {
                 "PositiveSyntax" => outcome.err().map(|error| error.to_string()),
                 "NegativeSyntax" => match outcome {
-                    Err(tl::ReadError::Syntax(_)) => None,
+                    Err(ReadError::Syntax(_)) => None,
                     Err(error) => Some(error.to_string()),
                     Ok(_) => Some("negative test accepted".into()),
                 },

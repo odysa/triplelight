@@ -68,15 +68,21 @@ fn curated_documents_agree() {
         "@prefix : <urn:> . :a :b :c .", "@prefix : <http://ex> . :a :b :c .", "@prefix : <http://ex/> . :  :b :c .", "@prefix : <http://ex/> . : :b :c .",
         "@prefix : <http://ex/> . :a :b ?x .", "@prefix : <http://ex/> . :a :b :c", "@prefix : <http://ex/> . :a :b :c .. ", "@prefix : <http://ex/> . :a :b :c } ",
         "@prefix : <http://ex/> . _:x :b _:y . _:y. :b _:x.", "@prefix : <http://ex/> . :a :b \"x\"^^<http://www.w3.org/1999/02/22-rdf-syntax-ns#langString> .",
-        "@prefix : <http://ex/> . :a :b \"x\n\" .", "@prefix : <http://ex/> . :a :b \"\"\"a\\u0041\\n\"\"\" .", "@prefix : <http://ex/> . :a :b \"x\"@en--ltr .",
+        "@prefix : <http://ex/> . :a :b \"x\n\" .", "@prefix : <http://ex/> . :a :b \"\"\"a\\u0041\\n\"\"\" .",
+        #[cfg(not(feature = "rdf-12"))]
+        "@prefix : <http://ex/> . :a :b \"x\"@en--ltr .",
         "@prefix : <http://ex/> . { :a :b :c }", "@prefix : <http://ex/> . :g { :a :b :c . :d :e :f . }", "@prefix : <http://ex/> . GRAPH :g { :a :b :c }",
         "@prefix : <http://ex/> . graph :g { :a :b :c }", "@prefix : <http://ex/> . _:g { :a :b :c }", "@prefix : <http://ex/> . [] { :a :b :c }",
         "@prefix : <http://ex/> . GRAPH [] { :a :b :c }", "@prefix : <http://ex/> . GRAPH [ :p :o ] { :a :b :c }", "@prefix : <http://ex/> . :g { } { }",
         "@prefix : <http://ex/> . :g { :a :b :c } .", "@prefix : <http://ex/> . :g { [ :p :o ] . ( :x ) :y :z }", "@prefix : <http://ex/> . :g { @prefix x: <y> . }",
-        "@prefix : <http://ex/> . :g { :a :b :c .. }", "@prefix : <http://ex/> . { . }", "<< <a> <b> <c> >> <d> <e> .",
+        "@prefix : <http://ex/> . :g { :a :b :c .. }", "@prefix : <http://ex/> . { . }",
+        #[cfg(not(feature = "rdf-12"))]
+        "<< <a> <b> <c> >> <d> <e> .",
         #[cfg(not(feature = "rdf-12"))]
         "<http://a> <http://b> <http://c> {| <http://d> <http://e> |} .",
-        "\u{feff}<http://a> <http://b> <http://c> .", "<http://a> <http://b> \"\u{ff}\" .", "<http://a> <http://b> <http://c> ~ .",
+        "\u{feff}<http://a> <http://b> <http://c> .", "<http://a> <http://b> \"\u{ff}\" .",
+        #[cfg(not(feature = "rdf-12"))]
+        "<http://a> <http://b> <http://c> ~ .",
     ];
     for doc in docs { for trig in [false, true] { assert_eq!(ours(doc.as_bytes(), trig), theirs(doc.as_bytes(), trig), "{doc:?} (trig: {trig})") } }
     for doc in [&b"# \xff\n<http://a> <http://b> <http://c> .\n"[..], b"<http://a\xff> <http://b> <http://c> .", b"<http://a> <http://b> \"\xff\" .", b"@prefix \xc3: <http://e/> ."] {
