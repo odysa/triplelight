@@ -1,7 +1,7 @@
 url_of() {   # the SPARQL endpoint of a system
   case $1 in triplelight) echo http://127.0.0.1:7979/sparql;; qlever) echo http://127.0.0.1:7001/;; virtuoso) echo http://127.0.0.1:8890/sparql;;
              jena-tdb2) echo http://127.0.0.1:3030/ds/sparql;; oxigraph) echo http://127.0.0.1:7878/query;;
-             qlever-two-order) echo http://127.0.0.1:7001/;; rdf4j-native|rdf4j-native-default) echo http://127.0.0.1:8080/rdf4j-server/repositories/bench;;
+             qlever-two-order) echo http://127.0.0.1:7001/;; rdf4j-native|rdf4j-native-default) echo http://127.0.0.1:3040/rdf4j-server/repositories/bench;;
              millenniumdb) echo http://127.0.0.1:1234/sparql;; *) echo "unknown system $1" >&2; return 1;; esac
 }
 port_of() { local u; u=$(url_of "$1"); u=${u#http://127.0.0.1:}; echo "${u%%/*}"; }

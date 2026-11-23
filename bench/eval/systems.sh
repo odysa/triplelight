@@ -6,7 +6,7 @@
 # `serve` runs in the foreground and prints nothing but the server's own log; the SPARQL endpoint of each system:
 #   triplelight http://127.0.0.1:7979/sparql   qlever http://127.0.0.1:7001/   virtuoso http://127.0.0.1:8890/sparql
 #   jena-tdb2 http://127.0.0.1:3030/ds/sparql  oxigraph http://127.0.0.1:7878/query
-#   millenniumdb http://127.0.0.1:1234/sparql   rdf4j-native* http://127.0.0.1:8080/rdf4j-server/repositories/bench  (RDF4J's own server; indexes spoc,posc,ospc, or spoc,posc for -default)
+#   millenniumdb http://127.0.0.1:1234/sparql   rdf4j-native* http://127.0.0.1:3040/rdf4j-server/repositories/bench  (RDF4J's own server; indexes spoc,posc,ospc, or spoc,posc for -default)
 # Budget: Docker systems get --memory and --cpus (cgroup limits); the native ones get the JVM heap (Jena) or nothing, and the
 # script prints "budget not enforced" for them; on the Linux machine the whole process is started under a cgroup instead.
 set -eu
@@ -78,18 +78,18 @@ case $SYS in
     DIR=$T/$SYS-$D; mkdir -p "$DIR"
     case $MODE in
       serve) docker rm -f bench-rdf4j >/dev/null 2>&1 || true
-             exec docker run --rm --name bench-rdf4j "${LIM[@]}" -e JAVA_OPTS="-Xmx${MEM}g" -p 8080:8080 -v "$DIR":/var/rdf4j "$RDF4J_IMAGE" ;;
+             exec docker run --rm --name bench-rdf4j "${LIM[@]}" -e JAVA_OPTS="-Xmx${MEM}g" -p 3040:8080 -v "$DIR":/var/rdf4j "$RDF4J_IMAGE" ;;
       load)  docker rm -f bench-rdf4j-load >/dev/null 2>&1 || true
-             docker run -d --rm --name bench-rdf4j-load "${LIM[@]}" -e JAVA_OPTS="-Xmx${MEM}g" -p 8080:8080 -v "$DIR":/var/rdf4j "$RDF4J_IMAGE" >/dev/null
-             until curl -sf http://127.0.0.1:8080/rdf4j-server/protocol >/dev/null 2>&1; do sleep 2; done
+             docker run -d --rm --name bench-rdf4j-load "${LIM[@]}" -e JAVA_OPTS="-Xmx${MEM}g" -p 3040:8080 -v "$DIR":/var/rdf4j "$RDF4J_IMAGE" >/dev/null
+             until curl -sf http://127.0.0.1:3040/rdf4j-server/protocol >/dev/null 2>&1; do sleep 2; done
              cat > "$DIR/bench-config.ttl" <<TTL
 @prefix config: <tag:rdf4j.org,2023:config/> .
 [] a config:Repository ; config:rep.id "bench" ;
    config:rep.impl [ config:rep.type "openrdf:SailRepository" ;
      config:sail.impl [ config:sail.type "rdf4j:NativeStore" ; config:native.tripleIndexes "$IDX" ] ] .
 TTL
-             curl -sf -X PUT -H 'Content-Type: text/turtle' --data-binary @"$DIR/bench-config.ttl" http://127.0.0.1:8080/rdf4j-server/repositories/bench
-             curl -sf -X POST -H 'Content-Type: application/n-triples' -T "$NT" http://127.0.0.1:8080/rdf4j-server/repositories/bench/statements
+             curl -sf -X PUT -H 'Content-Type: text/turtle' --data-binary @"$DIR/bench-config.ttl" http://127.0.0.1:3040/rdf4j-server/repositories/bench
+             curl -sf -X POST -H 'Content-Type: application/n-triples' -T "$NT" http://127.0.0.1:3040/rdf4j-server/repositories/bench/statements
              # receipt: the indexes the store actually created
              docker exec bench-rdf4j-load sh -c 'cat /var/rdf4j/server/repositories/bench/triples.prop 2>/dev/null || find /var/rdf4j -name "triples.prop" -exec cat {} +' >&2 || true
              docker stop bench-rdf4j-load >/dev/null ;;
