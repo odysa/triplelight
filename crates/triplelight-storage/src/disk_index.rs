@@ -210,6 +210,18 @@ thread_local! {
 /// Tests: every index this thread writes uses the previous format (`RDFIDX03`/`RDFQIX01`), as an older binary would.
 #[cfg(test)]
 pub(super) fn write_older_format_on_this_thread(on: bool) { WRITE_OLDER_ON_THIS_THREAD.with(|c| c.set(on)) }
+/// The test-only format switch of this thread, carried by the build into its worker threads (always `false`
+/// outside tests).
+pub(super) fn index_format_of_this_thread() -> bool {
+    #[cfg(test)]
+    return WRITE_OLDER_ON_THIS_THREAD.with(|c| c.get());
+    #[cfg(not(test))]
+    false
+}
+pub(super) fn set_index_format_of_this_thread(_older: bool) {
+    #[cfg(test)]
+    WRITE_OLDER_ON_THIS_THREAD.with(|c| c.set(_older));
+}
 /// `rotate`: the current format (`SupportedWidth::MAGIC`, tag-rotated columns allowed); otherwise the previous one
 /// (`OLDER`), which tests use to check that older files stay readable.
 fn write_index_format<const N: usize>(

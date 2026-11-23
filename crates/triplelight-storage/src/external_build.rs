@@ -381,7 +381,8 @@ impl Builder {
             let results = std::thread::scope(|scope| {
                 let handles: Vec<_> = batch.iter().map(|&(name, perm)| {
                     let raw = &raw; let triples = self.triples;
-                    scope.spawn(move || build_permutation(dir, raw, triples, name, perm, run_budget))
+                    let format = super::disk_index::index_format_of_this_thread();
+                    scope.spawn(move || { super::disk_index::set_index_format_of_this_thread(format); build_permutation(dir, raw, triples, name, perm, run_budget) })
                 }).collect();
                 handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(io::Error::other("permutation build worker panicked")))).collect::<Vec<_>>()
             });
@@ -398,7 +399,8 @@ impl Builder {
                 let results = std::thread::scope(|scope| {
                     let handles: Vec<_> = batch.iter().map(|&(name, perm)| {
                         let raw = &quad_raw; let quads = self.quads;
-                        scope.spawn(move || build_quad_permutation(dir, raw, quads, name, perm, run_budget))
+                        let format = super::disk_index::index_format_of_this_thread();
+                        scope.spawn(move || { super::disk_index::set_index_format_of_this_thread(format); build_quad_permutation(dir, raw, quads, name, perm, run_budget) })
                     }).collect();
                     handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(io::Error::other("permutation build worker panicked")))).collect::<Vec<_>>()
                 });
