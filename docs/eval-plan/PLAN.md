@@ -307,8 +307,12 @@ Warm blocks are unchanged.
 LUBM-1000 and BSBM-100M, in tier 1. If they do not fit, the effect is reported with its interval and no equivalence claim.
 
 **B4. Time-boxes.** A load is time-boxed at 24 h per system and dataset; past it the arm is recorded as "did not finish"
-at that scale and excluded from that scale's tables (never estimated). A tier that runs out of time reports the blocks
+at that scale and excluded from that scale's tables (never estimated). If tier 2 still overflows, the arm with the longest load is dropped at 1B before any block is cut, so the block count stays as registered. A tier that runs out of time reports the blocks
 it completed, with the block count stated; nothing is extrapolated from a smaller scale to a larger one.
 
-**B5. Disk.** One system's store per dataset is kept at a time, and a store is deleted only after its receipts are archived. Dataset files stay until their last tier is done. The
+**B5. Expected fit.** With the estimates above, tier 1 takes about 6 to 7 days (server suites about 4.5 days, embedded and
+DuckDB arms 1 to 2 days, the Docker-versus-native control and thread scaling first). Tier 2 takes about 9 days with capped
+loads. A one-week rental covers tier 1; two weeks cover tier 1 and most of tier 2.
+
+**B6. Disk.** One system's store per dataset is kept at a time, and a store is deleted only after its receipts are archived. Dataset files stay until their last tier is done. The
 order of deletion is listed in `docs/eval-plan/RUNBOOK.md`.
