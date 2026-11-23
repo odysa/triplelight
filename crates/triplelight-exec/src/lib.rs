@@ -18,6 +18,7 @@ macro_rules! on_data {
 }
 
 pub mod phase;
+pub mod plan_trace;
 mod agg;
 mod bgp;
 mod count;
@@ -920,8 +921,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             };
             [self.slot_of(&t.subject), p, self.slot_of(&t.object)]
         }).collect();
+        let mut tr = plan_trace::enabled().then(|| plan_trace::Trace::new(patterns, rows.len()));
         // A constant absent from the dictionary can never match.
-        if rows.is_empty() || pats.iter().any(|p| p.iter().any(|s| matches!(s, Slot::Const(None)))) { return Vec::new(); }
+        if rows.is_empty() || pats.iter().any(|p| p.iter().any(|s| matches!(s, Slot::Const(None)))) {
+            if let Some(tr) = tr { tr.finish("empty", 0) }
+            return Vec::new();
+        }
         let w = self.vars.len();
         if w == 0 {
             // No variables anywhere: every pattern is a membership test.
@@ -929,24 +934,40 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 let ids: Vec<TermId> = p.iter().map(|s| if let Slot::Const(Some(c)) = s { *c } else { UNBOUND }).collect();
                 self.count(Perm::Spo, &ids) > 0
             });
-            return if all { rows } else { Vec::new() };
+            let out = if all { rows } else { Vec::new() };
+            if let Some(tr) = tr { tr.finish("ground", out.len()) }
+            return out;
         }
         let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
         let ranges = self.object_ranges(patterns, &pats, filters, &rows[0]);
         let flat: Vec<TermId> = rows.concat();
-        let out = on_data!(self, |g| {
+        if let Some(tr) = tr.as_mut() { tr.note("ranges", ranges.len()); tr.note("filters", filters.len()) }
+        let (out, strategy) = on_data!(self, |g| {
             let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges), sorted_probe: self.sorted_probe };
             if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(bgp::no_repeated_var) && bgp::cyclic(&pats) {
-                let mut out = bgp.leapfrog(&pats, &flat, self.variable_order(&pats));
+                let given = self.variable_order(&pats);
+                let t = tr.as_mut().map(|tr| {
+                    tr.note("var_order", given.as_deref().map_or_else(|| "default".to_string(), |o| plan_trace::var_names(o, &self.vars)));
+                    std::time::Instant::now()
+                });
+                let mut out = bgp.leapfrog(&pats, &flat, given);
+                let joined = out.len() / w;
                 if !filters.is_empty() { let all: HashSet<usize> = (0..w).collect(); self.apply_filters(&mut out, w, filters, &all, &mut vec![false; filters.len()]) }
-                out
+                if let (Some(tr), Some(t)) = (tr.as_mut(), t) { tr.step(None, "leapfrog", 1, joined, out.len() / w, t) }
+                (out, "leapfrog")
             } else {
                 let mut applied = vec![false; filters.len()];
                 let mut post = |rows: &mut Vec<TermId>, bound: &HashSet<usize>| self.apply_filters(rows, w, filters, bound, &mut applied);
-                if let Some(order) = self.planned_order(&pats, &rows, &ranges) { bgp.eval_order(&pats, &order, flat, &mut post) }
-                else { bgp.eval_greedy(&pats, flat, &mut post) }
+                match self.planned_order_est(&pats, &rows, &ranges, tr.is_some()) {
+                    Some((order, est)) => {
+                        if let Some(tr) = tr.as_mut() { tr.planned(&order, est) }
+                        (bgp.eval_order(&pats, &order, flat, &mut post, tr.as_mut()), "planner")
+                    }
+                    None => (bgp.eval_greedy(&pats, flat, &mut post, tr.as_mut()), "greedy"),
+                }
             }
         });
+        if let Some(tr) = tr { tr.finish(strategy, out.len() / w) }
         out.chunks_exact(w).map(<[TermId]>::to_vec).collect()
     }
 
@@ -1059,6 +1080,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     /// Pattern order from the cost-based planner: leaves of its join tree, left to right. Used for top-level BGPs
     /// (a single all-unbound input row); nested BGPs with bound inputs keep the greedy order.
     fn planned_order(&self, pats: &[[Slot; 3]], rows: &[Row], ranges: &range::Ranges) -> Option<Vec<usize>> {
+        self.planned_order_est(pats, rows, ranges, false).map(|(order, _)| order)
+    }
+
+    /// `planned_order`, with (if `want_est`, for `plan_trace`) the planner's estimate per pattern index: the estimated
+    /// rows of the subplan whose last leaf is that pattern.
+    fn planned_order_est(&self, pats: &[[Slot; 3]], rows: &[Row], ranges: &range::Ranges, want_est: bool) -> Option<(Vec<usize>, Option<Vec<f64>>)> {
         if self.data.get().is_some() { return None }
         let (stats, dynsnap) = self.stats?;
         if pats.len() < 2 || rows.len() != 1 || rows[0].iter().any(|&x| x != UNBOUND) { return None }
@@ -1102,26 +1129,37 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let search_ns = elapsed(phase);
         // The executor runs the leaves in order as index nested-loop joins. A merge join's two sides tie in cost
         // whichever is left, so with a pushed-down range the smaller side goes first (as a hash join's build side does).
-        fn leaves(t: &opt::plan::JoinTree, smaller_first: bool, out: &mut Vec<opt::plan::TriplePattern>) {
+        // Each leaf carries the estimate of the subplan it completes (a join node's estimate goes to its last leaf).
+        fn leaves(t: &opt::plan::JoinTree, smaller_first: bool, out: &mut Vec<(opt::plan::TriplePattern, f64)>) {
             use opt::plan::JoinTree::*;
             match t {
-                Scan { pattern, .. } => out.push(*pattern),
-                IndexNestedLoop { outer, pattern, .. } => { leaves(outer, smaller_first, out); out.push(*pattern); }
+                Scan { pattern, est, .. } => out.push((*pattern, *est)),
+                IndexNestedLoop { outer, pattern, est, .. } => { leaves(outer, smaller_first, out); out.push((*pattern, *est)); }
                 MergeJoin { left, right, .. } if smaller_first && right.est() < left.est() => { leaves(right, smaller_first, out); leaves(left, smaller_first, out) }
                 MergeJoin { left, right, .. } => { leaves(left, smaller_first, out); leaves(right, smaller_first, out) }
                 HashJoin { build, probe, .. } => { leaves(build, smaller_first, out); leaves(probe, smaller_first, out) }
                 Leapfrog { children, .. } => for c in children { leaves(c, smaller_first, out) },
                 Unit | Empty => {}
             }
+            if matches!(t, MergeJoin { .. } | HashJoin { .. } | Leapfrog { .. }) && let Some(last) = out.last_mut() { last.1 = t.est() }
         }
         let mut ls = Vec::new();
         leaves(&tree, !ranges.is_empty(), &mut ls);
         let mut used = vec![false; tps.len()];
         let order: Vec<usize> = ls.iter().filter_map(|l| {
-            let i = (0..tps.len()).find(|&i| !used[i] && tps[i] == *l)?; used[i] = true; Some(i)
+            let i = (0..tps.len()).find(|&i| !used[i] && tps[i] == l.0)?; used[i] = true; Some(i)
         }).collect();
         if trace { eprintln!("planning_profile clone_ns={clone_ns} prefix_ns={prefix_ns} search_ns={search_ns} gate_ns={gate_ns} total_ns={}", elapsed(total_clock)); }
-        (order.len() == tps.len()).then_some(order)
+        if order.len() != tps.len() { return None }
+        let est = want_est.then(|| {
+            let mut est = vec![f64::NAN; tps.len()];
+            let mut used = vec![false; tps.len()];
+            for l in &ls {
+                if let Some(i) = (0..tps.len()).find(|&i| !used[i] && tps[i] == l.0) { used[i] = true; est[i] = l.1 }
+            }
+            est
+        });
+        Some((order, est))
     }
 
     pub(crate) fn ebv(&self, e: &Expression, r: &Row) -> bool {

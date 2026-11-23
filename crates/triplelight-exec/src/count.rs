@@ -90,20 +90,25 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             .iter()
             .flatten()
             .any(|s| matches!(s, Slot::Const(None)));
+        let mut tr = crate::plan_trace::enabled().then(|| crate::plan_trace::Trace::new(patterns, 1));
         if pats.len() != 1 {
             // Grouped joins and DISTINCT projections were already refused above (they need extra state).
-            let n = if missing {
-                0
+            let (n, strategy) = if missing {
+                (0, "count-empty")
             } else {
                 on_data!(self, |g| {
                     let join=bgp::Bgp { snap:g,w:self.vars.len(),ranges:None,sorted_probe:self.sorted_probe };
                     if self.wcoj && pats.len()>=3 && bgp::cyclic(&pats) {
-                        join.count_leapfrog(&pats,self.variable_order(&pats))
+                        (join.count_leapfrog(&pats,self.variable_order(&pats)), "count-leapfrog")
                     } else {
-                        join.count_binary(&pats,self.planned_order(&pats,input,&crate::range::Ranges::new()).as_deref())
+                        let order = self.planned_order(&pats,input,&crate::range::Ranges::new());
+                        if let (Some(tr), Some(o)) = (tr.as_mut(), order.as_deref()) { tr.planned(o, None) }
+                        let strategy = if order.is_some() { "count-binary-planner" } else { "count-binary-greedy" };
+                        (join.count_binary(&pats,order.as_deref()), strategy)
                     }
                 })
             };
+            if let Some(mut tr) = tr { tr.note("count", n); tr.finish(strategy, 1) }
             let mut out = self.empty_row();
             for (i, c) in requests {
                 let value = match c {
@@ -153,6 +158,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             if keys.is_empty() {
                 self.emit_count_group(pat, perm, &prefix, &kidx, &requests, &binding, &mut out, 0);
             }
+            if let Some(tr) = tr { tr.finish("count-empty", out.len()) }
             return Some(out);
         }
         self.count_groups(
@@ -166,6 +172,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             &mut binding,
             &mut out,
         );
+        if let Some(tr) = tr { tr.finish("count-single", out.len()) }
         Some(out)
     }
     fn count_literal(&self, n: u64) -> TermId {
