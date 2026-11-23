@@ -1,7 +1,7 @@
 {
   "command": [
-    "<agent-workspace>/rdfdb/bench/tools/apache-jena-fuseki-6.2.0/fuseki-server",
-    "--loc=<agent-workspace>/rdfdb/bench/tools/tdb2-lubm100",
+    "<workspace>/rdfdb/bench/tools/apache-jena-fuseki-6.2.0/fuseki-server",
+    "--loc=<workspace>/rdfdb/bench/tools/tdb2-lubm100",
     "--port=3094",
     "/ds"
   ],

@@ -280,12 +280,12 @@
   "storage": {
     "databases": {
       "generic": {
-        "path": "/private/tmp/rdf-jianlin-analytical25/ladybug-generic-import-v1/generic.db",
+        "path": "<scratch>/rdf-jianlin-analytical25/ladybug-generic-import-v1/generic.db",
         "sha256": "0b75600b22c0f07e7952c208f63db6a12a763bf177ba726f869a3b16a69797e7",
         "bytes": 1606807552
       },
       "hybrid": {
-        "path": "/private/tmp/rdf-jianlin-analytical25/ladybug-hybrid-full-v1/hybrid.db",
+        "path": "<scratch>/rdf-jianlin-analytical25/ladybug-hybrid-full-v1/hybrid.db",
         "sha256": "dd805238b798c66b6e00fc2ada04718b1a162fc9e8e8fc393a62e5f01228ea99",
         "bytes": 2553683968
       }

@@ -2,8 +2,8 @@
 # #88 same-session build comparison: --orders=6 vs --orders=4, ABBA per dataset (registered in (internal discussion)).
 # Takes and releases /tmp/rdf-bench.lock itself.
 set -u
-OUT=<agent-workspace>/deliverables/build-compare-88
-DATA=<agent-workspace>/rdfdb/bench/tools
+OUT=${OUT_DIR:?set OUT_DIR to the directory for the logs and results}
+DATA=${DATA_DIR:?set DATA_DIR to the directory holding the .nt datasets}
 BIN=/tmp/sweep83/triplelight
 WORK=/tmp/build88
 MIN_FREE_KB=$((15 * 1024 * 1024))

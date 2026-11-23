@@ -1,4 +1,4 @@
-   Compiling rdfdb v0.1.0 (<agent-workspace>/rdfdb)
+   Compiling rdfdb v0.1.0 (<workspace>/rdfdb)
     Finished `test` profile [unoptimized + debuginfo] target(s) in 7.92s
      Running unittests src/lib.rs (target/debug/deps/rdfdb-0237d7aa1af3e222)
 
