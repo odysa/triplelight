@@ -10,7 +10,8 @@ dataset, as Jianlin asked, and record each change in the session log with its re
 Run as root on a fresh Debian trixie host, from a checkout of the commit under test:
 
 ```sh
-git clone https://github.com/odysa/triplelight.git ~/tl && cd ~/tl && git checkout <sha>
+git clone https://github.com/odysa/triplelight.git ~/tl && cd ~/tl && git checkout <sha>   # private: needs access,
+# or copy a bundle made on the laptop (`git bundle create tl.bundle main`) and pass --repo ~/tl.bundle below
 lsblk                                   # pick the instance-store NVMe, not the root volume
 bench/eval/provision.sh --device /dev/nvme1n1 --data /data --commit <sha>
 . /data/eval.env
@@ -210,9 +211,37 @@ done.
 - **Between blocks:** whoever finishes a block checks `df` against the floor, archives its results, and names the
   next owner in the session log.
 
-## 6. Laptop dry run
+## 6. Laptop dry run (2026-11-23)
 
-`provision.sh --dry-run --skip-images` ran in a privileged Debian trixie container with systemd on the laptop (ARM64).
-`datasets.sh lubm:4 bsbm:500 watdiv:1` ran afterwards. See the receipts in the PR. A dry run skips the disk format,
-the CPU tuning and the image step, and it checks the aarch64 pins, not the x86_64 ones the rental uses. Those are
-verified for the first time on day one.
+`provision.sh --dry-run --skip-images --repo <bundle> --commit <sha>` ran in a privileged Debian trixie container with
+systemd on the laptop (ARM64, 10 CPUs, Docker 26.1.5 inside). It skipped the disk format, the CPU tuning and the image
+step.
+
+**What the dry run fixed:**
+- `libssl-dev` and `cmake` were missing for the RDF Fusion build.
+- `archive.apache.org` served about 50 KB/s, so Jena and Fuseki now come from Maven Central. The bytes are the same:
+  the sha512 values match.
+- The repository is private, so the script now takes `--repo`. On the rental, either set up GitHub access first or
+  copy a `git bundle` of the commit under test.
+
+**Results:**
+- **Provisioning:** the final pass exited 0, and a rerun exited 0 in 8 s with nothing left to do.
+- **Pins:** all verified on aarch64, including the DuckDB `rdf` extension (v2.9.0).
+- **Checks:** all five day-one checks passed. The native scope and the Docker container each got `memory.max`
+  268435456, `swap.max` 0 and cpuset 0, `drop_caches` worked, and the only listener was on 127.0.0.1.
+
+**Datasets:** `datasets.sh lubm:4 bsbm:500 watdiv:1 lubm:10` found and fixed two LUBM problems:
+- UBA writes `user.dir + "\" + name`, a single file with a backslash in its name on Linux.
+- riot gives each file's ontology header the file's own path as its subject.
+
+After the fixes, the runs showed the following:
+- **LUBM:** the output is byte-identical with one shard and with three. LUBM-10 has 1,316,700 lines, the same count
+  as the laptop's file.
+- **BSBM and WatDiv:** each rerun reproduced its file's sha256.
+- **WDBench:** the guard rejects an archive with the wrong line count and removes the partial file.
+
+**Differences from the rental:**
+- The WatDiv SF1 file differs from the laptop's (`docs/optimizer-watdiv-sf1/provenance.json`) because Debian's word
+  list differs from macOS's. The rental generates its own files, and the receipts record them.
+- The dry run checked the aarch64 pins, not the x86_64 ones the rental uses. Those are checked for the first time on
+  day one, and a mismatch stops the script.

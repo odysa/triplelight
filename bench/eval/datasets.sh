@@ -35,15 +35,20 @@ receipt() {  # receipt <name> <start epoch> <generator line> <command line>
 done_already() { [ -f "$DATA/receipts/dataset-$1.txt" ] && { echo "$1: done ($DATA/receipts/dataset-$1.txt)"; }; }
 
 lubm() {  # lubm <universities>: UBA 1.7, seed 0, sharded by start index. UBA reseeds every university from
-  # (seed, index), so a shard of universities i..j writes the same files a single run would.
+  # (seed, index), so a shard of universities i..j writes the same files a single run would. UBA names its files
+  # user.dir + "\\" + name (Windows separators), so user.dir is set to "u" and that prefix is stripped. Each file's
+  # ontology header has the file's own URL as subject; it is rewritten to file:///lubm/<file>, so the output does not
+  # depend on the shard directory.
   local n=$1 name=lubm$1 t0; t0=$(date +%s); done_already "$name" && return
   fetch "$UBA_URL" "$G/uba1.7.zip" "$UBA_SHA"; [ -d "$G/uba/classes" ] || unzip -q -o "$G/uba1.7.zip" -d "$G/uba"
   local W=$DATA/scratch/gen-$name per=$(( (n + JOBS - 1) / JOBS )) pids=(); rm -rf "$W"; mkdir -p "$W"
   for ((s = 0; s * per < n; s++)); do
     local i0=$(( s * per )) k=$(( n - s * per < per ? n - s * per : per ))
     ( mkdir -p "$W/$s" && cd "$W/$s" \
-      && java -cp "$G/uba/classes" edu.lehigh.swat.bench.uba.Generator -univ $k -index $i0 -seed 0 -onto "$ONTO" > gen.log 2>&1 \
-      && printf '%s\n' University*.owl | sort -t_ -k1.11n -k2n | xargs -n 2000 "$RIOT" --output=ntriples > "$W/$s.nt" \
+      && java -Duser.dir=u -cp "$G/uba/classes" edu.lehigh.swat.bench.uba.Generator -univ $k -index $i0 -seed 0 -onto "$ONTO" > gen.log 2>&1 \
+      && for f in u\\*; do mv -- "$f" "${f#u\\}"; done \
+      && printf '%s\n' University*.owl | sort -t_ -k1.11n -k2n | xargs -n 2000 "$RIOT" --output=ntriples \
+         | sed "s#<file://$W/$s/#<file:///lubm/#g" > "$W/$s.nt" \
       && rm -f University*.owl ) &
     pids+=($!)
   done
@@ -51,7 +56,7 @@ lubm() {  # lubm <universities>: UBA 1.7, seed 0, sharded by start index. UBA re
   for ((s = 0; s * per < n; s++)); do cat "$W/$s.nt"; rm -f "$W/$s.nt"; done > "$OUT/$name.nt"
   rm -rf "$W"
   receipt "$name" "$t0" "uba1.7.zip sha256 $UBA_SHA, riot (Jena 6.2.0), $JOBS shards of $per universities" \
-    "Generator -univ <k> -index <i0> -seed 0 -onto $ONTO; riot --output=ntriples, files in university/department order"
+    "Generator -univ <k> -index <i0> -seed 0 -onto $ONTO; riot --output=ntriples, files in university/department order, header subjects file:///lubm/<file>"
 }
 
 bsbm() {  # bsbm <name> <product count>: BSBM tools 0.2, explore data and its td_data (the test driver needs it)
@@ -97,7 +102,7 @@ wdbench() {  # wdbench <archive path or URL>: the 2021-06-23 direct-property gra
     *.gz) gzip -dc "$A" ;; *.nt) cat "$A" ;; *) echo "wdbench: unknown archive type $A" >&2; exit 2 ;;
   esac > "$OUT/$name.nt.part"
   local n; n=$(wc -l < "$OUT/$name.nt.part")
-  [ "$n" = "$WDBENCH_TRIPLES" ] || { echo "wdbench: $n lines, the registered graph has $WDBENCH_TRIPLES" >&2; exit 5; }
+  [ "$n" = "$WDBENCH_TRIPLES" ] || { echo "wdbench: $n lines, the registered graph has $WDBENCH_TRIPLES" >&2; rm -f "$OUT/$name.nt.part"; exit 5; }
   mv "$OUT/$name.nt.part" "$OUT/$name.nt"
   receipt "$name" "$t0" "WDBench Figshare item 50b7544ad6b1f51de060, archive $(basename "$A") sha256 $ash" "stream-decompressed, $n lines checked"
 }
