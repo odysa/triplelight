@@ -721,7 +721,13 @@ impl<'a> Parser<'a> {
         } else {
             if !matches!(self.peek(), Tok::Nil) {
                 self.expect_punct("(")?;
-                while !self.eat_punct(")") { variables.push(self.var()?) }
+                while !self.eat_punct(")") {
+                    let v = self.var()?;
+                    // SPARQL 1.2 (§19.8 notes): a variable may appear only once in a VALUES header.
+                    #[cfg(feature = "sparql-12")]
+                    if variables.contains(&v) { return self.err(format!("variable ?{} appears twice in the VALUES clause", v.as_str())) }
+                    variables.push(v);
+                }
             } else { self.next(); }
             self.expect_punct("{")?;
             while !self.eat_punct("}") {
@@ -1129,6 +1135,10 @@ impl<'a> Parser<'a> {
         }
     }
     fn unary(&mut self) -> R<Expression> {
+        // SPARQL 1.2's UnaryExpression lets `!` apply to a UnaryExpression (`!!?x`); SPARQL 1.1 only to a primary.
+        #[cfg(feature = "sparql-12")]
+        if self.eat_punct("!") { return Ok(Expression::Not(Box::new(self.unary()?))) }
+        #[cfg(not(feature = "sparql-12"))]
         if self.eat_punct("!") { return Ok(Expression::Not(Box::new(self.primary()?))) }
         if self.eat_punct("+") { return Ok(Expression::UnaryPlus(Box::new(self.primary()?))) }
         if self.eat_punct("-") { return Ok(Expression::UnaryMinus(Box::new(self.primary()?))) }
