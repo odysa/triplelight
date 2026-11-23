@@ -17,7 +17,8 @@ HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../.." && pwd)
 . "$HERE/VERSIONS"
 T=${TOOLS:-$ROOT/bench/tools}; NT=$T/$D.nt
 [ -f "$NT" ] || { echo "missing $NT" >&2; exit 1; }
-LIM=(--memory="${MEM}g" --cpus="$CPUS")
+# --memory-swap equal to --memory: no swap, the same as the native servers' systemd scope (MemorySwapMax=0)
+LIM=(--memory="${MEM}g" --memory-swap="${MEM}g" --cpus="$CPUS")
 case $SYS in
   triplelight)
     BIN=${TRIPLELIGHT_BIN:-$ROOT/target/release/triplelight}

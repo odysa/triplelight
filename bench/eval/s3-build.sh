@@ -138,7 +138,7 @@ log = open(os.path.join(out, "build.log"), errors="replace").read()
 def grab(pat):
     m = re.search(pat, log); return float(m.group(1)) if m else None
 rec = {
-    "system": sys_, "dataset": d, "tag": tag, "mem_gb": int(mem), "cpus": int(cpus), "exit": int(rc),
+    "system": sys_, "dataset": d, "tag": tag, "mem_gb": int(mem), "swap_gb": 0, "cpus": int(cpus), "exit": int(rc),
     "wall_s": round(float(end) - float(start), 2),
     "user_s": grab(r"User time \(seconds\): ([\d.]+)") or grab(r"([\d.]+) user"),
     "sys_s": grab(r"System time \(seconds\): ([\d.]+)") or grab(r"([\d.]+) sys"),
