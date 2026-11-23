@@ -56,6 +56,9 @@ pub struct Delta {
     dels: [Vec<[TermId; 3]>; 6],
     terms: HashMap<Term, TermId>,
     rev: Vec<Term>,
+    /// Some term first seen in this delta is an RDF 1.2 term (`Snapshot::has_rdf12_terms`).
+    #[cfg(feature = "rdf-12")]
+    rdf12: bool,
 }
 
 impl Delta {
@@ -124,6 +127,8 @@ impl Dictionary for Overlay {
 }
 
 impl Snapshot for Overlay {
+    #[cfg(feature = "rdf-12")]
+    fn has_rdf12_terms(&self) -> bool { self.delta.rdf12 || self.base.has_rdf12_terms() }
     fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> {
         if self.delta.is_empty() { self.base.matching_rows(perm, prefix) } else { None }
     }
@@ -325,6 +330,8 @@ pub struct Store {
     /// Number of the active base directory, and whether CURRENT carries the dataset fence (see the module docs).
     generation: Mutex<u64>,
     fenced: std::sync::atomic::AtomicBool,
+    /// Whether CURRENT carries the RDF 1.2 fence `rdf12-1` (see `parse_current`).
+    rdf12_fenced: std::sync::atomic::AtomicBool,
     /// What readers see: everything durable.
     current: RwLock<Arc<Overlay>>,
     /// Accepted change sets, possibly not yet durable (group commit).
@@ -364,15 +371,15 @@ impl Store {
         // The file remains in place to avoid lock-inode replacement races between processes.
         let directory_lock = OpenOptions::new().read(true).write(true).create(true).truncate(false).open(dir.join("LOCK"))?;
         lock_directory(&directory_lock)?;
-        let (generation, fenced) = match std::fs::read_to_string(dir.join("CURRENT")) {
-            Ok(s) => parse_current(&s).ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?,
+        let (generation, fenced, rdf12_fenced) = match std::fs::read_to_string(dir.join("CURRENT")) {
+            Ok(s) => parse_current(&s)?.ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 let base0 = dir.join("base-0");
                 // No CURRENT means no base was ever committed: a `base-0` here is an abandoned earlier attempt.
                 if base0.exists() { std::fs::remove_dir_all(&base0)?; }
                 format.import(&base0, initial)?;
-                set_current(&dir, 0, false)?;
-                (0, false)
+                set_current(&dir, 0, false, false)?;
+                (0, false, false)
             }
             Err(e) => return Err(e),
         };
@@ -394,6 +401,7 @@ impl Store {
         let overlay = Arc::new(overlay);
         Ok(Store {
             dir, format, generation: Mutex::new(generation), fenced: std::sync::atomic::AtomicBool::new(fenced),
+            rdf12_fenced: std::sync::atomic::AtomicBool::new(rdf12_fenced),
             current: RwLock::new(overlay.clone()),
             pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0 }),
             wal: Mutex::new(Wal { file: wal, durable: 0 }),
@@ -527,11 +535,16 @@ impl Store {
         let n = match count { Count::Net => rec.len(), Count::Steps => steps };
         // Even a no-op must wait for earlier accepted changes it may have observed.
         if rec.is_empty() { return Ok((p.seq, n)) }
-        if needs_fence(&rec) && !self.fenced.load(std::sync::atomic::Ordering::SeqCst) {
-            // Durable before any named-graph line can reach the WAL.
+        let dataset = needs_fence(&rec) && !self.fenced.load(std::sync::atomic::Ordering::SeqCst);
+        let rdf12 = needs_rdf12_fence(&rec) && !self.rdf12_fenced.load(std::sync::atomic::Ordering::SeqCst);
+        if dataset || rdf12 {
+            // Durable before any named-graph or RDF 1.2 line can reach the WAL.
             let generation = self.generation.lock().unwrap();
-            set_current(&self.dir, *generation, true)?;
-            self.fenced.store(true, std::sync::atomic::Ordering::SeqCst);
+            let fenced = dataset || self.fenced.load(std::sync::atomic::Ordering::SeqCst);
+            let rdf12_fenced = rdf12 || self.rdf12_fenced.load(std::sync::atomic::Ordering::SeqCst);
+            set_current(&self.dir, *generation, fenced, rdf12_fenced)?;
+            self.fenced.store(fenced, std::sync::atomic::Ordering::SeqCst);
+            self.rdf12_fenced.store(rdf12_fenced, std::sync::atomic::Ordering::SeqCst);
         }
         push_record(&mut p.buf, &rec);
         p.latest = Arc::new(next);
@@ -583,6 +596,7 @@ impl Store {
         // in-memory state all still describe the old base.
         let (base, named) = self.format.open_dataset(&new_dir)?;
         let fenced = self.fenced.load(std::sync::atomic::Ordering::SeqCst);
+        let rdf12_fenced = self.rdf12_fenced.load(std::sync::atomic::Ordering::SeqCst);
         let mut fresh = Overlay::from_dataset_base(base, named);
         if cur.has_named_graphs() && !into_base {
             // Bases do not hold named graphs yet, so they move into the new WAL as its first record. That WAL is
@@ -598,7 +612,7 @@ impl Store {
             f.write_all(buf.as_bytes())?;
             f.sync_all()?;
             self.publish(|| {
-                set_current(&self.dir, next, fenced)?;
+                set_current(&self.dir, next, fenced, rdf12_fenced)?;
                 std::fs::rename(&tmp, self.dir.join("wal.log"))?;
                 self.fail_point("after-wal-rename")?;
                 sync_dir(&self.dir)
@@ -607,7 +621,7 @@ impl Store {
             fresh = moved;
         } else {
             self.publish(|| {
-                set_current(&self.dir, next, fenced)?;
+                set_current(&self.dir, next, fenced, rdf12_fenced)?;
                 self.fail_point("after-current")?;
                 // The new base is durable and current; only now drop the log.
                 w.file.set_len(0)?;
@@ -641,19 +655,29 @@ impl Store {
 }
 
 /// CURRENT's content: `base-<n>`, or `dataset-1 base-<n>` once fenced. `None` if it is neither.
-fn parse_current(s: &str) -> Option<(u64, bool)> {
+///
+/// RDF 1.2 (task #101): before the first WAL record holding a triple term or a directional literal, CURRENT gains the
+/// prefix `rdf12-1 ` (`rdf12-1 dataset-1 base-<n>` with both fences). Binaries without RDF 1.2 support then refuse
+/// the store before reading its WAL, instead of truncating it at the first line they cannot parse. Returns
+/// `(n, dataset fence, RDF 1.2 fence)`, `Ok(None)` if the text is malformed, and an error for an RDF 1.2 store in a
+/// build without the `rdf-12` feature.
+fn parse_current(s: &str) -> std::io::Result<Option<(u64, bool, bool)>> {
     let s = s.trim();
+    let (rdf12, s) = match s.strip_prefix("rdf12-1 ") { Some(rest) => (true, rest), None => (false, s) };
+    if rdf12 && !cfg!(feature = "rdf-12") {
+        return Err(std::io::Error::new(std::io::ErrorKind::Unsupported, "this store holds RDF 1.2 terms; open it with a build that has the rdf-12 feature"));
+    }
     let (fenced, base) = match s.strip_prefix("dataset-1 ") { Some(rest) => (true, rest), None => (false, s) };
-    let n = base.strip_prefix("base-")?;
-    if n.is_empty() || !n.bytes().all(|b| b.is_ascii_digit()) { return None }
-    Some((n.parse().ok()?, fenced))
+    let Some(n) = base.strip_prefix("base-") else { return Ok(None) };
+    if n.is_empty() || !n.bytes().all(|b| b.is_ascii_digit()) { return Ok(None) }
+    Ok(n.parse().ok().map(|n| (n, fenced, rdf12)))
 }
 
-/// Atomically points CURRENT at `base-<n>` (with the dataset fence if `fenced`).
-fn set_current(dir: &Path, n: u64, fenced: bool) -> std::io::Result<()> {
+/// Atomically points CURRENT at `base-<n>` (with the dataset fence if `fenced`, the RDF 1.2 fence if `rdf12`).
+fn set_current(dir: &Path, n: u64, fenced: bool, rdf12: bool) -> std::io::Result<()> {
     let tmp = dir.join("CURRENT.tmp");
     let mut f = File::create(&tmp)?;
-    writeln!(f, "{}base-{n}", if fenced { "dataset-1 " } else { "" })?;
+    writeln!(f, "{}{}base-{n}", if rdf12 { "rdf12-1 " } else { "" }, if fenced { "dataset-1 " } else { "" })?;
     f.sync_all()?;
     std::fs::rename(&tmp, dir.join("CURRENT"))?;
     sync_dir(dir)
@@ -734,6 +758,22 @@ fn push_record(buf: &mut String, rec: &[DatasetChange]) {
     }
     buf.push_str("C\n");
 }
+
+/// Whether a record needs the RDF 1.2 fence: it holds a triple term or a directional literal. Both occur only as
+/// objects (a directional literal inside a triple term makes the object a triple term).
+#[cfg(feature = "rdf-12")]
+fn needs_rdf12_fence(rec: &[DatasetChange]) -> bool {
+    rec.iter().any(|c| match c {
+        DatasetChange::Quad(_, _, t) => match &t.object {
+            Term::Triple(_) => true,
+            Term::Literal(l) => l.direction().is_some(),
+            _ => false,
+        },
+        _ => false,
+    })
+}
+#[cfg(not(feature = "rdf-12"))]
+fn needs_rdf12_fence(_rec: &[DatasetChange]) -> bool { false }
 
 /// Whether a record needs the dataset fence (it mentions a named graph).
 fn needs_fence(rec: &[DatasetChange]) -> bool {
@@ -1296,10 +1336,18 @@ mod dataset_wal_tests {
 
     #[test]
     fn current_parsing() {
-        assert_eq!(parse_current("base-7\n"), Some((7, false)));
-        assert_eq!(parse_current("dataset-1 base-12\n"), Some((12, true)));
-        for bad in ["", "base-", "base-+1", "dataset-2 base-1", "dataset-1base-1", "dataset-1 ", "base-1 extra"] {
-            assert_eq!(parse_current(bad), None, "{bad:?}");
+        assert_eq!(parse_current("base-7\n").unwrap(), Some((7, false, false)));
+        assert_eq!(parse_current("dataset-1 base-12\n").unwrap(), Some((12, true, false)));
+        for bad in ["", "base-", "base-+1", "dataset-2 base-1", "dataset-1base-1", "dataset-1 ", "base-1 extra", "dataset-1 rdf12-1 base-1", "rdf12-1base-1"] {
+            assert_eq!(parse_current(bad).unwrap(), None, "{bad:?}");
+        }
+        // The RDF 1.2 fence (task #101): read by an rdf-12 build, refused with a clear error by any other.
+        for (text, expect) in [("rdf12-1 base-3", (3, false, true)), ("rdf12-1 dataset-1 base-4", (4, true, true))] {
+            if cfg!(feature = "rdf-12") {
+                assert_eq!(parse_current(text).unwrap(), Some(expect));
+            } else {
+                assert_eq!(parse_current(text).unwrap_err().kind(), std::io::ErrorKind::Unsupported);
+            }
         }
     }
 }
