@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Evaluation driver (docs/eval-plan/PLAN.md, section "Server suites ... and the driver").
 
+Warm means: buffers, the OS page cache and indexes are warm, but NO system may answer from a result cache. A server that has one
+(QLever) is emptied before every request, warm-up included (`--clear-cache-url`); if that call fails the run stops and the entry
+records `cache_clear_failed`. TripleLight has no result cache (block caches and a per-snapshot seek memo only); the other
+servers document none, which the rental re-checks (docs/qlever-cache-check-v1).
+
   driver.py reference --queries DIR --url URL --out ref.json     answers of the reference system (Jena), untimed
   driver.py run --system NAME --url URL --queries DIR --reference ref.json --out out.json [--mode warm|cold]
   driver.py selftest                                             classifier and streaming checks on fake endpoints
@@ -9,7 +14,7 @@ One system at a time. Every response is hashed while it streams (rows are not ke
 memory. Each query and system gets a record with a class: pass, value-compatible, mismatch, incomplete, timeout, error.
 Standard library only."""
 import argparse, codecs, hashlib, http.client, json, os, platform, random, re, statistics, subprocess, sys, time
-import urllib.parse
+import urllib.parse, urllib.request
 
 XSD = "http://www.w3.org/2001/XMLSchema#"
 # Datatypes that some systems report as xsd:integer and others as a narrower integer type (QLever returns xsd:int).
@@ -227,6 +232,18 @@ def restart_after_timeout(a, rec, entry):
     entry.setdefault("restarts_after_timeout", []).append({"ok": ok, "note": note})
 
 
+def clear_engine_cache(a, entry):
+    """Empties the server's own result cache before a request (QLever caches any result under its size limits, so the -c/-e/-E
+    1MB flags do not turn it off: a 10-row aggregate is cached and later requests measure the cache, `docs/qlever-cache-check-v1`).
+    A failed clear is recorded and fails the query's runs rather than timing a cached answer."""
+    if not a.clear_cache_url: return
+    try:
+        with urllib.request.urlopen(a.clear_cache_url, timeout=60) as r: r.read()
+    except Exception as e:
+        entry["cache_clear_failed"] = f"{type(e).__name__}: {e}"[:200]
+        raise SystemExit(f"cache clear failed for {a.system}: {e}")
+
+
 def cmd_run(a):
     ref = json.load(open(a.reference))["queries"]
     records = {}
@@ -241,10 +258,12 @@ def cmd_run(a):
             entry["cold_hook_ok"], entry["cold_hook_note"] = ok, note
             runs = 1
         else:
+            clear_engine_cache(a, entry)
             rec, _ = one_run(a.url, q, a.timeout)       # warm-up, not recorded
             restart_after_timeout(a, rec, entry)
             runs = a.runs
         for _ in range(runs):
+            clear_engine_cache(a, entry)
             t0 = time.time()   # wall-clock bounds of the run, so S1's cgroup samples can be joined per query (s1-report.py)
             rec, secs = one_run(a.url, q, a.timeout)
             t1 = time.time()
@@ -357,6 +376,7 @@ def main():
     x = sub.add_parser("run"); x.add_argument("--system", required=True); x.add_argument("--url", required=True)
     x.add_argument("--queries", required=True); x.add_argument("--reference", required=True); x.add_argument("--out", required=True)
     x.add_argument("--mode", choices=["warm", "cold"], default="warm"); x.add_argument("--cold-hook")
+    x.add_argument("--clear-cache-url", help="GET before every request (warm-up and timed) to empty the server's result cache")
     x.add_argument("--restart-hook", help="command that restarts the server; run after every timed-out query (warm mode)")
     x.add_argument("--runs", type=int, default=5); x.add_argument("--timeout", type=float, default=300); x.add_argument("--seed", type=int, default=0)
     x.set_defaults(f=cmd_run)

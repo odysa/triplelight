@@ -40,10 +40,10 @@ case $SYS in
       load)  mkdir -p "$T/$QDIR"
              docker run --rm "${LIM[@]}" -v "$T":/data -w /data/$QDIR --entrypoint /qlever/qlever-index "$QLEVER_IMAGE" \
                -i "$D" -f "/data/$D.nt" -F nt -p true "${QOPT[@]}" ;;
-      # Result cache off (-c/-e/-E 1MB) so repeated runs measure execution, not cache hits.
+      # The -c/-e/-E 1MB flags do NOT turn the result cache off (results under 1 MB are still cached, docs/qlever-cache-check-v1); the driver empties it before every request with the access token below.
       serve) docker rm -f bench-qlever >/dev/null 2>&1 || true
              exec docker run --rm --name bench-qlever "${LIM[@]}" -p 127.0.0.1:7001:7001 -v "$T":/data -w /data/$QDIR \
-               --entrypoint /qlever/qlever-server "$QLEVER_IMAGE" -i "$D" -p 7001 -m "${MEM}G" -c 1MB -e 1MB -E 1MB ;;
+               --entrypoint /qlever/qlever-server "$QLEVER_IMAGE" -i "$D" -p 7001 -m "${MEM}G" -c 1MB -e 1MB -E 1MB -a bench ;;
     esac ;;
   virtuoso)
     DIR=$T/virtuoso-$D; mkdir -p "$DIR"

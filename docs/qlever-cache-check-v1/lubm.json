@@ -1,0 +1,43 @@
+{
+ "clear_status": 200,
+ "all_q9.rq": {
+  "control": {
+   "warm_up_s": 0.4745,
+   "timed_s": [
+    0.0049,
+    0.005,
+    0.0044
+   ],
+   "bytes": 224
+  },
+  "cleared": {
+   "warm_up_s": 0.4349,
+   "timed_s": [
+    0.4292,
+    0.4496,
+    0.4334
+   ],
+   "bytes": 226
+  }
+ },
+ "distinct_q9.rq": {
+  "control": {
+   "warm_up_s": 0.4483,
+   "timed_s": [
+    0.0055,
+    0.0049,
+    0.0048
+   ],
+   "bytes": 224
+  },
+  "cleared": {
+   "warm_up_s": 0.447,
+   "timed_s": [
+    0.441,
+    0.4396,
+    0.4595
+   ],
+   "bytes": 226
+  }
+ }
+}
