@@ -271,11 +271,11 @@ impl Builder {
                 #[cfg(feature = "rdf-12")]
                 if matches!(&term, Term::Triple(_)) || matches!(&term, Term::Literal(l) if l.direction().is_some()) { rdf12 = true }
                 let kind = match term {
-                    Term::NamedNode(_) => 1u64,
-                    Term::BlankNode(_) => 2,
-                    Term::Literal(_) => 3,
+                    Term::NamedNode(_) => crate::model::id_tag::IRI,
+                    Term::BlankNode(_) => crate::model::id_tag::BLANK_NODE,
+                    Term::Literal(_) => crate::model::id_tag::LITERAL,
                     #[cfg(feature = "rdf-12")]
-                    Term::Triple(_) => 4,
+                    Term::Triple(_) => crate::model::id_tag::TRIPLE_TERM,
                 };
                 current = TermId((kind << 60) | unique);
                 unique += 1;
@@ -601,7 +601,7 @@ fn write_triple_terms(dir: &Path) -> io::Result<[u8; 32]> {
         dictionary.find_term(term.to_string().as_bytes())?.map(|v| v.0).ok_or_else(|| bad("triple-term part missing from the dictionary"))
     };
     let mut rows: Vec<[TermId; 4]> = Vec::new();
-    dictionary.for_each_of_kind(4, &mut |id, term| {
+    dictionary.for_each_of_kind(crate::model::id_tag::TRIPLE_TERM, &mut |id, term| {
         let Term::Triple(t) = term else { return Err(bad("kind 4 entry is not a triple term")) };
         let t = (**t).clone();
         rows.push([id, id_of(t.subject.into())?, id_of(t.predicate.into())?, id_of(t.object)?]);

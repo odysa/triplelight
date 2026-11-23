@@ -53,10 +53,14 @@ const TRIPLE_KIND: u8 = 8;
 /// The ID tag (top four bits) that a non-inline term of `kind` carries: 1 IRI, 2 blank node, 3 literal, 4 triple
 /// term, the same kinds as a disk dictionary.
 fn tag_of(kind: u8) -> u64 {
+    use crate::model::id_tag;
     match kind {
+        0 => 0, // an unused slot
+        1 => id_tag::IRI,
+        2 => id_tag::BLANK_NODE,
         #[cfg(feature = "rdf-12")]
-        TRIPLE_KIND => 4,
-        _ => u64::from(kind.min(3)),
+        TRIPLE_KIND => id_tag::TRIPLE_TERM,
+        _ => id_tag::LITERAL,
     }
 }
 fn is_inline(id: TermId) -> bool {
@@ -142,7 +146,7 @@ impl TermArena {
         #[cfg(feature = "rdf-12")]
         if let triplelight_rdf::TermRef::Triple(t) = term {
             let index = direct_index(id);
-            if is_inline(id) || id.0 >> 60 != 4 || self.direct.get(index).is_some_and(|e| e.kind != 0) || self.triple_ids.contains_key(t) {
+            if is_inline(id) || id.0 >> 60 != crate::model::id_tag::TRIPLE_TERM || self.direct.get(index).is_some_and(|e| e.kind != 0) || self.triple_ids.contains_key(t) {
                 return false;
             }
             self.push_triple(index, id, t);
@@ -550,7 +554,7 @@ impl MemorySnapshot {
             self.intern(t.predicate.as_ref().into());
             self.intern(t.object.as_ref());
             let index = self.arena.direct.len();
-            let id = TermId((4 << 60) | index as u64);
+            let id = TermId((crate::model::id_tag::TRIPLE_TERM << 60) | index as u64);
             self.arena.push_triple(index, id, t);
             return id;
         }

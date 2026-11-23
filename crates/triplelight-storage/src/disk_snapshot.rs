@@ -404,7 +404,7 @@ impl DiskSnapshot {
             if let Some(table) = &self.triple_terms {
                 table.validate()?;
                 let mut row = 0u64;
-                unified.for_each_of_kind(4, &mut |id, term| {
+                unified.for_each_of_kind(crate::model::id_tag::TRIPLE_TERM, &mut |id, term| {
                     let Term::Triple(t) = term else { return Err(bad("kind 4 entry is not a triple term")) };
                     if row >= table.len() { return Err(bad("triple-term table is missing a row")) }
                     let [tt, s, p, o] = table.get(row)?;
