@@ -64,6 +64,7 @@ fn answers<S: Snapshot>(s: &S, q: &str, o: &Options<'_>) -> Vec<String> {
             v.sort();
             v
         }
+        QueryResult::Boolean(b) => vec![b.to_string()],
         r => panic!("{r:?}"),
     }
 }
@@ -72,6 +73,7 @@ fn answers<S: Snapshot>(s: &S, q: &str, o: &Options<'_>) -> Vec<String> {
 fn ordered<S: Snapshot>(s: &S, q: &str, o: &Options<'_>) -> Vec<String> {
     match query_with(s, q, o).unwrap_or_else(|e| panic!("{q}: {e}")) {
         QueryResult::Solutions { rows, .. } => rows.iter().map(|r| r.iter().map(|t| t.as_ref().map_or("-".into(), |t| t.to_string())).collect::<Vec<_>>().join(" ")).collect(),
+        QueryResult::Boolean(b) => vec![b.to_string()],
         r => panic!("{r:?}"),
     }
 }
@@ -414,7 +416,6 @@ fn only_order_insensitive_consumers_are_pushed() {
     let pushed = [
         format!("SELECT ?r ?p ?n WHERE {{ {bgp} }}"),
         format!("SELECT ?p (COUNT(?r) AS ?c) (COUNT(DISTINCT ?n) AS ?k) WHERE {{ {bgp} }} GROUP BY ?p"),
-        format!("ASK {{ {bgp} }}"),
         format!("SELECT ?p (COUNT(*) AS ?c) WHERE {{ {bgp} }} GROUP BY ?p ORDER BY ?p LIMIT 2"),
         // BSBM BI q3's shape: two COUNT subqueries joined on their key, ordered by the key under LIMIT.
         q3,
@@ -431,6 +432,8 @@ fn only_order_insensitive_consumers_are_pushed() {
         format!("SELECT (SUM(?c) AS ?x) WHERE {{ {{ SELECT ?p (COUNT(?r) AS ?c) WHERE {{ {bgp} }} GROUP BY ?p }} }}"),
         // LIMIT without ORDER BY, and ORDER BY with ties under LIMIT.
         format!("SELECT ?r WHERE {{ {bgp} }} LIMIT 1"),
+        // ASK is a LIMIT 1 without ORDER BY in the algebra; its answer is order-free, but the gate does not prove that yet.
+        format!("ASK {{ {bgp} }}"),
         format!("SELECT ?r WHERE {{ {bgp} }} ORDER BY ?d LIMIT 1"),
         // Group key bound to literals (1 and 1.0 are distinct groups that ORDER BY ties).
         format!("SELECT ?k (COUNT(?r) AS ?c) WHERE {{ ?r <urn:date> ?d . ?r <urn:key> ?k FILTER({range}) }} GROUP BY ?k ORDER BY ?k LIMIT 1"),
