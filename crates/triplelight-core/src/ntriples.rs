@@ -1,10 +1,12 @@
-//! N-Triples and N-Quads (RDF 1.1) parsing (task #45, step 2). It accepts and rejects exactly what `oxttl` 0.2's
-//! strict parsers do, and builds the same terms, so documents, WAL lines and store files are unchanged by the switch.
-//! The format is line-based: every statement is on its own line (`\n`, `\r` or `\r\n`), followed by a dot and
-//! optionally a `#` comment. Comments are not checked for UTF-8; every token is.
+//! N-Triples and N-Quads parsing. The default implements RDF 1.1. The `rdf-12` feature adds triple terms,
+//! directional literals and document version announcements.
+//! Each statement occupies its own line (`\n`, `\r` or `\r\n`). Triples and quads end in a dot. A trailing
+//! `#` comment is allowed. Comments are not checked for UTF-8; every token is.
 //! Derived in part from oxttl (MIT); see THIRD_PARTY_NOTICES.md.
 use crate::rdf::{BlankNode, GraphName, Literal, NamedNode, NamedOrBlankNode, Quad, ReadError, Term, Triple};
 use std::io::BufRead;
+#[cfg(feature = "rdf-12")]
+use triplelight_rdf::BaseDirection;
 
 const RDF_LANG_STRING: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString";
 
@@ -18,7 +20,7 @@ impl std::fmt::Display for LineError {
     }
 }
 
-/// One parsed line: nothing (blank or comment), or a statement.
+/// One parsed line: a quad, or a line that emits no quad.
 type LineResult = Result<Option<Quad>, LineError>;
 
 /// `capped`: tokens over `MAX_TOKEN` are refused, as `oxttl`'s streaming readers did; its slice parsers had no cap.
@@ -31,10 +33,8 @@ impl<'a> Line<'a> {
     /// End of the statement area: the line end or a comment.
     fn at_end(&self) -> bool { matches!(self.peek(), b'\n' | b'#') }
 
-    fn statement(&mut self) -> LineResult {
-        self.skip_ws();
-        if self.at_end() { return Ok(None) }
-        let subject: NamedOrBlankNode = match self.peek() {
+    fn subject_predicate(&mut self) -> Result<(NamedOrBlankNode, NamedNode), LineError> {
+        let subject = match self.peek() {
             b'<' if self.at(1) != b'<' => NamedNode::new_unchecked(self.iri()?).into(),
             b'_' if self.at(1) == b':' => BlankNode::new_unchecked(self.blank_node()?).into(),
             _ => return Err("The subject of a triple must be an IRI or a blank node".into()),
@@ -45,14 +45,18 @@ impl<'a> Line<'a> {
             _ => return Err("The predicate of a triple must be an IRI".into()),
         };
         self.skip_ws();
-        let object: Term = match self.peek() {
+        Ok((subject, predicate))
+    }
+
+    fn simple_object(&mut self) -> Result<Term, LineError> {
+        let object = match self.peek() {
             b'<' if self.at(1) != b'<' => NamedNode::new_unchecked(self.iri()?).into(),
             b'_' if self.at(1) == b':' => BlankNode::new_unchecked(self.blank_node()?).into(),
             b'"' => {
                 let value = self.string()?;
                 self.skip_ws();
                 match (self.peek(), self.at(1)) {
-                    (b'@', _) => Literal::new_language_tagged_literal_unchecked(value, self.lang_tag()?.to_ascii_lowercase()).into(),
+                    (b'@', _) => self.language_literal(value)?.into(),
                     (b'^', b'^') => {
                         self.pos += 2;
                         self.skip_ws();
@@ -61,6 +65,10 @@ impl<'a> Line<'a> {
                         if datatype == RDF_LANG_STRING {
                             return Err("The datatype of a literal without a language tag must not be rdf:langString".into());
                         }
+                        #[cfg(feature = "rdf-12")]
+                        if datatype == triplelight_rdf::vocab::rdf::DIR_LANG_STRING.as_str() {
+                            return Err("The datatype of a literal without a base direction must not be rdf:dirLangString".into());
+                        }
                         Literal::new_typed_literal(value, NamedNode::new_unchecked(datatype)).into()
                     }
                     _ => Literal::new_simple_literal(value).into(),
@@ -68,6 +76,45 @@ impl<'a> Line<'a> {
             }
             _ => return Err("The object of a triple must be an IRI, a blank node or a literal".into()),
         };
+        Ok(object)
+    }
+
+    #[cfg(feature = "rdf-12")]
+    fn starts_with(&self, bytes: &[u8]) -> bool {
+        self.data[self.pos..].starts_with(bytes)
+    }
+
+    #[cfg(feature = "rdf-12")]
+    fn triple_term(&mut self) -> Result<Term, LineError> {
+        // Only the object can be a triple term. Read its left-hand terms iteratively and
+        // validate all closing delimiters before constructing the nested value.
+        let mut parts = Vec::new();
+        while self.starts_with(b"<<(") {
+            self.pos += 3;
+            self.skip_ws();
+            parts.push(self.subject_predicate()?);
+        }
+        let object = self.simple_object()?;
+        for _ in &parts {
+            self.skip_ws();
+            if !self.starts_with(b")>>") {
+                return Err("A triple term must end with )>>".into());
+            }
+            self.pos += 3;
+        }
+        Ok(parts.into_iter().rev().fold(object, |object, (subject, predicate)| {
+            Triple::new(subject, predicate, object).into()
+        }))
+    }
+
+    fn statement(&mut self) -> LineResult {
+        self.skip_ws();
+        if self.at_end() { return Ok(None) }
+        let (subject, predicate) = self.subject_predicate()?;
+        #[cfg(feature = "rdf-12")]
+        let object = if self.starts_with(b"<<(") { self.triple_term()? } else { self.simple_object()? };
+        #[cfg(not(feature = "rdf-12"))]
+        let object = self.simple_object()?;
         self.skip_ws();
         let graph_name = if !self.with_graph {
             GraphName::DefaultGraph
@@ -143,8 +190,27 @@ impl<'a> Line<'a> {
         }
     }
 
-    /// `LANGTAG` after a string, scanned as `oxttl` does: letters, then `-`-separated alphanumeric blocks. The tag
-    /// must be well-formed BCP 47; a `--` base direction is RDF 1.2 and refused.
+    fn language_literal(&mut self, value: String) -> Result<Literal, LineError> {
+        let mut language = self.lang_tag()?;
+        language.make_ascii_lowercase();
+        #[cfg(feature = "rdf-12")]
+        if self.starts_with(b"--") {
+            let direction = match self.data.get(self.pos + 2..self.pos + 5) {
+                Some(b"ltr") => BaseDirection::Ltr,
+                Some(b"rtl") => BaseDirection::Rtl,
+                _ => return Err("A literal base direction must be ltr or rtl".into()),
+            };
+            if self.at(5).is_ascii_alphanumeric() || self.at(5) == b'-' {
+                return Err("A literal base direction must be ltr or rtl".into());
+            }
+            self.pos += 5;
+            if self.capped && language.len() + 6 > MAX_TOKEN { return Err(LineError::TooLarge) }
+            return Ok(Literal::new_directional_language_tagged_literal_unchecked(value, language, direction));
+        }
+        Ok(Literal::new_language_tagged_literal_unchecked(value, language))
+    }
+
+    /// Scan the BCP 47 tag, leaving an RDF 1.2 base-direction suffix for the caller.
     fn lang_tag(&mut self) -> Result<String, LineError> {
         let data = &self.data[self.pos..];
         let mut is_last_block_empty = true;
@@ -156,6 +222,9 @@ impl<'a> Line<'a> {
                 return Err("A language code should always start with a letter".into());
             } else if is_last_block_empty {
                 if c != b'-' { return self.finish_lang(&data[1..i], i) }
+                #[cfg(feature = "rdf-12")]
+                return self.finish_lang(&data[1..i], i);
+                #[cfg(not(feature = "rdf-12"))]
                 return Err("Literal base direction are only allowed in RDF 1.2".into());
             } else if c == b'-' {
                 is_last_block_empty = true;
@@ -230,6 +299,31 @@ pub(crate) fn pn_chars(c: char) -> bool {
 /// Parses one line (without its terminator) of N-Quads (`with_graph`) or N-Triples. Reading past the end of the
 /// line sees a line terminator, as in the original stream.
 fn parse_line(line: &[u8], with_graph: bool, capped: bool) -> LineResult { Line { data: line, pos: 0, with_graph, capped }.statement() }
+
+fn parse_document_line(line: &[u8], with_graph: bool, capped: bool) -> LineResult {
+    #[cfg(feature = "rdf-12")]
+    {
+        let mut parser = Line { data: line, pos: 0, with_graph, capped };
+        parser.skip_ws();
+        if parser.starts_with(b"VERSION") {
+            parser.pos += b"VERSION".len();
+            parser.skip_ws();
+            if parser.peek() != b'"' {
+                return Err("VERSION must be followed by a string literal".into());
+            }
+            // The grammar treats VERSION as a hint and emits no statement.
+            parser.string()?;
+            parser.skip_ws();
+            if !parser.at_end() {
+                return Err("Only a single statement can be written in a line".into());
+            }
+            return Ok(None);
+        }
+        parser.statement()
+    }
+    #[cfg(not(feature = "rdf-12"))]
+    parse_line(line, with_graph, capped)
+}
 
 /// Parses one N-Quads statement line, as the WAL stores them (task #36): `None` if it is not exactly one valid quad.
 pub fn parse_nquads_line(line: &str) -> Option<Quad> {
@@ -307,7 +401,7 @@ impl<R: BufRead> Iterator for StatementReader<R> {
                 Ok(false) => self.done = true,
                 Ok(true) => {
                     self.line += 1;
-                    match parse_line(&self.buf, self.with_graph, self.capped) {
+                    match parse_document_line(&self.buf, self.with_graph, self.capped) {
                         Ok(Some(q)) => return Some(Ok(q)),
                         Ok(None) => {}
                         Err(LineError::Syntax(e)) => { self.done = true; return Some(Err(ReadError::Syntax(format!("line {}: {e}", self.line)))) }
@@ -420,6 +514,61 @@ mod tests {
         assert!(parse_nquads_line(doc.trim_end()).is_some());
         assert!(matches!(oxttl::NTriplesParser::new().for_slice(doc.as_bytes()).next(), Some(Ok(_))));
     }
+    #[cfg(feature = "rdf-12")]
+    #[test]
+    fn rdf12_wal_line_round_trip() {
+        for line in [
+            r#"<urn:s> <urn:p> "text"@EN-us--ltr ."#,
+            r#"<urn:s> <urn:p> <<( _:b <urn:p> <<( <urn:s> <urn:p> "نص"@ar--rtl )>> )>> <urn:g> ."#,
+        ] {
+            let quad = parse_nquads_line(line).unwrap();
+            assert_eq!(parse_nquads_line(&format!("{quad} .")), Some(quad));
+        }
+        let quad = parse_nquads_line(r#"<urn:s> <urn:p> <<(<urn:a> <urn:p> "text"@EN-us--ltr)>>."#).unwrap();
+        let Term::Triple(triple) = quad.object else { panic!("expected a triple term") };
+        let Term::Literal(literal) = triple.object else { panic!("expected a directional literal") };
+        assert_eq!(literal.language(), Some("en-us"));
+        assert_eq!(literal.direction(), Some(BaseDirection::Ltr));
+
+        for bad in [
+            r#"<urn:s> <urn:p> <<( <urn:a> <urn:p> <urn:b> >> ."#,
+            r#"<<( <urn:a> <urn:p> <urn:b> )>> <urn:p> <urn:b> ."#,
+            r#"<urn:s> <urn:p> "text"@ar--RTL ."#,
+            r#"<urn:s> <urn:p> "text"@ar---rtl ."#,
+            r#"<urn:s> <urn:p> "text"@ar--rtl0 ."#,
+            r#"<urn:s> <urn:p> "text"^^<http://www.w3.org/1999/02/22-rdf-syntax-ns#dirLangString> ."#,
+            "VERSION \"1.2\"\n<urn:s> <urn:p> <urn:o> .",
+        ] {
+            assert!(parse_nquads_line(bad).is_none(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn rdf12_features_follow_the_build_configuration() {
+        let line = r#"<urn:s> <urn:p> <<( <urn:a> <urn:p> "text"@en--ltr )>> ."#;
+        let doc = format!("VERSION \"1.2\" # hint\r\n{line}\r");
+        for quads in [false, true] {
+            let rows = StatementReader::new(doc.as_bytes(), quads).collect::<Result<Vec<_>, _>>();
+            if cfg!(feature = "rdf-12") {
+                assert_eq!(rows.unwrap(), vec![parse_nquads_line(line).unwrap()]);
+            } else {
+                assert!(rows.is_err());
+                assert!(parse_nquads_line(line).is_none());
+                assert!(parse_nquads_line(r#"<urn:s> <urn:p> "text"@en--ltr ."#).is_none());
+            }
+        }
+        for bad in [
+            r#"version "1.2""#,
+            r#"VERSION 1.2"#,
+            r#"VERSION <urn:version>"#,
+            r#"VERSION "1.2" ."#,
+            r#"VERSION "1.2" <urn:s> <urn:p> <urn:o> ."#,
+        ] {
+            assert!(read_ntriples(bad.as_bytes()).next().unwrap().is_err(), "{bad}");
+            assert!(read_nquads(bad.as_bytes()).next().unwrap().is_err(), "{bad}");
+        }
+    }
+
     #[test]
     fn statements_and_errors() {
         let ok = |s: &str, g| parse_line(s.as_bytes(), g, true).unwrap_or_else(|e| panic!("{s:?}: {e}"));
@@ -428,7 +577,9 @@ mod tests {
         assert_eq!(ok("<http://a> <http://b> \"x\"@EN-us . # c", false).unwrap().object.to_string(), "\"x\"@en-us");
         assert_eq!(ok("_:b1 <http://b> \"\\u00e9\\t\" <http://g> .", true).unwrap().graph_name.to_string(), "<http://g>");
         for bad in ["<a> <http://b> <http://c> .", "<http://a> <http://b> <http://c>", "<http://a> <http://b> <http://c> . <http://a> <http://b> <http://c> .",
-            "<http://a> <http://b> \"x\"^^<http://www.w3.org/1999/02/22-rdf-syntax-ns#langString> .", "<http://a> <http://b> \"x\"@en--ltr .",
+            "<http://a> <http://b> \"x\"^^<http://www.w3.org/1999/02/22-rdf-syntax-ns#langString> .",
+            #[cfg(not(feature = "rdf-12"))]
+            "<http://a> <http://b> \"x\"@en--ltr .",
             "<http://a> <http://b> \"x\"@1 .", "_: <http://b> <http://c> .", "<http://a> <http://b> \"x\n\" ."] {
             assert!(parse_line(bad.as_bytes(), false, true).is_err(), "{bad:?}");
         }

@@ -22,6 +22,18 @@ pub trait Dictionary {
         }
         Ok(())
     }
+    /// The IDs of the subject, predicate and object of triple term `id` (RDF 1.2), or `None` if `id` is not a triple
+    /// term. Every part of a stored triple term is a stored term. The default resolves the term and looks up its
+    /// parts; stores with a parts table answer from it.
+    #[cfg(feature = "rdf-12")]
+    fn triple_term_parts(&self, id: TermId) -> Result<Option<[TermId; 3]>, StorageError> {
+        let Term::Triple(t) = self.resolve(id)? else { return Ok(None) };
+        let t = *t;
+        let part = |term: Term| {
+            self.lookup(&term)?.ok_or_else(|| StorageError::new(std::io::ErrorKind::InvalidData, "triple-term part missing from the dictionary"))
+        };
+        Ok(Some([part(t.subject.into())?, part(t.predicate.into())?, part(t.object)?]))
+    }
 }
 
 /// A consistent read view (snapshot) of the store.
@@ -53,6 +65,10 @@ pub trait Snapshot: Dictionary + Send + Sync {
     /// `prefix[0]`): element `t[k - 1]` is key position `k` of `perm`. For stores that keep each permutation's leading
     /// column only once per distinct value. `None` for an empty prefix or when the store has no such layout.
     fn matching_tail(&self, _perm: Perm, _prefix: &[TermId]) -> Option<&[[TermId; 2]]> { None }
+    /// Whether this view may hold an RDF 1.2 term (a triple term or a directional literal). A store-level flag, not a
+    /// scan: `false` guarantees there is none, so outputs can stay exactly RDF 1.1. Stores without 1.2 support
+    /// return `false`.
+    fn has_rdf12_terms(&self) -> bool { false }
 }
 
 
