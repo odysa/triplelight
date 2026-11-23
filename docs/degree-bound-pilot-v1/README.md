@@ -42,3 +42,7 @@ The registered engine `COUNT(*)` run (`engine_counts.txt`, release binary of mai
 
 **Limits.** Six queries (Q1, Q3, Q6, Q10, Q11, Q14) have an exact bound. Six more (Q4, Q5, Q7, Q8, Q12, Q13) are within 5x; they are all anchored by a constant.
 The two cyclic or multi-class joins, Q2 and Q9, are the loose ones (3048x and 415x), and they are the queries a memory guard matters for. Only the 14 no-inference LUBM queries were tested; WatDiv-100 was not part of this pilot.
+
+## Provenance note (path redaction)
+
+On 2026-11-23 the absolute path of the input file in `stats.json` (`"file"`) was replaced by its basename `lubm100.nt`; the data file is pinned by its SHA-256 `49eb4a91…` above. Digest of `stats.json` before and after (first 12 hex of SHA-256): cc73ffdc462f -> f00a7dbfa2f1. The scripts and `bounds.json` are unchanged.

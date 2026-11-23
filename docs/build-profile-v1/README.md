@@ -124,3 +124,10 @@ of a POS index. Wall time includes generating the rows. Memory is the maximum re
 - Synthetic rows, one host, one run per cell; the real build runs three sorts at once on the same disk and CPUs.
 - The in-memory arms are an upper bound on what extra memory buys, not a design: the real builder must stay external.
 - No change to the builder was made or measured.
+
+## Provenance note (path redaction)
+
+The repository is public, so absolute paths into the author's machine were replaced by placeholders on 2026-11-23: `raw/phases.txt`, `raw/run.txt` (scratch path -> `<scratch>`). Digests (first 12 hex of SHA-256) before and after:
+
+- `docs/build-profile-v1/raw/phases.txt`: be9026b169c8 -> ecdacdb6eedf
+- `docs/build-profile-v1/raw/run.txt`: 2c32655d29f9 -> 5949aab66c1d
