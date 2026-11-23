@@ -3,7 +3,7 @@
 use crate::load;
 use std::io::Read;
 use std::time::Instant;
-use triplelight::exec::{query_with, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids}};
+use triplelight::exec::{query_with, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids, serialize_csv, serialize_tsv}};
 use triplelight::opt::stats::Stats;
 use triplelight::store::StoreUpdate;
 
@@ -28,13 +28,29 @@ fn form_param(body: &str, key: &str) -> Option<String> {
     body.split('&').find_map(|kv| { let (k, v) = kv.split_once('=')?; (k == key).then(|| decode(v)) })
 }
 
+/// Result format chosen from the `Accept` header: the first of SPARQL JSON, TSV and CSV that it names (JSON when none).
+/// Boolean and graph results have no CSV or TSV form and are always answered in their own format.
+#[derive(Clone, Copy, PartialEq)]
+enum Format { Json, Tsv, Csv }
+
+fn format_from_accept(accept: &str) -> Format {
+    let pos = |m: &str| accept.find(m);
+    [(pos("application/sparql-results+json").or(pos("application/json")), Format::Json),
+     (pos("text/tab-separated-values"), Format::Tsv), (pos("text/csv"), Format::Csv)]
+        .into_iter().filter_map(|(p, f)| p.map(|p| (p, f))).min_by_key(|(p, _)| *p).map_or(Format::Json, |(_, f)| f)
+}
+
+fn accept_of(req: &tiny_http::Request) -> Format {
+    format_from_accept(&req.headers().iter().find(|h| h.field.equiv("Accept")).map(|h| h.value.as_str().to_string()).unwrap_or_default())
+}
+
 type Resp = tiny_http::Response<std::io::Cursor<Vec<u8>>>;
 
 fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax => 400, QueryErrorKind::Unsupported => 501, QueryErrorKind::Storage => 500, QueryErrorKind::GraphState => 400 } }
 
 /// One SPARQL query against a snapshot, as an HTTP response. Errors: 400 (bad query), 501 (unsupported), 500 (storage);
 /// never an empty result in place of a failure.
-fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>) -> Resp {
+fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>, fmt: Format) -> Resp {
     let before = triplelight::storage::disk_index::cache_trace_enabled().then(triplelight::storage::disk_index::cache_trace_snapshot);
     let derived = triplelight::storage::derived_trace::enabled().then(|| { triplelight::storage::derived_trace::take(); Instant::now() });
     let response = (|| { match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| query_with(snap, q, opts))) {
@@ -44,7 +60,11 @@ fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'
                     Ok(b) => ("application/sparql-results+json", b),
                     Err(e) => return tiny_http::Response::from_string(format!("storage error: {e}")).with_status_code(500),
                 },
-                r => serialize(r),
+                r => match fmt {
+                    Format::Tsv => serialize_tsv(r).unwrap_or_else(|| serialize(r)),
+                    Format::Csv => serialize_csv(r).unwrap_or_else(|| serialize(r)),
+                    Format::Json => serialize(r),
+                },
             };
             tiny_http::Response::from_string(b).with_header(tiny_http::Header::from_bytes("Content-Type", ct).unwrap())
         }
@@ -136,8 +156,9 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
                         let snap = store.snapshot();
                         let st = stats.read().unwrap().clone();
                         let st = st.filter(|(base, _)| snap.delta_len() == 0 && *base == snap.base_id());
-                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), raw_ids: true, ..ablations };
-                        answer(&*snap, &q, &opts)
+                        let fmt = accept_of(&req);
+                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), raw_ids: fmt == Format::Json, ..ablations };
+                        answer(&*snap, &q, &opts, fmt)
                     }
                 }
             };
@@ -265,8 +286,9 @@ fn serve_memory(args: &[String]) {
                     url.split_once('?').and_then(|(_, qs)| form_param(qs, "query")).or_else(|| form_param(&body, "query"))
                 };
                 let st = stats.read().unwrap().clone();
-                let opts = Options { stats: st.as_deref(), raw_ids: true, ..ablations };
-                let resp = match q { Some(q) => answer(snap, &q, &opts), None => tiny_http::Response::from_string("missing query").with_status_code(400) };
+                let fmt = accept_of(&req);
+                let opts = Options { stats: st.as_deref(), raw_ids: fmt == Format::Json, ..ablations };
+                let resp = match q { Some(q) => answer(snap, &q, &opts, fmt), None => tiny_http::Response::from_string("missing query").with_status_code(400) };
                 let _ = req.respond(resp);
             }
             }); } });
