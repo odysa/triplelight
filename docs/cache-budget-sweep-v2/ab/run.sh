@@ -3,9 +3,9 @@
 # main (four orders; readable by both), then ABBA at the default cache budget with sweep.py: old, main, main, old.
 # Records `docker ps` and the top CPU processes before each arm. Takes and releases /tmp/rdf-bench.lock.
 set -u
-OUT=<workspace>/deliverables/ab-b4
-REPO=<workspace>/triplelight-named-storage
-DATA=<workspace>/rdfdb/bench/tools
+OUT=${OUT:?set OUT; on the test laptop it was <workspace>/deliverables/ab-b4}
+REPO=${REPO:?set REPO; on the test laptop it was <workspace>/triplelight-named-storage}
+DATA=${DATA:?set DATA; on the test laptop it was <workspace>/rdfdb/bench/tools}
 OLD=a03774f2; NEW=${NEW:-$(git -C $REPO rev-parse --short=8 origin/main)}; W=/tmp/abb4
 log() { echo "$(date -u +%H:%M:%S) $*" | tee -a "$OUT/progress.log"; }
 mkdir /tmp/rdf-bench.lock || { log "lock held, abort"; exit 3; }

@@ -1,9 +1,9 @@
 #!/bin/bash
 # B4: the #83 cache-budget sweep re-run on main after #131. Caller holds /tmp/rdf-bench.lock.
 set -u
-OUT=<workspace>/deliverables/b4-sweep
-REPO=<workspace>/triplelight-named-storage
-DATA=<workspace>/rdfdb/bench/tools
+OUT=${OUT:?set OUT; on the test laptop it was <workspace>/deliverables/b4-sweep}
+REPO=${REPO:?set REPO; on the test laptop it was <workspace>/triplelight-named-storage}
+DATA=${DATA:?set DATA; on the test laptop it was <workspace>/rdfdb/bench/tools}
 SHA=a08e3440
 WORK=/tmp/sweepb4
 log() { echo "$(date -u +%H:%M:%S) $*" | tee -a "$OUT/progress.log"; }
