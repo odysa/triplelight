@@ -64,7 +64,9 @@ typedef struct tl_str { uint64_t off; uint64_t len; } tl_str;
 
 /* One distinct term. Literals always carry a datatype IRI; `language` is empty unless language-tagged.
  * TL_TERM_TRIPLE: the subject, predicate and object are 1-based indices into the result's term table (the same numbering
- * as result cells), stored in value.off, value.len and language.off; the other fields are zero. They are never 0. */
+ * as result cells), stored in value.off, value.len and language.off; the other fields are zero. They are never 0.
+ * A part's index can point FORWARD in the table (a triple term that is stored in the database appears before its parts), so
+ * decode the table first and resolve triple terms afterwards; do not assume parts come earlier. */
 typedef struct tl_term {
     uint8_t kind; /* TL_TERM_* */
     uint8_t direction; /* TL_DIR_*; formerly padding, so the layout and the ABI version are unchanged */
