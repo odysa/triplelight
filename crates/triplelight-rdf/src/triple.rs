@@ -963,3 +963,22 @@ impl TryFromTermError {
         self.term
     }
 }
+
+/// The deepest nesting of triple terms TripleLight accepts (RDF 1.2): a triple term counts 1, plus the depth of a
+/// triple term in its object. 63 is the deepest that `Term::from_str` (ported from oxrdf) reads back, and the store
+/// parses its dictionary text with it, so every 1.2 reader and the store's commit enforce this same limit; a deeper
+/// term could otherwise be committed and then never be read back by compaction.
+#[cfg(feature = "rdf-12")]
+pub const MAX_TRIPLE_TERM_DEPTH: usize = 63;
+
+/// The triple-term nesting depth of `term` (0 for an IRI, blank node or literal), computed without recursion.
+#[cfg(feature = "rdf-12")]
+pub fn triple_term_depth(term: TermRef<'_>) -> usize {
+    let mut depth = 0;
+    let mut cur = term;
+    while let TermRef::Triple(t) = cur {
+        depth += 1;
+        cur = t.object.as_ref();
+    }
+    depth
+}
