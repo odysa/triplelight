@@ -199,6 +199,9 @@ enum DictionaryBackend {
     Unified(super::lazy_dictionary::LazyIndex),
 }
 pub struct DiskSnapshot {
+    /// The base directory: derived-order regrouping spills large groups into scratch here (on the store's device,
+    /// not a tmpfs `/tmp` whose pages a cgroup charges as memory).
+    dir: std::path::PathBuf,
     dictionary: DictionaryBackend,
     /// The six triple orders in `Perm::ALL` order; `None` for an order this base does not keep (SOP and OPS are then
     /// served from the others, see `derived_order`).
@@ -381,6 +384,7 @@ impl DiskSnapshot {
             indexes,
             named,
             seek_memo: Default::default(),
+            dir: dir.to_path_buf(),
             rdf12: version == 7,
             triple_terms,
         })
@@ -659,6 +663,7 @@ impl Snapshot for DiskSnapshot {
     }
 }
 impl super::derived_order::KeptOrders for DiskSnapshot {
+    fn scratch_dir(&self) -> &std::path::Path { &self.dir }
     fn has(&self, perm: Perm) -> bool { self.kept(perm).is_some() }
     fn seek_memo(&self) -> &super::derived_order::SeekMemo { &self.seek_memo }
     fn scan_kept<'a>(
@@ -745,6 +750,7 @@ impl Snapshot for DiskGraph {
     }
 }
 impl super::derived_order::KeptOrders for DiskGraph {
+    fn scratch_dir(&self) -> &std::path::Path { &self.snap.dir }
     fn has(&self, perm: Perm) -> bool { self.kept(perm).is_some() }
     fn seek_memo(&self) -> &super::derived_order::SeekMemo { &self.seek_memo }
     fn scan_kept<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
@@ -893,6 +899,35 @@ mod tests {
             }
         };
         check(&*full, &*derived, "default");
+        // Bounded regroup: every group above 1, 7 or 300 rows goes through the external sorter in a private scratch
+        // directory; the answers must not change, and no scratch may survive a finished or abandoned scan.
+        let scratch = parent.join("spill");
+        fs::create_dir(&scratch).unwrap();
+        for limit in [1usize, 7, 300] {
+            crate::derived_order::spill_on_this_thread(Some(limit), Some(scratch.clone()));
+            check(&*full, &*derived, &format!("spill above {limit}"));
+            assert_eq!(fs::read_dir(&scratch).unwrap().count(), 0, "scratch left after spill above {limit}");
+        }
+        {
+            // Dropped after one batch, mid-way through a spilled group (the 5,000-row `sink` group): its scratch goes
+            // with it.
+            crate::derived_order::spill_on_this_thread(Some(1), Some(scratch.clone()));
+            let sink = derived.lookup(&iri("sink").into()).unwrap().unwrap();
+            let g1 = derived.graph_view(derived.lookup(&iri("g1").into()).unwrap().unwrap()).unwrap();
+            let mut it = g1.scan(Perm::Ops, &[sink]);
+            assert!(!it.next().unwrap().unwrap().is_empty());
+            assert!(fs::read_dir(&scratch).unwrap().count() > 0, "a group is spilled");
+        }
+        assert_eq!(fs::read_dir(&scratch).unwrap().count(), 0, "scratch left after an abandoned scan");
+        // Without an override, a base opened on its own (no CURRENT beside it) spills to the fallback, and the base
+        // directory itself is never written to.
+        crate::derived_order::spill_on_this_thread(Some(1), None);
+        let before: Vec<_> = fs::read_dir(&four).unwrap().map(|e| e.unwrap().file_name()).collect();
+        check(&*full, &*derived, "spill above 1, default location");
+        let after: Vec<_> = fs::read_dir(&four).unwrap().map(|e| e.unwrap().file_name()).collect();
+        assert_eq!(after, before, "the base directory is left as it was");
+        derived.verify().unwrap();
+        crate::derived_order::spill_on_this_thread(None, None);
         for g in full.graph_names() {
             let (f, d) = (full.graph_view(g).unwrap(), derived.graph_view(g).unwrap());
             if rows(&f, Perm::Spo, &[]).len() > 4096 { check(&f, &d, "g1") }
