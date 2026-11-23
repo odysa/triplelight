@@ -16,6 +16,12 @@ use std::{
 const MEMORY: usize = 128 * 1024 * 1024;
 /// The longest N-Triples term text a base can hold (task #45: the WAL refuses longer terms at commit).
 pub(crate) const MAX_TERM: usize = triplelight_core::ntriples::MAX_TOKEN;
+/// Row ID and position of a term record that belongs to no row (an RDF 1.2 triple-term part, `Builder::push_parts`).
+/// Real row IDs are far smaller (at most `8 << 56` in a sharded build), so these assignments sort after every row.
+#[cfg_attr(not(feature = "rdf-12"), allow(dead_code))]
+const FREE_ROW: u64 = u64::MAX;
+#[cfg_attr(not(feature = "rdf-12"), allow(dead_code))]
+const FREE_POS: u8 = 0xff;
 const _: () = assert!(MAX_TERM == 16 * 1024 * 1024, "the base limit is oxttl's 16 MiB token limit");
 /// Longest record of the term sort: the term text plus its flag and ID bytes.
 const TERM_SORT_RECORD_MAX: usize = MAX_TERM + 10;
@@ -197,10 +203,30 @@ impl Builder {
             if term.len() > MAX_TERM || term.as_bytes().contains(&0) {
                 return Err(bad("invalid or oversized encoded RDF term"));
             }
+            #[cfg(feature = "rdf-12")]
+            if term.starts_with("<<(") { self.push_parts(&term)? }
             let mut r = term.into_bytes();
             r.push(0);
             r.extend_from_slice(&triple_id.to_be_bytes());
             r.push(pos as u8);
+            self.terms.push(r)?;
+        }
+        Ok(())
+    }
+    /// RDF 1.2 (task #101): every part of triple term `text`, nested ones included, becomes a dictionary term even
+    /// if it occurs nowhere else, so `Dictionary::triple_term_parts` resolves on a disk base. Parts are pushed as
+    /// row-less records (`FREE_ROW`, `FREE_POS`), which get IDs like any term and are skipped when rows are built.
+    #[cfg(feature = "rdf-12")]
+    fn push_parts(&mut self, text: &str) -> io::Result<()> {
+        let Term::Triple(t) = text.parse::<Term>().map_err(|_| bad("invalid RDF term"))? else { return Ok(()) };
+        let t = *t;
+        for part in [t.subject.to_string(), t.predicate.to_string(), t.object.to_string()] {
+            if part.len() > MAX_TERM { return Err(bad("invalid or oversized encoded RDF term")) }
+            if part.starts_with("<<(") { self.push_parts(&part)? }
+            let mut r = part.into_bytes();
+            r.push(0);
+            r.extend_from_slice(&FREE_ROW.to_be_bytes());
+            r.push(FREE_POS);
             self.terms.push(r)?;
         }
         Ok(())
@@ -308,8 +334,11 @@ impl Builder {
             }
         }
         if let Some(mut q) = quads.take() { q.flush()?; }
-        if read_fixed(&mut input, &mut [0u8; 17])? {
-            return Err(bad("extra term assignment"));
+        // Only row-less part records (RDF 1.2 triple-term parts, `push_parts`) may follow the rows; they sort last.
+        let mut extra = [0u8; 17];
+        while read_fixed(&mut input, &mut extra)? {
+            let free = cfg!(feature = "rdf-12") && extra[..8] == FREE_ROW.to_be_bytes() && extra[8] == FREE_POS;
+            if !free { return Err(bad("extra term assignment")) }
         }
         triples.flush()?;
         drop(triples);
