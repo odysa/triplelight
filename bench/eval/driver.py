@@ -19,6 +19,7 @@ CAP = 1048576   # Virtuoso's HTTP endpoint stops here whatever ResultSetMaxRows 
 CHUNK = 1 << 20
 
 
+MIN_READ = 64 << 10      # stream_fold gathers chunks up to this size per read; the self-test sets 0 to exercise awkward chunk boundaries
 class Timeout(Exception): pass
 class Truncated(Exception): pass
 
@@ -69,11 +70,18 @@ def stream_fold(chunks, deadline):
     def more():
         nonlocal buf, pos, ended
         if time.monotonic() > deadline: raise Timeout()
-        try: c = next(chunks)
+        # gather small chunks into one read of at least 64 KB: `buf += ...` copies the buffer, so tiny chunks (the self-test
+        # feeds one binding at a time) made the run slow and fragmented the heap (565 MB peak at 5M rows, flat from 100k rows up)
+        parts, size = [], 0
+        try:
+            while True:
+                c = next(chunks); parts.append(c); size += len(c)
+                if size >= MIN_READ: break
         except StopIteration:
-            ended = True; return False
-        if pos > (8 << 20): buf, pos = buf[pos:], 0
-        buf += text.decode(c)
+            ended = True
+            if not parts: return False
+        if pos > (1 << 20): buf, pos = buf[pos:], 0
+        buf += text.decode(b"".join(parts))
         return True
 
     # head: read until the bindings array (or a boolean) starts
@@ -150,11 +158,16 @@ def one_run(url, query, timeout):
         return {"status": "error", "detail": f"unparsable answer: {e}"[:200]}, time.monotonic() - t0
 
 
+# QLever's two-order index (PSO and POS only) refuses a query with a variable predicate with this sentence. Only this text is
+# classified `unsupported` (an engine that cannot answer the pattern at all); every other error stays `error`.
+UNSUPPORTED_QLEVER_TWO_ORDER = "contains a predicate variable, but only the PSO and POS permutations were loaded"
+
+
 def classify(rec, ref):
     """pass | value-compatible | mismatch | incomplete | timeout | error, for one run record against the reference."""
     s = rec["status"]
     if s == "timeout": return "timeout"
-    if s == "error": return "error"
+    if s == "error": return "unsupported" if UNSUPPORTED_QLEVER_TWO_ORDER in rec.get("detail", "") else "error"
     if s == "truncated": return "incomplete"
     if rec["rows"] == ref["rows"] and rec["bag"] == ref["bag"]: return "pass"
     if rec["rows"] == ref["rows"] and rec["bag_norm"] == ref["bag_norm"]: return "value-compatible"
@@ -268,6 +281,7 @@ def serve_fake(behaviors):
             self.rfile.read(int(self.headers.get("Content-Length", 0)))
             kind, n = behaviors[self.path]
             if kind == "err": self.send_response(500); self.end_headers(); self.wfile.write(b"boom"); return
+            if kind == "unsup": self.send_response(500); self.end_headers(); self.wfile.write(b'{"exception": "The query contains a predicate variable, but only the PSO and POS permutations were loaded. Rerun the server without the option."}'); return
             self.send_response(200); self.send_header("Content-Type", "application/sparql-results+json"); self.end_headers()
             if kind == "slow": time.sleep(3)
             if kind == "ask": self.wfile.write(b'{"head":{},"boolean":true}'); return
@@ -284,7 +298,7 @@ def cmd_selftest(a):
     ref = {"rows": 50, **fold_of(_body(50))}
     ok = True
     cases = [("good", "ok", 50, "pass"), ("typing", "int", 50, "value-compatible"), ("wrong", "wrong", 50, "mismatch"),
-             ("short", "ok", 30, "mismatch"), ("trunc", "trunc", 50, "incomplete"), ("err", "err", 0, "error"), ("slow", "slow", 50, "timeout"),
+             ("short", "ok", 30, "mismatch"), ("trunc", "trunc", 50, "incomplete"), ("err", "err", 0, "error"), ("unsup", "unsup", 0, "unsupported"), ("slow", "slow", 50, "timeout"),
              ("cap", "ok", 40, "incomplete")]
     behaviors = {f"/{name}": (kind, n) for name, kind, n, _ in cases}
     behaviors["/ask"] = ("ask", 0)
@@ -298,11 +312,14 @@ def cmd_selftest(a):
     good = rec["status"] == "ok" and rec["rows"] == 1 and rec["bag"] == fold_boolean(True)["bag"]
     print("ask      boolean answer", "ok" if good else "FAIL"); ok &= good
     # streaming equals the plain parse on a 100k-row sample, with the document split at awkward chunk sizes
+    global MIN_READ
     for rows, size in ((100_000, 1 << 20), (100_000, 4096), (2_000, 7), (2_000, 1)):
         doc = "".join(_body(rows)); plain = Fold(["s", "n"])
         for row in json.loads(doc)["results"]["bindings"]: plain.add(row)
         data = doc.encode()
-        got = stream_fold(iter([data[i:i + size] for i in range(0, len(data), size)]), time.monotonic() + 600)
+        MIN_READ = 0                 # every chunk is parsed on its own, so the awkward boundaries are really tested
+        try: got = stream_fold(iter([data[i:i + size] for i in range(0, len(data), size)]), time.monotonic() + 600)
+        finally: MIN_READ = 64 << 10
         same = got == plain.result(); print(f"stream   {rows} rows, chunks of {size} bytes", "ok" if same else "FAIL"); ok &= same
     print("SELFTEST", "PASSED" if ok else "FAILED"); sys.exit(0 if ok else 1)
 
