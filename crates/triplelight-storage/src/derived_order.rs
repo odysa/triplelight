@@ -167,12 +167,22 @@ pub(super) fn spill_on_this_thread(rows: Option<usize>, dir: Option<std::path::P
     SPILL_ROWS_ON_THIS_THREAD.with(|c| c.set(rows));
     SPILL_DIR_ON_THIS_THREAD.with(|c| *c.borrow_mut() = dir);
 }
-/// Where a group spills: `TRIPLELIGHT_SCRATCH_DIR` if set, else the store's own directory (its device, and inside the
-/// tree S3 samples), not the system temporary directory, which is often a tmpfs charged to the cgroup as memory.
-fn spill_dir(store: &std::path::Path) -> std::path::PathBuf {
+/// Where a group spills, given the base directory: the store's `scratch/` directory beside its bases (on the store's
+/// device and inside the tree S3 samples; bases themselves stay immutable), created on demand and emptied by
+/// `Store::open`. A base opened on its own (no store around it), or a store whose root is read-only, falls back to
+/// `TRIPLELIGHT_SCRATCH_DIR`, then to the system temporary directory (often a tmpfs, whose pages a cgroup charges as
+/// memory, so it is the last resort), logged once. The query never fails for lack of a place to spill.
+fn spill_dir(base: &std::path::Path) -> std::path::PathBuf {
     #[cfg(test)]
     if let Some(d) = SPILL_DIR_ON_THIS_THREAD.with(|c| c.borrow().clone()) { return d }
-    std::env::var_os("TRIPLELIGHT_SCRATCH_DIR").map(std::path::PathBuf::from).unwrap_or_else(|| store.to_path_buf())
+    if let Some(root) = base.parent().filter(|r| r.join("CURRENT").is_file()) {
+        let scratch = root.join(crate::store::SCRATCH_DIR);
+        if std::fs::create_dir_all(&scratch).is_ok() { return scratch }
+    }
+    static LOGGED: std::sync::Once = std::sync::Once::new();
+    let fallback = std::env::var_os("TRIPLELIGHT_SCRATCH_DIR").map(std::path::PathBuf::from).unwrap_or_else(std::env::temp_dir);
+    LOGGED.call_once(|| eprintln!("derived orders: no store scratch directory for {}; large regroups spill to {}", base.display(), fallback.display()));
+    fallback
 }
 /// The largest group sorted in memory: a quarter of the block-cache budget in rows, so one group never needs more than
 /// a fraction of what the store may use, and never less than `SPILL_FLOOR_ROWS`.

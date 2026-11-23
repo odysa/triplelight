@@ -919,18 +919,13 @@ mod tests {
             assert!(fs::read_dir(&scratch).unwrap().count() > 0, "a group is spilled");
         }
         assert_eq!(fs::read_dir(&scratch).unwrap().count(), 0, "scratch left after an abandoned scan");
-        // Without an override the spill goes into the store's own directory, and leaves nothing there either.
+        // Without an override, a base opened on its own (no CURRENT beside it) spills to the fallback, and the base
+        // directory itself is never written to.
         crate::derived_order::spill_on_this_thread(Some(1), None);
         let before: Vec<_> = fs::read_dir(&four).unwrap().map(|e| e.unwrap().file_name()).collect();
-        {
-            let mut it = derived.scan(Perm::Ops, &[]);
-            let _ = it.next();
-            let during: Vec<_> = fs::read_dir(&four).unwrap().map(|e| e.unwrap().file_name()).collect();
-            assert!(during.iter().any(|n| n.to_string_lossy().starts_with(".rdf-fixed-sort-")) || during == before, "spills next to the store");
-        }
-        check(&*full, &*derived, "spill above 1, in the store directory");
+        check(&*full, &*derived, "spill above 1, default location");
         let after: Vec<_> = fs::read_dir(&four).unwrap().map(|e| e.unwrap().file_name()).collect();
-        assert_eq!(after, before, "the store directory is left as it was");
+        assert_eq!(after, before, "the base directory is left as it was");
         derived.verify().unwrap();
         crate::derived_order::spill_on_this_thread(None, None);
         for g in full.graph_names() {
