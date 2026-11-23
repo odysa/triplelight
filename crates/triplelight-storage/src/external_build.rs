@@ -238,6 +238,8 @@ impl Builder {
                     Term::NamedNode(_) => 1u64,
                     Term::BlankNode(_) => 2,
                     Term::Literal(_) => 3,
+                    #[cfg(feature = "rdf-12")]
+                    Term::Triple(_) => 4,
                 };
                 current = TermId((kind << 60) | unique);
                 unique += 1;
