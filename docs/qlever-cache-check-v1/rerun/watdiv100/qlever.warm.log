@@ -1,0 +1,22 @@
+C1       pass              0.0352
+C2       pass              0.0647
+C3       pass              1.2238
+F1       pass              0.0167
+F2       pass              0.0394
+F3       pass              0.0205
+F4       pass              0.0785
+F5       pass              0.0172
+L1       pass              0.0071
+L2       pass              0.0133
+L3       pass              0.0046
+L4       pass              0.0068
+L5       pass              0.0161
+S1       pass              0.1457
+S2       pass              0.0058
+S3       pass              0.0088
+S4       pass              0.005
+S5       pass              0.0081
+S6       pass              0.0045
+S7       pass              0.0068
+fatal: not a git repository (or any of the parent directories): .git
+summary: {'pass': 20}

@@ -1,0 +1,43 @@
+{
+  "answers_by_arm": {
+    "always-spo": {
+      "collected": 42,
+      "count_compatible": 42,
+      "errors": [],
+      "exact_typed": 42,
+      "primary": 42
+    },
+    "longest-constant-prefix": {
+      "collected": 42,
+      "count_compatible": 42,
+      "errors": [],
+      "exact_typed": 42,
+      "primary": 42
+    },
+    "single": {
+      "collected": 42,
+      "count_compatible": 42,
+      "errors": [],
+      "exact_typed": 42,
+      "primary": 42
+    }
+  },
+  "archive_files_verified": 261,
+  "dataset": "watdiv",
+  "db_bytes": {
+    "candidate": 964702208,
+    "control": 268709888
+  },
+  "orders": [
+    "ops",
+    "osp",
+    "pos",
+    "pso",
+    "sop",
+    "spo"
+  ],
+  "qualified": true,
+  "query_timing_collected": false,
+  "rows_per_order": 10914314,
+  "scored": false
+}

@@ -432,9 +432,26 @@ pub fn bench_encode(db: &Database, sparql: &str, via_ids: bool) -> (usize, usize
 #[unsafe(no_mangle)]
 pub extern "C" fn tl_abi_version() -> u32 { 1 }
 
+// Reports the linked Rayon pool width for the matched Java benchmark.
+#[doc(hidden)]
+#[cfg(feature = "benchmark-rayon-witness")]
+#[unsafe(no_mangle)]
+pub extern "C" fn triplelight_bench_rayon_threads() -> u32 {
+    std::panic::catch_unwind(rayon::current_num_threads)
+        .ok()
+        .and_then(|width| u32::try_from(width).ok())
+        .unwrap_or(0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "benchmark-rayon-witness")]
+    #[test]
+    fn benchmark_rayon_witness_reports_a_positive_width() {
+        assert!(triplelight_bench_rayon_threads() >= 1);
+    }
 
     fn s(v: &TlResultView, x: TlStr) -> String {
         let b = unsafe { std::slice::from_raw_parts(v.bytes, v.n_bytes as usize) };

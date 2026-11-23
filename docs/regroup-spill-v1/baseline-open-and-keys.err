@@ -1,0 +1,22 @@
+sop_prefix_scan: 0.000 s, 0 rows, 0 calls, remap_calls=0 regroup_scans=0 regroup_rows=0 regroup_groups=0 max_group=0 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=0 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+ops_prefix_scan: 0.000 s, 0 rows, 0 calls, remap_calls=0 regroup_scans=0 regroup_rows=0 regroup_groups=0 max_group=0 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=0 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+sop_seek_walk: 0.000 s, 0 rows, 0 calls, remap_calls=0 regroup_scans=0 regroup_rows=0 regroup_groups=0 max_group=0 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=0 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+ops_seek_walk: 0.000 s, 0 rows, 0 calls, remap_calls=0 regroup_scans=0 regroup_rows=0 regroup_groups=0 max_group=0 memo_hits=0 memo_misses=0 memo_rows=0 sort_ns=0 regroup_spills=0 spill_rows=0 peak_spill_bytes=0
+       11.05 real        10.51 user         0.53 sys
+           387301376  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               23818  page reclaims
+                   0  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                  63  involuntary context switches
+        140421979341  instructions retired
+         35576062283  cycles elapsed
+           386679480  peak memory footprint

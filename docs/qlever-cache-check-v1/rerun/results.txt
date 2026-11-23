@@ -1,0 +1,9 @@
+harness head 69fe7933f7727d3c751db7f29d891a469a27ce07
+summary: {'value-compatible': 12, 'mismatch': 23, 'pass': 25}
+summary: {'pass': 7, 'value-compatible': 13}
+summary: {'pass': 14}
+summary: {'pass': 30}
+summary: {'value-compatible': 42}
+summary: {'pass': 20}
+DONE
+RELEASED
