@@ -1,0 +1,39 @@
+dataset bsbm-pc500
+generator bsbmtools-v0.2.zip sha256 40f5e59baadec3af0014b7647989d3e0fc0476af25e84a4bc9d7f8cd81520aaa
+command generate -fc -pc 500 -s nt -fn bsbm-pc500 -dir td_data-bsbm-pc500
+wall_s 2
+bytes 48760823
+lines 191496
+sha256 c25166031dfff7ccd3e68a263dfe7142aceac7c4e024e0d6d262b1a570a845fa
+finished 2026-11-23T10:45:44Z
+dataset lubm10
+generator uba1.7.zip sha256 3d44f468e36b7f3cd532f0f5693a019d020877846397b1fa657367cbd53f380a, riot (Jena 6.2.0), 3 shards of 4 universities
+command Generator -univ <k> -index <i0> -seed 0 -onto http://swat.cse.lehigh.edu/onto/univ-bench.owl; riot --output=ntriples, files in university/department order
+wall_s 3
+bytes 223666695
+lines 1316700
+sha256 7ddf28aae609873b99751d807479193630d053f95e81a0cf2d854591274e5bf2
+finished 2026-11-23T10:45:17Z
+dataset lubm4
+generator uba1.7.zip sha256 3d44f468e36b7f3cd532f0f5693a019d020877846397b1fa657367cbd53f380a, riot (Jena 6.2.0), 3 shards of 2 universities
+command Generator -univ <k> -index <i0> -seed 0 -onto http://swat.cse.lehigh.edu/onto/univ-bench.owl; riot --output=ntriples, files in university/department order, header subjects file:///lubm/<file>
+wall_s 2
+bytes 83854329
+lines 493844
+sha256 42a1cefddb6c48052ad19bd3c1f3d7fb8317c5d605bdf556fd904d18397ca56d
+finished 2026-11-23T10:45:38Z
+dataset watdiv-sf1
+generator watdiv_v06.tar sha256 fb8d930b74b3fbc8f948101bfaf658a90d2f74002f1fefda465c45ffd33a71d2, model.cpp seeds 20261112, g++ 14.2.0, words sha256 9e66281f7e51445eab6857488ff6e3d768afffadb7fb1adbef5e4617bee4a53b
+command watdiv -d model/wsdbm-data-model.txt 1; saved state /data/datasets/watdiv-saved-sf1.txt sha256 3510d7814688364988b62005e32f9c26cb52935e512a8263d8f8833397f0db5b
+wall_s 0
+bytes 15216805
+lines 110602
+sha256 b7b2c24fb49a75558dabbc40df3f90e342abdf488ed5f5509e398973b21bf5ba
+finished 2026-11-23T10:45:44Z
+# written by provision.sh; source before any run
+export RUSTUP_HOME=/opt/rustup CARGO_HOME=/opt/cargo JAVA_HOME=/opt/jdk25
+export PATH=/opt/eval-venv/bin:/opt/jdk25/bin:/opt/cargo/bin:$PATH
+export DATA=/data TOOLS=/data/tools SRC=/data/triplelight EVAL_VENV=/opt/eval-venv
+export TRIPLELIGHT_LIBRARY=/data/tools/triplelight-java/libtriplelight_c.so BLAZEGRAPH_JAR=/data/tools/blazegraph/blazegraph-jar-2.1.5.jar
+export DUCKDB_EXTENSION_DIRECTORY=/data/tools/duckdb-ext DUCKDB_TEMP_DIRECTORY=/data/scratch/duckdb
+export TRIPLELIGHT_SCRATCH_DIR=/data/scratch/triplelight TMPDIR=/data/scratch

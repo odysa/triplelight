@@ -1,0 +1,16 @@
+# Python wheels for the embedded and DuckDB arms (docs/eval-plan/RUNBOOK.md). Installed by provision.sh with
+# `pip install --require-hashes --only-binary :all:` into /opt/eval-venv on the host's CPython 3.13 (Debian trixie).
+# Hashes are PyPI's sha256 for the manylinux x86_64 and aarch64 wheels; pip picks the one for the host.
+duckdb==2.0.1 \
+    --hash=sha256:39ffeb136abed770a496e5592a464f18a07b1543e7ddb1ff6453215e179f1647 \
+    --hash=sha256:ba06918b64d4061bd9ed722dc10adf66f9a10f96426e2403db93a36f590ba3dc
+pyarrow==26.0.1 \
+    --hash=sha256:f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c \
+    --hash=sha256:a3a79661404ba3d41b7c9a45cb56113246a244b38cb1393fadae289bc66b91b4
+pyoxigraph==0.5.13 \
+    --hash=sha256:402f8bf9eae3b37a18e808bde1b39760a1e15f208bb0e1a59c796567e4aa2aa0 \
+    --hash=sha256:7ad11cc64424fffb65e407ad6a88ce1483c8597cf196788aa2e4b89287eef860
+# Build backend for the TripleLight wheel (bindings/python), built from the commit under test.
+maturin==1.16.0 \
+    --hash=sha256:837db2f4d93d4899c3ac393fb3cc9eebf35b6002336e5d574f4a4fb6c49fe283 \
+    --hash=sha256:e285ec9eb10243d45d10417178cb2eb76e0cbb184d0aa4378b503489fa12ee78
