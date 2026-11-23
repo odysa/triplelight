@@ -11,7 +11,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [features]
-# RDF 1.2 terms in the storage interface (`Dictionary::triple_term_parts`).
+# RDF 1.2 terms: the line parsers (#102) and `Dictionary::triple_term_parts` (#101).
 rdf-12 = ["triplelight-rdf/rdf-12"]
 
 [dependencies]
