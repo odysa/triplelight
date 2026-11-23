@@ -32,8 +32,8 @@ for s in "${OK[@]}"; do
     python3 "$HERE/driver.py" reference --queries "$QDIR" --url "$(url_of "$s")" --out "$OUT/reference.json" --timeout "$TIMEOUT" > "$OUT/reference.log"
     echo "reference answers from $s" >> "$OUT/reference.log"
   fi
-  if ! python3 "$HERE/driver.py" run --system "$s" --url "$(url_of "$s")" --queries "$QDIR" --reference "$OUT/reference.json" \
-      --out "$OUT/$s.warm.json" --mode warm --runs "$RUNS" --timeout "$TIMEOUT" > "$OUT/$s.warm.log" 2>&1; then
+  if ! SYSTEM=$s DATASET=$D BUDGET=$BUDGET python3 "$HERE/driver.py" run --system "$s" --url "$(url_of "$s")" --queries "$QDIR" --reference "$OUT/reference.json" \
+      --out "$OUT/$s.warm.json" --mode warm --runs "$RUNS" --timeout "$TIMEOUT" --restart-hook "$HERE/restart.sh" > "$OUT/$s.warm.log" 2>&1; then
     echo "$s: warm run failed (see $s.warm.log)" >> "$OUT/failures.txt"
   fi
   if [ "${COLD:-0}" = 1 ]; then

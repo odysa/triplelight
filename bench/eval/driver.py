@@ -219,6 +219,14 @@ def run_hook(hook, url):
     return ok, (r.stdout + r.stderr)[-300:]
 
 
+def restart_after_timeout(a, rec, entry):
+    """A client-side timeout leaves the server still working on the query. With --restart-hook the server is restarted (and waited
+    for) before the next query, so a timed-out query cannot slow down what follows. The restart is recorded in the entry."""
+    if rec["status"] != "timeout" or not a.restart_hook: return
+    ok, note = run_hook(a.restart_hook, a.url)
+    entry.setdefault("restarts_after_timeout", []).append({"ok": ok, "note": note})
+
+
 def cmd_run(a):
     ref = json.load(open(a.reference))["queries"]
     records = {}
@@ -233,10 +241,12 @@ def cmd_run(a):
             entry["cold_hook_ok"], entry["cold_hook_note"] = ok, note
             runs = 1
         else:
-            one_run(a.url, q, a.timeout)       # warm-up, not recorded
+            rec, _ = one_run(a.url, q, a.timeout)       # warm-up, not recorded
+            restart_after_timeout(a, rec, entry)
             runs = a.runs
         for _ in range(runs):
             rec, secs = one_run(a.url, q, a.timeout)
+            restart_after_timeout(a, rec, entry)
             cls = classify(rec, r)
             entry["runs"].append({"class": cls, "seconds": round(secs, 4), **{k: rec[k] for k in ("rows", "bag", "seq") if k in rec},
                                   **({"detail": rec["detail"]} if "detail" in rec else {})})
@@ -345,6 +355,7 @@ def main():
     x = sub.add_parser("run"); x.add_argument("--system", required=True); x.add_argument("--url", required=True)
     x.add_argument("--queries", required=True); x.add_argument("--reference", required=True); x.add_argument("--out", required=True)
     x.add_argument("--mode", choices=["warm", "cold"], default="warm"); x.add_argument("--cold-hook")
+    x.add_argument("--restart-hook", help="command that restarts the server; run after every timed-out query (warm mode)")
     x.add_argument("--runs", type=int, default=5); x.add_argument("--timeout", type=float, default=300); x.add_argument("--seed", type=int, default=0)
     x.set_defaults(f=cmd_run)
     s = sub.add_parser("selftest"); s.set_defaults(f=cmd_selftest)
