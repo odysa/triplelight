@@ -31,7 +31,7 @@ pub mod trace {
         }
     } }
     counters!(REMAP_CALLS, REGROUP_SCANS, REGROUP_ROWS, REGROUP_GROUPS, MAX_GROUP, MEMO_HITS, MEMO_MISSES, MEMO_ROWS, SORT_NS,
-              REGROUP_SPILLS, SPILL_ROWS, PEAK_SPILL_BYTES);
+              REGROUP_SPILLS, SPILL_ROWS, PEAK_SPILL_BYTES, GROUP_HITS, GROUP_MISSES);
     pub(crate) fn add(c: &AtomicU64, n: u64) { if on() { c.fetch_add(n, Relaxed); } }
     pub(crate) fn max(c: &AtomicU64, n: u64) { if on() { c.fetch_max(n, Relaxed); } }
     pub fn enabled() -> bool { on() }
@@ -52,8 +52,72 @@ pub(super) trait KeptOrders {
 /// The sorted distinct second-column values of the last group a one-column-prefix seek on a derived order read.
 /// A leapfrog join seeks one group many times with rising targets, so without it each seek would rescan the group
 /// (quadratic in the group size); with it, a group is read once and each seek is a binary search.
+///
+/// It also keeps the last few *regrouped* groups of one-column-prefix scans on a derived order (most recent last).
+/// Repeated probes on one key, such as many requests on one class object through OPS, then sort the group once
+/// instead of once per probe. Bounded in total rows by `spill_rows()` (the in-memory sort limit); a larger group is
+/// never cached and regroups (and spills) as before.
 #[derive(Default)]
-pub(super) struct SeekMemo(std::sync::Mutex<Option<(Perm, TermId, std::sync::Arc<Vec<TermId>>)>>);
+pub(super) struct SeekMemo(
+    std::sync::Mutex<Option<(Perm, TermId, std::sync::Arc<Vec<TermId>>)>>,
+    std::sync::Mutex<std::collections::VecDeque<(Perm, TermId, std::sync::Arc<Vec<[TermId; 3]>>)>>,
+);
+/// The most groups the regrouped-group cache holds, whatever their size.
+const GROUP_CACHE_ENTRIES: usize = 8;
+impl SeekMemo {
+    fn group(&self, perm: Perm, key: TermId) -> Option<std::sync::Arc<Vec<[TermId; 3]>>> {
+        let mut groups = self.1.lock().unwrap();
+        let i = groups.iter().position(|(p, k, _)| *p == perm && *k == key)?;
+        let entry = groups.remove(i).expect("position is in range");
+        let rows = std::sync::Arc::clone(&entry.2);
+        groups.push_back(entry);
+        Some(rows)
+    }
+    fn insert_group(&self, perm: Perm, key: TermId, rows: std::sync::Arc<Vec<[TermId; 3]>>, limit: usize) {
+        let mut groups = self.1.lock().unwrap();
+        if groups.iter().any(|(p, k, _)| *p == perm && *k == key) { return }
+        let mut total = rows.len() + groups.iter().map(|g| g.2.len()).sum::<usize>();
+        while !groups.is_empty() && (total > limit || groups.len() >= GROUP_CACHE_ENTRIES) {
+            total -= groups.pop_front().expect("not empty").2.len();
+        }
+        groups.push_back((perm, key, rows));
+    }
+}
+
+/// Batches of up to 4096 rows from a shared, already sorted group.
+fn group_batches(rows: std::sync::Arc<Vec<[TermId; 3]>>) -> impl Iterator<Item = Result<TripleBatch, StorageError>> {
+    let mut pos = 0;
+    std::iter::from_fn(move || {
+        if pos >= rows.len() { return None }
+        let end = (pos + 4096).min(rows.len());
+        let mut batch = TripleBatch::default();
+        for c in &mut batch.cols { c.reserve(end - pos) }
+        for row in &rows[pos..end] { for (col, v) in batch.cols.iter_mut().zip(row) { col.push(*v) } }
+        pos = end;
+        Some(Ok(batch))
+    })
+}
+
+/// One group of `perm` (first column `key`) regrouped from `sibling` and sorted in memory; `None` if the group is
+/// larger than `limit` rows (it then goes through `Regroup`, which may spill).
+fn regroup_in_memory<O: KeptOrders>(o: &O, perm: Perm, sibling: Perm, key: TermId, limit: usize) -> Result<Option<std::sync::Arc<Vec<[TermId; 3]>>>, StorageError> {
+    let n = o.count_kept(sibling, &[key])?;
+    if n > limit as u64 { return Ok(None) }
+    let t = trace::on().then(std::time::Instant::now);
+    let mut rows = Vec::with_capacity(n as usize);
+    for batch in o.scan_kept(sibling, &[key]) {
+        let b = batch?;
+        rows.extend((0..b.len()).map(|i| [b.cols[0][i], b.cols[2][i], b.cols[1][i]]));
+    }
+    rows.sort_unstable();
+    trace::add(&trace::REGROUP_GROUPS, 1);
+    trace::add(&trace::REGROUP_ROWS, rows.len() as u64);
+    trace::max(&trace::MAX_GROUP, rows.len() as u64);
+    if let Some(t) = t { trace::add(&trace::SORT_NS, t.elapsed().as_nanos() as u64) }
+    let rows = std::sync::Arc::new(rows);
+    o.seek_memo().insert_group(perm, key, std::sync::Arc::clone(&rows), limit);
+    Ok(Some(rows))
+}
 
 /// How a missing order is served: `twin` holds the same rows with its first two key columns swapped; `sibling`
 /// shares the first key column, and the other two are swapped.
@@ -79,6 +143,18 @@ pub(super) fn scan<'a, O: KeptOrders>(o: &'a O, perm: Perm, prefix: &[TermId]) -
         return Box::new(o.scan_kept(twin, &swapped(prefix, 0, 1)).map(|b| b.map(|mut b| { b.cols.swap(0, 1); b })));
     }
     trace::add(&trace::REGROUP_SCANS, 1);
+    if let [key] = *prefix {
+        if let Some(rows) = o.seek_memo().group(perm, key) {
+            trace::add(&trace::GROUP_HITS, 1);
+            return Box::new(group_batches(rows));
+        }
+        trace::add(&trace::GROUP_MISSES, 1);
+        match regroup_in_memory(o, perm, sibling, key, spill_rows()) {
+            Ok(Some(rows)) => return Box::new(group_batches(rows)),
+            Ok(None) => {}
+            Err(e) => return Box::new(std::iter::once(Err(e))),
+        }
+    }
     Box::new(Regroup::new(o.scan_kept(sibling, prefix), spill_dir(o.scratch_dir())))
 }
 
@@ -100,7 +176,15 @@ pub(super) fn seek<O: KeptOrders>(o: &O, perm: Perm, prefix: &[TermId], target: 
             let cached = memo.lock().unwrap().as_ref().filter(|(p, g, _)| *p == perm && *g == prefix[0]).map(|(.., v)| std::sync::Arc::clone(v));
             let values = match cached {
                 Some(v) => { trace::add(&trace::MEMO_HITS, 1); v }
-                None => {
+                None => if let Some(rows) = o.seek_memo().group(perm, prefix[0]) {
+                    // The regrouped group is cached: its second column is already sorted.
+                    trace::add(&trace::GROUP_HITS, 1);
+                    let mut v: Vec<TermId> = rows.iter().map(|r| r[1]).collect();
+                    v.dedup();
+                    let v = std::sync::Arc::new(v);
+                    *memo.lock().unwrap() = Some((perm, prefix[0], std::sync::Arc::clone(&v)));
+                    v
+                } else {
                     // Distinct values only, collected as they come: memory is the number of distinct second-column
                     // values (an object's predicates for OPS, a subject's objects for SOP), not the group's rows.
                     let (mut set, mut rows) = (std::collections::BTreeSet::new(), 0u64);
@@ -317,5 +401,28 @@ impl Regroup<'_> {
         self.ready = 0;
         self.group.clear();
         self.spill = None;
+    }
+}
+
+#[cfg(test)]
+mod group_cache_tests {
+    use super::*;
+    fn rows(n: usize) -> std::sync::Arc<Vec<[TermId; 3]>> { std::sync::Arc::new(vec![[TermId(1), TermId(2), TermId(3)]; n]) }
+    #[test]
+    fn the_group_cache_is_bounded_in_rows_and_entries_and_least_recent_goes_first() {
+        let memo = SeekMemo::default();
+        memo.insert_group(Perm::Ops, TermId(1), rows(40), 100);
+        memo.insert_group(Perm::Ops, TermId(2), rows(40), 100);
+        assert!(memo.group(Perm::Ops, TermId(1)).is_some(), "a hit makes key 1 the most recent");
+        memo.insert_group(Perm::Ops, TermId(3), rows(40), 100); // 120 > 100: evicts key 2, the least recent
+        assert!(memo.group(Perm::Ops, TermId(2)).is_none());
+        assert!(memo.group(Perm::Ops, TermId(1)).is_some() && memo.group(Perm::Ops, TermId(3)).is_some());
+        assert!(memo.group(Perm::Sop, TermId(1)).is_none(), "keyed by order as well as by value");
+        for k in 10..10 + GROUP_CACHE_ENTRIES as u64 + 3 { memo.insert_group(Perm::Sop, TermId(k), rows(1), 1000) }
+        assert_eq!(memo.1.lock().unwrap().len(), GROUP_CACHE_ENTRIES);
+        // A group larger than the limit evicts everything else and is kept alone (callers never insert one: they check
+        // the limit first).
+        memo.insert_group(Perm::Ops, TermId(99), rows(5), 5);
+        assert_eq!(memo.1.lock().unwrap().len(), 1);
     }
 }
