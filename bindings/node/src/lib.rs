@@ -55,10 +55,11 @@ fn literal(env: &Env, l: &Literal) -> Result<JsObject> {
     o.set_named_property("value", env.create_string(l.value())?)?;
     o.set_named_property("language", env.create_string(l.language().unwrap_or(""))?)?;
     o.set_named_property("datatype", named(env, l.datatype().as_str())?)?;
-    // RDF 1.2 base direction, as in the RDF/JS data model: "ltr", "rtl" or "" (none)
+    // RDF 1.2 base direction: "ltr" or "rtl"
+    // set only when present, so a build with the feature on keeps the exact 1.1 shape for every other literal
     #[cfg(feature = "rdf-12")]
-    {
-        let dir = match l.direction() { Some(triplelight::rdf::BaseDirection::Ltr) => "ltr", Some(triplelight::rdf::BaseDirection::Rtl) => "rtl", None => "" };
+    if let Some(dir) = l.direction() {
+        let dir = match dir { triplelight::rdf::BaseDirection::Ltr => "ltr", triplelight::rdf::BaseDirection::Rtl => "rtl" };
         o.set_named_property("direction", env.create_string(dir)?)?;
     }
     Ok(o)

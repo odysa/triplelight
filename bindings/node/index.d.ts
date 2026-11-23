@@ -3,7 +3,7 @@
 
 export interface NamedNode { termType: "NamedNode"; value: string }
 export interface BlankNode { termType: "BlankNode"; value: string }
-export interface Literal { termType: "Literal"; value: string; language: string; datatype: NamedNode; direction?: "ltr" | "rtl" | "" }
+export interface Literal { termType: "Literal"; value: string; language: string; datatype: NamedNode; direction?: "ltr" | "rtl" } // present only on a directional literal (rdf-12 build)
 /** RDF 1.2 triple term (only with the `rdf-12` build): an RDF/JS Quad in the default graph; `value` is "". */
 export interface Quad { termType: "Quad"; value: ""; subject: NamedNode | BlankNode | Quad; predicate: NamedNode; object: Term; graph: { termType: "DefaultGraph"; value: "" } }
 export type Term = NamedNode | BlankNode | Literal | Quad;
