@@ -228,29 +228,17 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     let (from, named) = match dataset { Some(ds) => resolve_dataset(snap, ds, spec.as_ref())?, None => (Vec::new(), Vec::new()) };
     let empty = dataset::EmptyGraph { dict: snap as &dyn Snapshot };
     let union = (from.len() > 1).then(|| dataset::UnionGraph { members: from.clone() });
-    let mut ctx = Ctx::new(snap, path::CsrCache::new(opts.csr_paths, path::CsrLimits::default()));
-    ctx.dataset = dataset;
-    ctx.named = named;
-    if spec.is_some() && dataset.is_some() {
-        let default: &dyn Snapshot = match (from.len(), &union) { (0, _) => &empty, (1, _) => from[0], (_, Some(u)) => u, _ => unreachable!() };
-        ctx.data.set(Some(default));
-    }
-    ctx.base = match q { Query::Select { base_iri, .. } | Query::Ask { base_iri, .. } | Query::Construct { base_iri, .. } | Query::Describe { base_iri, .. } => base_iri.clone() };
-    ctx.wcoj = opts.wcoj;
-    ctx.general_group = opts.general_group;
-    ctx.count_pushdown = opts.count_pushdown;
-    ctx.range_pushdown = opts.range_pushdown;
-    ctx.char_pairs = opts.char_pairs;
-    ctx.sorted_probe = opts.sorted_probe;
-    // With FROM / FROM NAMED the default graph is not `snap`, so nothing is marked (the pushdown also stays off
-    // whenever the active graph is not `snap`).
-    if ctx.range_pushdown && spec.is_none() {
-        let pattern = match q { Query::Select { pattern, .. } | Query::Ask { pattern, .. } | Query::Construct { pattern, .. } | Query::Describe { pattern, .. } => pattern };
-        let nodes = |p: &triplelight_rdf::NamedNode| range::iri_objects(snap, p);
-        range::reorderable_bgps(pattern, true, &nodes, &mut ctx.range_reorderable);
-    }
-    let stats = opts.stats;
-    ctx.stats = stats.map(|st| (st, snap as &dyn Snapshot));
+    let default: Option<&dyn Snapshot> = if spec.is_some() && dataset.is_some() {
+        Some(match (from.len(), &union) {
+            (0, _) => &empty,
+            (1, _) => from[0],
+            (_, Some(u)) => u,
+            _ => unreachable!(),
+        })
+    } else {
+        None
+    };
+    let mut ctx = Ctx::for_query(snap, dataset, default, named, q, opts);
     match q {
         Query::Select { pattern, .. } => run_select(&mut ctx, snap, pattern, opts),
         Query::Ask { pattern, .. } => run_ask(&mut ctx, pattern),
@@ -436,9 +424,57 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
 }
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
-    /// `csr`: the query's CSR policy (`Options::csr_paths`), fixed for its duration.
-    fn new(snap: &'a S, csr: path::CsrCache) -> Self {
-        Ctx { snap, data: std::cell::Cell::new(None), dataset: None, named: Vec::new(), vars: HashMap::new(), scratch: RefCell::new((HashMap::new(), Vec::new())), stats: None, wcoj: true, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr: RefCell::new(csr), range_checks: RefCell::new(HashMap::new()), range_reorderable: HashSet::new(), order_limit: std::cell::Cell::new(None), base: None, now: expr::now_lexical(), exists_memo: RefCell::new(HashMap::new()), exists_vars: RefCell::new(HashMap::new()), agg_arg_memo: RefCell::new(HashMap::new()), agg_arg_slots: RefCell::new(HashMap::new()), memo_slots: std::cell::Cell::new(0) }
+    /// Initialize a query context over the graph views resolved by the caller.
+    fn for_query(
+        snap: &'a S,
+        dataset: Option<&'a dyn DatasetView>,
+        default: Option<&'a dyn Snapshot>,
+        named: Vec<TermId>,
+        query: &Query,
+        opts: &Options<'a>,
+    ) -> Self
+    where
+        S: Sized,
+    {
+        let now = expr::now_lexical();
+        let (pattern, spec, base) = match query {
+            Query::Select { pattern, dataset, base_iri, .. }
+            | Query::Ask { pattern, dataset, base_iri, .. }
+            | Query::Construct { pattern, dataset, base_iri, .. }
+            | Query::Describe { pattern, dataset, base_iri, .. } => (pattern, dataset, base_iri),
+        };
+        let mut range_reorderable = HashSet::new();
+        // With FROM / FROM NAMED the default graph is not `snap`, so no BGP is marked.
+        if opts.range_pushdown && spec.is_none() {
+            let nodes = |p: &triplelight_rdf::NamedNode| range::iri_objects(snap, p);
+            range::reorderable_bgps(pattern, true, &nodes, &mut range_reorderable);
+        }
+        Self {
+            snap,
+            data: std::cell::Cell::new(default),
+            dataset,
+            named,
+            vars: HashMap::new(),
+            scratch: RefCell::new((HashMap::new(), Vec::new())),
+            stats: opts.stats.map(|stats| (stats, snap as &dyn Snapshot)),
+            wcoj: opts.wcoj,
+            general_group: opts.general_group,
+            count_pushdown: opts.count_pushdown,
+            range_pushdown: opts.range_pushdown,
+            char_pairs: opts.char_pairs,
+            sorted_probe: opts.sorted_probe,
+            csr: RefCell::new(path::CsrCache::new(opts.csr_paths, path::CsrLimits::default())),
+            range_checks: RefCell::new(HashMap::new()),
+            range_reorderable,
+            order_limit: std::cell::Cell::new(None),
+            base: base.clone(),
+            now,
+            exists_memo: RefCell::new(HashMap::new()),
+            exists_vars: RefCell::new(HashMap::new()),
+            agg_arg_memo: RefCell::new(HashMap::new()),
+            agg_arg_slots: RefCell::new(HashMap::new()),
+            memo_slots: std::cell::Cell::new(0),
+        }
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
