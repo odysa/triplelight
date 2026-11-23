@@ -1201,6 +1201,9 @@ fn join_rows(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
     let width = left[0].len();
     let key: Vec<usize> = (0..width).filter(|&i| left.iter().all(|r| r[i] != UNBOUND) && right.iter().all(|r| r[i] != UNBOUND)).collect();
     if !key.is_empty() && left.len().saturating_mul(right.len()) > 64 {
+        if let [column] = key.as_slice() {
+            return join_one_bound_column(&left, &right, *column);
+        }
         let mut table: HashMap<Vec<TermId>, Vec<usize>> = HashMap::new();
         for (j, b) in right.iter().enumerate() { table.entry(key.iter().map(|&i| b[i]).collect()).or_default().push(j) }
         let mut out = Vec::new();
@@ -1215,6 +1218,27 @@ fn join_rows(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
     let mut out = Vec::new();
     for a in &left {
         out.extend(right.iter().filter_map(|b| merge_compatible(a, b)));
+    }
+    out
+}
+
+fn join_one_bound_column(left: &[Row], right: &[Row], column: usize) -> Vec<Row> {
+    const END: usize = usize::MAX;
+    let mut first = HashMap::new();
+    let mut next = vec![END; right.len()];
+    // Build in reverse so each key's chain follows the original right-row order.
+    for (i, row) in right.iter().enumerate().rev() {
+        next[i] = first.insert(row[column], i).unwrap_or(END);
+    }
+    let mut out = Vec::new();
+    for row in left {
+        let mut i = first.get(&row[column]).copied().unwrap_or(END);
+        while i != END {
+            if let Some(merged) = merge_compatible(row, &right[i]) {
+                out.push(merged);
+            }
+            i = next[i];
+        }
     }
     out
 }
@@ -1791,6 +1815,26 @@ mod join_rows_bench {
     fn rows(n: u64, offset: u64) -> Vec<Row> {
         // Column 0 is a join key bound everywhere; column 1 is bound on one side; column 2 conflicts on about 1 in 5.
         (0..n).map(|i| vec![TermId(1 + i % 400), if offset == 0 { TermId(7 + i % 5) } else { UNBOUND }, TermId(100 + (i + offset) % 5)]).collect()
+    }
+
+    #[test]
+    fn single_bound_column_join_matches_legacy_order() {
+        let left = [
+            [TermId(1), TermId(4), UNBOUND],
+            [TermId(2), UNBOUND, TermId(9)],
+            [TermId(3), UNBOUND, UNBOUND],
+        ].repeat(4).into_iter().map(Vec::from).collect::<Vec<_>>();
+        let right = [
+            [TermId(1), UNBOUND, TermId(7)],
+            [TermId(1), TermId(5), TermId(8)],
+            [TermId(2), TermId(6), TermId(9)],
+            [TermId(1), TermId(4), TermId(8)],
+            [TermId(2), UNBOUND, TermId(9)],
+            [TermId(2), UNBOUND, TermId(9)],
+        ].repeat(2).into_iter().map(Vec::from).collect::<Vec<_>>();
+        let expected = join_rows_old(left.clone(), right.clone());
+        assert_eq!(expected.len(), 40);
+        assert_eq!(join_rows(left, right), expected);
     }
 
     /// `cargo test --release -p triplelight-exec join_rows_bench -- --ignored --nocapture`
