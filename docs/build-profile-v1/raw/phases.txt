@@ -1,6 +1,6 @@
 27 matches in 1F:
 
-[file] /private/tmp/wxp-16/n89/p1/stderr.log (27):
+[file] <scratch>/n89/p1/stderr.log (27):
      2: [phase] start t=0.0s dir_mb=0
      3: [phase] shards_parsed_and_sorted t=253.6s dir_mb=27665
      4: [phase] term_runs_ready_for_stream t=253.6s dir_mb=27665
