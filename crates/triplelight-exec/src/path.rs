@@ -222,13 +222,24 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     }
 
     /// Every subject and object of the graph, once each (the domain of a zero-length path with no bound endpoint).
+    /// Order: the subjects ascending, then the objects that are not subjects, ascending. Both scans are sorted by
+    /// their first column, so the objects are filtered by a merge against the subjects instead of a hash set; a view
+    /// whose scan is not sorted (checked as the keys arrive) takes the hash set and gives the same order.
     fn graph_nodes(&self) -> Vec<TermId> {
-        let mut nodes = Vec::new();
-        let mut last = UNBOUND;
-        self.scan_each(Perm::Spo, &[], |s, _, _| if s != last { nodes.push(s); last = s; });
-        last = UNBOUND;
-        self.scan_each(Perm::Osp, &[], |o, _, _| if o != last { nodes.push(o); last = o; });
-        dedup_keep_order(&mut nodes);
+        // The two scans are independent reads of one immutable view, so they run side by side.
+        let ((mut nodes, subjects_sorted), (objects, objects_sorted)) =
+            on_data!(self, |g| rayon::join(|| first_keys(g, Perm::Spo), || first_keys(g, Perm::Osp)));
+        if !(subjects_sorted && objects_sorted) {
+            nodes.extend(objects);
+            dedup_keep_order(&mut nodes);
+            return nodes;
+        }
+        let subjects = nodes.len();
+        let mut i = 0;
+        for o in objects {
+            while i < subjects && nodes[i] < o { i += 1 }
+            if i == subjects || nodes[i] != o { nodes.push(o) }
+        }
         nodes
     }
 
@@ -499,6 +510,21 @@ impl Csr {
         out.reserve(parts.iter().map(Vec::len).sum());
         for part in parts { out.extend(part) }
     }
+}
+
+/// The distinct first-column values of a full scan of `perm` over `g`, in scan order, and whether they ascended.
+fn first_keys(g: &(impl Snapshot + ?Sized), perm: Perm) -> (Vec<TermId>, bool) {
+    let (mut keys, mut sorted) = (Vec::new(), true);
+    for batch in g.scan(perm, &[]) {
+        let b = batch.unwrap_or_else(|e| storage_failure(e));
+        for &k in &b.cols[0] {
+            match keys.last() {
+                Some(&last) if last == k => {}
+                last => { sorted &= last.is_none_or(|&l| l < k); keys.push(k) }
+            }
+        }
+    }
+    (keys, sorted)
 }
 
 /// In place: element `k` becomes the sum of elements `0..=k` (counts at `d + 1` become offsets).
