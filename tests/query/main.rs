@@ -7,6 +7,7 @@ mod functions;
 mod optimizer;
 mod paths;
 mod range_pushdown;
+mod rdfs;
 mod results;
 #[cfg(feature = "rdf-12")]
 mod sparql12;
