@@ -167,9 +167,14 @@ impl Builder {
         b.orders = orders;
         Ok(b)
     }
+    /// An error once this shard holds as many triples as a row ID's low 56 bits can number.
+    fn check_shard_room(&self) -> io::Result<()> {
+        if self.triples >= (1u64 << 56) { return Err(bad("too many triples in shard")) }
+        Ok(())
+    }
     /// The ID of this shard's next triple (the shard in the top byte), or an error once the shard is full.
     fn next_shard_row(&self, shard: usize) -> io::Result<u64> {
-        if self.triples >= (1u64 << 56) { return Err(bad("too many triples in shard")) }
+        self.check_shard_room()?;
         Ok(((shard as u64) << 56) | self.triples)
     }
     /// Counts one triple whose terms the deduplicating parse recorded itself (`dedup_shard`).
@@ -716,7 +721,8 @@ fn dedup_shard(dir: &Path, shard: usize, b: &mut Builder, input: impl BufRead, m
     };
     for t in triplelight_core::ntriples::read_ntriples(input) {
         let t: Triple = t?;
-        b.next_shard_row(shard)?;
+        // The deduplicating parse numbers rows by position, so it needs only the bound.
+        b.check_shard_room()?;
         for term in [t.subject.to_string(), t.predicate.to_string(), t.object.to_string()] {
             if term.len() > MAX_TERM || term.as_bytes().contains(&0) {
                 return Err(bad("invalid or oversized encoded RDF term"));
