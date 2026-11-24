@@ -15,7 +15,7 @@ use super::{storage_failure, Ctx, Row, UNBOUND};
 use crate::model::TermId;
 use crate::sparql::{Expression, NamedNodePattern, TermPattern, TriplePattern};
 use crate::storage::Snapshot;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use triplelight_rdf::{BlankNode, NamedOrBlankNode, Term, Triple};
 
@@ -136,7 +136,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let w = self.vars.len();
         let mut flat: Vec<TermId> = out.concat();
         let all: HashSet<usize> = (0..w).collect();
-        self.apply_filters(&mut flat, w, filters, &all, &mut vec![false; filters.len()]);
+        self.apply_filters(&mut flat, w, filters, &all, &mut vec![false; filters.len()], &mut HashMap::new());
         flat.chunks_exact(w).map(<[TermId]>::to_vec).collect()
     }
 
