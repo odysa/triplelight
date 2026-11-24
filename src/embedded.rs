@@ -201,10 +201,11 @@ impl Database {
         let _published = self.stats.read().unwrap();
         self.origin.lock().unwrap().as_ref().filter(|(base, _)| *base == snap.base_id()).map(|(_, o)| o.clone())
     }
-    /// Whether statistics for the currently visible unmodified base are ready.
+    /// Whether the planner has statistics for the current state: scanned from the visible base, with any uncompacted
+    /// delta small enough for them to still apply (`statistics_cover`).
     pub fn stats_ready(&self) -> bool {
         let snap = self.snapshot();
-        self.stats.read().unwrap().as_ref().is_some_and(|(base, _)| snap.delta_len() == 0 && base.base_id() == snap.base_id())
+        self.stats.read().unwrap().as_ref().is_some_and(|(base, st)| statistics_cover(base.base_id(), st, &snap))
     }
 
     /// Executes a supported SPARQL query, returning owned RDF terms.
@@ -385,6 +386,18 @@ fn scope_blank_nodes(triples: Vec<crate::rdf::Triple>) -> Vec<crate::rdf::Triple
     triples.into_iter().map(|t| scope.rewrite(t)).collect()
 }
 
+/// The largest uncompacted delta, as a fraction of the base's triples, that statistics scanned from the base still plan
+/// (#111). They only choose join orders, and the planner takes each pattern's own count from the live snapshot
+/// (`Stats::cache_pattern_counts`), so a stale base only skews the join-correlation estimates (characteristic sets); it
+/// can never change an answer. Past this the planner falls back to its greedy exact-count order, as with no statistics.
+pub const STATS_DELTA_FRACTION: u64 = 10;
+
+/// Whether statistics scanned from the base `stats_base` still plan `snap`: the same base, and an uncompacted delta of
+/// at most `1 / STATS_DELTA_FRACTION` of the base's triples. Shared by the embedded API and the server.
+pub fn statistics_cover(stats_base: usize, stats: &Stats, snap: &Overlay) -> bool {
+    stats_base == snap.base_id() && snap.delta_len() as u64 <= stats.triple_count / STATS_DELTA_FRACTION
+}
+
 /// An immutable view of the database at the instant `Database::read` was called.
 pub struct ReadSnapshot { snapshot: Arc<Overlay>, stats: Arc<RwLock<Option<(Arc<Overlay>, Arc<Stats>)>>> }
 impl ReadSnapshot {
@@ -417,8 +430,7 @@ impl ReadSnapshot {
         Ok(exec::plan_trace::explain_dataset(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
     }
     fn applicable_stats(&self) -> Option<Arc<Stats>> {
-        if self.snapshot.delta_len() != 0 { return None; }
-        self.stats.read().unwrap().as_ref().filter(|(base, _)| base.base_id() == self.snapshot.base_id()).map(|(_, st)| Arc::clone(st))
+        self.stats.read().unwrap().as_ref().filter(|(base, st)| statistics_cover(base.base_id(), st, &self.snapshot)).map(|(_, st)| Arc::clone(st))
     }
     /// Executes a query with undecoded SELECT IDs, valid only against this snapshot.
     pub fn query_ids(&self, sparql: &str) -> Result<QueryResult, DatabaseError> { self.query_ids_with_entailment(sparql, exec::Entailment::Simple) }
@@ -465,6 +477,28 @@ mod memory_tests {
         thread.join().unwrap();
         assert!(result.is_ok(), "reader blocked behind writer mutex");
     }
+    #[test]
+    fn statistics_keep_planning_through_a_small_delta() {
+        // #111: statistics scanned from the base stay in use while the uncompacted delta is at most a tenth of it.
+        let dir = std::env::temp_dir().join(format!("tl-stats-delta-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let nt = dir.join("base.nt");
+        std::fs::write(&nt, (0..200).map(|i| format!("<urn:s{i}> <urn:p{}> <urn:o{i}> .\n", i % 7)).collect::<String>()).unwrap();
+        let db = Database::in_memory();
+        assert_eq!(db.load(&nt).unwrap(), 200);
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while !db.stats_ready() && std::time::Instant::now() < deadline { std::thread::sleep(std::time::Duration::from_millis(2)) }
+        assert!(db.stats_ready(), "statistics for the loaded base");
+        db.update("INSERT DATA { <urn:new> <urn:p0> <urn:x> }").unwrap();
+        assert!(db.stats_ready(), "one pending change keeps them");
+        assert!(db.read().applicable_stats().is_some());
+        let many: String = (0..20).map(|i| format!("<urn:n{i}> <urn:q> <urn:y> . ")).collect();
+        db.update(&format!("INSERT DATA {{ {many} }}")).unwrap();
+        assert!(!db.stats_ready(), "21 pending changes on a 200-triple base exceed a tenth");
+        assert!(db.read().applicable_stats().is_none());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn entailment_is_explicit_and_follows_each_snapshot() {
         let db = Database::in_memory();
