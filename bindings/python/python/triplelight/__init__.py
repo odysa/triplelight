@@ -144,7 +144,8 @@ class Database:
         `entailment="rdfs"` matches the default graph's RDFS closure (subclasses, subproperties, domain and range),
         computed at query time; nothing inferred is stored. The default, "simple", matches the stored triples.
         `timeout` (seconds) raises `QueryTimeout`; `memory_mb` bounds the query's working memory and raises
-        `ResourceLimitError` past it. Ctrl-C (KeyboardInterrupt) cancels a running query. None of these leaves a
+        `ResourceLimitError` past it. On Unix, Ctrl-C (KeyboardInterrupt) cancels a running query on the main
+        thread (see `set_cancel_on_ctrl_c`); on Windows it is raised once the query ends. None of these leaves a
         partial result, and the database serves the next query as usual.
         """
         return Result(self._db.query(sparql, entailment, timeout, memory_mb))
