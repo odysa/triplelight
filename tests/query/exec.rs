@@ -1065,3 +1065,30 @@ fn count_pushdown_switch_changes_the_access_path() {
     assert!(on_counts > 0, "pushdown on uses index counts");
     assert!(off_rows >= 3, "pushdown off scans the matching triples ({off_rows})");
 }
+
+/// ORDER BY with several keys under a LIMIT computes the later keys only for rows whose first key can reach the
+/// first k (`sort_rows`): the answer must equal the first k rows of the unlimited sort, ties and unbound keys included.
+#[test]
+fn top_k_with_secondary_keys_matches_the_full_sort() {
+    let mut nt = String::new();
+    for i in 0..300u32 {
+        // Many ties on ?v (i % 7), a secondary IRI key, and some rows without ?v.
+        if i % 11 != 0 { nt.push_str(&format!("<http://ex/s{i}> <http://ex/v> \"{}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n", i % 7)) }
+        nt.push_str(&format!("<http://ex/s{i}> <http://ex/k> <http://ex/k{}> .\n", (i * 37) % 101));
+    }
+    let snap = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
+    let ordered = |q: &str| -> Vec<Vec<String>> {
+        match query(&snap, q).unwrap() {
+            QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| r.into_iter().map(|t| t.map(|t| t.to_string()).unwrap_or("-".into())).collect()).collect(),
+            r => panic!("{r:?}"),
+        }
+    };
+    for order in ["DESC(?v) ?k ?s", "?v DESC(?k) ?s", "(?v * 2) ?s", "DESC(?v + 1) ?k"] {
+        let q = |limit: &str| format!("SELECT ?s ?v ?k WHERE {{ ?s <http://ex/k> ?k OPTIONAL {{ ?s <http://ex/v> ?v }} }} ORDER BY {order} {limit}");
+        let full = ordered(&q(""));
+        for k in [1, 2, 10, 43, 299, 300, 301] {
+            assert_eq!(ordered(&q(&format!("LIMIT {k}"))), full[..k.min(full.len())].to_vec(), "ORDER BY {order} LIMIT {k}");
+            assert_eq!(ordered(&q(&format!("LIMIT {k} OFFSET 5"))), full[5.min(full.len())..(5 + k).min(full.len())].to_vec(), "ORDER BY {order} LIMIT {k} OFFSET 5");
+        }
+    }
+}
