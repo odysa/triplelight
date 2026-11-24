@@ -160,6 +160,32 @@ fn main() {
             let snap = load(path, &args);
             print_query(|| query_with(&snap, &args[3], &opts));
         }
+        Some("text-index") => {
+            let usage = || -> ! {
+                eprintln!("usage: triplelight text-index <store-directory> [--build-memory-mb=N]");
+                std::process::exit(2)
+            };
+            let [_, _, directory, rest @ ..] = args.as_slice() else { usage(); };
+            let value = match rest {
+                [] => "128",
+                [arg] => arg.strip_prefix("--build-memory-mb=").unwrap_or_else(|| usage()),
+                [flag, value] if flag == "--build-memory-mb" => value,
+                _ => usage(),
+            };
+            let memory_mb = value.parse::<usize>().unwrap_or_else(|_| usage());
+            let directory = std::path::Path::new(directory);
+            if !directory.join("CURRENT").is_file() {
+                eprintln!("text-index requires an existing disk store");
+                std::process::exit(2);
+            }
+            let result = triplelight::store::Store::open_with(
+                directory, None, Box::new(triplelight::storage::DiskBase { workers: 1 }),
+            ).and_then(|store| DiskSnapshot::build_text_index(&store, memory_mb));
+            match result {
+                Ok(tokens) => println!("indexed {tokens} distinct tokens"),
+                Err(e) => { eprintln!("text index build failed: {e}"); std::process::exit(1); }
+            }
+        }
         Some("explain") => {
             let [_, _, data, query, ..] = args.as_slice() else {
                 eprintln!("usage: triplelight explain <data> <sparql> [--entailment=simple|rdfs]");
@@ -209,7 +235,7 @@ fn main() {
                 std::process::exit(2);
             }
         }
-        _ => eprintln!("usage: triplelight query <data> <sparql> [--entailment=simple|rdfs] | triplelight explain <data> <sparql> | triplelight validate <data> <shapes> | triplelight build-disk <source> <dir> | triplelight verify <dir>\n\
+        _ => eprintln!("usage: triplelight query <data> <sparql> [--entailment=simple|rdfs] | triplelight explain <data> <sparql> | triplelight validate <data> <shapes> | triplelight build-disk <source> <dir> | triplelight verify <dir> | triplelight text-index <store-directory>\n\
             with --features server: triplelight serve <data.nt|.ttl> [port] | triplelight serve-store <dir> [port] [--init data.nt] [--read-only]"),
     }
 }
