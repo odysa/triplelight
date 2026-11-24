@@ -85,9 +85,11 @@ written by a pre-release `rdf-12` build (main e51312ec, before #168) has no `tri
 - **Quad orders** (`RDFSNAP5`/`6`) are the files `gspo` … `gops` (format `RDFQIX02`; `RDFQIX01` is still read): the same layout with four IDs
   per row, graph first. The **catalog** `graphs` (`RDFGRA01`) lists every named graph's ID and triple count, empty
   graphs included.
-- **The unified dictionary** (`RDFDID03`; `RDFDID02` is still read) is one front-coded file in ID order. `RDFDID03`
-  frames each entry with varints (the ID as a delta from the previous entry's, then the prefix and suffix lengths)
-  instead of a fixed 16 bytes. IDs carry their kind in the top four
+- **The unified dictionary** (`RDFDID04`; `RDFDID03` and `RDFDID02` are still read) is one front-coded file in ID
+  order. Each entry is framed with varints (the ID as a delta from the previous entry's, then the prefix and suffix
+  lengths; `RDFDID02` used a fixed 16 bytes). In `RDFDID04` each block starts with a codec byte: 0 for a raw block, 1
+  for one zstd frame (level 3). The writer compresses literal blocks, when that is smaller, and leaves IRI and blank
+  node blocks raw. The checksum covers the stored bytes. IDs carry their kind in the top four
   bits (1 IRI, 2 blank node, 3 literal). Within a kind, ID order is term-text order, so the same blocks serve both
   lookups: by ID, by binary search on IDs; by term, by taking the kind from the text's first byte (`<`, `_` or `"`)
   and binary-searching that kind's blocks by their last term text. Both paths share cache entries. See

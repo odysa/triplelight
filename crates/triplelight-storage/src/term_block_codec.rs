@@ -228,3 +228,66 @@ mod tests {
         assert!(decode(&bad, true, false).is_err());
     }
 }
+
+/// `RDFDID04` (#105): a one-byte codec tag, then the lean block (`encode(_, true)`): stored as is (`RAW`), or as one
+/// zstd frame (`ZSTD`). The dictionary writer compresses literal blocks, whose text front coding barely shrinks
+/// (`docs/literal-compression-v1/`), and only when that is smaller; IRI blocks stay raw.
+pub(super) const RAW: u8 = 0;
+pub(super) const ZSTD: u8 = 1;
+const ZSTD_LEVEL: i32 = 3;
+
+pub(super) fn encode_tagged(entries: &[(TermId, Term)], compress: bool) -> io::Result<Vec<u8>> {
+    let lean = encode(entries, true)?;
+    if compress {
+        let packed = zstd::bulk::compress(&lean, ZSTD_LEVEL)?;
+        if packed.len() < lean.len() {
+            let mut out = Vec::with_capacity(packed.len() + 1);
+            out.push(ZSTD);
+            out.extend_from_slice(&packed);
+            return Ok(out);
+        }
+    }
+    let mut out = Vec::with_capacity(lean.len() + 1);
+    out.push(RAW);
+    out.extend_from_slice(&lean);
+    Ok(out)
+}
+
+/// Decodes an `RDFDID04` block; `canonical` as for `decode`. A zstd frame may not expand past the largest lean block.
+pub(super) fn decode_tagged(data: &[u8], canonical: bool) -> io::Result<Vec<(TermId, Term)>> {
+    match data.split_first() {
+        Some((&RAW, rest)) => decode(rest, true, canonical),
+        Some((&ZSTD, rest)) => {
+            let lean = zstd::bulk::decompress(rest, MAX_BLOCK).map_err(|_| bad("invalid compressed term block"))?;
+            decode(&lean, true, canonical)
+        }
+        _ => Err(bad("invalid term block codec")),
+    }
+}
+
+#[cfg(test)]
+mod tagged_tests {
+    use super::*;
+    use triplelight_rdf::{Literal, NamedNode};
+    #[test]
+    fn literal_blocks_compress_round_trip_and_reject_bad_frames() {
+        let words = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta"];
+        let lits: Vec<(TermId, Term)> = (0..200u64)
+            .map(|i| (TermId((3 << 60) | (i + 1)), Literal::new_language_tagged_literal(
+                (0..40).map(|k| words[((i * 7 + k * 3) % 6) as usize]).collect::<Vec<_>>().join(" "), "en").unwrap().into()))
+            .collect();
+        let packed = encode_tagged(&lits, true).unwrap();
+        let raw = encode_tagged(&lits, false).unwrap();
+        assert_eq!(packed[0], ZSTD);
+        assert_eq!(raw[0], RAW);
+        assert!(packed.len() * 2 < raw.len(), "generated text compresses: {} against {}", packed.len(), raw.len());
+        assert_eq!(decode_tagged(&packed, true).unwrap(), lits);
+        assert_eq!(decode_tagged(&raw, true).unwrap(), lits);
+        // An incompressible block is kept raw even when compression is asked for.
+        let iri: Vec<(TermId, Term)> = vec![(TermId((1 << 60) | 1), NamedNode::new("urn:x").unwrap().into())];
+        assert_eq!(encode_tagged(&iri, true).unwrap()[0], RAW);
+        for bad in [vec![], vec![7, 1, 2], vec![ZSTD, 1, 2, 3], packed[..packed.len() - 1].to_vec()] {
+            assert!(decode_tagged(&bad, true).is_err());
+        }
+    }
+}
