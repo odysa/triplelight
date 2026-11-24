@@ -273,11 +273,18 @@ fn the_report_and_its_parts_can_cross_threads() {
 
 #[test]
 fn the_nesting_limit_holds_for_a_shared_node_reached_after_a_short_branch() {
-    // _:a is a 1-deep node reached first directly; _:x (its own chain of 63 inverse nodes) ends in _:a below 63 others: the longest chain
-    // through the shared node is longer than the limit even though the first branch to reach it was short
-    let mut ttl = String::from("ex:shape ex:path _:top .\n_:top sh:alternativePath ( _:a _:c0 ) .\n_:a sh:inversePath ex:q .\n");
-    for i in 0..63 { ttl.push_str(&format!("_:c{i} sh:inversePath _:c{} .\n", i + 1)); }
-    ttl.push_str("_:c63 sh:inversePath _:a .\n");
+    // _:a (height 2) is reached first by a short branch and cached; the second branch is a chain of 62 nodes that ends in _:a. Every node
+    // on the stack stays below the limit, so only the cached height can reveal that this chain (63 nodes above + 2) is too deep.
+    let mut ttl = String::from("ex:shape ex:path _:top .\n_:top sh:alternativePath ( _:a _:c0 ) .\n_:a sh:inversePath _:a2 .\n_:a2 sh:inversePath ex:q .\n");
+    for i in 0..61 { ttl.push_str(&format!("_:c{i} sh:inversePath _:c{} .\n", i + 1)); }
+    ttl.push_str("_:c61 sh:inversePath _:a .\n");
     let g = Graph::new(&parse(&ttl));
-    assert!(matches!(Path::parse(&g.objects(&iri("shape"), &pred("path"))[0], &g), Err(ValidationError::MalformedShape(_))));
+    match Path::parse(&g.objects(&iri("shape"), &pred("path"))[0], &g) {
+        Err(ValidationError::MalformedShape(m)) => assert!(m.contains("64 deep"), "the cached-height check fired: {m}"),
+        other => panic!("expected the nesting limit, got {other:?}"),
+    }
+    // the same shared node at a shallow position is fine
+    let ok = parse("ex:shape ex:path _:top . _:top sh:alternativePath ( _:a _:b ) . _:b sh:inversePath _:a . _:a sh:inversePath _:a2 . _:a2 sh:inversePath ex:q .");
+    let g = Graph::new(&ok);
+    assert!(Path::parse(&g.objects(&iri("shape"), &pred("path"))[0], &g).is_ok());
 }
