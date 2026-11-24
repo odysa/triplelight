@@ -159,6 +159,10 @@ int32_t tl_update(const tl_db *db, const char *sparql, size_t len, uint64_t *cha
 int32_t tl_load(const tl_db *db, const char *path, size_t len, uint64_t *loaded, tl_error **err);
 int32_t tl_compact(const tl_db *db, tl_error **err);
 int32_t tl_stats_ready(const tl_db *db);
+/* Loads an official extension. Unknown or unavailable names return TL_ERR_UNSUPPORTED. */
+int32_t tl_load_extension(const tl_db *db, const char *name, size_t len, tl_error **err);
+/* Returns name, compiled_in and loaded columns. Release the result with tl_result_free. */
+int32_t tl_list_extensions(const tl_db *db, tl_result **out, tl_error **err);
 
 /* SELECT solutions as an Arrow C Stream written into caller-allocated *out.
  * - out must be non-null (checked before the query runs); on failure *out is left untouched.

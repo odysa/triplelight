@@ -104,7 +104,8 @@ impl Database {
         Self { db: self.db, limit: Arc::new(Semaphore::new(n.max(1))) }
     }
 
-    /// The synchronous handle, for calls this API does not wrap.
+    /// The synchronous handle, including extension loading and status through
+    /// `as_sync().load_extension(name)` and `as_sync().list_extensions()`.
     pub fn as_sync(&self) -> &embedded::Database { &self.db }
 
     /// A stable read view, unaffected by later updates.

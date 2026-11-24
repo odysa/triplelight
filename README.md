@@ -130,6 +130,8 @@ cargo build --release --no-default-features --features rdfs
 
 Select `--entailment=rdfs` for CLI queries or `Entailment::Rdfs` in Rust. SHACL validates two supplied graphs through `triplelight validate <data> <shapes>` or the Rust validation API. [SHACL usage](docs/shacl.md) · [RDFS scope and reference checks](docs/rdfs-jena-lubm1-v1/README.md)
 
+Rust applications can call `Database::load_extension` and `Database::list_extensions`. Official extensions load on first use. See [extensions](docs/extensions.md) for registration and custom builds.
+
 ### RDF 1.2 and SPARQL 1.2 (drafts, behind a build feature)
 
 TripleLight implements the W3C RDF 1.2 and SPARQL 1.2 drafts when built with the `rdf-12` Cargo feature, which is off by default. The

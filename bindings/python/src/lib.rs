@@ -150,6 +150,12 @@ impl PyDatabase {
         let db = Arc::clone(&self.db);
         py.allow_threads(|| db.load(&path)).map_err(err)
     }
+    fn load_extension(&self, name: &str) -> PyResult<()> {
+        self.db.load_extension(name).map_err(|error| UnsupportedError::new_err(error.to_string()))
+    }
+    fn list_extensions(&self) -> Vec<(String, bool, bool)> {
+        self.db.list_extensions().into_iter().map(|entry| (entry.name, entry.compiled_in, entry.loaded)).collect()
+    }
     fn stats_ready(&self) -> bool { self.db.stats_ready() }
     fn read(&self) -> PySnapshot { PySnapshot { snap: Arc::new(self.db.read()) } }
     fn compact(&self, py: Python<'_>) -> PyResult<()> {

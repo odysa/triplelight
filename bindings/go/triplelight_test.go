@@ -173,3 +173,48 @@ func TestRDF12TripleTermsAndDirection(t *testing.T) {
 		t.Fatalf("directional literal: %+v", l)
 	}
 }
+
+func TestOfficialExtensions(t *testing.T) {
+	db := mustMem(t)
+	byName := func() map[string]ExtensionInfo {
+		t.Helper()
+		entries, err := db.ListExtensions()
+		if err != nil {
+			t.Fatal(err)
+		}
+		result := make(map[string]ExtensionInfo, len(entries))
+		for _, entry := range entries {
+			result[entry.Name] = entry
+		}
+		return result
+	}
+	before := byName()
+	for _, name := range []string{"rdfs", "shacl"} {
+		entry, present := before[name]
+		if !present || entry.Loaded {
+			t.Fatalf("initial extension %q: %+v", name, entry)
+		}
+		for i := 0; i < 2; i++ {
+			err := db.LoadExtension(name)
+			if entry.CompiledIn {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				var unsupported *Error
+				if !errors.As(err, &unsupported) || unsupported.Kind != ErrUnsupported {
+					t.Fatalf("disabled extension %q: %v", name, err)
+				}
+			}
+		}
+	}
+	after := byName()
+	for _, name := range []string{"rdfs", "shacl"} {
+		if after[name].Loaded != before[name].CompiledIn {
+			t.Fatalf("extension %q: %+v", name, after[name])
+		}
+	}
+	if err := db.LoadExtension("missing"); err == nil {
+		t.Fatal("expected an unsupported extension error")
+	}
+}

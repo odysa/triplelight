@@ -16,7 +16,7 @@ from typing import Iterator, Optional
 from . import _triplelight
 from ._triplelight import GraphStateError, LockedError, ShapesError, TripleLightError, StorageError, SyntaxError, UnsupportedError
 
-__all__ = ["Database", "Snapshot", "IRI", "BNode", "Literal", "Triple", "Result", "ValidationReport", "validate",
+__all__ = ["Database", "Snapshot", "IRI", "BNode", "Literal", "Triple", "Result", "ExtensionInfo", "ValidationReport", "validate",
            "TripleLightError", "SyntaxError", "UnsupportedError", "StorageError", "LockedError", "GraphStateError",
            "ShapesError"]
 
@@ -106,6 +106,14 @@ class Snapshot:
     def __exit__(self, *exc): return False
 
 
+@dataclass(frozen=True)
+class ExtensionInfo:
+    """Build availability and load state for an extension."""
+    name: str
+    compiled_in: bool
+    loaded: bool
+
+
 class Database:
     """A persistent RDF database in a local directory (created if missing).
 
@@ -137,6 +145,14 @@ class Database:
     def load(self, path) -> int:
         """Atomically import an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file. For N-Triples and Turtle, an empty in-memory store builds its indexes as it parses, then sorts them before publishing; N-Quads and TriG take the dataset-change path."""
         return self._db.load(str(path))
+
+    def load_extension(self, name: str) -> None:
+        """Load an official extension for this database."""
+        self._db.load_extension(name)
+
+    def list_extensions(self) -> list[ExtensionInfo]:
+        """Return build availability and load state."""
+        return [ExtensionInfo(*entry) for entry in self._db.list_extensions()]
 
     def stats_ready(self) -> bool:
         """True once background optimizer statistics are built (queries work before that, with greedy plans)."""
