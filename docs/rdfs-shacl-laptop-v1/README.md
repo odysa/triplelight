@@ -11,7 +11,7 @@ All 16 typed query answers matched for both sizes in simple and RDFS modes. The 
 | LUBM-1 | 12.42 | 45.95 | 0.27 |
 | LUBM-10 | 131.94 | 234.06 | 0.56 |
 
-The table sums the warm medians of the 14 original queries and excludes loading, Jena view setup, and the two count probes. On LUBM-10, TripleLight was faster on eight of the 14 queries. It took 23.4 ms versus 1.0 ms on LUBM Q5 and 22.9 ms versus 0.33 ms on Q13, which returned no rows. RDFS process peak RSS on LUBM-10 was 1,029 MiB for TripleLight and 1,928 MiB for Jena.
+The table sums the warm medians of the 14 original queries and excludes loading, Jena view setup, and the two count probes. On LUBM-1, TripleLight was 1.6× slower on Q3, 2.0× on Q5, and 4.1× on Q13. On LUBM-10, TripleLight was faster on eight of the 14 queries. It took 23.4 ms versus 1.0 ms on LUBM Q5 and 22.9 ms versus 0.33 ms on Q13, which returned no rows. RDFS process peak RSS on LUBM-10 was 1,029 MiB for TripleLight and 1,928 MiB for Jena.
 
 | SHACL validation only | TripleLight ms | Jena ms | TripleLight / Jena |
 | --- | ---: | ---: | ---: |
@@ -32,7 +32,7 @@ Jena kept its data indexes across validation calls. TripleLight built them anew 
 
 ## Measurement
 
-Each dataset passed an untimed typed comparison in both modes and with both shapes graphs before its timed runs began. Each timed workload ran four fresh processes in TripleLight, Jena, Jena, TripleLight order. A process first loads the input, then repeats each operation seven times. The first two repetitions are warmups. Each process preserves the complete answer from its first repetition and checks the cardinality throughout. The tables show the median of the two process medians per engine, and the observed range of the two neighboring TripleLight-to-Jena ratios. This is a descriptive laptop run with the operating-system cache in its normal state.
+Each dataset passed an untimed typed comparison in both modes and with both shapes graphs before its timed runs began. Each timed workload ran four fresh processes in TripleLight, Jena, Jena, TripleLight order. A process first loads the input, then repeats each operation seven times. The first two repetitions are warmups. Each process preserves the complete answer from its first repetition and checks the cardinality throughout. The tables show the median of the two process medians per engine, and the observed range of the two neighboring TripleLight-to-Jena ratios. This is a descriptive laptop run with the operating-system cache in its normal state. Several simple-mode medians are only a few microseconds, so use the paired ranges when reading those ratios.
 
 RDFS compares simple and RDFS graph matching separately. Both measure query parsing and materialization of SELECT answers, with SPARQL JSON encoding outside the measured call. TripleLight uses a memory snapshot and the embedded query executor. Jena uses a memory graph and wraps it once with `RDFSFactory.graphRDFS`. The tables separate Jena's view construction from its query calls. TripleLight prepares the RDFS view inside each query call. A separate Jena RIOT streaming closure is queried under simple entailment to verify the inferred answers. The graph views share the six RDFS rules covered by the earlier [LUBM-1 reference](../rdfs-jena-lubm1-v1/README.md).
 
