@@ -192,8 +192,8 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
         triplelight::store::Store::open(&args[2], init.as_deref(), workers)
     }.expect("open store");
     eprintln!("opened {} in {:.2}s ({} pending changes replayed)", args[2], t.elapsed().as_secs_f64(), store.snapshot().delta_len());
-    // Statistics describe the base; they are used only while there are no pending changes (they could otherwise
-    // report a predicate as absent that an update added). Compaction rebuilds them.
+    // Statistics describe the base; they plan while the pending changes stay small (`statistics_cover`, #111), and
+    // compaction rebuilds them.
     let stats: std::sync::RwLock<Option<(usize, std::sync::Arc<Stats>)>> = std::sync::RwLock::new(None);
     let refresh = |stats: &std::sync::RwLock<Option<(usize, std::sync::Arc<Stats>)>>, snap: &triplelight::store::Overlay| {
         if args.iter().any(|a| a == "--no-stats") { return }
@@ -255,7 +255,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
                     (Some(q), Ok(entailment)) => {
                         let snap = store.snapshot();
                         let st = stats.read().unwrap().clone();
-                        let st = st.filter(|(base, _)| snap.delta_len() == 0 && *base == snap.base_id());
+                        let st = st.filter(|(base, st)| triplelight::embedded::statistics_cover(*base, st, &snap));
                         let fmt = accept_of(&req);
                         let interrupt = timeout.map(Interrupt::with_timeout);
                         let budget = memory.map(MemoryBudget::new);
