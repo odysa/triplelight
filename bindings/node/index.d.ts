@@ -27,7 +27,15 @@ export interface OpenOptions {
 /** A persistent RDF database in a local directory (created if missing). One process may open a directory at a time. */
 /** `entailment: "rdfs"` matches the default graph's RDFS closure (subclasses, subproperties, domain and range),
  * computed at query time; nothing inferred is stored. The default, "simple", matches the stored triples. */
-export interface QueryOptions { entailment?: "simple" | "rdfs" }
+export interface QueryOptions {
+  entailment?: "simple" | "rdfs";
+  /** Stop the query after this many milliseconds with an `InterruptedError` (`timedOut: true`). */
+  timeoutMs?: number;
+  /** Aborting the signal stops a running query with an `InterruptedError` (`timedOut: false`). */
+  signal?: AbortSignal;
+  /** Working-memory budget in megabytes; a query that needs more fails with `ResourceLimitError`. */
+  memoryMb?: number;
+}
 
 export interface ExtensionInfo { name: string; compiledIn: boolean; loaded: boolean }
 
@@ -77,7 +85,9 @@ export interface ValidateOptions { dataFormat?: "turtle" | "ntriples"; shapesFor
  * document that does not parse throws `SyntaxError`, shapes SHACL rejects throw `ShapesError`. */
 export function validate(data: string, shapes: string, options?: ValidateOptions): ValidationReport;
 
-export class TripleLightError extends Error { kind: "SyntaxError" | "UnsupportedError" | "StorageError" | "LockedError" | "GraphStateError" | "ShapesError" }
+export class TripleLightError extends Error { kind: "SyntaxError" | "UnsupportedError" | "StorageError" | "LockedError" | "GraphStateError" | "ShapesError" | "InterruptedError" | "ResourceLimitError" }
+export class InterruptedError extends TripleLightError { timedOut: boolean }
+export class ResourceLimitError extends TripleLightError {}
 export class ShapesError extends TripleLightError {}
 export class SyntaxError extends TripleLightError {}
 export class UnsupportedError extends TripleLightError {}
