@@ -60,7 +60,7 @@ pub mod store {
     /// each operation's WHERE clause sees the effects of the operations before it. Returns the resulting snapshot,
     /// the concatenated dataset changes (to commit atomically) and the number of triples that changed.
     pub fn dataset_update(snap: &Overlay, text: &str)
-        -> Result<DatasetUpdate, crate::exec::QueryError> {
+        -> Result<(Option<Overlay>, Vec<crate::model::DatasetChange>, usize), crate::exec::QueryError> {
         let operations = crate::exec::parse_update_operations(text)?;
         dataset_update_operations(snap, &operations)
     }
