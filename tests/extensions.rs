@@ -28,7 +28,8 @@ fn official_extension_availability_matches_the_build() {
 #[cfg(feature = "rdfs")]
 #[test]
 fn rdfs_autoload_is_local_to_the_database_and_preserves_existing_snapshots() {
-    use triplelight::exec::{Entailment, QueryResult};
+    use triplelight::embedded::DatabaseError;
+    use triplelight::exec::{Entailment, Interrupt, QueryLimits, QueryResult};
 
     let db = Database::in_memory();
     let other = Database::in_memory();
@@ -36,6 +37,10 @@ fn rdfs_autoload_is_local_to_the_database_and_preserves_existing_snapshots() {
     let old = db.read();
     let ask = "ASK { <urn:s> a <urn:Class> }";
     assert!(matches!(db.query(ask), Ok(QueryResult::Boolean(false))));
+    let json = db
+        .query_json_with_limits(ask, Entailment::Rdfs, QueryLimits::default())
+        .unwrap();
+    assert!(json.contains("\"boolean\":true"));
     assert!(matches!(
         db.query_with_entailment(ask, Entailment::Rdfs),
         Ok(QueryResult::Boolean(true))
@@ -52,11 +57,26 @@ fn rdfs_autoload_is_local_to_the_database_and_preserves_existing_snapshots() {
     assert!(!other.list_extensions().iter().any(|entry| entry.loaded));
     assert!(matches!(
         old.query_with_entailment(ask, Entailment::Rdfs),
-        Ok(QueryResult::Boolean(true))
+        Err(DatabaseError::Unsupported(_))
+    ));
+    assert!(matches!(
+        old.explain(ask, Entailment::Rdfs),
+        Err(DatabaseError::Unsupported(_))
     ));
     assert!(matches!(
         db.read().query_with_extension(ask, "rdfs"),
         Ok(QueryResult::Boolean(true))
+    ));
+    let interrupt = Interrupt::new();
+    interrupt.cancel();
+    let limits = QueryLimits {
+        interrupt: Some(&interrupt),
+        memory: None,
+    };
+    assert!(matches!(
+        db.read()
+            .query_with_extension_and_limits(ask, "rdfs", limits),
+        Err(DatabaseError::Interrupted { timed_out: false })
     ));
 }
 
@@ -124,6 +144,10 @@ fn a_failed_registration_publishes_no_capability() {
     assert!(db.validate_with_extension("fixture", &[], &[]).is_err());
     db.register_extension(&FixtureExtension { fail: false })
         .unwrap();
+    assert!(matches!(
+        db.register_extension(&FixtureExtension { fail: false }),
+        Err(ExtensionError::InvalidRegistration(message)) if message.contains("already registered"),
+    ));
     assert!(
         db.validate_with_extension("fixture", &[], &[])
             .unwrap()

@@ -238,6 +238,7 @@ pub fn query_dataset_with_provider<S: Snapshot>(
 fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query, opts: &Options<'_>, provider: Option<&dyn storage::EntailmentProvider>) -> Result<QueryResult, QueryError> {
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
     if let Some(reason) = support::unsupported(q, dataset.is_some()) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
+    // Direct executor callers may request the linked RDFS provider without an embedded registry.
     let provider = if provider.is_none() && opts.entailment == Entailment::Rdfs {
         #[cfg(feature = "rdfs")]
         { Some(&triplelight_rdfs::Rdfs as &dyn storage::EntailmentProvider) }

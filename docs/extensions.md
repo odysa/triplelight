@@ -4,7 +4,7 @@ TripleLight ships RDFS entailment and SHACL Core validation as official extensio
 
 ## Load and inspect
 
-`Database::load_extension("rdfs")` loads an extension for one database. Loading it again succeeds. `list_extensions()` reports its name, build availability, and load state. A read snapshot retains the registrations it saw when it was created. Loading an unavailable official extension returns `ExtensionError::Unsupported` and names the Cargo feature.
+`Database::load_extension("rdfs")` loads an extension for one database. Loading it again succeeds. `list_extensions()` reports its name, build availability, and load state. A read snapshot retains the registrations it saw when it was created. Load RDFS on the database before taking a snapshot that needs it. For the async Rust API, use `as_sync()` to load an extension or inspect its status. Loading an unavailable official extension returns `ExtensionError::Unsupported` and names the Cargo feature.
 
 An explicit RDFS query through `query_with_entailment` loads RDFS automatically. The ordinary query method continues to match stored triples. `validate_with_extension("shacl", &data, &shapes)` loads SHACL automatically and returns conformance and its RDF report. The CLI and standalone SHACL API select the relevant linked extension when invoked.
 

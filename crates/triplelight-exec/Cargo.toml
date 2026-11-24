@@ -26,7 +26,7 @@ triplelight-core.workspace = true
 triplelight-plan.workspace = true
 triplelight-sparql.workspace = true
 triplelight-rdf.workspace = true
-triplelight-rdfs = { path = "../triplelight-rdfs", version = "0.1.0", optional = true }
+triplelight-rdfs = { workspace = true, optional = true }
 triplelight-iri.workspace = true
 rust_decimal.workspace = true
 num-bigint.workspace = true
