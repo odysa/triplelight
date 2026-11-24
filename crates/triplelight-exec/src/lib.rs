@@ -743,6 +743,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 let bgp_operator = plan_trace::operator(inner, input.len());
                 let rows = self.eval_bgp_filtered(patterns, input, &early);
                 bgp_operator.finish(rows.len());
+                if late.is_empty() { return rows }
                 return phase::filter(|| rows.into_iter().filter(|r| late.iter().all(|c| self.ebv(c, r))).collect());
             }
         }

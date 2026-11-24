@@ -4,8 +4,9 @@
 //! request-scoped and remain exact when the server handles concurrent requests.
 //! `exec` (in the server's line) includes `parse`. A count-shortcut attempt that declines (falls back to evaluation)
 //! still counts its attempt as `count` time.
-//! Phases are exclusive of each other: BGP time is measured only at the outermost BGP call on a thread (a FILTER
-//! EXISTS inside a BGP is not counted twice); grouping, sorting, filtering and extending are timed after their input.
+//! BGP time is measured only at the outermost BGP call on a thread. The new filter, extend and join counters skip work
+//! inside a BGP, so pushed filters remain BGP time and stay comparable with the earlier phase traces. A BGP evaluated
+//! from an outer group, sort, filter or extend may still overlap that outer phase; consumers must not sum the fields.
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::sync::OnceLock;
 use std::time::Instant;
@@ -57,13 +58,18 @@ fn timed<T>(slot: usize, counter: &AtomicU64, f: impl FnOnce() -> T) -> T {
     out
 }
 
+fn timed_outside_bgp<T>(slot: usize, counter: &AtomicU64, f: impl FnOnce() -> T) -> T {
+    if BGP_DEPTH.with(|depth| depth.get() > 0) { return f() }
+    timed(slot, counter, f)
+}
+
 pub(crate) fn parse<T>(f: impl FnOnce() -> T) -> T { timed(PARSE, &PARSE_NS, f) }
 pub(crate) fn group<T>(f: impl FnOnce() -> T) -> T { timed(GROUP, &GROUP_NS, f) }
 pub(crate) fn count<T>(f: impl FnOnce() -> T) -> T { timed(COUNT, &COUNT_NS, f) }
 pub(crate) fn sort<T>(f: impl FnOnce() -> T) -> T { timed(SORT, &SORT_NS, f) }
-pub(crate) fn filter<T>(f: impl FnOnce() -> T) -> T { timed(FILTER, &FILTER_NS, f) }
-pub(crate) fn extend<T>(f: impl FnOnce() -> T) -> T { timed(EXTEND, &EXTEND_NS, f) }
-pub(crate) fn join<T>(f: impl FnOnce() -> T) -> T { timed(JOIN, &JOIN_NS, f) }
+pub(crate) fn filter<T>(f: impl FnOnce() -> T) -> T { timed_outside_bgp(FILTER, &FILTER_NS, f) }
+pub(crate) fn extend<T>(f: impl FnOnce() -> T) -> T { timed_outside_bgp(EXTEND, &EXTEND_NS, f) }
+pub(crate) fn join<T>(f: impl FnOnce() -> T) -> T { timed_outside_bgp(JOIN, &JOIN_NS, f) }
 
 /// Times an outermost BGP evaluation on this thread; nested ones run untimed.
 pub(crate) fn bgp<T>(f: impl FnOnce() -> T) -> T {
