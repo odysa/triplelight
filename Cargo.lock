@@ -796,15 +796,15 @@ version = "0.1.0"
 dependencies = [
  "asyncband",
  "mimalloc",
- "oxsdatatypes",
  "rayon",
- "regex",
  "sha2",
  "tiny_http",
  "triplelight-core",
  "triplelight-exec",
  "triplelight-plan",
  "triplelight-rdf",
+ "triplelight-rdfs",
+ "triplelight-shacl",
  "triplelight-sparql",
  "triplelight-storage",
 ]
@@ -836,6 +836,7 @@ dependencies = [
  "triplelight-iri",
  "triplelight-plan",
  "triplelight-rdf",
+ "triplelight-rdfs",
  "triplelight-sparql",
  "web-time",
 ]
@@ -861,6 +862,23 @@ dependencies = [
  "getrandom 0.3.4",
  "oxrdf",
  "triplelight-iri",
+]
+
+[[package]]
+name = "triplelight-rdfs"
+version = "0.1.0"
+dependencies = [
+ "triplelight-core",
+ "triplelight-rdf",
+]
+
+[[package]]
+name = "triplelight-shacl"
+version = "0.1.0"
+dependencies = [
+ "oxsdatatypes",
+ "regex",
+ "triplelight-core",
 ]
 
 [[package]]

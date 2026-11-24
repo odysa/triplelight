@@ -28,8 +28,8 @@
 //! the subjects (objects) of every property whose domain (range) lies below the class. Other shapes (unbound
 //! predicate, unbound class) are materialized from the graph's rows that can contribute. Results other than direct
 //! delegations are memoized per view (`MEMO_ROWS`), so a leapfrog seeking one prefix many times pays once.
-use crate::model::{id_tag, Perm, TermId, TripleBatch};
-use crate::storage::{Dictionary, Snapshot, StorageError};
+use triplelight_core::model::{id_tag, Perm, TermId, TripleBatch};
+use triplelight_core::storage::{Dictionary, EntailmentProvider, Snapshot, StorageError};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
 use triplelight_rdf::vocab::{rdf, rdfs};
@@ -182,19 +182,19 @@ fn spo(perm: Perm, k: [TermId; 3]) -> [TermId; 3] {
 }
 
 /// The graph `base` with its RDFS closure (module docs).
-pub(crate) struct Entailed<'a> {
+struct Entailed<'a> {
     base: &'a dyn Snapshot,
     schema: Schema,
     memo: Mutex<(usize, HashMap<(Perm, Vec<TermId>), Arc<Vec<[TermId; 3]>>>)>,
 }
 
 impl<'a> Entailed<'a> {
-    pub(crate) fn new(base: &'a dyn Snapshot) -> Result<Self, StorageError> {
+    fn new(base: &'a dyn Snapshot) -> Result<Self, StorageError> {
         Ok(Entailed { base, schema: Schema::of(base)?, memo: Mutex::new((0, HashMap::new())) })
     }
 
     /// Names `rdf:type` by `id` when the graph's dictionary has no such IRI (`Schema::rdf_type`); before any scan.
-    pub(crate) fn set_rdf_type(&self, id: TermId) {
+    fn set_rdf_type(&self, id: TermId) {
         if self.schema.rdf_type().is_none() { self.schema.rdf_type.store(id.0, std::sync::atomic::Ordering::Relaxed) }
     }
 
@@ -388,37 +388,23 @@ impl Snapshot for Entailed<'_> {
     }
 }
 
-/// The graph views one query reads: the active default graph and, under RDFS, its entailed view and one per named
-/// graph of the dataset, each closed over its own triples.
-pub(crate) struct Views<'a> {
-    plain: Option<&'a dyn Snapshot>,
-    default: Option<Entailed<'a>>,
-    named: Vec<(TermId, Entailed<'a>)>,
-}
+/// The RDFS entailment provider.
+pub struct Rdfs;
 
-impl<'a> Views<'a> {
-    /// `default`: the active default graph when it is not the store's own (`None`); `store`: the store's.
-    pub(crate) fn new(rdfs: bool, store: &'a dyn Snapshot, default: Option<&'a dyn Snapshot>, dataset: Option<&'a dyn crate::storage::DatasetView>, named: &[TermId]) -> Result<Self, StorageError> {
-        if !rdfs { return Ok(Views { plain: default, default: None, named: Vec::new() }) }
-        let mut views = Vec::new();
-        if let Some(ds) = dataset {
-            for &g in named { if let Some(v) = ds.graph(g)? { views.push((g, Entailed::new(v)?)) } }
+impl EntailmentProvider for Rdfs {
+    fn virtual_predicates(&self) -> &'static [NamedNodeRef<'static>] {
+        &[rdf::TYPE]
+    }
+
+    fn graph<'a>(
+        &self,
+        source: &'a dyn Snapshot,
+        virtual_ids: &[(NamedNodeRef<'static>, TermId)],
+    ) -> Result<Box<dyn Snapshot + 'a>, StorageError> {
+        let view = Entailed::new(source)?;
+        if let Some((_, id)) = virtual_ids.iter().find(|(predicate, _)| *predicate == rdf::TYPE) {
+            view.set_rdf_type(*id);
         }
-        Ok(Views { plain: default, default: Some(Entailed::new(default.unwrap_or(store))?), named: views })
-    }
-
-    /// The active default graph if it is not the store's own.
-    pub(crate) fn default_graph(&self) -> Option<&dyn Snapshot> {
-        match &self.default { Some(e) => Some(e), None => self.plain }
-    }
-
-    /// Named graph -> its entailed view (empty without RDFS).
-    pub(crate) fn named(&self) -> HashMap<TermId, &dyn Snapshot> { self.named.iter().map(|(g, e)| (*g, e as &dyn Snapshot)).collect() }
-
-    pub(crate) fn entailing(&self) -> bool { self.default.is_some() }
-
-    /// Names `rdf:type` by `id` in every entailed view (`Entailed::set_rdf_type`).
-    pub(crate) fn set_rdf_type(&self, id: TermId) {
-        for e in self.default.iter().chain(self.named.iter().map(|(_, e)| e)) { e.set_rdf_type(id) }
+        Ok(Box::new(view))
     }
 }

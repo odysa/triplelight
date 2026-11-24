@@ -30,11 +30,11 @@ pub const TL_ERR_LOCKED: i32 = 4;
 pub const TL_ERR_INVALID_ARGUMENT: i32 = 5;
 pub const TL_ERR_INTERNAL: i32 = 6;
 pub const TL_ERR_GRAPH_STATE: i32 = 7;
-/// The query was cancelled or ran past its deadline (not yet reachable from C: no interrupt is exposed).
+/// The query was cancelled (`tl_interrupt_cancel`) or ran past its deadline (`tl_query_with_limits`).
 pub const TL_ERR_INTERRUPTED: i32 = 8;
 /// SHACL rejects the shapes graph given to `tl_validate` (a malformed shape or list, or an undefined recursion).
 pub const TL_ERR_SHAPES: i32 = 9;
-/// The query needed more working memory than its budget (not yet reachable from C: no budget is exposed).
+/// The query needed more working memory than its budget (`tl_query_with_limits`).
 pub const TL_ERR_RESOURCE_LIMIT: i32 = 10;
 
 pub const TL_RESULT_BINDINGS: u32 = 0;
@@ -262,6 +262,17 @@ fn db_error(e: DatabaseError) -> TlError {
     TlError { kind, message: e.to_string() }
 }
 
+fn extension_error(error: triplelight::extension::ExtensionError) -> TlError {
+    use triplelight::extension::ExtensionError;
+    let kind = match &error {
+        ExtensionError::Unsupported(_) => TL_ERR_UNSUPPORTED,
+        ExtensionError::InvalidRegistration(_) => TL_ERR_INVALID_ARGUMENT,
+        ExtensionError::InvalidShapes(_) => TL_ERR_SHAPES,
+        _ => TL_ERR_INTERNAL,
+    };
+    TlError { kind, message: error.to_string() }
+}
+
 fn invalid(message: &str) -> TlError { TlError { kind: TL_ERR_INVALID_ARGUMENT, message: message.into() } }
 
 unsafe fn text<'a>(ptr: *const c_char, len: usize) -> Result<&'a str, TlError> {
@@ -337,6 +348,47 @@ pub const TL_ENTAILMENT_RDFS: i32 = 1;
 /// `TL_ERR_INVALID_ARGUMENT`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tl_query_with_entailment(db: *const TlDb, sparql: *const c_char, len: usize, entailment: i32, out: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
+    unsafe { tl_query_with_limits(db, sparql, len, entailment, std::ptr::null(), 0, out, err) }
+}
+
+/// Stops queries from outside them (#110): created with an optional timeout, cancelled from any thread. Cancelling is
+/// final: every query run with it from then on stops at once, so use a new one per query.
+pub struct TlInterrupt(triplelight::exec::Interrupt);
+
+/// A new interrupt. `timeout_ms` 0 means no deadline; otherwise a query run with it stops `timeout_ms` milliseconds
+/// after this call, with `TL_ERR_INTERRUPTED`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_interrupt_new(timeout_ms: u64, out: *mut *mut TlInterrupt, err: *mut *mut TlError) -> i32 {
+    unsafe { guard(err, || {
+        use triplelight::exec::Interrupt;
+        if out.is_null() { return Err(invalid("null output pointer")) }
+        let interrupt = match timeout_ms {
+            0 => Interrupt::new(),
+            ms => Interrupt::with_timeout(std::time::Duration::from_millis(ms)),
+        };
+        *out = Box::into_raw(Box::new(TlInterrupt(interrupt)));
+        Ok(())
+    }) }
+}
+
+/// Cancels every query running, or later run, with `interrupt`: each returns `TL_ERR_INTERRUPTED` at its next check.
+/// Safe from any thread, also while a query is running with it. Null is ignored.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_interrupt_cancel(interrupt: *const TlInterrupt) {
+    if let Some(i) = unsafe { interrupt.as_ref() } { i.0.cancel() }
+}
+
+/// Frees an interrupt. It must not race with a query using it or with `tl_interrupt_cancel`. Null is ignored.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_interrupt_free(interrupt: *mut TlInterrupt) {
+    if !interrupt.is_null() { let _ = catch_unwind(AssertUnwindSafe(|| drop(unsafe { Box::from_raw(interrupt) }))); }
+}
+
+/// `tl_query_with_entailment` under limits: `interrupt` (may be null) stops it when cancelled or past its deadline
+/// (`TL_ERR_INTERRUPTED`), and `memory_bytes` (0: unlimited) bounds its working memory (`TL_ERR_RESOURCE_LIMIT`).
+/// Either error leaves no partial result, and the database serves the next query as usual.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_query_with_limits(db: *const TlDb, sparql: *const c_char, len: usize, entailment: i32, interrupt: *const TlInterrupt, memory_bytes: u64, out: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
     unsafe { guard(err, || {
         if out.is_null() { return Err(invalid("null output pointer")) }
         let entailment = match entailment {
@@ -345,12 +397,43 @@ pub unsafe extern "C" fn tl_query_with_entailment(db: *const TlDb, sparql: *cons
             _ => return Err(invalid("unknown entailment")),
         };
         let (d, q) = (handle(db)?, text(sparql, len)?);
+        if entailment == triplelight::exec::Entailment::Rdfs {
+            d.load_extension("rdfs").map_err(extension_error)?;
+        }
+        let budget = (memory_bytes > 0).then(|| triplelight::exec::MemoryBudget::new(memory_bytes));
+        let limits = triplelight::exec::QueryLimits { interrupt: interrupt.as_ref().map(|i| &i.0), memory: budget.as_ref() };
         let snap = d.read();
-        let r = match snap.query_ids_with_entailment(q, entailment).map_err(db_error)? {
+        let r = match snap.query_ids_with_limits(q, entailment, limits).map_err(db_error)? {
             QueryResult::Ids(ids) => build_ids(&snap, ids)?,
             other => build(other)?,
         };
         out!(out, Box::into_raw(r));
+        Ok(())
+    }) }
+}
+
+/// Loads an official extension for this handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_load_extension(db: *const TlDb, name: *const c_char, len: usize, err: *mut *mut TlError) -> i32 {
+    unsafe { guard(err, || {
+        handle(db)?.load_extension(text(name, len)?).map_err(extension_error)
+    }) }
+}
+
+/// Returns extension status as bindings with columns name, compiled_in and loaded.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_list_extensions(db: *const TlDb, out: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
+    use triplelight::rdf::{Literal, Variable};
+    unsafe { guard(err, || {
+        if out.is_null() { return Err(invalid("null output pointer")); }
+        let vars = ["name", "compiled_in", "loaded"].map(Variable::new_unchecked).to_vec();
+        let rows = handle(db)?.list_extensions().into_iter().map(|entry| vec![
+            Some(Literal::new_simple_literal(entry.name).into()),
+            Some(Literal::from(entry.compiled_in).into()),
+            Some(Literal::from(entry.loaded).into()),
+        ]).collect();
+        let result = build(QueryResult::Solutions { vars, rows })?;
+        out!(out, Box::into_raw(result));
         Ok(())
     }) }
 }
@@ -366,26 +449,34 @@ pub const TL_FORMAT_NTRIPLES: i32 = 1;
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tl_validate(data: *const c_char, data_len: usize, data_format: i32, shapes: *const c_char, shapes_len: usize, shapes_format: i32,
                                      conforms: *mut i32, report: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
-    use triplelight::rdf::Format;
-    use triplelight::shacl::{DocumentError, ValidationError};
-    unsafe { guard(err, || {
-        if conforms.is_null() || report.is_null() { return Err(invalid("null output pointer")) }
-        let format = |f| match f { TL_FORMAT_TURTLE => Ok(Format::Turtle), TL_FORMAT_NTRIPLES => Ok(Format::NTriples), _ => Err(invalid("unknown format")) };
-        let (df, sf) = (format(data_format)?, format(shapes_format)?);
-        let (d, s) = (text(data, data_len)?, text(shapes, shapes_len)?);
-        let r = triplelight::shacl::validate_documents(d.as_bytes(), df, s.as_bytes(), sf).map_err(|e| {
-            let kind = match &e {
-                DocumentError::Syntax { .. } => TL_ERR_SYNTAX,
-                DocumentError::Validation(ValidationError::Unsupported(_)) => TL_ERR_UNSUPPORTED,
-                DocumentError::Validation(_) => TL_ERR_SHAPES,
-            };
-            TlError { kind, message: e.to_string() }
-        })?;
-        let graph = build(QueryResult::Graph(r.to_triples()))?;
-        out!(conforms, i32::from(r.conforms));
-        out!(report, Box::into_raw(graph));
-        Ok(())
-    }) }
+    #[cfg(not(feature = "shacl"))]
+    {
+        let _ = (data, data_len, data_format, shapes, shapes_len, shapes_format, conforms, report);
+        unsafe { guard(err, || Err(TlError { kind: TL_ERR_UNSUPPORTED, message: "SHACL validation requires the shacl Cargo feature".into() })) }
+    }
+    #[cfg(feature = "shacl")]
+    {
+        use triplelight::rdf::Format;
+        use triplelight::shacl::{DocumentError, ValidationError};
+        unsafe { guard(err, || {
+            if conforms.is_null() || report.is_null() { return Err(invalid("null output pointer")) }
+            let format = |f| match f { TL_FORMAT_TURTLE => Ok(Format::Turtle), TL_FORMAT_NTRIPLES => Ok(Format::NTriples), _ => Err(invalid("unknown format")) };
+            let (df, sf) = (format(data_format)?, format(shapes_format)?);
+            let (d, s) = (text(data, data_len)?, text(shapes, shapes_len)?);
+            let r = triplelight::shacl::validate_documents(d.as_bytes(), df, s.as_bytes(), sf).map_err(|e| {
+                let kind = match &e {
+                    DocumentError::Syntax { .. } => TL_ERR_SYNTAX,
+                    DocumentError::Validation(ValidationError::Unsupported(_)) => TL_ERR_UNSUPPORTED,
+                    DocumentError::Validation(_) => TL_ERR_SHAPES,
+                };
+                TlError { kind, message: e.to_string() }
+            })?;
+            let graph = build(QueryResult::Graph(r.to_triples()))?;
+            out!(conforms, i32::from(r.conforms));
+            out!(report, Box::into_raw(graph));
+            Ok(())
+        }) }
+    }
 }
 
 /// Runs a SELECT query and returns its solutions as an Arrow C Stream written into caller-allocated `*out`
@@ -539,6 +630,10 @@ mod tests {
             tl_result_free(report);
             Ok((conforms, triples))
         };
+        if !cfg!(feature = "shacl") {
+            assert_eq!(run("", shapes), Err(TL_ERR_UNSUPPORTED));
+            return;
+        }
         let (conforms, (kind, _)) = run("<urn:ann> a <urn:Person> ; <urn:name> \"Ann\" .", shapes).unwrap();
         assert_eq!((conforms, kind), (1, TL_RESULT_TRIPLES));
         let (conforms, (_, n)) = run("<urn:bob> a <urn:Person> .", shapes).unwrap();
@@ -563,7 +658,8 @@ mod tests {
             Ok(n)
         };
         assert_eq!(rows(TL_ENTAILMENT_SIMPLE), Ok(0));
-        assert_eq!(rows(TL_ENTAILMENT_RDFS), Ok(1));
+        let expected = if cfg!(feature = "rdfs") { Ok(1) } else { Err(TL_ERR_UNSUPPORTED) };
+        assert_eq!(rows(TL_ENTAILMENT_RDFS), expected);
         assert_eq!(rows(7), Err(TL_ERR_INVALID_ARGUMENT));
         tl_close(db);
     } }
@@ -669,6 +765,53 @@ mod tests {
         let missing = "/nonexistent/missing.nt";
         assert_eq!(tl_load(db, missing.as_ptr() as _, missing.len(), std::ptr::null_mut(), &mut e), TL_ERR_STORAGE);
         tl_error_free(e);
+        tl_close(db);
+    } }
+
+    /// An interrupt cancelled from another thread, a timeout and a memory budget each end a query with their own
+    /// error and no result, and the database answers the next query.
+    #[test]
+    fn query_limits_cancel_timeout_and_budget() { unsafe {
+        let mut db = std::ptr::null_mut();
+        assert_eq!(tl_open_in_memory(&mut db, std::ptr::null_mut()), TL_OK);
+        let data: String = (0..2000).map(|i| format!("<urn:s{i}> <urn:p> \"{i}\" . ")).collect();
+        let up = format!("INSERT DATA {{ {data} }}");
+        assert_eq!(tl_update(db, up.as_ptr() as _, up.len(), std::ptr::null_mut(), std::ptr::null_mut()), TL_OK);
+        let endless = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f FILTER(?b != ?d && ?d != ?f) }";
+        let run = |sparql: &str, interrupt: *const TlInterrupt, memory: u64| {
+            let mut r: *mut TlResult = std::ptr::null_mut();
+            let code = tl_query_with_limits(db, sparql.as_ptr() as _, sparql.len(), TL_ENTAILMENT_SIMPLE, interrupt, memory, &mut r, std::ptr::null_mut());
+            assert!((code == TL_OK) == !r.is_null(), "a result exactly on success");
+            tl_result_free(r);
+            code
+        };
+        // Cancelled from another thread while it runs.
+        let mut interrupt = std::ptr::null_mut();
+        assert_eq!(tl_interrupt_new(0, &mut interrupt, std::ptr::null_mut()), TL_OK);
+        let handle = interrupt as usize;
+        let canceller = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            tl_interrupt_cancel(handle as *const TlInterrupt);
+        });
+        let t = std::time::Instant::now();
+        assert_eq!(run(endless, interrupt, 0), TL_ERR_INTERRUPTED);
+        assert!(t.elapsed() < std::time::Duration::from_secs(10), "cancel took {:?}", t.elapsed());
+        canceller.join().unwrap();
+        // Cancelling is final: the same interrupt stops the next query at once.
+        assert_eq!(run("ASK { ?s ?p ?o }", interrupt, 0), TL_ERR_INTERRUPTED);
+        tl_interrupt_free(interrupt);
+        // A deadline.
+        let mut timeout = std::ptr::null_mut();
+        assert_eq!(tl_interrupt_new(50, &mut timeout, std::ptr::null_mut()), TL_OK);
+        assert_eq!(run(endless, timeout, 0), TL_ERR_INTERRUPTED);
+        tl_interrupt_free(timeout);
+        // A memory budget.
+        let grouped = "SELECT ?a (COUNT(*) AS ?n) { ?a ?p ?b } GROUP BY ?a";
+        assert_eq!(run(grouped, std::ptr::null(), 1024), TL_ERR_RESOURCE_LIMIT);
+        assert_eq!(run(grouped, std::ptr::null(), 1 << 30), TL_OK);
+        assert_eq!(run(grouped, std::ptr::null(), 0), TL_OK);
+        tl_interrupt_cancel(std::ptr::null());
+        tl_interrupt_free(std::ptr::null_mut());
         tl_close(db);
     } }
 

@@ -1,5 +1,7 @@
 # RDFS answers against Jena, LUBM-1 (#108)
 
+Build the CLI with `cargo build --release --features rdfs` to reproduce this check.
+
 `bench/rdfs/check.sh` runs each of the 14 original LUBM queries both ways and compares the answers as multisets:
 TripleLight with `--entailment=rdfs` over the unclosed graph, and Jena 6.2.0 `sparql` over the closure Jena's
 `infer --rdfs` computes. Both sides use the same rules: subclass and subproperty transitivity, type and property

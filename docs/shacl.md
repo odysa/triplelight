@@ -1,7 +1,9 @@
 # SHACL Core validation
 
+The `shacl` Cargo feature is enabled by default in the Rust library, CLI, and bindings. A custom build can omit it with `--no-default-features`.
+
 TripleLight validates an RDF graph against a SHACL Core shapes graph ([SHACL, W3C Recommendation 2017-07-20](https://www.w3.org/TR/2017/REC-shacl-20170720/)).
-Both graphs are given as triples; the module (`src/shacl/`) uses only the platform-independent RDF types of `triplelight::rdf`. The Rust function below takes
+Both graphs are given as triples; the module (`crates/triplelight-shacl/src/`) uses only the platform-independent RDF types of `triplelight::rdf`. The Rust function below takes
 triples; `validate_documents` takes the two graphs as N-Triples or Turtle text, and is what the CLI and the bindings call. A data graph that violates the shapes
 is a report, never an error. The errors are a syntax error in either document, shapes SHACL rejects, and a feature this build does not provide:
 
@@ -52,7 +54,7 @@ let as_rdf = report.to_triples();                          // a sh:ValidationRep
 ## Layers
 
 ```
-evaluator   targets, value nodes, the recursion guard, results   (src/shacl/evaluator.rs)
+evaluator   targets, value nodes, the recursion guard, results   (crates/triplelight-shacl/src/evaluator.rs)
    |  uses
 shapes      the shapes graph: parsing, targets, severity         (shapes.rs)   constraints  the components (constraints.rs, constraints/)
    |                                                                |
@@ -69,7 +71,7 @@ receives a `CheckNode` trait object with two calls, `conforms(shape, focus)` for
 ignored by default; point `TL_SHACL_TESTS` at that directory of a checkout of revision `eacdef4528d66ee116f0ac9118d968c5717c7233` and run
 
 ```
-TL_SHACL_TESTS=/path/to/data-shapes-test-suite/tests/core cargo test --test shacl -- --ignored --nocapture
+TL_SHACL_TESTS=/path/to/data-shapes-test-suite/tests/core cargo test --features shacl --test shacl -- --ignored --nocapture
 ```
 
 Each expected result is compared by focus node, value, result path, severity, source constraint component and source shape (as a multiset),

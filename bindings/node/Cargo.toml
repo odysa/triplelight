@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 [dependencies]
 napi = { version = "2.16", default-features = false, features = ["napi6"] }
 napi-derive = "2.16"
-triplelight = { path = "../.." }
+triplelight = { path = "../..", default-features = false }
 
 [build-dependencies]
 napi-build = "2.1"
@@ -20,5 +20,8 @@ napi-build = "2.1"
 [workspace]
 
 [features]
+default = ["rdfs", "shacl"]
+rdfs = ["triplelight/rdfs"]
+shacl = ["triplelight/shacl"]
 # RDF 1.2 terms (triple terms as RDF/JS Quad, base direction), forwarded to the engine. Off by default.
 rdf-12 = ["triplelight/rdf-12"]

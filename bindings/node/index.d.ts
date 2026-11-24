@@ -29,6 +29,8 @@ export interface OpenOptions {
  * computed at query time; nothing inferred is stored. The default, "simple", matches the stored triples. */
 export interface QueryOptions { entailment?: "simple" | "rdfs" }
 
+export interface ExtensionInfo { name: string; compiledIn: boolean; loaded: boolean }
+
 export class Database {
   /** Opens on the calling thread; prefer `Database.open` in servers. */
   constructor(path: string, options?: OpenOptions);
@@ -51,6 +53,8 @@ export class Database {
   compact(): Promise<void>;
   /** True once background optimizer statistics are built (queries work before that, with simpler plans). */
   statsReady(): boolean;
+  loadExtension(name: string): void;
+  listExtensions(): ExtensionInfo[];
   /** A consistent view for several queries; later updates do not change it. */
   read(): Snapshot;
   /** Releases this handle. The directory lock is held until every snapshot and pending operation is gone. */

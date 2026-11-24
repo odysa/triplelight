@@ -58,7 +58,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             self.snap.text_candidates(&terms, limit)
         };
         let _ids = match (self.budget, &candidates) {
-            (Some(budget), Some(ids)) => Some(budget.try_charge(ids.capacity() as u64 * 8).ok()?),
+            (Some(budget), Some(ids)) => Some(budget.try_charge(ids.heap_bytes()).ok()?),
             _ => None,
         };
         let mut memo = HashMap::new();
@@ -68,8 +68,8 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             let id = row[col];
             if id == UNBOUND { continue; }
             let indexed = candidates.as_ref().filter(|_| id_tag::of(id) == id_tag::LITERAL);
-            let keep = if let Some(ids) = indexed {
-                ids.binary_search(&id).is_ok()
+            let keep = if let Some(matches) = indexed.and_then(|ids| ids.matches(id)) {
+                matches
             } else {
                 *memo.entry(id).or_insert_with(|| {
                     matches!(self.resolve(id), Term::Literal(literal) if eligible(&literal)

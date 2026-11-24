@@ -5,8 +5,10 @@
 //! caller's executor thread never blocks and any executor (tokio, async-std, smol, a hand-written poller) can await
 //! it. A semaphore bounds how many calls of one database (and its clones) run at once.
 //!
-//! **Cancellation.** Dropping a future while it still waits for a permit cancels it: its work never starts. Once its
-//! work has started, dropping the future does not stop it; in particular an update may still commit.
+//! **Cancellation.** Dropping a future while it still waits for a permit cancels it: its work never starts. Dropping
+//! a query's future after its work has started cancels the query too (#110): the worker stops at its next check and
+//! its result is discarded. Other calls run to the end once started; in particular an update may still commit.
+//! [`QueryOptions`] adds a timeout and a working-memory budget to a query.
 //!
 //! This is not native asynchronous disk I/O, and it is not available for WebAssembly (the WASM binding is
 //! synchronous).
@@ -16,7 +18,7 @@ use std::sync::Arc;
 use asyncband::{oneshot, semaphore::Semaphore};
 
 use crate::embedded::{self, DatabaseError, DatabaseOptions, StatsOrigin};
-use crate::exec::QueryResult;
+use crate::exec::{self, QueryResult};
 
 /// The default bound on concurrent calls per database: the number of cores, at most 8.
 fn default_concurrency() -> usize {
@@ -35,6 +37,35 @@ async fn run<T: Send + 'static>(limit: &Arc<Semaphore>, job: impl FnOnce() -> Re
         })
         .map_err(DatabaseError::Storage)?;
     receiver.await.map_err(|_| DatabaseError::Storage(std::io::Error::other("database worker terminated")))?
+}
+
+/// Options of one query: its entailment regime, a timeout and a working-memory budget. A query that runs out of
+/// either ends with `DatabaseError::Interrupted { timed_out: true }` or `DatabaseError::ResourceLimit`, never with a
+/// partial answer. The timeout counts from the first poll, so time spent waiting for a worker counts too.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct QueryOptions {
+    pub entailment: exec::Entailment,
+    pub timeout: Option<std::time::Duration>,
+    /// Bytes of working memory the query may hold at once (see [`exec::MemoryBudget`]).
+    pub memory_bytes: Option<u64>,
+}
+
+/// Cancels its query when dropped: a query future dropped before it finishes takes it down with it.
+struct CancelOnDrop(Arc<exec::Interrupt>);
+impl Drop for CancelOnDrop {
+    fn drop(&mut self) { self.0.cancel() }
+}
+
+/// `run` for a query: `job` gets the limits `options` asks for, and dropping the future cancels the query.
+async fn run_query<T: Send + 'static>(
+    limit: &Arc<Semaphore>,
+    options: QueryOptions,
+    job: impl FnOnce(exec::Entailment, exec::QueryLimits<'_>) -> Result<T, DatabaseError> + Send + 'static,
+) -> Result<T, DatabaseError> {
+    let interrupt = Arc::new(options.timeout.map_or_else(exec::Interrupt::new, exec::Interrupt::with_timeout));
+    let memory = options.memory_bytes.map(exec::MemoryBudget::new);
+    let _cancel = CancelOnDrop(Arc::clone(&interrupt));
+    run(limit, move || job(options.entailment, exec::QueryLimits { interrupt: Some(&interrupt), memory: memory.as_ref() })).await
 }
 
 /// An async handle to an embedded database. Clones share the database and its concurrency limit.
@@ -73,7 +104,8 @@ impl Database {
         Self { db: self.db, limit: Arc::new(Semaphore::new(n.max(1))) }
     }
 
-    /// The synchronous handle, for calls this API does not wrap.
+    /// The synchronous handle, including extension loading and status through
+    /// `as_sync().load_extension(name)` and `as_sync().list_extensions()`.
     pub fn as_sync(&self) -> &embedded::Database { &self.db }
 
     /// A stable read view, unaffected by later updates.
@@ -85,14 +117,24 @@ impl Database {
 
     /// Executes a SPARQL query and returns owned results.
     pub async fn query(&self, sparql: &str) -> Result<QueryResult, DatabaseError> {
+        self.query_with(sparql, QueryOptions::default()).await
+    }
+
+    /// `query` with a timeout, a memory budget or an entailment regime.
+    pub async fn query_with(&self, sparql: &str, options: QueryOptions) -> Result<QueryResult, DatabaseError> {
         let (db, sparql) = (self.db.clone(), sparql.to_owned());
-        run(&self.limit, move || db.query(&sparql)).await
+        run_query(&self.limit, options, move |entailment, limits| db.query_with_limits(&sparql, entailment, limits)).await
     }
 
     /// Executes a SELECT or ASK and serializes it as SPARQL Results JSON.
     pub async fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> {
+        self.query_json_with(sparql, QueryOptions::default()).await
+    }
+
+    /// `query_json` with a timeout, a memory budget or an entailment regime.
+    pub async fn query_json_with(&self, sparql: &str, options: QueryOptions) -> Result<String, DatabaseError> {
         let (db, sparql) = (self.db.clone(), sparql.to_owned());
-        run(&self.limit, move || db.query_json(&sparql)).await
+        run_query(&self.limit, options, move |entailment, limits| db.query_json_with_limits(&sparql, entailment, limits)).await
     }
 
     /// Applies a SPARQL Update atomically (durably for a persistent database). Dropping the future after the update
@@ -131,14 +173,24 @@ pub struct ReadSnapshot {
 impl ReadSnapshot {
     /// Executes a query against this snapshot.
     pub async fn query(&self, sparql: &str) -> Result<QueryResult, DatabaseError> {
+        self.query_with(sparql, QueryOptions::default()).await
+    }
+
+    /// `query` on this snapshot with a timeout, a memory budget or an entailment regime.
+    pub async fn query_with(&self, sparql: &str, options: QueryOptions) -> Result<QueryResult, DatabaseError> {
         let (snapshot, sparql) = (Arc::clone(&self.snapshot), sparql.to_owned());
-        run(&self.db.limit, move || snapshot.query(&sparql)).await
+        run_query(&self.db.limit, options, move |entailment, limits| snapshot.query_with_limits(&sparql, entailment, limits)).await
     }
 
     /// Serializes a SELECT or ASK on this snapshot as SPARQL Results JSON.
     pub async fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> {
+        self.query_json_with(sparql, QueryOptions::default()).await
+    }
+
+    /// `query_json` on this snapshot with a timeout, a memory budget or an entailment regime.
+    pub async fn query_json_with(&self, sparql: &str, options: QueryOptions) -> Result<String, DatabaseError> {
         let (snapshot, sparql) = (Arc::clone(&self.snapshot), sparql.to_owned());
-        run(&self.db.limit, move || snapshot.query_json(&sparql)).await
+        run_query(&self.db.limit, options, move |entailment, limits| snapshot.query_json_with_limits(&sparql, entailment, limits)).await
     }
 }
 
@@ -269,6 +321,58 @@ mod tests {
             assert!(std::time::Instant::now() < deadline, "a started update was lost");
             std::thread::sleep(Duration::from_millis(5));
         }
+    }
+
+    /// An in-memory database of `n` triples with distinct subjects: a three-way cross product over it runs for far
+    /// longer than any test waits.
+    fn big(n: usize) -> Database {
+        let db = Database::in_memory().with_concurrency(1);
+        let data: String = (0..n).map(|i| format!("<urn:s{i}> <urn:p> \"{i}\" .\n")).collect();
+        block_on(db.update(&format!("INSERT DATA {{ {data} }}"))).unwrap();
+        db
+    }
+    const ENDLESS: &str = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f FILTER(?b != ?d && ?d != ?f) }";
+
+    /// Dropping a query's future after its work started stops the query: with one permit, the next call can only
+    /// run once the worker has given it back, and it does so promptly.
+    #[test]
+    fn dropping_a_running_query_cancels_it() {
+        let db = big(2000);
+        let waker = Waker::from(Arc::new(ThreadWake(std::thread::current())));
+        let mut cx = Context::from_waker(&waker);
+        for json in [false, true] {
+            let mut running: std::pin::Pin<Box<dyn Future<Output = bool>>> = if json {
+                Box::pin(async { db.query_json(ENDLESS).await.is_ok() })
+            } else {
+                let snapshot = block_on(db.read()).unwrap();
+                Box::pin(async move { snapshot.query(ENDLESS).await.is_ok() })
+            };
+            assert!(running.as_mut().poll(&mut cx).is_pending());
+            std::thread::sleep(Duration::from_millis(50)); // well into the cross product
+            drop(running);
+            let t = std::time::Instant::now();
+            assert!(ask(&block_on(db.query_json("ASK { <urn:s1> <urn:p> \"1\" }")).unwrap()));
+            assert!(t.elapsed() < Duration::from_secs(5), "json={json}: the dropped query kept its worker for {:?}", t.elapsed());
+        }
+    }
+
+    /// A timeout and a memory budget end a query with their own errors, and the database serves the next query.
+    #[test]
+    fn timeout_and_memory_budget() {
+        let db = big(2000);
+        let timeout = QueryOptions { timeout: Some(Duration::from_millis(50)), ..Default::default() };
+        let t = std::time::Instant::now();
+        let err = block_on(db.query_with(ENDLESS, timeout)).unwrap_err();
+        assert!(matches!(err, DatabaseError::Interrupted { timed_out: true }), "{err}");
+        assert!(t.elapsed() < Duration::from_secs(5), "took {:?}", t.elapsed());
+        let budget = QueryOptions { memory_bytes: Some(1024), ..Default::default() };
+        let grouped = "SELECT ?a (COUNT(*) AS ?n) { ?a ?p ?b } GROUP BY ?a";
+        let err = block_on(db.query_json_with(grouped, budget)).unwrap_err();
+        assert!(matches!(err, DatabaseError::ResourceLimit(_)), "{err}");
+        // Room enough, and no limits at all: the same query answers.
+        let roomy = QueryOptions { memory_bytes: Some(1 << 30), timeout: Some(Duration::from_secs(60)), ..Default::default() };
+        assert!(block_on(db.query_json_with(grouped, roomy)).unwrap().contains("urn:s1999"));
+        assert!(block_on(db.query_json(grouped)).unwrap().contains("urn:s0"));
     }
 
     /// Many concurrent calls complete, and no more than the limit run at once.
