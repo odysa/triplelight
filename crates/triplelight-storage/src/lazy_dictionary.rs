@@ -115,6 +115,8 @@ const GHOST_MIN: usize = 256;
 const ADMIT_ONE_IN: u64 = 4;
 const EVICTION_SAMPLE: usize = 8;
 impl Cache {
+    #[cfg(test)]
+    fn contains(&self, key: (usize, usize)) -> bool { self.entries.contains_key(&key) }
     fn new(shard: usize) -> Self {
         let seed = (0x9e37_79b9_7f4a_7c15 ^ (shard as u64).wrapping_mul(0xbf58_476d_1ce4_e5b9)) | 1;
         Self { entries: HashMap::new(), keys: Vec::new(), used: 0, seed, rng: seed, ghost: Default::default(), ghost_order: Default::default() }
@@ -1505,7 +1507,7 @@ mod b2_hit_bench {
                         old.used += 10; old.entries.insert(key, (Arc::clone(&rows), 10)); old.order.push_back(key);
                     } else {
                         new.insert(key, &rows, 10, budget).unwrap();
-                        if which == 1 && round == 0 && new.entries.contains_key(&key) { admitted_r0 += 1; }
+                        if which == 1 && round == 0 && new.contains(key) { admitted_r0 += 1; }
                     }
                 }
                 let ns = t.elapsed().as_nanos() as f64 / MISSES as f64;

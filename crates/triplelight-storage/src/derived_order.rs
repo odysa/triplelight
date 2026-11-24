@@ -65,6 +65,13 @@ pub(super) struct SeekMemo(
 /// The most groups the regrouped-group cache holds, whatever their size.
 const GROUP_CACHE_ENTRIES: usize = 8;
 impl SeekMemo {
+    /// The memoized distinct second-column values of `key`'s group on `perm`, if that is the group last read.
+    fn values(&self, perm: Perm, key: TermId) -> Option<std::sync::Arc<Vec<TermId>>> {
+        self.0.lock().unwrap().as_ref().filter(|(p, g, _)| *p == perm && *g == key).map(|(.., v)| std::sync::Arc::clone(v))
+    }
+    fn remember_values(&self, perm: Perm, key: TermId, values: std::sync::Arc<Vec<TermId>>) {
+        *self.0.lock().unwrap() = Some((perm, key, values));
+    }
     fn group(&self, perm: Perm, key: TermId) -> Option<std::sync::Arc<Vec<[TermId; 3]>>> {
         let mut groups = self.1.lock().unwrap();
         let i = groups.iter().position(|(p, k, _)| *p == perm && *k == key)?;
@@ -172,8 +179,8 @@ pub(super) fn seek<O: KeptOrders>(o: &O, perm: Perm, prefix: &[TermId], target: 
         0 => o.seek_kept(sibling, prefix, target),
         // The second key column is the sibling's third: the smallest value >= target in the group (memoized).
         1 => {
-            let memo = &o.seek_memo().0;
-            let cached = memo.lock().unwrap().as_ref().filter(|(p, g, _)| *p == perm && *g == prefix[0]).map(|(.., v)| std::sync::Arc::clone(v));
+            let memo = o.seek_memo();
+            let cached = memo.values(perm, prefix[0]);
             let values = match cached {
                 Some(v) => { trace::add(&trace::MEMO_HITS, 1); v }
                 None => if let Some(rows) = o.seek_memo().group(perm, prefix[0]) {
@@ -182,7 +189,7 @@ pub(super) fn seek<O: KeptOrders>(o: &O, perm: Perm, prefix: &[TermId], target: 
                     let mut v: Vec<TermId> = rows.iter().map(|r| r[1]).collect();
                     v.dedup();
                     let v = std::sync::Arc::new(v);
-                    *memo.lock().unwrap() = Some((perm, prefix[0], std::sync::Arc::clone(&v)));
+                    memo.remember_values(perm, prefix[0], std::sync::Arc::clone(&v));
                     v
                 } else {
                     // Distinct values only, collected as they come: memory is the number of distinct second-column
@@ -198,7 +205,7 @@ pub(super) fn seek<O: KeptOrders>(o: &O, perm: Perm, prefix: &[TermId], target: 
                     trace::max(&trace::MAX_GROUP, rows);
                     let v: Vec<TermId> = set.into_iter().collect();
                     let v = std::sync::Arc::new(v);
-                    *memo.lock().unwrap() = Some((perm, prefix[0], std::sync::Arc::clone(&v)));
+                    memo.remember_values(perm, prefix[0], std::sync::Arc::clone(&v));
                     v
                 }
             };

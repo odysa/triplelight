@@ -161,6 +161,34 @@ pub(super) struct Builder {
 struct DedupShard { rows: std::path::PathBuf, locals: u64, triples: u64 }
 impl Builder {
     fn new(dir: &Path) -> io::Result<Self> { Self::with_budget(dir, MEMORY) }
+    /// A builder that writes only `orders` (bits of `Perm::ALL` positions) instead of the process setting.
+    fn keeping(dir: &Path, orders: u8) -> io::Result<Self> {
+        let mut b = Self::new(dir)?;
+        b.orders = orders;
+        Ok(b)
+    }
+    /// The ID of this shard's next triple (the shard in the top byte), or an error once the shard is full.
+    fn next_shard_row(&self, shard: usize) -> io::Result<u64> {
+        if self.triples >= (1u64 << 56) { return Err(bad("too many triples in shard")) }
+        Ok(((shard as u64) << 56) | self.triples)
+    }
+    /// Counts one triple whose terms the deduplicating parse recorded itself (`dedup_shard`).
+    fn count_triple(&mut self) { self.triples += 1 }
+    fn push_term_record(&mut self, record: Vec<u8>) -> io::Result<()> { self.terms.push(record) }
+    /// Ends this shard's term sort: its sorted run file, the largest record it saw, and its triple count.
+    fn finish_shard(&mut self) -> io::Result<(std::path::PathBuf, usize, u64)> {
+        let path = self.terms.finish()?;
+        Ok((path, self.terms.observed_max(), self.triples))
+    }
+    /// The builder that merges the shards' sorted term runs and writes the base.
+    fn merging(dir: &Path, runs: &[std::path::PathBuf], observed: usize, triples: u64, dedup_rows: Option<Vec<DedupShard>>, index_workers: usize) -> io::Result<Self> {
+        let mut b = Self::new(dir)?;
+        b.terms.import_sorted(runs, observed)?;
+        b.triples = triples;
+        b.dedup_rows = dedup_rows;
+        b.index_workers = index_workers;
+        Ok(b)
+    }
     fn with_budget(dir: &Path, bytes: usize) -> io::Result<Self> {
         Ok(Self {
             terms: ExternalSort::new(dir, bytes, TERM_SORT_RECORD_MAX)?,
@@ -598,22 +626,21 @@ pub(super) fn from_nt_parallel_with(dir: &Path, path: Option<&Path>, workers: us
         let mut handles = Vec::new();
         for (shard, limits) in boundaries.windows(2).enumerate() {
             let (start, end) = (limits[0], limits[1]);
-            handles.push(scope.spawn(move || -> io::Result<(Builder, std::path::PathBuf, Option<DedupShard>)> {
+            handles.push(scope.spawn(move || -> io::Result<(Builder, (std::path::PathBuf, usize, u64), Option<DedupShard>)> {
                 let mut b = Builder::with_budget(dir, worker_budget)?;
                 let mut file = File::open(path)?; file.seek(SeekFrom::Start(start))?;
                 let input = BufReader::new(file.take(end - start));
                 if let Some(map_bytes) = dedup {
                     let shard_rows = dedup_shard(dir, shard, &mut b, input, map_bytes)?;
-                    let sorted = b.terms.finish()?;
+                    let sorted = b.finish_shard()?;
                     return Ok((b, sorted, Some(shard_rows)));
                 }
                 for t in triplelight_core::ntriples::read_ntriples(input) {
                     let t: Triple = t?;
-                    if b.triples >= (1u64 << 56) { return Err(bad("too many triples in shard")); }
-                    let id = ((shard as u64) << 56) | b.triples;
+                    let id = b.next_shard_row(shard)?;
                     b.add_with_id([t.subject.to_string(), t.predicate.to_string(), t.object.to_string()], id)?;
                 }
-                let sorted = b.terms.finish()?;
+                let sorted = b.finish_shard()?;
                 Ok((b, sorted, None))
             }));
         }
@@ -629,16 +656,12 @@ pub(super) fn from_nt_parallel_with(dir: &Path, path: Option<&Path>, workers: us
     let mut paths = Vec::with_capacity(builders.len());
     let mut observed = 0usize;
     let mut count = 0u64;
-    for (b, path) in &builders {
-        count = count.checked_add(b.triples).ok_or_else(|| bad("too many triples"))?;
+    for (_, (path, max, triples)) in &builders {
+        count = count.checked_add(*triples).ok_or_else(|| bad("too many triples"))?;
         paths.push(path.clone());
-        observed = observed.max(b.terms.observed_max());
+        observed = observed.max(*max);
     }
-    let mut combined = Builder::new(dir)?;
-    combined.terms.import_sorted(&paths, observed)?;
-    combined.triples = count;
-    if dedup.is_some() { combined.dedup_rows = Some(dedup_rows); }
-    combined.index_workers = shards.min(3);
+    let combined = Builder::merging(dir, &paths, observed, count, dedup.map(|_| dedup_rows), shards.min(3))?;
     drop(builders);
     combined.finish(dir)
 }
@@ -687,13 +710,13 @@ fn dedup_shard(dir: &Path, shard: usize, b: &mut Builder, input: impl BufRead, m
             r.extend_from_slice(&(((shard as u64) << 56) | local).to_be_bytes());
             r.push(0);
             *sorted_bytes += r.len() as u64;
-            b.terms.push(r)?;
+            b.push_term_record(r)?;
         }
         Ok(())
     };
     for t in triplelight_core::ntriples::read_ntriples(input) {
         let t: Triple = t?;
-        if b.triples >= (1u64 << 56) { return Err(bad("too many triples in shard")); }
+        b.next_shard_row(shard)?;
         for term in [t.subject.to_string(), t.predicate.to_string(), t.object.to_string()] {
             if term.len() > MAX_TERM || term.as_bytes().contains(&0) {
                 return Err(bad("invalid or oversized encoded RDF term"));
@@ -713,7 +736,7 @@ fn dedup_shard(dir: &Path, shard: usize, b: &mut Builder, input: impl BufRead, m
             };
             rows.write_all(&local.to_be_bytes())?;
         }
-        b.triples += 1;
+        b.count_triple();
         // Text bytes plus the table itself: each bucket holds a `String` header (24 bytes) and a `u64`, plus one control
         // byte, and the bucket array grows by powers of two, so charge its capacity rather than its length.
         if used + map.capacity() * 33 > map_bytes {
@@ -798,8 +821,7 @@ pub(super) fn from_dataset_keeping(dir: &Path, source: &dyn triplelight_core::st
     let names = source.graph_names()?;
     if names.is_empty() { return from_snapshot_keeping(dir, source.default_graph(), orders) }
     fs::create_dir(dir)?;
-    let mut builder = Builder::new(dir)?;
-    builder.orders = orders;
+    let mut builder = Builder::keeping(dir, orders)?;
     let text = |view: &dyn Snapshot, id: TermId| -> io::Result<String> {
         let mut out = String::new();
         view.with_term(id, &mut |v| out = v.to_string())?;
@@ -830,8 +852,7 @@ pub(super) fn from_snapshot(dir: &Path, source: &dyn Snapshot) -> io::Result<()>
 }
 pub(super) fn from_snapshot_keeping(dir: &Path, source: &dyn Snapshot, orders: u8) -> io::Result<()> {
     fs::create_dir(dir)?;
-    let mut builder = Builder::new(dir)?;
-    builder.orders = orders;
+    let mut builder = Builder::keeping(dir, orders)?;
     for batch in source.scan(Perm::Spo, &[]) {
         let batch = batch?;
         if batch.cols.iter().any(|c| c.len() != batch.len()) {
