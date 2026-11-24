@@ -108,9 +108,8 @@ fn run_case(file: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn exclusions(root: &Path) -> BTreeSet<String> {
+fn exclusions() -> BTreeSet<String> {
     let f = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/shacl/w3c-exclusions.txt");
-    let _ = root;
     std::fs::read_to_string(f).unwrap_or_default().lines().filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
         .map(|l| l.split_whitespace().next().unwrap().to_string()).collect()
 }
@@ -120,7 +119,7 @@ fn exclusions(root: &Path) -> BTreeSet<String> {
 fn w3c_shacl_core() {
     let root = PathBuf::from(std::env::var("TL_SHACL_TESTS").expect("TL_SHACL_TESTS must point at data-shapes-test-suite/tests/core"));
     let root = root.canonicalize().expect("the suite directory exists");
-    let excluded = exclusions(&root);
+    let excluded = exclusions();
     let files = test_files(&root);
     assert!(files.len() > 50, "found only {} test files: wrong directory?", files.len());
     let (mut passed, mut unexpected, mut fixed) = (0, Vec::new(), Vec::new());
