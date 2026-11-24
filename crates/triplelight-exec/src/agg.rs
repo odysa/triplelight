@@ -6,7 +6,7 @@
 //! Semantics are those of `Ctx::aggregate`, operation for operation: same numeric typing and overflow-as-error for
 //! SUM/AVG, same tie rules for MIN (first) and MAX (last) under `order_cmp`, same first-appearance group order.
 //! Anything else (expressions other than a plain variable, GROUP_CONCAT, custom aggregates) uses the general path.
-use super::{expr, Ctx, Row, UNBOUND};
+use super::{expr, Ctx, Interrupt, Row, UNBOUND};
 use crate::model::TermId;
 use crate::storage::Snapshot;
 use expr::Num;
@@ -83,7 +83,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     }
 
     fn count_one_key(&self, rows: &[Row], key_col: usize, value_col: Option<usize>, out_col: usize) -> Vec<Row> {
-        count_groups(rows, key_col, value_col).into_iter().map(|(key, count)| {
+        count_groups(rows, key_col, value_col, self.interrupt).into_iter().map(|(key, count)| {
             let mut out = self.empty_row();
             out[key_col] = key;
             out[out_col] = self.intern(&Literal::from(count).into());
@@ -223,12 +223,15 @@ const PAR_COUNT_MIN_ROWS: usize = 1 << 16;
 /// Per group of `rows[_][key_col]`, in first-appearance order: how many rows it has (`value_col` `None`), or how many
 /// of them bind `value_col`. Above `PAR_COUNT_MIN_ROWS` the rows are cut into contiguous chunks counted in parallel and
 /// merged in chunk order. That order is the serial one: a key first appears in the earliest chunk holding it, and each
-/// chunk lists its keys in their order of first appearance there. Only term IDs are read, so no `Ctx` state is shared.
-fn count_groups(rows: &[Row], key_col: usize, value_col: Option<usize>) -> Vec<(TermId, i64)> {
+/// chunk lists its keys in their order of first appearance there. Only term IDs (and the query's `Interrupt`, which is
+/// `Sync`) are read, so no `Ctx` state is shared. Like the generic loop, every 4,096 rows of each chunk polls
+/// `interrupt`; a stop in a rayon worker unwinds to the caller with the same payload.
+fn count_groups(rows: &[Row], key_col: usize, value_col: Option<usize>, interrupt: Option<&Interrupt>) -> Vec<(TermId, i64)> {
     let count = |rows: &[Row]| -> Vec<(TermId, i64)> {
         let mut positions = HashMap::new();
         let mut groups: Vec<(TermId, i64)> = Vec::new();
-        for row in rows {
+        for (n, row) in rows.iter().enumerate() {
+            if n.is_multiple_of(4096) && let Some(i) = interrupt { i.check() }
             let key = row[key_col];
             let index = *positions.entry(key).or_insert_with(|| {
                 groups.push((key, 0));
@@ -286,12 +289,24 @@ mod count_groups_tests {
     }
 
     #[test]
+    fn a_cancelled_query_stops_counting_in_serial_and_parallel() {
+        let interrupt = Interrupt::new();
+        interrupt.cancel();
+        for n in [PAR_COUNT_MIN_ROWS - 1, 300_000] {
+            let r = rows(n, 50, 1);
+            let stopped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| count_groups(&r, 0, None, Some(&interrupt))));
+            let payload = stopped.expect_err("a cancelled count must unwind");
+            assert!(payload.downcast_ref::<super::super::Interrupted>().is_some(), "n={n}: unwound with something else");
+        }
+    }
+
+    #[test]
     fn parallel_count_matches_serial_in_groups_order_and_counts() {
         for &(n, keys) in &[(PAR_COUNT_MIN_ROWS - 1, 50), (PAR_COUNT_MIN_ROWS, 1), (300_000, 7), (300_000, 250_000), (1_000_003, 10_000)] {
             for seed in [1, 2, 3] {
                 let r = rows(n, keys, seed);
                 for value_col in [None, Some(1)] {
-                    assert_eq!(count_groups(&r, 0, value_col), serial(&r, 0, value_col), "n={n} keys={keys} seed={seed} value_col={value_col:?}");
+                    assert_eq!(count_groups(&r, 0, value_col, None), serial(&r, 0, value_col), "n={n} keys={keys} seed={seed} value_col={value_col:?}");
                 }
             }
         }
