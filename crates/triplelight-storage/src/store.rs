@@ -31,6 +31,10 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 
 mod named;
+#[cfg(unix)]
+mod text_index;
+#[cfg(unix)]
+pub(crate) mod text_postings;
 pub use named::{GraphStateError, NamedGraph};
 #[cfg(test)]
 mod fault_tests;
@@ -198,6 +202,10 @@ impl Snapshot for Overlay {
     /// commits that publish new overlays only until the first change).
     fn object_memo(&self) -> Option<&triplelight_core::storage::ObjectMemo> {
         if self.delta.is_empty() { self.base.object_memo() } else { Some(&self.object_memo) }
+    }
+    fn text_candidates(&self, tokens: &[&str], limit: usize) -> Option<Vec<TermId>> {
+        if !self.matches_base() { return None; }
+        self.base.text_candidates(tokens, limit)
     }
     fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> {
         if self.delta.is_empty() { self.base.matching_rows(perm, prefix) } else { None }

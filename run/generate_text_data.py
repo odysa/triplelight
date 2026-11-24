@@ -6,7 +6,7 @@ import struct
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
-OUTPUT = ROOT / "crates/triplelight-exec/src/expr/text_data"
+OUTPUT = ROOT / "crates/triplelight-core/src/text_data"
 INPUTS = {
     "DerivedNormalizationProps.txt": "71fd6a206a2c0cdd41feb6b7f656aa31091db45e9cedc926985d718397f9e488",
     "DerivedGeneralCategory.txt": "d62e5bab70ca74f099343f71224fa051cb1fdd61a1ab45c0488c44cfc0b6102e",

@@ -817,6 +817,8 @@ dependencies = [
  "oxttl",
  "triplelight-iri",
  "triplelight-rdf",
+ "unicode-normalization",
+ "unicode-segmentation",
 ]
 
 [[package]]
@@ -835,8 +837,6 @@ dependencies = [
  "triplelight-plan",
  "triplelight-rdf",
  "triplelight-sparql",
- "unicode-normalization",
- "unicode-segmentation",
  "web-time",
 ]
 

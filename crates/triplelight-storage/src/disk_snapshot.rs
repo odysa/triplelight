@@ -195,6 +195,8 @@ pub struct DiskSnapshot {
     /// not a tmpfs `/tmp` whose pages a cgroup charges as memory).
     dir: std::path::PathBuf,
     dictionary: DictionaryBackend,
+    text_index: Option<crate::store::text_postings::TextIndex>,
+    manifest_sha: [u8; 32],
     /// The six triple orders in `Perm::ALL` order; `None` for an order this base does not keep (SOP and OPS are then
     /// served from the others, see `derived_order`).
     indexes: Vec<Option<DiskIndex>>,
@@ -257,7 +259,11 @@ impl DiskSnapshot {
     /// Files must remain immutable after opening; previously cached blocks are not re-read automatically.
     pub fn open(dir: impl AsRef<Path>) -> io::Result<Self> {
         let dir = dir.as_ref();
-        let mut manifest = BufReader::new(File::open(dir.join("MANIFEST"))?);
+        let mut manifest_bytes = Vec::new();
+        File::open(dir.join("MANIFEST"))?.take(4097).read_to_end(&mut manifest_bytes)?;
+        if manifest_bytes.len() > 4096 { return Err(bad("base manifest too large")); }
+        let manifest_sha = Sha256::digest(&manifest_bytes).into();
+        let mut manifest = manifest_bytes.as_slice();
         let mut magic = [0; 8];
         manifest.read_exact(&mut magic)?;
         // RDFSNAP2: one legacy dictionary file; RDFSNAP3: dictionary.term + dictionary.id; RDFSNAP4: one unified file.
@@ -375,6 +381,8 @@ impl DiskSnapshot {
         };
         Ok(Self {
             dictionary,
+            text_index: crate::store::text_postings::TextIndex::open(dir, &manifest_sha).ok(),
+            manifest_sha,
             indexes,
             named,
             seek_memo: Default::default(),
@@ -556,6 +564,16 @@ impl DiskSnapshot {
             Ok(())
         })
     }
+    pub(crate) fn manifest_identity(&self) -> [u8; 32] { self.manifest_sha }
+
+    /// Visits stored literals in ID order without populating the query dictionary cache.
+    pub(crate) fn visit_unified_literals(&self, visit: &mut dyn FnMut(TermId, &triplelight_rdf::Literal) -> io::Result<()>) -> io::Result<()> {
+        match &self.dictionary {
+            DictionaryBackend::Unified(dictionary) => dictionary.for_each_literal_uncached(visit),
+            _ => Err(io::Error::new(io::ErrorKind::Unsupported, "text index requires a unified disk dictionary")),
+        }
+    }
+
     fn kept(&self, perm: Perm) -> Option<&DiskIndex> {
         self.indexes[Perm::ALL.iter().position(|x| *x == perm).unwrap()].as_ref()
     }
@@ -643,6 +661,9 @@ impl Dictionary for DiskSnapshot {
 
 impl Snapshot for DiskSnapshot {
     fn has_rdf12_terms(&self) -> bool { self.rdf12 }
+    fn text_candidates(&self, tokens: &[&str], limit: usize) -> Option<Vec<TermId>> {
+        self.text_index.as_ref()?.candidates(tokens, limit).ok()
+    }
     fn object_memo(&self) -> Option<&triplelight_core::storage::ObjectMemo> { Some(&self.object_memo) }
     fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
         super::derived_order::scan(self, perm, prefix)
