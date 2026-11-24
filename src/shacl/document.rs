@@ -33,7 +33,8 @@ impl std::error::Error for DocumentError {}
 /// Validates `data` against `shapes`, each RDF text in its own format (N-Triples or Turtle).
 pub fn validate_documents(data: &[u8], data_format: Format, shapes: &[u8], shapes_format: Format) -> Result<ValidationReport, DocumentError> {
     let parse = |text: &[u8], format, document| parse_triples(text, format).map_err(|message| DocumentError::Syntax { document, message });
-    let data = parse(data, data_format, Document::Data)?;
+    // The shapes first, like `validate`: a broken shapes document fails before the (usually larger) data is parsed.
     let shapes = parse(shapes, shapes_format, Document::Shapes)?;
+    let data = parse(data, data_format, Document::Data)?;
     validate(&data, &shapes).map_err(DocumentError::Validation)
 }
