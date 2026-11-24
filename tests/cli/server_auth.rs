@@ -14,7 +14,9 @@ impl Drop for Server {
     fn drop(&mut self) { let _ = self.0.kill(); let _ = self.0.wait(); let _ = std::fs::remove_dir_all(&self.2); }
 }
 
-fn start(name: &str, flags: &[&str], token: Option<&str>) -> Server {
+fn start(name: &str, flags: &[&str], token: Option<&str>) -> Server { start_with(name, flags, token, &[]) }
+
+fn start_with(name: &str, flags: &[&str], token: Option<&str>, env: &[(&str, &str)]) -> Server {
     let guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let dir = std::env::temp_dir().join(format!("tl-auth-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
@@ -23,6 +25,7 @@ fn start(name: &str, flags: &[&str], token: Option<&str>) -> Server {
     cmd.arg("serve-store").arg(&dir).arg(port.to_string()).args(flags).stdout(Stdio::null()).stderr(Stdio::null())
         .env_remove("TRIPLELIGHT_UPDATE_TOKEN").env_remove("TRIPLELIGHT_HOST");
     if let Some(t) = token { cmd.env("TRIPLELIGHT_UPDATE_TOKEN", t); }
+    for (k, v) in env { cmd.env(k, v); }
     let server = Server(cmd.spawn().unwrap(), port, dir, guard);
     let deadline = Instant::now() + Duration::from_secs(10);
     while TcpStream::connect(("127.0.0.1", port)).is_err() {
@@ -177,4 +180,40 @@ fn graph_state_errors_are_client_errors() {
     assert!(update("DROP GRAPH <urn:absent>").contains(" 400 "));
     assert!(update("COPY <urn:absent> TO <urn:g>").contains(" 400 "));
     assert!(update("DROP SILENT GRAPH <urn:absent>").contains(" 200 "));
+}
+
+/// More clients than workers declare an update body and never send it (#123). Each is answered 401 at once, and then
+/// holds a worker while tiny_http reads off the body; the read idle timeout releases them, so a normal query still
+/// answers promptly instead of waiting behind them forever.
+#[test]
+fn withheld_bodies_are_released_by_the_read_idle_timeout() {
+    let s = start_with("idle", &[], Some("s3cret"), &[("TRIPLELIGHT_READ_IDLE_MS", "300")]);
+    let n = std::thread::available_parallelism().map_or(4, |n| n.get()) + 4;
+    let mut slow: Vec<TcpStream> = (0..n).map(|_| {
+        let mut c = TcpStream::connect(("127.0.0.1", s.1)).unwrap();
+        write!(c, "POST /update HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/sparql-update\r\nContent-Length: 65536\r\n\r\n").unwrap();
+        c.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+        c
+    }).collect();
+    for c in &mut slow {
+        let mut buf = [0u8; 64];
+        // A reset instead of the 401 is the flaky case this file also covers; either way the request was refused.
+        if let Ok(n) = c.read(&mut buf) { assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).contains(" 401 ")) }
+    }
+    let t = Instant::now();
+    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
+    assert!(t.elapsed() < Duration::from_secs(5), "a query waited {:?} behind withheld bodies", t.elapsed());
+    drop(slow);
+}
+
+/// A query body declared over the limit is refused with 413 before any of it is read (#123).
+#[test]
+fn an_oversized_declared_body_is_refused_before_reading() {
+    let s = start("oversized", &[], Some("s3cret"));
+    let mut c = TcpStream::connect(("127.0.0.1", s.1)).unwrap();
+    c.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    write!(c, "POST /sparql HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/sparql-query\r\nContent-Length: {}\r\n\r\n", 64u64 << 20).unwrap();
+    let mut buf = [0u8; 64];
+    let n = c.read(&mut buf).expect("the 413 is sent without waiting for the body");
+    assert!(String::from_utf8_lossy(&buf[..n]).contains(" 413 "));
 }

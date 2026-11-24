@@ -251,7 +251,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
     };
     refresh(&stats, &store.snapshot());
     let port = args.get(3).filter(|a| !a.starts_with("--")).map(String::as_str).unwrap_or("7878");
-    let server = tiny_http::Server::http(format!("{}:{port}", bind_host())).expect("bind");
+    let server = listen(port);
     eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql and /update");
     let (server, store, stats, refresh) = (&server, &store, &stats, &refresh);
     std::thread::scope(|scope| for _ in 0..workers { scope.spawn(move || {
@@ -268,8 +268,18 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
                 continue;
             }
             // Authorize before reading the body, so an unauthorized client cannot make the server buffer it.
-            if path == "/update" && let Err(denied) = auth.check(&req) { let _ = req.respond(denied); continue }
+            if path == "/update" && let Err(denied) = auth.check(&req) {
+                early_rejection(path, denied.status_code().0);
+                let _ = req.respond(denied);
+                continue
+            }
             let limit = if path == "/update" { u64::MAX } else { MAX_QUERY_BYTES };
+            // A body declared too large is refused before any of it is read.
+            if declared_length(&req).is_some_and(|n| n > limit) {
+                early_rejection(path, 413);
+                let _ = req.respond(tiny_http::Response::from_string("query too large").with_status_code(413));
+                continue
+            }
             let mut body = String::new();
             if req.as_reader().take(limit.saturating_add(1)).read_to_string(&mut body).is_err() {
                 let _ = req.respond(tiny_http::Response::from_string("request body is not valid UTF-8").with_status_code(400)); continue
@@ -316,6 +326,49 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
             let _ = req.respond(resp);
         }
     }); });
+}
+
+/// Idle timeouts on every connection (#123). tiny_http reads off an unread request body (one we rejected before
+/// reading it) inside the worker that answered, with no cap, and it gives handlers no access to the socket; so the
+/// timeouts are set on the listening socket, whose accepted connections inherit them on Linux and macOS. A read that
+/// waits longer than the read timeout for a client's next bytes, or a write that waits longer than the write timeout
+/// for a client to take more of an answer, fails and closes the connection, which releases its worker. They bound
+/// each wait, not the whole transfer: a slow but steady upload or download keeps going. Defaults: 10 s and 60 s;
+/// `TRIPLELIGHT_READ_IDLE_MS` and `TRIPLELIGHT_WRITE_IDLE_MS` override them.
+fn idle_timeouts() -> (std::time::Duration, std::time::Duration) {
+    let ms = |name: &str, default: u64| std::time::Duration::from_millis(
+        std::env::var(name).ok().and_then(|v| v.parse().ok()).filter(|&v: &u64| v > 0).unwrap_or(default));
+    (ms("TRIPLELIGHT_READ_IDLE_MS", 10_000), ms("TRIPLELIGHT_WRITE_IDLE_MS", 60_000))
+}
+
+/// The server on `port`, its connections under `idle_timeouts`.
+fn listen(port: &str) -> tiny_http::Server {
+    let listener = std::net::TcpListener::bind(format!("{}:{port}", bind_host())).expect("bind");
+    #[cfg(unix)]
+    {
+        use std::os::fd::AsRawFd;
+        let (read, write) = idle_timeouts();
+        for (option, timeout) in [(libc::SO_RCVTIMEO, read), (libc::SO_SNDTIMEO, write)] {
+            let tv = libc::timeval { tv_sec: timeout.as_secs() as libc::time_t, tv_usec: timeout.subsec_micros() as libc::suseconds_t };
+            // SAFETY: a valid socket, and a `timeval` of the size passed.
+            let done = unsafe { libc::setsockopt(listener.as_raw_fd(), libc::SOL_SOCKET, option, (&raw const tv).cast(), std::mem::size_of::<libc::timeval>() as libc::socklen_t) };
+            if done != 0 { eprintln!("warning: cannot set connection timeouts: {}", std::io::Error::last_os_error()) }
+        }
+    }
+    tiny_http::Server::from_listener(listener, None).expect("serve")
+}
+
+/// Requests answered before their body was read (#123): an unauthorized update, or a declared body over the limit.
+/// Each is logged with the running count, so a CI log shows whether that path ran when a client saw a reset.
+fn early_rejection(path: &str, status: u16) {
+    static COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let n = COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+    eprintln!("early rejection {n}: {status} {path}");
+}
+
+/// The declared `Content-Length`, if any.
+fn declared_length(req: &tiny_http::Request) -> Option<u64> {
+    req.headers().iter().find(|h| h.field.equiv("Content-Length")).and_then(|h| h.value.as_str().trim().parse().ok())
 }
 
 /// Listen address host: 127.0.0.1 unless TRIPLELIGHT_HOST is set, e.g. 0.0.0.0 in a container.
@@ -423,7 +476,7 @@ fn serve_memory(args: &[String]) {
             let ablations = ablations(args);
             let timeout = query_timeout(args);
             let memory = query_memory(args);
-            let server = tiny_http::Server::http(format!("{}:{port}", bind_host())).expect("bind");
+            let server = listen(port);
             eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql");
             // One worker per core: queries run concurrently against the same immutable snapshot.
             let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
