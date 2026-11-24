@@ -1,5 +1,7 @@
 # Star BGP counts from range counts (#105)
 
+**Superseded by `docs/star-count-v2/`:** this run timed servers before their planner statistics were ready, which overstates the gain.
+
 Profile v2 had agg-WatDiv `all_C3` at 2.66× Virtuoso, all of it in the count path, and `distinct_C3` at 1.15×. C3 is a
 six-pattern star on `?v0` with every other variable private. A star is acyclic, so `COUNT(*)` took the binary-join count,
 which materialises every row of the first five patterns. `COUNT(DISTINCT ?v0)` was not pushed down at all: the
