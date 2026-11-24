@@ -137,3 +137,53 @@ fn a_user_defined_severity_is_kept() {
     assert!(matches!(Severity::from_iri(&pred("Bogus")), Severity::Custom(_)));
     assert_eq!(Severity::from_iri(&crate::rdf::NamedNode::new_unchecked("http://www.w3.org/ns/shacl#Warning")), Severity::Warning);
 }
+
+#[test]
+fn a_path_that_contains_itself_is_malformed_not_a_crash() {
+    let shapes = parse("ex:S a sh:NodeShape ; sh:targetNode ex:n ; sh:property [ sh:path _:p ] . _:p sh:inversePath _:p .");
+    assert!(matches!(validate(&[], &shapes), Err(ValidationError::MalformedShape(_))));
+    let alt = parse("ex:S a sh:NodeShape ; sh:targetNode ex:n ; sh:property [ sh:path _:p ] . _:p sh:alternativePath ( _:p ex:q ) .");
+    assert!(matches!(validate(&[], &alt), Err(ValidationError::MalformedShape(_))));
+}
+
+#[test]
+fn a_very_deeply_nested_path_is_refused() {
+    let mut ttl = String::from("ex:S a sh:NodeShape ; sh:targetNode ex:n ; sh:property [ sh:path _:p0 ] .\n");
+    for i in 0..300 { ttl.push_str(&format!("_:p{i} sh:inversePath _:p{} .\n", i + 1)); }
+    ttl.push_str("_:p300 sh:inversePath ex:q .\n");
+    assert!(matches!(validate(&[], &parse(&ttl)), Err(ValidationError::MalformedShape(_))));
+}
+
+#[test]
+fn a_shape_that_refers_to_itself_is_refused_before_any_data_is_read() {
+    let shapes = parse("ex:S a sh:NodeShape ; sh:targetNode ex:n0 ; sh:property [ sh:path ex:next ; sh:node ex:S ] .");
+    let mut chain = String::new();
+    for i in 0..100_000 { chain.push_str(&format!("ex:n{i} ex:next ex:n{} .\n", i + 1)); }
+    assert!(matches!(validate(&parse(&chain), &shapes), Err(ValidationError::UndefinedRecursion(_))));
+}
+
+#[test]
+fn a_ladder_of_double_references_to_the_same_shape_is_refused_not_evaluated_exponentially() {
+    let shapes = parse("ex:S a sh:NodeShape ; sh:targetNode ex:l0 ; sh:property [ sh:path ex:a ; sh:node ex:S ] , [ sh:path ex:b ; sh:node ex:S ] .");
+    let mut ladder = String::new();
+    for i in 0..40 { ladder.push_str(&format!("ex:l{i} ex:a ex:l{} ; ex:b ex:l{} .\n", i + 1, i + 1)); }
+    assert!(matches!(validate(&parse(&ladder), &shapes), Err(ValidationError::UndefinedRecursion(_))));
+}
+
+#[test]
+fn recursion_through_logical_and_qualified_references_is_refused_too() {
+    let via_not = parse("ex:S a sh:NodeShape ; sh:targetNode ex:n ; sh:not ex:T . ex:T a sh:NodeShape ; sh:and ( ex:S ) .");
+    assert!(matches!(validate(&[], &via_not), Err(ValidationError::UndefinedRecursion(_))));
+    let q = parse("ex:S a sh:NodeShape ; sh:targetNode ex:n ; sh:property [ sh:path ex:p ; sh:qualifiedValueShape ex:S ; sh:qualifiedMinCount 1 ] .");
+    assert!(matches!(validate(&[], &q), Err(ValidationError::UndefinedRecursion(_))));
+}
+
+#[test]
+fn nested_shapes_that_do_not_recurse_still_validate() {
+    let shapes = parse(
+        "ex:T a sh:NodeShape ; sh:targetNode ex:n ; sh:property [ sh:path ex:p ; sh:node ex:U ] . \
+         ex:U a sh:NodeShape ; sh:datatype <http://www.w3.org/2001/XMLSchema#string> .");
+    let report = validate(&parse("ex:n ex:p \"a\" , 1 ."), &shapes).unwrap();
+    assert!(!report.conforms);
+    assert_eq!(report.results.len(), 1, "the integer value fails U, the string passes");
+}

@@ -5,6 +5,9 @@ use super::vocab::{rdf, sh};
 use crate::rdf::{BlankNode, NamedNode, Term, Triple};
 use std::collections::HashSet;
 
+/// The deepest nesting of path nodes `Path::parse` accepts.
+const MAX_PATH_DEPTH: usize = 64;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Path {
     Predicate(NamedNode),
@@ -22,31 +25,47 @@ impl Path {
     /// or has exactly one of `sh:inversePath`, `sh:alternativePath`, `sh:zeroOrMorePath`, `sh:oneOrMorePath`,
     /// `sh:zeroOrOnePath`.
     pub fn parse(node: &Term, shapes: &Graph) -> Result<Path, ValidationError> {
+        Path::parse_at(node, shapes, &mut Vec::new())
+    }
+
+    /// `visiting` holds the blank path nodes being parsed, outermost first: a node that contains itself is a malformed path (and a
+    /// path nested deeper than `MAX_PATH_DEPTH` is refused), so a hostile shapes graph cannot overflow the stack.
+    fn parse_at(node: &Term, shapes: &Graph, visiting: &mut Vec<Term>) -> Result<Path, ValidationError> {
         let bad = |why: &str| ValidationError::MalformedShape(format!("path {node}: {why}"));
         match node {
             Term::NamedNode(p) => Ok(Path::Predicate(p.clone())),
             Term::BlankNode(_) => {
-                if !shapes.objects(node, &rdf("first")).is_empty() {
-                    let items = shapes.list_items(node)?;
-                    if items.len() < 2 { return Err(bad("a sequence path needs at least two members")) }
-                    return Ok(Path::Sequence(items.iter().map(|i| Path::parse(i, shapes)).collect::<Result<_, _>>()?));
-                }
-                let forms = ["inversePath", "alternativePath", "zeroOrMorePath", "oneOrMorePath", "zeroOrOnePath"];
-                let present: Vec<(&str, &Term)> = forms.iter().flat_map(|f| shapes.objects(node, &sh(f)).iter().map(move |o| (*f, o))).collect();
-                match present.as_slice() {
-                    [("inversePath", o)] => Ok(Path::Inverse(Box::new(Path::parse(o, shapes)?))),
-                    [("alternativePath", o)] => {
-                        let items = shapes.list_items(o)?;
-                        if items.len() < 2 { return Err(bad("an alternative path needs at least two members")) }
-                        Ok(Path::Alternative(items.iter().map(|i| Path::parse(i, shapes)).collect::<Result<_, _>>()?))
-                    }
-                    [("zeroOrMorePath", o)] => Ok(Path::ZeroOrMore(Box::new(Path::parse(o, shapes)?))),
-                    [("oneOrMorePath", o)] => Ok(Path::OneOrMore(Box::new(Path::parse(o, shapes)?))),
-                    [("zeroOrOnePath", o)] => Ok(Path::ZeroOrOne(Box::new(Path::parse(o, shapes)?))),
-                    _ => Err(bad("not a recognised path form")),
-                }
+                if visiting.contains(node) { return Err(bad("a path contains itself")) }
+                if visiting.len() >= MAX_PATH_DEPTH { return Err(bad("paths nested more than 64 deep are not supported")) }
+                visiting.push(node.clone());
+                let parsed = Path::parse_blank(node, shapes, visiting);
+                visiting.pop();
+                parsed
             }
             _ => Err(bad("a path is an IRI or a blank node")),
+        }
+    }
+
+    fn parse_blank(node: &Term, shapes: &Graph, visiting: &mut Vec<Term>) -> Result<Path, ValidationError> {
+        let bad = |why: &str| ValidationError::MalformedShape(format!("path {node}: {why}"));
+        if !shapes.objects(node, &rdf("first")).is_empty() {
+            let items = shapes.list_items(node)?;
+            if items.len() < 2 { return Err(bad("a sequence path needs at least two members")) }
+            return Ok(Path::Sequence(items.iter().map(|i| Path::parse_at(i, shapes, visiting)).collect::<Result<_, _>>()?));
+        }
+        let forms = ["inversePath", "alternativePath", "zeroOrMorePath", "oneOrMorePath", "zeroOrOnePath"];
+        let present: Vec<(&str, &Term)> = forms.iter().flat_map(|f| shapes.objects(node, &sh(f)).iter().map(move |o| (*f, o))).collect();
+        match present.as_slice() {
+            [("inversePath", o)] => Ok(Path::Inverse(Box::new(Path::parse_at(o, shapes, visiting)?))),
+            [("alternativePath", o)] => {
+                let items = shapes.list_items(o)?;
+                if items.len() < 2 { return Err(bad("an alternative path needs at least two members")) }
+                Ok(Path::Alternative(items.iter().map(|i| Path::parse_at(i, shapes, visiting)).collect::<Result<_, _>>()?))
+            }
+            [("zeroOrMorePath", o)] => Ok(Path::ZeroOrMore(Box::new(Path::parse_at(o, shapes, visiting)?))),
+            [("oneOrMorePath", o)] => Ok(Path::OneOrMore(Box::new(Path::parse_at(o, shapes, visiting)?))),
+            [("zeroOrOnePath", o)] => Ok(Path::ZeroOrOne(Box::new(Path::parse_at(o, shapes, visiting)?))),
+            _ => Err(bad("not a recognised path form")),
         }
     }
 
