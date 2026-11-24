@@ -845,8 +845,12 @@ pub(super) fn java_float_lexical(x: f32) -> String {
 /// `("12:30:05.5", "-05:00")` from the time part of an xsd:dateTime; the timezone is `""` when absent.
 fn split_timezone(time: &str) -> (&str, &str) {
     if let Some(c) = time.strip_suffix('Z') { return (c, "Z") }
-    if time.len() > 6 && let Some((c, tz)) = time.split_at_checked(time.len() - 6) {
-        if (tz.starts_with('+') || tz.starts_with('-')) && tz.as_bytes()[3] == b':' { return (c, tz) }
+    if time.len() > 6
+        && let Some((c, tz)) = time.split_at_checked(time.len() - 6)
+        && (tz.starts_with('+') || tz.starts_with('-'))
+        && tz.as_bytes()[3] == b':'
+    {
+        return (c, tz);
     }
     (time, "")
 }
