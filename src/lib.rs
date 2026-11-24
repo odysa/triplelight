@@ -7,7 +7,7 @@ pub use triplelight_exec as exec;
 pub use triplelight_plan as opt;
 pub use triplelight_sparql as sparql;
 #[cfg(feature = "shacl")]
-pub mod shacl;
+pub use triplelight_shacl as shacl;
 
 /// Storage traits and implementations.
 pub mod storage {
@@ -93,6 +93,7 @@ pub mod store {
 }
 
 #[cfg(unix)]
+pub mod extension;
 pub mod embedded;
 
 /// The async embedded API (feature `async`): every call runs on a worker and is awaited on any executor.

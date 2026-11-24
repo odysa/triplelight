@@ -28,8 +28,8 @@
 //! the subjects (objects) of every property whose domain (range) lies below the class. Other shapes (unbound
 //! predicate, unbound class) are materialized from the graph's rows that can contribute. Results other than direct
 //! delegations are memoized per view (`MEMO_ROWS`), so a leapfrog seeking one prefix many times pays once.
-use crate::model::{id_tag, Perm, TermId, TripleBatch};
-use crate::storage::{Dictionary, Snapshot, StorageError};
+use triplelight_core::model::{id_tag, Perm, TermId, TripleBatch};
+use triplelight_core::storage::{Dictionary, EntailmentProvider, Snapshot, StorageError};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
 use triplelight_rdf::vocab::{rdf, rdfs};
@@ -182,19 +182,19 @@ fn spo(perm: Perm, k: [TermId; 3]) -> [TermId; 3] {
 }
 
 /// The graph `base` with its RDFS closure (module docs).
-pub(crate) struct Entailed<'a> {
+struct Entailed<'a> {
     base: &'a dyn Snapshot,
     schema: Schema,
     memo: Mutex<(usize, HashMap<(Perm, Vec<TermId>), Arc<Vec<[TermId; 3]>>>)>,
 }
 
 impl<'a> Entailed<'a> {
-    pub(crate) fn new(base: &'a dyn Snapshot) -> Result<Self, StorageError> {
+    fn new(base: &'a dyn Snapshot) -> Result<Self, StorageError> {
         Ok(Entailed { base, schema: Schema::of(base)?, memo: Mutex::new((0, HashMap::new())) })
     }
 
     /// Names `rdf:type` by `id` when the graph's dictionary has no such IRI (`Schema::rdf_type`); before any scan.
-    pub(crate) fn set_rdf_type(&self, id: TermId) {
+    fn set_rdf_type(&self, id: TermId) {
         if self.schema.rdf_type().is_none() { self.schema.rdf_type.store(id.0, std::sync::atomic::Ordering::Relaxed) }
     }
 
@@ -385,5 +385,26 @@ impl Snapshot for Entailed<'_> {
         lo.push(target);
         let i = rows.partition_point(|r| r[..lo.len()] < lo[..]);
         Ok(rows.get(i).filter(|r| r[..prefix.len()] == *prefix).map(|r| r[prefix.len()]))
+    }
+}
+
+/// The RDFS entailment provider.
+pub struct Rdfs;
+
+impl EntailmentProvider for Rdfs {
+    fn virtual_predicates(&self) -> &'static [NamedNodeRef<'static>] {
+        &[rdf::TYPE]
+    }
+
+    fn graph<'a>(
+        &self,
+        source: &'a dyn Snapshot,
+        virtual_ids: &[(NamedNodeRef<'static>, TermId)],
+    ) -> Result<Box<dyn Snapshot + 'a>, StorageError> {
+        let view = Entailed::new(source)?;
+        if let Some((_, id)) = virtual_ids.iter().find(|(predicate, _)| *predicate == rdf::TYPE) {
+            view.set_rdf_type(*id);
+        }
+        Ok(Box::new(view))
     }
 }

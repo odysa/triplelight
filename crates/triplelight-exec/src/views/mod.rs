@@ -1,103 +1,67 @@
-//! The dataset views a query reads besides its store, including graph-local entailment when enabled.
+//! Graph views over the active RDF dataset, with optional query-time entailment.
 pub(crate) mod dataset;
-#[cfg(feature = "rdfs")]
-mod entail;
 
-use crate::model::TermId;
-use crate::storage::{DatasetView, Snapshot, StorageError};
-#[cfg(feature = "rdfs")]
-use entail::Entailed;
+use crate::model::{TermId, id_tag};
+use crate::storage::{DatasetView, EntailmentProvider, Snapshot, StorageError};
 use std::collections::HashMap;
+use triplelight_rdf::Term;
 
-/// The active default graph and any graph-local RDFS views for one query.
 pub(crate) struct Views<'a> {
     plain: Option<&'a dyn Snapshot>,
-    #[cfg(feature = "rdfs")]
-    default: Option<Entailed<'a>>,
-    #[cfg(feature = "rdfs")]
-    named: Vec<(TermId, Entailed<'a>)>,
+    entailed: Option<Box<dyn Snapshot + 'a>>,
+    named: Vec<(TermId, Box<dyn Snapshot + 'a>)>,
+    virtual_terms: Vec<(Term, TermId)>,
 }
 
 impl<'a> Views<'a> {
     pub(crate) fn new(
-        rdfs: bool,
+        provider: Option<&dyn EntailmentProvider>,
         store: &'a dyn Snapshot,
         default: Option<&'a dyn Snapshot>,
         dataset: Option<&'a dyn DatasetView>,
         named: &[TermId],
     ) -> Result<Self, StorageError> {
-        #[cfg(feature = "rdfs")]
-        if rdfs {
-            let mut views = Vec::new();
-            if let Some(dataset) = dataset {
-                for &graph in named {
-                    if let Some(view) = dataset.graph(graph)? {
-                        views.push((graph, Entailed::new(view)?));
-                    }
+        let mut views = Self {
+            plain: default,
+            entailed: None,
+            named: Vec::new(),
+            virtual_terms: Vec::new(),
+        };
+        let Some(provider) = provider else {
+            return Ok(views);
+        };
+
+        let mut virtual_ids = Vec::new();
+        for &predicate in provider.virtual_predicates() {
+            let term = Term::NamedNode(predicate.into_owned());
+            if store.lookup(&term)?.is_some() || virtual_ids.iter().any(|(iri, _)| *iri == predicate) {
+                continue;
+            }
+            let id = TermId((id_tag::SCRATCH << 60) | virtual_ids.len() as u64);
+            virtual_ids.push((predicate, id));
+            views.virtual_terms.push((term, id));
+        }
+
+        views.entailed = Some(provider.graph(default.unwrap_or(store), &virtual_ids)?);
+        if let Some(dataset) = dataset {
+            for &name in named {
+                if let Some(graph) = dataset.graph(name)? {
+                    views.named.push((name, provider.graph(graph, &virtual_ids)?));
                 }
             }
-            return Ok(Self {
-                plain: default,
-                default: Some(Entailed::new(default.unwrap_or(store))?),
-                named: views,
-            });
         }
-        #[cfg(not(feature = "rdfs"))]
-        let _ = (rdfs, store, dataset, named);
-        Ok(Self {
-            plain: default,
-            #[cfg(feature = "rdfs")]
-            default: None,
-            #[cfg(feature = "rdfs")]
-            named: Vec::new(),
-        })
+        Ok(views)
     }
 
-    /// The active default graph if it is not the store's own.
     pub(crate) fn default_graph(&self) -> Option<&dyn Snapshot> {
-        #[cfg(feature = "rdfs")]
-        if let Some(view) = &self.default {
-            return Some(view);
-        }
-        self.plain
+        self.entailed.as_deref().or(self.plain)
     }
 
     pub(crate) fn named(&self) -> HashMap<TermId, &dyn Snapshot> {
-        #[cfg(feature = "rdfs")]
-        {
-            self.named
-                .iter()
-                .map(|(graph, view)| (*graph, view as &dyn Snapshot))
-                .collect()
-        }
-        #[cfg(not(feature = "rdfs"))]
-        {
-            HashMap::new()
-        }
+        self.named.iter().map(|(name, graph)| (*name, graph.as_ref())).collect()
     }
 
-    pub(crate) fn entailing(&self) -> bool {
-        #[cfg(feature = "rdfs")]
-        {
-            self.default.is_some()
-        }
-        #[cfg(not(feature = "rdfs"))]
-        {
-            false
-        }
-    }
-
-    /// Names `rdf:type` in the entailed views when the store has no such ID.
-    pub(crate) fn set_rdf_type(&self, id: TermId) {
-        #[cfg(feature = "rdfs")]
-        for view in self
-            .default
-            .iter()
-            .chain(self.named.iter().map(|(_, view)| view))
-        {
-            view.set_rdf_type(id);
-        }
-        #[cfg(not(feature = "rdfs"))]
-        let _ = id;
+    pub(crate) fn virtual_terms(&self) -> &[(Term, TermId)] {
+        &self.virtual_terms
     }
 }

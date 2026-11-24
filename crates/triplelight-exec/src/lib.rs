@@ -161,7 +161,7 @@ pub struct Options<'a> {
     /// closures in parallel) instead of one index seek per visited node. Above a size cap it keeps the seeks.
     /// Answers and their order are identical; off (`--ablate=csrpaths`) always seeks.
     pub csr_paths: bool,
-    /// Which entailment regime basic graph patterns are matched under (`entail.rs`). `Simple` (the default) matches
+    /// Which entailment regime basic graph patterns are matched under. `Simple` (the default) matches
     /// the stored triples; `Rdfs` matches the default graph's RDFS closure, computed at query time.
     pub entailment: Entailment,
     /// Cancellation and deadline of this query (`Interrupt`); `None` runs to completion.
@@ -178,13 +178,13 @@ pub enum Entailment {
     #[default]
     Simple,
     /// RDFS: subclass and subproperty transitivity, type and property propagation, domain and range (the rule set of
-    /// Jena's RDFS reasoner at level `simple`, `entail.rs`). Each graph of the dataset is entailed on its own triples:
+    /// Jena's RDFS reasoner at level `simple`, `triplelight-rdfs`). Each graph of the dataset is entailed on its own triples:
     /// the default graph (a FROM merge: the merge), and each named graph under GRAPH. Requires the `rdfs` feature.
     Rdfs,
 }
 
 pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
-    catching_storage(|| run(snap, None, text, opts))
+    catching_storage(|| run(snap, None, text, opts, None))
 }
 
 /// Storage reads inside evaluation unwind with `StorageFailure`; turn that into a `Storage` error.
@@ -205,9 +205,9 @@ fn catching_storage<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, Q
     }
 }
 
-fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
+fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opts: &Options<'_>, provider: Option<&dyn storage::EntailmentProvider>) -> Result<QueryResult, QueryError> {
     let q = phase::timed(&phase::PARSE_NS, || crate::sparql::parse_query(text, None)).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
-    run_query(snap, dataset, &q, opts)
+    run_query(snap, dataset, &q, opts, provider)
 }
 
 /// Evaluates `text` against an RDF dataset (task #36): `snap` is the dataset's stored default graph and dictionary,
@@ -220,17 +220,32 @@ fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opt
 /// `Unsupported` error (present-but-empty graphs are fine); nothing is loaded remotely. `GRAPH <missing>` without a
 /// dataset clause is simply an empty match. The default graph is never a value of a GRAPH variable.
 pub fn query_dataset_with<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
-    catching_storage(|| run(snap, Some(dataset), text, opts))
+    catching_storage(|| run(snap, Some(dataset), text, opts, None))
 }
 
 
-fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
+/// Evaluates a dataset query using an entailment provider selected by the caller.
+pub fn query_dataset_with_provider<S: Snapshot>(
+    snap: &S,
+    dataset: &dyn DatasetView,
+    text: &str,
+    opts: &Options<'_>,
+    provider: &dyn storage::EntailmentProvider,
+) -> Result<QueryResult, QueryError> {
+    catching_storage(|| run(snap, Some(dataset), text, opts, Some(provider)))
+}
+
+fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query, opts: &Options<'_>, provider: Option<&dyn storage::EntailmentProvider>) -> Result<QueryResult, QueryError> {
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
     if let Some(reason) = support::unsupported(q, dataset.is_some()) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
-    let rdfs = opts.entailment == Entailment::Rdfs;
-    if rdfs && !cfg!(feature = "rdfs") {
-        return Err(QueryError::new(QueryErrorKind::Unsupported, "RDFS entailment requires the rdfs Cargo feature"));
-    }
+    let provider = if provider.is_none() && opts.entailment == Entailment::Rdfs {
+        #[cfg(feature = "rdfs")]
+        { Some(&triplelight_rdfs::Rdfs as &dyn storage::EntailmentProvider) }
+        #[cfg(not(feature = "rdfs"))]
+        { return Err(QueryError::new(QueryErrorKind::Unsupported, "RDFS entailment requires the rdfs Cargo feature")); }
+    } else {
+        provider
+    };
     let spec = match q { Query::Select { dataset, .. } | Query::Ask { dataset, .. } | Query::Construct { dataset, .. } | Query::Describe { dataset, .. } => dataset };
     // Graph views for the active dataset; they outlive `ctx`, which borrows them.
     let (from, named) = match dataset { Some(ds) => dataset::resolve(snap, ds, spec.as_ref())?, None => (Vec::new(), Vec::new()) };
@@ -246,9 +261,8 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     } else {
         None
     };
-    // RDFS: the active default graph (the store's, or the FROM merge) and every named graph each get the closure of
-    // their own triples (`entail.rs`).
-    let views = Views::new(rdfs, snap as &dyn Snapshot, default, dataset, &named).unwrap_or_else(|e| storage_failure(e));
+    // The provider sees each active graph separately, including the merged default graph for FROM.
+    let views = Views::new(provider, snap as &dyn Snapshot, default, dataset, &named).unwrap_or_else(|e| storage_failure(e));
     let mut ctx = Ctx::for_query(snap, dataset, &views, named, q, opts, path::CsrLimits::default());
     match q {
         Query::Select { pattern, .. } => run_select(&mut ctx, snap, pattern, opts),
@@ -396,8 +410,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     named: Vec<TermId>,
     /// Under `Entailment::Rdfs`, the entailed view of each named graph of `named` (`eval_graph` reads through it).
     entailed_named: HashMap<TermId, &'a dyn Snapshot>,
-    /// Under `Entailment::Rdfs` with no stored `rdf:type`: that IRI and the scratch ID the query's patterns use for it.
-    virtual_type: Option<(Term, TermId)>,
+    /// Missing predicates that the selected provider can expose as query-local terms.
+    virtual_terms: &'a [(Term, TermId)],
     vars: HashMap<String, usize>,
     scratch: RefCell<(HashMap<Term, TermId>, Vec<Term>)>,
     stats: Option<(&'a Stats, &'a dyn Snapshot)>,
@@ -469,17 +483,21 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             let nodes = |p: &triplelight_rdf::NamedNode| range::iri_objects(snap, p);
             range::reorderable_bgps(pattern, true, &nodes, &mut range_reorderable);
         }
-        let mut ctx = Self {
+        let virtual_terms = views.virtual_terms();
+        Self {
             snap,
             data: std::cell::Cell::new(views.default_graph()),
             dataset,
             named,
             entailed_named: views.named(),
-            virtual_type: None,
+            virtual_terms,
             interrupt: opts.interrupt,
             budget: opts.memory_budget,
             vars: HashMap::new(),
-            scratch: RefCell::new((HashMap::new(), Vec::new())),
+            scratch: RefCell::new((
+                virtual_terms.iter().cloned().collect(),
+                virtual_terms.iter().map(|(term, _)| term.clone()).collect(),
+            )),
             stats: opts.stats.map(|stats| (stats, snap as &dyn Snapshot)),
             wcoj: opts.wcoj,
             general_group: opts.general_group,
@@ -498,18 +516,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             agg_arg_memo: RefCell::new(HashMap::new()),
             agg_arg_slots: RefCell::new(HashMap::new()),
             memo_slots: std::cell::Cell::new(0),
-        };
-        // A graph without one `rdf:type` triple has no ID for it, yet domain and range type its resources: the query's
-        // `rdf:type` gets a scratch ID that every entailed view types with.
-        if views.entailing() {
-            let ty: Term = triplelight_rdf::vocab::rdf::TYPE.into_owned().into();
-            if ctx.lookup(&ty).is_none() {
-                let id = ctx.intern(&ty);
-                ctx.virtual_type = Some((ty, id));
-                views.set_rdf_type(id);
-            }
         }
-        ctx
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     /// Stops the query here if it was cancelled or is past its deadline (`Interrupt`).
@@ -553,7 +560,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
     /// Dictionary lookup; a storage failure aborts the query.
     fn lookup(&self, t: &Term) -> Option<TermId> {
-        if let Some((ty, id)) = &self.virtual_type && ty == t { return Some(*id) }
+        if let Some((_, id)) = self.virtual_terms.iter().find(|(term, _)| term == t) { return Some(*id) }
         self.snap.lookup(t).unwrap_or_else(|e| storage_failure(e))
     }
     /// ID for any term: the store's ID if present, else a stable scratch ID.
@@ -1621,7 +1628,7 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                 if delete.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph))
                     || insert.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph)) { return Err(unsupported("named graphs")) }
                 let q = Query::Select { dataset: None, pattern: (**pattern).clone(), base_iri: None };
-                let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, None, &q, &Options::default()))? else { unreachable!() };
+                let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, None, &q, &Options::default(), None))? else { unreachable!() };
                 let col: HashMap<&str, usize> = vars.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
                 for (n, row) in rows.iter().enumerate() {
                     let var = |v: &Variable| col.get(v.as_str()).and_then(|&i| row[i].clone());
@@ -1709,7 +1716,7 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
                 _ => (**pattern).clone(),
             };
             let q = Query::Select { dataset: using.clone(), pattern, base_iri: None };
-            let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, Some(dataset), &q, &Options::default()))? else { unreachable!() };
+            let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, Some(dataset), &q, &Options::default(), None))? else { unreachable!() };
             let col: HashMap<&str, usize> = vars.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
             let default_target = || with.as_ref().map_or(GraphTarget::Default, |g| GraphTarget::Named(g.clone()));
             for (n, row) in rows.iter().enumerate() {
@@ -1809,7 +1816,7 @@ fn graph_triples<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &crate::sp
         GraphName::NamedNode(n) => GraphPattern::Graph { name: NamedNodePattern::NamedNode(n.clone()), inner: Box::new(bgp) },
     };
     let q = Query::Select { dataset: None, pattern, base_iri: None };
-    let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, Some(dataset), &q, &Options::default()))? else { unreachable!() };
+    let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, Some(dataset), &q, &Options::default(), None))? else { unreachable!() };
     let col = |name: &str| vars.iter().position(|x| x.as_str() == name).expect("projected variable");
     let (s, p, o) = (col("s"), col("p"), col("o"));
     Ok(rows.into_iter().filter_map(|r| match (r[s].clone(), r[p].clone(), r[o].clone()) {
