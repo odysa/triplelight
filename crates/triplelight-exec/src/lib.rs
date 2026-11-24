@@ -22,6 +22,7 @@ pub mod plan_trace;
 mod agg;
 mod bgp;
 mod count;
+mod extend;
 mod interrupt;
 mod views;
 use views::{dataset, entail};
@@ -687,20 +688,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         rows.into_iter().filter(|r| self.ebv(expr, r)).collect()
     }
 
-    fn eval_extend(&self, inner: &GraphPattern, variable: &Variable, expression: &Expression, input: Vec<Row>) -> Vec<Row> {
-        let i = self.var(variable);
-        // If an outer solution passed in sideways already binds the target, the BIND result must be
-        // compatible with it (the group's solution is joined with the outer one): equal keeps the row, a
-        // different value drops it, an expression error leaves the outer value (W3C-style `{ BIND(2 AS ?x) }`).
-        self.eval(inner, input).into_iter().filter_map(|mut r| {
-            if let Some(t) = self.value(expression, &r) {
-                let id = self.intern(&t);
-                if r[i] == UNBOUND { r[i] = id } else if r[i] != id { return None }
-            }
-            Some(r)
-        }).collect()
-    }
-
     fn eval_minus(&self, left: &GraphPattern, right: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
         let l = self.eval(left, input);
         let r = self.eval(right, vec![self.empty_row()]);
@@ -1229,12 +1216,16 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         self.value(e, r).and_then(|t| expr::ebv(&t)).unwrap_or(false)
     }
     pub(crate) fn value(&self, e: &Expression, r: &Row) -> Option<Term> {
+        self.value_scoped(e, r, &expr::BlankScope::default())
+    }
+    fn value_scoped(&self, e: &Expression, r: &Row, blanks: &expr::BlankScope) -> Option<Term> {
         expr::eval(
             e,
             &|variable| self.var_value(variable, r),
             &|pattern| self.exists(pattern, r),
             self.base.as_deref(),
             &self.now,
+            blanks,
         )
     }
     pub(crate) fn var_value(&self, v: &Variable, r: &Row) -> Option<Term> {

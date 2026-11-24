@@ -1124,3 +1124,30 @@ fn interrupt_cancels_and_times_out_running_queries() {
     let with = run(&Interrupt::with_timeout(Duration::from_secs(60)), small).unwrap();
     assert_eq!(format!("{plain:?}"), format!("{with:?}"));
 }
+
+#[test]
+fn named_blank_nodes_follow_each_solution_occurrence() {
+    let q = r#"
+        SELECT (BNODE(?label) AS ?a) (BNODE("same"^^<http://www.w3.org/2001/XMLSchema#string>) AS ?b)
+               (BNODE("other") AS ?c) (BNODE() AS ?fresh)
+               (BNODE("same"@en) AS ?bad)
+        WHERE { VALUES ?label { "same" "same" } }
+    "#;
+    let QueryResult::Solutions { rows, .. } = query(&store(), q).unwrap() else {
+        panic!("expected solution mappings");
+    };
+    assert_eq!(rows.len(), 2);
+    for row in &rows {
+        assert!(matches!(row[0], Some(triplelight::rdf::Term::BlankNode(_))));
+        assert_eq!(row[0], row[1]);
+        assert_ne!(row[0], row[2]);
+        assert_ne!(row[0], row[3]);
+        assert_eq!(row[4], None);
+    }
+    assert_ne!(rows[0][0], rows[1][0]);
+    assert_ne!(rows[0][3], rows[1][3]);
+    assert!(matches!(
+        query(&store(), r#"ASK { FILTER(sameTerm(BNODE("x"), BNODE("x"))) }"#).unwrap(),
+        QueryResult::Boolean(true)
+    ));
+}
