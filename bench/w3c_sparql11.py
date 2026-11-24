@@ -4,11 +4,11 @@
 Usage: w3c_sparql11.py <rdf-tests/sparql/sparql11 dir> <triplelight binary> <out.json>
 
 Categories: pass, fail (wrong result / unexpected error), unsupported (triplelight returned an explicit Unsupported error),
-skip-named (test needs named graphs / FROM, which triplelight does not store), skip-format (result format we don't compare,
-e.g. CSV/TSV result-format tests), plus syntax tests (positive must parse, negative must be rejected).
+skip-format (result format we don't compare, e.g. CSV/TSV), skip-harness (dataset fixture failed to load),
+plus syntax tests (positive must parse, negative must be rejected).
 """
 import json, os, subprocess, sys, tempfile, collections
-from rdflib import Graph, URIRef, BNode, Literal, Namespace, RDF
+from rdflib import Dataset, Graph, URIRef, BNode, Literal, Namespace, RDF
 from rdflib.query import Result
 from rdflib.collection import Collection
 from rdflib.compare import isomorphic
@@ -27,6 +27,38 @@ def manifests(root):
 
 def fileuri_to_path(u):
     return u[len("file://"):] if u.startswith("file://") else u
+
+def load_query_input(directory, default_sources, named_sources):
+    dataset = Dataset()
+    needs_dataset = bool(named_sources)
+    formats = {"rdf": "xml", "nt": "nt", "trig": "trig", "nq": "nquads"}
+    for name, sources in (("default", default_sources), ("named", named_sources)):
+        for source in sources:
+            if not isinstance(source, URIRef):
+                raise ValueError(f"expected a file IRI for {name} graph data: {source}")
+            path = fileuri_to_path(str(source))
+            fmt = formats.get(path.rsplit(".", 1)[-1], "turtle")
+            if fmt in ("trig", "nquads"):
+                if name == "named":
+                    raise ValueError(f"expected a graph, found a dataset at {source}")
+                graph = dataset
+                needs_dataset = True
+            else:
+                graph = dataset.default_context if name == "default" else dataset.graph(source)
+            graph.parse(path, format=fmt, publicID=str(source))
+
+    data_path = os.path.join(directory, "data.trig" if needs_dataset else "data.nt")
+    with open(data_path, "w", encoding="utf-8") as output:
+        output.write(dataset.default_context.serialize(format="nt"))
+        if needs_dataset:
+            for graph in sorted(dataset.graphs(), key=lambda graph: graph.identifier):
+                if graph.identifier == dataset.default_context.identifier:
+                    continue
+                output.write(f"{graph.identifier.n3()} {{\n")
+                output.write(graph.serialize(format="nt"))
+                output.write("}\n")
+    return data_path
+
 
 def run_cli(binary, data_path, query_text):
     p = subprocess.run([binary, "query", data_path, query_text], capture_output=True, text=True, timeout=60)
@@ -109,26 +141,20 @@ def main():
                 resfile = g.value(test, MF.result)
                 qpath = fileuri_to_path(str(qfile))
                 q = open(qpath, encoding="utf-8").read()
-                if named:
-                    rec["outcome"] = "skip-named"; results.append(rec); continue
                 exp = expected_result(fileuri_to_path(str(resfile))) if resfile is not None else None
                 if exp is None and resfile is not None and str(resfile).endswith((".ttl", ".rdf", ".nt")):
                     exp = ("graph", fileuri_to_path(str(resfile)))
                 if exp == "format" or exp is None:
                     rec["outcome"] = "skip-format"; results.append(rec); continue
-                dg = Graph()
-                try:
-                    for d in datas:
-                        dp = fileuri_to_path(str(d))
-                        dg.parse(dp, format="xml" if dp.endswith(".rdf") else "turtle", publicID="file://" + dp)
-                except Exception as e:
-                    rec["outcome"] = "skip-harness"; rec["detail"] = f"data parse: {e}"[:200]; results.append(rec); continue
-                with tempfile.NamedTemporaryFile("w", suffix=".nt", delete=False) as f:
-                    f.write(dg.serialize(format="nt")); data_path = f.name
-                try:
-                    code, out, err = run_cli(binary, data_path, f"BASE <file://{qpath}>\n" + q)
-                except subprocess.TimeoutExpired:
-                    rec["outcome"] = "fail"; rec["detail"] = "timeout"; results.append(rec); continue
+                with tempfile.TemporaryDirectory(prefix="tl-sparql11-") as directory:
+                    try:
+                        data_path = load_query_input(directory, datas, named)
+                    except Exception as e:
+                        rec["outcome"] = "skip-harness"; rec["detail"] = f"data parse: {e}"[:200]; results.append(rec); continue
+                    try:
+                        code, out, err = run_cli(binary, data_path, f"BASE <file://{qpath}>\n" + q)
+                    except subprocess.TimeoutExpired:
+                        rec["outcome"] = "fail"; rec["detail"] = "timeout"; results.append(rec); continue
                 if code != 0:
                     rec["outcome"] = "unsupported" if "unsupported" in err.lower() or "not supported" in err.lower() else "fail"
                     rec["detail"] = err.strip()[:200]; results.append(rec); continue
