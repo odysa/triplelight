@@ -1746,14 +1746,13 @@ mod dataset_wal_tests {
         let open = || Store::open_with(&dir.0, None, Box::new(crate::DiskBase { workers: 1 })).unwrap();
         let store = open();
         let big = "x".repeat(triplelight_core::ntriples::MAX_TOKEN + 1024);
-        // Commits now refuse such a term (#95), so the legacy record is written as an older binary wrote it.
-        store.commit(&[(Change::Insert, t("before", "0"))]).unwrap();
+        // Commits now refuse such a term (#95), so the legacy records are written as an older binary wrote them: bare
+        // records, before this binary's first batch (an older binary cannot open the store once it is fenced, #114).
         drop(store);
         let mut legacy = String::new();
+        push_record(&mut legacy, &[ins_default(t("before", "0"))]);
         push_record(&mut legacy, &[ins_default(t("big", &big))]);
-        let mut wal = dir.wal();
-        wal.extend_from_slice(legacy.as_bytes());
-        std::fs::write(dir.0.join("wal.log"), &wal).unwrap();
+        std::fs::write(dir.0.join("wal.log"), legacy.as_bytes()).unwrap();
         let store = open();
         store.commit_dataset(&[ins_default(t("after", "1")), ins("g", t("after", "2"))]).unwrap();
         let before = state(&store.snapshot());
