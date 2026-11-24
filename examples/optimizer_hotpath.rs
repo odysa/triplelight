@@ -13,7 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     eprintln!(
         "synopsis triples={} characteristic_sets={}",
         stats.triple_count,
-        stats.characteristic_sets.len()
+        stats.characteristic_set_count()
     );
     for file in &args[2..] {
         let text = std::fs::read_to_string(file)?;

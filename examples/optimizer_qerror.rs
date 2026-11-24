@@ -99,7 +99,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         "triples={} subjects={} characteristic_sets={} stats_s={:.6}",
         stats.triple_count,
         stats.subject_count,
-        stats.characteristic_sets.len(),
+        stats.characteristic_set_count(),
         t.elapsed().as_secs_f64()
     );
     let mut reference = BTreeMap::new();
