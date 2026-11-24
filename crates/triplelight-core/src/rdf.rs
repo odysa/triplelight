@@ -10,21 +10,7 @@ pub use triplelight_rdf::BaseDirection;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QuadFormat { NQuads, TriG }
 
-/// A failure reading an RDF document: the reader's own error, or invalid syntax.
-#[derive(Debug)]
-pub enum ReadError { Io(std::io::Error), Syntax(String) }
-
-impl std::fmt::Display for ReadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self { ReadError::Io(e) => e.fmt(f), ReadError::Syntax(m) => f.write_str(m) }
-    }
-}
-impl std::error::Error for ReadError {}
-impl From<ReadError> for std::io::Error {
-    fn from(e: ReadError) -> Self {
-        match e { ReadError::Io(e) => e, ReadError::Syntax(m) => std::io::Error::new(std::io::ErrorKind::InvalidData, m) }
-    }
-}
+pub use crate::error::ReadError;
 
 /// Every quad of an N-Quads or TriG document, in document order.
 pub fn read_quads(reader: impl std::io::Read, format: QuadFormat) -> Result<Vec<Quad>, ReadError> {
