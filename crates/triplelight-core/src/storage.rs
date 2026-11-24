@@ -58,6 +58,22 @@ pub fn first_keys_by_scan(snap: &(impl Snapshot + ?Sized), perm: Perm) -> Result
     Ok(keys)
 }
 
+/// `Snapshot::scan_from` by a full prefix scan that skips the rows below `from`.
+pub fn scan_from_by_scan<'a>(snap: &'a (impl Snapshot + ?Sized), perm: Perm, prefix: &[TermId], from: TermId) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+    let k = prefix.len();
+    if k >= 3 { return snap.scan(perm, prefix) }
+    Box::new(snap.scan(perm, prefix).filter_map(move |b| match b {
+        Err(e) => Some(Err(e)),
+        Ok(b) => {
+            let start = b.cols[k].partition_point(|&v| v < from);
+            if start == b.len() { return None }
+            let mut out = TripleBatch::default();
+            for (dst, src) in out.cols.iter_mut().zip(&b.cols) { dst.extend_from_slice(&src[start..]) }
+            Some(Ok(out))
+        }
+    }))
+}
+
 /// A consistent read view (snapshot) of the store.
 pub trait Snapshot: Dictionary + Send + Sync {
     /// Sorted scan of `perm` where the first `prefix.len()` key components (0..=3) equal `prefix`.
@@ -74,6 +90,16 @@ pub trait Snapshot: Dictionary + Send + Sync {
     /// The distinct values of `perm`'s first key column, ascending (every subject for `Spo`, every object for `Osp`).
     /// The default is one full scan; backends may answer it from their block layout instead.
     fn first_keys(&self, perm: Perm) -> Result<Vec<TermId>, StorageError> { first_keys_by_scan(self, perm) }
+    /// The rows of `scan(perm, prefix)` from the first whose key column `prefix.len()` is `>= from`, in key order; the
+    /// consumer may stop early. The default scans and skips; backends that can position a scan should.
+    fn scan_from<'a>(
+        &'a self,
+        perm: Perm,
+        prefix: &[TermId],
+        from: TermId,
+    ) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+        scan_from_by_scan(self, perm, prefix, from)
+    }
     /// Exact number of triples matching the prefix (from block index / aggregated counts, no full scan).
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError>;
     /// Seek support for leapfrog joins: smallest value >= `target` in key position `prefix.len()` under `prefix`.

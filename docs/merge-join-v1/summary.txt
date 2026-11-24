@@ -1,0 +1,63 @@
+suite geomean cand/main
+  agg-lubm1000   1.004 (n=30)
+  agg-watdiv100  0.977 (n=42)
+  bi100          0.977 (n=58)
+  bsbm100        1.017 (n=20)
+  lubm1000       0.973 (n=14)
+  watdiv100      0.972 (n=20)
+answer classes differing or non-pass:
+   ('agg-lubm1000', 'all_q1') {'value-compatible'}
+   ('agg-lubm1000', 'all_q2') {'value-compatible'}
+   ('agg-lubm1000', 'all_q3') {'value-compatible'}
+   ('agg-lubm1000', 'all_q4') {'value-compatible'}
+   ('agg-lubm1000', 'all_q5') {'value-compatible'}
+   ('agg-lubm1000', 'all_q6') {'value-compatible'}
+   ('agg-lubm1000', 'all_q7') {'value-compatible'}
+   ('agg-lubm1000', 'all_q8') {'value-compatible'}
+   ('agg-lubm1000', 'all_q9') {'value-compatible'}
+   ('agg-lubm1000', 'all_q10') {'value-compatible'}
+   ('agg-lubm1000', 'all_q11') {'value-compatible'}
+   ('agg-lubm1000', 'all_q12') {'value-compatible'}
+   ('agg-lubm1000', 'all_q13') {'value-compatible'}
+   ('agg-lubm1000', 'all_q14') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q1') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q2') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q3') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q4') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q5') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q6') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q7') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q8') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q9') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q10') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q11') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q12') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q13') {'value-compatible'}
+   ('agg-lubm1000', 'distinct_q14') {'value-compatible'}
+   ('agg-lubm1000', 'group_advisors') {'value-compatible'}
+   ('agg-lubm1000', 'group_type') {'value-compatible'}
+   ('bi100', 'm000_p04_q4') {'mismatch'}
+   ('bi100', 'm000_p08_q5') {'mismatch'}
+answers differing between runs (bag/bytes):
+best 12:
+  agg-watdiv100 distinct_L5 0.8 -> 0.5 ms (0.62)
+  watdiv100 F2 1.2 -> 1.0 ms (0.80)
+  lubm1000 q1 0.6 -> 0.5 ms (0.82)
+  bi100 m001_p06_q5 0.6 -> 0.5 ms (0.83)
+  bi100 m003_p12_q8 0.6 -> 0.5 ms (0.83)
+  bi100 m002_p01_q3 1273.5 -> 1080.3 ms (0.85)
+  agg-watdiv100 distinct_F1 0.7 -> 0.6 ms (0.86)
+  agg-lubm1000 all_q6 0.4 -> 0.3 ms (0.87)
+  watdiv100 L1 0.4 -> 0.3 ms (0.87)
+  agg-lubm1000 all_q4 0.5 -> 0.4 ms (0.89)
+  agg-lubm1000 all_q7 0.5 -> 0.4 ms (0.89)
+  watdiv100 F3 1.9 -> 1.6 ms (0.89)
+worst 8:
+  watdiv100 S1 0.5 -> 0.6 ms (1.10)
+  agg-lubm1000 all_q14 0.4 -> 0.5 ms (1.12)
+  agg-watdiv100 all_L1 0.4 -> 0.5 ms (1.12)
+  agg-watdiv100 group_gender 0.3 -> 0.4 ms (1.14)
+  bsbm100 q016 0.7 -> 0.8 ms (1.14)
+  watdiv100 S7 0.3 -> 0.4 ms (1.14)
+  agg-lubm1000 all_q13 1.9 -> 2.2 ms (1.15)
+  agg-lubm1000 distinct_q13 2.1 -> 2.6 ms (1.24)
