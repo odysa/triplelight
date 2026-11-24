@@ -1,7 +1,7 @@
 //! SPARQL literal matching over the shared text analyzer.
 use crate::model::{TermId, id_tag};
 use crate::sparql::{Expression, Function};
-use crate::storage::Snapshot;
+use crate::storage::{Snapshot, TextCandidates};
 use crate::{Ctx, UNBOUND};
 use std::collections::{HashMap, HashSet};
 use triplelight_core::text::AnalyzedText;
@@ -16,10 +16,24 @@ fn eligible(literal: &triplelight_rdf::Literal) -> bool {
 
 pub(super) fn matches(text: &str, query: &str) -> bool {
     let normalized_query = AnalyzedText::new(query);
-    matches_tokens(text, normalized_query.tokens().collect())
+    matches_tokens(text, &mut normalized_query.tokens().collect())
 }
 
-fn matches_tokens(text: &str, mut needed: HashSet<&str>) -> bool {
+fn matches_token(text: &str, query: &str) -> bool {
+    AnalyzedText::new(text).tokens().any(|token| token == query)
+}
+
+fn matches_two_tokens(text: &str, first: &str, second: &str) -> bool {
+    let mut seen_first = false;
+    let mut seen_second = false;
+    AnalyzedText::new(text).tokens().any(|token| {
+        seen_first |= token == first;
+        seen_second |= token == second;
+        seen_first && seen_second
+    })
+}
+
+fn matches_tokens(text: &str, needed: &mut HashSet<&str>) -> bool {
     if needed.is_empty() { return false; }
     let normalized_text = AnalyzedText::new(text);
     normalized_text.tokens().any(|token| {
@@ -61,23 +75,50 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             (Some(budget), Some(ids)) => Some(budget.try_charge(ids.heap_bytes()).ok()?),
             _ => None,
         };
+        let mut words = tokens.iter().copied();
+        let result = match (words.next(), words.next(), words.next()) {
+            (Some(token), None, None) => {
+                self.filter_text_rows(rows, width, col, candidates.as_ref(), |text| matches_token(text, token))
+            }
+            (Some(first), Some(second), None) => {
+                self.filter_text_rows(rows, width, col, candidates.as_ref(), |text| matches_two_tokens(text, first, second))
+            }
+            _ => {
+                let mut needed = HashSet::new();
+                self.filter_text_rows(rows, width, col, candidates.as_ref(), |text| {
+                    needed.clone_from(&tokens);
+                    matches_tokens(text, &mut needed)
+                })
+            }
+        };
+        Some(result)
+    }
+
+    fn filter_text_rows(
+        &self,
+        rows: &[TermId],
+        width: usize,
+        col: usize,
+        candidates: Option<&TextCandidates>,
+        mut matches_query: impl FnMut(&str) -> bool,
+    ) -> Vec<TermId> {
         let mut memo = HashMap::new();
         let mut result = Vec::with_capacity(rows.len());
         for (n, row) in rows.chunks_exact(width).enumerate() {
             if n.is_multiple_of(4096) { self.check(); }
             let id = row[col];
             if id == UNBOUND { continue; }
-            let indexed = candidates.as_ref().filter(|_| id_tag::of(id) == id_tag::LITERAL);
+            let indexed = candidates.filter(|_| id_tag::of(id) == id_tag::LITERAL);
             let keep = if let Some(matches) = indexed.and_then(|ids| ids.matches(id)) {
                 matches
             } else {
                 *memo.entry(id).or_insert_with(|| {
                     matches!(self.resolve(id), Term::Literal(literal) if eligible(&literal)
-                        && matches_tokens(literal.value(), tokens.clone()))
+                        && matches_query(literal.value()))
                 })
             };
             if keep { result.extend_from_slice(row); }
         }
-        Some(result)
+        result
     }
 }

@@ -34,3 +34,24 @@ fn text_matches_argument_errors_are_sparql_expression_errors() {
     let error = query(&snapshot, "ASK { FILTER(<urn:other:matches>(\"x\", \"x\")) }").unwrap_err();
     assert_eq!(error.kind, QueryErrorKind::Unsupported);
 }
+
+#[test]
+fn pushed_text_filter_checks_each_literal_against_all_query_words() {
+    let triples = br#"
+        <urn:partial-one> <urn:label> "graph database" .
+        <urn:partial-two> <urn:label> "systems graph" .
+        <urn:complete> <urn:label> "Graph systems database" .
+        <urn:partial-three> <urn:label> "database" .
+    "#;
+    let snapshot = MemorySnapshot::from_ntriples(&triples[..]).unwrap();
+    let text = format!(
+        r#"{PREFIX} SELECT ?s WHERE {{
+            ?s <urn:label> ?label .
+            FILTER(tl:matches(?label, "graph database systems graph"))
+        }}"#
+    );
+    let QueryResult::Solutions { rows, .. } = query(&snapshot, &text).unwrap() else {
+        panic!("SELECT must return solutions");
+    };
+    assert_eq!(rows, vec![vec![Some("<urn:complete>".parse().unwrap())]]);
+}
