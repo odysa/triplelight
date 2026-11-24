@@ -57,7 +57,7 @@ Details and formats: [docs/persistence.md](docs/persistence.md).
 ## Query processing
 
 1. **Parse** SPARQL into an algebra (`triplelight-sparql`). Features the engine does not implement (`SERVICE`,
-   `LOAD`, `BNODE(string)`) are refused with an "unsupported" error rather than answered partially.
+   `LOAD`) are refused with an "unsupported" error rather than answered partially.
 2. **Encode** constants through the dictionary. A constant that is not in the data makes its pattern empty.
 3. **Order joins.** By default the executor orders a basic graph pattern greedily: at each step it takes the
    pattern with the smallest exact index-prefix count for the current (sampled) binding, and penalizes patterns not
@@ -94,6 +94,6 @@ Optimizer details: [docs/optimizer.md](docs/optimizer.md).
   ([docs/build-compare-orders-v1](docs/build-compare-orders-v1/README.md)).
 - Results are materialized before output.
 - One process per store directory, enforced by a file lock.
-- `LOAD`, `SERVICE`, `BNODE(string)` and blank-node graph names are not supported.
+- `LOAD`, `SERVICE` and blank-node graph names are not supported.
 
 The original design plan (v0) is preserved in git history.

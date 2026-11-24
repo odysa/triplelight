@@ -580,7 +580,7 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             if lang.is_empty() { return None }
             Some(Literal::new_directional_language_tagged_literal(plain(0)?, lang, dir).ok()?.into())
         }
-        _ => None, // BNODE(string) is rejected up front by `support`
+        _ => None,
     }
 }
 
