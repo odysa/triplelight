@@ -272,13 +272,30 @@ def restart_after_timeout(a, rec, entry):
 def clear_engine_cache(a, entry):
     """Empties the server's own result cache before a request (QLever caches any result under its size limits, so the -c/-e/-E
     1MB flags do not turn it off: a 10-row aggregate is cached and later requests measure the cache, `docs/qlever-cache-check-v1`).
-    A failed clear is recorded and fails the query's runs rather than timing a cached answer."""
-    if not a.clear_cache_url: return
+    A failed clear is recorded, returns False, and the caller does not time that query (a cached answer would be measured); the run
+    is then ineligible (`eligibility`). The other queries' results are kept."""
+    if not a.clear_cache_url: return True
     try:
         with urllib.request.urlopen(a.clear_cache_url, timeout=60) as r: r.read()
+        return True
     except Exception as e:
         entry["cache_clear_failed"] = f"{type(e).__name__}: {e}"[:200]
-        raise SystemExit(f"cache clear failed for {a.system}: {e}")
+        return False
+
+
+GOOD_CLASSES = ("pass", "value-compatible")
+EXPECTED_CLASSES = GOOD_CLASSES + ("unsupported",)     # a declared limit of the system (QLever's two-order index) is an answer, not a failure
+
+
+def eligibility(records):
+    """Whether a run may be published as a comparison: every query answered correctly (or is a declared unsupported case), every
+    cold hook and cache clear worked, and nothing was cut off. Returns (eligible, reasons); each reason names the query."""
+    reasons = []
+    for name, e in records.items():
+        if e.get("cold_hook_ok") is False: reasons.append(f"{name}: cold-start hook failed, not timed")
+        if "cache_clear_failed" in e: reasons.append(f"{name}: result-cache clear failed, not timed")
+        if e["class"] not in EXPECTED_CLASSES: reasons.append(f"{name}: {e['class']}")
+    return (not reasons), reasons
 
 
 def cmd_run(a):
@@ -293,9 +310,10 @@ def cmd_run(a):
             if not a.cold_hook: sys.exit("--mode cold needs --cold-hook")
             ok, note = run_hook(a.cold_hook, a.url)
             entry["cold_hook_ok"], entry["cold_hook_note"] = ok, note
-            runs = 1
+            runs = 1 if ok else 0          # a cold start that did not happen is not timed as one
+        elif not clear_engine_cache(a, entry):
+            runs = 0
         else:
-            clear_engine_cache(a, entry)
             check, _ = one_run(a.url, q, a.timeout)       # warm-up; for a large answer it is also the one answer check
             restart_after_timeout(a, check, entry)
             runs = a.runs
@@ -308,7 +326,7 @@ def cmd_run(a):
                 if check_cls not in ("pass", "value-compatible"): runs = 0      # a wrong or incomplete answer is never timed
                 else: drain_bytes = check["bytes"]
         for _ in range(runs):
-            clear_engine_cache(a, entry)
+            if not clear_engine_cache(a, entry): break
             t0 = time.time()   # wall-clock bounds of the run, so S1's cgroup samples can be joined per query (s1-report.py)
             drained = entry.get("timed_by") == "drain"
             rec, secs = one_run(a.url, q, a.timeout, drain_only=drained)
@@ -323,7 +341,8 @@ def cmd_run(a):
         if entry.get("timed_by") == "drain" and not entry["runs"]:
             entry["runs"].append({"class": entry["check_class"], "seconds": None, **{k: check[k] for k in ("rows", "bag", "seq", "bytes") if k in check}})
         classes = {x["class"] for x in entry["runs"]}
-        entry["class"] = classes.pop() if len(classes) == 1 else "unstable"
+        if not entry["runs"]: entry["class"] = "not-run"     # a failed cold hook or cache clear: never a timing row
+        else: entry["class"] = classes.pop() if len(classes) == 1 else "unstable"
         ok_runs = [x["seconds"] for x in entry["runs"] if x["class"] in ("pass", "value-compatible")]
         if ok_runs: entry["median_s"] = round(statistics.median(ok_runs), 4)
         if r.get("ordered") and entry["class"] in ("pass", "value-compatible"):
@@ -332,10 +351,14 @@ def cmd_run(a):
         print(f"{name:<8} {entry['class']:<17} {entry.get('median_s', '-')}", flush=True)
     summary = {}
     for e in records.values(): summary[e["class"]] = summary.get(e["class"], 0) + 1
-    json.dump({"system": a.system, "url": a.url, "mode": a.mode, "timeout_s": a.timeout, "runs_per_query": a.runs, "seed": a.seed,
+    eligible, reasons = eligibility(records)
+    json.dump({"system": a.system, "eligible": eligible, "ineligible_reasons": reasons, "url": a.url, "mode": a.mode, "timeout_s": a.timeout, "runs_per_query": a.runs, "seed": a.seed,
                "git": git_sha(), "versions": versions(), "python": platform.python_version(), "platform": platform.platform(),
                "summary": summary, "queries": records}, open(a.out, "w"), indent=1)
     print("summary:", summary)
+    if not eligible:
+        print("INELIGIBLE for a comparison:", *reasons, sep="\n  ", file=sys.stderr)
+        if not a.lenient: sys.exit(3)       # the results file is already written: the logs of a failed run are kept
 
 
 # ---------------------------------------------------------------- self-test
@@ -374,6 +397,14 @@ def serve_fake(behaviors):
             self.send_response(200); self.send_header("Content-Type", "application/sparql-results+json"); self.end_headers()
             if kind == "slow": time.sleep(3)
             if kind == "ask": self.wfile.write(b'{"head":{},"boolean":true}'); return
+            if kind == "raw": self.wfile.write(n.encode()); return      # a recorded answer, served as it was
+            if kind == "count9s":
+                self.wfile.write(b'{"head":{"vars":["n"]},"results":{"bindings":[{"n":{"type":"literal","value":"9"}}]}}'); return
+            if kind == "twice":
+                row = '{"n":{"type":"literal","value":"9","datatype":"%sinteger"}}' % XSD
+                self.wfile.write(('{"head":{"vars":["n"]},"results":{"bindings":[%s,%s]}}' % (row, row)).encode()); return
+            if kind.startswith("count="):       # one aggregate row, an xsd:integer of the given value
+                self.wfile.write(('{"head":{"vars":["n"]},"results":{"bindings":[{"n":{"type":"literal","value":"%s","datatype":"%sinteger"}}]}}' % (kind[6:], XSD)).encode()); return
             if kind == "qtime":
                 self.qtime_calls = getattr(self.server, "qtime_calls", 0) + 1; self.server.qtime_calls = self.qtime_calls
                 text = _body_qtime(n, 7 if self.qtime_calls % 2 else 12345)   # alternating digit counts
@@ -383,6 +414,72 @@ def serve_fake(behaviors):
     srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv, srv.server_address[1]
+
+
+def gate_tests(port, behaviors_raw):
+    """The correctness gate end to end: the driver as a subprocess against fake servers, checking the results file and the exit
+    status. A run that is wrong, cut off, timed out or whose cold start failed is ineligible, is not timed where timing would
+    mislead, and fails with status 3 (unless `--lenient`) after writing its results file."""
+    import tempfile, pathlib
+    ok = True
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = pathlib.Path(tmp); qdir = tmp / "q"; qdir.mkdir()
+        (qdir / "q1.rq").write_text("SELECT * WHERE {}")
+        def reference(count):       # the reference answer: one integer aggregate
+            doc = '{"head":{"vars":["n"]},"results":{"bindings":[{"n":{"type":"literal","value":"%s","datatype":"%sinteger"}}]}}' % (count, XSD)
+            return {"queries": {"q1": {**fold_of([doc]), "ordered": False}}}
+        (tmp / "ref9.json").write_text(json.dumps(reference(9)))
+        def run(name, path, *extra, ref="ref9.json"):
+            out = tmp / f"{name}.json"
+            cmd = [sys.executable, __file__, "run", "--system", name, "--url", f"http://127.0.0.1:{port}/{path}", "--queries", str(qdir),
+                   "--reference", str(tmp / ref), "--out", str(out), "--runs", "2", "--timeout", "30", *extra]
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            return r.returncode, (json.load(open(out)) if out.exists() else None), r.stderr
+        def check(label, good):
+            nonlocal ok
+            print(f"gate     {label:<58} {'ok' if good else 'FAIL'}"); ok &= good
+        # Jianlin's regression: Ontop/DuckDB returned 8 for a distinct aggregate where Jena returned 9. Typed bindings must differ.
+        rc, res, _ = run("ontop", "count8")
+        e = res["queries"]["q1"] if res else {}
+        check("8 against a reference 9: mismatch, ineligible, exit 3", rc == 3 and res and res["eligible"] is False and e.get("class") == "mismatch")
+        check("8 against 9: no timing row (no median)", "median_s" not in e)
+        rc, res, _ = run("jena", "count9")
+        check("9 against 9: pass, eligible, exit 0", rc == 0 and res and res["eligible"] and res["queries"]["q1"]["class"] == "pass")
+        # The recorded replay: the answer Ontop/DuckDB gave in the diagnostic packet (`docs/ontop-distinct-diagnostic-v3`), served as
+        # recorded, against the nine singleton term groups Jena returned (one binding ?n = 9). It must not pass and must have no median.
+        packet = pathlib.Path(__file__).resolve().parents[2] / "docs" / "ontop-distinct-diagnostic-v3" / "packet.tar.gz"
+        if packet.exists():
+            import tarfile
+            with tarfile.open(packet) as t:
+                observed = json.dumps(json.load(t.extractfile("attempt/original/child/distinct_count.json"))["answer"])
+            behaviors_raw["/ontop-replay"] = ("raw", observed)
+            rc, res, _ = run("ontop-replay", "ontop-replay")
+            e = res["queries"]["q1"] if res else {}
+            check("recorded Ontop/DuckDB answer (8) against Jena's 9: no pass, no median", rc == 3 and e.get("class") == "mismatch" and "median_s" not in e)
+        else: print("gate     recorded Ontop replay skipped: packet not in this checkout")
+        # the same value with a different datatype is a different typed binding (value-compatible only for integer-like widening)
+        rc, res, _ = run("typed", "count9s")
+        check("a string '9' against an integer 9: not a pass", res and res["queries"]["q1"]["class"] != "pass")
+        # multiplicity: the same rows twice are not the same bag
+        rc, res, _ = run("twice", "twice")
+        check("a duplicated row: mismatch, exit 3", rc == 3 and res and res["queries"]["q1"]["class"] == "mismatch")
+        # a cold hook that fails: nothing is timed, the run is ineligible, the results file is kept
+        rc, res, _ = run("coldfail", "count9", "--mode", "cold", "--cold-hook", "false")
+        e = res["queries"]["q1"] if res else {}
+        check("a failed cold hook: not-run, no timed run, ineligible, exit 3", rc == 3 and e.get("class") == "not-run" and not e.get("runs") and "median_s" not in e)
+        rc, res, _ = run("coldok", "count9", "--mode", "cold", "--cold-hook", "true")
+        check("a working cold hook: timed once, eligible, exit 0", rc == 0 and res and res["queries"]["q1"]["class"] == "pass" and len(res["queries"]["q1"]["runs"]) == 1)
+        # a failing cache clear: not timed, recorded, the results file still written
+        rc, res, _ = run("clearfail", "count9", "--clear-cache-url", "http://127.0.0.1:9/none")
+        e = res["queries"]["q1"] if res else {}
+        check("a failed cache clear: not-run, recorded, ineligible, exit 3", rc == 3 and e.get("class") == "not-run" and "cache_clear_failed" in e)
+        # with --lenient (exploration only) the exit status stays 0, but the results file still says ineligible
+        rc, res, _ = run("lax", "count8", "--lenient")
+        check("with --lenient: exit 0, results still say ineligible", rc == 0 and res and res["eligible"] is False)
+        # a timeout is ineligible
+        rc, res, _ = run("slow", "slow", "--timeout", "1")
+        check("a timeout: ineligible, exit 3", rc == 3 and res and res["queries"]["q1"]["class"] == "timeout")
+    return ok
 
 
 def cmd_selftest(a):
@@ -426,6 +523,9 @@ def cmd_selftest(a):
     drains = [one_run(f"http://127.0.0.1:{port}/qtime", "SELECT * WHERE {}", 30, drain_only=True)[0] for _ in range(3)]
     good = classify(full, ref) == "pass" and all(d["status"] == "ok" and d["bytes"] == full["bytes"] and d["tail_ok"] for d in drains)
     print(f"qtime    trailer of changing length: check {full.get('bytes')}, drained {[d.get('bytes') for d in drains]}", "ok" if good else "FAIL"); ok &= good
+    behaviors["/count8"] = ("count=8", 0); behaviors["/count9"] = ("count=9", 0); behaviors["/slow"] = ("slow", 50)
+    behaviors["/count9s"] = ("count9s", 0); behaviors["/twice"] = ("twice", 0)
+    ok &= gate_tests(port, behaviors)
     print("SELFTEST", "PASSED" if ok else "FAILED"); sys.exit(0 if ok else 1)
 
 
@@ -454,6 +554,7 @@ def main():
     x.add_argument("--clear-cache-url", help="GET before every request (warm-up and timed) to empty the server's result cache")
     x.add_argument("--restart-hook", help="command that restarts the server; run after every timed-out query (warm mode)")
     x.add_argument("--runs", type=int, default=5); x.add_argument("--timeout", type=float, default=300); x.add_argument("--seed", type=int, default=0)
+    x.add_argument("--lenient", action="store_true", help="exploration only: exit 0 even when the run is ineligible for a comparison. By default a wrong answer, a timeout, a failed hook or a failed cache clear exits with status 3; the results file (with `eligible: false` and the reasons) is written either way")
     x.set_defaults(f=cmd_run)
     s = sub.add_parser("selftest"); s.set_defaults(f=cmd_selftest)
     b = sub.add_parser("selftest-big"); b.add_argument("--rows", type=int, default=5_000_000); b.set_defaults(f=cmd_selftest_big)
