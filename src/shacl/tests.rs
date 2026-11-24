@@ -224,3 +224,34 @@ fn deactivation_requires_an_xsd_boolean() {
     assert!(matches!(validate(&[], &shapes("\"true\"@en")),
         Err(ValidationError::MalformedShape(_))));
 }
+
+#[test]
+fn repeated_logical_references_reuse_failed_conformance() {
+    use std::fmt::Write;
+    let mut shapes = String::from("ex:s0 sh:targetNode ex:n .\n");
+    for i in 0..120 {
+        writeln!(shapes, "ex:s{i} sh:and ( ex:s{} ex:s{} ) .", i + 1, i + 1).unwrap();
+    }
+    shapes.push_str("ex:s120 sh:class ex:C .");
+    let report = validate(&[], &parse(&shapes)).unwrap();
+    assert!(!report.conforms);
+    assert_eq!(report.results.len(), 1);
+}
+
+#[test]
+fn layered_data_reuses_conformance_checks_for_shared_value_nodes() {
+    use std::fmt::Write;
+    let mut data = String::new();
+    let mut shapes = String::from("ex:s0 sh:targetNode ex:n0_0 .\n");
+    for layer in 0..20 {
+        writeln!(shapes, "ex:s{layer} sh:property [ sh:path ex:p ; sh:node ex:s{} ] .", layer + 1).unwrap();
+        for from in 0..10 {
+            for to in 0..10 {
+                writeln!(data, "ex:n{layer}_{from} ex:p ex:n{}_{to} .", layer + 1).unwrap();
+            }
+        }
+    }
+    shapes.push_str("ex:s20 sh:nodeKind sh:IRI .");
+    let report = validate(&parse(&data), &parse(&shapes)).unwrap();
+    assert!(report.conforms);
+}

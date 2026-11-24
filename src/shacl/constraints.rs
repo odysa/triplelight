@@ -10,8 +10,14 @@ use super::report::{ConstraintViolation, Outcome, ValidationResult};
 
 mod datatypes;
 
-pub type CheckNode<'a> =
-    dyn FnMut(&Term, &Term) -> Result<Vec<ValidationResult>, ValidationError> + 'a;
+pub trait CheckNode {
+    fn conforms(&mut self, shape: &Term, focus: &Term) -> Result<bool, ValidationError>;
+    fn report(
+        &mut self,
+        shape: &Term,
+        focus: &Term,
+    ) -> Result<Vec<ValidationResult>, ValidationError>;
+}
 
 pub struct ConstraintContext<'a> {
     pub focus: &'a Term,
@@ -540,7 +546,7 @@ fn check_set(component: &str, passes: bool) -> Vec<Outcome> {
 }
 
 fn check_conformance(
-    check_node: &mut CheckNode<'_>,
+    check_node: &mut dyn CheckNode,
     component: &str,
     shapes: &[Term],
     values: &[Term],
@@ -550,7 +556,7 @@ fn check_conformance(
     for value in values {
         let mut conforming = 0;
         for shape in shapes {
-            if check_node(shape, value)?.is_empty() {
+            if check_node.conforms(shape, value)? {
                 conforming += 1;
             }
         }
@@ -562,10 +568,25 @@ fn check_conformance(
 }
 
 impl Constraint {
+    pub(super) fn conforms(
+        &self,
+        cx: &ConstraintContext<'_>,
+        check_node: &mut dyn CheckNode,
+    ) -> Result<bool, ValidationError> {
+        if let Self::Property(shape) = self {
+            let mut conforms = true;
+            for value in cx.value_nodes {
+                conforms &= check_node.conforms(shape, value)?;
+            }
+            return Ok(conforms);
+        }
+        Ok(self.evaluate(cx, check_node)?.is_empty())
+    }
+
     pub fn evaluate(
         &self,
         cx: &ConstraintContext<'_>,
-        check_node: &mut CheckNode<'_>,
+        check_node: &mut dyn CheckNode,
     ) -> Result<Vec<Outcome>, ValidationError> {
         let values = cx.value_nodes;
         let results = match self {
@@ -712,7 +733,7 @@ impl Constraint {
             Self::Property(shape) => {
                 let mut violations = Vec::new();
                 for value in values {
-                    violations.push(Outcome::Forwarded(check_node(shape, value)?));
+                    violations.push(Outcome::Forwarded(check_node.report(shape, value)?));
                 }
                 violations
             }
@@ -739,10 +760,10 @@ impl Constraint {
             } => {
                 let mut count = 0;
                 for value in values {
-                    let conforms = check_node(shape, value)?.is_empty();
+                    let conforms = check_node.conforms(shape, value)?;
                     let mut excludes = false;
                     for sibling in siblings {
-                        excludes |= check_node(sibling, value)?.is_empty();
+                        excludes |= check_node.conforms(sibling, value)?;
                     }
                     if conforms && !excludes {
                         count += 1;
