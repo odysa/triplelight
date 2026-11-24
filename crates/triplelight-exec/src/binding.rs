@@ -11,10 +11,15 @@ pub(crate) fn extend(
     source: Option<usize>,
     evaluate: impl Fn(&Row) -> Option<TermId>,
     canonicalize: impl Fn(TermId) -> TermId,
+    check: impl Fn(),
 ) -> Vec<Row> {
     let mut alias_ids = HashMap::new();
     rows.into_iter()
-        .filter_map(|mut row| {
+        .enumerate()
+        .filter_map(|(i, mut row)| {
+            if i.is_multiple_of(4096) {
+                check();
+            }
             let value = match source {
                 Some(column) => row
                     .get(column)

@@ -691,7 +691,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let source = if let Expression::Variable(v) = expression { self.vars.get(v.as_str()).copied() } else { None };
         binding::extend(self.eval(inner, input), target, source,
             |row| self.value(expression, row).map(|term| self.intern(&term)),
-            |id| self.intern(&self.resolve(id)))
+            |id| self.intern(&self.resolve(id)),
+            || self.check())
     }
 
     fn eval_minus(&self, left: &GraphPattern, right: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
