@@ -238,7 +238,7 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     } else {
         None
     };
-    let mut ctx = Ctx::for_query(snap, dataset, default, named, q, opts);
+    let mut ctx = Ctx::for_query(snap, dataset, default, named, q, opts, path::CsrLimits::default());
     match q {
         Query::Select { pattern, .. } => run_select(&mut ctx, snap, pattern, opts),
         Query::Ask { pattern, .. } => run_ask(&mut ctx, pattern),
@@ -432,6 +432,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         named: Vec<TermId>,
         query: &Query,
         opts: &Options<'a>,
+        csr_limits: path::CsrLimits,
     ) -> Self
     where
         S: Sized,
@@ -463,7 +464,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             range_pushdown: opts.range_pushdown,
             char_pairs: opts.char_pairs,
             sorted_probe: opts.sorted_probe,
-            csr: RefCell::new(path::CsrCache::new(opts.csr_paths, path::CsrLimits::default())),
+            csr: RefCell::new(path::CsrCache::new(opts.csr_paths, csr_limits)),
             range_checks: RefCell::new(HashMap::new()),
             range_reorderable,
             order_limit: std::cell::Cell::new(None),

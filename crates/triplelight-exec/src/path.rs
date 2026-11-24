@@ -567,7 +567,13 @@ mod csr_tests {
     }
 
     fn ctx(snap: &Triples, csr: bool, limits: CsrLimits) -> Ctx<'_, Triples> {
-        Ctx::new(snap, CsrCache::new(csr, limits))
+        let query = triplelight_sparql::Query::Ask {
+            dataset: None,
+            pattern: triplelight_sparql::GraphPattern::Bgp { patterns: Vec::new() },
+            base_iri: None,
+        };
+        let opts = crate::Options { csr_paths: csr, range_pushdown: false, ..crate::Options::default() };
+        Ctx::for_query(snap, None, None, Vec::new(), &query, &opts, limits)
     }
 
     /// Build at the first closure, so every bound-endpoint closure runs on the CSR.
