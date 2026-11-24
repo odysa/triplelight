@@ -1,0 +1,336 @@
+use std::cmp::Ordering;
+use std::collections::HashSet;
+
+use crate::rdf::{Literal, NamedNode, Term};
+
+use super::graph::Graph;
+use super::report::ConstraintViolation;
+use super::{ConstraintContext, Evaluator, ValidationError};
+
+const SH: &str = "http://www.w3.org/ns/shacl#";
+const XSD: &str = "http://www.w3.org/2001/XMLSchema#";
+
+#[derive(Clone, Debug)]
+pub(super) enum Constraint {
+    Class(Term),
+    Datatype(NamedNode),
+    NodeKind(NodeKind),
+    MinCount(Limit),
+    MaxCount(Limit),
+    MinLength(Limit),
+    MaxLength(Limit),
+    In(Vec<Term>),
+    HasValue(Term),
+    LanguageIn(Vec<String>),
+    UniqueLang(bool),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(super) enum NodeKind {
+    Blank,
+    Iri,
+    Literal,
+    BlankOrIri,
+    BlankOrLiteral,
+    IriOrLiteral,
+}
+
+impl NodeKind {
+    fn accepts(self, value: &Term) -> bool {
+        match value {
+            Term::BlankNode(_) => {
+                matches!(self, Self::Blank | Self::BlankOrIri | Self::BlankOrLiteral)
+            }
+            Term::NamedNode(_) => matches!(self, Self::Iri | Self::BlankOrIri | Self::IriOrLiteral),
+            Term::Literal(_) => matches!(
+                self,
+                Self::Literal | Self::BlankOrLiteral | Self::IriOrLiteral
+            ),
+            #[cfg(feature = "rdf-12")]
+            Term::Triple(_) => false,
+        }
+    }
+}
+
+/// An XSD integer compared only against a nonnegative size. Preserve the order
+/// of bounds outside the platform's usize range without truncating them.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum Limit {
+    Negative,
+    Number(usize),
+    AboveUsize,
+}
+
+impl Limit {
+    fn compare(self, size: usize) -> Ordering {
+        match self {
+            Self::Negative => Ordering::Greater,
+            Self::Number(bound) => size.cmp(&bound),
+            Self::AboveUsize => Ordering::Less,
+        }
+    }
+}
+
+fn iri(namespace: &str, local: &str) -> NamedNode {
+    NamedNode::new_unchecked(format!("{namespace}{local}"))
+}
+
+fn invalid(shape: &Term, parameter: &str, expected: &str) -> ValidationError {
+    ValidationError::InvalidShape(format!("{shape}: sh:{parameter} {expected}"))
+}
+
+fn literal(term: &Term) -> Option<&Literal> {
+    if let Term::Literal(literal) = term {
+        Some(literal)
+    } else {
+        None
+    }
+}
+
+fn typed_value<'a>(term: &'a Term, datatype: &str) -> Option<&'a str> {
+    let literal = literal(term)?;
+    (literal.datatype().as_str().strip_prefix(XSD) == Some(datatype)).then(|| literal.value())
+}
+
+fn integer_text(text: &str) -> Option<(bool, &str)> {
+    let text = text.trim_matches([' ', '\t', '\n', '\r']);
+    let negative = text.starts_with('-');
+    let digits = text.strip_prefix(['+', '-']).unwrap_or(text);
+    (!digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()))
+        .then(|| (negative, digits.trim_start_matches('0')))
+}
+
+fn limit(term: &Term) -> Option<Limit> {
+    let (negative, digits) = integer_text(typed_value(term, "integer")?)?;
+    Some(if digits.is_empty() {
+        Limit::Number(0)
+    } else if negative {
+        Limit::Negative
+    } else {
+        digits.parse().map_or(Limit::AboveUsize, Limit::Number)
+    })
+}
+
+fn boolean(term: &Term) -> Option<bool> {
+    match typed_value(term, "boolean")?.trim_matches([' ', '\t', '\n', '\r']) {
+        "true" | "1" => Some(true),
+        "false" | "0" => Some(false),
+        _ => None,
+    }
+}
+
+fn lexical(value: &Term) -> Option<&str> {
+    match value {
+        Term::NamedNode(node) => Some(node.as_str()),
+        Term::Literal(literal) => Some(literal.value()),
+        _ => None,
+    }
+}
+
+fn datatype_matches(value: &Term, datatype: &NamedNode) -> bool {
+    let Some(literal) = literal(value) else {
+        return false;
+    };
+    if literal.datatype().as_str() != datatype.as_str() {
+        return false;
+    }
+    let text = literal.value().trim_matches([' ', '\t', '\n', '\r']);
+    match datatype.as_str().strip_prefix(XSD) {
+        Some("integer") => integer_text(text).is_some(),
+        Some("boolean") => boolean(value).is_some(),
+        _ => true,
+    }
+}
+
+fn language_matches(tag: &str, range: &str) -> bool {
+    range == "*"
+        || tag.eq_ignore_ascii_case(range)
+        || tag.get(..range.len()).is_some_and(|prefix| {
+            prefix.eq_ignore_ascii_case(range) && tag.as_bytes().get(range.len()) == Some(&b'-')
+        })
+}
+
+fn lang_range(term: &Term) -> Option<String> {
+    let text = typed_value(term, "string")?;
+    let mut parts = text.split('-');
+    let first = parts.next()?;
+    if first == "*" && parts.next().is_none() {
+        return Some(text.to_owned());
+    }
+    if !(1..=8).contains(&first.len()) || !first.bytes().all(|byte| byte.is_ascii_alphabetic()) {
+        return None;
+    }
+    parts
+        .all(|part| {
+            (1..=8).contains(&part.len()) && part.bytes().all(|byte| byte.is_ascii_alphanumeric())
+        })
+        .then(|| text.to_owned())
+}
+
+pub(super) fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, ValidationError> {
+    let mut constraints = Vec::new();
+    let property_shape = !shapes.objects(shape, &iri(SH, "path")).is_empty();
+    for (predicate, value) in shapes.outgoing(shape) {
+        let Some(name) = predicate.as_str().strip_prefix(SH) else {
+            continue;
+        };
+        let required_limit =
+            || limit(value).ok_or_else(|| invalid(shape, name, "must be an xsd:integer"));
+        let named = || match value {
+            Term::NamedNode(node) => Ok(node.clone()),
+            _ => Err(invalid(shape, name, "must be an IRI")),
+        };
+        let constraint = match name {
+            "class" => Constraint::Class(named()?.into()),
+            "datatype" => Constraint::Datatype(named()?),
+            "nodeKind" => {
+                let node_kind = match named()?.as_str().strip_prefix(SH) {
+                    Some("BlankNode") => NodeKind::Blank,
+                    Some("IRI") => NodeKind::Iri,
+                    Some("Literal") => NodeKind::Literal,
+                    Some("BlankNodeOrIRI") => NodeKind::BlankOrIri,
+                    Some("BlankNodeOrLiteral") => NodeKind::BlankOrLiteral,
+                    Some("IRIOrLiteral") => NodeKind::IriOrLiteral,
+                    _ => return Err(invalid(shape, name, "must name a SHACL node kind")),
+                };
+                Constraint::NodeKind(node_kind)
+            }
+            "minCount" => Constraint::MinCount(required_limit()?),
+            "maxCount" => Constraint::MaxCount(required_limit()?),
+            "minLength" => Constraint::MinLength(required_limit()?),
+            "maxLength" => Constraint::MaxLength(required_limit()?),
+            "hasValue" => Constraint::HasValue(value.clone()),
+            "in" => Constraint::In(shapes.list_items(value)?),
+            "languageIn" => {
+                let ranges = shapes
+                    .list_items(value)?
+                    .iter()
+                    .map(|member| {
+                        lang_range(member)
+                            .ok_or_else(|| invalid(shape, name, "must list basic language ranges"))
+                    })
+                    .collect::<Result<_, _>>()?;
+                Constraint::LanguageIn(ranges)
+            }
+            "uniqueLang" => Constraint::UniqueLang(
+                boolean(value).ok_or_else(|| invalid(shape, name, "must be an xsd:boolean"))?,
+            ),
+            _ => continue,
+        };
+        if matches!(name, "minCount" | "maxCount" | "uniqueLang") && !property_shape {
+            return Err(invalid(shape, name, "requires a property shape"));
+        }
+        if !matches!(name, "class" | "hasValue") && shapes.objects(shape, predicate).len() > 1 {
+            return Err(invalid(shape, name, "has more than one value"));
+        }
+        constraints.push(constraint);
+    }
+    Ok(constraints)
+}
+
+fn violation(component: &str, value: Option<&Term>) -> ConstraintViolation {
+    ConstraintViolation::Local {
+        component: iri(SH, component),
+        value: value.cloned(),
+        message: None,
+        details: Vec::new(),
+        path_override: None,
+    }
+}
+
+fn check_values(
+    component: &str,
+    values: &[Term],
+    accepts: impl Fn(&Term) -> bool,
+) -> Vec<ConstraintViolation> {
+    values
+        .iter()
+        .filter(|value| !accepts(value))
+        .map(|value| violation(component, Some(value)))
+        .collect()
+}
+
+fn check_set(component: &str, passes: bool) -> Vec<ConstraintViolation> {
+    if passes {
+        Vec::new()
+    } else {
+        vec![violation(component, None)]
+    }
+}
+
+impl Constraint {
+    pub(super) fn evaluate(
+        &self,
+        cx: &ConstraintContext<'_>,
+        _ev: &mut Evaluator<'_>,
+    ) -> Result<Vec<ConstraintViolation>, ValidationError> {
+        let values = cx.value_nodes;
+        let results = match self {
+            Self::Class(class) => check_values("ClassConstraintComponent", values, |value| {
+                !matches!(value, Term::Literal(_)) && cx.data.is_instance(value, class)
+            }),
+            Self::Datatype(datatype) => {
+                check_values("DatatypeConstraintComponent", values, |value| {
+                    datatype_matches(value, datatype)
+                })
+            }
+            Self::NodeKind(kind) => check_values("NodeKindConstraintComponent", values, |value| {
+                kind.accepts(value)
+            }),
+            Self::MinCount(limit) => check_set(
+                "MinCountConstraintComponent",
+                limit.compare(values.len()) != Ordering::Less,
+            ),
+            Self::MaxCount(limit) => check_set(
+                "MaxCountConstraintComponent",
+                limit.compare(values.len()) != Ordering::Greater,
+            ),
+            Self::MinLength(limit) => {
+                check_values("MinLengthConstraintComponent", values, |value| {
+                    lexical(value)
+                        .is_some_and(|text| limit.compare(text.chars().count()) != Ordering::Less)
+                })
+            }
+            Self::MaxLength(limit) => {
+                check_values("MaxLengthConstraintComponent", values, |value| {
+                    lexical(value).is_some_and(|text| {
+                        limit.compare(text.chars().count()) != Ordering::Greater
+                    })
+                })
+            }
+            Self::In(allowed) => check_values("InConstraintComponent", values, |value| {
+                allowed.contains(value)
+            }),
+            Self::HasValue(required) => {
+                check_set("HasValueConstraintComponent", values.contains(required))
+            }
+            Self::LanguageIn(ranges) => {
+                check_values("LanguageInConstraintComponent", values, |value| {
+                    literal(value)
+                        .and_then(Literal::language)
+                        .is_some_and(|tag| ranges.iter().any(|range| language_matches(tag, range)))
+                })
+            }
+            Self::UniqueLang(enabled) => {
+                let mut seen = HashSet::new();
+                let mut duplicates = HashSet::new();
+                if *enabled {
+                    for tag in values
+                        .iter()
+                        .filter_map(|value| literal(value).and_then(Literal::language))
+                    {
+                        let tag = tag.to_ascii_lowercase();
+                        if !seen.insert(tag.clone()) {
+                            duplicates.insert(tag);
+                        }
+                    }
+                }
+                duplicates
+                    .iter()
+                    .map(|_| violation("UniqueLangConstraintComponent", None))
+                    .collect()
+            }
+        };
+        Ok(results)
+    }
+}
