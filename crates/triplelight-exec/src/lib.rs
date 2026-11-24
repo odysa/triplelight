@@ -709,13 +709,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 };
                 return rows.into_iter().map(|mut r| { r[bi] = r[ai]; r }).collect();
             }
-            let bgp_vars: HashSet<usize> = { let mut v = Vec::new(); walk_vars(inner, &mut v); v.iter().filter_map(|n| self.vars.get(n).copied()).collect() };
-            let (early, late): (Vec<&Expression>, Vec<&Expression>) = conjuncts(expr).into_iter().partition(|c| {
-                let vs = expr_vars(c);
-                !vs.is_empty() && !impure(c) && vs.iter().all(|n| self.vars.get(n).is_some_and(|i| bgp_vars.contains(i)))
-            });
+            let (early, late) = self.pushed_filters(expr, inner);
             if !early.is_empty() {
-                let early: Vec<(&Expression, Vec<usize>)> = early.into_iter().map(|c| (c, expr_vars(c).iter().map(|n| self.vars[n]).collect())).collect();
                 let rows = self.eval_bgp_filtered(patterns, input, &early);
                 return rows.into_iter().filter(|r| late.iter().all(|c| self.ebv(c, r))).collect();
             }
@@ -731,6 +726,17 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             Some(Ok(b)) => b == Some(true),
             _ => self.ebv(expr, r),
         }).collect()
+    }
+
+    /// The conjuncts of `expr` over `inner`'s BGP split into those applied inside the BGP (`eval_bgp_filtered`), with
+    /// their variables, and those left for after it.
+    fn pushed_filters<'e>(&self, expr: &'e Expression, inner: &GraphPattern) -> (Vec<(&'e Expression, Vec<usize>)>, Vec<&'e Expression>) {
+        let bgp_vars: HashSet<usize> = { let mut v = Vec::new(); walk_vars(inner, &mut v); v.iter().filter_map(|n| self.vars.get(n).copied()).collect() };
+        let (early, late): (Vec<&Expression>, Vec<&Expression>) = conjuncts(expr).into_iter().partition(|c| {
+            let vs = expr_vars(c);
+            !vs.is_empty() && !impure(c) && vs.iter().all(|n| self.vars.get(n).is_some_and(|i| bgp_vars.contains(i)))
+        });
+        (early.into_iter().map(|c| (c, expr_vars(c).iter().map(|n| self.vars[n]).collect())).collect(), late)
     }
 
     fn eval_extend(&self, inner: &GraphPattern, variable: &Variable, expression: &Expression, input: Vec<Row>) -> Vec<Row> {
@@ -908,6 +914,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     fn eval_group(&self, inner: &GraphPattern, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], input: Vec<Row>) -> Vec<Row> {
         if self.count_pushdown && let Some(rows) = phase::timed(&phase::COUNT_NS, || self.try_count_group(inner, keys, aggs, &input)) { return rows; }
+        let input = match self.try_flat_count_group(inner, keys, aggs, input) { Ok(rows) => return rows, Err(input) => input };
         let rows = self.eval(inner, input);
         let started = phase::enabled().then(std::time::Instant::now);
         let out = self.group_rows(keys, aggs, rows);
@@ -1033,6 +1040,11 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         phase::bgp(|| self.eval_bgp_filtered_untimed(patterns, rows, filters))
     }
 
+    /// `eval_bgp_filtered` as one flat buffer of rows, for a BGP with at least one variable and no triple terms.
+    fn eval_bgp_filtered_flat(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<TermId> {
+        phase::bgp(|| self.eval_bgp_flat(patterns, rows, filters))
+    }
+
     fn eval_bgp_filtered_untimed(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<Row> {
         #[cfg(feature = "rdf-12")]
         if patterns.iter().any(triple_term::has_triple_term) { return self.eval_bgp_triple_terms(patterns, rows, filters) }
@@ -1041,13 +1053,36 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     /// `eval_bgp_filtered` over patterns whose terms are all plain slots (variables and constants).
     fn eval_bgp_slots(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<Row> {
-        let pats: Vec<[Slot; 3]> = patterns.iter().map(|t| {
-            let p = match &t.predicate {
-                NamedNodePattern::Variable(v) => Slot::Var(self.var(v)),
-                NamedNodePattern::NamedNode(n) => Slot::Const(self.lookup(&n.clone().into())),
-            };
-            [self.slot_of(&t.subject), p, self.slot_of(&t.object)]
-        }).collect();
+        let w = self.vars.len();
+        if w == 0 {
+            // No variables anywhere: every pattern is a membership test.
+            let tr = plan_trace::enabled().then(|| plan_trace::Trace::new(patterns, rows.len()));
+            let all = !rows.is_empty() && patterns.iter().all(|t| {
+                let slots = self.slots(t);
+                // A constant absent from the dictionary can never match.
+                if slots.iter().any(|s| matches!(s, Slot::Const(None))) { return false }
+                let ids: Vec<TermId> = slots.iter().map(|s| if let Slot::Const(Some(c)) = s { *c } else { UNBOUND }).collect();
+                self.count(Perm::Spo, &ids) > 0
+            });
+            let out = if all { rows } else { Vec::new() };
+            if let Some(tr) = tr { tr.finish("ground", out.len()) }
+            return out;
+        }
+        self.eval_bgp_flat(patterns, rows, filters).chunks_exact(w).map(<[TermId]>::to_vec).collect()
+    }
+
+    fn slots(&self, t: &TriplePattern) -> [Slot; 3] {
+        let p = match &t.predicate {
+            NamedNodePattern::Variable(v) => Slot::Var(self.var(v)),
+            NamedNodePattern::NamedNode(n) => Slot::Const(self.lookup(&n.clone().into())),
+        };
+        [self.slot_of(&t.subject), p, self.slot_of(&t.object)]
+    }
+
+    /// `eval_bgp_slots` for a query with at least one variable, as one flat buffer of rows (`vars.len()` IDs each),
+    /// so a consumer that reads the rows once (`agg::flat`) skips building a `Row` per solution.
+    fn eval_bgp_flat(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<TermId> {
+        let pats: Vec<[Slot; 3]> = patterns.iter().map(|t| self.slots(t)).collect();
         let mut tr = plan_trace::enabled().then(|| plan_trace::Trace::new(patterns, rows.len()));
         // A constant absent from the dictionary can never match.
         if rows.is_empty() || pats.iter().any(|p| p.iter().any(|s| matches!(s, Slot::Const(None)))) {
@@ -1055,16 +1090,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             return Vec::new();
         }
         let w = self.vars.len();
-        if w == 0 {
-            // No variables anywhere: every pattern is a membership test.
-            let all = pats.iter().all(|p| {
-                let ids: Vec<TermId> = p.iter().map(|s| if let Slot::Const(Some(c)) = s { *c } else { UNBOUND }).collect();
-                self.count(Perm::Spo, &ids) > 0
-            });
-            let out = if all { rows } else { Vec::new() };
-            if let Some(tr) = tr { tr.finish("ground", out.len()) }
-            return out;
-        }
         let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
         let ranges = self.object_ranges(patterns, &pats, filters, &rows[0]);
         let flat: Vec<TermId> = rows.concat();
@@ -1098,7 +1123,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             }
         });
         if let Some(tr) = tr { tr.finish(strategy, out.len() / w) }
-        out.chunks_exact(w).map(<[TermId]>::to_vec).collect()
+        out
     }
 
     /// `(?a, ?b)` if `c` is `?a = ?b` / `sameTerm(?a, ?b)` over two distinct variables of the BGP, each of which occurs
@@ -1473,6 +1498,14 @@ fn memo_safe(p: &GraphPattern) -> bool {
         | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. }
         | GraphPattern::Project { inner, .. } | GraphPattern::Group { inner, .. } => memo_safe(inner),
     }
+}
+
+/// No pattern has a triple term (always so without `rdf-12`), so `eval_bgp_slots` evaluates the BGP.
+fn triple_term_free(patterns: &[TriplePattern]) -> bool {
+    #[cfg(feature = "rdf-12")]
+    if patterns.iter().any(triple_term::has_triple_term) { return false }
+    let _ = patterns;
+    true
 }
 
 fn walk_vars(p: &GraphPattern, out: &mut Vec<String>) {
