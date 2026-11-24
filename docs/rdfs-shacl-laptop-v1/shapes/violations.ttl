@@ -1,0 +1,10 @@
+@prefix ex: <urn:benchmark:shacl:> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> .
+
+ex:Contacts a sh:NodeShape ;
+    sh:targetSubjectsOf ub:emailAddress ;
+    sh:property ex:Email .
+ex:Email a sh:PropertyShape ;
+    sh:path ub:emailAddress ;
+    sh:nodeKind sh:IRI .
