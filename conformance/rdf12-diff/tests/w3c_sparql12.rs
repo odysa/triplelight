@@ -60,16 +60,18 @@ fn sparql11_w3c_update_manifest_syntax() {
             let kind = iri(property(&graph, entry, RDF, "type"))
                 .strip_prefix(MF)
                 .expect("SPARQL test type");
-            let (update, positive) = match kind {
-                "PositiveUpdateSyntaxTest11" => (true, true),
-                "NegativeUpdateSyntaxTest11" => (true, false),
-                "NegativeSyntaxTest11" => (false, false),
+            let positive = match kind {
+                "PositiveUpdateSyntaxTest11" => true,
+                // The delete-insert manifest uses the query-syntax class on
+                // eight .ru update requests. They must reach the update parser.
+                "NegativeUpdateSyntaxTest11" | "NegativeSyntaxTest11" => false,
                 "UpdateEvaluationTest" => continue,
                 _ => panic!("unknown test type {kind}"),
             };
             *totals.entry(kind.to_owned()).or_insert(0) += 1;
             let action = iri(property(&graph, entry, MF, "action"));
-            match check_syntax(&root, action, update, positive) {
+            assert!(action.ends_with(".ru"), "{entry}: {action}");
+            match check_syntax(&root, action, true, positive) {
                 Ok(()) => {
                     passed += 1;
                     println!("PASS {entry}");
