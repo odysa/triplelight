@@ -204,6 +204,11 @@ impl Database {
     pub fn query(&self, sparql: &str) -> Result<QueryResult, DatabaseError> {
         self.read().query(sparql)
     }
+    /// `query` under an explicit entailment regime: `Entailment::Rdfs` matches the default graph's RDFS closure,
+    /// computed at query time (nothing inferred is stored). `query` is `Entailment::Simple`.
+    pub fn query_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<QueryResult, DatabaseError> {
+        self.read().query_with_entailment(sparql, entailment)
+    }
 
     /// Returns a stable read view that is unaffected by subsequent updates.
     pub fn read(&self) -> ReadSnapshot { ReadSnapshot { snapshot: self.snapshot(), stats: Arc::clone(&self.stats) } }
@@ -224,6 +229,10 @@ impl Database {
 
     /// Serializes SELECT or ASK as SPARQL Results JSON with batched term decoding.
     pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> { self.read().query_json(sparql) }
+    /// `query_json` under an explicit entailment regime (see `query_with_entailment`).
+    pub fn query_json_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<String, DatabaseError> {
+        self.read().query_json_with_entailment(sparql, entailment)
+    }
 
     /// Atomically imports an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file into this database.
     /// Quads in a named graph go into that graph; a quad with a blank-node graph name is refused as unsupported, and an
@@ -359,9 +368,14 @@ fn scope_blank_nodes(triples: Vec<crate::rdf::Triple>) -> Vec<crate::rdf::Triple
 /// An immutable view of the database at the instant `Database::read` was called.
 pub struct ReadSnapshot { snapshot: Arc<Overlay>, stats: Arc<RwLock<Option<(Arc<Overlay>, Arc<Stats>)>>> }
 impl ReadSnapshot {
-    pub fn query(&self, sparql: &str) -> Result<QueryResult, DatabaseError> {
+    pub fn query(&self, sparql: &str) -> Result<QueryResult, DatabaseError> { self.query_with_entailment(sparql, exec::Entailment::Simple) }
+    /// `query` under an explicit entailment regime (see `Database::query_with_entailment`).
+    pub fn query_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<QueryResult, DatabaseError> {
+        self.run(sparql, false, entailment)
+    }
+    fn run(&self, sparql: &str, raw_ids: bool, entailment: exec::Entailment) -> Result<QueryResult, DatabaseError> {
         let stats = self.applicable_stats();
-        let opts = exec::Options { stats: stats.as_deref(), ..Default::default() };
+        let opts = exec::Options { stats: stats.as_deref(), raw_ids, entailment, ..Default::default() };
         Ok(exec::query_dataset_with(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
     }
     fn applicable_stats(&self) -> Option<Arc<Stats>> {
@@ -369,11 +383,7 @@ impl ReadSnapshot {
         self.stats.read().unwrap().as_ref().filter(|(base, _)| base.base_id() == self.snapshot.base_id()).map(|(_, st)| Arc::clone(st))
     }
     /// Executes a query with undecoded SELECT IDs, valid only against this snapshot.
-    pub fn query_ids(&self, sparql: &str) -> Result<QueryResult, DatabaseError> {
-        let stats = self.applicable_stats();
-        let opts = exec::Options { stats: stats.as_deref(), raw_ids: true, ..Default::default() };
-        Ok(exec::query_dataset_with(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
-    }
+    pub fn query_ids(&self, sparql: &str) -> Result<QueryResult, DatabaseError> { self.run(sparql, true, exec::Entailment::Simple) }
     /// Decodes stored term IDs returned by `query_ids` on this snapshot in one batched dictionary pass, calling
     /// `f(i, term)` for `ids[i]` (in any order). Computed terms are not stored: look them up in
     /// `IdSolutions::scratch` instead.
@@ -385,8 +395,10 @@ impl ReadSnapshot {
         Ok(exec::results::serialize_ids_v(ids, &*self.snapshot, crate::storage::Snapshot::has_rdf12_terms(&*self.snapshot))?)
     }
     /// Serializes SELECT or ASK as SPARQL Results JSON; graph results are not JSON results.
-    pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> {
-        let result = self.query_ids(sparql)?;
+    pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> { self.query_json_with_entailment(sparql, exec::Entailment::Simple) }
+    /// `query_json` under an explicit entailment regime (see `Database::query_with_entailment`).
+    pub fn query_json_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<String, DatabaseError> {
+        let result = self.run(sparql, true, entailment)?;
         match &result {
             QueryResult::Ids(ids) => self.serialize_ids(ids),
             QueryResult::Boolean(_) | QueryResult::Solutions { .. } => Ok(exec::results::serialize(&result).1),
@@ -410,6 +422,21 @@ mod memory_tests {
         drop(_writer);
         thread.join().unwrap();
         assert!(result.is_ok(), "reader blocked behind writer mutex");
+    }
+    #[test]
+    fn entailment_is_explicit_and_follows_each_snapshot() {
+        let db = Database::in_memory();
+        db.update("INSERT DATA { <urn:ann> a <urn:Student> . <urn:Student> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <urn:Person> }").unwrap();
+        let persons = |r: QueryResult| match r { QueryResult::Solutions { rows, .. } => rows.len(), _ => unreachable!() };
+        let q = "SELECT ?x { ?x a <urn:Person> }";
+        let before = db.read();
+        assert_eq!(persons(db.query(q).unwrap()), 0, "plain query keeps simple entailment");
+        assert_eq!(persons(db.query_with_entailment(q, exec::Entailment::Rdfs).unwrap()), 1);
+        assert!(db.query_json_with_entailment(q, exec::Entailment::Rdfs).unwrap().contains("urn:ann"));
+        // A schema change reaches new snapshots only: the closure belongs to the snapshot it was computed for.
+        db.update("INSERT DATA { <urn:bob> a <urn:Student> }").unwrap();
+        assert_eq!(persons(db.query_with_entailment(q, exec::Entailment::Rdfs).unwrap()), 2);
+        assert_eq!(persons(before.query_with_entailment(q, exec::Entailment::Rdfs).unwrap()), 1);
     }
 }
 
