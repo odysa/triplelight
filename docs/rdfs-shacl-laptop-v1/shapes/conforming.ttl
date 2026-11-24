@@ -1,0 +1,17 @@
+@prefix ex: <urn:benchmark:shacl:> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:Contacts a sh:NodeShape ;
+    sh:targetSubjectsOf ub:emailAddress ;
+    sh:property ex:Email, ex:Name .
+ex:Email a sh:PropertyShape ;
+    sh:path ub:emailAddress ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:maxCount 1 .
+ex:Name a sh:PropertyShape ;
+    sh:path ub:name ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 .
