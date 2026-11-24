@@ -1,0 +1,910 @@
+{
+  "lubm1": {
+    "simple": {
+      "mode": "simple",
+      "matched_answers": {
+        "q1": {
+          "rows": 4
+        },
+        "q2": {
+          "rows": 0
+        },
+        "q3": {
+          "rows": 6
+        },
+        "q4": {
+          "rows": 0
+        },
+        "q5": {
+          "rows": 0
+        },
+        "q6": {
+          "rows": 0
+        },
+        "q7": {
+          "rows": 0
+        },
+        "q8": {
+          "rows": 0
+        },
+        "q9": {
+          "rows": 0
+        },
+        "q10": {
+          "rows": 0
+        },
+        "q11": {
+          "rows": 0
+        },
+        "q12": {
+          "rows": 0
+        },
+        "q13": {
+          "rows": 0
+        },
+        "q14": {
+          "rows": 5916
+        },
+        "inferred-class": {
+          "rows": 1,
+          "answer": [
+            [
+              "literal",
+              "0",
+              "http://www.w3.org/2001/XMLSchema#integer",
+              ""
+            ]
+          ]
+        },
+        "inferred-property": {
+          "rows": 1,
+          "answer": [
+            [
+              "literal",
+              "0",
+              "http://www.w3.org/2001/XMLSchema#integer",
+              ""
+            ]
+          ]
+        }
+      },
+      "iterations_per_process": 7,
+      "warmup_per_process": 2,
+      "processes": [
+        {
+          "engine": "triplelight",
+          "process": 1,
+          "median_ns": {
+            "inferred-class": 8959,
+            "inferred-property": 7917,
+            "load": 118061584,
+            "q1": 9208,
+            "q10": 7167,
+            "q11": 8292,
+            "q12": 10958,
+            "q13": 7000,
+            "q14": 498875,
+            "q2": 30041,
+            "q3": 9750,
+            "q4": 14041,
+            "q5": 7292,
+            "q6": 5459,
+            "q7": 11125,
+            "q8": 12542,
+            "q9": 13291
+          },
+          "peak_rss_bytes": 61603840
+        },
+        {
+          "engine": "jena",
+          "process": 2,
+          "median_ns": {
+            "inferred-class": 613833,
+            "inferred-property": 364042,
+            "load": 512450208,
+            "q1": 344375,
+            "q10": 313916,
+            "q11": 278917,
+            "q12": 588209,
+            "q13": 297750,
+            "q14": 2444667,
+            "q2": 2242250,
+            "q3": 431541,
+            "q4": 393583,
+            "q5": 436583,
+            "q6": 273917,
+            "q7": 363459,
+            "q8": 2166750,
+            "q9": 420708,
+            "view": 7250
+          },
+          "peak_rss_bytes": 196935680
+        },
+        {
+          "engine": "jena",
+          "process": 3,
+          "median_ns": {
+            "inferred-class": 623959,
+            "inferred-property": 459500,
+            "load": 512231959,
+            "q1": 375708,
+            "q10": 325750,
+            "q11": 290833,
+            "q12": 635125,
+            "q13": 306583,
+            "q14": 2590000,
+            "q2": 2683959,
+            "q3": 465250,
+            "q4": 411250,
+            "q5": 444917,
+            "q6": 281958,
+            "q7": 376333,
+            "q8": 2333083,
+            "q9": 446084,
+            "view": 6833
+          },
+          "peak_rss_bytes": 195493888
+        },
+        {
+          "engine": "triplelight",
+          "process": 4,
+          "median_ns": {
+            "inferred-class": 9125,
+            "inferred-property": 8042,
+            "load": 117973542,
+            "q1": 8958,
+            "q10": 7208,
+            "q11": 8416,
+            "q12": 10791,
+            "q13": 6791,
+            "q14": 502709,
+            "q2": 28583,
+            "q3": 9375,
+            "q4": 13791,
+            "q5": 7167,
+            "q6": 5625,
+            "q7": 11042,
+            "q8": 12458,
+            "q9": 13708
+          },
+          "peak_rss_bytes": 61718528
+        }
+      ]
+    },
+    "rdfs": {
+      "mode": "rdfs",
+      "matched_answers": {
+        "q1": {
+          "rows": 4
+        },
+        "q2": {
+          "rows": 0
+        },
+        "q3": {
+          "rows": 6
+        },
+        "q4": {
+          "rows": 34
+        },
+        "q5": {
+          "rows": 719
+        },
+        "q6": {
+          "rows": 5916
+        },
+        "q7": {
+          "rows": 59
+        },
+        "q8": {
+          "rows": 5916
+        },
+        "q9": {
+          "rows": 103
+        },
+        "q10": {
+          "rows": 0
+        },
+        "q11": {
+          "rows": 0
+        },
+        "q12": {
+          "rows": 0
+        },
+        "q13": {
+          "rows": 0
+        },
+        "q14": {
+          "rows": 5916
+        },
+        "inferred-class": {
+          "rows": 1,
+          "answer": [
+            [
+              "literal",
+              "8330",
+              "http://www.w3.org/2001/XMLSchema#integer",
+              ""
+            ]
+          ]
+        },
+        "inferred-property": {
+          "rows": 1,
+          "answer": [
+            [
+              "literal",
+              "3494",
+              "http://www.w3.org/2001/XMLSchema#integer",
+              ""
+            ]
+          ]
+        }
+      },
+      "iterations_per_process": 7,
+      "warmup_per_process": 2,
+      "processes": [
+        {
+          "engine": "triplelight",
+          "process": 1,
+          "median_ns": {
+            "inferred-class": 1531084,
+            "inferred-property": 160791,
+            "load": 117093167,
+            "q1": 71417,
+            "q10": 130875,
+            "q11": 194291,
+            "q12": 64208,
+            "q13": 1554417,
+            "q14": 635042,
+            "q2": 815875,
+            "q3": 727625,
+            "q4": 305250,
+            "q5": 2323417,
+            "q6": 635000,
+            "q7": 330583,
+            "q8": 2041125,
+            "q9": 2539000
+          },
+          "peak_rss_bytes": 67469312
+        },
+        {
+          "engine": "jena",
+          "process": 2,
+          "median_ns": {
+            "inferred-class": 8549750,
+            "inferred-property": 1775625,
+            "load": 513155833,
+            "q1": 402125,
+            "q10": 460000,
+            "q11": 540750,
+            "q12": 2049666,
+            "q13": 378125,
+            "q14": 2402208,
+            "q2": 5126125,
+            "q3": 449333,
+            "q4": 580334,
+            "q5": 1149417,
+            "q6": 2486542,
+            "q7": 581958,
+            "q8": 19131459,
+            "q9": 9850000,
+            "view": 7052125
+          },
+          "peak_rss_bytes": 416071680
+        },
+        {
+          "engine": "jena",
+          "process": 3,
+          "median_ns": {
+            "inferred-class": 8547917,
+            "inferred-property": 1819416,
+            "load": 506348917,
+            "q1": 385458,
+            "q10": 439625,
+            "q11": 540916,
+            "q12": 2318125,
+            "q13": 377792,
+            "q14": 2009291,
+            "q2": 6395417,
+            "q3": 456084,
+            "q4": 562291,
+            "q5": 1197875,
+            "q6": 2098250,
+            "q7": 560250,
+            "q8": 18989958,
+            "q9": 9973541,
+            "view": 6717500
+          },
+          "peak_rss_bytes": 424902656
+        },
+        {
+          "engine": "triplelight",
+          "process": 4,
+          "median_ns": {
+            "inferred-class": 1524958,
+            "inferred-property": 159583,
+            "load": 117339500,
+            "q1": 71750,
+            "q10": 131083,
+            "q11": 197583,
+            "q12": 70167,
+            "q13": 1551083,
+            "q14": 637292,
+            "q2": 813834,
+            "q3": 723125,
+            "q4": 311917,
+            "q5": 2333250,
+            "q6": 637500,
+            "q7": 331791,
+            "q8": 2075209,
+            "q9": 2585792
+          },
+          "peak_rss_bytes": 67420160
+        }
+      ]
+    },
+    "conforming": {
+      "mode": "shacl",
+      "matched_answers": {
+        "conforms": true,
+        "results": 0
+      },
+      "iterations_per_process": 7,
+      "warmup_per_process": 2,
+      "processes": [
+        {
+          "engine": "triplelight",
+          "process": 1,
+          "median_ns": {
+            "load": 73338500,
+            "serialize": 8792,
+            "shapes": 123125,
+            "validate": 166628083
+          },
+          "peak_rss_bytes": 179503104
+        },
+        {
+          "engine": "jena",
+          "process": 2,
+          "median_ns": {
+            "load": 511041834,
+            "serialize": 118083,
+            "shapes": 4468750,
+            "validate": 9308167
+          },
+          "peak_rss_bytes": 179929088
+        },
+        {
+          "engine": "jena",
+          "process": 3,
+          "median_ns": {
+            "load": 508781750,
+            "serialize": 120958,
+            "shapes": 4572250,
+            "validate": 6852750
+          },
+          "peak_rss_bytes": 179519488
+        },
+        {
+          "engine": "triplelight",
+          "process": 4,
+          "median_ns": {
+            "load": 73384375,
+            "serialize": 10959,
+            "shapes": 145083,
+            "validate": 162757916
+          },
+          "peak_rss_bytes": 176455680
+        }
+      ]
+    },
+    "violations": {
+      "mode": "shacl",
+      "matched_answers": {
+        "conforms": false,
+        "results": 8330
+      },
+      "iterations_per_process": 7,
+      "warmup_per_process": 2,
+      "processes": [
+        {
+          "engine": "triplelight",
+          "process": 1,
+          "median_ns": {
+            "load": 74324459,
+            "serialize": 19787375,
+            "shapes": 96917,
+            "validate": 160060250
+          },
+          "peak_rss_bytes": 270352384
+        },
+        {
+          "engine": "jena",
+          "process": 2,
+          "median_ns": {
+            "load": 516696458,
+            "serialize": 43817375,
+            "shapes": 3904959,
+            "validate": 34210459
+          },
+          "peak_rss_bytes": 522027008
+        },
+        {
+          "engine": "jena",
+          "process": 3,
+          "median_ns": {
+            "load": 525838875,
+            "serialize": 40607125,
+            "shapes": 3922458,
+            "validate": 31029959
+          },
+          "peak_rss_bytes": 505298944
+        },
+        {
+          "engine": "triplelight",
+          "process": 4,
+          "median_ns": {
+            "load": 73408250,
+            "serialize": 19281333,
+            "shapes": 126708,
+            "validate": 159309791
+          },
+          "peak_rss_bytes": 276299776
+        }
+      ]
+    }
+  },
+  "lubm10": {
+    "simple": {
+      "mode": "simple",
+      "matched_answers": {
+        "q1": {
+          "rows": 4
+        },
+        "q2": {
+          "rows": 28
+        },
+        "q3": {
+          "rows": 6
+        },
+        "q4": {
+          "rows": 0
+        },
+        "q5": {
+          "rows": 0
+        },
+        "q6": {
+          "rows": 0
+        },
+        "q7": {
+          "rows": 0
+        },
+        "q8": {
+          "rows": 0
+        },
+        "q9": {
+          "rows": 0
+        },
+        "q10": {
+          "rows": 0
+        },
+        "q11": {
+          "rows": 0
+        },
+        "q12": {
+          "rows": 0
+        },
+        "q13": {
+          "rows": 0
+        },
+        "q14": {
+          "rows": 75547
+        },
+        "inferred-class": {
+          "rows": 1,
+          "answer": [
+            [
+              "literal",
+              "0",
+              "http://www.w3.org/2001/XMLSchema#integer",
+              ""
+            ]
+          ]
+        },
+        "inferred-property": {
+          "rows": 1,
+          "answer": [
+            [
+              "literal",
+              "0",
+              "http://www.w3.org/2001/XMLSchema#integer",
+              ""
+            ]
+          ]
+        }
+      },
+      "iterations_per_process": 7,
+      "warmup_per_process": 2,
+      "processes": [
+        {
+          "engine": "triplelight",
+          "process": 1,
+          "median_ns": {
+            "inferred-class": 46291,
+            "inferred-property": 20959,
+            "load": 1533600583,
+            "q1": 18292,
+            "q10": 8125,
+            "q11": 13125,
+            "q12": 11334,
+            "q13": 7417,
+            "q14": 4567917,
+            "q2": 350792,
+            "q3": 19833,
+            "q4": 18625,
+            "q5": 8000,
+            "q6": 7583,
+            "q7": 13417,
+            "q8": 14250,
+            "q9": 16000
+          },
+          "peak_rss_bytes": 664879104
+        },
+        {
+          "engine": "jena",
+          "process": 2,
+          "median_ns": {
+            "inferred-class": 779167,
+            "inferred-property": 398000,
+            "load": 2280675667,
+            "q1": 346417,
+            "q10": 318208,
+            "q11": 274750,
+            "q12": 717917,
+            "q13": 312208,
+            "q14": 13440667,
+            "q2": 26207416,
+            "q3": 567750,
+            "q4": 404167,
+            "q5": 434916,
+            "q6": 267542,
+            "q7": 320125,
+            "q8": 2444500,
+            "q9": 467500,
+            "view": 7125
+          },
+          "peak_rss_bytes": 963117056
+        },
+        {
+          "engine": "jena",
+          "process": 3,
+          "median_ns": {
+            "inferred-class": 680875,
+            "inferred-property": 366208,
+            "load": 2309959125,
+            "q1": 360458,
+            "q10": 295625,
+            "q11": 275083,
+            "q12": 626667,
+            "q13": 267125,
+            "q14": 14124125,
+            "q2": 25960958,
+            "q3": 593875,
+            "q4": 382500,
+            "q5": 429625,
+            "q6": 243167,
+            "q7": 337375,
+            "q8": 2297750,
+            "q9": 415875,
+            "view": 8000
+          },
+          "peak_rss_bytes": 991838208
+        },
+        {
+          "engine": "triplelight",
+          "process": 4,
+          "median_ns": {
+            "inferred-class": 38000,
+            "inferred-property": 11083,
+            "load": 1525888959,
+            "q1": 17459,
+            "q10": 8000,
+            "q11": 13875,
+            "q12": 11500,
+            "q13": 7709,
+            "q14": 4591625,
+            "q2": 344834,
+            "q3": 17250,
+            "q4": 19667,
+            "q5": 8333,
+            "q6": 8000,
+            "q7": 14166,
+            "q8": 14833,
+            "q9": 16167
+          },
+          "peak_rss_bytes": 666238976
+        }
+      ]
+    },
+    "rdfs": {
+      "mode": "rdfs",
+      "matched_answers": {
+        "q1": {
+          "rows": 4
+        },
+        "q2": {
+          "rows": 28
+        },
+        "q3": {
+          "rows": 6
+        },
+        "q4": {
+          "rows": 34
+        },
+        "q5": {
+          "rows": 719
+        },
+        "q6": {
+          "rows": 75547
+        },
+        "q7": {
+          "rows": 59
+        },
+        "q8": {
+          "rows": 5916
+        },
+        "q9": {
+          "rows": 1233
+        },
+        "q10": {
+          "rows": 0
+        },
+        "q11": {
+          "rows": 0
+        },
+        "q12": {
+          "rows": 0
+        },
+        "q13": {
+          "rows": 0
+        },
+        "q14": {
+          "rows": 75547
+        },
+        "inferred-class": {
+          "rows": 1,
+          "answer": [
+            [
+              "literal",
+              "106409",
+              "http://www.w3.org/2001/XMLSchema#integer",
+              ""
+            ]
+          ]
+        },
+        "inferred-property": {
+          "rows": 1,
+          "answer": [
+            [
+              "literal",
+              "44518",
+              "http://www.w3.org/2001/XMLSchema#integer",
+              ""
+            ]
+          ]
+        }
+      },
+      "iterations_per_process": 7,
+      "warmup_per_process": 2,
+      "processes": [
+        {
+          "engine": "triplelight",
+          "process": 1,
+          "median_ns": {
+            "inferred-class": 22978250,
+            "inferred-property": 1622875,
+            "load": 1528245916,
+            "q1": 339583,
+            "q10": 970041,
+            "q11": 254208,
+            "q12": 261708,
+            "q13": 22860958,
+            "q14": 5852458,
+            "q2": 11336083,
+            "q3": 10207250,
+            "q4": 1941042,
+            "q5": 23462584,
+            "q6": 5936167,
+            "q7": 2965292,
+            "q8": 12667125,
+            "q9": 33476667
+          },
+          "peak_rss_bytes": 1079164928
+        },
+        {
+          "engine": "jena",
+          "process": 2,
+          "median_ns": {
+            "inferred-class": 69559292,
+            "inferred-property": 13533333,
+            "load": 2309329166,
+            "q1": 478000,
+            "q10": 583333,
+            "q11": 586167,
+            "q12": 2104500,
+            "q13": 306750,
+            "q14": 17610625,
+            "q2": 54727334,
+            "q3": 574583,
+            "q4": 623875,
+            "q5": 968792,
+            "q6": 18659083,
+            "q7": 683000,
+            "q8": 15981458,
+            "q9": 119036459,
+            "view": 6820542
+          },
+          "peak_rss_bytes": 2026340352
+        },
+        {
+          "engine": "jena",
+          "process": 3,
+          "median_ns": {
+            "inferred-class": 77020708,
+            "inferred-property": 13124791,
+            "load": 2320476958,
+            "q1": 530541,
+            "q10": 580167,
+            "q11": 604458,
+            "q12": 2132416,
+            "q13": 354333,
+            "q14": 18309333,
+            "q2": 53636833,
+            "q3": 565083,
+            "q4": 615500,
+            "q5": 1014417,
+            "q6": 18167958,
+            "q7": 728375,
+            "q8": 16580667,
+            "q9": 121378500,
+            "view": 7183459
+          },
+          "peak_rss_bytes": 2017148928
+        },
+        {
+          "engine": "triplelight",
+          "process": 4,
+          "median_ns": {
+            "inferred-class": 22896500,
+            "inferred-property": 1611500,
+            "load": 1579766583,
+            "q1": 340125,
+            "q10": 962708,
+            "q11": 240250,
+            "q12": 260958,
+            "q13": 22902166,
+            "q14": 5777709,
+            "q2": 11258875,
+            "q3": 10177750,
+            "q4": 1915709,
+            "q5": 23346000,
+            "q6": 5897000,
+            "q7": 2956833,
+            "q8": 12061625,
+            "q9": 33246375
+          },
+          "peak_rss_bytes": 1079754752
+        }
+      ]
+    },
+    "conforming": {
+      "mode": "shacl",
+      "matched_answers": {
+        "conforms": true,
+        "results": 0
+      },
+      "iterations_per_process": 7,
+      "warmup_per_process": 2,
+      "processes": [
+        {
+          "engine": "triplelight",
+          "process": 1,
+          "median_ns": {
+            "load": 929573167,
+            "serialize": 10250,
+            "shapes": 146917,
+            "validate": 2894620917
+          },
+          "peak_rss_bytes": 2416738304
+        },
+        {
+          "engine": "jena",
+          "process": 2,
+          "median_ns": {
+            "load": 2288027250,
+            "serialize": 178125,
+            "shapes": 4531500,
+            "validate": 94566750
+          },
+          "peak_rss_bytes": 1213136896
+        },
+        {
+          "engine": "jena",
+          "process": 3,
+          "median_ns": {
+            "load": 2335034083,
+            "serialize": 153417,
+            "shapes": 4496875,
+            "validate": 94214458
+          },
+          "peak_rss_bytes": 1201520640
+        },
+        {
+          "engine": "triplelight",
+          "process": 4,
+          "median_ns": {
+            "load": 924680334,
+            "serialize": 11916,
+            "shapes": 147000,
+            "validate": 2847339542
+          },
+          "peak_rss_bytes": 2409119744
+        }
+      ]
+    },
+    "violations": {
+      "mode": "shacl",
+      "matched_answers": {
+        "conforms": false,
+        "results": 106409
+      },
+      "iterations_per_process": 7,
+      "warmup_per_process": 2,
+      "processes": [
+        {
+          "engine": "triplelight",
+          "process": 1,
+          "median_ns": {
+            "load": 919325500,
+            "serialize": 262006500,
+            "shapes": 143042,
+            "validate": 2834555708
+          },
+          "peak_rss_bytes": 3419652096
+        },
+        {
+          "engine": "jena",
+          "process": 2,
+          "median_ns": {
+            "load": 2266850459,
+            "serialize": 629415417,
+            "shapes": 3934209,
+            "validate": 740834792
+          },
+          "peak_rss_bytes": 3958784000
+        },
+        {
+          "engine": "jena",
+          "process": 3,
+          "median_ns": {
+            "load": 2259511833,
+            "serialize": 720339084,
+            "shapes": 3968666,
+            "validate": 677822334
+          },
+          "peak_rss_bytes": 4430233600
+        },
+        {
+          "engine": "triplelight",
+          "process": 4,
+          "median_ns": {
+            "load": 921271667,
+            "serialize": 286249875,
+            "shapes": 136250,
+            "validate": 2909960458
+          },
+          "peak_rss_bytes": 3400351744
+        }
+      ]
+    }
+  }
+}

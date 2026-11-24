@@ -1,0 +1,2 @@
+PREFIX ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#>
+SELECT (COUNT(*) AS ?count) WHERE { ?s ub:degreeFrom ?university }
