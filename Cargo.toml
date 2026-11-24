@@ -68,6 +68,7 @@ path = "src/bin/triplelight.rs"
 workspace = true
 
 [features]
+default = ["rdfs", "shacl"]
 # Query-time RDFS inference.
 rdfs = ["triplelight-exec/rdfs"]
 # SHACL Core validation of RDF documents.

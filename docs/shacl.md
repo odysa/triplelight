@@ -1,6 +1,6 @@
 # SHACL Core validation
 
-Build the Rust library or CLI with the `shacl` Cargo feature to enable validation. The binding builds enable it by default.
+The `shacl` Cargo feature is enabled by default in the Rust library, CLI, and bindings. A custom build can omit it with `--no-default-features`.
 
 TripleLight validates an RDF graph against a SHACL Core shapes graph ([SHACL, W3C Recommendation 2017-07-20](https://www.w3.org/TR/2017/REC-shacl-20170720/)).
 Both graphs are given as triples; the module (`src/shacl/`) uses only the platform-independent RDF types of `triplelight::rdf`. The Rust function below takes

@@ -122,15 +122,13 @@ off by default and can be enabled with a token or, on loopback only, without one
 
 ### Optional RDFS entailment and SHACL validation
 
-Use Cargo features `rdfs` and `shacl` to build either capability or both. The Rust library and CLI default to both disabled.
+The Rust library, CLI, and binding builds include RDFS and SHACL. For a custom build, use `--no-default-features` and select the capabilities you need. For example, this command builds the CLI with RDFS only.
 
 ```sh
-cargo build --release --features rdfs,shacl
+cargo build --release --no-default-features --features rdfs
 ```
 
-With `rdfs` enabled, select `--entailment=rdfs` for CLI queries or `Entailment::Rdfs` in Rust. SHACL validates two supplied graphs through `triplelight validate <data> <shapes>` or the Rust validation API. [SHACL usage](docs/shacl.md) · [RDFS scope and reference checks](docs/rdfs-jena-lubm1-v1/README.md)
-
-The Python, Node.js, WebAssembly, and C binding builds enable both features by default to preserve their existing entry points. A custom Cargo build can use `--no-default-features` and select either feature explicitly.
+Select `--entailment=rdfs` for CLI queries or `Entailment::Rdfs` in Rust. SHACL validates two supplied graphs through `triplelight validate <data> <shapes>` or the Rust validation API. [SHACL usage](docs/shacl.md) · [RDFS scope and reference checks](docs/rdfs-jena-lubm1-v1/README.md)
 
 ### RDF 1.2 and SPARQL 1.2 (drafts, behind a build feature)
 

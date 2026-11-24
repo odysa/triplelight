@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }
-triplelight = { path = "../.." }
+triplelight = { path = "../..", default-features = false }
 
 # Built on its own (own toolchain and lockfile), not as a member of the root workspace.
 [workspace]

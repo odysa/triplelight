@@ -9,7 +9,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-triplelight = { path = "../.." }
+triplelight = { path = "../..", default-features = false }
 wasm-bindgen = "=0.2.100"
 js-sys = "0.3.77"
 # Randomness for blank-node labels and UUID() comes from the JS host (crypto.getRandomValues).

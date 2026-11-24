@@ -36,9 +36,9 @@ jobs:
         run: cargo test --locked --workspace --features server,async,rdfs,shacl
       - name: Check the optional features independently
         run: |
-          cargo test --locked --test query --test cli requires_the_feature
-          cargo check --locked --features rdfs
-          cargo check --locked --features shacl
+          cargo test --locked --no-default-features --test query --test cli requires_the_feature
+          cargo check --locked --no-default-features --features rdfs
+          cargo check --locked --no-default-features --features shacl
       - name: Third-party notices are in sync with the binding packages
         run: python3 ci/check_notices.py
       - name: No absolute local paths in the evidence files
