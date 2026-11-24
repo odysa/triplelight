@@ -209,7 +209,7 @@ impl Snapshot for Overlay {
     fn object_memo(&self) -> Option<&triplelight_core::storage::ObjectMemo> {
         if self.delta.is_empty() { self.base.object_memo() } else { Some(&self.object_memo) }
     }
-    fn text_candidates(&self, tokens: &[&str], limit: usize) -> Option<Vec<TermId>> {
+    fn text_candidates(&self, tokens: &[&str], limit: usize) -> Option<triplelight_core::storage::TextCandidates> {
         if !self.matches_base() { return None; }
         self.base.text_candidates(tokens, limit)
     }

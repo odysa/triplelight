@@ -8,9 +8,12 @@ use std::{
     os::unix::fs::FileExt,
     path::Path,
 };
-use triplelight_core::text::ANALYZER_ID;
+use triplelight_core::{storage::TextCandidates, text::ANALYZER_ID};
 
-pub(crate) const MAGIC: &[u8; 8] = b"TLTEXT01";
+const V1_MAGIC: &[u8; 8] = b"TLTEXT01";
+pub(crate) const MAGIC: &[u8; 8] = b"TLTEXT02";
+/// An analyzer token must contain a letter or a number, so it cannot equal this control character.
+pub(crate) const OVERSIZED: &str = "\x01";
 pub(crate) const HEADER_BYTES: u64 = 112;
 pub(crate) const MAX_ANALYZED_BYTES: usize = 8 * 1024 * 1024;
 
@@ -19,6 +22,7 @@ pub(crate) struct TextIndex {
     postings_bytes: u64,
     directory_bytes: u64,
     tokens: u64,
+    oversized: Option<(u64, u64)>,
 }
 
 fn invalid() -> io::Error {
@@ -35,10 +39,15 @@ impl TextIndex {
             .and_then(|s| s.strip_prefix("base-")).and_then(|s| s.parse().ok())
             .ok_or_else(invalid)?;
         let root = base.parent().ok_or_else(invalid)?;
-        let mut file = File::open(root.join(format!("text-{generation}.v1")))?;
+        let (mut file, v2) = match File::open(root.join(format!("text-{generation}.v2"))) {
+            Ok(file) => (file, true),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => (File::open(root.join(format!("text-{generation}.v1")))?, false),
+            Err(e) => return Err(e),
+        };
         let mut header = [0; HEADER_BYTES as usize];
         file.read_exact(&mut header)?;
-        if &header[..8] != MAGIC || u64_at(&header, 8) != generation || u64_at(&header, 16) != ANALYZER_ID {
+        let magic = if v2 { MAGIC } else { V1_MAGIC };
+        if &header[..8] != magic || u64_at(&header, 8) != generation || u64_at(&header, 16) != ANALYZER_ID {
             return Err(invalid());
         }
         if header[24..56] != manifest[..] {
@@ -67,7 +76,9 @@ impl TextIndex {
         if header[80..112] != digest.finalize()[..] {
             return Err(invalid());
         }
-        Ok(Self { file, postings_bytes, directory_bytes, tokens })
+        let mut index = Self { file, postings_bytes, directory_bytes, tokens, oversized: None };
+        if v2 { index.oversized = index.find(OVERSIZED)?; }
+        Ok(index)
     }
 
     fn directory_offset(&self, i: u64) -> io::Result<u64> {
@@ -115,21 +126,31 @@ impl TextIndex {
         Ok(None)
     }
 
-    pub(crate) fn candidates(&self, tokens: &[&str], limit: usize) -> io::Result<Vec<TermId>> {
+    pub(crate) fn candidates(&self, tokens: &[&str], limit: usize) -> io::Result<TextCandidates> {
+        let unchecked = if let Some((start, count)) = self.oversized {
+            if count > limit as u64 { return Err(invalid()); }
+            self.read_postings(start, count as usize)?
+        } else {
+            Vec::new()
+        };
+        // The unchecked IDs count toward the same cap as each posting list.
+        let limit = limit - unchecked.len();
         let mut result: Option<Vec<TermId>> = None;
         for token in tokens {
-            let Some((start, count)) = self.find(token)? else { return Ok(Vec::new()); };
+            let Some((start, count)) = self.find(token)? else {
+                return Ok(TextCandidates::new(Vec::new(), unchecked));
+            };
             if count > limit as u64 { return Err(invalid()); }
             let ids = self.read_postings(start, count as usize)?;
             match &mut result {
                 None => result = Some(ids),
                 Some(result) => {
                     result.retain(|id| ids.binary_search(id).is_ok());
-                    if result.is_empty() { return Ok(Vec::new()); }
+                    if result.is_empty() { return Ok(TextCandidates::new(Vec::new(), unchecked)); }
                 }
             }
         }
-        Ok(result.unwrap_or_default())
+        Ok(TextCandidates::new(result.unwrap_or_default(), unchecked))
     }
 
     fn read_postings(&self, start: u64, count: usize) -> io::Result<Vec<TermId>> {
@@ -164,7 +185,7 @@ pub(super) fn sweep(root: &Path, active_generation: u64) {
     for entry in entries.flatten() {
         let name = entry.file_name();
         let generation = name.to_str().and_then(|name| name.strip_prefix("text-"))
-            .and_then(|name| name.strip_suffix(".v1")).and_then(|name| name.parse::<u64>().ok());
+            .and_then(|name| name.strip_suffix(".v1").or_else(|| name.strip_suffix(".v2"))).and_then(|name| name.parse::<u64>().ok());
         if generation.is_some_and(|generation| generation != active_generation) {
             // An old reader that opened the index holds a descriptor. A later first lookup can use scalar.
             // When enabling cross-process snapshot pins, respect them here as well as in base cleanup.
