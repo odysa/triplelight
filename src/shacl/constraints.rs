@@ -23,6 +23,14 @@ pub(super) enum Constraint {
     HasValue(Term),
     LanguageIn(Vec<String>),
     UniqueLang(bool),
+    Equals(NamedNode),
+    Disjoint(NamedNode),
+    Not(Term),
+    And(Vec<Term>),
+    Or(Vec<Term>),
+    Xone(Vec<Term>),
+    Node(Term),
+    Property(Term),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -167,6 +175,14 @@ fn lang_range(term: &Term) -> Option<String> {
         .then(|| text.to_owned())
 }
 
+fn shape_reference(shape: &Term, parameter: &str, term: &Term) -> Result<Term, ValidationError> {
+    if matches!(term, Term::NamedNode(_) | Term::BlankNode(_)) {
+        Ok(term.clone())
+    } else {
+        Err(invalid(shape, parameter, "must name a shape"))
+    }
+}
+
 pub(super) fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, ValidationError> {
     let mut constraints = Vec::new();
     let property_shape = !shapes.objects(shape, &iri(SH, "path")).is_empty();
@@ -179,6 +195,13 @@ pub(super) fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, Val
         let named = || match value {
             Term::NamedNode(node) => Ok(node.clone()),
             _ => Err(invalid(shape, name, "must be an IRI")),
+        };
+        let shape_list = || {
+            shapes
+                .list_items(value)?
+                .iter()
+                .map(|term| shape_reference(shape, name, term))
+                .collect::<Result<Vec<_>, _>>()
         };
         let constraint = match name {
             "class" => Constraint::Class(named()?.into()),
@@ -215,12 +238,41 @@ pub(super) fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, Val
             "uniqueLang" => Constraint::UniqueLang(
                 boolean(value).ok_or_else(|| invalid(shape, name, "must be an xsd:boolean"))?,
             ),
+            "equals" => Constraint::Equals(named()?),
+            "disjoint" => Constraint::Disjoint(named()?),
+            "not" => Constraint::Not(shape_reference(shape, name, value)?),
+            "and" => Constraint::And(shape_list()?),
+            "or" => Constraint::Or(shape_list()?),
+            "xone" => Constraint::Xone(shape_list()?),
+            "node" | "property" => {
+                let target = shape_reference(shape, name, value)?;
+                let is_property = !shapes.objects(&target, &iri(SH, "path")).is_empty();
+                match (name, is_property) {
+                    ("node", false) => Constraint::Node(target),
+                    ("property", true) => Constraint::Property(target),
+                    ("node", true) => return Err(invalid(shape, name, "must name a node shape")),
+                    _ => return Err(invalid(shape, name, "must name a property shape")),
+                }
+            }
             _ => continue,
         };
         if matches!(name, "minCount" | "maxCount" | "uniqueLang") && !property_shape {
             return Err(invalid(shape, name, "requires a property shape"));
         }
-        if !matches!(name, "class" | "hasValue") && shapes.objects(shape, predicate).len() > 1 {
+        if !matches!(
+            name,
+            "class"
+                | "hasValue"
+                | "equals"
+                | "disjoint"
+                | "not"
+                | "and"
+                | "or"
+                | "xone"
+                | "node"
+                | "property"
+        ) && shapes.objects(shape, predicate).len() > 1
+        {
             return Err(invalid(shape, name, "has more than one value"));
         }
         constraints.push(constraint);
@@ -258,11 +310,33 @@ fn check_set(component: &str, passes: bool) -> Vec<ConstraintViolation> {
     }
 }
 
+fn check_conformance(
+    ev: &mut Evaluator<'_>,
+    component: &str,
+    shapes: &[Term],
+    values: &[Term],
+    accepts: impl Fn(usize) -> bool,
+) -> Result<Vec<ConstraintViolation>, ValidationError> {
+    let mut violations = Vec::new();
+    for value in values {
+        let mut conforming = 0;
+        for shape in shapes {
+            if ev.check_node(shape, value)?.is_empty() {
+                conforming += 1;
+            }
+        }
+        if !accepts(conforming) {
+            violations.push(violation(component, Some(value)));
+        }
+    }
+    Ok(violations)
+}
+
 impl Constraint {
     pub(super) fn evaluate(
         &self,
         cx: &ConstraintContext<'_>,
-        _ev: &mut Evaluator<'_>,
+        ev: &mut Evaluator<'_>,
     ) -> Result<Vec<ConstraintViolation>, ValidationError> {
         let values = cx.value_nodes;
         let results = match self {
@@ -329,6 +403,66 @@ impl Constraint {
                     .iter()
                     .map(|_| violation("UniqueLangConstraintComponent", None))
                     .collect()
+            }
+            Self::Equals(predicate) => {
+                let others = cx.data.objects(cx.focus, predicate);
+                let mut violations = check_values("EqualsConstraintComponent", values, |value| {
+                    others.contains(value)
+                });
+                violations.extend(check_values("EqualsConstraintComponent", others, |value| {
+                    values.contains(value)
+                }));
+                violations
+            }
+            Self::Disjoint(predicate) => {
+                let others = cx.data.objects(cx.focus, predicate);
+                check_values("DisjointConstraintComponent", values, |value| {
+                    !others.contains(value)
+                })
+            }
+            Self::Not(shape) => {
+                return check_conformance(
+                    ev,
+                    "NotConstraintComponent",
+                    std::slice::from_ref(shape),
+                    values,
+                    |count| count == 0,
+                );
+            }
+            Self::And(shapes) => {
+                return check_conformance(ev, "AndConstraintComponent", shapes, values, |count| {
+                    count == shapes.len()
+                });
+            }
+            Self::Or(shapes) => {
+                return check_conformance(ev, "OrConstraintComponent", shapes, values, |count| {
+                    count > 0
+                });
+            }
+            Self::Xone(shapes) => {
+                return check_conformance(ev, "XoneConstraintComponent", shapes, values, |count| {
+                    count == 1
+                });
+            }
+            Self::Node(shape) => {
+                return check_conformance(
+                    ev,
+                    "NodeConstraintComponent",
+                    std::slice::from_ref(shape),
+                    values,
+                    |count| count == 1,
+                );
+            }
+            Self::Property(shape) => {
+                let mut violations = Vec::new();
+                for value in values {
+                    violations.extend(
+                        ev.check_node(shape, value)?
+                            .into_iter()
+                            .map(ConstraintViolation::Forwarded),
+                    );
+                }
+                violations
             }
         };
         Ok(results)
