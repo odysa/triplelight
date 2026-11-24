@@ -9,7 +9,7 @@ use napi::{Env, JsObject, Task};
 use napi_derive::napi;
 use triplelight::rdf::{Literal, Term};
 use triplelight::embedded::{Database as Db, DatabaseError, DatabaseOptions, ReadSnapshot};
-use triplelight::exec::QueryResult;
+use triplelight::exec::{Entailment, QueryResult};
 
 /// Errors cross into JS as `Error` objects whose message starts with the error kind; `index.js` turns them into
 /// `TripleLightError` subclasses with a `kind` property.
@@ -24,6 +24,15 @@ fn err(e: DatabaseError) -> Error {
     Error::new(Status::GenericFailure, format!("{kind}: {e}"))
 }
 
+/// The `entailment` query option (#108): "simple" (the default) or "rdfs".
+fn entailment(name: Option<String>) -> Result<Entailment> {
+    match name.as_deref() {
+        None | Some("simple") => Ok(Entailment::Simple),
+        Some("rdfs") => Ok(Entailment::Rdfs),
+        Some(other) => Err(Error::new(Status::InvalidArg, format!("entailment must be \"simple\" or \"rdfs\", not {other:?}"))),
+    }
+}
+
 fn closed() -> Error { Error::new(Status::GenericFailure, "StorageError: the database is closed".to_string()) }
 
 /// A snapshot keeps its database (and so the directory lock) alive: closing the `Database` handle while a snapshot
@@ -32,11 +41,11 @@ fn closed() -> Error { Error::new(Status::GenericFailure, "StorageError: the dat
 enum Source { Db(Arc<Db>), Snap(Arc<Db>, Arc<ReadSnapshot>) }
 
 impl Source {
-    fn query(&self, q: &str) -> std::result::Result<QueryResult, DatabaseError> {
-        match self { Source::Db(d) => d.query(q), Source::Snap(_, s) => s.query(q) }
+    fn query(&self, q: &str, e: Entailment) -> std::result::Result<QueryResult, DatabaseError> {
+        match self { Source::Db(d) => d.query_with_entailment(q, e), Source::Snap(_, s) => s.query_with_entailment(q, e) }
     }
-    fn query_json(&self, q: &str) -> std::result::Result<String, DatabaseError> {
-        match self { Source::Db(d) => d.query_json(q), Source::Snap(_, s) => s.query_json(q) }
+    fn query_json(&self, q: &str, e: Entailment) -> std::result::Result<String, DatabaseError> {
+        match self { Source::Db(d) => d.query_json_with_entailment(q, e), Source::Snap(_, s) => s.query_json_with_entailment(q, e) }
     }
 }
 
@@ -147,19 +156,19 @@ fn convert(env: &Env, r: QueryResult) -> Result<JsObject> {
 
 // ---------- background tasks ----------
 
-pub struct QueryTask { src: Source, sparql: String }
+pub struct QueryTask { src: Source, sparql: String, entailment: Entailment }
 impl Task for QueryTask {
     type Output = QueryResult;
     type JsValue = JsObject;
-    fn compute(&mut self) -> Result<Self::Output> { self.src.query(&self.sparql).map_err(err) }
+    fn compute(&mut self) -> Result<Self::Output> { self.src.query(&self.sparql, self.entailment).map_err(err) }
     fn resolve(&mut self, env: Env, out: Self::Output) -> Result<Self::JsValue> { convert(&env, out) }
 }
 
-pub struct JsonTask { src: Source, sparql: String }
+pub struct JsonTask { src: Source, sparql: String, entailment: Entailment }
 impl Task for JsonTask {
     type Output = String;
     type JsValue = String;
-    fn compute(&mut self) -> Result<Self::Output> { self.src.query_json(&self.sparql).map_err(err) }
+    fn compute(&mut self) -> Result<Self::Output> { self.src.query_json(&self.sparql, self.entailment).map_err(err) }
     fn resolve(&mut self, _: Env, out: Self::Output) -> Result<Self::JsValue> { Ok(out) }
 }
 
@@ -215,21 +224,22 @@ impl Database {
     }
     fn db(&self) -> Result<Arc<Db>> { self.db.clone().ok_or_else(closed) }
 
-    /// Runs a SPARQL SELECT / ASK / CONSTRUCT / DESCRIBE query on the current state.
+    /// Runs a SPARQL SELECT / ASK / CONSTRUCT / DESCRIBE query on the current state. `entailment` "rdfs" matches the
+    /// default graph's RDFS closure, computed at query time; the default is "simple".
     #[napi(ts_return_type = "Promise<QueryResult>")]
-    pub fn query(&self, sparql: String) -> Result<AsyncTask<QueryTask>> {
-        Ok(AsyncTask::new(QueryTask { src: Source::Db(self.db()?), sparql }))
+    pub fn query(&self, sparql: String, entailment: Option<String>) -> Result<AsyncTask<QueryTask>> {
+        Ok(AsyncTask::new(QueryTask { src: Source::Db(self.db()?), sparql, entailment: self::entailment(entailment)? }))
     }
     /// Like `query`, but blocks the calling thread (for scripts and tests).
     #[napi(ts_return_type = "QueryResult")]
-    pub fn query_sync(&self, env: Env, sparql: String) -> Result<JsObject> {
-        let r = self.db()?.query(&sparql).map_err(err)?;
+    pub fn query_sync(&self, env: Env, sparql: String, entailment: Option<String>) -> Result<JsObject> {
+        let r = self.db()?.query_with_entailment(&sparql, self::entailment(entailment)?).map_err(err)?;
         convert(&env, r)
     }
     /// SPARQL 1.1 Query Results JSON as a string: the fastest path for large results.
     #[napi(ts_return_type = "Promise<string>")]
-    pub fn query_json(&self, sparql: String) -> Result<AsyncTask<JsonTask>> {
-        Ok(AsyncTask::new(JsonTask { src: Source::Db(self.db()?), sparql }))
+    pub fn query_json(&self, sparql: String, entailment: Option<String>) -> Result<AsyncTask<JsonTask>> {
+        Ok(AsyncTask::new(JsonTask { src: Source::Db(self.db()?), sparql, entailment: self::entailment(entailment)? }))
     }
     /// Applies a SPARQL Update atomically and durably (fsync before the Promise resolves). Resolves to the number of
     /// triples changed.
@@ -265,16 +275,16 @@ pub struct Snapshot { db: Arc<Db>, snap: Arc<ReadSnapshot> }
 #[napi]
 impl Snapshot {
     #[napi(ts_return_type = "Promise<QueryResult>")]
-    pub fn query(&self, sparql: String) -> AsyncTask<QueryTask> {
-        AsyncTask::new(QueryTask { src: Source::Snap(Arc::clone(&self.db), Arc::clone(&self.snap)), sparql })
+    pub fn query(&self, sparql: String, entailment: Option<String>) -> Result<AsyncTask<QueryTask>> {
+        Ok(AsyncTask::new(QueryTask { src: Source::Snap(Arc::clone(&self.db), Arc::clone(&self.snap)), sparql, entailment: self::entailment(entailment)? }))
     }
     #[napi(ts_return_type = "QueryResult")]
-    pub fn query_sync(&self, env: Env, sparql: String) -> Result<JsObject> {
-        let r = self.snap.query(&sparql).map_err(err)?;
+    pub fn query_sync(&self, env: Env, sparql: String, entailment: Option<String>) -> Result<JsObject> {
+        let r = self.snap.query_with_entailment(&sparql, self::entailment(entailment)?).map_err(err)?;
         convert(&env, r)
     }
     #[napi(ts_return_type = "Promise<string>")]
-    pub fn query_json(&self, sparql: String) -> AsyncTask<JsonTask> {
-        AsyncTask::new(JsonTask { src: Source::Snap(Arc::clone(&self.db), Arc::clone(&self.snap)), sparql })
+    pub fn query_json(&self, sparql: String, entailment: Option<String>) -> Result<AsyncTask<JsonTask>> {
+        Ok(AsyncTask::new(JsonTask { src: Source::Snap(Arc::clone(&self.db), Arc::clone(&self.snap)), sparql, entailment: self::entailment(entailment)? }))
     }
 }

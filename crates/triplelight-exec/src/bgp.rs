@@ -16,6 +16,10 @@ const SORTED_PROBE_MIN_ROWS: usize = 16 * 1024;
 /// Cost of one index probe (a seek plus a short range read) in scanned rows, for choosing between one probe per input
 /// row and one scan of the whole range (`extend_hash`'s semi-join).
 const PROBE_ROWS: u64 = 20;
+/// Input rows from which a probe join over key-sorted rows merges with one positioned scan per morsel instead
+/// (`Bgp::extend_merge`), and the rows per such morsel.
+const MERGE_MIN_ROWS: usize = 4096;
+const MERGE_MORSEL: usize = 8192;
 
 pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
     pub snap: &'a S,
@@ -155,6 +159,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         let w = self.w;
         if let Some(out) = self.extend_range(pat, rows) { return (out, "range") }
         if let Some(out) = self.extend_member_set(pat, rows) { return (out, "member-set") }
+        if let Some(out) = self.extend_merge(pat, rows) { return (out, "merge") }
         if let Some(out) = self.extend_hash(pat, rows) { return (out, "hash") }
         if let Some(out) = self.extend_sorted(pat, rows) { return (out, "sorted") }
         if rows.len() / w.max(1) >= 2 * MORSEL {
@@ -163,6 +168,72 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         } else {
             (self.extend_seq(pat, rows), "probe")
         }
+    }
+
+    /// Merge join for a pattern with one constant, one variable bound in every row and one free variable when the
+    /// rows are sorted by the bound variable (e.g. `?review dc:date ?date` after a PSO scan of `?review bsbm:reviewFor
+    /// ?product`) and the constant's range is no more than `PROBE_ROWS` times the input: each morsel of rows reads the
+    /// permutation `(constant, key, free)` once, positioned at its first key (`Snapshot::scan_from`), and walks it
+    /// alongside the rows. Per row, the values come in index order, as a probe's would, and rows keep their order, so
+    /// the output equals the probe join's.
+    fn extend_merge(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
+        let w = self.w;
+        if w == 0 { return None }
+        let n = rows.len() / w;
+        if n < MERGE_MIN_ROWS { return None }
+        let first = &rows[..w];
+        let (mut cpos, mut kpos, mut fpos) = (None, None, None);
+        for (i, s) in pat.iter().enumerate() {
+            match s {
+                Slot::Const(Some(_)) => { if cpos.is_some() { return None } cpos = Some(i) }
+                Slot::Const(None) => return None,
+                Slot::Var(v) if first[*v] != UNBOUND => { if kpos.is_some() { return None } kpos = Some(i) }
+                Slot::Var(_) => { if fpos.is_some() { return None } fpos = Some(i) }
+            }
+        }
+        let (cpos, kpos, fpos) = (cpos?, kpos?, fpos?);
+        let (Slot::Const(Some(c)), Slot::Var(kv), Slot::Var(fv)) = (pat[cpos], pat[kpos], pat[fpos]) else { return None };
+        if kv == fv { return None }
+        if rows.chunks_exact(w).any(|r| r[kv] == UNBOUND || r[fv] != UNBOUND) { return None }
+        if !rows.chunks_exact(w).map(|r| r[kv]).is_sorted() { return None }
+        let perm = Perm::ALL.into_iter().find(|p| p.order() == [cpos, kpos, fpos])?;
+        if self.count(perm, &[c]) > PROBE_ROWS * n as u64 { return None }
+        let parts: Vec<Vec<TermId>> = rows.par_chunks(w * MERGE_MORSEL).map(|chunk| {
+            let (lo, hi) = (chunk[kv], chunk[chunk.len() - w + kv]);
+            let mut out = Vec::with_capacity(chunk.len());
+            let mut scan = self.snap.scan_from(perm, &[c], lo);
+            let (mut batch, mut at) = (TripleBatch::default(), 0usize);
+            // The values of the current key, reused by consecutive rows with that key.
+            let (mut key, mut vals): (Option<TermId>, Vec<TermId>) = (None, Vec::new());
+            // The scan's next row (key, free value), or None at its end or past `hi`.
+            let mut next = || -> Option<(TermId, TermId)> {
+                while at >= batch.len() {
+                    batch = scan.next()?.unwrap_or_else(|e| storage_failure(e));
+                    at = 0;
+                }
+                let r = (batch.cols[1][at], batch.cols[2][at]);
+                if r.0 > hi { return None }
+                at += 1;
+                Some(r)
+            };
+            let mut pending = next();
+            for row in chunk.chunks_exact(w) {
+                let k = row[kv];
+                if key != Some(k) {
+                    vals.clear();
+                    while let Some((pk, _)) = pending && pk < k { pending = next() }
+                    while let Some((pk, f)) = pending && pk == k { vals.push(f); pending = next() }
+                    key = Some(k);
+                }
+                for &f in &vals {
+                    let at = out.len() + fv;
+                    out.extend_from_slice(row);
+                    out[at] = f;
+                }
+            }
+            out
+        }).collect();
+        Some(parts.concat())
     }
 
     /// Membership filter for a pattern with two constants and one variable bound in every row (e.g.
@@ -446,6 +517,53 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             sum
         };
         if first.len()>=64 { first.par_chunks(16).map(part).reduce(||0,checked_count) } else { part(&first) }
+    }
+
+    /// Solutions of a star BGP (`pattern::star_center`), and how many distinct center values they have, without
+    /// enumerating the leaves. The candidates are the leapfrog intersection of the most selective pattern and every
+    /// pattern with no leaf; each pattern with leaves is probed with one range count per candidate (zero drops it), and
+    /// a candidate contributes the product of those counts. Split across rayon workers
+    /// like `count_leapfrog`.
+    pub fn count_star(&self, pats: &[[Slot; 3]], center: usize) -> (u64, u64) {
+        let mut counted: Vec<(u64, [Slot; 3])> = self.const_counts(pats).zip(pats.iter().copied()).collect();
+        if counted.iter().any(|&(n, _)| n == 0) { return (0, 0) }
+        // Candidates from the most selective pattern; the next most selective probes first, so misses stop early.
+        counted.sort_by_key(|&(n, _)| n);
+        let (counts, pats): (Vec<u64>, Vec<[Slot; 3]>) = counted.into_iter().unzip();
+        let mut order = vec![center];
+        for p in &pats { order.extend(vars_of(p).into_iter().filter(|&v| v != center)) }
+        let (_, plans) = lf_plan(&pats, &counts, Some(order));
+        // Each plan is keyed constants, then the center, then its own leaves: the center's count prefix.
+        let prefixes: Vec<(Perm, [TermId; 3], usize)> = plans.iter().map(|(perm, key)| {
+            let k = key.iter().position(|s| matches!(s, Slot::Var(v) if *v == center)).unwrap();
+            let mut prefix = [UNBOUND; 3];
+            for (j, s) in key[..k].iter().enumerate() { if let Slot::Const(id) = s { prefix[j] = id.unwrap() } }
+            (*perm, prefix, k)
+        }).collect();
+        // A pattern whose only variable is the center (`?c p o`) is a sorted list of exactly the centers it admits:
+        // the leapfrog intersects those, skipping ahead in each, and only the patterns with leaves are probed.
+        let (lists, probes): (Vec<usize>, Vec<usize>) = (0..plans.len()).partition(|&i| prefixes[i].2 == 2);
+        // The most selective pattern leads the intersection too, leaves or not (it is then also probed for its count).
+        let lists = if lists.contains(&0) { lists } else { std::iter::once(0).chain(lists).collect() };
+        let probes: Vec<_> = probes.into_iter().map(|i| prefixes[i]).collect();
+        let lists: Vec<_> = lists.into_iter().map(|i| plans[i]).collect();
+        let candidates = self.intersect(&lists, center, &vec![UNBOUND; self.w]);
+        let part = |values: &[TermId]| {
+            let (mut sum, mut centers) = (0, 0);
+            'next: for &c in values {
+                let mut product = 1;
+                for &(perm, mut prefix, k) in &probes {
+                    prefix[k] = c;
+                    let n = self.count(perm, &prefix[..=k]);
+                    if n == 0 { continue 'next }
+                    product = checked_count_product(product, n);
+                }
+                (sum, centers) = (checked_count(sum, product), centers + 1);
+            }
+            (sum, centers)
+        };
+        let add = |a: (u64, u64), b: (u64, u64)| (checked_count(a.0, b.0), a.1 + b.1);
+        if candidates.len() >= 64 { candidates.par_chunks(256).map(part).reduce(|| (0, 0), add) } else { part(&candidates) }
     }
 
     fn lf_count_depth(&self, plans: &[(Perm, [Slot; 3])], order: &[usize], depth: usize, row: &mut Vec<TermId>) -> u64 {
@@ -738,5 +856,34 @@ pub(crate) mod sorted_probe_tests {
         assert!(off.extend_sorted(&patterns[0], &rows).is_none());
         // Below the threshold.
         assert!(on.extend_sorted(&patterns[0], &rows[..w * (SORTED_PROBE_MIN_ROWS - 1)]).is_none());
+    }
+
+    /// The merge join over key-sorted rows equals the probe join row for row: duplicate keys, keys without matches,
+    /// keys past the last index key, morsel boundaries inside a key's run, the key as subject or as object.
+    #[test]
+    fn merge_join_matches_probes_in_order() {
+        let mut t = Vec::new();
+        for s in 1..=400u64 {
+            for j in 0..(s % 5) { t.push([s, 1000, 1 + (s * 7 + j * 13) % 500]) }
+            if s % 3 == 0 { t.push([1 + (s * 11) % 450, 1001, s]) }
+        }
+        let snap = Triples::new(&t);
+        let w = 3;
+        let mut keys: Vec<u64> = (0..MERGE_MORSEL as u64 * 2 + 777).map(|i| 1 + (i * 2654435761) % 470).collect();
+        keys.sort_unstable();
+        let rows: Vec<TermId> = keys.iter().flat_map(|&k| [TermId(k), UNBOUND, TermId(9)]).collect();
+        let b = Bgp { snap: &snap, w, ranges: None, sorted_probe: false };
+        for pat in [
+            [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)],
+            [Slot::Var(1), Slot::Const(Some(TermId(1001))), Slot::Var(0)],
+        ] {
+            let merged = b.extend_merge(&pat, &rows).expect("sorted keys, dense enough");
+            assert_eq!(merged, b.extend_seq(&pat, &rows), "{pat:?}");
+        }
+        // Not taken: unsorted keys, or the free variable already bound.
+        let mut unsorted = rows.clone();
+        unsorted.swap(0, w * 100);
+        assert!(b.extend_merge(&[Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)], &unsorted).is_none());
+        assert!(b.extend_merge(&[Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(2)], &rows).is_none());
     }
 }

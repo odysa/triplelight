@@ -209,6 +209,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         char_pairs: true,
                         sorted_probe: true,
                         csr_paths: true,
+                        entailment: Default::default(),
                     },
                 )?
                 else {

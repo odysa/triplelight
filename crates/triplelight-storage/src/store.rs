@@ -179,6 +179,11 @@ impl Snapshot for Overlay {
         Box::new(MergeScan { base: self.base.scan_for_stats(), cur: None, at: 0, adds, ai: 0, dels, done: false })
     }
 
+    fn scan_from<'a>(&'a self, perm: Perm, prefix: &[TermId], from: TermId) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+        if self.delta.is_empty() { return self.base.scan_from(perm, prefix, from) }
+        triplelight_core::storage::scan_from_by_scan(self, perm, prefix, from)
+    }
+
     fn first_keys(&self, perm: Perm) -> Result<Vec<TermId>, StorageError> {
         if self.delta.is_empty() { return self.base.first_keys(perm) }
         triplelight_core::storage::first_keys_by_scan(self, perm)

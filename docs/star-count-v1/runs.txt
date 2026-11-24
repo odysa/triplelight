@@ -1,0 +1,110 @@
+main all_C3 77.37 047b60fd3c2a
+main distinct_C3 40.95 8ed47ae59785
+main all_L3 0.38 5c8529270f61
+main distinct_L3 0.34 410e03ff30a7
+main all_L4 0.42 dcfe8cf81814
+main distinct_L4 0.45 dcfe8cf81814
+main all_S1 0.32 7163e31850ef
+main distinct_S1 0.32 7163e31850ef
+main all_S2 0.34 406ea666cdb6
+main distinct_S2 0.43 406ea666cdb6
+main all_S3 0.61 7163e31850ef
+main distinct_S3 0.61 7163e31850ef
+main all_S4 0.66 fbe36ddccce9
+main distinct_S4 0.65 fbe36ddccce9
+main all_S5 0.55 7163e31850ef
+main distinct_S5 0.54 7163e31850ef
+main all_S6 0.40 be9d31473f9d
+main distinct_S6 0.39 be9d31473f9d
+main all_S7 0.27 7163e31850ef
+main distinct_S7 0.27 7163e31850ef
+main all_F5 0.26 999c4eab5ad3
+main all_L2 1.15 a392213fe392
+cand all_C3 15.97 047b60fd3c2a
+cand distinct_C3 16.21 8ed47ae59785
+cand all_L3 0.33 5c8529270f61
+cand distinct_L3 0.34 410e03ff30a7
+cand all_L4 0.44 dcfe8cf81814
+cand distinct_L4 0.43 dcfe8cf81814
+cand all_S1 0.46 7163e31850ef
+cand distinct_S1 0.45 7163e31850ef
+cand all_S2 0.56 406ea666cdb6
+cand distinct_S2 0.56 406ea666cdb6
+cand all_S3 0.73 7163e31850ef
+cand distinct_S3 0.76 7163e31850ef
+cand all_S4 0.64 fbe36ddccce9
+cand distinct_S4 0.60 fbe36ddccce9
+cand all_S5 0.46 7163e31850ef
+cand distinct_S5 0.46 7163e31850ef
+cand all_S6 0.46 be9d31473f9d
+cand distinct_S6 0.47 be9d31473f9d
+cand all_S7 0.33 7163e31850ef
+cand distinct_S7 0.33 7163e31850ef
+cand all_F5 0.44 999c4eab5ad3
+cand all_L2 1.20 a392213fe392
+cand all_C3 16.15 047b60fd3c2a
+cand distinct_C3 16.26 8ed47ae59785
+cand all_L3 0.37 5c8529270f61
+cand distinct_L3 0.36 410e03ff30a7
+cand all_L4 0.44 dcfe8cf81814
+cand distinct_L4 0.43 dcfe8cf81814
+cand all_S1 0.45 7163e31850ef
+cand distinct_S1 0.45 7163e31850ef
+cand all_S2 0.57 406ea666cdb6
+cand distinct_S2 0.57 406ea666cdb6
+cand all_S3 0.66 7163e31850ef
+cand distinct_S3 0.66 7163e31850ef
+cand all_S4 0.57 fbe36ddccce9
+cand distinct_S4 0.58 fbe36ddccce9
+cand all_S5 0.46 7163e31850ef
+cand distinct_S5 0.45 7163e31850ef
+cand all_S6 0.44 be9d31473f9d
+cand distinct_S6 0.44 be9d31473f9d
+cand all_S7 0.32 7163e31850ef
+cand distinct_S7 0.32 7163e31850ef
+cand all_F5 0.42 999c4eab5ad3
+cand all_L2 1.20 a392213fe392
+main all_C3 77.55 047b60fd3c2a
+main distinct_C3 41.12 8ed47ae59785
+main all_L3 0.37 5c8529270f61
+main distinct_L3 0.34 410e03ff30a7
+main all_L4 0.43 dcfe8cf81814
+main distinct_L4 0.45 dcfe8cf81814
+main all_S1 0.33 7163e31850ef
+main distinct_S1 0.32 7163e31850ef
+main all_S2 0.34 406ea666cdb6
+main distinct_S2 0.44 406ea666cdb6
+main all_S3 0.62 7163e31850ef
+main distinct_S3 0.61 7163e31850ef
+main all_S4 0.65 fbe36ddccce9
+main distinct_S4 0.64 fbe36ddccce9
+main all_S5 0.55 7163e31850ef
+main distinct_S5 0.54 7163e31850ef
+main all_S6 0.40 be9d31473f9d
+main distinct_S6 0.40 be9d31473f9d
+main all_S7 0.27 7163e31850ef
+main distinct_S7 0.17 7163e31850ef
+main all_F5 0.26 999c4eab5ad3
+main all_L2 1.16 a392213fe392
+SUMMARY all_C3       main    77.48 ms  branch    16.04 ms  ratio 0.207  same
+SUMMARY distinct_C3  main    41.08 ms  branch    16.25 ms  ratio 0.396  same
+SUMMARY all_L3       main     0.37 ms  branch     0.36 ms  ratio 0.963  same
+SUMMARY distinct_L3  main     0.34 ms  branch     0.35 ms  ratio 1.035  same
+SUMMARY all_L4       main     0.43 ms  branch     0.44 ms  ratio 1.032  same
+SUMMARY distinct_L4  main     0.45 ms  branch     0.43 ms  ratio 0.955  same
+SUMMARY all_S1       main     0.33 ms  branch     0.45 ms  ratio 1.396  same
+SUMMARY distinct_S1  main     0.32 ms  branch     0.45 ms  ratio 1.425  same
+SUMMARY all_S2       main     0.34 ms  branch     0.56 ms  ratio 1.653  same
+SUMMARY distinct_S2  main     0.44 ms  branch     0.57 ms  ratio 1.294  same
+SUMMARY all_S3       main     0.62 ms  branch     0.69 ms  ratio 1.119  same
+SUMMARY distinct_S3  main     0.61 ms  branch     0.69 ms  ratio 1.127  same
+SUMMARY all_S4       main     0.65 ms  branch     0.60 ms  ratio 0.921  same
+SUMMARY distinct_S4  main     0.65 ms  branch     0.59 ms  ratio 0.908  same
+SUMMARY all_S5       main     0.55 ms  branch     0.46 ms  ratio 0.837  same
+SUMMARY distinct_S5  main     0.54 ms  branch     0.45 ms  ratio 0.845  same
+SUMMARY all_S6       main     0.40 ms  branch     0.45 ms  ratio 1.138  same
+SUMMARY distinct_S6  main     0.40 ms  branch     0.46 ms  ratio 1.163  same
+SUMMARY all_S7       main     0.27 ms  branch     0.33 ms  ratio 1.216  same
+SUMMARY distinct_S7  main     0.19 ms  branch     0.33 ms  ratio 1.742  same
+SUMMARY all_F5       main     0.26 ms  branch     0.43 ms  ratio 1.646  same
+SUMMARY all_L2       main     1.15 ms  branch     1.20 ms  ratio 1.038  same

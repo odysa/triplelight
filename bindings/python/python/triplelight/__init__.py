@@ -99,8 +99,8 @@ class Snapshot:
     """An immutable view of the database; unaffected by later updates."""
 
     def __init__(self, raw): self._raw = raw
-    def query(self, sparql: str) -> Result: return Result(self._raw.query(sparql))
-    def query_json(self, sparql: str) -> str: return self._raw.query_json(sparql)
+    def query(self, sparql: str, entailment: str = "simple") -> Result: return Result(self._raw.query(sparql, entailment))
+    def query_json(self, sparql: str, entailment: str = "simple") -> str: return self._raw.query_json(sparql, entailment)
     def __enter__(self): return self
     def __exit__(self, *exc): return False
 
@@ -121,13 +121,17 @@ class Database:
         db._db = _triplelight.Database.in_memory()
         return db
 
-    def query(self, sparql: str) -> Result:
-        """Run a SPARQL SELECT / ASK / CONSTRUCT query on the current state."""
-        return Result(self._db.query(sparql))
+    def query(self, sparql: str, entailment: str = "simple") -> Result:
+        """Run a SPARQL SELECT / ASK / CONSTRUCT query on the current state.
 
-    def query_json(self, sparql: str) -> str:
+        `entailment="rdfs"` matches the default graph's RDFS closure (subclasses, subproperties, domain and range),
+        computed at query time; nothing inferred is stored. The default, "simple", matches the stored triples.
+        """
+        return Result(self._db.query(sparql, entailment))
+
+    def query_json(self, sparql: str, entailment: str = "simple") -> str:
         """SPARQL 1.1 Query Results JSON as a string for SELECT and ASK; no Python row objects are created."""
-        return self._db.query_json(sparql)
+        return self._db.query_json(sparql, entailment)
 
     def load(self, path) -> int:
         """Atomically import an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file. For N-Triples and Turtle, an empty in-memory store builds its indexes as it parses, then sorts them before publishing; N-Quads and TriG take the dataset-change path."""
