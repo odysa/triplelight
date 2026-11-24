@@ -6,6 +6,7 @@
 //! Semantics are those of `Ctx::aggregate`, operation for operation: same numeric typing and overflow-as-error for
 //! SUM/AVG, same tie rules for MIN (first) and MAX (last) under `order_cmp`, same first-appearance group order.
 //! Anything else (expressions other than a plain variable, GROUP_CONCAT, custom aggregates) uses the general path.
+mod count;
 use super::{expr, Ctx, Row, UNBOUND};
 use crate::model::TermId;
 use crate::storage::Snapshot;
@@ -128,6 +129,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let mut key: Vec<TermId> = Vec::with_capacity(kidx.len());
         // MIN/MAX per (group, aggregate) that met an error.
         let mut poisoned: Vec<bool> = Vec::new();
+        let mut held = self.reserve(0);
         for (n, r) in rows.iter().enumerate() {
             if n.is_multiple_of(4096) { self.check() }
             key.clear();
@@ -138,6 +140,8 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                     pos.insert(key.clone(), groups.len());
                     let seen = specs.iter().map(|s| (s.distinct && !matches!(s.kind, Kind::CountAll { .. })).then(HashSet::new)).collect();
                     groups.push((key.clone(), fresh(), seen));
+                    // A key, its aggregate states and a table entry per group, charged every 4096 groups.
+                    if groups.len().is_multiple_of(4096) { Self::resize(&mut held, groups.len() as u64 * (64 + 8 * kidx.len() as u64 + 32 * specs.len() as u64)) }
                     poisoned.extend(std::iter::repeat_n(false, specs.len()));
                     groups.len() - 1
                 }
