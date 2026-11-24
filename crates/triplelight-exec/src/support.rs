@@ -55,7 +55,6 @@ const XSD_CASTS: &[&str] = &["string", "double", "float", "decimal", "integer", 
 fn expr_unsupported(e: &Expression, ds: bool) -> Option<String> {
     match e {
         Expression::Exists(p) => pattern_unsupported(p, ds),
-        Expression::FunctionCall(Function::BNode, args) if !args.is_empty() => Some("BNODE(string) is not supported".into()),
         Expression::FunctionCall(f, args) => function_unsupported(f).or_else(|| args.iter().find_map(|a| expr_unsupported(a, ds))),
         e => e.children().find_map(|c| expr_unsupported(c, ds)),
     }

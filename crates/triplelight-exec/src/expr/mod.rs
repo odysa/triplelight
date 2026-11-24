@@ -1,8 +1,11 @@
 //! SPARQL expression evaluation over resolved terms. `None` is the SPARQL "error" value.
+pub(super) mod extend;
 pub(crate) mod order;
 pub(crate) mod text;
 use triplelight_rdf::vocab::{rdf, xsd};
-use triplelight_rdf::{Literal, NamedNode, Term, Variable};
+use triplelight_rdf::{BlankNode, Literal, NamedNode, Term, Variable};
+use std::cell::RefCell;
+use std::collections::HashMap;
 #[cfg(feature = "rdf-12")]
 use triplelight_rdf::{BaseDirection, NamedOrBlankNode, Triple};
 use crate::sparql::{Expression, Function, GraphPattern};
@@ -301,6 +304,20 @@ fn lit(t: &Term) -> Option<&Literal> { if let Term::Literal(l) = t { Some(l) } e
 /// A string literal (simple, xsd:string or language-tagged), the argument type of SPARQL string functions.
 fn strlit(t: &Term) -> Option<&Literal> { lit(t).filter(|l| is_stringish(l)) }
 
+/// Labels passed to BNODE(string) within one solution occurrence.
+#[derive(Default)]
+pub(super) struct BlankScope(RefCell<Option<HashMap<String, BlankNode>>>);
+
+impl BlankScope {
+    fn blank_for(&self, argument: &Term) -> Option<Term> {
+        let text = strlit(argument)?;
+        if text.language().is_some() { return None }
+        let mut labels = self.0.borrow_mut();
+        let node = labels.get_or_insert_with(HashMap::new).entry(text.value().to_owned()).or_default();
+        Some(node.clone().into())
+    }
+}
+
 /// Resolve one expression using the current solution's bindings and correlated pattern test.
 pub(super) fn eval(
     e: &Expression,
@@ -308,8 +325,9 @@ pub(super) fn eval(
     exists: &impl Fn(&GraphPattern) -> bool,
     base: Option<&str>,
     now: &str,
+    blanks: &BlankScope,
 ) -> Option<Term> {
-    let v = |e: &Expression| eval(e, binding, exists, base, now);
+    let v = |e: &Expression| eval(e, binding, exists, base, now, blanks);
     match e {
         Expression::NamedNode(n) => Some(n.clone().into()),
         Expression::Literal(l) => Some(l.clone().into()),
@@ -349,6 +367,9 @@ pub(super) fn eval(
         Expression::Exists(p) => Some(bool_term(exists(p))),
         Expression::If(c, a, b) => if ebv(&v(c)?)? { v(a) } else { v(b) },
         Expression::Coalesce(l) => l.iter().find_map(v),
+        Expression::FunctionCall(Function::BNode, args) if args.len() == 1 => {
+            blanks.blank_for(&v(&args[0])?)
+        }
         Expression::FunctionCall(f, args) => call(f, args, &|e| v(e), base, now),
     }
 }
@@ -572,7 +593,7 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             if lang.is_empty() { return None }
             Some(Literal::new_directional_language_tagged_literal(plain(0)?, lang, dir).ok()?.into())
         }
-        _ => None, // BNODE(string) is rejected up front by `support`
+        _ => None,
     }
 }
 
