@@ -2,7 +2,7 @@
 
 use std::fs;
 use std::path::PathBuf;
-use triplelight::storage::{DiskBase, DiskSnapshot, Snapshot};
+use triplelight::storage::{Dictionary, DiskBase, DiskSnapshot, Snapshot};
 use triplelight::store::{Store, StoreUpdate};
 
 struct Fixture(PathBuf);
@@ -40,9 +40,9 @@ fn text_index_preserves_store_bytes_and_sorts_unique_postings() {
     assert_eq!(fs::read(root.join("base-0/MANIFEST")).unwrap(), manifest_before);
     assert_eq!(fs::read(root.join("wal.log")).unwrap(), wal_before);
 
-    let file = fs::read(root.join("text-0.v1")).unwrap();
+    let file = fs::read(root.join("text-0.v2")).unwrap();
     let word = |offset: usize| u64::from_le_bytes(file[offset..offset + 8].try_into().unwrap()) as usize;
-    assert_eq!(&file[..8], b"TLTEXT01");
+    assert_eq!(&file[..8], b"TLTEXT02");
     assert_eq!(word(8), 0);
     assert_eq!(word(16), 1);
     assert_eq!(word(72), 2);
@@ -59,22 +59,46 @@ fn text_index_preserves_store_bytes_and_sorts_unique_postings() {
     let reopen = || Store::open_with(&root, None, Box::new(DiskBase { workers: 1 })).unwrap();
     let store = reopen();
     let pinned = store.snapshot();
-    assert_eq!(pinned.text_candidates(&["graph", "strasse"], 8).unwrap().len(), 1);
-    assert_eq!(pinned.text_candidates(&["graph"], 8).unwrap().len(), 2);
+    let a = pinned.lookup(&"\"Graph graph Straße\"@de".parse().unwrap()).unwrap().unwrap();
+    let b = pinned.lookup(&"\"graph\"".parse().unwrap()).unwrap().unwrap();
+    let both_words = pinned.text_candidates(&["graph", "strasse"], 8).unwrap();
+    assert_eq!(both_words.matches(a), Some(true));
+    assert_eq!(both_words.matches(b), Some(false));
+    let graph_matches = |snapshot: &dyn Snapshot| {
+        let candidates = snapshot.text_candidates(&["graph"], 8).unwrap();
+        assert_eq!(candidates.matches(a), Some(true));
+        assert_eq!(candidates.matches(b), Some(true));
+    };
+    graph_matches(&*pinned);
     assert!(pinned.text_candidates(&["graph"], 1).is_none());
     assert_eq!(answer(&store), baseline);
 
     drop(store);
+    // A build with no oversized literals has the v1 payload layout byte-for-byte.
+    let mut v1 = file.clone();
+    v1[..8].copy_from_slice(b"TLTEXT01");
+    fs::remove_file(root.join("text-0.v2")).unwrap();
+    fs::write(root.join("text-0.v1"), v1).unwrap();
+    let store = reopen();
+    let legacy = store.snapshot();
+    graph_matches(&*legacy);
+    assert_eq!(answer(&store), baseline);
+    assert_eq!(DiskSnapshot::build_text_index(&store, 2).unwrap(), 2);
+    assert!(root.join("text-0.v2").is_file());
+    assert!(!root.join("text-0.v1").exists());
+    graph_matches(&*legacy);
+    drop(store);
+
     let mut corrupt = file.clone();
     corrupt[112] ^= 1;
     let temp = root.join("index-replacement");
-    let index = root.join("text-0.v1");
+    let index = root.join("text-0.v2");
     fs::write(&temp, corrupt).unwrap();
     fs::rename(&temp, &index).unwrap();
     let store = reopen();
     assert!(store.snapshot().text_candidates(&["graph"], 8).is_none());
     assert_eq!(answer(&store), baseline);
-    assert_eq!(pinned.text_candidates(&["graph"], 8).unwrap().len(), 2);
+    graph_matches(&*pinned);
     drop(store);
 
     fs::write(&temp, file).unwrap();
@@ -85,17 +109,66 @@ fn text_index_preserves_store_bytes_and_sorts_unique_postings() {
     let updated = answer(&store);
     assert!(updated.contains("urn:new"));
     store.compact().unwrap();
-    assert!(!root.join("text-0.v1").exists());
-    assert_eq!(pinned.text_candidates(&["graph"], 8).unwrap().len(), 2);
+    assert!(!root.join("text-0.v2").exists());
+    graph_matches(&*pinned);
     assert!(store.snapshot().text_candidates(&["graph"], 8).is_none());
     assert_eq!(answer(&store), updated);
     assert_eq!(DiskSnapshot::build_text_index(&store, 2).unwrap(), 2);
     drop(store);
 
+    fs::write(root.join("text-0.v2"), "abandoned").unwrap();
     fs::write(root.join("text-0.v1"), "abandoned").unwrap();
     let store = reopen();
+    assert!(!root.join("text-0.v2").exists());
     assert!(!root.join("text-0.v1").exists());
-    assert_eq!(store.snapshot().text_candidates(&["graph"], 8).unwrap().len(), 3);
-    assert_eq!(pinned.text_candidates(&["graph"], 8).unwrap().len(), 2);
+    let current = store.snapshot();
+    let new = current.lookup(&r#""Graph Straße""#.parse().unwrap()).unwrap().unwrap();
+    assert_eq!(current.text_candidates(&["graph"], 8).unwrap().matches(new), Some(true));
+    graph_matches(&*pinned);
     assert_eq!(answer(&store), updated);
+}
+
+#[test]
+fn oversized_literals_are_scalar_candidates_even_when_the_token_has_no_postings() {
+    let dir = Fixture(std::env::temp_dir().join(format!("tl-text-oversized-{}", std::process::id())));
+    fs::create_dir(&dir.0).unwrap();
+    let nt = dir.0.join("seed.nt");
+    let padding = "padding ".repeat(9_000);
+    let hit = format!("{padding}needle");
+    let miss = format!("{padding}haystack");
+    fs::write(&nt, format!(
+        "<urn:hit> <urn:label> \"{hit}\" .\n<urn:miss> <urn:label> \"{miss}\" .\n<urn:short> <urn:label> \"ordinary\" .\n",
+    )).unwrap();
+    let root = dir.0.join("database");
+    let open = |initial| Store::open_with(&root, initial, Box::new(DiskBase { workers: 1 })).unwrap();
+    let answer = |store: &Store, token: &str| {
+        let query = format!(
+            r#"PREFIX tl: <urn:triplelight:text:> SELECT ?s WHERE {{
+                ?s <urn:label> ?label . FILTER(tl:matches(?label, "{token}"))
+            }} ORDER BY ?s"#
+        );
+        let result = triplelight::exec::query(&*store.snapshot(), &query).unwrap();
+        triplelight::exec::results::serialize(&result).1
+    };
+
+    let store = open(Some(&nt));
+    let queries = ["needle", "absent", "ordinary", "padding"];
+    let expected = queries.map(|token| answer(&store, token));
+    assert!(expected[0].contains("urn:hit") && !expected[0].contains("urn:miss"));
+    assert!(!expected[1].contains("urn:hit") && !expected[1].contains("urn:miss"));
+    assert!(expected[2].contains("urn:short"));
+    assert!(expected[3].contains("urn:hit") && expected[3].contains("urn:miss"));
+    // One MiB caps each literal at 64 KiB, so both long literals must use the fallback list.
+    assert_eq!(DiskSnapshot::build_text_index(&store, 1).unwrap(), 1);
+    drop(store);
+
+    let store = open(None);
+    let snapshot = store.snapshot();
+    let hit_id = snapshot.lookup(&triplelight::rdf::Literal::new_simple_literal(hit).into()).unwrap().unwrap();
+    let short_id = snapshot.lookup(&r#""ordinary""#.parse().unwrap()).unwrap().unwrap();
+    let no_posting = snapshot.text_candidates(&["needle"], 8).unwrap();
+    assert_eq!(no_posting.matches(hit_id), None);
+    assert_eq!(no_posting.matches(short_id), Some(false));
+    assert!(snapshot.text_candidates(&["needle"], 1).is_none());
+    assert_eq!(queries.map(|token| answer(&store, token)), expected);
 }
