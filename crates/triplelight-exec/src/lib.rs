@@ -201,40 +201,6 @@ pub fn query_dataset_with<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, text
     catching_storage(|| run(snap, Some(dataset), text, opts))
 }
 
-/// Graph views and named graphs of the active dataset. Every FROM / FROM NAMED source must be a graph of the catalog.
-fn resolve_dataset<'a, S: Snapshot>(snap: &S, ds: &'a dyn DatasetView, spec: Option<&crate::sparql::QueryDataset>) -> Result<(Vec<&'a dyn Snapshot>, Vec<TermId>), QueryError> {
-    let storage = |e: crate::storage::StorageError| QueryError::new(QueryErrorKind::Storage, format!("storage error: {e}"));
-    let mut from: Vec<&dyn Snapshot> = Vec::new();
-    let mut named: Vec<TermId> = Vec::new();
-    // Local-only dataset construction: every FROM / FROM NAMED source must be a graph of the catalog (present,
-    // possibly empty). A missing source is refused rather than silently omitted or invented as an empty graph.
-    let present = |iris: &[triplelight_rdf::NamedNode]| -> Result<Vec<TermId>, QueryError> {
-        let mut ids = Vec::new();
-        for iri in iris {
-            let id = snap.lookup(&iri.clone().into()).map_err(storage)?;
-            match id {
-                Some(id) if ds.graph(id).map_err(storage)?.is_some() => ids.push(id),
-                _ => return Err(QueryError::new(QueryErrorKind::Unsupported, format!(
-                    "dataset source <{}> is not a graph of this database (only local graphs can be named in FROM / FROM NAMED)", iri.as_str()))),
-            }
-        }
-        ids.sort_unstable(); ids.dedup();
-        Ok(ids)
-    };
-    match spec {
-        None => named = ds.graph_names().map_err(storage)?,
-        Some(spec) => {
-            let default = present(&spec.default)?;
-            if default.len() > 1 && ds.shares_blank_nodes(&default).map_err(storage)? != Some(false) {
-                return Err(QueryError::new(QueryErrorKind::Unsupported,
-                    "FROM over several graphs that share (or may share) blank nodes is not supported: the RDF merge would standardize them apart".to_string()));
-            }
-            for id in default { from.push(ds.graph(id).map_err(storage)?.expect("checked present")) }
-            if let Some(n) = &spec.named { named = present(n)? }
-        }
-    }
-    Ok((from, named))
-}
 
 fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
@@ -242,7 +208,7 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     let rdfs = opts.entailment == Entailment::Rdfs;
     let spec = match q { Query::Select { dataset, .. } | Query::Ask { dataset, .. } | Query::Construct { dataset, .. } | Query::Describe { dataset, .. } => dataset };
     // Graph views for the active dataset; they outlive `ctx`, which borrows them.
-    let (from, named) = match dataset { Some(ds) => resolve_dataset(snap, ds, spec.as_ref())?, None => (Vec::new(), Vec::new()) };
+    let (from, named) = match dataset { Some(ds) => dataset::resolve(snap, ds, spec.as_ref())?, None => (Vec::new(), Vec::new()) };
     let empty = dataset::EmptyGraph { dict: snap as &dyn Snapshot };
     let union = (from.len() > 1).then(|| dataset::UnionGraph { members: from.clone() });
     let default: Option<&dyn Snapshot> = if spec.is_some() && dataset.is_some() {
@@ -257,25 +223,8 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     };
     // RDFS: the active default graph (the store's, or the FROM merge) and every named graph each get the closure of
     // their own triples (`entail.rs`).
-    fn entail(g: &dyn Snapshot) -> entail::Entailed<'_> { entail::Entailed::new(g).unwrap_or_else(|e| storage_failure(e)) }
-    let entailed = rdfs.then(|| entail(default.unwrap_or(snap as &dyn Snapshot)));
-    let entailed_named: Vec<(TermId, entail::Entailed<'_>)> = match dataset {
-        Some(ds) if rdfs => named.iter().filter_map(|&g| ds.graph(g).unwrap_or_else(|e| storage_failure(e)).map(|v| (g, entail(v)))).collect(),
-        _ => Vec::new(),
-    };
-    let default = match &entailed { Some(e) => Some(e as &dyn Snapshot), None => default };
-    let mut ctx = Ctx::for_query(snap, dataset, default, named, q, opts, path::CsrLimits::default());
-    ctx.entailed_named = entailed_named.iter().map(|(g, e)| (*g, e as &dyn Snapshot)).collect();
-    // A graph without one `rdf:type` triple has no ID for it, yet domain and range type its resources: the query's
-    // `rdf:type` gets a scratch ID that every entailed view types with.
-    if rdfs {
-        let ty: Term = triplelight_rdf::vocab::rdf::TYPE.into_owned().into();
-        if ctx.lookup(&ty).is_none() {
-            let id = ctx.intern(&ty);
-            ctx.virtual_type = Some((ty, id));
-            for e in entailed.iter().chain(entailed_named.iter().map(|(_, e)| e)) { e.set_rdf_type(id) }
-        }
-    }
+    let views = entail::Views::new(rdfs, snap as &dyn Snapshot, default, dataset, &named).unwrap_or_else(|e| storage_failure(e));
+    let mut ctx = Ctx::for_query(snap, dataset, &views, named, q, opts, path::CsrLimits::default());
     match q {
         Query::Select { pattern, .. } => run_select(&mut ctx, snap, pattern, opts),
         Query::Ask { pattern, .. } => run_ask(&mut ctx, pattern),
@@ -469,7 +418,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn for_query(
         snap: &'a S,
         dataset: Option<&'a dyn DatasetView>,
-        default: Option<&'a dyn Snapshot>,
+        views: &'a entail::Views<'a>,
         named: Vec<TermId>,
         query: &Query,
         opts: &Options<'a>,
@@ -491,12 +440,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             let nodes = |p: &triplelight_rdf::NamedNode| range::iri_objects(snap, p);
             range::reorderable_bgps(pattern, true, &nodes, &mut range_reorderable);
         }
-        Self {
+        let mut ctx = Self {
             snap,
-            data: std::cell::Cell::new(default),
+            data: std::cell::Cell::new(views.default_graph()),
             dataset,
             named,
-            entailed_named: HashMap::new(),
+            entailed_named: views.named(),
             virtual_type: None,
             vars: HashMap::new(),
             scratch: RefCell::new((HashMap::new(), Vec::new())),
@@ -518,7 +467,18 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             agg_arg_memo: RefCell::new(HashMap::new()),
             agg_arg_slots: RefCell::new(HashMap::new()),
             memo_slots: std::cell::Cell::new(0),
+        };
+        // A graph without one `rdf:type` triple has no ID for it, yet domain and range type its resources: the query's
+        // `rdf:type` gets a scratch ID that every entailed view types with.
+        if views.entailing() {
+            let ty: Term = triplelight_rdf::vocab::rdf::TYPE.into_owned().into();
+            if ctx.lookup(&ty).is_none() {
+                let id = ctx.intern(&ty);
+                ctx.virtual_type = Some((ty, id));
+                views.set_rdf_type(id);
+            }
         }
+        ctx
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }

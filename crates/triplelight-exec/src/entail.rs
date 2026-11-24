@@ -387,3 +387,38 @@ impl Snapshot for Entailed<'_> {
         Ok(rows.get(i).filter(|r| r[..prefix.len()] == *prefix).map(|r| r[prefix.len()]))
     }
 }
+
+/// The graph views one query reads: the active default graph and, under RDFS, its entailed view and one per named
+/// graph of the dataset, each closed over its own triples.
+pub(crate) struct Views<'a> {
+    plain: Option<&'a dyn Snapshot>,
+    default: Option<Entailed<'a>>,
+    named: Vec<(TermId, Entailed<'a>)>,
+}
+
+impl<'a> Views<'a> {
+    /// `default`: the active default graph when it is not the store's own (`None`); `store`: the store's.
+    pub(crate) fn new(rdfs: bool, store: &'a dyn Snapshot, default: Option<&'a dyn Snapshot>, dataset: Option<&'a dyn crate::storage::DatasetView>, named: &[TermId]) -> Result<Self, StorageError> {
+        if !rdfs { return Ok(Views { plain: default, default: None, named: Vec::new() }) }
+        let mut views = Vec::new();
+        if let Some(ds) = dataset {
+            for &g in named { if let Some(v) = ds.graph(g)? { views.push((g, Entailed::new(v)?)) } }
+        }
+        Ok(Views { plain: default, default: Some(Entailed::new(default.unwrap_or(store))?), named: views })
+    }
+
+    /// The active default graph if it is not the store's own.
+    pub(crate) fn default_graph(&self) -> Option<&dyn Snapshot> {
+        match &self.default { Some(e) => Some(e), None => self.plain }
+    }
+
+    /// Named graph -> its entailed view (empty without RDFS).
+    pub(crate) fn named(&self) -> HashMap<TermId, &dyn Snapshot> { self.named.iter().map(|(g, e)| (*g, e as &dyn Snapshot)).collect() }
+
+    pub(crate) fn entailing(&self) -> bool { self.default.is_some() }
+
+    /// Names `rdf:type` by `id` in every entailed view (`Entailed::set_rdf_type`).
+    pub(crate) fn set_rdf_type(&self, id: TermId) {
+        for e in self.default.iter().chain(self.named.iter().map(|(_, e)| e)) { e.set_rdf_type(id) }
+    }
+}
