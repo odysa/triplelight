@@ -4,15 +4,16 @@ use std::collections::HashSet;
 use crate::rdf::{Literal, NamedNode, Term};
 
 use super::error::ValidationError;
-use super::evaluator::Evaluator;
 use super::graph::Graph;
-use super::report::{ConstraintViolation, Outcome};
-use super::shapes::Shape;
+use super::path::Path;
+use super::report::{ConstraintViolation, Outcome, ValidationResult};
+
+pub type CheckNode<'a> =
+    dyn FnMut(&Term, &Term) -> Result<Vec<ValidationResult>, ValidationError> + 'a;
 
 pub struct ConstraintContext<'a> {
     pub focus: &'a Term,
     pub value_nodes: &'a [Term],
-    pub shape: &'a Shape,
     pub data: &'a Graph,
 }
 
@@ -40,6 +41,13 @@ pub enum Constraint {
     Xone(Vec<Term>),
     Node(Term),
     Property(Term),
+    Closed(HashSet<NamedNode>),
+    Qualified {
+        shape: Term,
+        siblings: Vec<Term>,
+        min: Option<Limit>,
+        max: Option<Limit>,
+    },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -192,6 +200,109 @@ fn shape_reference(shape: &Term, parameter: &str, term: &Term) -> Result<Term, V
     }
 }
 
+fn optional<'a>(
+    shapes: &'a Graph,
+    shape: &Term,
+    parameter: &str,
+) -> Result<Option<&'a Term>, ValidationError> {
+    match shapes.objects(shape, &iri(SH, parameter)) {
+        [] => Ok(None),
+        [term] => Ok(Some(term)),
+        _ => Err(invalid(shape, parameter, "has more than one value")),
+    }
+}
+
+fn closed(shape: &Term, shapes: &Graph) -> Result<Option<Constraint>, ValidationError> {
+    let Some(flag) = optional(shapes, shape, "closed")? else {
+        return Ok(None);
+    };
+    let enabled =
+        boolean(flag).ok_or_else(|| invalid(shape, "closed", "must be an xsd:boolean"))?;
+    let mut allowed = HashSet::new();
+    if let Some(head) = optional(shapes, shape, "ignoredProperties")? {
+        for item in shapes.list_items(head)? {
+            let Term::NamedNode(predicate) = item else {
+                return Err(invalid(shape, "ignoredProperties", "must list IRIs"));
+            };
+            allowed.insert(predicate);
+        }
+    }
+    if !enabled {
+        return Ok(None);
+    }
+    for subshape in shapes.objects(shape, &iri(SH, "property")) {
+        if let Some(Term::NamedNode(path)) = optional(shapes, subshape, "path")? {
+            allowed.insert(path.clone());
+        }
+    }
+    Ok(Some(Constraint::Closed(allowed)))
+}
+
+fn qualified(
+    shape: &Term,
+    shapes: &Graph,
+    property_shape: bool,
+) -> Result<Option<Constraint>, ValidationError> {
+    let parse_limit = |name| {
+        optional(shapes, shape, name)?
+            .map(|value| limit(value).ok_or_else(|| invalid(shape, name, "must be an xsd:integer")))
+            .transpose()
+    };
+    let min = parse_limit("qualifiedMinCount")?;
+    let max = parse_limit("qualifiedMaxCount")?;
+    let target = optional(shapes, shape, "qualifiedValueShape")?;
+    if min.is_none() && max.is_none() {
+        return Ok(None);
+    }
+    if !property_shape {
+        return Err(invalid(
+            shape,
+            "qualifiedValueShape",
+            "requires a property shape",
+        ));
+    }
+    let target = target.ok_or_else(|| {
+        invalid(
+            shape,
+            "qualifiedValueShape",
+            "must be present with a qualified count",
+        )
+    })?;
+    let target = shape_reference(shape, "qualifiedValueShape", target)?;
+    let disjoint = optional(shapes, shape, "qualifiedValueShapesDisjoint")?
+        .map(|value| {
+            boolean(value).ok_or_else(|| {
+                invalid(
+                    shape,
+                    "qualifiedValueShapesDisjoint",
+                    "must be an xsd:boolean",
+                )
+            })
+        })
+        .transpose()?
+        .unwrap_or(false);
+    let mut siblings = Vec::new();
+    if disjoint {
+        let property = iri(SH, "property");
+        let qualified = iri(SH, "qualifiedValueShape");
+        for parent in shapes.subjects(&property, shape) {
+            for sibling in shapes.objects(&parent, &property) {
+                for candidate in shapes.objects(sibling, &qualified) {
+                    if *candidate != target && !siblings.contains(candidate) {
+                        siblings.push(shape_reference(sibling, "qualifiedValueShape", candidate)?);
+                    }
+                }
+            }
+        }
+    }
+    Ok(Some(Constraint::Qualified {
+        shape: target,
+        siblings,
+        min,
+        max,
+    }))
+}
+
 pub fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, ValidationError> {
     let mut constraints = Vec::new();
     let property_shape = !shapes.objects(shape, &iri(SH, "path")).is_empty();
@@ -286,15 +397,22 @@ pub fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, Validation
         }
         constraints.push(constraint);
     }
+    constraints.extend(closed(shape, shapes)?);
+    constraints.extend(qualified(shape, shapes, property_shape)?);
     Ok(constraints)
 }
 
 fn violation(component: &str, value: Option<&Term>) -> Outcome {
+    result(component, value, None)
+}
+
+fn result(component: &str, value: Option<&Term>, path_override: Option<Path>) -> Outcome {
     Outcome::Violation(ConstraintViolation {
         component: iri(SH, component),
         value: value.cloned(),
         message: None,
         details: Vec::new(),
+        path_override,
     })
 }
 
@@ -315,7 +433,7 @@ fn check_set(component: &str, passes: bool) -> Vec<Outcome> {
 }
 
 fn check_conformance(
-    ev: &mut Evaluator<'_>,
+    check_node: &mut CheckNode<'_>,
     component: &str,
     shapes: &[Term],
     values: &[Term],
@@ -325,7 +443,7 @@ fn check_conformance(
     for value in values {
         let mut conforming = 0;
         for shape in shapes {
-            if ev.check_node(shape, value)?.is_empty() {
+            if check_node(shape, value)?.is_empty() {
                 conforming += 1;
             }
         }
@@ -340,7 +458,7 @@ impl Constraint {
     pub fn evaluate(
         &self,
         cx: &ConstraintContext<'_>,
-        ev: &mut Evaluator<'_>,
+        check_node: &mut CheckNode<'_>,
     ) -> Result<Vec<Outcome>, ValidationError> {
         let values = cx.value_nodes;
         let results = match self {
@@ -426,7 +544,7 @@ impl Constraint {
             }
             Self::Not(shape) => {
                 return check_conformance(
-                    ev,
+                    check_node,
                     "NotConstraintComponent",
                     std::slice::from_ref(shape),
                     values,
@@ -434,23 +552,35 @@ impl Constraint {
                 );
             }
             Self::And(shapes) => {
-                return check_conformance(ev, "AndConstraintComponent", shapes, values, |count| {
-                    count == shapes.len()
-                });
+                return check_conformance(
+                    check_node,
+                    "AndConstraintComponent",
+                    shapes,
+                    values,
+                    |count| count == shapes.len(),
+                );
             }
             Self::Or(shapes) => {
-                return check_conformance(ev, "OrConstraintComponent", shapes, values, |count| {
-                    count > 0
-                });
+                return check_conformance(
+                    check_node,
+                    "OrConstraintComponent",
+                    shapes,
+                    values,
+                    |count| count > 0,
+                );
             }
             Self::Xone(shapes) => {
-                return check_conformance(ev, "XoneConstraintComponent", shapes, values, |count| {
-                    count == 1
-                });
+                return check_conformance(
+                    check_node,
+                    "XoneConstraintComponent",
+                    shapes,
+                    values,
+                    |count| count == 1,
+                );
             }
             Self::Node(shape) => {
                 return check_conformance(
-                    ev,
+                    check_node,
                     "NodeConstraintComponent",
                     std::slice::from_ref(shape),
                     values,
@@ -460,7 +590,48 @@ impl Constraint {
             Self::Property(shape) => {
                 let mut violations = Vec::new();
                 for value in values {
-                    violations.push(Outcome::Forwarded(ev.check_node(shape, value)?));
+                    violations.push(Outcome::Forwarded(check_node(shape, value)?));
+                }
+                violations
+            }
+            Self::Closed(allowed) => {
+                let mut violations = Vec::new();
+                for value in values {
+                    for (predicate, object) in cx.data.outgoing(value) {
+                        if !allowed.contains(predicate) {
+                            violations.push(result(
+                                "ClosedConstraintComponent",
+                                Some(object),
+                                Some(Path::Predicate(predicate.clone())),
+                            ));
+                        }
+                    }
+                }
+                violations
+            }
+            Self::Qualified {
+                shape,
+                siblings,
+                min,
+                max,
+            } => {
+                let mut count = 0;
+                for value in values {
+                    let conforms = check_node(shape, value)?.is_empty();
+                    let mut excludes = false;
+                    for sibling in siblings {
+                        excludes |= check_node(sibling, value)?.is_empty();
+                    }
+                    if conforms && !excludes {
+                        count += 1;
+                    }
+                }
+                let mut violations = Vec::new();
+                if min.is_some_and(|limit| limit.compare(count) == Ordering::Less) {
+                    violations.push(violation("QualifiedMinCountConstraintComponent", None));
+                }
+                if max.is_some_and(|limit| limit.compare(count) == Ordering::Greater) {
+                    violations.push(violation("QualifiedMaxCountConstraintComponent", None));
                 }
                 violations
             }
