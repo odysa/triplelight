@@ -53,6 +53,11 @@ fn fmt_dec(d: Decimal) -> String {
     if s.contains('.') { s } else { format!("{s}.0") }
 }
 
+/// Numeric accessors use the compact decimal spelling of the SPARQL test results.
+fn decimal_function_term(value: Decimal) -> Term {
+    Literal::new_typed_literal(value.normalize().to_string(), xsd::DECIMAL).into()
+}
+
 /// Integers and decimals compare exactly; float/double by promoted f64.
 fn num_cmp(x: Num, y: Num) -> Option<Ordering> {
     if let (Num::Int(i), Num::Int(j)) = (x, y) { return Some(i.cmp(&j)) }
@@ -481,7 +486,12 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
                 Function::Floor => d.floor(),
                 _ => if d.fract().is_zero() { d } else { d.checked_add(Decimal::new(5, 1)).map(|x| x.floor()).unwrap_or(d.round()) },
             };
-            Some(match n { Num::Int(i) => Num::Int(i), Num::Dec(d) => Num::Dec(gd(d)), Num::Flt(d) => Num::Flt(g(d)), Num::Dbl(d) => Num::Dbl(g(d)) }.term())
+            Some(match n {
+                Num::Dec(d) => decimal_function_term(gd(d)),
+                Num::Flt(d) => Num::Flt(g(d)).term(),
+                Num::Dbl(d) => Num::Dbl(g(d)).term(),
+                Num::Int(_) => n.term(),
+            })
         }
         Function::Year | Function::Month | Function::Day | Function::Hours | Function::Minutes => {
             // Date/time accessors take xsd:dateTime (and xsd:date) literals, not strings.
@@ -511,14 +521,16 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             let l = lit(&t).filter(|l| xsd_local(l) == Some("dateTime"))?;
             let (_, time) = l.value().split_once('T')?;
             let (clock, _) = split_timezone(time);
-            Some(Num::Dec(Decimal::from_str(clock.get(6..)?).ok()?).term())
+            Some(decimal_function_term(Decimal::from_str(clock.get(6..)?).ok()?))
         }
         Function::Timezone | Function::Tz => {
             let t = a(0)?;
             let l = lit(&t).filter(|l| xsd_local(l) == Some("dateTime"))?;
             let (_, time) = l.value().split_once('T')?;
             let (_, tz) = split_timezone(time);
-            if matches!(f, Function::Tz) { return Some(simple(tz)) }
+            if matches!(f, Function::Tz) {
+                return Some(simple(match tz { "+00:00" | "-00:00" => "Z", _ => tz }));
+            }
             if tz.is_empty() { return None } // TIMEZONE of a value without a timezone is an error
             let minutes = if tz == "Z" { 0 } else {
                 let sign = if tz.starts_with('-') { -1 } else { 1 };
@@ -697,16 +709,13 @@ pub(super) fn term_num(t: &Term) -> Option<Num> { num(t) }
 fn xsd_cast(iri: &str, t: &Term) -> Option<Term> {
     let target = iri.strip_prefix("http://www.w3.org/2001/XMLSchema#")?;
     let typed = |v: String, dt: triplelight_rdf::NamedNodeRef<'_>| -> Option<Term> { Some(Literal::new_typed_literal(v, dt).into()) };
-    // Source: a numeric value, a boolean, or a lexical form (plain/xsd:string literal, or any literal's string).
+    if target == "string" {
+        return cast_string(t);
+    }
     let source_num = num(t);
-    let lexical = match t {
-        Term::Literal(l) => Some(l.value().trim().to_string()),
-        Term::NamedNode(n) if target == "string" => Some(n.as_str().to_string()),
-        _ => None,
-    }?;
+    let lexical = lit(t)?.value().trim().to_owned();
     let is_bool = matches!(t, Term::Literal(l) if l.datatype() == xsd::BOOLEAN);
     match target {
-        "string" => Some(simple(lexical)),
         "double" | "float" => {
             let d = match source_num { Some(n) => n.f(), None if is_bool => if matches!(lexical.as_str(), "true" | "1") { 1.0 } else { 0.0 },
                 None => match lexical.as_str() { "INF" | "+INF" => f64::INFINITY, "-INF" => f64::NEG_INFINITY, "NaN" => f64::NAN, s => s.parse().ok()? } };
@@ -733,6 +742,42 @@ fn xsd_cast(iri: &str, t: &Term) -> Option<Term> {
         }
         "dateTime" | "date" | "time" => typed(lexical, triplelight_rdf::NamedNodeRef::new_unchecked(iri)),
         _ => None,
+    }
+}
+
+// XPath F&O 2.0 §17.1.2 casts values to strings. STR still returns the RDF lexical form.
+fn cast_string(term: &Term) -> Option<Term> {
+    if let Term::NamedNode(node) = term {
+        return Some(simple(node.as_str()));
+    }
+    let literal = lit(term)?;
+    let lexical = match num(term) {
+        Some(Num::Int(value)) => value.to_string(),
+        Some(Num::Dec(value)) => value.normalize().to_string(),
+        Some(Num::Flt(value)) if value.is_finite() && (1e-6..1e6).contains(&value.abs()) => {
+            (value as f32).to_string()
+        }
+        Some(Num::Dbl(value)) if value.is_finite() && (1e-6..1e6).contains(&value.abs()) => {
+            value.to_string()
+        }
+        Some(Num::Flt(value) | Num::Dbl(value)) if value == 0.0 => value.to_string(),
+        Some(Num::Flt(value)) if value.is_finite() => xpath_scientific(&format!("{:E}", value as f32)),
+        Some(Num::Flt(value)) => format_double(value),
+        Some(Num::Dbl(value)) => xpath_scientific(&format_double(value)),
+        None if literal.datatype() == xsd::BOOLEAN => match literal.value().trim() {
+            "true" | "1" => "true".into(),
+            "false" | "0" => "false".into(),
+            _ => return None,
+        },
+        None => literal.value().to_owned(),
+    };
+    Some(simple(lexical))
+}
+
+fn xpath_scientific(lexical: &str) -> String {
+    match lexical.split_once('E') {
+        Some((mantissa, exponent)) if !mantissa.contains('.') => format!("{mantissa}.0E{exponent}"),
+        _ => lexical.into(),
     }
 }
 
@@ -800,9 +845,12 @@ pub(super) fn java_float_lexical(x: f32) -> String {
 /// `("12:30:05.5", "-05:00")` from the time part of an xsd:dateTime; the timezone is `""` when absent.
 fn split_timezone(time: &str) -> (&str, &str) {
     if let Some(c) = time.strip_suffix('Z') { return (c, "Z") }
-    if time.len() > 6 {
-        let (c, tz) = time.split_at(time.len() - 6);
-        if (tz.starts_with('+') || tz.starts_with('-')) && tz.as_bytes()[3] == b':' { return (c, tz) }
+    if time.len() > 6
+        && let Some((c, tz)) = time.split_at_checked(time.len() - 6)
+        && (tz.starts_with('+') || tz.starts_with('-'))
+        && tz.as_bytes()[3] == b':'
+    {
+        return (c, tz);
     }
     (time, "")
 }

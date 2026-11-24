@@ -8,6 +8,8 @@ mkdir -p "$OUT"; export TOOLS=$OUT/tools
 { echo "git $(git -C "$ROOT" rev-parse HEAD)"; date -u +%FT%TZ; uname -a; docker --version; java -version 2>&1 | head -1; python3 --version; } > "$OUT/environment.txt"
 step() { n=$1; shift; echo "== $n"; ( "$@" ) > "$OUT/$n.log" 2>&1 && echo "$n exit 0" | tee -a "$OUT/results.txt" || { echo "$n exit $?" | tee -a "$OUT/results.txt"; true; }; }
 step selftest python3 "$HERE/driver.py" selftest
+step drop-caches bash "$HERE/test-drop-caches.sh"
+step session-status bash "$HERE/test-session-status.sh"
 [ -n "${SKIP_SELFTEST_BIG:-}" ] || step selftest-big /usr/bin/time -l python3 "$HERE/driver.py" selftest-big --rows 5000000
 step prep "$HERE/prep.sh" "$TOOLS" "$SRC"
 # always build with the server feature: a plain release binary has no `serve` (found in the first qualification run)

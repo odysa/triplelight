@@ -146,7 +146,8 @@ fn crashed_compaction_leftovers_are_ignored() {
     assert!(!dir.join("base-1").exists());
     assert_eq!(answers(&*store.snapshot(), "ASK { <http://ex/1> <http://ex/100> <http://ex/2> }"), ["true"]);
     store.compact().unwrap();
-    assert_eq!(std::fs::read_to_string(dir.join("CURRENT")).unwrap().trim(), "base-1");
+    // The store has taken a commit, so CURRENT carries the WAL batch fence (#114).
+    assert_eq!(std::fs::read_to_string(dir.join("CURRENT")).unwrap().trim(), "walcrc-1 base-1");
     drop(store);
     let store = Store::open(&dir, None, 1).unwrap();
     assert!(!dir.join("base-0").exists());

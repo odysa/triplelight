@@ -56,8 +56,7 @@ Details and formats: [docs/persistence.md](docs/persistence.md).
 
 ## Query processing
 
-1. **Parse** SPARQL into an algebra (`triplelight-sparql`). Features the engine does not implement (`SERVICE`,
-   `LOAD`) are refused with an "unsupported" error rather than answered partially.
+1. **Parse** SPARQL into an algebra (`triplelight-sparql`). Unsupported operations such as `SERVICE` return an error.
 2. **Encode** constants through the dictionary. A constant that is not in the data makes its pattern empty.
 3. **Order joins.** By default the executor orders a basic graph pattern greedily: at each step it takes the
    pattern with the smallest exact index-prefix count for the current (sampled) binding, and penalizes patterns not
@@ -82,7 +81,7 @@ Optimizer details: [docs/optimizer.md](docs/optimizer.md).
 
 - Every benchmark compares TripleLight's answers with Apache Jena under that benchmark's declared checks (for
   example canonical multisets, or projected columns and `ORDER BY` where the benchmark registers them).
-- CI requires at least 323 passing tests from the W3C SPARQL 1.1 query suite ([ci/w3c_floor.json](ci/w3c_floor.json)).
+- CI checks 352 named cases from the pinned W3C SPARQL 1.1 query suite ([ci/w3c_floor.json](ci/w3c_floor.json)).
 - Numbers: `xsd:decimal` arithmetic is exact within 96 bits and `xsd:integer` within 64 bits; results outside that
   range are errors.
 - Storage changes are gated on byte-identical stores and on reading stores written by earlier versions.
@@ -94,6 +93,7 @@ Optimizer details: [docs/optimizer.md](docs/optimizer.md).
   ([docs/build-compare-orders-v1](docs/build-compare-orders-v1/README.md)).
 - Results are materialized before output.
 - One process per store directory, enforced by a file lock.
-- `LOAD`, `SERVICE` and blank-node graph names are not supported.
+- SPARQL `LOAD` requires an explicit source resolver through the Rust embedded API.
+- `SERVICE` and blank-node graph names are unsupported.
 
 The original design plan (v0) is preserved in git history.

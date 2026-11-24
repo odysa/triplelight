@@ -59,8 +59,10 @@ start_system() {  # start_system <system> <dataset> [budget args...]; waits unti
     until grep -qE "statistics (ready|failed)" "$OUT/$s.server.log"; do sleep 2; done
   fi
 }
-drop_caches() {   # prints what it did; the Linux machine drops the page cache, the laptop usually cannot
+drop_caches() {   # prints what it did; the Linux machine drops the page cache, the laptop usually cannot.
+  # Returns 0 either way unless REQUIRE_CACHE_DROP=1 (the cold-start hook sets it): a cold measurement over a page cache that was
+  # not dropped times a warm query, so there the failure must reach the driver.
   if [ -w /proc/sys/vm/drop_caches ]; then sync; echo 3 > /proc/sys/vm/drop_caches && echo "page cache dropped"
   elif sudo -n purge >/dev/null 2>&1; then echo "page cache purged"
-  else echo "page cache NOT dropped (no permission)"; fi
+  else echo "page cache NOT dropped (no permission)"; [ "${REQUIRE_CACHE_DROP:-0}" != 1 ]; fi
 }

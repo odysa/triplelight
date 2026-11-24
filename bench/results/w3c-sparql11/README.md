@@ -1,6 +1,12 @@
 # W3C SPARQL 1.1 query test suite
 
-## Latest: main `58ba1b2b` (PR #146, local CI 2026-11-22)
+## Latest run on the lexical candidate `78896a84`
+
+The pinned suite ran all 353 query cases. It passed 352. This includes the 22 dataset cases and `BNODE(string)` added by #257 and #258, and six additional passes for `cast-string`, `ceil01`, `floor01`, `round01`, `seconds`, and `tz`.
+
+The remaining case is `cast-decimal`. Its expected result spells the decimal converted from integer zero as `"0"`, while TripleLight returns `"0.0"`. All other terms in that result match. The comparison keeps the lexical difference visible.
+
+## Earlier main `58ba1b2b` (PR #146, local CI 2026-11-22)
 
 Of 353 query tests: pass 323 (the CI floor), fail 7, unsupported 1, skipped 22 (19 named-graph cases the harness does not
 run, 3 harness data-load cases). Failures by category: `cast` 2 and `functions` 5. These are the cases Jianlin
