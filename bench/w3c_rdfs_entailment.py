@@ -8,7 +8,7 @@ less than the SPARQL 1.1 RDFS entailment regime the suite assumes. A case the ru
 expected-differences file (one `case-id  reason` per line). The run fails on an unlisted failure, and on a listed case
 that now passes, so the list can only shrink.
 """
-import json, os, subprocess, sys, collections
+import json, os, subprocess, sys, collections, tempfile
 from rdflib import Graph, Namespace, RDF
 from rdflib.collection import Collection
 from rdflib.compare import isomorphic
@@ -37,7 +37,7 @@ def main():
             if line: case, _, reason = line.partition(" "); listed[case] = reason.strip()
     mpath = os.path.join(root, "entailment", "manifest.ttl")
     g = Graph().parse(mpath, format="turtle", publicID="file://" + mpath)
-    results = []
+    results, scratch = [], tempfile.mkdtemp(prefix="w3c-rdfs-")
     for _, _, lst in g.triples((None, MF.entries, None)):
         for test in Collection(g, lst):
             name = str(test).split("#")[-1]
@@ -54,7 +54,7 @@ def main():
             for d in g.objects(action, QT.data):
                 dp = fileuri_to_path(str(d))
                 dg.parse(dp, format="xml" if dp.endswith(".rdf") else "turtle", publicID="file://" + dp)
-            data_path = os.path.join(os.path.dirname(out_path) or ".", f"{name}.nt")
+            data_path = os.path.join(scratch, f"{name}.nt")
             open(data_path, "w").write(dg.serialize(format="nt"))
             code, out, err = run(binary, data_path, f"BASE <file://{qpath}>\n" + q)
             if code != 0:
