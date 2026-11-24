@@ -30,11 +30,11 @@ pub const TL_ERR_LOCKED: i32 = 4;
 pub const TL_ERR_INVALID_ARGUMENT: i32 = 5;
 pub const TL_ERR_INTERNAL: i32 = 6;
 pub const TL_ERR_GRAPH_STATE: i32 = 7;
-/// The query was cancelled or ran past its deadline (not yet reachable from C: no interrupt is exposed).
+/// The query was cancelled (`tl_interrupt_cancel`) or ran past its deadline (`tl_query_with_limits`).
 pub const TL_ERR_INTERRUPTED: i32 = 8;
 /// SHACL rejects the shapes graph given to `tl_validate` (a malformed shape or list, or an undefined recursion).
 pub const TL_ERR_SHAPES: i32 = 9;
-/// The query needed more working memory than its budget (not yet reachable from C: no budget is exposed).
+/// The query needed more working memory than its budget (`tl_query_with_limits`).
 pub const TL_ERR_RESOURCE_LIMIT: i32 = 10;
 
 pub const TL_RESULT_BINDINGS: u32 = 0;
@@ -337,6 +337,47 @@ pub const TL_ENTAILMENT_RDFS: i32 = 1;
 /// `TL_ERR_INVALID_ARGUMENT`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tl_query_with_entailment(db: *const TlDb, sparql: *const c_char, len: usize, entailment: i32, out: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
+    unsafe { tl_query_with_limits(db, sparql, len, entailment, std::ptr::null(), 0, out, err) }
+}
+
+/// Stops queries from outside them (#110): created with an optional timeout, cancelled from any thread. Cancelling is
+/// final: every query run with it from then on stops at once, so use a new one per query.
+pub struct TlInterrupt(triplelight::exec::Interrupt);
+
+/// A new interrupt. `timeout_ms` 0 means no deadline; otherwise a query run with it stops `timeout_ms` milliseconds
+/// after this call, with `TL_ERR_INTERRUPTED`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_interrupt_new(timeout_ms: u64, out: *mut *mut TlInterrupt, err: *mut *mut TlError) -> i32 {
+    unsafe { guard(err, || {
+        use triplelight::exec::Interrupt;
+        if out.is_null() { return Err(invalid("null output pointer")) }
+        let interrupt = match timeout_ms {
+            0 => Interrupt::new(),
+            ms => Interrupt::with_timeout(std::time::Duration::from_millis(ms)),
+        };
+        *out = Box::into_raw(Box::new(TlInterrupt(interrupt)));
+        Ok(())
+    }) }
+}
+
+/// Cancels every query running, or later run, with `interrupt`: each returns `TL_ERR_INTERRUPTED` at its next check.
+/// Safe from any thread, also while a query is running with it. Null is ignored.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_interrupt_cancel(interrupt: *const TlInterrupt) {
+    if let Some(i) = unsafe { interrupt.as_ref() } { i.0.cancel() }
+}
+
+/// Frees an interrupt. It must not race with a query using it or with `tl_interrupt_cancel`. Null is ignored.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_interrupt_free(interrupt: *mut TlInterrupt) {
+    if !interrupt.is_null() { let _ = catch_unwind(AssertUnwindSafe(|| drop(unsafe { Box::from_raw(interrupt) }))); }
+}
+
+/// `tl_query_with_entailment` under limits: `interrupt` (may be null) stops it when cancelled or past its deadline
+/// (`TL_ERR_INTERRUPTED`), and `memory_bytes` (0: unlimited) bounds its working memory (`TL_ERR_RESOURCE_LIMIT`).
+/// Either error leaves no partial result, and the database serves the next query as usual.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_query_with_limits(db: *const TlDb, sparql: *const c_char, len: usize, entailment: i32, interrupt: *const TlInterrupt, memory_bytes: u64, out: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
     unsafe { guard(err, || {
         if out.is_null() { return Err(invalid("null output pointer")) }
         let entailment = match entailment {
@@ -345,8 +386,10 @@ pub unsafe extern "C" fn tl_query_with_entailment(db: *const TlDb, sparql: *cons
             _ => return Err(invalid("unknown entailment")),
         };
         let (d, q) = (handle(db)?, text(sparql, len)?);
+        let budget = (memory_bytes > 0).then(|| triplelight::exec::MemoryBudget::new(memory_bytes));
+        let limits = triplelight::exec::QueryLimits { interrupt: interrupt.as_ref().map(|i| &i.0), memory: budget.as_ref() };
         let snap = d.read();
-        let r = match snap.query_ids_with_entailment(q, entailment).map_err(db_error)? {
+        let r = match snap.query_ids_with_limits(q, entailment, limits).map_err(db_error)? {
             QueryResult::Ids(ids) => build_ids(&snap, ids)?,
             other => build(other)?,
         };
@@ -669,6 +712,53 @@ mod tests {
         let missing = "/nonexistent/missing.nt";
         assert_eq!(tl_load(db, missing.as_ptr() as _, missing.len(), std::ptr::null_mut(), &mut e), TL_ERR_STORAGE);
         tl_error_free(e);
+        tl_close(db);
+    } }
+
+    /// An interrupt cancelled from another thread, a timeout and a memory budget each end a query with their own
+    /// error and no result, and the database answers the next query.
+    #[test]
+    fn query_limits_cancel_timeout_and_budget() { unsafe {
+        let mut db = std::ptr::null_mut();
+        assert_eq!(tl_open_in_memory(&mut db, std::ptr::null_mut()), TL_OK);
+        let data: String = (0..2000).map(|i| format!("<urn:s{i}> <urn:p> \"{i}\" . ")).collect();
+        let up = format!("INSERT DATA {{ {data} }}");
+        assert_eq!(tl_update(db, up.as_ptr() as _, up.len(), std::ptr::null_mut(), std::ptr::null_mut()), TL_OK);
+        let endless = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f FILTER(?b != ?d && ?d != ?f) }";
+        let run = |sparql: &str, interrupt: *const TlInterrupt, memory: u64| {
+            let mut r: *mut TlResult = std::ptr::null_mut();
+            let code = tl_query_with_limits(db, sparql.as_ptr() as _, sparql.len(), TL_ENTAILMENT_SIMPLE, interrupt, memory, &mut r, std::ptr::null_mut());
+            assert!((code == TL_OK) == !r.is_null(), "a result exactly on success");
+            tl_result_free(r);
+            code
+        };
+        // Cancelled from another thread while it runs.
+        let mut interrupt = std::ptr::null_mut();
+        assert_eq!(tl_interrupt_new(0, &mut interrupt, std::ptr::null_mut()), TL_OK);
+        let handle = interrupt as usize;
+        let canceller = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            tl_interrupt_cancel(handle as *const TlInterrupt);
+        });
+        let t = std::time::Instant::now();
+        assert_eq!(run(endless, interrupt, 0), TL_ERR_INTERRUPTED);
+        assert!(t.elapsed() < std::time::Duration::from_secs(10), "cancel took {:?}", t.elapsed());
+        canceller.join().unwrap();
+        // Cancelling is final: the same interrupt stops the next query at once.
+        assert_eq!(run("ASK { ?s ?p ?o }", interrupt, 0), TL_ERR_INTERRUPTED);
+        tl_interrupt_free(interrupt);
+        // A deadline.
+        let mut timeout = std::ptr::null_mut();
+        assert_eq!(tl_interrupt_new(50, &mut timeout, std::ptr::null_mut()), TL_OK);
+        assert_eq!(run(endless, timeout, 0), TL_ERR_INTERRUPTED);
+        tl_interrupt_free(timeout);
+        // A memory budget.
+        let grouped = "SELECT ?a (COUNT(*) AS ?n) { ?a ?p ?b } GROUP BY ?a";
+        assert_eq!(run(grouped, std::ptr::null(), 1024), TL_ERR_RESOURCE_LIMIT);
+        assert_eq!(run(grouped, std::ptr::null(), 1 << 30), TL_OK);
+        assert_eq!(run(grouped, std::ptr::null(), 0), TL_OK);
+        tl_interrupt_cancel(std::ptr::null());
+        tl_interrupt_free(std::ptr::null_mut());
         tl_close(db);
     } }
 
