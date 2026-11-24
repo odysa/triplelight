@@ -42,6 +42,21 @@ pub trait Extension: Send + Sync {
     fn register(&self, registrar: &mut Registrar) -> Result<(), ExtensionError>;
 }
 
+/// An opt-in OWL 2 RL equivalence provider using the linked RDFS view.
+#[cfg(feature = "rdfs")]
+pub struct OwlRlEquivalence;
+
+#[cfg(feature = "rdfs")]
+impl Extension for OwlRlEquivalence {
+    fn name(&self) -> &str {
+        "owl-rl-equivalence"
+    }
+
+    fn register(&self, registrar: &mut Registrar) -> Result<(), ExtensionError> {
+        registrar.entailment(triplelight_rdfs::OwlRlEquivalence)
+    }
+}
+
 /// Stages the capabilities of one extension before registration.
 #[derive(Clone, Default)]
 pub struct Registrar {
