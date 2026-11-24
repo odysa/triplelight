@@ -89,10 +89,31 @@ def actual_from_json(text):
     return ("select", vars_, rows)
 
 def expected_result(path):
-    fmt = {"srx": "xml", "srj": "json", "tsv": "tsv", "csv": "csv"}.get(path.rsplit(".", 1)[-1])
-    if fmt is None: return None
-    if fmt in ("tsv", "csv"): return "format"
-    r = Result.parse(open(path, "rb"), format=fmt)
+    extension = path.rsplit(".", 1)[-1]
+    graph_format = {"ttl": "turtle", "rdf": "xml", "nt": "nt"}.get(extension)
+    if graph_format:
+        graph = Graph().parse(path, format=graph_format)
+        rs = Namespace("http://www.w3.org/2001/sw/DataAccess/tests/result-set#")
+        result = graph.value(predicate=RDF.type, object=rs.ResultSet, any=False)
+        if result is None:
+            return ("graph", graph)
+        boolean = graph.value(result, rs.boolean)
+        if boolean is not None:
+            return ("ask", bool(boolean.toPython()))
+        variables = [str(value) for value in graph.objects(result, rs.resultVariable)]
+        rows = []
+        for solution in graph.objects(result, rs.solution):
+            rows.append({
+                str(graph.value(binding, rs.variable)): graph.value(binding, rs.value)
+                for binding in graph.objects(solution, rs.binding)
+            })
+        return ("select", variables, rows)
+
+    fmt = {"srx": "xml", "srj": "json"}.get(extension)
+    if fmt is None:
+        return "format" if extension in ("tsv", "csv") else None
+    with open(path, "rb") as source:
+        r = Result.parse(source, format=fmt)
     if r.type == "ASK": return ("ask", bool(r.askAnswer))
     vars_ = [str(v) for v in r.vars]
     rows = [{str(k): v for k, v in b.items()} for b in r.bindings]
@@ -142,8 +163,6 @@ def main():
                 qpath = fileuri_to_path(str(qfile))
                 q = open(qpath, encoding="utf-8").read()
                 exp = expected_result(fileuri_to_path(str(resfile))) if resfile is not None else None
-                if exp is None and resfile is not None and str(resfile).endswith((".ttl", ".rdf", ".nt")):
-                    exp = ("graph", fileuri_to_path(str(resfile)))
                 if exp == "format" or exp is None:
                     rec["outcome"] = "skip-format"; results.append(rec); continue
                 with tempfile.TemporaryDirectory(prefix="tl-sparql11-") as directory:
@@ -160,9 +179,8 @@ def main():
                     rec["detail"] = err.strip()[:200]; results.append(rec); continue
                 try:
                     if exp[0] == "graph":
-                        eg = Graph().parse(exp[1], format="xml" if exp[1].endswith(".rdf") else "turtle")
                         ag = Graph().parse(data=out, format="nt")
-                        ok = isomorphic(eg, ag)
+                        ok = isomorphic(exp[1], ag)
                     else:
                         ok = compare(exp, actual_from_json(out), "order by" in q.lower())
                 except Exception as e:
