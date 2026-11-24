@@ -1065,6 +1065,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
         let ranges = self.object_ranges(patterns, &pats, filters, &rows[0]);
         let flat: Vec<TermId> = rows.concat();
+        // Numeric literals often flow through multiple range predicates in the same BGP. Keep decoded
+        // values for the whole BGP instead of resolving and parsing them again for every predicate.
+        let mut numeric_filter_memo: HashMap<TermId, Option<expr::Num>> = HashMap::new();
         if let Some(tr) = tr.as_mut() { tr.note("ranges", ranges.len()); tr.note("filters", filters.len()) }
         let (out, strategy) = on_data!(self, |g| {
             let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges), sorted_probe: self.sorted_probe, interrupt: self.interrupt, budget: self.budget };
@@ -1076,12 +1079,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 });
                 let mut out = bgp.leapfrog(&pats, &flat, given);
                 let joined = out.len() / w;
-                if !filters.is_empty() { let all: HashSet<usize> = (0..w).collect(); self.apply_filters(&mut out, w, filters, &all, &mut vec![false; filters.len()]) }
+                if !filters.is_empty() { let all: HashSet<usize> = (0..w).collect(); self.apply_filters(&mut out, w, filters, &all, &mut vec![false; filters.len()], &mut numeric_filter_memo) }
                 if let (Some(tr), Some(t)) = (tr.as_mut(), t) { tr.step(None, "leapfrog", 1, joined, out.len() / w, t) }
                 (out, "leapfrog")
             } else {
                 let mut applied = vec![false; filters.len()];
-                let mut post = |rows: &mut Vec<TermId>, bound: &HashSet<usize>| self.apply_filters(rows, w, filters, bound, &mut applied);
+                let mut post = |rows: &mut Vec<TermId>, bound: &HashSet<usize>| self.apply_filters(rows, w, filters, bound, &mut applied, &mut numeric_filter_memo);
                 match self.planned_order_est(&pats, &rows, &ranges, tr.is_some()) {
                     Some((order, est)) => {
                         if let Some(tr) = tr.as_mut() { tr.planned(&order, est) }
@@ -1132,7 +1135,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
 
     /// Applies each not-yet-applied filter whose variables are all bound, keeping rows whose filter is true.
-    fn apply_filters(&self, rows: &mut Vec<TermId>, w: usize, filters: &[(&Expression, Vec<usize>)], bound: &HashSet<usize>, applied: &mut [bool]) {
+    fn apply_filters(&self, rows: &mut Vec<TermId>, w: usize, filters: &[(&Expression, Vec<usize>)], bound: &HashSet<usize>, applied: &mut [bool], numeric_memo: &mut HashMap<TermId, Option<expr::Num>>) {
         for (k, (e, vs)) in filters.iter().enumerate() {
             if applied[k] || !vs.iter().all(|v| bound.contains(v)) { continue }
             applied[k] = true;
@@ -1158,8 +1161,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 continue;
             }
             let fast = expr::NumFilter::compile(e, &self.vars);
-            let mut memo: HashMap<TermId, Option<expr::Num>> = HashMap::new();
-            let mut val = |id: TermId| *memo.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
+            let mut val = |id: TermId| *numeric_memo.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
             // A filter over one variable (and no EXISTS) depends only on that column's term: memoize its result per
             // term ID, so e.g. a date range over many reviews decodes each distinct date once.
             let single = match vs.as_slice() { [c] if !impure(e) => Some(*c), _ => None };
