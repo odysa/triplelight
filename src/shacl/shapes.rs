@@ -69,35 +69,44 @@ impl ShapesGraph {
     /// long chain overflows the stack, a ladder of two references per level takes exponential time). Walks every shape reachable from the
     /// shapes validation starts from, iteratively, so a long reference chain cannot overflow the stack either.
     fn refuse_recursion(&self) -> Result<(), ValidationError> {
-        #[derive(PartialEq)]
-        enum Mark { Active, Done }
+        enum Mark { Active, Done(usize) }
         let mut marks: HashMap<Term, Mark> = HashMap::new();
         for root in &self.declared {
             if marks.contains_key(root) { continue }
-            // each frame: the shape and the references of it not yet visited
-            let mut stack: Vec<(Term, std::vec::IntoIter<Term>)> = Vec::new();
+            // Each frame keeps the pending references and the longest completed path from this shape.
+            let mut stack = Vec::new();
             let refs = |id: &Term| -> Result<std::vec::IntoIter<Term>, ValidationError> {
                 let shape = self.shape(id)?;
                 let all: Vec<Term> = shape.constraints.iter().flat_map(|c| c.referenced_shapes().into_iter().cloned()).collect();
                 Ok(all.into_iter())
             };
             marks.insert(root.clone(), Mark::Active);
-            stack.push((root.clone(), refs(root)?));
-            while let Some((id, it)) = stack.last_mut() {
+            stack.push((root.clone(), refs(root)?, 1));
+            while let Some((id, it, depth)) = stack.last_mut() {
                 match it.next() {
                     Some(next) => match marks.get(&next) {
                         Some(Mark::Active) => return Err(ValidationError::UndefinedRecursion(format!("{id} reaches {next}, which is already being evaluated"))),
-                        Some(Mark::Done) => {}
+                        Some(Mark::Done(length)) => *depth = (*depth).max(length + 1),
                         None => {
                             if stack.len() >= MAX_SHAPE_DEPTH {
                                 return Err(ValidationError::Unsupported(format!("shape references nested more than {MAX_SHAPE_DEPTH} deep (at {next})")));
                             }
                             marks.insert(next.clone(), Mark::Active);
                             let nested = refs(&next)?;
-                            stack.push((next, nested));
+                            stack.push((next, nested, 1));
                         }
                     },
-                    None => { marks.insert(id.clone(), Mark::Done); stack.pop(); }
+                    None => {
+                        if *depth > MAX_SHAPE_DEPTH {
+                            return Err(ValidationError::Unsupported(format!("shape references nested more than {MAX_SHAPE_DEPTH} deep (from {id})")));
+                        }
+                        let length = *depth;
+                        marks.insert(id.clone(), Mark::Done(length));
+                        stack.pop();
+                        if let Some((_, _, parent_depth)) = stack.last_mut() {
+                            *parent_depth = (*parent_depth).max(length + 1);
+                        }
+                    }
                 }
             }
         }
@@ -105,7 +114,7 @@ impl ShapesGraph {
     }
 
     /// The work validation starts from, one shape at a time and in a fixed order: each shape that has targets with its focus nodes in
-    /// `data`. It is lazy, so only one shape's focus nodes are held at once, and a malformed shape surfaces when its turn comes.
+    /// `data`. Only one shape's focus nodes are held at once.
     pub fn work_list<'a>(&'a self, data: &'a Graph) -> impl Iterator<Item = Result<(Term, Vec<Term>), ValidationError>> + 'a {
         self.declared.iter().map(move |id| Ok((id.clone(), self.focus_nodes(&*self.shape(id)?, data))))
     }
@@ -139,8 +148,9 @@ impl ShapesGraph {
         };
         if g.objects(id, &sh("path")).len() > 1 { return Err(ValidationError::MalformedShape(format!("{id} has several sh:path"))) }
         let deactivated = match g.object(id, &sh("deactivated"))? {
-            Some(Term::Literal(l)) => l.value() == "true",
-            _ => false,
+            Some(value) => constraints::parse_boolean(value).ok_or_else(||
+                ValidationError::MalformedShape(format!("{id}: sh:deactivated must be an xsd:boolean")))?,
+            None => false,
         };
         let severity = match g.object(id, &sh("severity"))? {
             Some(Term::NamedNode(n)) => Severity::from_iri(n),

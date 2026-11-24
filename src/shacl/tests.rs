@@ -198,3 +198,29 @@ fn a_deep_acyclic_chain_of_shapes_is_refused_with_unsupported_before_any_data_is
     for i in 1..100 { ok.push_str(&format!("ex:s{i} a sh:NodeShape ; sh:node ex:s{} .\n", i + 1)); }
     assert!(validate(&[], &parse(&ok)).unwrap().conforms);
 }
+
+#[test]
+fn shared_shape_suffix_counts_toward_depth_without_any_focus_nodes() {
+    let mut shapes = String::from(
+        "ex:A sh:targetSubjectsOf ex:p ; sh:node ex:tail0 .\n\
+         ex:B sh:targetSubjectsOf ex:p ; sh:node ex:head0 .\n");
+    for i in 0..100 {
+        shapes.push_str(&format!("ex:tail{i} sh:node ex:tail{} .\n", i + 1));
+    }
+    for i in 0..40 {
+        shapes.push_str(&format!("ex:head{i} sh:node ex:head{} .\n", i + 1));
+    }
+    shapes.push_str("ex:head40 sh:node ex:tail0 .");
+    assert!(matches!(validate(&[], &parse(&shapes)), Err(ValidationError::Unsupported(_))));
+}
+
+#[test]
+fn deactivation_requires_an_xsd_boolean() {
+    let shapes = |flag| parse(&format!(
+        "ex:S sh:targetNode ex:n ; sh:deactivated {flag} ; sh:class ex:C ."));
+    let numeric_true = "\"1\"^^<http://www.w3.org/2001/XMLSchema#boolean>";
+    assert!(validate(&[], &shapes(numeric_true)).unwrap().conforms);
+    assert!(!validate(&[], &shapes("false")).unwrap().conforms);
+    assert!(matches!(validate(&[], &shapes("\"true\"@en")),
+        Err(ValidationError::MalformedShape(_))));
+}
