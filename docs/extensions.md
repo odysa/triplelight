@@ -15,3 +15,15 @@ Implement `Extension::register` to declare an entailment provider, a graph valid
 An entailment provider wraps the active graph with a read-only `Snapshot` view. The executor supplies IDs for virtual predicates that are absent from the store dictionary. Named graphs and an explicit `FROM` merge each receive their own view. A validator receives the data and shapes graphs as triples.
 
 These extensions are linked Rust crates. Standalone shared-library installation and loading are future work.
+
+## Bindings
+
+| Binding | Load | List |
+| --- | --- | --- |
+| Python | `db.load_extension(name)` | `db.list_extensions()` |
+| Node.js and WebAssembly | `db.loadExtension(name)` | `db.listExtensions()` |
+| Go | `db.LoadExtension(name)` | `db.ListExtensions()` |
+| Java | `db.loadExtension(name)` | `db.listExtensions()` |
+| C | `tl_load_extension` | `tl_list_extensions` |
+
+The list reports the extension name and two flags for build availability and load state. The C call returns columns `name`, `compiled_in`, and `loaded` in an owned result. Free it with `tl_result_free`.

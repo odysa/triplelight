@@ -95,6 +95,10 @@ def test_rdfs_entailment_is_opt_in():
     db.update("INSERT DATA { <urn:ann> a <urn:Student> . <urn:Student> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <urn:Person> }")
     q = "SELECT ?x WHERE { ?x a <urn:Person> }"
     assert len(db.query(q)) == 0
+    if not next(entry.compiled_in for entry in db.list_extensions() if entry.name == "rdfs"):
+        with pytest.raises(triplelight.UnsupportedError):
+            db.query(q, entailment="rdfs")
+        return
     assert [row["x"] for row in db.query(q, entailment="rdfs")] == [triplelight.IRI("urn:ann")]
     assert "urn:ann" in db.query_json(q, entailment="rdfs")
     with db.read() as snap:
@@ -107,6 +111,12 @@ SHAPES = """@prefix sh: <http://www.w3.org/ns/shacl#> .
 <urn:S> a sh:NodeShape ; sh:targetClass <urn:Person> ; sh:property [ sh:path <urn:name> ; sh:minCount 1 ] ."""
 
 def test_shacl_validate_reports_and_errors():
+    with triplelight.Database.in_memory() as db:
+        shacl = next(entry for entry in db.list_extensions() if entry.name == "shacl")
+    if not shacl.compiled_in:
+        with pytest.raises(triplelight.UnsupportedError):
+            triplelight.validate("", SHAPES)
+        return
     ok = triplelight.validate("<urn:ann> a <urn:Person> ; <urn:name> \"Ann\" .", SHAPES)
     assert ok.conforms and bool(ok)
     bad = triplelight.validate("<urn:bob> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Person> .", SHAPES, data_format="ntriples")
@@ -117,3 +127,23 @@ def test_shacl_validate_reports_and_errors():
         triplelight.validate("<urn:bob> a", SHAPES)
     with pytest.raises(triplelight.ShapesError):
         triplelight.validate("", "@prefix sh: <http://www.w3.org/ns/shacl#> . <urn:S> a sh:NodeShape ; sh:targetClass <urn:P> ; sh:property [ sh:minCount 1 ] .")
+
+
+def test_extension_registry_load_and_autoload():
+    with triplelight.Database.in_memory() as db:
+        before = {entry.name: entry for entry in db.list_extensions()}
+        for name in ("rdfs", "shacl"):
+            assert not before[name].loaded
+            if before[name].compiled_in:
+                if name == "rdfs":
+                    assert db.query("ASK {}", entailment="rdfs")
+                db.load_extension(name)
+                db.load_extension(name)
+            else:
+                with pytest.raises(triplelight.UnsupportedError, match=name):
+                    db.load_extension(name)
+        after = {entry.name: entry for entry in db.list_extensions()}
+        for name in ("rdfs", "shacl"):
+            assert after[name].loaded == before[name].compiled_in
+        with pytest.raises(triplelight.UnsupportedError, match="unknown extension"):
+            db.load_extension("missing")

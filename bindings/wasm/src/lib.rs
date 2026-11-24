@@ -7,6 +7,7 @@ use std::sync::Arc;
 use js_sys::{Array, Object, Promise, Reflect};
 use triplelight::rdf::{Format, Literal, QuadFormat, ReadError, Term, Triple};
 use triplelight::exec::{self, QueryErrorKind, QueryResult};
+use triplelight::extension::ExtensionRegistry;
 use triplelight::storage::MemorySnapshot;
 use triplelight::store::{Change, Overlay};
 use wasm_bindgen::prelude::*;
@@ -152,8 +153,12 @@ fn fresh_blank_nodes(triples: Vec<Triple>) -> Vec<Triple> {
 }
 
 /// Runs a query over the whole dataset: the default graph plus the named graphs (`GRAPH`, `FROM`, `FROM NAMED`).
-fn run(cur: &Overlay, sparql: &str, options: Option<Object>) -> Result<QueryResult, JsValue> {
-    let opts = exec::Options { entailment: entailment(options)?, ..Default::default() };
+fn run(cur: &Overlay, sparql: &str, options: Option<Object>, extensions: Option<&ExtensionRegistry>) -> Result<QueryResult, JsValue> {
+    let entailment = entailment(options)?;
+    if entailment == exec::Entailment::Rdfs && let Some(extensions) = extensions {
+        extensions.load("rdfs").map_err(|e| error("UnsupportedError", &e.to_string()))?;
+    }
+    let opts = exec::Options { entailment, ..Default::default() };
     exec::query_dataset_with(cur, cur, sparql, &opts).map_err(query_error)
 }
 
@@ -176,13 +181,34 @@ fn settle(r: Result<JsValue, JsValue>) -> Promise {
 
 /// An in-memory RDF database. Not persistent: export with `CONSTRUCT` or `queryJson` to keep data.
 #[wasm_bindgen]
-pub struct Database { cur: Arc<Overlay> }
+pub struct Database { cur: Arc<Overlay>, extensions: ExtensionRegistry }
 
 #[wasm_bindgen]
 impl Database {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Database {
-        Database { cur: Arc::new(Overlay::from_base(Arc::new(MemorySnapshot::from_triples(Vec::new())))) }
+        Database {
+            cur: Arc::new(Overlay::from_base(Arc::new(MemorySnapshot::from_triples(Vec::new())))),
+            extensions: ExtensionRegistry::default(),
+        }
+    }
+
+    #[wasm_bindgen(js_name = loadExtension)]
+    pub fn load_extension(&self, name: &str) -> Result<(), JsValue> {
+        self.extensions.load(name).map_err(|e| error("UnsupportedError", &e.to_string()))
+    }
+
+    #[wasm_bindgen(js_name = listExtensions)]
+    pub fn list_extensions(&self) -> Result<Array, JsValue> {
+        let entries = Array::new();
+        for entry in self.extensions.list() {
+            let object = Object::new();
+            Reflect::set(&object, &"name".into(), &entry.name.into())?;
+            Reflect::set(&object, &"compiledIn".into(), &entry.compiled_in.into())?;
+            Reflect::set(&object, &"loaded".into(), &entry.loaded.into())?;
+            entries.push(&object);
+        }
+        Ok(entries)
     }
 
     /// Parses N-Triples (`format` = "ntriples", the default), Turtle ("turtle"), N-Quads ("nquads") or TriG ("trig")
@@ -238,7 +264,7 @@ impl Database {
     /// Runs a SPARQL SELECT / ASK / CONSTRUCT / DESCRIBE query.
     #[wasm_bindgen(js_name = querySync)]
     pub fn query_sync(&self, sparql: &str, options: Option<Object>) -> Result<JsValue, JsValue> {
-        convert(run(&self.cur, sparql, options)?)
+        convert(run(&self.cur, sparql, options, Some(&self.extensions))?)
     }
 
     pub fn query(&self, sparql: &str, options: Option<Object>) -> Promise { settle(self.query_sync(sparql, options)) }
@@ -246,7 +272,7 @@ impl Database {
     /// SPARQL 1.1 Query Results JSON for SELECT and ASK, as a string.
     #[wasm_bindgen(js_name = queryJsonSync)]
     pub fn query_json_sync(&self, sparql: &str, options: Option<Object>) -> Result<String, JsValue> {
-        results_json(run(&self.cur, sparql, options)?)
+        results_json(run(&self.cur, sparql, options, Some(&self.extensions))?)
     }
 
     #[wasm_bindgen(js_name = queryJson)]
@@ -283,11 +309,11 @@ pub struct Snapshot { cur: Arc<Overlay> }
 impl Snapshot {
     #[wasm_bindgen(js_name = querySync)]
     pub fn query_sync(&self, sparql: &str, options: Option<Object>) -> Result<JsValue, JsValue> {
-        convert(run(&self.cur, sparql, options)?)
+        convert(run(&self.cur, sparql, options, None)?)
     }
     pub fn query(&self, sparql: &str, options: Option<Object>) -> Promise { settle(self.query_sync(sparql, options)) }
     #[wasm_bindgen(js_name = queryJson)]
     pub fn query_json(&self, sparql: &str, options: Option<Object>) -> Promise {
-        settle(run(&self.cur, sparql, options).and_then(results_json).map(JsValue::from))
+        settle(run(&self.cur, sparql, options, None).and_then(results_json).map(JsValue::from))
     }
 }

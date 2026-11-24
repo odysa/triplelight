@@ -262,6 +262,17 @@ fn db_error(e: DatabaseError) -> TlError {
     TlError { kind, message: e.to_string() }
 }
 
+fn extension_error(error: triplelight::extension::ExtensionError) -> TlError {
+    use triplelight::extension::ExtensionError;
+    let kind = match &error {
+        ExtensionError::Unsupported(_) => TL_ERR_UNSUPPORTED,
+        ExtensionError::InvalidRegistration(_) => TL_ERR_INVALID_ARGUMENT,
+        ExtensionError::InvalidShapes(_) => TL_ERR_SHAPES,
+        _ => TL_ERR_INTERNAL,
+    };
+    TlError { kind, message: error.to_string() }
+}
+
 fn invalid(message: &str) -> TlError { TlError { kind: TL_ERR_INVALID_ARGUMENT, message: message.into() } }
 
 unsafe fn text<'a>(ptr: *const c_char, len: usize) -> Result<&'a str, TlError> {
@@ -386,6 +397,9 @@ pub unsafe extern "C" fn tl_query_with_limits(db: *const TlDb, sparql: *const c_
             _ => return Err(invalid("unknown entailment")),
         };
         let (d, q) = (handle(db)?, text(sparql, len)?);
+        if entailment == triplelight::exec::Entailment::Rdfs {
+            d.load_extension("rdfs").map_err(extension_error)?;
+        }
         let budget = (memory_bytes > 0).then(|| triplelight::exec::MemoryBudget::new(memory_bytes));
         let limits = triplelight::exec::QueryLimits { interrupt: interrupt.as_ref().map(|i| &i.0), memory: budget.as_ref() };
         let snap = d.read();
@@ -394,6 +408,32 @@ pub unsafe extern "C" fn tl_query_with_limits(db: *const TlDb, sparql: *const c_
             other => build(other)?,
         };
         out!(out, Box::into_raw(r));
+        Ok(())
+    }) }
+}
+
+/// Loads an official extension for this handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_load_extension(db: *const TlDb, name: *const c_char, len: usize, err: *mut *mut TlError) -> i32 {
+    unsafe { guard(err, || {
+        handle(db)?.load_extension(text(name, len)?).map_err(extension_error)
+    }) }
+}
+
+/// Returns extension status as bindings with columns name, compiled_in and loaded.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_list_extensions(db: *const TlDb, out: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
+    use triplelight::rdf::{Literal, Variable};
+    unsafe { guard(err, || {
+        if out.is_null() { return Err(invalid("null output pointer")); }
+        let vars = ["name", "compiled_in", "loaded"].map(Variable::new_unchecked).to_vec();
+        let rows = handle(db)?.list_extensions().into_iter().map(|entry| vec![
+            Some(Literal::new_simple_literal(entry.name).into()),
+            Some(Literal::from(entry.compiled_in).into()),
+            Some(Literal::from(entry.loaded).into()),
+        ]).collect();
+        let result = build(QueryResult::Solutions { vars, rows })?;
+        out!(out, Box::into_raw(result));
         Ok(())
     }) }
 }
@@ -590,6 +630,10 @@ mod tests {
             tl_result_free(report);
             Ok((conforms, triples))
         };
+        if !cfg!(feature = "shacl") {
+            assert_eq!(run("", shapes), Err(TL_ERR_UNSUPPORTED));
+            return;
+        }
         let (conforms, (kind, _)) = run("<urn:ann> a <urn:Person> ; <urn:name> \"Ann\" .", shapes).unwrap();
         assert_eq!((conforms, kind), (1, TL_RESULT_TRIPLES));
         let (conforms, (_, n)) = run("<urn:bob> a <urn:Person> .", shapes).unwrap();
@@ -614,7 +658,8 @@ mod tests {
             Ok(n)
         };
         assert_eq!(rows(TL_ENTAILMENT_SIMPLE), Ok(0));
-        assert_eq!(rows(TL_ENTAILMENT_RDFS), Ok(1));
+        let expected = if cfg!(feature = "rdfs") { Ok(1) } else { Err(TL_ERR_UNSUPPORTED) };
+        assert_eq!(rows(TL_ENTAILMENT_RDFS), expected);
         assert_eq!(rows(7), Err(TL_ERR_INVALID_ARGUMENT));
         tl_close(db);
     } }
