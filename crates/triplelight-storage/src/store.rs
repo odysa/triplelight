@@ -77,6 +77,8 @@ pub struct Overlay {
 }
 
 impl Overlay {
+    /// Nothing to compact: no pending changes, and the named graphs are exactly the base's.
+    pub(crate) fn matches_base(&self) -> bool { self.delta.is_empty() && self.named_graphs_match_base() }
     pub fn delta_len(&self) -> usize { self.delta.len() }
     pub fn base(&self) -> &dyn Snapshot { &*self.base }
     /// Identity of the base (stable across overlays sharing it).
@@ -614,7 +616,7 @@ impl Store {
         let mut w = self.wal.lock().unwrap();
         let mut p = self.pending.lock().unwrap(); // no new commits while we switch
         let cur = p.latest.clone();
-        if cur.delta.is_empty() && cur.named_graphs_match_base() { return Ok(()) }
+        if cur.matches_base() { return Ok(()) }
         let mut generation = self.generation.lock().unwrap();
         let next = *generation + 1;
         let new_dir = self.dir.join(format!("base-{next}"));
