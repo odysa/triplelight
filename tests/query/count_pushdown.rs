@@ -129,7 +129,48 @@ fn single_pattern_counts_distinct_and_unbound_use_index_only() {
         ),
         4
     );
-    assert_eq!(s.scans.load(Ordering::Relaxed), 1);
+    // A star (any join on one variable) is counted from range counts too; a chain on two still scans.
+    assert_eq!(s.scans.load(Ordering::Relaxed), 0);
+    assert_eq!(
+        scalar(
+            &s,
+            "SELECT (COUNT(*) AS ?n) WHERE {?a <urn:p> ?b . ?b <urn:q> ?c . ?c ?r ?d}"
+        ),
+        0
+    );
+    assert!(s.scans.load(Ordering::Relaxed) > 0);
+}
+#[test]
+fn star_counts_match_the_evaluator() {
+    // Subjects 0..40 with 0-3 values per predicate, objects shared, so centers in both positions, empty products and
+    // repeated leaf values all occur.
+    let mut triples = Vec::new();
+    for s in 0..40u32 {
+        for (k, p) in ["p", "q", "r"].iter().enumerate() {
+            for j in 0..(s * (k as u32 + 3)) % 4 {
+                triples.push(Triple::new(n(&format!("s{s}")), n(p), n(&format!("o{}", (s + j) % 7))));
+            }
+        }
+        triples.push(Triple::new(n(&format!("o{}", s % 7)), n("t"), n(&format!("s{s}"))));
+    }
+    let snap = MemorySnapshot::from_triples(triples);
+    let bgps = [
+        "?c <urn:p> ?x . ?c <urn:q> ?y",
+        "?c <urn:p> ?x . ?c <urn:q> ?y . ?c <urn:r> ?z",
+        "?c <urn:p> <urn:o3> . ?c <urn:q> ?y",
+        "?c <urn:p> ?x . ?c ?p ?y",
+        "?c <urn:p> ?x . ?w <urn:t> ?c",
+        "?x <urn:p> ?c . ?y <urn:q> ?c . ?c <urn:t> ?z",
+        "?c <urn:p> ?x . ?c <urn:absent> ?y",
+        "?c <urn:p> <urn:o1> . ?c <urn:q> <urn:o1>",
+    ];
+    for bgp in bgps {
+        for agg in ["COUNT(*)", "COUNT(?c)", "COUNT(DISTINCT ?c)", "COUNT(DISTINCT ?x)", "COUNT(?y)"] {
+            let pushed = format!("SELECT ({agg} AS ?n) WHERE {{ {bgp} }}");
+            let evaluated = format!("SELECT ({agg} AS ?n) WHERE {{ {{ SELECT * WHERE {{ {bgp} }} }} }}");
+            assert_eq!(scalar(&snap, &pushed), scalar(&snap, &evaluated), "{pushed}");
+        }
+    }
 }
 #[test]
 fn prefix_groups_preserve_counts_duplicates_and_unbound_keys() {

@@ -61,7 +61,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         {
             return None;
         }
-        if patterns.len()!=1 && (!keys.is_empty() || requests.iter().any(|(_,c)|matches!(c,Count::Variable{distinct:true,..}))) { return None; }
+        if patterns.len()!=1 && !keys.is_empty() { return None; }
         let pats: Vec<[Slot; 3]> = patterns
             .iter()
             .map(|p| {
@@ -90,21 +90,28 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             .iter()
             .flatten()
             .any(|s| matches!(s, Slot::Const(None)));
+        // A multi-pattern DISTINCT count needs per-value state, except of a star's center: one per intersected value.
+        let star = pattern::star_center(&pats);
+        if pats.len() != 1 && requests.iter().any(|(_, c)| matches!(c, Count::Variable { index, distinct: true } if star.is_none() || *index != star)) {
+            return None;
+        }
         let mut tr = crate::plan_trace::enabled().then(|| crate::plan_trace::Trace::new(patterns, 1));
         if pats.len() != 1 {
-            // Grouped joins and DISTINCT projections were already refused above (they need extra state).
-            let (n, strategy) = if missing {
-                (0, "count-empty")
+            // Grouped joins and DISTINCT counts other than of a star center were refused above (they need extra state).
+            let ((n, centers), strategy) = if missing {
+                ((0, 0), "count-empty")
             } else {
                 on_data!(self, |g| {
                     let join=bgp::Bgp { snap:g,w:self.vars.len(),ranges:None,sorted_probe:self.sorted_probe };
-                    if self.wcoj && pats.len()>=3 && pattern::cyclic(&pats) {
-                        (join.count_leapfrog(&pats,self.variable_order(&pats)), "count-leapfrog")
+                    if let Some(center) = star {
+                        (join.count_star(&pats, center), "count-star")
+                    } else if self.wcoj && pats.len()>=3 && pattern::cyclic(&pats) {
+                        ((join.count_leapfrog(&pats,self.variable_order(&pats)), 0), "count-leapfrog")
                     } else {
                         let order = self.planned_order(&pats,input,&crate::range::Ranges::new());
                         if let (Some(tr), Some(o)) = (tr.as_mut(), order.as_deref()) { tr.planned(o, None) }
                         let strategy = if order.is_some() { "count-binary-planner" } else { "count-binary-greedy" };
-                        (join.count_binary(&pats,order.as_deref()), strategy)
+                        ((join.count_binary(&pats,order.as_deref()), 0), strategy)
                     }
                 })
             };
@@ -113,6 +120,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             for (i, c) in requests {
                 let value = match c {
                     Count::All => n,
+                    Count::Variable { distinct: true, .. } => centers,
                     Count::Variable { index, .. } => {
                         if index.is_some_and(|index| vars.contains(&index)) {
                             n
