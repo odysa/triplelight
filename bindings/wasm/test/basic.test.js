@@ -116,3 +116,14 @@ test("a triple load into a named-only database keeps its graphs", async () => {
   assert.strictEqual(json.results.bindings[0].o.value, "1");
   assert.strictEqual(JSON.parse(db.queryJsonSync("ASK { GRAPH <urn:g> { ?s ?p ?o } }")).boolean, true);
 });
+
+test("RDFS entailment is opt-in per query", async () => {
+  const db = new Database();
+  await db.load("<urn:ann> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Student> .\n<urn:Student> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <urn:Person> .\n");
+  const q = "SELECT ?x WHERE { ?x a <urn:Person> }";
+  assert.strictEqual(db.querySync(q).bindings.length, 0);
+  assert.deepStrictEqual(db.querySync(q, { entailment: "rdfs" }).bindings.map((b) => b.x.value), ["urn:ann"]);
+  assert.ok(db.queryJsonSync(q, { entailment: "rdfs" }).includes("urn:ann"));
+  assert.strictEqual((await db.read().query(q, { entailment: "rdfs" })).bindings.length, 1);
+  assert.throws(() => db.querySync(q, { entailment: "owl" }), /entailment must be/);
+});

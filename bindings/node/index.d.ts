@@ -25,6 +25,10 @@ export interface OpenOptions {
 }
 
 /** A persistent RDF database in a local directory (created if missing). One process may open a directory at a time. */
+/** `entailment: "rdfs"` matches the default graph's RDFS closure (subclasses, subproperties, domain and range),
+ * computed at query time; nothing inferred is stored. The default, "simple", matches the stored triples. */
+export interface QueryOptions { entailment?: "simple" | "rdfs" }
+
 export class Database {
   /** Opens on the calling thread; prefer `Database.open` in servers. */
   constructor(path: string, options?: OpenOptions);
@@ -34,11 +38,11 @@ export class Database {
   static inMemory(): Database;
   /** Runs a SPARQL query on the current state. Evaluation runs on a worker thread; converting the result to JS
    * objects happens on the event loop when the Promise resolves (use `queryJson` for very large results). */
-  query(sparql: string): Promise<QueryResult>;
+  query(sparql: string, options?: QueryOptions): Promise<QueryResult>;
   /** Like `query`, but blocks the calling thread. */
-  querySync(sparql: string): QueryResult;
+  querySync(sparql: string, options?: QueryOptions): QueryResult;
   /** SPARQL 1.1 Query Results JSON as a string: the fastest path for large results. */
-  queryJson(sparql: string): Promise<string>;
+  queryJson(sparql: string, options?: QueryOptions): Promise<string>;
   /** Applies a SPARQL Update atomically and durably; resolves to the number of triples changed. */
   update(sparql: string): Promise<number>;
   /** Atomically imports an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file; resolves to the number of triples added. */
@@ -54,9 +58,9 @@ export class Database {
 }
 
 export class Snapshot {
-  query(sparql: string): Promise<QueryResult>;
-  querySync(sparql: string): QueryResult;
-  queryJson(sparql: string): Promise<string>;
+  query(sparql: string, options?: QueryOptions): Promise<QueryResult>;
+  querySync(sparql: string, options?: QueryOptions): QueryResult;
+  queryJson(sparql: string, options?: QueryOptions): Promise<string>;
 }
 
 export class TripleLightError extends Error { kind: "SyntaxError" | "UnsupportedError" | "StorageError" | "LockedError" | "GraphStateError" }

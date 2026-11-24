@@ -21,6 +21,7 @@ async function example(): Promise<string[]> {
   out.push(json, String(db.statsReady()));
   try { db.querySync("SELECT * WHERE { SERVICE <urn:remote> { ?s ?p ?o } }"); } catch (e) { if (e instanceof UnsupportedError) out.push(e.kind); }
   db.read().querySync("ASK {}");
+  db.querySync("ASK {}", { entailment: "rdfs" });
   await db.compact();
   db.close();
   return out;
