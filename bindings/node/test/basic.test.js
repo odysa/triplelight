@@ -141,3 +141,29 @@ test("SHACL validate: reports, syntax errors and rejected shapes", () => {
   assert.throws(() => tl.validate("<urn:bob> a", shapes), tl.SyntaxError);
   assert.throws(() => tl.validate("", "@prefix sh: <http://www.w3.org/ns/shacl#> . <urn:S> a sh:NodeShape ; sh:targetClass <urn:P> ; sh:property [ sh:minCount 1 ] ."), tl.ShapesError);
 });
+
+test("query limits: AbortSignal, timeoutMs and memoryMb", async () => {
+  const db = tl.Database.inMemory();
+  const data = Array.from({ length: 2000 }, (_, i) => `<urn:s${i}> <urn:p> "${i}" .`).join(" ");
+  await db.update(`INSERT DATA { ${data} }`);
+  const endless = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f }";
+  const grouped = "SELECT ?a (COUNT(*) AS ?n) { ?a ?p ?b } GROUP BY ?a";
+  // Aborting a running query rejects it, and the worker is free for the next query.
+  const controller = new AbortController();
+  const running = db.queryJson(endless, { signal: controller.signal });
+  setTimeout(() => controller.abort(), 100);
+  const started = Date.now();
+  await assert.rejects(running, (e) => e instanceof tl.InterruptedError && e.timedOut === false);
+  assert.ok(Date.now() - started < 10000);
+  assert.strictEqual((await db.query("ASK { <urn:s1> <urn:p> \"1\" }")).boolean, true);
+  // An aborted signal cancels at once.
+  await assert.rejects(db.query(grouped, { signal: AbortSignal.abort() }), tl.InterruptedError);
+  // A deadline, also on a snapshot and synchronously.
+  await assert.rejects(db.read().query(endless, { timeoutMs: 50 }), (e) => e instanceof tl.InterruptedError && e.timedOut);
+  assert.throws(() => db.querySync(endless, { timeoutMs: 50 }), tl.InterruptedError);
+  // A memory budget.
+  await assert.rejects(db.query(grouped, { memoryMb: 1 }), tl.ResourceLimitError);
+  assert.strictEqual((await db.query(grouped, { memoryMb: 1024, timeoutMs: 60000 })).bindings.length, 2000);
+  assert.throws(() => db.querySync(grouped, { memoryMb: 0 }), /memoryMb must be positive/);
+  db.close();
+});
