@@ -671,7 +671,6 @@ fn unsupported_features_are_rejected_not_misanswered() {
         "SELECT * FROM NAMED <urn:g> WHERE { ?s ?p ?o }",
         "SELECT * WHERE { ?s ?p ?o FILTER(<urn:my:fn>(?o)) }",
         "SELECT * WHERE { ?s ?p ?o FILTER EXISTS { GRAPH ?g { ?s ?p ?o } } }",
-        "SELECT (BNODE(\"x\") AS ?b) WHERE { ?s ?p ?o }",
     ];
     for q in rejected {
         match query(&s, q) {
@@ -680,6 +679,7 @@ fn unsupported_features_are_rejected_not_misanswered() {
         }
     }
     let accepted = [
+        "SELECT (BNODE(\"x\") AS ?b) WHERE { ?s ?p ?o }",
         "SELECT (xsd:double(?o) AS ?d) (STR(?o) AS ?str) WHERE { ?s ?p ?o }",
         "SELECT * WHERE { ?s ?p ?o FILTER(xsd:integer(?o) = 1 && REGEX(STR(?o), \"1\")) }",
         "SELECT * WHERE { ?s ?p ?o FILTER(?o < NOW()) }",
@@ -1227,4 +1227,49 @@ fn numeric_extend_and_having_match_the_general_evaluator() {
         let slow = format!("{xsd}SELECT ?g (COUNT(*) AS ?n) WHERE {{ ?s <http://ex/g> ?g . ?s <http://ex/a> ?a OPTIONAL {{ ?s <http://ex/b> ?b }} }} GROUP BY ?g HAVING (COALESCE({h}))");
         assert_eq!(rows(&fast), rows(&slow), "{h}");
     }
+}
+
+#[test]
+fn named_blank_nodes_follow_each_solution_occurrence() {
+    let q = r#"
+        SELECT (BNODE(?label) AS ?a) (BNODE("same"^^<http://www.w3.org/2001/XMLSchema#string>) AS ?b)
+               (BNODE("other") AS ?c) (BNODE() AS ?fresh)
+               (BNODE("same"@en) AS ?bad)
+        WHERE { VALUES ?label { "same" "same" } }
+    "#;
+    let QueryResult::Solutions { rows, .. } = query(&store(), q).unwrap() else {
+        panic!("expected solution mappings");
+    };
+    assert_eq!(rows.len(), 2);
+    for row in &rows {
+        assert!(matches!(row[0], Some(triplelight::rdf::Term::BlankNode(_))));
+        assert_eq!(row[0], row[1]);
+        assert_ne!(row[0], row[2]);
+        assert_ne!(row[0], row[3]);
+        assert_eq!(row[4], None);
+    }
+    assert_ne!(rows[0][0], rows[1][0]);
+    assert_ne!(rows[0][3], rows[1][3]);
+
+    let mixed = r#"
+        PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+        SELECT (BNODE("same") AS ?a) (xsd:float(?n) / ?d AS ?ratio)
+               (BNODE("same") AS ?b)
+        WHERE { VALUES (?n ?d) { (9 2) } }
+    "#;
+    let QueryResult::Solutions { rows, .. } = query(&store(), mixed).unwrap() else {
+        panic!("expected a blank node and a float");
+    };
+    assert_eq!(rows.len(), 1);
+    assert!(matches!(rows[0][0], Some(triplelight::rdf::Term::BlankNode(_))));
+    assert_eq!(rows[0][0], rows[0][2]);
+    let ratio = triplelight::rdf::Literal::new_typed_literal(
+        "4.5",
+        triplelight_rdf::vocab::xsd::FLOAT,
+    );
+    assert_eq!(rows[0][1], Some(ratio.into()));
+    assert!(matches!(
+        query(&store(), r#"ASK { FILTER(sameTerm(BNODE("x"), BNODE("x"))) }"#).unwrap(),
+        QueryResult::Boolean(true)
+    ));
 }
