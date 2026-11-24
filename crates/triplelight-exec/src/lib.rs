@@ -24,6 +24,7 @@ mod bgp;
 mod count;
 mod dataset;
 mod entail;
+mod order;
 mod path;
 mod pattern;
 mod range;
@@ -771,45 +772,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 None => self.value(e, r),
             }
         };
-        let first_cmp = |a: &Option<Term>, b: &Option<Term>| -> std::cmp::Ordering {
-            let c = expr::order_cmp(a.as_ref(), b.as_ref());
-            if matches!(expression[0], OrderExpression::Desc(_)) { c.reverse() } else { c }
-        };
-        // Top-k with more than one key: a row can be among the first k only if its first key is no later than the
-        // k-th smallest first key, so the other keys are computed only for those rows (for an ORDER BY on a value and
-        // then an IRI, the IRIs of all other rows are never decoded).
-        let mut idx: Vec<usize> = (0..rows.len()).collect();
-        let mut keys: Vec<Vec<Option<Term>>> = vec![Vec::new(); rows.len()];
-        match limit {
-            Some(k) if k > 0 && k < rows.len() && keys_by_column.len() > 1 => {
-                let first: Vec<Option<Term>> = rows.iter().map(|r| key_of(r, keys_by_column[0])).collect();
-                let mut order: Vec<usize> = idx.clone();
-                order.select_nth_unstable_by(k - 1, |a, b| first_cmp(&first[*a], &first[*b]));
-                let bound = first[order[k - 1]].clone();
-                idx.retain(|&i| first_cmp(&first[i], &bound).is_le());
-                for (i, f) in first.into_iter().enumerate() { if idx.binary_search(&i).is_ok() { keys[i].push(f) } }
-                for &i in &idx { for &kc in &keys_by_column[1..] { let v = key_of(&rows[i], kc); keys[i].push(v) } }
-            }
-            _ => for (i, r) in rows.iter().enumerate() { keys[i] = keys_by_column.iter().map(|&kc| key_of(r, kc)).collect() },
-        }
-        let cmp = |a: &usize, b: &usize| -> std::cmp::Ordering {
-            for (k, e) in expression.iter().enumerate() {
-                let c = expr::order_cmp(keys[*a][k].as_ref(), keys[*b][k].as_ref());
-                let c = if matches!(e, OrderExpression::Desc(_)) { c.reverse() } else { c };
-                if c.is_ne() { return c }
-            }
-            a.cmp(b) // ties keep input order (as the stable sort did)
-        };
-        match limit {
-            Some(k) if k < idx.len() => {
-                // Stable top-k: the comparator is a total order (index tie-break), so the k smallest equal the
-                // first k of a full stable sort.
-                if k > 0 { idx.select_nth_unstable_by(k - 1, cmp); }
-                idx.truncate(k);
-                idx.sort_unstable_by(cmp);
-            }
-            _ => idx.sort_unstable_by(cmp),
-        }
+        let desc: Vec<bool> = expression.iter().map(|e| matches!(e, OrderExpression::Desc(_))).collect();
+        let idx = order::order(rows.len(), &desc, limit, |i, k| key_of(&rows[i], keys_by_column[k]));
         let mut rows: Vec<Option<Row>> = rows.into_iter().map(Some).collect();
         idx.into_iter().map(|i| rows[i].take().unwrap()).collect()
     }
