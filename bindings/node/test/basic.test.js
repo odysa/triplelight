@@ -146,7 +146,7 @@ test("query limits: AbortSignal, timeoutMs and memoryMb", async () => {
   const db = tl.Database.inMemory();
   const data = Array.from({ length: 2000 }, (_, i) => `<urn:s${i}> <urn:p> "${i}" .`).join(" ");
   await db.update(`INSERT DATA { ${data} }`);
-  const endless = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f }";
+  const endless = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f FILTER(?b != ?d && ?d != ?f) }";
   const grouped = "SELECT ?a (COUNT(*) AS ?n) { ?a ?p ?b } GROUP BY ?a";
   // Aborting a running query rejects it, and the worker is free for the next query.
   const controller = new AbortController();
@@ -162,7 +162,9 @@ test("query limits: AbortSignal, timeoutMs and memoryMb", async () => {
   await assert.rejects(db.read().query(endless, { timeoutMs: 50 }), (e) => e instanceof tl.InterruptedError && e.timedOut);
   assert.throws(() => db.querySync(endless, { timeoutMs: 50 }), tl.InterruptedError);
   // A memory budget.
-  await assert.rejects(db.query(grouped, { memoryMb: 1 }), tl.ResourceLimitError);
+  // Four million groups: far more than one megabyte of working memory.
+  const wide = "SELECT ?a ?c (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d } GROUP BY ?a ?c";
+  await assert.rejects(db.query(wide, { memoryMb: 1 }), tl.ResourceLimitError);
   assert.strictEqual((await db.query(grouped, { memoryMb: 1024, timeoutMs: 60000 })).bindings.length, 2000);
   assert.throws(() => db.querySync(grouped, { memoryMb: 0 }), /memoryMb must be positive/);
   db.close();
