@@ -19,7 +19,7 @@ rdfs = ["dep:triplelight-rdfs"]
 sparql-12 = ["rdf-12"]
 # RDF 1.2 terms everywhere in the executor: results (#104) and SPARQL 1.2 evaluation (#103) are one feature, since
 # RDF 1.2 terms make every `Term` match need its triple-term arm. `sparql-12` is an alias.
-rdf-12 = ["triplelight-rdf/rdf-12", "triplelight-core/rdf-12", "triplelight-sparql/sparql-12"]
+rdf-12 = ["triplelight-rdf/rdf-12", "triplelight-core/rdf-12", "triplelight-sparql/sparql-12", "triplelight-rdfs?/rdf-12"]
 
 [dependencies]
 triplelight-core.workspace = true
