@@ -10,7 +10,8 @@ pub enum ValidationError {
     MalformedList(String),
     /// SHACL leaves recursive shape references undefined; they are reported and not evaluated.
     UndefinedRecursion(String),
-    /// Entailment or a feature this module does not provide (for example SHACL-SPARQL).
+    /// Entailment or a feature this module does not provide (for example SHACL-SPARQL), or a limit it keeps: shape references nested more
+    /// than 128 deep (`shapes::MAX_SHAPE_DEPTH`) and regular expressions the engine cannot compile.
     Unsupported(String),
 }
 
