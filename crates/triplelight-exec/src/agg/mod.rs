@@ -104,10 +104,12 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             groups[index].1 += i64::from(value_col.is_none_or(|col| row[col] != UNBOUND));
         }
         Self::resize(&mut held, groups.len() as u64 * bytes_per_group);
+        // Counts repeat across groups (most are small), so each distinct count becomes a term once.
+        let mut terms: HashMap<i64, TermId> = HashMap::new();
         groups.into_iter().map(|(key, count)| {
             let mut out = self.empty_row();
             out[key_col] = key;
-            out[out_col] = self.intern(&Literal::from(count).into());
+            out[out_col] = *terms.entry(count).or_insert_with(|| self.intern(&Literal::from(count).into()));
             out
         }).collect()
     }
