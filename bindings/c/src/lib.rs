@@ -724,7 +724,7 @@ mod tests {
         let data: String = (0..2000).map(|i| format!("<urn:s{i}> <urn:p> \"{i}\" . ")).collect();
         let up = format!("INSERT DATA {{ {data} }}");
         assert_eq!(tl_update(db, up.as_ptr() as _, up.len(), std::ptr::null_mut(), std::ptr::null_mut()), TL_OK);
-        let endless = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f }";
+        let endless = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f FILTER(?b != ?d && ?d != ?f) }";
         let run = |sparql: &str, interrupt: *const TlInterrupt, memory: u64| {
             let mut r: *mut TlResult = std::ptr::null_mut();
             let code = tl_query_with_limits(db, sparql.as_ptr() as _, sparql.len(), TL_ENTAILMENT_SIMPLE, interrupt, memory, &mut r, std::ptr::null_mut());
