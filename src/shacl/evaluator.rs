@@ -4,7 +4,7 @@ use super::constraints::ConstraintContext;
 use super::error::ValidationError;
 use super::graph::Graph;
 use super::report::{Outcome, ValidationReport, ValidationResult};
-use super::shapes::ShapesGraph;
+use super::shapes::{ShapesGraph, MAX_SHAPE_DEPTH};
 use crate::rdf::{Term, Triple};
 
 pub struct Evaluator<'a> {
@@ -25,6 +25,9 @@ impl<'a> Evaluator<'a> {
         let key = (shape.clone(), focus.clone());
         if self.active.contains(&key) {
             return Err(ValidationError::UndefinedRecursion(format!("{shape} reaches itself at focus node {focus}")));
+        }
+        if self.active.len() >= MAX_SHAPE_DEPTH {
+            return Err(ValidationError::Unsupported(format!("shape references nested more than {MAX_SHAPE_DEPTH} deep (at {shape})")));
         }
         self.active.push(key);
         let outcome = self.run(&parsed, focus);
@@ -66,8 +69,9 @@ impl<'a> Evaluator<'a> {
 
 /// Validates `data` against `shapes`: every shape with targets is checked at each of its focus nodes.
 pub fn validate(data: &[Triple], shapes: &[Triple]) -> Result<ValidationReport, ValidationError> {
-    let data = Graph::new(data);
+    // the shapes graph first: a rejected one (malformed, recursive, too deep) exits before the data graph is indexed
     let shapes = ShapesGraph::new(Graph::new(shapes))?;
+    let data = Graph::new(data);
     let mut ev = Evaluator::new(&shapes, &data);
     let mut results = Vec::new();
     for item in shapes.work_list(&data) {

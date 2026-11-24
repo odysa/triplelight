@@ -10,6 +10,10 @@ use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
+/// The deepest chain of shape references (`sh:node`, `sh:property`, ...) validation accepts: evaluation recurses once per level, and a
+/// longer acyclic chain would overflow the stack, so it is refused with `Unsupported` before any data is read.
+pub const MAX_SHAPE_DEPTH: usize = 128;
+
 #[derive(Clone, Debug)]
 pub enum Target {
     Node(Term),
@@ -85,6 +89,9 @@ impl ShapesGraph {
                         Some(Mark::Active) => return Err(ValidationError::UndefinedRecursion(format!("{id} reaches {next}, which is already being evaluated"))),
                         Some(Mark::Done) => {}
                         None => {
+                            if stack.len() >= MAX_SHAPE_DEPTH {
+                                return Err(ValidationError::Unsupported(format!("shape references nested more than {MAX_SHAPE_DEPTH} deep (at {next})")));
+                            }
                             marks.insert(next.clone(), Mark::Active);
                             let nested = refs(&next)?;
                             stack.push((next, nested));

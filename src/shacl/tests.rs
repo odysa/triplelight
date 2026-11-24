@@ -187,3 +187,14 @@ fn nested_shapes_that_do_not_recurse_still_validate() {
     assert!(!report.conforms);
     assert_eq!(report.results.len(), 1, "the integer value fails U, the string passes");
 }
+
+#[test]
+fn a_deep_acyclic_chain_of_shapes_is_refused_with_unsupported_before_any_data_is_read() {
+    let mut ttl = String::from("ex:s0 a sh:NodeShape ; sh:targetNode ex:n ; sh:node ex:s1 .\n");
+    for i in 1..300 { ttl.push_str(&format!("ex:s{i} a sh:NodeShape ; sh:node ex:s{} .\n", i + 1)); }
+    assert!(matches!(validate(&[], &parse(&ttl)), Err(ValidationError::Unsupported(_))));
+    // a chain within the limit validates
+    let mut ok = String::from("ex:s0 a sh:NodeShape ; sh:targetNode ex:n ; sh:node ex:s1 .\n");
+    for i in 1..100 { ok.push_str(&format!("ex:s{i} a sh:NodeShape ; sh:node ex:s{} .\n", i + 1)); }
+    assert!(validate(&[], &parse(&ok)).unwrap().conforms);
+}
