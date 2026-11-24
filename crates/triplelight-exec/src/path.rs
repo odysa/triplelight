@@ -584,7 +584,7 @@ mod csr_tests {
             base_iri: None,
         };
         let opts = crate::Options { csr_paths: csr, range_pushdown: false, ..crate::Options::default() };
-        let views = Box::leak(Box::new(crate::entail::Views::new(false, snap, None, None, &[]).unwrap()));
+        let views = Box::leak(Box::new(crate::views::Views::new(false, snap, None, None, &[]).unwrap()));
         Ctx::for_query(snap, None, views, Vec::new(), &query, &opts, limits)
     }
 

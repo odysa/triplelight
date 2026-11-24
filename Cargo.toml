@@ -68,6 +68,11 @@ path = "src/bin/triplelight.rs"
 workspace = true
 
 [features]
+default = ["rdfs", "shacl"]
+# Query-time RDFS inference.
+rdfs = ["triplelight-exec/rdfs"]
+# SHACL Core validation of RDF documents.
+shacl = ["dep:oxsdatatypes", "dep:regex"]
 # The SPARQL HTTP server (`triplelight serve` / `serve-store`). Off by default: TripleLight is embedded first.
 server = ["dep:tiny_http"]
 # The async embedded API (`triplelight::async_embedded`, task #41): runtime-independent, through AsyncBand.
@@ -87,8 +92,8 @@ triplelight-plan.workspace = true
 triplelight-exec.workspace = true
 triplelight-rdf.workspace = true
 sha2.workspace = true
-regex.workspace = true
-oxsdatatypes = "=0.2.3"
+regex = { workspace = true, optional = true }
+oxsdatatypes = { version = "=0.2.3", optional = true }
 tiny_http = { version = "0.12.0", optional = true }
 asyncband = { version = "0.8", optional = true, features = ["oneshot", "semaphore"] }
 

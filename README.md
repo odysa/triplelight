@@ -120,6 +120,16 @@ output from the C, Go and Java bindings; persisted optimizer statistics (in the
 with a saved statistics file, versus 20.5–25.8 s with a rebuild scan); and an optional HTTP server whose updates are
 off by default and can be enabled with a token or, on loopback only, without one.
 
+### Optional RDFS entailment and SHACL validation
+
+The Rust library, CLI, and binding builds include RDFS and SHACL. For a custom build, use `--no-default-features` and select the capabilities you need. For example, this command builds the CLI with RDFS only.
+
+```sh
+cargo build --release --no-default-features --features rdfs
+```
+
+Select `--entailment=rdfs` for CLI queries or `Entailment::Rdfs` in Rust. SHACL validates two supplied graphs through `triplelight validate <data> <shapes>` or the Rust validation API. [SHACL usage](docs/shacl.md) · [RDFS scope and reference checks](docs/rdfs-jena-lubm1-v1/README.md)
+
 ### RDF 1.2 and SPARQL 1.2 (drafts, behind a build feature)
 
 TripleLight implements the W3C RDF 1.2 and SPARQL 1.2 drafts when built with the `rdf-12` Cargo feature, which is off by default. The
