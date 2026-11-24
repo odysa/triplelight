@@ -16,6 +16,35 @@ An entailment provider wraps the active graph with a read-only `Snapshot` view. 
 
 These extensions are linked Rust crates. Standalone shared-library installation and loading are future work.
 
+### OWL 2 RL equivalence
+
+With the `rdfs` feature enabled, a Rust application can register an entailment
+provider for an OWL 2 RL subset.
+
+```rust
+use triplelight::embedded::Database;
+use triplelight::extension::OwlRlEquivalence;
+
+let db = Database::in_memory();
+db.register_extension(&OwlRlEquivalence)?;
+db.update(
+    "INSERT DATA {
+        <urn:Novel> <http://www.w3.org/2002/07/owl#equivalentClass> <urn:Book> .
+        <urn:story> a <urn:Novel> .
+    }",
+)?;
+let result = db.query_with_extension("ASK { <urn:story> a <urn:Book> }", "owl-rl-equivalence")?;
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+The provider adds both directions of the corresponding RDFS subclass or
+subproperty relation for asserted `owl:equivalentClass` and
+`owl:equivalentProperty` statements between IRIs. Property equivalences
+involving `rdf:type`, the RDFS predicates used by the view for schema rules,
+or either OWL equivalence predicate are ignored. The resulting RDFS
+entailments are scoped to each active graph, including a merged default graph
+selected by `FROM`. They exist only in the query view.
+
 ## Bindings
 
 | Binding | Load | List |
