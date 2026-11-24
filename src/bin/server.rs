@@ -3,7 +3,7 @@
 use crate::load;
 use std::io::Read;
 use std::time::Instant;
-use triplelight::exec::{query_with, Entailment, Interrupt, MemoryBudget, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids_v, serialize_csv, serialize_tsv}};
+use triplelight::exec::{query_with, Entailment, Interrupt, MemoryBudget, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids_v, serialize_csv, serialize_tsv, IdsJsonStream}};
 use triplelight::opt::stats::Stats;
 use triplelight::store::StoreUpdate;
 
@@ -89,6 +89,35 @@ fn accept_of(req: &tiny_http::Request) -> Format {
 
 type Resp = tiny_http::Response<std::io::Cursor<Vec<u8>>>;
 
+/// An answer to one query: a whole response, or (for SPARQL JSON over id rows) a body that is serialized window by window
+/// while it is read, so the first bytes leave before the rest of the rows are decoded and the body is never held whole.
+enum Reply<'a> { Whole(Resp), Stream(tiny_http::Response<Box<dyn Read + 'a>>) }
+
+/// The body of a streamed JSON answer. `read` serializes the next window when the previous one is sent; an error ends the
+/// body without its closing braces and without the terminating chunk, so a client sees a truncated answer, never a wrong one.
+struct JsonBody<'a, S: triplelight::storage::Snapshot> {
+    stream: IdsJsonStream<triplelight::exec::IdSolutions>,
+    snap: &'a S,
+    buf: Vec<u8>,
+    pos: usize,
+}
+
+impl<S: triplelight::storage::Snapshot> Read for JsonBody<'_, S> {
+    fn read(&mut self, out: &mut [u8]) -> std::io::Result<usize> {
+        while self.pos == self.buf.len() {
+            match self.stream.next_piece(self.snap) {
+                Ok(Some(piece)) => { self.buf = piece.into_bytes(); self.pos = 0 }
+                Ok(None) => return Ok(0),
+                Err(e) => { eprintln!("streamed answer failed after its first window: {e}"); return Err(std::io::Error::other(e)) }
+            }
+        }
+        let n = out.len().min(self.buf.len() - self.pos);
+        out[..n].copy_from_slice(&self.buf[self.pos..self.pos + n]);
+        self.pos += n;
+        Ok(n)
+    }
+}
+
 fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax => 400, QueryErrorKind::Unsupported => 501, QueryErrorKind::Storage => 500, QueryErrorKind::GraphState => 400, QueryErrorKind::Cancelled | QueryErrorKind::Timeout | QueryErrorKind::ResourceLimit => 503 } }
 
 /// A runtime explanation, requested explicitly with a raw SPARQL query body.
@@ -122,7 +151,7 @@ fn explain<S: triplelight::storage::Snapshot>(req: &mut tiny_http::Request, snap
 
 /// One SPARQL query against a snapshot, as an HTTP response. Errors: 400 (bad query), 501 (unsupported), 500 (storage);
 /// never an empty result in place of a failure.
-fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'_>, fmt: Format) -> Resp {
+fn answer<'a, S: triplelight::storage::Snapshot>(snap: &'a S, q: &str, opts: &Options<'_>, fmt: Format) -> Reply<'a> {
     let before = triplelight::storage::disk_index::cache_trace_enabled().then(triplelight::storage::disk_index::cache_trace_snapshot);
     let phases = triplelight::exec::phase::enabled().then(|| { triplelight::exec::phase::take(); triplelight::exec::phase::take_ranges(); Instant::now() });
     let exec_done = std::cell::Cell::new(None::<Instant>);
@@ -132,24 +161,43 @@ fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'
         Ok(Ok(r)) => {
             exec_done.set(Some(Instant::now()));
             if let QueryResult::Ids(sol) = &r { shape.set((sol.rows, sol.vars.len())) }
-            let (ct, b) = match &r {
-                QueryResult::Ids(sol) => match serialize_ids_v(sol, snap, snap.has_rdf12_terms()) {
+            // SPARQL JSON over id rows streams, unless a trace is on: the traces time the whole output, which a stream
+            // spreads over the socket writes.
+            let streaming = before.is_none() && phases.is_none() && derived.is_none();
+            let (ct, b) = match r {
+                QueryResult::Ids(sol) if streaming => {
+                    // The head and the first window are produced before the status line, so a dictionary failure there
+                    // still answers 500. A failure after that ends the body early (see `JsonBody`).
+                    let mut stream = IdsJsonStream::new(sol, snap.has_rdf12_terms());
+                    let mut first = String::new();
+                    for _ in 0..2 {
+                        match stream.next_piece(snap) {
+                            Ok(Some(piece)) => first.push_str(&piece),
+                            Ok(None) => break,
+                            Err(e) => return Reply::Whole(tiny_http::Response::from_string(format!("storage error: {e}")).with_status_code(500)),
+                        }
+                    }
+                    let body: Box<dyn Read + 'a> = Box::new(JsonBody { stream, snap, buf: first.into_bytes(), pos: 0 });
+                    let header = tiny_http::Header::from_bytes("Content-Type", "application/sparql-results+json").unwrap();
+                    return Reply::Stream(tiny_http::Response::new(tiny_http::StatusCode(200), vec![header], body, None, None));
+                }
+                QueryResult::Ids(sol) => match serialize_ids_v(&sol, snap, snap.has_rdf12_terms()) {
                     Ok(b) => ("application/sparql-results+json", b),
-                    Err(e) => return tiny_http::Response::from_string(format!("storage error: {e}")).with_status_code(500),
+                    Err(e) => return Reply::Whole(tiny_http::Response::from_string(format!("storage error: {e}")).with_status_code(500)),
                 },
                 r => match fmt {
-                    Format::Tsv => serialize_tsv(r).unwrap_or_else(|| serialize(r)),
-                    Format::Csv => serialize_csv(r).unwrap_or_else(|| serialize(r)),
-                    Format::Json => serialize(r),
+                    Format::Tsv => serialize_tsv(&r).unwrap_or_else(|| serialize(&r)),
+                    Format::Csv => serialize_csv(&r).unwrap_or_else(|| serialize(&r)),
+                    Format::Json => serialize(&r),
                 },
             };
-            tiny_http::Response::from_string(b).with_header(tiny_http::Header::from_bytes("Content-Type", ct).unwrap())
+            Reply::Whole(tiny_http::Response::from_string(b).with_header(tiny_http::Header::from_bytes("Content-Type", ct).unwrap()))
         }
-        Ok(Err(e)) => tiny_http::Response::from_string(e.to_string()).with_status_code(error_code(e.kind)),
+        Ok(Err(e)) => Reply::Whole(tiny_http::Response::from_string(e.to_string()).with_status_code(error_code(e.kind))),
         Err(e) => {
             let msg = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_default();
             let code = if msg.contains("not supported") { 501 } else { 500 };
-            tiny_http::Response::from_string(msg).with_status_code(code)
+            Reply::Whole(tiny_http::Response::from_string(msg).with_status_code(code))
         }
     } })();
     if let Some(before) = before {
@@ -260,7 +308,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
                         let interrupt = timeout.map(Interrupt::with_timeout);
                         let budget = memory.map(MemoryBudget::new);
                         let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), raw_ids: fmt == Format::Json, entailment, interrupt: interrupt.as_ref(), memory_budget: budget.as_ref(), ..ablations };
-                        answer(&*snap, &q, &opts, fmt)
+                        match answer(&*snap, &q, &opts, fmt) { Reply::Whole(r) => r, Reply::Stream(r) => { let _ = req.respond(r); continue } }
                     }
                 }
             };
@@ -413,7 +461,7 @@ fn serve_memory(args: &[String]) {
                         let interrupt = timeout.map(Interrupt::with_timeout);
                         let budget = memory.map(MemoryBudget::new);
                         let opts = Options { stats: st.as_deref(), raw_ids: fmt == Format::Json, entailment, interrupt: interrupt.as_ref(), memory_budget: budget.as_ref(), ..ablations };
-                        answer(snap, &q, &opts, fmt)
+                        match answer(snap, &q, &opts, fmt) { Reply::Whole(r) => r, Reply::Stream(r) => { let _ = req.respond(r); continue } }
                     }
                 };
                 let _ = req.respond(resp);
