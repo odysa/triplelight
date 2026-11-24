@@ -235,6 +235,10 @@ impl Database {
     pub fn query_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
         self.read_for(entailment)?.query_with_limits(sparql, entailment, limits)
     }
+    /// `query_json` under explicit limits (see `ReadSnapshot::query_with_limits`).
+    pub fn query_json_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<String, DatabaseError> {
+        self.read().query_json_with_limits(sparql, entailment, limits)
+    }
 
     /// Loads a linked official extension for this database. Loading the same extension again succeeds.
     pub fn load_extension(&self, name: &str) -> Result<(), ExtensionError> {
@@ -530,7 +534,11 @@ impl ReadSnapshot {
     pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> { self.query_json_with_entailment(sparql, exec::Entailment::Simple) }
     /// `query_json` under an explicit entailment regime (see `Database::query_with_entailment`).
     pub fn query_json_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<String, DatabaseError> {
-        let result = self.run(sparql, true, entailment)?;
+        self.query_json_with_limits(sparql, entailment, exec::QueryLimits::default())
+    }
+    /// `query_json` under explicit limits (see `query_with_limits`).
+    pub fn query_json_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<String, DatabaseError> {
+        let result = self.run_with(sparql, true, entailment, limits)?;
         match &result {
             QueryResult::Ids(ids) => self.serialize_ids(ids),
             QueryResult::Boolean(_) | QueryResult::Solutions { .. } => Ok(exec::results::serialize(&result).1),
