@@ -48,8 +48,6 @@ def main():
             q = open(qpath, encoding="utf-8").read()
             resfile = g.value(test, MF.result)
             exp = expected_result(fileuri_to_path(str(resfile))) if resfile is not None else None
-            if exp is None and resfile is not None and str(resfile).endswith((".ttl", ".rdf", ".nt")):
-                exp = ("graph", fileuri_to_path(str(resfile)))
             dg = Graph()
             for d in g.objects(action, QT.data):
                 dp = fileuri_to_path(str(d))
@@ -64,7 +62,7 @@ def main():
             else:
                 try:
                     if exp[0] == "graph":
-                        ok = isomorphic(Graph().parse(exp[1], format="xml" if exp[1].endswith(".rdf") else "turtle"), Graph().parse(data=out, format="nt"))
+                        ok = isomorphic(exp[1], Graph().parse(data=out, format="nt"))
                     else:
                         ok = compare(exp, actual_from_json(out), False)
                 except Exception as e:
