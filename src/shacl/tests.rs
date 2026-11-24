@@ -253,3 +253,11 @@ fn a_shared_sequence_ladder_evaluates_in_polynomial_time() {
     let reached = path.values(&iri("a"), &data);
     assert!(reached.contains(&iri("a")) && reached.contains(&iri("b")) && reached.contains(&iri("c")));
 }
+
+#[test]
+fn a_deactivated_malformed_or_recursive_shape_does_not_fail_validation() {
+    let shapes = parse(
+        "ex:S a sh:NodeShape ; sh:targetNode ex:n ; sh:node ex:D . \
+         ex:D a sh:NodeShape ; sh:deactivated true ; sh:node ex:D ; sh:minCount \"not a number\" .");
+    assert!(validate(&[], &shapes).unwrap().conforms);
+}

@@ -158,7 +158,9 @@ impl ShapesGraph {
             None => Severity::Violation,
         };
         let messages = g.objects(id, &sh("message")).iter().filter_map(|m| if let Term::Literal(l) = m { Some(l.clone()) } else { None }).collect();
-        let constraints = constraints::parse(id, g)?;
+        // a deactivated shape is never evaluated, so its constraints are neither parsed nor followed by the reference walk: a malformed
+        // deactivated shape does not fail validation
+        let constraints = if deactivated { Vec::new() } else { constraints::parse(id, g)? };
         Ok(Shape { id: id.clone(), targets, path, deactivated, severity, messages, constraints })
     }
 
