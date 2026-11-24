@@ -30,7 +30,7 @@ impl Path {
     /// `sh:zeroOrOnePath`.
     pub fn parse(node: &Term, shapes: &Graph) -> Result<Path, ValidationError> {
         let mut parser = PathParser { shapes, visiting: Vec::new(), done: HashMap::new() };
-        let root = parser.parse_at(node)?;
+        let (root, _) = parser.parse_at(node)?;
         Ok((*root).clone())
     }
 
@@ -58,49 +58,80 @@ struct PathParser<'a> {
     shapes: &'a Graph,
     /// The blank path nodes being parsed, outermost first: a node that contains itself is a malformed path.
     visiting: Vec<Term>,
-    done: HashMap<Term, Arc<Path>>,
+    /// Each parsed blank node with its height: the number of blank path nodes on its longest chain, itself included.
+    done: HashMap<Term, (Arc<Path>, usize)>,
 }
 
 impl PathParser<'_> {
-    fn parse_at(&mut self, node: &Term) -> Result<Arc<Path>, ValidationError> {
+    /// The parsed path and its height. The nesting limit holds for a shared node wherever it is reached: the nodes above it plus its own
+    /// height may not exceed `MAX_PATH_DEPTH`, so a node first reached by a short branch cannot hide a longer chain elsewhere.
+    fn parse_at(&mut self, node: &Term) -> Result<(Arc<Path>, usize), ValidationError> {
         let bad = |why: &str| ValidationError::MalformedShape(format!("path {node}: {why}"));
+        let too_deep = || bad("paths nested more than 64 deep are not supported");
         match node {
-            Term::NamedNode(p) => Ok(Arc::new(Path::Predicate(p.clone()))),
+            Term::NamedNode(p) => Ok((Arc::new(Path::Predicate(p.clone())), 0)),
             Term::BlankNode(_) => {
-                if let Some(done) = self.done.get(node) { return Ok(Arc::clone(done)) }
+                if let Some((path, height)) = self.done.get(node) {
+                    if self.visiting.len() + height > MAX_PATH_DEPTH { return Err(too_deep()) }
+                    return Ok((Arc::clone(path), *height));
+                }
                 if self.visiting.contains(node) { return Err(bad("a path contains itself")) }
-                if self.visiting.len() >= MAX_PATH_DEPTH { return Err(bad("paths nested more than 64 deep are not supported")) }
+                if self.visiting.len() >= MAX_PATH_DEPTH { return Err(too_deep()) }
                 self.visiting.push(node.clone());
                 let parsed = self.parse_blank(node);
                 self.visiting.pop();
-                let parsed = Arc::new(parsed?);
-                self.done.insert(node.clone(), Arc::clone(&parsed));
-                Ok(parsed)
+                let (path, below) = parsed?;
+                let height = below + 1;
+                if self.visiting.len() + height > MAX_PATH_DEPTH { return Err(too_deep()) }
+                let path = Arc::new(path);
+                self.done.insert(node.clone(), (Arc::clone(&path), height));
+                Ok((path, height))
             }
             _ => Err(bad("a path is an IRI or a blank node")),
         }
     }
 
-    fn parse_blank(&mut self, node: &Term) -> Result<Path, ValidationError> {
+    /// Parses every member and returns the tallest member's height.
+    fn members(&mut self, items: &[Term]) -> Result<(Vec<Arc<Path>>, usize), ValidationError> {
+        let mut paths = Vec::with_capacity(items.len());
+        let mut tallest = 0;
+        for item in items {
+            let (path, height) = self.parse_at(item)?;
+            tallest = tallest.max(height);
+            paths.push(path);
+        }
+        Ok((paths, tallest))
+    }
+
+    /// The path of a blank node and the height of what is below it.
+    fn parse_blank(&mut self, node: &Term) -> Result<(Path, usize), ValidationError> {
         let bad = |why: &str| ValidationError::MalformedShape(format!("path {node}: {why}"));
         let shapes = self.shapes;
         if !shapes.objects(node, &rdf("first")).is_empty() {
             let items = shapes.list_items(node)?;
             if items.len() < 2 { return Err(bad("a sequence path needs at least two members")) }
-            return Ok(Path::Sequence(items.iter().map(|i| self.parse_at(i)).collect::<Result<_, _>>()?));
+            let (paths, tallest) = self.members(&items)?;
+            return Ok((Path::Sequence(paths), tallest));
         }
         let forms = ["inversePath", "alternativePath", "zeroOrMorePath", "oneOrMorePath", "zeroOrOnePath"];
         let present: Vec<(&str, &Term)> = forms.iter().flat_map(|f| shapes.objects(node, &sh(f)).iter().map(move |o| (*f, o))).collect();
         match present.as_slice() {
-            [("inversePath", o)] => Ok(Path::Inverse(self.parse_at(o)?)),
             [("alternativePath", o)] => {
                 let items = shapes.list_items(o)?;
                 if items.len() < 2 { return Err(bad("an alternative path needs at least two members")) }
-                Ok(Path::Alternative(items.iter().map(|i| self.parse_at(i)).collect::<Result<_, _>>()?))
+                let (paths, tallest) = self.members(&items)?;
+                Ok((Path::Alternative(paths), tallest))
             }
-            [("zeroOrMorePath", o)] => Ok(Path::ZeroOrMore(self.parse_at(o)?)),
-            [("oneOrMorePath", o)] => Ok(Path::OneOrMore(self.parse_at(o)?)),
-            [("zeroOrOnePath", o)] => Ok(Path::ZeroOrOne(self.parse_at(o)?)),
+            [(form, o)] if forms.contains(form) => {
+                let (inner, height) = self.parse_at(o)?;
+                let path = match *form {
+                    "inversePath" => Path::Inverse(inner),
+                    "zeroOrMorePath" => Path::ZeroOrMore(inner),
+                    "oneOrMorePath" => Path::OneOrMore(inner),
+                    _ => Path::ZeroOrOne(inner),
+                };
+                Ok((path, height))
+            }
             _ => Err(bad("not a recognised path form")),
         }
     }
