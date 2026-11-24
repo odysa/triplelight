@@ -8,6 +8,8 @@ mod parallel_cli;
 mod shacl_cli;
 #[cfg(all(unix, feature = "server"))]
 mod server_auth;
+#[cfg(all(unix, feature = "server"))]
+mod server_stream;
 
 #[cfg(not(feature = "shacl"))]
 #[test]
