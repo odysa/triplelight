@@ -6,6 +6,24 @@ The pinned suite ran all 353 query cases. It passed 352. This includes the 22 da
 
 The remaining case is `cast-decimal`. Its expected result spells the decimal converted from integer zero as `"0"`, while TripleLight returns `"0.0"`. All other terms in that result match. The comparison keeps the lexical difference visible.
 
+## Pinned SPARQL 1.1 Update suite
+
+The conformance runner covers all 157 cases in the W3C SPARQL 1.1 Update manifest at
+`56076c0efec4c353efcae2971be8f6005294ac64`. It passed all 63 syntax cases and all 94
+evaluation cases on a build with the RDF 1.2 feature enabled. The syntax run sends
+all Update requests to the Update parser, including the eight DELETE cases tagged
+as negative query syntax in the manifest. Evaluation compares the final named
+graph catalog and RDF dataset with the expected result, allowing blank-node
+renaming.
+
+Set `TL_RDF_TESTS` to the absolute path of a W3C checkout at the pinned revision.
+Run the test from the repository root.
+
+```sh
+cargo test --manifest-path conformance/rdf12-diff/Cargo.toml --locked --release \
+  --test w3c_sparql12 sparql11_w3c -- --ignored --nocapture --test-threads=1
+```
+
 ## Earlier main `58ba1b2b` (PR #146, local CI 2026-11-22)
 
 Of 353 query tests: pass 323 (the CI floor), fail 7, unsupported 1, skipped 22 (19 named-graph cases the harness does not

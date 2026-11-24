@@ -107,7 +107,7 @@ jobs:
         run: |
           git init -q rdf-tests-12
           git -C rdf-tests-12 remote add origin https://github.com/w3c/rdf-tests.git
-          git -C rdf-tests-12 sparse-checkout set rdf/rdf12 sparql/sparql12
+          git -C rdf-tests-12 sparse-checkout set rdf/rdf12 sparql/sparql11 sparql/sparql12
           git -C rdf-tests-12 fetch -q --depth 1 --filter=blob:none origin 56076c0efec4c353efcae2971be8f6005294ac64
           git -C rdf-tests-12 checkout -q --detach FETCH_HEAD
       - name: Run the 1.2 suites and check the floors
