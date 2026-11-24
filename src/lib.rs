@@ -28,16 +28,25 @@ pub mod store {
 
     impl StoreUpdate for Store {
         fn update(&self, text: &str) -> Result<usize, crate::exec::QueryError> {
-            // Report the sum of the operations' changed triples, as the in-memory database does (not the net effect
-            // of the concatenated list, which is what the WAL records).
-            let changed = std::cell::Cell::new(0);
-            self.update_dataset_with(text, &|snap, text| {
-                let (_, changes, n) = dataset_update(snap, text)?;
-                changed.set(n);
-                Ok(changes)
-            }, &storage_error)?;
-            Ok(changed.get())
+            store_update_with(self, text, dataset_update)
         }
+    }
+
+    pub(crate) type DatasetUpdate = (Option<Overlay>, Vec<crate::model::DatasetChange>, usize);
+
+    pub(crate) fn store_update_with(
+        store: &Store,
+        text: &str,
+        compute: impl Fn(&Overlay, &str) -> Result<DatasetUpdate, crate::exec::QueryError>,
+    ) -> Result<usize, crate::exec::QueryError> {
+        // Return the sum of the operations' counts. The WAL records their net effect.
+        let changed = std::cell::Cell::new(0);
+        store.update_dataset_with(text, &|snapshot, text| {
+            let (_, changes, count) = compute(snapshot, text)?;
+            changed.set(count);
+            Ok(changes)
+        }, &storage_error)?;
+        Ok(changed.get())
     }
 
     /// A storage failure as a query error. A graph-state error (`CREATE` of an existing graph, `DROP`/`CLEAR` of an
@@ -53,13 +62,19 @@ pub mod store {
     /// the concatenated dataset changes (to commit atomically) and the number of triples that changed.
     pub fn dataset_update(snap: &Overlay, text: &str)
         -> Result<(Option<Overlay>, Vec<crate::model::DatasetChange>, usize), crate::exec::QueryError> {
+        let operations = crate::exec::parse_update_operations(text)?;
+        dataset_update_operations(snap, &operations)
+    }
+
+    pub(crate) fn dataset_update_operations(snap: &Overlay, operations: &[triplelight_sparql::GraphUpdateOperation])
+        -> Result<DatasetUpdate, crate::exec::QueryError> {
         let storage = storage_error;
         let mut owned: Option<Overlay> = None;
         let mut all = Vec::new();
         let mut changed = 0;
-        for op in crate::exec::parse_update_operations(text)? {
+        for op in operations {
             let cur = owned.as_ref().unwrap_or(snap);
-            let changes = crate::exec::operation_changes(cur, cur, &op)?;
+            let changes = crate::exec::operation_changes(cur, cur, op)?;
             if changes.is_empty() { continue }
             let (next, n) = cur.with_dataset_changes(&changes).map_err(storage)?;
             owned = Some(next);
