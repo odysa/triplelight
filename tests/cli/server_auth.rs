@@ -65,6 +65,16 @@ fn updates_are_off_by_default_even_on_loopback() {
 }
 
 #[test]
+fn explain_returns_an_observed_plan_and_refuses_updates() {
+    let server = start("explain", &[], None);
+    let report = post(server.1, "/explain", "application/sparql-query", ASK, None);
+    assert!(report.contains(" 200 ") && report.contains("plan_trace strategy="), "{report}");
+    let update = post(server.1, "/explain", "application/sparql-query", UPDATE, None);
+    assert!(update.contains(" 400 "), "{update}");
+    assert!(post(server.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
+}
+
+#[test]
 fn explicit_open_updates_refuse_browser_origins() {
     let s = start("open", &["--allow-unauthenticated-updates"], None);
     // A cross-origin HTML form POST from a web page carries an Origin header.
