@@ -58,9 +58,10 @@ impl ShapesGraph {
 
     pub fn graph(&self) -> &Graph { &self.graph }
 
-    /// The work validation starts from: each shape that has targets with its focus nodes in `data`, in a fixed order.
-    pub fn work_list(&self, data: &Graph) -> Result<Vec<(Term, Vec<Term>)>, ValidationError> {
-        self.declared.iter().map(|id| Ok((id.clone(), self.focus_nodes(&*self.shape(id)?, data)))).collect()
+    /// The work validation starts from, one shape at a time and in a fixed order: each shape that has targets with its focus nodes in
+    /// `data`. It is lazy, so only one shape's focus nodes are held at once, and a malformed shape surfaces when its turn comes.
+    pub fn work_list<'a>(&'a self, data: &'a Graph) -> impl Iterator<Item = Result<(Term, Vec<Term>), ValidationError>> + 'a {
+        self.declared.iter().map(move |id| Ok((id.clone(), self.focus_nodes(&*self.shape(id)?, data))))
     }
 
     /// The shape with this id, parsed on first use. A node that has no shape properties is still a (trivial) shape.
