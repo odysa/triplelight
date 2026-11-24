@@ -8,7 +8,8 @@ use std::sync::{Arc, Mutex, RwLock};
 use crate::opt::stats::Stats;
 use crate::extension::{Extension, ExtensionError, ExtensionInfo, ExtensionRegistry, Registry, Validation};
 use crate::exec::{self, QueryError, QueryResult};
-use crate::store::{Change, Overlay, Store, StoreUpdate};
+use crate::rdf::{NamedNode, Triple};
+use crate::store::{Change, Overlay, Store};
 use crate::storage::{Dictionary, DiskBase, MemorySnapshot, Snapshot};
 use crate::model::Perm;
 
@@ -299,13 +300,63 @@ impl Database {
 
     /// Applies a supported SPARQL Update atomically. Persistent updates are durable; in-memory updates are not.
     pub fn update(&self, sparql: &str) -> Result<usize, DatabaseError> {
+        self.apply_update(sparql, crate::store::dataset_update)
+    }
+
+    /// Applies a SPARQL update with an explicit resolver for `LOAD` source IRIs.
+    ///
+    /// The resolver returns the triples of one complete RDF document. Relative IRIs in that
+    /// document should be resolved against its source IRI. Calls run in request order before
+    /// the database takes the writer lock. A failed `LOAD SILENT` is skipped. Any other
+    /// load error aborts the request before changes are applied.
+    pub fn update_with_loader(
+        &self,
+        sparql: &str,
+        mut load: impl FnMut(&NamedNode) -> Result<Vec<Triple>, DatabaseError>,
+    ) -> Result<usize, DatabaseError> {
+        use triplelight_sparql::{GraphName, GraphUpdateOperation as Operation};
+
+        let mut operations = Vec::new();
+        for operation in exec::parse_update_operations(sparql)? {
+            let Operation::Load { silent, source, destination } = operation else {
+                operations.push(operation);
+                continue;
+            };
+            let triples = match load(&source) {
+                Ok(triples) => triples,
+                Err(_) if silent => continue,
+                Err(err) => return Err(err),
+            };
+            if triples.is_empty() && let GraphName::NamedNode(graph) = &destination {
+                operations.push(Operation::Create { silent: true, graph: graph.clone() });
+            }
+            operations.push(Operation::InsertData {
+                data: triples.into_iter().map(|triple| triplelight_sparql::Quad {
+                    subject: triple.subject,
+                    predicate: triple.predicate,
+                    object: triple.object,
+                    graph_name: destination.clone(),
+                }).collect(),
+            });
+        }
+
+        self.apply_update(sparql, |snapshot, _| {
+            crate::store::dataset_update_operations(snapshot, &operations)
+        })
+    }
+
+    fn apply_update(
+        &self,
+        sparql: &str,
+        compute: impl Fn(&Overlay, &str) -> Result<crate::store::DatasetUpdate, QueryError>,
+    ) -> Result<usize, DatabaseError> {
         match &self.store {
-            Backend::Disk(store) => Ok(store.update(sparql)?),
+            Backend::Disk(store) => Ok(crate::store::store_update_with(store, sparql, compute)?),
             Backend::Memory(store) => {
                 let _writer = store.writer.lock().unwrap();
                 let current = store.current.read().unwrap().clone();
-                let (next, _, count) = crate::store::dataset_update(&current, sparql)?;
-                if let Some(next) = next { *store.current.write().unwrap() = Arc::new(next) }
+                let (next, _, count) = compute(&current, sparql)?;
+                if let Some(next) = next { *store.current.write().unwrap() = Arc::new(next); }
                 Ok(count)
             }
         }
