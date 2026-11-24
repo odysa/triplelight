@@ -163,24 +163,32 @@ fn convert(env: &Env, r: QueryResult) -> Result<JsObject> {
 /// shapes SHACL rejects a `ShapesError`, a feature this build lacks an `UnsupportedError`; violations are a report.
 #[napi(ts_return_type = "ValidationReport")]
 pub fn validate(env: Env, data: String, shapes: String, data_format: Option<String>, shapes_format: Option<String>) -> Result<JsObject> {
-    use triplelight::shacl::{DocumentError, ValidationError};
-    let format = |name: Option<String>| {
-        let name = name.unwrap_or_else(|| "turtle".into());
-        triplelight::rdf::Format::from_name(&name)
-            .ok_or_else(|| Error::new(Status::InvalidArg, format!("format must be \"turtle\" or \"ntriples\", not {name:?}")))
-    };
-    let (df, sf) = (format(data_format)?, format(shapes_format)?);
-    let report = triplelight::shacl::validate_documents(data.as_bytes(), df, shapes.as_bytes(), sf).map_err(|e| {
-        let kind = match &e {
-            DocumentError::Syntax { .. } => "SyntaxError",
-            DocumentError::Validation(ValidationError::Unsupported(_)) => "UnsupportedError",
-            DocumentError::Validation(_) => "ShapesError",
+    #[cfg(not(feature = "shacl"))]
+    {
+        let _ = (env, data, shapes, data_format, shapes_format);
+        Err(Error::new(Status::GenericFailure, "UnsupportedError: SHACL validation requires the shacl Cargo feature".to_owned()))
+    }
+    #[cfg(feature = "shacl")]
+    {
+        use triplelight::shacl::{DocumentError, ValidationError};
+        let format = |name: Option<String>| {
+            let name = name.unwrap_or_else(|| "turtle".into());
+            triplelight::rdf::Format::from_name(&name)
+                .ok_or_else(|| Error::new(Status::InvalidArg, format!("format must be \"turtle\" or \"ntriples\", not {name:?}")))
         };
-        Error::new(Status::GenericFailure, format!("{kind}: {e}"))
-    })?;
-    let mut out = convert(&env, QueryResult::Graph(report.to_triples()))?;
-    out.set_named_property("conforms", env.get_boolean(report.conforms)?)?;
-    Ok(out)
+        let (df, sf) = (format(data_format)?, format(shapes_format)?);
+        let report = triplelight::shacl::validate_documents(data.as_bytes(), df, shapes.as_bytes(), sf).map_err(|e| {
+            let kind = match &e {
+                DocumentError::Syntax { .. } => "SyntaxError",
+                DocumentError::Validation(ValidationError::Unsupported(_)) => "UnsupportedError",
+                DocumentError::Validation(_) => "ShapesError",
+            };
+            Error::new(Status::GenericFailure, format!("{kind}: {e}"))
+        })?;
+        let mut out = convert(&env, QueryResult::Graph(report.to_triples()))?;
+        out.set_named_property("conforms", env.get_boolean(report.conforms)?)?;
+        Ok(out)
+    }
 }
 
 // ---------- background tasks ----------

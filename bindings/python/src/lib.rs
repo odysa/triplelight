@@ -182,16 +182,24 @@ impl PySnapshot {
 #[pyfunction]
 #[pyo3(signature = (data, shapes, data_format="turtle", shapes_format="turtle"))]
 fn validate(py: Python<'_>, data: &str, shapes: &str, data_format: &str, shapes_format: &str) -> PyResult<(bool, PyObject)> {
-    use triplelight::shacl::{DocumentError, ValidationError};
-    let format = |name: &str| triplelight::rdf::Format::from_name(name)
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("format must be \"turtle\" or \"ntriples\", not {name:?}")));
-    let (df, sf) = (format(data_format)?, format(shapes_format)?);
-    let report = py.allow_threads(|| triplelight::shacl::validate_documents(data.as_bytes(), df, shapes.as_bytes(), sf)).map_err(|e| match &e {
-        DocumentError::Syntax { .. } => SyntaxError::new_err(e.to_string()),
-        DocumentError::Validation(ValidationError::Unsupported(_)) => UnsupportedError::new_err(e.to_string()),
-        DocumentError::Validation(_) => ShapesError::new_err(e.to_string()),
-    })?;
-    Ok((report.conforms, convert(py, QueryResult::Graph(report.to_triples()))?))
+    #[cfg(not(feature = "shacl"))]
+    {
+        let _ = (py, data, shapes, data_format, shapes_format);
+        Err(UnsupportedError::new_err("SHACL validation requires the shacl Cargo feature"))
+    }
+    #[cfg(feature = "shacl")]
+    {
+        use triplelight::shacl::{DocumentError, ValidationError};
+        let format = |name: &str| triplelight::rdf::Format::from_name(name)
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("format must be \"turtle\" or \"ntriples\", not {name:?}")));
+        let (df, sf) = (format(data_format)?, format(shapes_format)?);
+        let report = py.allow_threads(|| triplelight::shacl::validate_documents(data.as_bytes(), df, shapes.as_bytes(), sf)).map_err(|e| match &e {
+            DocumentError::Syntax { .. } => SyntaxError::new_err(e.to_string()),
+            DocumentError::Validation(ValidationError::Unsupported(_)) => UnsupportedError::new_err(e.to_string()),
+            DocumentError::Validation(_) => ShapesError::new_err(e.to_string()),
+        })?;
+        Ok((report.conforms, convert(py, QueryResult::Graph(report.to_triples()))?))
+    }
 }
 
 #[pymodule]
