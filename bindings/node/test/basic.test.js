@@ -122,6 +122,11 @@ test("RDFS entailment is opt-in per query", async () => {
   await db.update("INSERT DATA { <urn:ann> a <urn:Student> . <urn:Student> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <urn:Person> }");
   const q = "SELECT ?x WHERE { ?x a <urn:Person> }";
   assert.strictEqual((await db.query(q)).bindings.length, 0);
+  if (!db.listExtensions().find((entry) => entry.name === "rdfs").compiledIn) {
+    assert.throws(() => db.querySync(q, { entailment: "rdfs" }), tl.UnsupportedError);
+    db.close();
+    return;
+  }
   const r = await db.query(q, { entailment: "rdfs" });
   assert.deepStrictEqual(r.bindings.map((b) => b.x.value), ["urn:ann"]);
   assert.strictEqual(db.querySync(q, { entailment: "rdfs" }).bindings.length, 1);
@@ -133,6 +138,13 @@ test("RDFS entailment is opt-in per query", async () => {
 
 test("SHACL validate: reports, syntax errors and rejected shapes", () => {
   const shapes = "@prefix sh: <http://www.w3.org/ns/shacl#> .\n<urn:S> a sh:NodeShape ; sh:targetClass <urn:Person> ; sh:property [ sh:path <urn:name> ; sh:minCount 1 ] .";
+  const db = tl.Database.inMemory();
+  const shacl = db.listExtensions().find((entry) => entry.name === "shacl");
+  db.close();
+  if (!shacl.compiledIn) {
+    assert.throws(() => tl.validate("", shapes), tl.UnsupportedError);
+    return;
+  }
   assert.strictEqual(tl.validate('<urn:ann> a <urn:Person> ; <urn:name> "Ann" .', shapes).conforms, true);
   const bad = tl.validate("<urn:bob> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Person> .", shapes, { dataFormat: "ntriples" });
   assert.strictEqual(bad.conforms, false);
@@ -145,10 +157,26 @@ test("SHACL validate: reports, syntax errors and rejected shapes", () => {
 test("extension availability, autoload and load", () => {
   const db = tl.Database.inMemory();
   try {
-    assert.ok(db.listExtensions().every(({ compiledIn, loaded }) => compiledIn && !loaded));
-    assert.strictEqual(db.querySync("ASK {}", { entailment: "rdfs" }).boolean, true);
-    db.loadExtension("shacl");
-    assert.deepStrictEqual(db.listExtensions().filter(({ loaded }) => loaded).map(({ name }) => name), ["rdfs", "shacl"]);
+    const byName = () => Object.fromEntries(db.listExtensions().map((entry) => [entry.name, entry]));
+    const before = byName();
+    const snapshot = db.read();
+    for (const name of ["rdfs", "shacl"]) {
+      assert.strictEqual(before[name].loaded, false);
+      if (before[name].compiledIn) {
+        if (name === "rdfs") {
+          assert.strictEqual(db.querySync("ASK {}", { entailment: "rdfs" }).boolean, true);
+        }
+        db.loadExtension(name);
+        db.loadExtension(name);
+      } else {
+        assert.throws(() => db.loadExtension(name), (error) => error.kind === "UnsupportedError");
+      }
+    }
+    assert.throws(() => snapshot.querySync("ASK {}", { entailment: "rdfs" }), (error) => error.kind === "UnsupportedError");
+    const after = byName();
+    for (const name of ["rdfs", "shacl"]) {
+      assert.strictEqual(after[name].loaded, before[name].compiledIn);
+    }
     assert.throws(() => db.loadExtension("missing"), (error) => error.kind === "UnsupportedError");
   } finally {
     db.close();

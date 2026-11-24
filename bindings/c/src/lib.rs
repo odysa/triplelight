@@ -268,6 +268,7 @@ fn extension_error(error: triplelight::extension::ExtensionError) -> TlError {
         ExtensionError::Unsupported(_) => TL_ERR_UNSUPPORTED,
         ExtensionError::InvalidRegistration(_) => TL_ERR_INVALID_ARGUMENT,
         ExtensionError::InvalidShapes(_) => TL_ERR_SHAPES,
+        _ => TL_ERR_INTERNAL,
     };
     TlError { kind, message: error.to_string() }
 }
@@ -586,6 +587,10 @@ mod tests {
             tl_result_free(report);
             Ok((conforms, triples))
         };
+        if !cfg!(feature = "shacl") {
+            assert_eq!(run("", shapes), Err(TL_ERR_UNSUPPORTED));
+            return;
+        }
         let (conforms, (kind, _)) = run("<urn:ann> a <urn:Person> ; <urn:name> \"Ann\" .", shapes).unwrap();
         assert_eq!((conforms, kind), (1, TL_RESULT_TRIPLES));
         let (conforms, (_, n)) = run("<urn:bob> a <urn:Person> .", shapes).unwrap();
@@ -610,7 +615,8 @@ mod tests {
             Ok(n)
         };
         assert_eq!(rows(TL_ENTAILMENT_SIMPLE), Ok(0));
-        assert_eq!(rows(TL_ENTAILMENT_RDFS), Ok(1));
+        let expected = if cfg!(feature = "rdfs") { Ok(1) } else { Err(TL_ERR_UNSUPPORTED) };
+        assert_eq!(rows(TL_ENTAILMENT_RDFS), expected);
         assert_eq!(rows(7), Err(TL_ERR_INVALID_ARGUMENT));
         tl_close(db);
     } }

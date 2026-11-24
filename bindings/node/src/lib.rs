@@ -294,7 +294,7 @@ impl Database {
     pub fn compact(&self) -> Result<AsyncTask<WriteTask>> {
         Ok(AsyncTask::new(WriteTask { db: self.db()?, op: Write::Compact }))
     }
-    /// True once background optimizer statistics are built (queries work before that, with simpler plans).
+    /// Loads an official extension for this database.
     #[napi]
     pub fn load_extension(&self, name: String) -> Result<()> {
         self.db()?.load_extension(&name)
@@ -312,6 +312,7 @@ impl Database {
         }).collect()
     }
 
+    /// True once background optimizer statistics are built (queries work before that, with simpler plans).
     #[napi]
     pub fn stats_ready(&self) -> Result<bool> { Ok(self.db()?.stats_ready()) }
     /// A consistent, immutable view for several queries; later updates do not change it.

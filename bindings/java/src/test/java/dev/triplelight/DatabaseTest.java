@@ -124,11 +124,23 @@ class DatabaseTest {
     @Test
     void officialExtensions() {
         try (Database db = Database.inMemory()) {
-            db.loadExtension("rdfs");
-            db.loadExtension("rdfs");
-            var extensions = db.listExtensions();
-            assertEquals(new Database.ExtensionInfo("rdfs", true, true), extensions.get(0));
-            assertEquals(new Database.ExtensionInfo("shacl", true, false), extensions.get(1));
+            var before = db.listExtensions().stream().collect(Collectors.toMap(Database.ExtensionInfo::name, entry -> entry));
+            for (String name : List.of("rdfs", "shacl")) {
+                var entry = before.get(name);
+                assertNotNull(entry);
+                assertFalse(entry.loaded());
+                if (entry.compiledIn()) {
+                    db.loadExtension(name);
+                    db.loadExtension(name);
+                } else {
+                    var unavailable = assertThrows(TripleLightException.class, () -> db.loadExtension(name));
+                    assertEquals(TripleLightException.Kind.UNSUPPORTED, unavailable.kind());
+                }
+            }
+            var after = db.listExtensions().stream().collect(Collectors.toMap(Database.ExtensionInfo::name, entry -> entry));
+            for (String name : List.of("rdfs", "shacl")) {
+                assertEquals(before.get(name).compiledIn(), after.get(name).loaded());
+            }
             var error = assertThrows(TripleLightException.class, () -> db.loadExtension("missing"));
             assertEquals(TripleLightException.Kind.UNSUPPORTED, error.kind());
         }
