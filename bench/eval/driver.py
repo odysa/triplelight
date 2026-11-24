@@ -284,17 +284,24 @@ def clear_engine_cache(a, entry):
 
 
 GOOD_CLASSES = ("pass", "value-compatible")
-EXPECTED_CLASSES = GOOD_CLASSES + ("unsupported",)     # a declared limit of the system (QLever's two-order index) is an answer, not a failure
 
 
-def eligibility(records):
-    """Whether a run may be published as a comparison: every query answered correctly (or is a declared unsupported case), every
-    cold hook and cache clear worked, and nothing was cut off. Returns (eligible, reasons); each reason names the query."""
+def eligibility(records, expected_unsupported=()):
+    """Whether a run may be published as a comparison: every query answered correctly, every cold hook and cache clear worked, the
+    warm-up was as good as the timed runs, an ordered query came back in the reference order, and nothing was cut off. An
+    `unsupported` answer counts only for a case declared in `expected_unsupported` (a known limit of that system's configuration);
+    it stays recorded as `unsupported` either way. Returns (eligible, reasons); each reason names the query."""
     reasons = []
+    def acceptable(name, cls): return cls in GOOD_CLASSES or (cls == "unsupported" and name in expected_unsupported)
     for name, e in records.items():
         if e.get("cold_hook_ok") is False: reasons.append(f"{name}: cold-start hook failed, not timed")
         if "cache_clear_failed" in e: reasons.append(f"{name}: result-cache clear failed, not timed")
-        if e["class"] not in EXPECTED_CLASSES: reasons.append(f"{name}: {e['class']}")
+        if not acceptable(name, e["class"]):
+            reasons.append(f"{name}: unsupported, not declared with --expect-unsupported" if e["class"] == "unsupported" else f"{name}: {e['class']}")
+        warm = e.get("warmup_class")
+        if warm is not None and not acceptable(name, warm) and warm != e["class"]:
+            reasons.append(f"{name}: warm-up {warm}")
+        if e.get("order_matches_reference") is False: reasons.append(f"{name}: ordered query returned a different row order than the reference")
     return (not reasons), reasons
 
 
@@ -315,6 +322,7 @@ def cmd_run(a):
             runs = 0
         else:
             check, _ = one_run(a.url, q, a.timeout)       # warm-up; for a large answer it is also the one answer check
+            entry["warmup_class"] = classify(check, r)       # kept even when every timed run then passes: a warm-up timeout is a finding
             restart_after_timeout(a, check, entry)
             runs = a.runs
             # Large answers: the timed runs only drain the body (time to the last byte); the rows were hashed once above, and a
@@ -338,12 +346,13 @@ def cmd_run(a):
             else: cls = classify(rec, r)
             entry["runs"].append({"class": cls, "seconds": round(secs, 4), "t0": round(t0, 3), "t1": round(t1, 3), **{k: rec[k] for k in ("rows", "bag", "seq", "bytes") if k in rec},
                                   **({"detail": rec["detail"]} if "detail" in rec else {})})
-        if entry.get("timed_by") == "drain" and not entry["runs"]:
+        if entry.get("timed_by") == "drain" and not entry["runs"] and entry["check_class"] not in GOOD_CLASSES:
+            # a wrong or incomplete large answer is never timed; its class is recorded (without a time) for the report
             entry["runs"].append({"class": entry["check_class"], "seconds": None, **{k: check[k] for k in ("rows", "bag", "seq", "bytes") if k in check}})
         classes = {x["class"] for x in entry["runs"]}
         if not entry["runs"]: entry["class"] = "not-run"     # a failed cold hook or cache clear: never a timing row
         else: entry["class"] = classes.pop() if len(classes) == 1 else "unstable"
-        ok_runs = [x["seconds"] for x in entry["runs"] if x["class"] in ("pass", "value-compatible")]
+        ok_runs = [x["seconds"] for x in entry["runs"] if x["class"] in GOOD_CLASSES and x["seconds"] is not None]
         if ok_runs: entry["median_s"] = round(statistics.median(ok_runs), 4)
         if r.get("ordered") and entry["class"] in ("pass", "value-compatible"):
             entry["order_matches_reference"] = all(x.get("seq") == r["seq"] for x in entry["runs"])
@@ -351,7 +360,7 @@ def cmd_run(a):
         print(f"{name:<8} {entry['class']:<17} {entry.get('median_s', '-')}", flush=True)
     summary = {}
     for e in records.values(): summary[e["class"]] = summary.get(e["class"], 0) + 1
-    eligible, reasons = eligibility(records)
+    eligible, reasons = eligibility(records, set(re.split(r"[,\s]+", a.expect_unsupported.strip())) if a.expect_unsupported else ())
     json.dump({"system": a.system, "eligible": eligible, "ineligible_reasons": reasons, "url": a.url, "mode": a.mode, "timeout_s": a.timeout, "runs_per_query": a.runs, "seed": a.seed,
                "git": git_sha(), "versions": versions(), "python": platform.python_version(), "platform": platform.platform(),
                "summary": summary, "queries": records}, open(a.out, "w"), indent=1)
@@ -385,10 +394,18 @@ def _body_qtime(n, ms):
     return text[:-1] + f',"meta":{{"query-time-ms":{ms},"result-size-total":{n},"warnings":[]}}}}'
 
 
+_ONE_ROW_9 = '{"head":{"vars":["n"]},"results":{"bindings":[{"n":{"type":"literal","value":"9","datatype":"' + XSD + 'integer"}}]}}'
+
+
 def serve_fake(behaviors):
     import threading, http.server
     class H(http.server.BaseHTTPRequestHandler):
         def log_message(self, *a): pass
+        def do_GET(self):
+            # cache-clear endpoints: /clear-once works the first time and fails afterwards, /clear-ok always works
+            n = self.server.clears = getattr(self.server, "clears", 0) + (self.path == "/clear-once")
+            code = 500 if (self.path == "/clear-once" and n > 1) or self.path not in ("/clear-once", "/clear-ok") else 200
+            self.send_response(code); self.end_headers(); self.wfile.write(b"x")
         def do_POST(self):
             self.rfile.read(int(self.headers.get("Content-Length", 0)))
             kind, n = behaviors[self.path]
@@ -397,7 +414,14 @@ def serve_fake(behaviors):
             self.send_response(200); self.send_header("Content-Type", "application/sparql-results+json"); self.end_headers()
             if kind == "slow": time.sleep(3)
             if kind == "ask": self.wfile.write(b'{"head":{},"boolean":true}'); return
-            if kind == "raw": self.wfile.write(n.encode()); return      # a recorded answer, served as it was
+            if kind in ("asc", "desc"):
+                rows = ["1", "2"] if kind == "asc" else ["2", "1"]
+                self.wfile.write(('{"head":{"vars":["n"]},"results":{"bindings":[%s]}}' % ",".join('{"n":{"type":"literal","value":"%s","datatype":"%sinteger"}}' % (v, XSD) for v in rows)).encode()); return
+            if kind == "raw": self.wfile.write(n.encode()); return
+            if kind == "slowfirst":      # the first request outlasts the client's timeout, the rest answer at once
+                self.server.firsts = getattr(self.server, "firsts", 0) + 1
+                if self.server.firsts == 1: time.sleep(3)
+                self.wfile.write(_ONE_ROW_9.encode()); return      # a recorded answer, served as it was
             if kind == "count9s":
                 self.wfile.write(b'{"head":{"vars":["n"]},"results":{"bindings":[{"n":{"type":"literal","value":"9"}}]}}'); return
             if kind == "twice":
@@ -476,6 +500,27 @@ def gate_tests(port, behaviors_raw):
         # with --lenient (exploration only) the exit status stays 0, but the results file still says ineligible
         rc, res, _ = run("lax", "count8", "--lenient")
         check("with --lenient: exit 0, results still say ineligible", rc == 0 and res and res["eligible"] is False)
+        # Andy's review of #295: a large answer (drained) passes its hash check, then the cache clear fails before the first timed run.
+        # No timing row, no crash, and the file is written: the run is not-run and ineligible.
+        rc, res, err = run("drainclear", "count9", "--drain-rows", "1", "--clear-cache-url", f"http://127.0.0.1:{port}/clear-once")
+        e = res["queries"]["q1"] if res else {}
+        check("drained check passes, then cache clear fails: file written, not-run, exit 3", rc == 3 and res is not None and e.get("class") == "not-run" and "median_s" not in e and "Traceback" not in err)
+        # a warm-up that times out, followed by timed runs that pass, is still ineligible and the warm-up outcome is kept
+        rc, res, _ = run("warmtimeout", "slowfirst", "--timeout", "1")
+        e = res["queries"]["q1"] if res else {}
+        check("warm-up timeout then passing timed runs: warmup_class kept, ineligible, exit 3", rc == 3 and e.get("warmup_class") == "timeout" and e.get("class") == "pass" and res["eligible"] is False)
+        # unsupported counts only where the case is declared for that system configuration, and is recorded as unsupported either way
+        rc, res, _ = run("unsup", "unsup")
+        check("an undeclared unsupported answer: class kept, ineligible, exit 3", rc == 3 and res and res["queries"]["q1"]["class"] == "unsupported" and res["eligible"] is False)
+        rc, res, _ = run("unsupdecl", "unsup", "--expect-unsupported", "q1")
+        check("a declared unsupported answer: class kept, eligible, exit 0", rc == 0 and res and res["queries"]["q1"]["class"] == "unsupported" and res["eligible"])
+        # an ordered query that returns the right rows in the wrong order: the bag matches, the order does not
+        doc = lambda vals: '{"head":{"vars":["n"]},"results":{"bindings":[%s]}}' % ",".join('{"n":{"type":"literal","value":"%s","datatype":"%sinteger"}}' % (v, XSD) for v in vals)
+        (tmp / "refordered.json").write_text(json.dumps({"queries": {"q1": {**fold_of([doc(["1", "2"])]), "ordered": True}}}))
+        rc, res, _ = run("orderok", "asc", ref="refordered.json")
+        check("an ordered query in the reference order: eligible, exit 0", rc == 0 and res and res["eligible"] and res["queries"]["q1"].get("order_matches_reference") is True)
+        rc, res, _ = run("orderbad", "desc", ref="refordered.json")
+        check("an ordered query in a different order: ineligible, exit 3", rc == 3 and res and res["eligible"] is False and res["queries"]["q1"].get("order_matches_reference") is False)
         # a timeout is ineligible
         rc, res, _ = run("slow", "slow", "--timeout", "1")
         check("a timeout: ineligible, exit 3", rc == 3 and res and res["queries"]["q1"]["class"] == "timeout")
@@ -525,6 +570,7 @@ def cmd_selftest(a):
     print(f"qtime    trailer of changing length: check {full.get('bytes')}, drained {[d.get('bytes') for d in drains]}", "ok" if good else "FAIL"); ok &= good
     behaviors["/count8"] = ("count=8", 0); behaviors["/count9"] = ("count=9", 0); behaviors["/slow"] = ("slow", 50)
     behaviors["/count9s"] = ("count9s", 0); behaviors["/twice"] = ("twice", 0)
+    behaviors["/slowfirst"] = ("slowfirst", 0); behaviors["/asc"] = ("asc", 0); behaviors["/desc"] = ("desc", 0)
     ok &= gate_tests(port, behaviors)
     print("SELFTEST", "PASSED" if ok else "FAILED"); sys.exit(0 if ok else 1)
 
@@ -554,6 +600,7 @@ def main():
     x.add_argument("--clear-cache-url", help="GET before every request (warm-up and timed) to empty the server's result cache")
     x.add_argument("--restart-hook", help="command that restarts the server; run after every timed-out query (warm mode)")
     x.add_argument("--runs", type=int, default=5); x.add_argument("--timeout", type=float, default=300); x.add_argument("--seed", type=int, default=0)
+    x.add_argument("--expect-unsupported", help="comma-separated case IDs this system configuration is known not to answer (QLever's two-order index and a predicate variable); only these may come back `unsupported` in an eligible run")
     x.add_argument("--lenient", action="store_true", help="exploration only: exit 0 even when the run is ineligible for a comparison. By default a wrong answer, a timeout, a failed hook or a failed cache clear exits with status 3; the results file (with `eligible: false` and the reasons) is written either way")
     x.set_defaults(f=cmd_run)
     s = sub.add_parser("selftest"); s.set_defaults(f=cmd_selftest)
