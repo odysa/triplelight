@@ -38,6 +38,10 @@ mod fault_tests;
 /// Test-only fault injection at named points of the write path (`fault_tests.rs` drives it). A point armed in the calling
 /// thread either returns an I/O error there (as a full disk or a failed fsync would) or ends the process on the spot,
 /// as a crash does: no destructor runs and no buffered write is flushed.
+///
+/// Arming is per thread. With group commit, whichever caller holds the WAL lock writes for everyone
+/// (`flush_until`), so a test that commits from several threads needs a process-wide arm, or the fault fires on a
+/// thread that did not arm it, or not at all.
 #[cfg(test)]
 pub(crate) mod fault {
     use std::cell::RefCell;
