@@ -65,6 +65,11 @@ impl ExternalSort {
             runs: Vec::new(),
         })
     }
+    /// Private scratch directory shared with the consumer of the sorted stream.
+    pub(super) fn scratch_dir(&self) -> &Path {
+        &self.dir
+    }
+
     fn path(&mut self) -> PathBuf {
         let n = self.next;
         self.next += 1;

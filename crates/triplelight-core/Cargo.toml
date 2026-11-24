@@ -18,6 +18,9 @@ rdf-12 = ["triplelight-rdf/rdf-12"]
 [dependencies]
 triplelight-rdf.workspace = true
 triplelight-iri.workspace = true
+# Exact versions keep all analyzer tables on Unicode 17.0.0.
+unicode-normalization = "=0.1.25"
+unicode-segmentation = "=1.13.3"
 
 [dev-dependencies]
 # Comparators only (task #45): the differential tests check `ntriples` and `turtle` against oxttl, whose oxrdf

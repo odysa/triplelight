@@ -2,7 +2,7 @@
 
 This page describes how TripleLight stores data on disk: the commands, the store directory and its write-ahead log,
 the immutable base formats, how bases are built, opened and verified, and the block cache. The code is in
-`crates/triplelight-storage` (`store.rs`, `disk_snapshot.rs`, `disk_index.rs`, `lazy_dictionary.rs`,
+`crates/triplelight-storage` (`store.rs`, `disk_snapshot/`, `disk_index.rs`, `lazy_dictionary.rs`,
 `external_build.rs`).
 
 ## Commands

@@ -1,5 +1,7 @@
 //! Read-only disk-backed snapshot with an in-memory dictionary and bounded index caches.
 //! Snapshot files must remain immutable while open.
+mod text_index;
+
 use super::disk_index::{DiskIndex, write_index};
 use super::{Dictionary, MemorySnapshot, Snapshot, StorageError};
 use crate::model::{Perm, TermId, TripleBatch};
@@ -14,6 +16,20 @@ use super::base_format::{ALL_ORDERS, CATALOG_FILE, FILES, QUAD_FILES, REQUIRED_O
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, s)
 }
+/// Hashes the exact bytes consumed by the existing manifest parser.
+struct ManifestReader<R> {
+    input: R,
+    hash: Sha256,
+}
+
+impl<R: Read> Read for ManifestReader<R> {
+    fn read(&mut self, out: &mut [u8]) -> io::Result<usize> {
+        let n = self.input.read(out)?;
+        self.hash.update(&out[..n]);
+        Ok(n)
+    }
+}
+
 pub(super) fn digest(path: &Path) -> io::Result<[u8; 32]> {
     let mut f = BufReader::new(File::open(path)?);
     let mut hash = Sha256::new();
@@ -195,6 +211,8 @@ pub struct DiskSnapshot {
     /// not a tmpfs `/tmp` whose pages a cgroup charges as memory).
     dir: std::path::PathBuf,
     dictionary: DictionaryBackend,
+    text_index: std::sync::OnceLock<Option<crate::store::text_postings::TextIndex>>,
+    manifest_sha: [u8; 32],
     /// The six triple orders in `Perm::ALL` order; `None` for an order this base does not keep (SOP and OPS are then
     /// served from the others, see `derived_order`).
     indexes: Vec<Option<DiskIndex>>,
@@ -257,7 +275,10 @@ impl DiskSnapshot {
     /// Files must remain immutable after opening; previously cached blocks are not re-read automatically.
     pub fn open(dir: impl AsRef<Path>) -> io::Result<Self> {
         let dir = dir.as_ref();
-        let mut manifest = BufReader::new(File::open(dir.join("MANIFEST"))?);
+        let mut manifest = ManifestReader {
+            input: BufReader::new(File::open(dir.join("MANIFEST"))?),
+            hash: Sha256::new(),
+        };
         let mut magic = [0; 8];
         manifest.read_exact(&mut magic)?;
         // RDFSNAP2: one legacy dictionary file; RDFSNAP3: dictionary.term + dictionary.id; RDFSNAP4: one unified file.
@@ -306,6 +327,7 @@ impl DiskSnapshot {
         if manifest.read(&mut extra)? != 0 {
             return Err(bad("manifest trailing bytes"));
         }
+        let manifest_sha = manifest.hash.finalize().into();
         let (dictionary, index_offset) = if version >= 4 {
             use super::lazy_dictionary::{DictionaryCache, LazyIndex, Order, UNIFIED_FILE};
             let unified = LazyIndex::open_shared(&dir.join(UNIFIED_FILE), Order::Unified, DictionaryCache::with_shares(shares))?;
@@ -375,6 +397,8 @@ impl DiskSnapshot {
         };
         Ok(Self {
             dictionary,
+            text_index: Default::default(),
+            manifest_sha,
             indexes,
             named,
             seek_memo: Default::default(),
@@ -556,6 +580,16 @@ impl DiskSnapshot {
             Ok(())
         })
     }
+    pub(crate) fn manifest_identity(&self) -> [u8; 32] { self.manifest_sha }
+
+    /// Visits stored literals in ID order without populating the query dictionary cache.
+    pub(crate) fn visit_unified_literals(&self, visit: &mut dyn FnMut(TermId, &triplelight_rdf::Literal) -> io::Result<()>) -> io::Result<()> {
+        match &self.dictionary {
+            DictionaryBackend::Unified(dictionary) => dictionary.for_each_literal_uncached(visit),
+            _ => Err(io::Error::new(io::ErrorKind::Unsupported, "text index requires a unified disk dictionary")),
+        }
+    }
+
     fn kept(&self, perm: Perm) -> Option<&DiskIndex> {
         self.indexes[Perm::ALL.iter().position(|x| *x == perm).unwrap()].as_ref()
     }
@@ -643,6 +677,10 @@ impl Dictionary for DiskSnapshot {
 
 impl Snapshot for DiskSnapshot {
     fn has_rdf12_terms(&self) -> bool { self.rdf12 }
+    fn text_candidates(&self, tokens: &[&str], limit: usize) -> Option<Vec<TermId>> {
+        self.text_index.get_or_init(|| crate::store::text_postings::TextIndex::open(&self.dir, &self.manifest_sha).ok())
+            .as_ref()?.candidates(tokens, limit).ok()
+    }
     fn object_memo(&self) -> Option<&triplelight_core::storage::ObjectMemo> { Some(&self.object_memo) }
     fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
         super::derived_order::scan(self, perm, prefix)

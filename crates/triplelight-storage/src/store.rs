@@ -31,6 +31,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 
 mod named;
+#[cfg(unix)]
+pub(crate) mod text_postings;
 pub use named::{GraphStateError, NamedGraph};
 #[cfg(test)]
 mod fault_tests;
@@ -198,6 +200,10 @@ impl Snapshot for Overlay {
     /// commits that publish new overlays only until the first change).
     fn object_memo(&self) -> Option<&triplelight_core::storage::ObjectMemo> {
         if self.delta.is_empty() { self.base.object_memo() } else { Some(&self.object_memo) }
+    }
+    fn text_candidates(&self, tokens: &[&str], limit: usize) -> Option<Vec<TermId>> {
+        if !self.matches_base() { return None; }
+        self.base.text_candidates(tokens, limit)
     }
     fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> {
         if self.delta.is_empty() { self.base.matching_rows(perm, prefix) } else { None }
@@ -486,6 +492,8 @@ impl Store {
         use std::io::Seek;
         wal.seek(std::io::SeekFrom::End(0))?;
         let overlay = Arc::new(overlay);
+        #[cfg(unix)]
+        text_postings::sweep(&dir, generation);
         Ok(Store {
             dir, format, generation: Mutex::new(generation), fenced: std::sync::atomic::AtomicBool::new(fenced),
             rdf12_fenced: std::sync::atomic::AtomicBool::new(rdf12_fenced),
@@ -576,7 +584,7 @@ impl Store {
         Ok(n)
     }
 
-    fn check_poisoned(&self) -> std::io::Result<()> {
+    pub(crate) fn check_poisoned(&self) -> std::io::Result<()> {
         if self.poisoned.load(std::sync::atomic::Ordering::SeqCst) {
             return Err(std::io::Error::other("store is read-only after a WAL write failure; reopen it to recover"));
         }
@@ -731,6 +739,8 @@ impl Store {
         p.latest = fresh.clone();
         *self.current.write().unwrap() = fresh;
         *generation = next;
+        #[cfg(unix)]
+        text_postings::sweep(&self.dir, next);
         Ok(())
     }
 
