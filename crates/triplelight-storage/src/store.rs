@@ -1957,6 +1957,7 @@ mod read_only_tests {
         let mut wal = OpenOptions::new().append(true).open(dir.0.join("wal.log")).unwrap();
         std::io::Write::write_all(&mut wal, b"+ <http://ex/c> <http://ex/p> \"3\"").unwrap(); // no newline, no `C`
         std::fs::create_dir(dir.0.join("base-7")).unwrap();
+        std::fs::write(dir.0.join("text-9.v1"), b"stale text index").unwrap();
     }
 
     #[test]
@@ -1971,10 +1972,12 @@ mod read_only_tests {
         assert_eq!(std::fs::read(dir.0.join("wal.log")).unwrap(), wal_before, "the torn tail is still there");
         assert_eq!(std::fs::read(dir.0.join("CURRENT")).unwrap(), current_before);
         assert!(dir.0.join("base-7").is_dir(), "a base that CURRENT does not name is not deleted");
+        assert!(dir.0.join("text-9.v1").is_file(), "a text index of another generation is not swept");
         // A writer still recovers it, as before.
         let writer = Store::open(&dir.0, None, 1).unwrap();
         assert_eq!(rows(&writer), 2);
         assert!(!dir.0.join("base-7").exists());
+        assert!(!dir.0.join("text-9.v1").exists());
         assert_ne!(std::fs::read(dir.0.join("wal.log")).unwrap(), wal_before);
     }
 
