@@ -523,7 +523,7 @@ fn variable_order(patterns: &[TriplePattern], stats: &Stats) -> Vec<u32> {
 /// subset DP; larger queries use greedy prefix extension.
 pub fn choose_variable_order(patterns: &[TriplePattern], stats: &Stats) -> Vec<u32> {
     let model = PrefixModel::new(patterns, stats);
-    let n = model.vars.len();
+    let n = model.len();
     if n == 0 {
         return Vec::new();
     }
@@ -537,7 +537,7 @@ pub fn choose_variable_order(patterns: &[TriplePattern], stats: &Stats) -> Vec<u
             let rows = model.rows(&selected);
             for &i in &selected {
                 let outer = mask ^ (1 << i);
-                let candidate = cardinal(cost[outer] + rows * model.degree[i] * model.seek);
+                let candidate = cardinal(cost[outer] + model.bind_cost(rows, i));
                 if candidate < cost[mask] {
                     cost[mask] = candidate;
                     last[mask] = i;
@@ -548,7 +548,7 @@ pub fn choose_variable_order(patterns: &[TriplePattern], stats: &Stats) -> Vec<u
         let mut mask = full - 1;
         while mask != 0 {
             let i = last[mask];
-            order.push(model.vars[i]);
+            order.push(model.var(i));
             mask ^= 1 << i;
         }
         order.reverse();
@@ -561,15 +561,15 @@ pub fn choose_variable_order(patterns: &[TriplePattern], stats: &Stats) -> Vec<u
                 .min_by(|a, b| {
                     let mut trial = selected.clone();
                     trial.push(*a);
-                    let ca = cardinal(model.rows(&trial) * model.degree[*a] * model.seek);
+                    let ca = cardinal(model.bind_cost(model.rows(&trial), *a));
                     *trial.last_mut().unwrap() = *b;
-                    let cb = cardinal(model.rows(&trial) * model.degree[*b] * model.seek);
+                    let cb = cardinal(model.bind_cost(model.rows(&trial), *b));
                     ca.total_cmp(&cb).then(a.cmp(b))
                 })
                 .unwrap();
             selected.push(i);
         }
-        selected.into_iter().map(|i| model.vars[i]).collect()
+        selected.into_iter().map(|i| model.var(i)).collect()
     }
 }
 
@@ -581,18 +581,18 @@ pub fn variable_order_work(
     order: &[u32],
 ) -> Option<f64> {
     let model = PrefixModel::new(patterns, stats);
-    if order.len() != model.vars.len() {
+    if order.len() != model.len() {
         return None;
     }
     let mut selected = Vec::with_capacity(order.len());
     let mut work = 0.0;
     for v in order {
-        let i = model.vars.binary_search(v).ok()?;
+        let i = model.index_of(*v)?;
         if selected.contains(&i) {
             return None;
         }
         selected.push(i);
-        work = cardinal(work + model.rows(&selected) * model.degree[i] * model.seek);
+        work = cardinal(work + model.bind_cost(model.rows(&selected), i));
     }
     Some(work)
 }
@@ -600,6 +600,8 @@ struct PrefixRelation {
     rows: f64,
     domains: Vec<(usize, f64)>,
 }
+/// Uniform-domain cost model of a trie variable order over one BGP. Variables are addressed by index `0..len()` in
+/// ascending variable order; a prefix of the order is a slice of such indices.
 struct PrefixModel {
     vars: Vec<u32>,
     relations: Vec<PrefixRelation>,
@@ -641,6 +643,24 @@ impl PrefixModel {
             seek: index_seek_cost(stats),
         }
     }
+    /// Number of variables of the BGP.
+    fn len(&self) -> usize {
+        self.vars.len()
+    }
+    /// The variable at index `i`.
+    fn var(&self, i: usize) -> u32 {
+        self.vars[i]
+    }
+    /// The index of variable `v`, if the BGP has it.
+    fn index_of(&self, v: u32) -> Option<usize> {
+        self.vars.binary_search(&v).ok()
+    }
+    /// Work of the trie level that binds variable `i` last in a prefix of `rows` estimated rows (`rows` of that
+    /// prefix, `i` included): one seek per row into each pattern containing `i`.
+    fn bind_cost(&self, rows: f64, i: usize) -> f64 {
+        rows * self.degree[i] * self.seek
+    }
+    /// Estimated rows of the prefix `selected` (indices, in any order).
     fn rows(&self, selected: &[usize]) -> f64 {
         let mut joined = 1.0;
         let mut seen = vec![None::<f64>; self.vars.len()];

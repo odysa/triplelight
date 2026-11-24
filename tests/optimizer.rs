@@ -297,7 +297,7 @@ fn correlated_star_uses_characteristic_sets() {
     let g = Graph::new(triples);
     let s = g.stats();
     let q = [p(v(0), c(1000), v(1)), p(v(0), c(1001), v(2))];
-    assert_eq!(s.characteristic_sets.len(), 2);
+    assert_eq!(s.characteristic_set_count(), 2);
     assert_eq!(s.estimate_bgp(&q), 50.0);
     assert_eq!(truth(&g, &q).len(), 50);
 }
@@ -818,11 +818,8 @@ fn shared_synopses_keep_query_caches_isolated() {
     let g = Graph::new((1..=130).map(|i| [i, 10, 1000 + i]).collect());
     let original = g.stats();
     let before = format!("{original:?}");
+    // That the clone shares the synopsis itself is `stats::persist_tests::clone_shares_the_synopsis`.
     let mut query_stats = original.clone();
-    assert!(std::sync::Arc::ptr_eq(
-        &original.characteristic_sets,
-        &query_stats.characteristic_sets
-    ));
     query_stats
         .cache_pattern_counts(&[p(v(0), c(10), c(1001))], &g)
         .unwrap();

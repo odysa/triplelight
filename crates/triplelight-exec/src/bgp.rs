@@ -2,6 +2,8 @@
 //! morsel-style: large inputs are split into chunks that rayon workers extend independently.
 use super::{storage_failure, UNBOUND};
 use super::plan_trace::Trace;
+use super::pattern::{vars_of, Slot};
+use super::range::{ObjRange, Ranges};
 use crate::model::{Perm, TermId, TripleBatch};
 use crate::storage::Snapshot;
 use rayon::prelude::*;
@@ -15,16 +17,13 @@ const SORTED_PROBE_MIN_ROWS: usize = 16 * 1024;
 /// row and one scan of the whole range (`extend_hash`'s semi-join).
 const PROBE_ROWS: u64 = 20;
 
-#[derive(Copy, Clone, Debug)]
-pub(super) enum Slot { Const(Option<TermId>), Var(usize) }
-
 pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
     pub snap: &'a S,
     /// Row width (number of query variables).
     pub w: usize,
     /// Patterns whose object scan is restricted by a pushed-down range filter (`range.rs`), by (predicate, object
     /// variable). Used only when the pattern's subject and object are unbound.
-    pub ranges: Option<&'a super::range::Ranges>,
+    pub ranges: Option<&'a Ranges>,
     /// Sort-then-probe (`Options::sorted_probe`): see `extend_sorted`.
     pub sorted_probe: bool,
 }
@@ -111,7 +110,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
 
     /// The pushed-down object range of `pat` if it has one and neither its subject nor its object is bound
     /// (`is_bound`); otherwise the pattern is read through its bound positions as usual.
-    fn ranged(&self, pat: &[Slot; 3], is_bound: impl Fn(usize) -> bool) -> Option<&'a super::range::ObjRange> {
+    fn ranged(&self, pat: &[Slot; 3], is_bound: impl Fn(usize) -> bool) -> Option<&'a ObjRange> {
         let [Slot::Var(s), Slot::Const(Some(p)), Slot::Var(o)] = *pat else { return None };
         if is_bound(o) || is_bound(s) { return None }
         self.ranges?.get(&(p, o))
@@ -537,39 +536,6 @@ pub(super) fn choose_perm(fixed: &[Option<TermId>; 3]) -> (Perm, [TermId; 3], us
     (perm, prefix, n)
 }
 
-/// GYO reduction: a BGP is acyclic iff repeatedly removing variables that occur in one pattern only, and patterns
-/// whose variables are contained in another pattern's, empties the hypergraph.
-pub(super) fn cyclic(pats: &[[Slot; 3]]) -> bool {
-    let mut edges: Vec<HashSet<usize>> = pats.iter()
-        .map(|p| p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect()).collect();
-    loop {
-        let mut changed = false;
-        let mut occ: HashMap<usize, usize> = HashMap::new();
-        for e in &edges { for v in e { *occ.entry(*v).or_default() += 1 } }
-        for e in edges.iter_mut() {
-            let before = e.len();
-            e.retain(|v| occ[v] > 1);
-            changed |= e.len() != before;
-        }
-        let n = edges.len();
-        let mut keep = vec![true; n];
-        for i in 0..n {
-            if edges[i].is_empty() { keep[i] = false; continue }
-            if (0..n).any(|j| j != i && keep[j] && edges[i].is_subset(&edges[j]) && (edges[i] != edges[j] || j < i)) { keep[i] = false }
-        }
-        let mut k = keep.iter();
-        edges.retain(|_| *k.next().unwrap());
-        changed |= edges.len() != n;
-        if edges.is_empty() { return false }
-        if !changed { return true }
-    }
-}
-
-pub(super) fn no_repeated_var(p: &[Slot; 3]) -> bool {
-    let vs: Vec<usize> = p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect();
-    vs.iter().collect::<HashSet<_>>().len() == vs.len()
-}
-
 fn checked_count(a:u64,b:u64)->u64 {
     a.checked_add(b).unwrap_or_else(|| storage_failure(std::io::Error::new(std::io::ErrorKind::InvalidData,"aggregate count overflow")))
 }
@@ -579,9 +545,6 @@ fn checked_count_product(a: u64, b: u64) -> u64 {
         storage_failure(std::io::Error::new(std::io::ErrorKind::InvalidData, "aggregate count overflow"))
     })
 }
-
-/// Variables of one pattern, in slot order.
-fn vars_of(p: &[Slot; 3]) -> Vec<usize> { p.iter().filter_map(|s| if let Slot::Var(v) = s { Some(*v) } else { None }).collect() }
 
 /// Leapfrog plan shared by `leapfrog` and `count_leapfrog`: the global variable order (the optimizer's `given` order
 /// when it is a permutation of the BGP's variables, otherwise greedy: connected first, then smallest constant-prefix

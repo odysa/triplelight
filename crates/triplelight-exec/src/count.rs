@@ -1,10 +1,10 @@
 //! Exact aggregate pushdown for pure BGPs. Unsupported algebra keeps the ordinary evaluator.
-use super::{Ctx, Row, UNBOUND, bgp, storage_failure};
+use super::{Ctx, Row, UNBOUND, bgp, pattern, storage_failure};
 use crate::{
     model::{Perm, TermId},
     storage::Snapshot,
 };
-use bgp::Slot;
+use pattern::Slot;
 use triplelight_rdf::{Literal, Variable};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression, GraphPattern, NamedNodePattern};
 use std::collections::HashSet;
@@ -78,7 +78,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             })
             .collect();
         // Repeated variables require diagonal tests, not just a prefix range.
-        if pats.iter().any(|p| !bgp::no_repeated_var(p)) {
+        if pats.iter().any(|p| !pattern::no_repeated_var(p)) {
             return None;
         }
         let vars: HashSet<usize> = pats
@@ -98,7 +98,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             } else {
                 on_data!(self, |g| {
                     let join=bgp::Bgp { snap:g,w:self.vars.len(),ranges:None,sorted_probe:self.sorted_probe };
-                    if self.wcoj && pats.len()>=3 && bgp::cyclic(&pats) {
+                    if self.wcoj && pats.len()>=3 && pattern::cyclic(&pats) {
                         (join.count_leapfrog(&pats,self.variable_order(&pats)), "count-leapfrog")
                     } else {
                         let order = self.planned_order(&pats,input,&crate::range::Ranges::new());

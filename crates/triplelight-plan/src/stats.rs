@@ -128,7 +128,7 @@ pub struct Stats {
     pub triple_count: u64,
     pub subject_count: u64,
     pub duplicate_triples_ignored: u64,
-    pub characteristic_sets: Arc<Vec<CharacteristicSet>>,
+    characteristic_sets: Arc<Vec<CharacteristicSet>>,
     cs_lookup: Arc<HashMap<Vec<TermId>, usize>>,
     predicates: Arc<BTreeMap<TermId, Property>>,
     objects: Distinct,
@@ -220,6 +220,10 @@ impl Stats {
         })?;
         stats.char_pairs = Arc::new(pairs.finish());
         Ok(stats)
+    }
+    /// Number of characteristic sets (distinct predicate sets of the subjects) in the synopsis.
+    pub fn characteristic_set_count(&self) -> usize {
+        self.characteristic_sets.len()
     }
     /// Use (`true`, the default) or ignore the characteristic pairs in `estimate_bgp` (an ablation switch; with
     /// `false`, or with no pairs, every estimate is the pre-pairs one).
@@ -1437,6 +1441,13 @@ mod persist_tests {
         }
         let bgp = [TriplePattern { s: v(0), p: c(1000), o: v(1) }, TriplePattern { s: v(0), p: c(1002), o: v(2) }];
         assert_eq!(st.estimate_bgp(&bgp).to_bits(), back.estimate_bgp(&bgp).to_bits());
+    }
+    /// A per-query clone shares the immutable synopsis instead of copying it (`cache_pattern_counts` then fills only
+    /// the clone's own caches).
+    #[test]
+    fn clone_shares_the_synopsis() {
+        let st = sample();
+        assert!(Arc::ptr_eq(&st.characteristic_sets, &st.clone().characteristic_sets));
     }
     #[test]
     fn version_1_payload_decodes_without_pairs() {
