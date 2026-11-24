@@ -108,13 +108,23 @@ impl SolutionsWriter {
 /// over (the earlier collect-then-concat kept every chunk, their concatenation and `out` alive together).
 fn append_chunks<T: Sync, E: Send>(items: &[T], chunk: usize, out: &mut String,
                                    f: impl Fn(&[T]) -> Result<String, E> + Sync + Send) -> Result<(), E> {
+    emit_chunks(items, chunk, f, |s| { out.push_str(s); Ok(()) }).map_err(|e| match e { EmitError::Chunk(e) => e, EmitError::Sink(never) => match never {} })
+}
+
+/// Why `emit_chunks` stopped: a chunk failed to serialize, or the sink refused the bytes.
+enum EmitError<E, K> { Chunk(E), Sink(K) }
+
+/// Serializes `items` in parallel windows and hands each chunk, in order, to `sink` as soon as its window is ready. The
+/// leading comma of the first chunk is dropped. Memory is one window, not the whole body.
+fn emit_chunks<T: Sync, E: Send, K>(items: &[T], chunk: usize, f: impl Fn(&[T]) -> Result<String, E> + Sync + Send,
+                                    mut sink: impl FnMut(&str) -> Result<(), K>) -> Result<(), EmitError<E, K>> {
     use rayon::prelude::*;
     let window = chunk * rayon::current_num_threads().max(1) * 4;
     let mut first = true;
     for part in items.chunks(window) {
-        let strings: Vec<String> = part.par_chunks(chunk).map(&f).collect::<Result<_, _>>()?;
+        let strings: Vec<String> = part.par_chunks(chunk).map(&f).collect::<Result<_, _>>().map_err(EmitError::Chunk)?;
         for s in strings {
-            out.push_str(if first { s.strip_prefix(',').unwrap_or(&s) } else { &s });
+            sink(if first { s.strip_prefix(',').unwrap_or(&s) } else { &s }).map_err(EmitError::Sink)?;
             first = false;
         }
     }
@@ -157,12 +167,42 @@ pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D)
 /// 1.2 term, the head announces `"version":"1.2"`. A store without 1.2 terms keeps byte-identical 1.1 output.
 pub fn serialize_ids_v<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D, store_has_rdf12: bool) -> Result<String, crate::storage::StorageError> {
     let mut out = String::new();
+    match write_ids_json(sol, dict, store_has_rdf12, |s| { out.push_str(s); Ok::<(), std::convert::Infallible>(()) }) {
+        Ok(()) => Ok(out),
+        Err(EmitError::Chunk(e)) => Err(e),
+        Err(EmitError::Sink(never)) => match never {},
+    }
+}
+
+/// Why `serialize_ids_to` stopped. After the first bytes are written the output is incomplete: callers must not treat it as an answer.
+#[derive(Debug)]
+pub enum WriteIdsError { Storage(crate::storage::StorageError), Io(std::io::Error) }
+impl std::fmt::Display for WriteIdsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self { Self::Storage(e) => write!(f, "{e}"), Self::Io(e) => write!(f, "{e}") }
+    }
+}
+impl std::error::Error for WriteIdsError {}
+
+/// The bytes of `serialize_ids_v`, written to `w` window by window instead of built as one `String`. Peak memory is one window of
+/// rows; the first bytes leave before the later windows are serialized. On error the output so far is a truncated body.
+pub fn serialize_ids_to<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D, store_has_rdf12: bool, w: &mut dyn std::io::Write) -> Result<(), WriteIdsError> {
+    write_ids_json(sol, dict, store_has_rdf12, |s| w.write_all(s.as_bytes())).map_err(|e| match e {
+        EmitError::Chunk(e) => WriteIdsError::Storage(e),
+        EmitError::Sink(e) => WriteIdsError::Io(e),
+    })
+}
+
+fn write_ids_json<D: Dictionary + Sync + ?Sized, K>(sol: &IdSolutions, dict: &D, store_has_rdf12: bool,
+                                                    mut sink: impl FnMut(&str) -> Result<(), K>) -> Result<(), EmitError<crate::storage::StorageError, K>> {
+    let mut head = String::new();
     // 1.2 version announcement from the store-level flag (no peeking at stored terms) or from computed terms (scratch).
     let version12 = store_has_rdf12 || sol.scratch.values().any(is_rdf12);
-    let writer = SolutionsWriter::start(&sol.vars, version12, &mut out);
+    let writer = SolutionsWriter::start(&sol.vars, version12, &mut head);
+    sink(&head).map_err(EmitError::Sink)?;
     let w = sol.width();
     if w > 0 {
-        append_chunks(&sol.ids, w * 4096, &mut out, |chunk| -> Result<String, crate::storage::StorageError> {
+        emit_chunks(&sol.ids, w * 4096, |chunk| -> Result<String, crate::storage::StorageError> {
             // Decode every distinct stored ID of this chunk with one batched dictionary call (one cache access per
             // dictionary block on disk), then assemble rows in their original order. Callbacks may arrive in any
             // order; an error discards the whole chunk.
@@ -187,12 +227,11 @@ pub fn serialize_ids_v<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &
                 });
             }
             Ok(out)
-        })?;
+        }, &mut sink)?;
     } else {
-        out.push_str(&vec!["{}"; sol.rows].join(","));
+        sink(&vec!["{}"; sol.rows].join(",")).map_err(EmitError::Sink)?;
     }
-    out.push_str("]}}");
-    Ok(out)
+    sink("]}}").map_err(EmitError::Sink)
 }
 
 // ---- SPARQL 1.2 Query Results CSV and TSV (task #104; draft of 2026-11-16, fixtures in tests/fixtures/rdf12-results) ----
