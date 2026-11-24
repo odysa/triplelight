@@ -34,6 +34,8 @@ pub const TL_ERR_GRAPH_STATE: i32 = 7;
 pub const TL_ERR_INTERRUPTED: i32 = 8;
 /// SHACL rejects the shapes graph given to `tl_validate` (a malformed shape or list, or an undefined recursion).
 pub const TL_ERR_SHAPES: i32 = 9;
+/// The query needed more working memory than its budget (not yet reachable from C: no budget is exposed).
+pub const TL_ERR_RESOURCE_LIMIT: i32 = 10;
 
 pub const TL_RESULT_BINDINGS: u32 = 0;
 pub const TL_RESULT_BOOLEAN: u32 = 1;
@@ -255,6 +257,7 @@ fn db_error(e: DatabaseError) -> TlError {
         DatabaseError::Locked => TL_ERR_LOCKED,
         DatabaseError::GraphState(_) => TL_ERR_GRAPH_STATE,
         DatabaseError::Interrupted { .. } => TL_ERR_INTERRUPTED,
+        DatabaseError::ResourceLimit(_) => TL_ERR_RESOURCE_LIMIT,
     };
     TlError { kind, message: e.to_string() }
 }

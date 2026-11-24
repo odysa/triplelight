@@ -21,6 +21,7 @@ fn err(e: DatabaseError) -> Error {
         DatabaseError::Locked => "LockedError",
         DatabaseError::GraphState(_) => "GraphStateError",
         DatabaseError::Interrupted { .. } => "InterruptedError",
+        DatabaseError::ResourceLimit(_) => "ResourceLimitError",
     };
     Error::new(Status::GenericFailure, format!("{kind}: {e}"))
 }
