@@ -21,6 +21,11 @@ rayon.workspace = true
 hashbrown.workspace = true
 sha2.workspace = true
 
+# Literal dictionary blocks are zstd-compressed (`RDFDID04`, #105). Disk stores exist only on Unix, so the codec is
+# too: the wasm build (in-memory only) never links it.
+[target.'cfg(unix)'.dependencies]
+zstd = { version = "0.13", default-features = false }
+
 [dev-dependencies]
 # Comparator only (task #45): the WAL parity test checks the parser against oxttl.
 oxttl.workspace = true
