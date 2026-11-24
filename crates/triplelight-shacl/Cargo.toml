@@ -9,6 +9,9 @@ repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+rdf-12 = ["triplelight-core/rdf-12"]
+
 [dependencies]
 triplelight-core.workspace = true
 regex.workspace = true
