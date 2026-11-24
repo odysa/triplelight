@@ -10,12 +10,12 @@ mod blank_node;
 pub mod langtag;
 mod literal;
 mod named_node;
-mod parser;
+mod syntax;
 mod triple;
 mod variable;
 pub mod vocab;
 
-pub use crate::blank_node::{BlankNode, BlankNodeIdParseError, BlankNodeRef};
+pub use crate::blank_node::{BlankNode, BlankNodeRef};
 pub use crate::langtag::LanguageTagParseError;
 #[cfg(feature = "rdf-12")]
 pub use crate::literal::BaseDirection;
@@ -23,9 +23,9 @@ pub use crate::literal::BaseDirection;
 pub use crate::triple::{triple_term_depth, MAX_TRIPLE_TERM_DEPTH};
 pub use crate::literal::{Literal, LiteralRef};
 pub use crate::named_node::{IriParseError, NamedNode, NamedNodeRef};
-pub use crate::parser::TermParseError;
+pub use crate::syntax::{BlankNodeIdParseError, TermParseError, VariableNameParseError};
 pub use crate::triple::{
     GraphName, GraphNameRef, NamedOrBlankNode, NamedOrBlankNodeRef, Quad, QuadRef, Term, TermRef, Triple, TripleRef,
     TryFromTermError,
 };
-pub use crate::variable::{Variable, VariableNameParseError, VariableRef};
+pub use crate::variable::{Variable, VariableRef};

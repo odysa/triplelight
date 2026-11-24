@@ -123,7 +123,7 @@ impl Database {
         let Backend::Disk(store) = &self.store else { return Ok(false) };
         let start = std::time::Instant::now();
         let (generation, snap) = store.generation_snapshot();
-        let base_triples = snap.base().count(Perm::Spo, &[])?;
+        let base_triples = snap.base_triples()?;
         let Some(loaded) = store.with_generation(generation, |dir| stats_file::load(dir, generation, base_triples)).flatten() else { return Ok(false) };
         let (stats, bytes) = loaded;
         let mut target = self.stats.write().unwrap();
@@ -141,7 +141,7 @@ impl Database {
                 let store = Arc::clone(store);
                 std::thread::spawn(move || {
                     let start = std::time::Instant::now();
-                    if let Ok(st) = Stats::from_snapshot(snap.base()) {
+                    if let Ok(st) = Stats::from_scans(|| snap.scan_base_for_stats()) {
                         let current = store.current.read().unwrap();
                         if current.base_id() == snap.base_id() {
                             let mut target = target.write().unwrap();
@@ -159,14 +159,14 @@ impl Database {
                 let gate = Arc::clone(&self.closer.0);
                 std::thread::spawn(move || {
                     let start = std::time::Instant::now();
-                    let Ok(st) = Stats::from_snapshot(snap.base()) else { return };
+                    let Ok(st) = Stats::from_scans(|| snap.scan_base_for_stats()) else { return };
                     let scan_ms = start.elapsed().as_secs_f64() * 1e3;
                     #[cfg(test)] let _finished = test_hooks::before_install();
                     let closed = gate.lock().unwrap();
                     if *closed { return }
                     let Some(store) = weak.upgrade() else { return };
                     let st = Arc::new(st);
-                    let base_triples = snap.base().count(Perm::Spo, &[]).ok();
+                    let base_triples = snap.base_triples().ok();
                     // Identity check, persistence and installation all happen under the generation lock: a scan of an
                     // older base (compaction switched bases meanwhile) is neither persisted nor installed, so it can
                     // never replace statistics a newer scan already installed.

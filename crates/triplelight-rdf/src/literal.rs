@@ -1,8 +1,10 @@
 // Derived from oxrdf 0.3.5 (MIT); see THIRD_PARTY_NOTICES.md.
 use crate::named_node::{NamedNode, NamedNodeRef};
+use crate::syntax::{read_hexa_char, TermParseError, TermParseErrorKind};
 use crate::vocab::{rdf, xsd};
 use crate::langtag::{self, LanguageTagParseError};
 use std::borrow::Cow;
+use std::str::FromStr;
 use std::fmt;
 use std::fmt::Write;
 
@@ -591,5 +593,167 @@ impl fmt::Display for BaseDirection {
             Self::Ltr => "ltr",
             Self::Rtl => "rtl",
         })
+    }
+}
+
+impl FromStr for Literal {
+    type Err = TermParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (term, left) = Literal::read(s)?;
+        if !left.is_empty() {
+            return Err(Self::Err::msg("Invalid literal serialization"));
+        }
+        Ok(term)
+    }
+}
+
+impl Literal {
+    pub(crate) fn read(s: &str) -> Result<(Literal, &str), TermParseError> {
+        let s = s.trim();
+        if let Some(s) = s.strip_prefix('"') {
+            let mut value = String::with_capacity(s.len());
+            let mut chars = s.chars();
+            while let Some(c) = chars.next() {
+                match c {
+                    '"' => {
+                        let remain = chars.as_str().trim();
+                        return if let Some(remain) = remain.strip_prefix('@') {
+                            let end = remain
+                                .find(|v: char| !v.is_ascii_alphanumeric() && v != '-')
+                                .unwrap_or(remain.len());
+                            let (language, remain) = remain.split_at(end);
+                            #[cfg(feature = "rdf-12")]
+                            if let Some((language, direction)) = language.split_once("--") {
+                                return Ok((
+                                    Literal::new_directional_language_tagged_literal(value, language, match direction {
+                                        "ltr" => BaseDirection::Ltr,
+                                        "rtl" => BaseDirection::Rtl,
+                                        _ => return Err(TermParseError(TermParseErrorKind::Msg(format!("The only two possible base directions are 'rtl' and 'ltr', found '{direction}'"))))
+                                    }).map_err(
+                                        |error| {
+                                            TermParseError(TermParseErrorKind::LanguageTag {
+                                                value: language.to_owned(),
+                                                error,
+                                            })
+                                        },
+                                    )?,
+                                    remain,
+                                ));
+                            }
+                            Ok((
+                                Literal::new_language_tagged_literal(value, language).map_err(
+                                    |error| {
+                                        TermParseError(TermParseErrorKind::LanguageTag {
+                                            value: language.to_owned(),
+                                            error,
+                                        })
+                                    },
+                                )?,
+                                remain,
+                            ))
+                        } else if let Some(remain) = remain.strip_prefix("^^") {
+                            let (datatype, remain) = NamedNode::read(remain)?;
+                            Ok((Literal::new_typed_literal(value, datatype), remain))
+                        } else {
+                            Ok((Literal::new_simple_literal(value), remain))
+                        };
+                    }
+                    '\\' => {
+                        if let Some(c) = chars.next() {
+                            value.push(match c {
+                                't' => '\t',
+                                'b' => '\u{08}',
+                                'n' => '\n',
+                                'r' => '\r',
+                                'f' => '\u{0C}',
+                                '"' => '"',
+                                '\'' => '\'',
+                                '\\' => '\\',
+                                'u' => read_hexa_char(&mut chars, 4)?,
+                                'U' => read_hexa_char(&mut chars, 8)?,
+                                _ => return Err(TermParseError::msg("Unexpected escaped char")),
+                            })
+                        } else {
+                            return Err(TermParseError::msg("Unexpected literal end"));
+                        }
+                    }
+                    _ => value.push(c),
+                }
+            }
+            Err(TermParseError::msg("Unexpected literal end"))
+        } else if let Some(remain) = s.strip_prefix("true") {
+            Ok((Literal::new_typed_literal("true", xsd::BOOLEAN), remain))
+        } else if let Some(remain) = s.strip_prefix("false") {
+            Ok((Literal::new_typed_literal("false", xsd::BOOLEAN), remain))
+        } else {
+            let input = s.as_bytes();
+            if input.is_empty() {
+                return Err(TermParseError::msg("Empty term serialization"));
+            }
+
+            let mut cursor = match input.first() {
+                Some(b'+' | b'-') => 1,
+                _ => 0,
+            };
+            let mut with_dot = false;
+
+            let mut count_before: usize = 0;
+            while cursor < input.len() && b'0' <= input[cursor] && input[cursor] <= b'9' {
+                count_before += 1;
+                cursor += 1;
+            }
+
+            let mut count_after: usize = 0;
+            if cursor < input.len() && input[cursor] == b'.' {
+                with_dot = true;
+                cursor += 1;
+                while cursor < input.len() && b'0' <= input[cursor] && input[cursor] <= b'9' {
+                    count_after += 1;
+                    cursor += 1;
+                }
+            }
+
+            if cursor < input.len() && (input[cursor] == b'e' || input[cursor] == b'E') {
+                cursor += 1;
+                cursor += match input.get(cursor) {
+                    Some(b'+' | b'-') => 1,
+                    _ => 0,
+                };
+                let mut count_exponent = 0;
+                while cursor < input.len() && b'0' <= input[cursor] && input[cursor] <= b'9' {
+                    count_exponent += 1;
+                    cursor += 1;
+                }
+                if count_exponent > 0 {
+                    Ok((
+                        Literal::new_typed_literal(&s[..cursor], xsd::DOUBLE),
+                        &s[cursor..],
+                    ))
+                } else {
+                    Err(TermParseError::msg(
+                        "Double serialization with an invalid exponent",
+                    ))
+                }
+            } else if with_dot {
+                if count_after > 0 {
+                    Ok((
+                        Literal::new_typed_literal(&s[..cursor], xsd::DECIMAL),
+                        &s[cursor..],
+                    ))
+                } else {
+                    Err(TermParseError::msg(
+                        "Decimal serialization without floating part",
+                    ))
+                }
+            } else if count_before > 0 {
+                Ok((
+                    Literal::new_typed_literal(&s[..cursor], xsd::INTEGER),
+                    &s[cursor..],
+                ))
+            } else {
+                Err(TermParseError::msg("Empty integer serialization"))
+            }
+        }
     }
 }
