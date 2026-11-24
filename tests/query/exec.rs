@@ -157,6 +157,16 @@ fn numeric_filter_fast_path_matches_general_evaluator() {
     // Overflow is an error (row dropped) on both paths; "abc" > "abb" is a string comparison via the fallback.
     assert_eq!(run("SELECT ?x WHERE { ?x <http://ex/v> ?v FILTER(?v + 1 > 0) }").len(), 3); // a, b, c (e overflows, f = -3)
     assert_eq!(run("SELECT ?x ?y WHERE { ?x <http://ex/v> ?v . ?y <http://ex/v> ?w FILTER(?v > \"abb\") }").len(), 14); // ?x in {abc, abd} x 7
+    // Separate numeric predicates share decoded term values for the lifetime of the BGP.
+    assert_eq!(
+        run("SELECT ?x WHERE { ?x <http://ex/v> ?v FILTER(?v >= 5) FILTER(?v < 6) }"),
+        run("SELECT ?x WHERE { ?x <http://ex/v> ?v FILTER(?v >= 5 && ?v < 6) }")
+    );
+    // A VALUES term absent from the store has a query-local scratch ID; sharing remains scoped to this BGP.
+    assert_eq!(
+        run("SELECT ?x WHERE { VALUES ?v { 42 } ?x <http://ex/v> ?stored FILTER(?v > 41) FILTER(?v < 43) }").len(),
+        7
+    );
 }
 
 /// Integer comparison is exact beyond 2^53 on both the compiled and the general path.

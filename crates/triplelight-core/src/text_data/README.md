@@ -10,4 +10,4 @@ their SHA-256 hashes and emits little-endian data.
 `fold_ranges.bin` stores the start, end, UTF-8 offset, and UTF-8 length of
 each specified NFKC_CF mapping. The UTF-8 bytes are in `fold_utf8.bin`.
 `word_ranges.bin` stores the start and end of each contiguous range of
-Unicode letters or numbers. See [third-party notices](../../../THIRD_PARTY_NOTICES.md).
+Unicode letters or numbers. See [third-party notices](../../THIRD_PARTY_NOTICES.md).

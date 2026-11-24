@@ -7,3 +7,4 @@ pub mod ntriples;
 pub mod rdf;
 pub mod turtle;
 pub mod storage;
+pub mod text;

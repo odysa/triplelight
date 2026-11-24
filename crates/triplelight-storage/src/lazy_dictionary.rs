@@ -460,12 +460,26 @@ impl LazyIndex {
         // A miss reads, checks and decodes without the shard lock (#105), so parallel output decoding does not queue
         // behind one shard's disk read and decode. Two threads missing the same block may both decode it; blocks are
         // immutable, the first insert wins, and the other's rows are returned without being cached.
+        let (rows, size) = self.read_block(index, Some(trace_slot))?;
+        let rows = Arc::new(rows);
+        let mut cache = lock()?;
+        if let Some(value) = cache.get((cache_slot, index)) {
+            return Ok(value);
+        }
+        let evicted = cache.insert((cache_slot, index), &rows, size, self.cache.shard_budget)?;
+        if evicted > 0 {
+            super::disk_index::trace_dictionary(trace_slot, 4, evicted);
+        }
+        Ok(rows)
+    }
+    /// Reads one verified block without admitting it to the query cache.
+    fn read_block(&self, index: usize, trace_slot: Option<usize>) -> io::Result<(Vec<(TermId, Term)>, usize)> {
         let meta = self
             .entries
             .get(index)
             .ok_or_else(|| bad("dictionary block absent"))?;
         let mut bytes = vec![0; meta.length];
-        exact_traced(&self.file, &mut bytes, meta.offset, Some(trace_slot))?;
+        exact_traced(&self.file, &mut bytes, meta.offset, trace_slot)?;
         if Sha256::digest(&bytes).as_slice() != meta.hash {
             return Err(bad("dictionary block checksum mismatch"));
         }
@@ -484,17 +498,23 @@ impl LazyIndex {
             .len()
             .saturating_add(keys.iter().map(Vec::len).sum::<usize>())
             .saturating_add(rows.len() * 128);
-        let rows = Arc::new(rows);
-        let mut cache = lock()?;
-        if let Some(value) = cache.get((cache_slot, index)) {
-            return Ok(value);
-        }
-        let evicted = cache.insert((cache_slot, index), &rows, size, self.cache.shard_budget)?;
-        if evicted > 0 {
-            super::disk_index::trace_dictionary(trace_slot, 4, evicted);
-        }
-        Ok(rows)
+        Ok((rows, size))
     }
+
+    /// Walks unified literal blocks without evicting cached query data.
+    pub(super) fn for_each_literal_uncached(&self, f: &mut dyn FnMut(TermId, &triplelight_rdf::Literal) -> io::Result<()>) -> io::Result<()> {
+        let kind_of = |e: &Meta| id_kind(u64::from_be_bytes(e.last.as_slice().try_into().unwrap()));
+        let first = self.entries.partition_point(|entry| kind_of(entry) < id_tag::LITERAL);
+        let end = self.entries.partition_point(|entry| kind_of(entry) <= id_tag::LITERAL);
+        for index in first..end {
+            for (id, term) in self.read_block(index, None)?.0 {
+                let Term::Literal(literal) = term else { return Err(bad("non-literal in literal block")); };
+                f(id, &literal)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Cheap checks on every unified block load: one kind (by the term variant, no text rendering), the last term
     /// equal to the directory's last text, and continuation of the previous block of the same kind. The strictly
     /// increasing text order inside a block is checked exhaustively by `check_text_order` (used by `verify`), not on
