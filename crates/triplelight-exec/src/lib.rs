@@ -411,8 +411,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     named: Vec<TermId>,
     /// Under `Entailment::Rdfs`, the entailed view of each named graph of `named` (`eval_graph` reads through it).
     entailed_named: HashMap<TermId, &'a dyn Snapshot>,
-    /// Missing predicates that the selected provider can expose as query-local terms.
-    virtual_terms: &'a [(Term, TermId)],
+    views: &'a Views<'a>,
     vars: HashMap<String, usize>,
     scratch: RefCell<(HashMap<Term, TermId>, Vec<Term>)>,
     stats: Option<(&'a Stats, &'a dyn Snapshot)>,
@@ -484,21 +483,17 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             let nodes = |p: &triplelight_rdf::NamedNode| range::iri_objects(snap, p);
             range::reorderable_bgps(pattern, true, &nodes, &mut range_reorderable);
         }
-        let virtual_terms = views.virtual_terms();
         Self {
             snap,
             data: std::cell::Cell::new(views.default_graph()),
             dataset,
             named,
             entailed_named: views.named(),
-            virtual_terms,
+            views,
             interrupt: opts.interrupt,
             budget: opts.memory_budget,
             vars: HashMap::new(),
-            scratch: RefCell::new((
-                virtual_terms.iter().cloned().collect(),
-                virtual_terms.iter().map(|(term, _)| term.clone()).collect(),
-            )),
+            scratch: RefCell::new(views.seeded_scratch()),
             stats: opts.stats.map(|stats| (stats, snap as &dyn Snapshot)),
             wcoj: opts.wcoj,
             general_group: opts.general_group,
@@ -561,7 +556,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
     /// Dictionary lookup; a storage failure aborts the query.
     fn lookup(&self, t: &Term) -> Option<TermId> {
-        if let Some((_, id)) = self.virtual_terms.iter().find(|(term, _)| term == t) { return Some(*id) }
+        if let Some(id) = self.views.virtual_id(t) { return Some(id) }
         self.snap.lookup(t).unwrap_or_else(|e| storage_failure(e))
     }
     /// ID for any term: the store's ID if present, else a stable scratch ID.
