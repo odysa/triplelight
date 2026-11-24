@@ -2,7 +2,7 @@
 
 use std::fs;
 use std::path::PathBuf;
-use triplelight::storage::{DiskBase, Snapshot};
+use triplelight::storage::{DiskBase, DiskSnapshot, Snapshot};
 use triplelight::store::{Store, StoreUpdate};
 
 struct Fixture(PathBuf);
@@ -35,7 +35,7 @@ fn text_index_preserves_store_bytes_and_sorts_unique_postings() {
     let current_before = fs::read(root.join("CURRENT")).unwrap();
     let manifest_before = fs::read(root.join("base-0/MANIFEST")).unwrap();
     let wal_before = fs::read(root.join("wal.log")).unwrap();
-    assert_eq!(store.build_text_index(2).unwrap(), 2);
+    assert_eq!(DiskSnapshot::build_text_index(&store, 2).unwrap(), 2);
     assert_eq!(fs::read(root.join("CURRENT")).unwrap(), current_before);
     assert_eq!(fs::read(root.join("base-0/MANIFEST")).unwrap(), manifest_before);
     assert_eq!(fs::read(root.join("wal.log")).unwrap(), wal_before);
@@ -89,7 +89,7 @@ fn text_index_preserves_store_bytes_and_sorts_unique_postings() {
     assert_eq!(pinned.text_candidates(&["graph"], 8).unwrap().len(), 2);
     assert!(store.snapshot().text_candidates(&["graph"], 8).is_none());
     assert_eq!(answer(&store), updated);
-    assert_eq!(store.build_text_index(2).unwrap(), 2);
+    assert_eq!(DiskSnapshot::build_text_index(&store, 2).unwrap(), 2);
     drop(store);
 
     fs::write(root.join("text-0.v1"), "abandoned").unwrap();

@@ -32,8 +32,6 @@ use std::sync::{Arc, Mutex, RwLock};
 
 mod named;
 #[cfg(unix)]
-mod text_index;
-#[cfg(unix)]
 pub(crate) mod text_postings;
 pub use named::{GraphStateError, NamedGraph};
 #[cfg(test)]
@@ -495,7 +493,7 @@ impl Store {
         wal.seek(std::io::SeekFrom::End(0))?;
         let overlay = Arc::new(overlay);
         #[cfg(unix)]
-        text_index::sweep(&dir, generation);
+        text_postings::sweep(&dir, generation);
         Ok(Store {
             dir, format, generation: Mutex::new(generation), fenced: std::sync::atomic::AtomicBool::new(fenced),
             rdf12_fenced: std::sync::atomic::AtomicBool::new(rdf12_fenced),
@@ -586,7 +584,7 @@ impl Store {
         Ok(n)
     }
 
-    fn check_poisoned(&self) -> std::io::Result<()> {
+    pub(crate) fn check_poisoned(&self) -> std::io::Result<()> {
         if self.poisoned.load(std::sync::atomic::Ordering::SeqCst) {
             return Err(std::io::Error::other("store is read-only after a WAL write failure; reopen it to recover"));
         }
@@ -742,7 +740,7 @@ impl Store {
         *self.current.write().unwrap() = fresh;
         *generation = next;
         #[cfg(unix)]
-        text_index::sweep(&self.dir, next);
+        text_postings::sweep(&self.dir, next);
         Ok(())
     }
 

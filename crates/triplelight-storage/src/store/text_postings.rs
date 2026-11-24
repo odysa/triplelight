@@ -3,16 +3,16 @@ use crate::model::{TermId, id_tag};
 use sha2::{Digest, Sha256};
 use std::{
     cmp::Ordering,
-    fs::File,
+    fs::{self, File},
     io::{self, BufRead, BufReader, Read},
     os::unix::fs::FileExt,
     path::Path,
 };
 use triplelight_core::text::ANALYZER_ID;
 
-pub(super) const MAGIC: &[u8; 8] = b"TLTEXT01";
-pub(super) const HEADER_BYTES: u64 = 112;
-pub(super) const MAX_ANALYZED_BYTES: usize = 8 * 1024 * 1024;
+pub(crate) const MAGIC: &[u8; 8] = b"TLTEXT01";
+pub(crate) const HEADER_BYTES: u64 = 112;
+pub(crate) const MAX_ANALYZED_BYTES: usize = 8 * 1024 * 1024;
 
 pub(crate) struct TextIndex {
     file: File,
@@ -155,5 +155,20 @@ impl TextIndex {
             ids.push(TermId(previous));
         }
         Ok(ids)
+    }
+}
+
+/// Only used after opening or publishing a base while holding the store's exclusive lock.
+pub(super) fn sweep(root: &Path, active_generation: u64) {
+    let Ok(entries) = fs::read_dir(root) else { return; };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let generation = name.to_str().and_then(|name| name.strip_prefix("text-"))
+            .and_then(|name| name.strip_suffix(".v1")).and_then(|name| name.parse::<u64>().ok());
+        if generation.is_some_and(|generation| generation != active_generation) {
+            // An old reader that opened the index holds a descriptor. A later first lookup can use scalar.
+            // When enabling cross-process snapshot pins, respect them here as well as in base cleanup.
+            let _ = fs::remove_file(entry.path());
+        }
     }
 }

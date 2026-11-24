@@ -165,7 +165,7 @@ fn main() {
             }
             let result = triplelight::store::Store::open_with(
                 directory, None, Box::new(triplelight::storage::DiskBase { workers: 1 }),
-            ).and_then(|store| store.build_text_index(memory_mb));
+            ).and_then(|store| DiskSnapshot::build_text_index(&store, memory_mb));
             match result {
                 Ok(tokens) => println!("indexed {tokens} distinct tokens"),
                 Err(e) => { eprintln!("text index build failed: {e}"); std::process::exit(1); }

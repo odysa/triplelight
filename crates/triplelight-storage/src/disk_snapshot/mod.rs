@@ -1,5 +1,7 @@
 //! Read-only disk-backed snapshot with an in-memory dictionary and bounded index caches.
 //! Snapshot files must remain immutable while open.
+mod text_index;
+
 use super::disk_index::{DiskIndex, write_index};
 use super::{Dictionary, MemorySnapshot, Snapshot, StorageError};
 use crate::model::{Perm, TermId, TripleBatch};
