@@ -1,8 +1,16 @@
 # SHACL Core validation
 
 TripleLight validates an RDF graph against a SHACL Core shapes graph ([SHACL, W3C Recommendation 2017-07-20](https://www.w3.org/TR/2017/REC-shacl-20170720/)).
-Both graphs are given as triples; the module (`src/shacl/`) uses only the platform-independent RDF types of `triplelight::rdf`. The Rust function below is the API
-today; the CLI and the language bindings can load the two graphs with the existing RDF readers and call it once they are wired to it (not done yet).
+Both graphs are given as triples; the module (`src/shacl/`) uses only the platform-independent RDF types of `triplelight::rdf`. The Rust function below takes
+triples; `validate_documents` takes the two graphs as N-Triples or Turtle text, and is what the CLI and the bindings call. A data graph that violates the shapes
+is a report, never an error. The errors are a syntax error in either document, shapes SHACL rejects, and a feature this build does not provide:
+
+| Caller | Entry point | Syntax error | Shapes rejected | Unsupported |
+| --- | --- | --- | --- | --- |
+| CLI | `triplelight validate <data> <shapes>`: the report as N-Triples; exit 0 conforms, 1 does not, 2 usage or I/O | exit 3 | exit 4 | exit 4 |
+| Python | `triplelight.validate(data, shapes, data_format=, shapes_format=)` → `ValidationReport` (`.conforms`, `.triples`) | `SyntaxError` | `ShapesError` | `UnsupportedError` |
+| Node, Wasm | `validate(data, shapes, { dataFormat, shapesFormat })` → `{ conforms, triples }` | `SyntaxError` | `ShapesError` | `UnsupportedError` |
+| C | `tl_validate(...)`: `*conforms`, and the report as a `TL_RESULT_TRIPLES` result | `TL_ERR_SYNTAX` | `TL_ERR_SHAPES` | `TL_ERR_UNSUPPORTED` |
 
 ```rust
 use triplelight::shacl::validate;

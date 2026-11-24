@@ -127,3 +127,14 @@ test("RDFS entailment is opt-in per query", async () => {
   assert.strictEqual((await db.read().query(q, { entailment: "rdfs" })).bindings.length, 1);
   assert.throws(() => db.querySync(q, { entailment: "owl" }), /entailment must be/);
 });
+
+test("SHACL validate: reports, syntax errors and rejected shapes", () => {
+  const { validate } = require("../pkg-node/triplelight_wasm.js");
+  const shapes = "@prefix sh: <http://www.w3.org/ns/shacl#> .\n<urn:S> a sh:NodeShape ; sh:targetClass <urn:Person> ; sh:property [ sh:path <urn:name> ; sh:minCount 1 ] .";
+  assert.strictEqual(validate('<urn:ann> a <urn:Person> ; <urn:name> "Ann" .', shapes).conforms, true);
+  const bad = validate("<urn:bob> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Person> .", shapes, { dataFormat: "ntriples" });
+  assert.strictEqual(bad.conforms, false);
+  assert.ok(bad.triples.some((t) => t.predicate.value === "http://www.w3.org/ns/shacl#focusNode" && t.object.value === "urn:bob"));
+  assert.throws(() => validate("<urn:bob> a", shapes), (e) => e.kind === "SyntaxError");
+  assert.throws(() => validate("", "@prefix sh: <http://www.w3.org/ns/shacl#> . <urn:S> a sh:NodeShape ; sh:targetClass <urn:P> ; sh:property [ sh:minCount 1 ] ."), (e) => e.kind === "ShapesError");
+});

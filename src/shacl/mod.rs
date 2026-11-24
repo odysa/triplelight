@@ -6,6 +6,7 @@
 //! `constraints` (the constraint components), which use `path` and `graph`; `report` holds the result types, and `error`
 //! and `vocab` are leaves. SHACL-SPARQL and the SHACL 1.2 drafts are outside this module.
 mod constraints;
+mod document;
 mod error;
 mod evaluator;
 mod graph;
@@ -15,6 +16,7 @@ mod shapes;
 mod vocab;
 
 pub use constraints::{CheckNode, Constraint, ConstraintContext};
+pub use document::{validate_documents, Document, DocumentError};
 pub use error::ValidationError;
 pub use evaluator::{validate, Evaluator};
 pub use graph::Graph;
