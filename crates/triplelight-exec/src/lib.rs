@@ -1136,6 +1136,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         for (k, (e, vs)) in filters.iter().enumerate() {
             if applied[k] || !vs.iter().all(|v| bound.contains(v)) { continue }
             applied[k] = true;
+            if let Some(kept) = self.filter_text_literals(e, rows, w) {
+                *rows = kept;
+                continue;
+            }
             let mut kept = Vec::with_capacity(rows.len());
             let mut row: Row = vec![UNBOUND; w];
             if let Some((col, c, eq)) = self.id_equality(e) {

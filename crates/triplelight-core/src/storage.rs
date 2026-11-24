@@ -120,6 +120,9 @@ pub trait Snapshot: Dictionary + Send + Sync {
     /// scan: `false` guarantees there is none, so outputs can stay exactly RDF 1.1. Stores without 1.2 support
     /// return `false`.
     fn has_rdf12_terms(&self) -> bool { false }
+    /// Sorted literal IDs containing every token. An absent or unusable index returns `None`.
+    /// The caller limits candidates to bound working memory; the default uses scalar filtering.
+    fn text_candidates(&self, _tokens: &[&str], _limit: usize) -> Option<Vec<TermId>> { None }
     /// A memo the executor may fill with facts that depend only on this view's contents (range pushdown's
     /// per-predicate check), shared by every query on it. Only an immutable view may return one; `None` (the default)
     /// makes the executor recompute per query.
