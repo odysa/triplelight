@@ -14,7 +14,7 @@ mod report;
 mod shapes;
 mod vocab;
 
-pub use constraints::{Constraint, ConstraintContext};
+pub use constraints::{CheckNode, Constraint, ConstraintContext};
 pub use error::ValidationError;
 pub use evaluator::{validate, Evaluator};
 pub use graph::Graph;
