@@ -54,6 +54,28 @@ An in-memory database is discarded when its last handle is released. Open `Datab
 durable local storage. Updates are atomic, persistent updates sync the write-ahead log before returning, and
 `db.read()` gives a consistent snapshot across queries. See the [Python binding source and tests](bindings/python).
 
+### Interactive SPARQL shell
+
+On macOS and Linux, launch `triplelight` for an in-memory session or `triplelight ./store` to open or create a durable store. The explicit `triplelight shell STORE` form also accepts directory names without a path separator. The shell retains data across requests and supports query and update statements.
+
+```text
+$ triplelight shell ./store
+sparql> .import data.ttl
+sparql> SELECT ?s ?p ?o
+   ...> WHERE { ?s ?p ?o } LIMIT 5;
+sparql> .timer on
+sparql> .quit
+```
+
+Use `.help` to list commands, `.open` to switch stores, and `.read FILE` to run a script. The terminal displays a table with up to 40 rows. Use `.mode tsv`, `.mode csv`, or `.mode json` for complete SELECT output. ASK prints a Boolean in box mode and SPARQL Results JSON in the other modes. Graph queries write N-Triples. Default builds support editing and recalling input within the session.
+
+Piped input has no prompts and defaults to TSV for SELECT. A top-level semicolon ends a shell statement. Use `-c` to submit a multi-operation SPARQL Update as one atomic request.
+
+```sh
+triplelight shell ./store --mode json -c 'SELECT * WHERE { ?s ?p ?o } LIMIT 5'
+triplelight shell ./store < commands.rq
+```
+
 ### Optional SPARQL HTTP server
 
 Enable the `server` Cargo feature to serve the quickstart dataset over HTTP.

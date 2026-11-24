@@ -8,4 +8,5 @@ mod lexer;
 mod parser;
 
 pub use algebra::*;
+pub use lexer::statement_end;
 pub use parser::{in_scope, is_internal_variable, parse_query, parse_update, ParseError, INTERNAL_PREFIX};

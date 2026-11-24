@@ -1,6 +1,8 @@
 //! Tests that start the `triplelight` binary or its server as a child process (one test target, so the binary builds once).
 #[cfg(unix)]
 mod disk_cli;
+#[cfg(unix)]
+mod shell;
 mod parallel_cli;
 #[cfg(feature = "shacl")]
 mod shacl_cli;
