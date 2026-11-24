@@ -42,9 +42,9 @@ const async_ = (f) => { try { return f().catch((e) => { throw wrapError(e); }); 
 
 class Snapshot {
   constructor(raw) { this._raw = raw; }
-  query(sparql) { return async_(() => this._raw.query(sparql)); }
-  querySync(sparql) { return sync(() => this._raw.querySync(sparql)); }
-  queryJson(sparql) { return async_(() => this._raw.queryJson(sparql)); }
+  query(sparql, options = {}) { return async_(() => this._raw.query(sparql, options.entailment ?? null)); }
+  querySync(sparql, options = {}) { return sync(() => this._raw.querySync(sparql, options.entailment ?? null)); }
+  queryJson(sparql, options = {}) { return async_(() => this._raw.queryJson(sparql, options.entailment ?? null)); }
 }
 
 class Database {
@@ -58,9 +58,9 @@ class Database {
   }
   /** Creates a non-durable in-memory database. */
   static inMemory() { return new Database(sync(() => native.Database.inMemory())); }
-  query(sparql) { return async_(() => this._raw.query(sparql)); }
-  querySync(sparql) { return sync(() => this._raw.querySync(sparql)); }
-  queryJson(sparql) { return async_(() => this._raw.queryJson(sparql)); }
+  query(sparql, options = {}) { return async_(() => this._raw.query(sparql, options.entailment ?? null)); }
+  querySync(sparql, options = {}) { return sync(() => this._raw.querySync(sparql, options.entailment ?? null)); }
+  queryJson(sparql, options = {}) { return async_(() => this._raw.queryJson(sparql, options.entailment ?? null)); }
   update(sparql) { return async_(() => this._raw.update(sparql)); }
   load(path) { return async_(() => this._raw.load(String(path))); }
   compact() { return async_(() => this._raw.compact()).then(() => undefined); }

@@ -115,8 +115,22 @@ fn fresh_blank_nodes(triples: Vec<Triple>) -> Vec<Triple> {
 }
 
 /// Runs a query over the whole dataset: the default graph plus the named graphs (`GRAPH`, `FROM`, `FROM NAMED`).
-fn run(cur: &Overlay, sparql: &str) -> Result<QueryResult, JsValue> {
-    exec::query_dataset_with(cur, cur, sparql, &exec::Options::default()).map_err(query_error)
+fn run(cur: &Overlay, sparql: &str, options: Option<Object>) -> Result<QueryResult, JsValue> {
+    let opts = exec::Options { entailment: entailment(options)?, ..Default::default() };
+    exec::query_dataset_with(cur, cur, sparql, &opts).map_err(query_error)
+}
+
+/// The `entailment` query option (#108): "simple" (the default) or "rdfs", which matches the default graph's RDFS
+/// closure computed at query time.
+fn entailment(options: Option<Object>) -> Result<exec::Entailment, JsValue> {
+    let Some(options) = options else { return Ok(exec::Entailment::Simple) };
+    let value = Reflect::get(&options, &JsValue::from_str("entailment"))?;
+    match value.as_string().as_deref() {
+        _ if value.is_undefined() || value.is_null() => Ok(exec::Entailment::Simple),
+        Some("simple") => Ok(exec::Entailment::Simple),
+        Some("rdfs") => Ok(exec::Entailment::Rdfs),
+        _ => Err(js_sys::TypeError::new("entailment must be \"simple\" or \"rdfs\"").into()),
+    }
 }
 
 fn settle(r: Result<JsValue, JsValue>) -> Promise {
@@ -186,20 +200,20 @@ impl Database {
 
     /// Runs a SPARQL SELECT / ASK / CONSTRUCT / DESCRIBE query.
     #[wasm_bindgen(js_name = querySync)]
-    pub fn query_sync(&self, sparql: &str) -> Result<JsValue, JsValue> {
-        convert(run(&self.cur, sparql)?)
+    pub fn query_sync(&self, sparql: &str, options: Option<Object>) -> Result<JsValue, JsValue> {
+        convert(run(&self.cur, sparql, options)?)
     }
 
-    pub fn query(&self, sparql: &str) -> Promise { settle(self.query_sync(sparql)) }
+    pub fn query(&self, sparql: &str, options: Option<Object>) -> Promise { settle(self.query_sync(sparql, options)) }
 
     /// SPARQL 1.1 Query Results JSON for SELECT and ASK, as a string.
     #[wasm_bindgen(js_name = queryJsonSync)]
-    pub fn query_json_sync(&self, sparql: &str) -> Result<String, JsValue> {
-        results_json(run(&self.cur, sparql)?)
+    pub fn query_json_sync(&self, sparql: &str, options: Option<Object>) -> Result<String, JsValue> {
+        results_json(run(&self.cur, sparql, options)?)
     }
 
     #[wasm_bindgen(js_name = queryJson)]
-    pub fn query_json(&self, sparql: &str) -> Promise { settle(self.query_json_sync(sparql).map(JsValue::from)) }
+    pub fn query_json(&self, sparql: &str, options: Option<Object>) -> Promise { settle(self.query_json_sync(sparql, options).map(JsValue::from)) }
 
     /// A consistent view for several queries; later updates do not change it.
     pub fn read(&self) -> Snapshot { Snapshot { cur: Arc::clone(&self.cur) } }
@@ -231,12 +245,12 @@ pub struct Snapshot { cur: Arc<Overlay> }
 #[wasm_bindgen]
 impl Snapshot {
     #[wasm_bindgen(js_name = querySync)]
-    pub fn query_sync(&self, sparql: &str) -> Result<JsValue, JsValue> {
-        convert(run(&self.cur, sparql)?)
+    pub fn query_sync(&self, sparql: &str, options: Option<Object>) -> Result<JsValue, JsValue> {
+        convert(run(&self.cur, sparql, options)?)
     }
-    pub fn query(&self, sparql: &str) -> Promise { settle(self.query_sync(sparql)) }
+    pub fn query(&self, sparql: &str, options: Option<Object>) -> Promise { settle(self.query_sync(sparql, options)) }
     #[wasm_bindgen(js_name = queryJson)]
-    pub fn query_json(&self, sparql: &str) -> Promise {
-        settle(run(&self.cur, sparql).and_then(results_json).map(JsValue::from))
+    pub fn query_json(&self, sparql: &str, options: Option<Object>) -> Promise {
+        settle(run(&self.cur, sparql, options).and_then(results_json).map(JsValue::from))
     }
 }

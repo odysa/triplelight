@@ -383,7 +383,11 @@ impl ReadSnapshot {
         self.stats.read().unwrap().as_ref().filter(|(base, _)| base.base_id() == self.snapshot.base_id()).map(|(_, st)| Arc::clone(st))
     }
     /// Executes a query with undecoded SELECT IDs, valid only against this snapshot.
-    pub fn query_ids(&self, sparql: &str) -> Result<QueryResult, DatabaseError> { self.run(sparql, true, exec::Entailment::Simple) }
+    pub fn query_ids(&self, sparql: &str) -> Result<QueryResult, DatabaseError> { self.query_ids_with_entailment(sparql, exec::Entailment::Simple) }
+    /// `query_ids` under an explicit entailment regime (see `Database::query_with_entailment`).
+    pub fn query_ids_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<QueryResult, DatabaseError> {
+        self.run(sparql, true, entailment)
+    }
     /// Decodes stored term IDs returned by `query_ids` on this snapshot in one batched dictionary pass, calling
     /// `f(i, term)` for `ids[i]` (in any order). Computed terms are not stored: look them up in
     /// `IdSolutions::scratch` instead.
