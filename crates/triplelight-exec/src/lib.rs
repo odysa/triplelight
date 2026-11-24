@@ -24,6 +24,7 @@ mod bgp;
 mod count;
 mod dataset;
 mod entail;
+mod order;
 mod path;
 mod pattern;
 mod range;
@@ -163,8 +164,8 @@ pub enum Entailment {
     #[default]
     Simple,
     /// RDFS: subclass and subproperty transitivity, type and property propagation, domain and range (the rule set of
-    /// Jena's RDFS reasoner at level `simple`, `entail.rs`). The default graph only: GRAPH and FROM / FROM NAMED are
-    /// refused.
+    /// Jena's RDFS reasoner at level `simple`, `entail.rs`). Each graph of the dataset is entailed on its own triples:
+    /// the default graph (a FROM merge: the merge), and each named graph under GRAPH.
     Rdfs,
 }
 
@@ -201,51 +202,14 @@ pub fn query_dataset_with<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, text
     catching_storage(|| run(snap, Some(dataset), text, opts))
 }
 
-/// Graph views and named graphs of the active dataset. Every FROM / FROM NAMED source must be a graph of the catalog.
-fn resolve_dataset<'a, S: Snapshot>(snap: &S, ds: &'a dyn DatasetView, spec: Option<&crate::sparql::QueryDataset>) -> Result<(Vec<&'a dyn Snapshot>, Vec<TermId>), QueryError> {
-    let storage = |e: crate::storage::StorageError| QueryError::new(QueryErrorKind::Storage, format!("storage error: {e}"));
-    let mut from: Vec<&dyn Snapshot> = Vec::new();
-    let mut named: Vec<TermId> = Vec::new();
-    // Local-only dataset construction: every FROM / FROM NAMED source must be a graph of the catalog (present,
-    // possibly empty). A missing source is refused rather than silently omitted or invented as an empty graph.
-    let present = |iris: &[triplelight_rdf::NamedNode]| -> Result<Vec<TermId>, QueryError> {
-        let mut ids = Vec::new();
-        for iri in iris {
-            let id = snap.lookup(&iri.clone().into()).map_err(storage)?;
-            match id {
-                Some(id) if ds.graph(id).map_err(storage)?.is_some() => ids.push(id),
-                _ => return Err(QueryError::new(QueryErrorKind::Unsupported, format!(
-                    "dataset source <{}> is not a graph of this database (only local graphs can be named in FROM / FROM NAMED)", iri.as_str()))),
-            }
-        }
-        ids.sort_unstable(); ids.dedup();
-        Ok(ids)
-    };
-    match spec {
-        None => named = ds.graph_names().map_err(storage)?,
-        Some(spec) => {
-            let default = present(&spec.default)?;
-            if default.len() > 1 && ds.shares_blank_nodes(&default).map_err(storage)? != Some(false) {
-                return Err(QueryError::new(QueryErrorKind::Unsupported,
-                    "FROM over several graphs that share (or may share) blank nodes is not supported: the RDF merge would standardize them apart".to_string()));
-            }
-            for id in default { from.push(ds.graph(id).map_err(storage)?.expect("checked present")) }
-            if let Some(n) = &spec.named { named = present(n)? }
-        }
-    }
-    Ok((from, named))
-}
 
 fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
     if let Some(reason) = support::unsupported(q, dataset.is_some()) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
     let rdfs = opts.entailment == Entailment::Rdfs;
-    if rdfs && let Some(reason) = support::unsupported(q, false) {
-        return Err(QueryError::new(QueryErrorKind::Unsupported, format!("{reason}; RDFS entailment covers the default graph only")))
-    }
     let spec = match q { Query::Select { dataset, .. } | Query::Ask { dataset, .. } | Query::Construct { dataset, .. } | Query::Describe { dataset, .. } => dataset };
     // Graph views for the active dataset; they outlive `ctx`, which borrows them.
-    let (from, named) = match dataset { Some(ds) => resolve_dataset(snap, ds, spec.as_ref())?, None => (Vec::new(), Vec::new()) };
+    let (from, named) = match dataset { Some(ds) => dataset::resolve(snap, ds, spec.as_ref())?, None => (Vec::new(), Vec::new()) };
     let empty = dataset::EmptyGraph { dict: snap as &dyn Snapshot };
     let union = (from.len() > 1).then(|| dataset::UnionGraph { members: from.clone() });
     let default: Option<&dyn Snapshot> = if spec.is_some() && dataset.is_some() {
@@ -258,9 +222,10 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     } else {
         None
     };
-    let entailed = if rdfs { Some(entail::Entailed::new(snap as &dyn Snapshot).unwrap_or_else(|e| storage_failure(e))) } else { None };
-    let default = match &entailed { Some(e) => Some(e as &dyn Snapshot), None => default };
-    let mut ctx = Ctx::for_query(snap, dataset, default, named, q, opts, path::CsrLimits::default());
+    // RDFS: the active default graph (the store's, or the FROM merge) and every named graph each get the closure of
+    // their own triples (`entail.rs`).
+    let views = entail::Views::new(rdfs, snap as &dyn Snapshot, default, dataset, &named).unwrap_or_else(|e| storage_failure(e));
+    let mut ctx = Ctx::for_query(snap, dataset, &views, named, q, opts, path::CsrLimits::default());
     match q {
         Query::Select { pattern, .. } => run_select(&mut ctx, snap, pattern, opts),
         Query::Ask { pattern, .. } => run_ask(&mut ctx, pattern),
@@ -401,6 +366,10 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     dataset: Option<&'a dyn DatasetView>,
     /// Named graphs of the active dataset (catalog, or the FROM NAMED graphs present in it), ascending.
     named: Vec<TermId>,
+    /// Under `Entailment::Rdfs`, the entailed view of each named graph of `named` (`eval_graph` reads through it).
+    entailed_named: HashMap<TermId, &'a dyn Snapshot>,
+    /// Under `Entailment::Rdfs` with no stored `rdf:type`: that IRI and the scratch ID the query's patterns use for it.
+    virtual_type: Option<(Term, TermId)>,
     vars: HashMap<String, usize>,
     scratch: RefCell<(HashMap<Term, TermId>, Vec<Term>)>,
     stats: Option<(&'a Stats, &'a dyn Snapshot)>,
@@ -450,7 +419,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn for_query(
         snap: &'a S,
         dataset: Option<&'a dyn DatasetView>,
-        default: Option<&'a dyn Snapshot>,
+        views: &'a entail::Views<'a>,
         named: Vec<TermId>,
         query: &Query,
         opts: &Options<'a>,
@@ -472,11 +441,13 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             let nodes = |p: &triplelight_rdf::NamedNode| range::iri_objects(snap, p);
             range::reorderable_bgps(pattern, true, &nodes, &mut range_reorderable);
         }
-        Self {
+        let mut ctx = Self {
             snap,
-            data: std::cell::Cell::new(default),
+            data: std::cell::Cell::new(views.default_graph()),
             dataset,
             named,
+            entailed_named: views.named(),
+            virtual_type: None,
             vars: HashMap::new(),
             scratch: RefCell::new((HashMap::new(), Vec::new())),
             stats: opts.stats.map(|stats| (stats, snap as &dyn Snapshot)),
@@ -497,7 +468,18 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             agg_arg_memo: RefCell::new(HashMap::new()),
             agg_arg_slots: RefCell::new(HashMap::new()),
             memo_slots: std::cell::Cell::new(0),
+        };
+        // A graph without one `rdf:type` triple has no ID for it, yet domain and range type its resources: the query's
+        // `rdf:type` gets a scratch ID that every entailed view types with.
+        if views.entailing() {
+            let ty: Term = triplelight_rdf::vocab::rdf::TYPE.into_owned().into();
+            if ctx.lookup(&ty).is_none() {
+                let id = ctx.intern(&ty);
+                ctx.virtual_type = Some((ty, id));
+                views.set_rdf_type(id);
+            }
         }
+        ctx
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
@@ -523,7 +505,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         self.snap.resolve(id).unwrap_or_else(|e| storage_failure(e))
     }
     /// Dictionary lookup; a storage failure aborts the query.
-    fn lookup(&self, t: &Term) -> Option<TermId> { self.snap.lookup(t).unwrap_or_else(|e| storage_failure(e)) }
+    fn lookup(&self, t: &Term) -> Option<TermId> {
+        if let Some((ty, id)) = &self.virtual_type && ty == t { return Some(*id) }
+        self.snap.lookup(t).unwrap_or_else(|e| storage_failure(e))
+    }
     /// ID for any term: the store's ID if present, else a stable scratch ID.
     pub(crate) fn intern(&self, t: &Term) -> TermId {
         // `scratch.0` caches every interned term, stored or not: computed values (e.g. COUNT results, one per
@@ -780,32 +765,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }).collect();
         // Column keys decode once per distinct ID. Other expressions are evaluated per row.
         let mut memo: HashMap<TermId, Option<Term>> = HashMap::new();
-        let keys: Vec<Vec<Option<Term>>> = rows.iter().map(|r| keys_by_column.iter().map(|&(e, column)| {
+        let mut key_of = |r: &Row, (e, column): (&Expression, Option<usize>)| -> Option<Term> {
             match column {
                 Some(i) if r[i] == UNBOUND => None,
                 Some(i) => memo.entry(r[i]).or_insert_with(|| Some(self.resolve(r[i]))).clone(),
                 None => self.value(e, r),
             }
-        }).collect()).collect();
-        let cmp = |a: &usize, b: &usize| -> std::cmp::Ordering {
-            for (k, e) in expression.iter().enumerate() {
-                let c = expr::order_cmp(keys[*a][k].as_ref(), keys[*b][k].as_ref());
-                let c = if matches!(e, OrderExpression::Desc(_)) { c.reverse() } else { c };
-                if c.is_ne() { return c }
-            }
-            a.cmp(b) // ties keep input order (as the stable sort did)
         };
-        let mut idx: Vec<usize> = (0..rows.len()).collect();
-        match limit {
-            Some(k) if k < idx.len() => {
-                // Stable top-k: the comparator is a total order (index tie-break), so the k smallest equal the
-                // first k of a full stable sort.
-                if k > 0 { idx.select_nth_unstable_by(k - 1, cmp); }
-                idx.truncate(k);
-                idx.sort_unstable_by(cmp);
-            }
-            _ => idx.sort_unstable_by(cmp),
-        }
+        let desc: Vec<bool> = expression.iter().map(|e| matches!(e, OrderExpression::Desc(_))).collect();
+        let idx = order::order(rows.len(), &desc, limit, |i, k| key_of(&rows[i], keys_by_column[k]));
         let mut rows: Vec<Option<Row>> = rows.into_iter().map(Some).collect();
         idx.into_iter().map(|i| rows[i].take().unwrap()).collect()
     }
@@ -828,7 +796,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     /// `?g` ranges over the dataset's named graphs (never the default graph) and is joined with P's solutions.
     fn eval_graph(&self, name: &NamedNodePattern, inner: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
         let ds = self.dataset.expect("GRAPH is rejected up front without a dataset");
-        let view = |g: TermId| ds.graph(g).unwrap_or_else(|e| storage_failure(e));
+        let view = |g: TermId| match self.entailed_named.get(&g) {
+            Some(&e) => Some(e),
+            None => ds.graph(g).unwrap_or_else(|e| storage_failure(e)),
+        };
         match name {
             NamedNodePattern::NamedNode(n) => {
                 let Some(id) = self.lookup(&n.clone().into()) else { return Vec::new() };

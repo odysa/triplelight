@@ -577,7 +577,8 @@ mod csr_tests {
             base_iri: None,
         };
         let opts = crate::Options { csr_paths: csr, range_pushdown: false, ..crate::Options::default() };
-        Ctx::for_query(snap, None, None, Vec::new(), &query, &opts, limits)
+        let views = Box::leak(Box::new(crate::entail::Views::new(false, snap, None, None, &[]).unwrap()));
+        Ctx::for_query(snap, None, views, Vec::new(), &query, &opts, limits)
     }
 
     /// Build at the first closure, so every bound-endpoint closure runs on the CSR.

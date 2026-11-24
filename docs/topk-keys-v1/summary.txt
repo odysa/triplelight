@@ -1,0 +1,25 @@
+suite geomean cand/main
+  agg-lubm1000   0.898 (n=30)
+  agg-watdiv100  1.023 (n=42)
+  bi100          0.985 (n=58)
+  bsbm100        0.981 (n=20)
+  lubm1000       1.083 (n=14)
+  watdiv100      0.992 (n=20)
+classes changing across arms: []
+answers differing across runs: []
+best 8:
+  agg-lubm1000 all_q5 1.6 -> 0.6 ms (0.33)
+  agg-lubm1000 all_q6 0.6 -> 0.4 ms (0.67)
+  agg-lubm1000 all_q7 0.7 -> 0.5 ms (0.69)
+  agg-lubm1000 all_q8 2.1 -> 1.6 ms (0.72)
+  agg-lubm1000 all_q1 0.6 -> 0.4 ms (0.73)
+  agg-lubm1000 all_q2 19.0 -> 14.8 ms (0.78)
+  agg-lubm1000 distinct_q2 19.8 -> 15.4 ms (0.78)
+  bi100 m000_p03_q2 68.0 -> 54.2 ms (0.80)
+worst 6:
+  lubm1000 q2 31.9 -> 37.5 ms (1.18)
+  lubm1000 q4 0.6 -> 0.7 ms (1.18)
+  agg-watdiv100 all_S1 0.5 -> 0.6 ms (1.20)
+  watdiv100 S3 0.8 -> 0.9 ms (1.20)
+  bi100 m001_p11_q7 0.4 -> 0.5 ms (1.25)
+  lubm1000 q6 1074.1 -> 1387.4 ms (1.29)
