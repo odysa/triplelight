@@ -268,22 +268,26 @@ fn torn_wal_at_every_byte_of_the_last_record() {
 
 /// Group commit writes several records with one fsync. If power is lost during it, the first of them can come back
 /// zeroed while a later one's block, its `C` included, landed. Neither was acknowledged, so this is a torn tail:
-/// open recovers the state before both, and does not refuse the store.
+/// open recovers the state before both, and does not refuse the store. The two records are appended and then made
+/// durable by one flush, so they are one group commit and, since #114, one WAL batch. (Two records with an fsync each
+/// are two batches, and damage to the first is then damage, not a tear: it was acknowledged before the second was
+/// written. `store::wal_batch_tests` covers that case.)
 #[test]
 fn zeroed_record_inside_the_last_group_commit_is_a_torn_tail() {
     let states = reference(Format::NTriples, Kind::Default);
     let dir = scratch("group-zero");
     let store = open(Format::NTriples, &dir).unwrap();
-    let mut ends = vec![0u64];
-    for k in 0..RECORDS {
-        store.commit_dataset(&record(Kind::Default, k)).unwrap();
-        ends.push(std::fs::metadata(dir.join("wal.log")).unwrap().len());
-    }
+    for k in 0..RECORDS - 2 { store.commit_dataset(&record(Kind::Default, k)).unwrap(); }
+    let first = std::fs::metadata(dir.join("wal.log")).unwrap().len();
+    store.append(&record(Kind::Default, RECORDS - 2), super::Count::Steps).unwrap();
+    let (seq, _) = store.append(&record(Kind::Default, RECORDS - 1), super::Count::Steps).unwrap();
+    store.flush_until(seq).unwrap();
     drop(store);
-    // The last two records stand for one group commit: zero the start of the first, keep the second intact.
-    let (first, second) = (ends[RECORDS as usize - 2], ends[RECORDS as usize - 1]);
     let mut wal = std::fs::read(dir.join("wal.log")).unwrap();
-    wal[first as usize..(first + (second - first) / 2) as usize].fill(0);
+    let second = wal.len() as u64;
+    // Zero the start of the group's records (its first record), keeping the rest of the batch intact.
+    let header = wal[first as usize..].iter().position(|&b| b == b'\n').unwrap() as u64 + 1;
+    wal[(first + header) as usize..(first + header + (second - first - header) / 3) as usize].fill(0);
     std::fs::write(dir.join("wal.log"), &wal).unwrap();
     let store = open(Format::NTriples, &dir).unwrap_or_else(|e| panic!("a power-loss tail must not make the store unopenable: {e}"));
     assert_eq!(state(&store.snapshot()), states[RECORDS as usize - 2]);
@@ -369,7 +373,7 @@ fn disk_full_while_writing_a_base() {
             let err = store.compact().unwrap_err();
             fault::disarm();
             assert!(is_enospc(&err), "{label}: {err}");
-            assert_eq!(std::fs::read_to_string(dir.join("CURRENT")).unwrap().trim_start_matches("dataset-1 ").trim(), "base-0", "{label}");
+            assert_eq!(parse_current(&std::fs::read_to_string(dir.join("CURRENT")).unwrap()).unwrap().unwrap().0, 0, "{label}: no switch");
             store.commit_dataset(&record(kind, RECORDS)).unwrap();
             assert_eq!(state(&store.snapshot()), *states.last().unwrap(), "{label}");
             store.compact().unwrap();
@@ -412,7 +416,7 @@ fn disk_full_while_publishing_current() {
         assert!(is_enospc(&err), "{format:?} fence: {err}");
         assert_eq!(state(&store.snapshot()), states[CRASH_AT as usize], "{format:?} fence");
         store.commit_dataset(&record(Kind::Named, CRASH_AT)).unwrap();
-        assert!(std::fs::read_to_string(dir.join("CURRENT")).unwrap().starts_with("dataset-1 "), "{format:?} fence");
+        assert!(parse_current(&std::fs::read_to_string(dir.join("CURRENT")).unwrap()).unwrap().unwrap().1.dataset, "{format:?} fence");
         drop(store);
         assert_eq!(state(&open(format, &dir).unwrap().snapshot()), states[CRASH_AT as usize + 1], "{format:?} fence");
         let _ = std::fs::remove_dir_all(&dir);

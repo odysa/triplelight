@@ -1338,18 +1338,19 @@ mod dataset_wal_tests {
         let dir = Dir::new("reopen");
         let store = dir.open();
         store.commit(&[(Change::Insert, t("plain", "0"))]).unwrap();
-        assert_eq!(dir.current().trim(), "base-0", "default-only commits leave the store readable by older binaries");
+        // Since #114 the first write fences the WAL batches; a default-only commit still needs no dataset fence.
+        assert_eq!(dir.current().trim(), "walcrc-1 base-0", "default-only commits fence only the WAL batches");
         assert_eq!(store.commit_dataset(&[ins_default(t("plain", "1"))]).unwrap(), 1);
-        assert_eq!(dir.current().trim(), "base-0", "a default-only dataset update needs no fence either");
+        assert_eq!(dir.current().trim(), "walcrc-1 base-0", "a default-only dataset update needs no dataset fence either");
         store.commit_dataset(&sample()).unwrap();
-        assert_eq!(dir.current().trim(), "dataset-1 base-0");
+        assert_eq!(dir.current().trim(), "walcrc-1 dataset-1 base-0");
         store.commit_dataset(&[del("g2", t("b", "2")), Drop { target: GraphScope::Graph(iri("g1")), silent: false }]).unwrap();
         let want = state(&store.snapshot());
         assert_eq!(want.1.iter().map(|(g, _)| g.as_str()).collect::<Vec<_>>(), ["<http://ex/empty>", "<http://ex/g2>"]);
         drop(store);
         let reopened = dir.open();
         assert_eq!(state(&reopened.snapshot()), want);
-        assert_eq!(dir.current().trim(), "dataset-1 base-0");
+        assert_eq!(dir.current().trim(), "walcrc-1 dataset-1 base-0");
     }
 
     #[test]
@@ -1359,7 +1360,7 @@ mod dataset_wal_tests {
         store.commit_dataset(&sample()).unwrap();
         let want = state(&store.snapshot());
         store.compact().unwrap();
-        assert_eq!(dir.current().trim(), "dataset-1 base-1");
+        assert_eq!(dir.current().trim(), "walcrc-1 dataset-1 base-1");
         assert_eq!(state(&store.snapshot()), want);
         store.commit_dataset(&[ins("g2", t("after", "3"))]).unwrap();
         let want = state(&store.snapshot());
@@ -1430,7 +1431,7 @@ mod dataset_wal_tests {
         let e = store.commit_dataset(&[ins("g", t("a", "1")), Drop { target: GraphScope::Graph(iri("absent")), silent: false }]).unwrap_err();
         assert_eq!(e.kind(), std::io::ErrorKind::NotFound);
         assert_eq!(store.commit_dataset(&[Clear { target: GraphScope::Graph(iri("absent")), silent: true }]).unwrap(), 0);
-        assert_eq!((dir.wal(), dir.current().trim().to_string()), (wal, "base-0".to_string()));
+        assert_eq!((dir.wal(), dir.current().trim().to_string()), (wal, "walcrc-1 base-0".to_string()));
         assert!(!store.snapshot().has_named_graphs());
     }
 
@@ -1572,7 +1573,7 @@ mod dataset_wal_tests {
         assert!(store.snapshot().named_graphs_match_base());
         // Nothing changed: a second compaction is a no-op.
         store.compact().unwrap();
-        assert_eq!(dir.current().trim(), "dataset-1 base-1");
+        assert_eq!(dir.current().trim(), "walcrc-1 dataset-1 base-1");
         drop(store);
         assert_eq!(state(&open().snapshot()), want);
         // New base with the old WAL (crash before truncation): replaying the history again changes nothing.
