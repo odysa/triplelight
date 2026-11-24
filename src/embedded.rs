@@ -442,6 +442,10 @@ impl ReadSnapshot {
     pub fn query_ids_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<QueryResult, DatabaseError> {
         self.run(sparql, true, entailment)
     }
+    /// `query_ids_with_entailment` under explicit limits (see `query_with_limits`).
+    pub fn query_ids_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
+        self.run_with(sparql, true, entailment, limits)
+    }
     /// Decodes stored term IDs returned by `query_ids` on this snapshot in one batched dictionary pass, calling
     /// `f(i, term)` for `ids[i]` (in any order). Computed terms are not stored: look them up in
     /// `IdSolutions::scratch` instead.
