@@ -330,7 +330,7 @@ mod tests {
         block_on(db.update(&format!("INSERT DATA {{ {data} }}"))).unwrap();
         db
     }
-    const ENDLESS: &str = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f }";
+    const ENDLESS: &str = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f FILTER(?b != ?d && ?d != ?f) }";
 
     /// Dropping a query's future after its work started stops the query: with one permit, the next call can only
     /// run once the worker has given it back, and it does so promptly.
