@@ -1,0 +1,273 @@
+{
+ "joined": true,
+ "requests_in_log": 43,
+ "requests_expected": 42,
+ "queries": {
+  "q1": {
+   "runs": 2,
+   "index": {
+    "hits": 12,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 10,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   }
+  },
+  "q2": {
+   "runs": 2,
+   "index": {
+    "hits": 27268,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 1034,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   }
+  },
+  "q3": {
+   "runs": 2,
+   "index": {
+    "hits": 8,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 10,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   }
+  },
+  "q4": {
+   "runs": 2,
+   "index": {
+    "hits": 40,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 40,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   }
+  },
+  "q5": {
+   "runs": 2,
+   "index": {
+    "hits": 62,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 14,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   }
+  },
+  "q6": {
+   "runs": 2,
+   "index": {
+    "hits": 6222,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 10604,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   }
+  },
+  "q7": {
+   "runs": 2,
+   "index": {
+    "hits": 82,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 22,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   }
+  },
+  "q8": {
+   "runs": 2,
+   "index": {
+    "hits": 1164,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 4738,
+    "misses": 1912,
+    "hit_rate": 0.7125,
+    "read_calls": 1912,
+    "bytes_read": 628688,
+    "evictions": 1441
+   }
+  },
+  "q9": {
+   "runs": 2,
+   "index": {
+    "hits": 223743,
+    "misses": 28330,
+    "hit_rate": 0.8876,
+    "read_calls": 28330,
+    "bytes_read": 14030286,
+    "evictions": 28309
+   },
+   "dictionary": {
+    "hits": 5971,
+    "misses": 4921,
+    "hit_rate": 0.5482,
+    "read_calls": 4921,
+    "bytes_read": 7286817,
+    "evictions": 3611
+   }
+  },
+  "q10": {
+   "runs": 2,
+   "index": {
+    "hits": 12,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 10,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   }
+  },
+  "q11": {
+   "runs": 2,
+   "index": {
+    "hits": 8,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 12,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   }
+  },
+  "q12": {
+   "runs": 2,
+   "index": {
+    "hits": 376,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 81,
+    "misses": 7,
+    "hit_rate": 0.9205,
+    "read_calls": 7,
+    "bytes_read": 10812,
+    "evictions": 7
+   }
+  },
+  "q13": {
+   "runs": 2,
+   "index": {
+    "hits": 656,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 433,
+    "misses": 77,
+    "hit_rate": 0.849,
+    "read_calls": 77,
+    "bytes_read": 112118,
+    "evictions": 76
+   }
+  },
+  "q14": {
+   "runs": 2,
+   "index": {
+    "hits": 6220,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "read_calls": 0,
+    "bytes_read": 0,
+    "evictions": 0
+   },
+   "dictionary": {
+    "hits": 7695,
+    "misses": 2909,
+    "hit_rate": 0.7257,
+    "read_calls": 2909,
+    "bytes_read": 4284505,
+    "evictions": 2061
+   }
+  }
+ }
+}
