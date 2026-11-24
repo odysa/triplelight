@@ -251,6 +251,9 @@ def run_hook(hook, url):
     """Run the cold-start hook (restart the server, drop the page cache); then wait until the endpoint answers."""
     r = subprocess.run(hook, shell=True, capture_output=True, text=True)
     ok = r.returncode == 0
+    # A hook that failed has usually stopped the server (a refused page-cache drop comes after the stop): report at once with its
+    # output rather than polling for up to ten minutes for an endpoint that will not come back.
+    if not ok: return False, (r.stdout + r.stderr)[-300:]
     deadline = time.time() + 600
     while time.time() < deadline:
         # constant predicate: QLever's two-order index cannot answer a variable predicate, so ASK { ?s ?p ?o } would never succeed there
@@ -453,9 +456,9 @@ def gate_tests(port, behaviors_raw):
             doc = '{"head":{"vars":["n"]},"results":{"bindings":[{"n":{"type":"literal","value":"%s","datatype":"%sinteger"}}]}}' % (count, XSD)
             return {"queries": {"q1": {**fold_of([doc]), "ordered": False}}}
         (tmp / "ref9.json").write_text(json.dumps(reference(9)))
-        def run(name, path, *extra, ref="ref9.json"):
+        def run(name, path, *extra, ref="ref9.json", url=None):
             out = tmp / f"{name}.json"
-            cmd = [sys.executable, __file__, "run", "--system", name, "--url", f"http://127.0.0.1:{port}/{path}", "--queries", str(qdir),
+            cmd = [sys.executable, __file__, "run", "--system", name, "--url", url or f"http://127.0.0.1:{port}/{path}", "--queries", str(qdir),
                    "--reference", str(tmp / ref), "--out", str(out), "--runs", "2", "--timeout", "30", *extra]
             r = subprocess.run(cmd, capture_output=True, text=True)
             return r.returncode, (json.load(open(out)) if out.exists() else None), r.stderr
@@ -491,6 +494,10 @@ def gate_tests(port, behaviors_raw):
         rc, res, _ = run("coldfail", "count9", "--mode", "cold", "--cold-hook", "false")
         e = res["queries"]["q1"] if res else {}
         check("a failed cold hook: not-run, no timed run, ineligible, exit 3", rc == 3 and e.get("class") == "not-run" and not e.get("runs") and "median_s" not in e)
+        # a refused reset has stopped the server: the failure is reported at once, not after polling for an endpoint that never returns
+        t0 = time.time(); rc, res, _ = run("coldgone", "x", "--mode", "cold", "--cold-hook", "echo reset refused >&2; false", url="http://127.0.0.1:9/x")
+        e = res["queries"]["q1"] if res else {}
+        check("a failed hook with the server gone returns within 20 s with its output", time.time() - t0 < 20 and rc == 3 and "reset refused" in e.get("cold_hook_note", ""))
         rc, res, _ = run("coldok", "count9", "--mode", "cold", "--cold-hook", "true")
         check("a working cold hook: timed once, eligible, exit 0", rc == 0 and res and res["queries"]["q1"]["class"] == "pass" and len(res["queries"]["q1"]["runs"]) == 1)
         # a failing cache clear: not timed, recorded, the results file still written
