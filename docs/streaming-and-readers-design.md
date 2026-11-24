@@ -1,7 +1,6 @@
 # Streaming results and multi-process readers (design, task #112)
 
-Status: proposal, read from the code at main `15514671`+; nothing here is implemented. It is written for review by the executor
-(Kaiming) and storage (Alex) lanes before any code.
+Status: partly implemented. The streaming serializer (`serialize_ids_to`) is on main (#272). The chunked JSON response and `Store::open_read_only` are on branches `wxp-stream-http` and `wxp-readonly`, awaiting CI. Step B (readers during writes) builds on the WAL batch format of #282, now on main; its storage side is Alex's. It was written for review by the executor (Kaiming) and storage (Alex) lanes.
 
 ## 1. Streaming query results
 
