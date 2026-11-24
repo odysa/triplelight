@@ -198,6 +198,7 @@ fn main() {
                 Err(e) => { eprintln!("error: {e}"); std::process::exit(1) }
             }
         }
+        #[cfg(feature = "shacl")]
         Some("validate") => {
             // SHACL Core (#108). Exit status: 0 the data conforms, 1 it does not (the report says why), 2 usage or I/O,
             // 3 a syntax error in either document, 4 shapes SHACL rejects or this build does not support.
@@ -214,6 +215,11 @@ fn main() {
                 Err(e @ triplelight::shacl::DocumentError::Syntax { .. }) => { eprintln!("error: {e}"); std::process::exit(3) }
                 Err(e) => { eprintln!("error: {e}"); std::process::exit(4) }
             }
+        }
+        #[cfg(not(feature = "shacl"))]
+        Some("validate") => {
+            eprintln!("error: SHACL validation requires the shacl Cargo feature");
+            std::process::exit(4);
         }
         Some("stress-commit") => {
             // Test helper: commit one triple per transaction and report each acknowledgement.

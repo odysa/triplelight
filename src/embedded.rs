@@ -511,6 +511,7 @@ mod memory_tests {
         std::fs::remove_dir_all(dir).unwrap();
     }
 
+    #[cfg(feature = "rdfs")]
     #[test]
     fn entailment_is_explicit_and_follows_each_snapshot() {
         let db = Database::in_memory();

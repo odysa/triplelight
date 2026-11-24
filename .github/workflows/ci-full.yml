@@ -34,9 +34,14 @@ jobs:
       - name: Build with the HTTP server feature
         run: cargo build --locked --features server
       - name: Clippy
-        run: cargo clippy --locked --workspace --all-targets --features server,async -- -D warnings
+        run: cargo clippy --locked --workspace --all-targets --features server,async,rdfs,shacl -- -D warnings
       - name: Test
-        run: cargo test --locked --workspace --features server,async
+        run: cargo test --locked --workspace --features server,async,rdfs,shacl
+      - name: Check the optional features independently
+        run: |
+          cargo test --locked --no-default-features --test query --test cli requires_the_feature
+          cargo check --locked --no-default-features --features rdfs
+          cargo check --locked --no-default-features --features shacl
       - name: Third-party notices are in sync with the binding packages
         run: python3 ci/check_notices.py
       - name: No absolute local paths in the evidence files
@@ -48,8 +53,8 @@ jobs:
           ci/deslop.sh
       - name: RDF 1.2 (feature rdf-12) across the workspace, plus the term-type differential
         run: |
-          cargo clippy --locked --workspace --all-targets --features server,async,rdf-12 -- -D warnings
-          cargo test --locked --workspace --features server,async,rdf-12
+          cargo clippy --locked --workspace --all-targets --features server,async,rdf-12,rdfs,shacl -- -D warnings
+          cargo test --locked --workspace --features server,async,rdf-12,rdfs,shacl
           cargo clippy --locked -p triplelight-rdf --all-targets --features rdf-12 -- -D warnings
           cargo test --locked -p triplelight-rdf --features rdf-12
           cd conformance/rdf12-diff && cargo test --locked --release
@@ -65,8 +70,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Build CLI
-        run: cargo build --locked --release
+      - name: Build CLI with RDFS entailment
+        run: cargo build --locked --release --features rdfs
       - name: Fetch pinned w3c/rdf-tests
         run: |
           git init -q rdf-tests
@@ -150,6 +155,7 @@ jobs:
           pip install -q "maturin>=1.7,<2" pytest
           maturin develop --release --locked
           pytest -q tests
+          cargo check --locked --no-default-features
       - name: Notices ship in the wheel and sdist
         working-directory: bindings/python
         run: |
@@ -177,6 +183,7 @@ jobs:
           cargo build --release --locked
           node scripts/copy-native.js release
           npm test
+          cargo check --locked --no-default-features
       - name: Notices ship in the npm package
         working-directory: bindings/node
         run: |
@@ -206,6 +213,7 @@ jobs:
           node scripts/bindgen.js
           npm test
           test -f pkg/THIRD_PARTY_NOTICES.md && test -f pkg-node/THIRD_PARTY_NOTICES.md && test -f pkg/LICENSE && test -f pkg-node/LICENSE
+          cargo check --locked --no-default-features --target wasm32-unknown-unknown
 
   c-go-java:
     name: C ABI, Go and Java 25 bindings (${{ matrix.os }})
@@ -228,6 +236,7 @@ jobs:
           cargo clippy --locked --all-targets -- -D warnings
           cargo test --locked --release
           cargo build --locked --release
+          cargo check --locked --no-default-features
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
