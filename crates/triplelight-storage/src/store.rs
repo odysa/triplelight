@@ -29,7 +29,9 @@
 //! before); one followed by a valid batch is damage, and open refuses the store, naming the offset, without changing
 //! it. The first batch is preceded by the fence `walcrc-1 ` at the front of CURRENT, so older binaries refuse the
 //! directory instead of truncating batches they cannot parse. Records written before the fence (a bare `C` after each)
-//! still replay; damage among those cannot be told from a torn tail, as before.
+//! still replay. Damage among those followed by batches is refused like damage before a batch, which is stricter than
+//! before (it used to truncate there); damage among them with nothing after still reads as a torn tail. Bit rot in the
+//! last acknowledged batch looks like a torn tail too and is dropped: telling them apart would need a trailer after it.
 use crate::model::{DatasetChange, GraphScope, GraphTarget, Perm, TermId, TripleBatch};
 use crate::storage::{Dictionary, MemorySnapshot, Snapshot, StorageError};
 use triplelight_rdf::{Term, TermRef, Triple};
@@ -647,6 +649,8 @@ impl Store {
         let n = match count { Count::Net => rec.len(), Count::Steps => steps };
         // Even a no-op must wait for earlier accepted changes it may have observed.
         if rec.is_empty() { return Ok((p.seq, n)) }
+        // Lock order: `append` takes `fences` then `generation`, `compact` takes `generation` then `fences`. Both hold
+        // `pending` first, which serializes them, so the two orders never run at once.
         let mut fences = self.fences.lock().unwrap();
         // Every record from now on reaches the WAL inside a batch, so the batch fence goes first too.
         let needed = Fences { dataset: fences.dataset || needs_fence(&rec), rdf12: fences.rdf12 || needs_rdf12_fence(&rec), walcrc: true };
@@ -674,6 +678,12 @@ impl Store {
             let mut p = self.pending.lock().unwrap();
             (std::mem::take(&mut p.buf), p.seq, p.latest.clone())
         };
+        // Nothing to make durable (a batch must hold at least one record, `read_batch`).
+        if buf.is_empty() {
+            w.durable = upto;
+            *self.current.write().unwrap() = overlay;
+            return Ok(())
+        }
         // Every record reaches the WAL after the batch fence (`append`), so the whole flush is one batch.
         let batch = batch(&buf);
         let written = fault::hit("wal-before-write")
@@ -778,7 +788,8 @@ impl Store {
     fn fail_point(&self, _point: &str) -> std::io::Result<()> { Ok(()) }
 }
 
-/// CURRENT's content: `base-<n>`, or `dataset-1 base-<n>` once fenced. `None` if it is neither.
+/// CURRENT's content: `base-<n>`, with the fences in `Fences` (`walcrc-1 rdf12-1 dataset-1 base-<n>` with all three)
+/// in front. `None` if it is not that.
 ///
 /// RDF 1.2 (task #101): before the first WAL record holding a triple term or a directional literal, CURRENT gains the
 /// prefix `rdf12-1 ` (`rdf12-1 dataset-1 base-<n>` with both fences). Binaries without RDF 1.2 support then refuse
@@ -958,19 +969,23 @@ fn batch_hash(payload: &[u8]) -> String {
 /// The records of a batch that starts at `bytes[0]` (its `B` line), and the batch's length; `None` if the batch is
 /// incomplete, fails its hash, or holds anything but complete records.
 fn read_batch(bytes: &[u8]) -> Option<(Vec<Vec<DatasetChange>>, usize)> {
-    let eol = bytes.iter().position(|&b| b == b'\n')?;
+    // A header is short; anything longer is not one (and is not scanned to the end of a large log).
+    let eol = bytes.iter().take(64).position(|&b| b == b'\n')?;
     let header = std::str::from_utf8(&bytes[..eol]).ok()?;
     let mut fields = header.strip_prefix("B ")?.split(' ');
-    let (len, hash) = (fields.next()?.parse::<usize>().ok()?, fields.next()?);
-    if fields.next().is_some() { return None }
-    let payload = bytes.get(eol + 1..eol + 1 + len)?;
+    let (len, hash) = (fields.next()?, fields.next()?);
+    if fields.next().is_some() || len.is_empty() || !len.bytes().all(|b| b.is_ascii_digit()) { return None }
+    // The length comes from disk: bounded by what is there before any arithmetic, so a corrupt one cannot overflow.
+    let len: usize = len.parse().ok().filter(|&n| n <= bytes.len())?;
+    let end = (eol + 1).checked_add(len)?;
+    let payload = bytes.get(eol + 1..end)?;
     if batch_hash(payload) != hash { return None }
     let text = std::str::from_utf8(payload).ok()?;
     let (mut records, mut cur) = (Vec::new(), Vec::new());
     for line in text.strip_suffix('\n')?.split('\n') {
         if line == "C" { records.push(std::mem::take(&mut cur)) } else { cur.push(parse_line(line)?) }
     }
-    cur.is_empty().then_some((records, eol + 1 + len))
+    cur.is_empty().then_some((records, end))
 }
 
 /// Complete records in the WAL, and the byte length they span (everything after is a torn tail). Records written
@@ -982,15 +997,18 @@ fn read_wal(path: &Path) -> std::io::Result<(Vec<Vec<DatasetChange>>, u64)> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok((Vec::new(), 0)),
         Err(e) => return Err(e),
     };
-    let (mut records, mut cur, mut pos, mut valid) = (Vec::new(), Vec::new(), 0usize, 0usize);
+    let (mut records, mut cur, mut pos, mut valid, mut batched) = (Vec::new(), Vec::new(), 0usize, 0usize, false);
     while pos < bytes.len() {
         if bytes[pos..].starts_with(b"B ") {
             let Some((batch, len)) = read_batch(&bytes[pos..]) else { break };
             records.extend(batch);
             pos += len;
             valid = pos;
+            batched = true;
             continue;
         }
+        // Once batches start, nothing else is ever written: a line that is not one ends the log.
+        if batched { break }
         // A line without its newline is the torn end of an append, even if it reads as a complete change or `C`.
         let Some(eol) = bytes[pos..].iter().position(|&b| b == b'\n') else { break };
         let Ok(text) = std::str::from_utf8(&bytes[pos..pos + eol]) else { break };
@@ -1081,6 +1099,58 @@ mod wal_batch_tests {
         std::fs::write(d.join("wal.log"), &zeroed).unwrap();
         assert_eq!(triples(&Store::open(&d, None, 1).unwrap()), 2);
         std::fs::remove_dir_all(d).unwrap();
+    }
+
+    /// Damage in the middle of the log, in each place a batch can break, refuses the store and changes nothing.
+    #[test]
+    fn mid_log_damage_of_any_kind_refuses_the_store() {
+        let cases: [(&str, fn(&mut Vec<u8>, usize)); 3] = [
+            // The second batch's length grows past the end of the log (same width, so later offsets hold).
+            ("length past EOF", |wal, at| { wal[at + 2] = b'9'; }),
+            // Its header is no longer a batch header.
+            ("damaged header", |wal, at| { wal[at] = b'X'; }),
+            // Its hash no longer matches.
+            ("damaged hash", |wal, at| { let eol = at + wal[at..].iter().position(|&b| b == b'\n').unwrap(); wal[eol - 1] ^= 1; }),
+        ];
+        for (name, damage) in cases {
+            let d = dir(&format!("mid-{}", name.replace(' ', "-")));
+            let (mut wal, starts) = three_batches(&d);
+            damage(&mut wal, starts[1]);
+            std::fs::write(d.join("wal.log"), &wal).unwrap();
+            let err = Store::open(&d, None, 1).err().unwrap_or_else(|| panic!("{name}: opened"));
+            assert_eq!(err.kind(), std::io::ErrorKind::InvalidData, "{name}");
+            assert_eq!(std::fs::read(d.join("wal.log")).unwrap(), wal, "{name}: nothing truncated");
+            std::fs::remove_dir_all(d).unwrap();
+        }
+    }
+
+    /// Damage among records written before the fence is refused once batches follow it (stricter than before #114,
+    /// which truncated there); with nothing after it, it is still a torn tail.
+    #[test]
+    fn damage_among_old_records_before_batches_is_refused() {
+        let d = dir("legacy-damage");
+        drop(Store::open(&d, None, 1).unwrap());
+        std::fs::write(d.join("wal.log"), format!("+ {} .\nC\n+ {} .\nC\n", t(0), t(1))).unwrap();
+        let store = Store::open(&d, None, 1).unwrap();
+        store.commit(&[(Change::Insert, t(2))]).unwrap();
+        drop(store);
+        let mut wal = std::fs::read(d.join("wal.log")).unwrap();
+        let second = wal.windows(2).position(|w| w == b"C\n").unwrap() + 2;
+        wal[second] = b'?'; // the second old record's change line no longer parses
+        std::fs::write(d.join("wal.log"), &wal).unwrap();
+        assert_eq!(Store::open(&d, None, 1).err().expect("a batch follows the damage").kind(), std::io::ErrorKind::InvalidData);
+        // Without the batch, the same damage is a torn tail, as it always was.
+        let batch = wal.windows(3).position(|w| w == b"\nB ").unwrap() + 1;
+        std::fs::write(d.join("wal.log"), &wal[..batch]).unwrap();
+        assert_eq!(triples(&Store::open(&d, None, 1).unwrap()), 1);
+        std::fs::remove_dir_all(d).unwrap();
+    }
+
+    #[test]
+    fn a_corrupt_batch_length_is_rejected_without_overflow() {
+        for header in ["B 18446744073709551615 0000000000000000\n", "B +12 0000000000000000\n", "B  0000000000000000\n", "B 99999999999999999999999 00\n"] {
+            assert!(read_batch(format!("{header}+ <urn:a> <urn:p> <urn:o> .\nC\n").as_bytes()).is_none(), "{header:?}");
+        }
     }
 
     /// The pre-#114 `parse_current`, verbatim: what an older binary does with a fenced CURRENT.
