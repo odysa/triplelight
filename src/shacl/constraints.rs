@@ -3,15 +3,24 @@ use std::collections::HashSet;
 
 use crate::rdf::{Literal, NamedNode, Term};
 
+use super::error::ValidationError;
+use super::evaluator::Evaluator;
 use super::graph::Graph;
-use super::report::ConstraintViolation;
-use super::{ConstraintContext, Evaluator, ValidationError};
+use super::report::{ConstraintViolation, Outcome};
+use super::shapes::Shape;
+
+pub struct ConstraintContext<'a> {
+    pub focus: &'a Term,
+    pub value_nodes: &'a [Term],
+    pub shape: &'a Shape,
+    pub data: &'a Graph,
+}
 
 const SH: &str = "http://www.w3.org/ns/shacl#";
 const XSD: &str = "http://www.w3.org/2001/XMLSchema#";
 
 #[derive(Clone, Debug)]
-pub(super) enum Constraint {
+pub enum Constraint {
     Class(Term),
     Datatype(NamedNode),
     NodeKind(NodeKind),
@@ -34,7 +43,7 @@ pub(super) enum Constraint {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub(super) enum NodeKind {
+pub enum NodeKind {
     Blank,
     Iri,
     Literal,
@@ -63,7 +72,7 @@ impl NodeKind {
 /// An XSD integer compared only against a nonnegative size. Preserve the order
 /// of bounds outside the platform's usize range without truncating them.
 #[derive(Clone, Copy, Debug)]
-pub(super) enum Limit {
+pub enum Limit {
     Negative,
     Number(usize),
     AboveUsize,
@@ -84,7 +93,7 @@ fn iri(namespace: &str, local: &str) -> NamedNode {
 }
 
 fn invalid(shape: &Term, parameter: &str, expected: &str) -> ValidationError {
-    ValidationError::InvalidShape(format!("{shape}: sh:{parameter} {expected}"))
+    ValidationError::MalformedShape(format!("{shape}: sh:{parameter} {expected}"))
 }
 
 fn literal(term: &Term) -> Option<&Literal> {
@@ -183,7 +192,7 @@ fn shape_reference(shape: &Term, parameter: &str, term: &Term) -> Result<Term, V
     }
 }
 
-pub(super) fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, ValidationError> {
+pub fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, ValidationError> {
     let mut constraints = Vec::new();
     let property_shape = !shapes.objects(shape, &iri(SH, "path")).is_empty();
     for (predicate, value) in shapes.outgoing(shape) {
@@ -280,21 +289,16 @@ pub(super) fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, Val
     Ok(constraints)
 }
 
-fn violation(component: &str, value: Option<&Term>) -> ConstraintViolation {
-    ConstraintViolation::Local {
+fn violation(component: &str, value: Option<&Term>) -> Outcome {
+    Outcome::Violation(ConstraintViolation {
         component: iri(SH, component),
         value: value.cloned(),
         message: None,
         details: Vec::new(),
-        path_override: None,
-    }
+    })
 }
 
-fn check_values(
-    component: &str,
-    values: &[Term],
-    accepts: impl Fn(&Term) -> bool,
-) -> Vec<ConstraintViolation> {
+fn check_values(component: &str, values: &[Term], accepts: impl Fn(&Term) -> bool) -> Vec<Outcome> {
     values
         .iter()
         .filter(|value| !accepts(value))
@@ -302,7 +306,7 @@ fn check_values(
         .collect()
 }
 
-fn check_set(component: &str, passes: bool) -> Vec<ConstraintViolation> {
+fn check_set(component: &str, passes: bool) -> Vec<Outcome> {
     if passes {
         Vec::new()
     } else {
@@ -316,7 +320,7 @@ fn check_conformance(
     shapes: &[Term],
     values: &[Term],
     accepts: impl Fn(usize) -> bool,
-) -> Result<Vec<ConstraintViolation>, ValidationError> {
+) -> Result<Vec<Outcome>, ValidationError> {
     let mut violations = Vec::new();
     for value in values {
         let mut conforming = 0;
@@ -333,11 +337,11 @@ fn check_conformance(
 }
 
 impl Constraint {
-    pub(super) fn evaluate(
+    pub fn evaluate(
         &self,
         cx: &ConstraintContext<'_>,
         ev: &mut Evaluator<'_>,
-    ) -> Result<Vec<ConstraintViolation>, ValidationError> {
+    ) -> Result<Vec<Outcome>, ValidationError> {
         let values = cx.value_nodes;
         let results = match self {
             Self::Class(class) => check_values("ClassConstraintComponent", values, |value| {
@@ -456,11 +460,7 @@ impl Constraint {
             Self::Property(shape) => {
                 let mut violations = Vec::new();
                 for value in values {
-                    violations.extend(
-                        ev.check_node(shape, value)?
-                            .into_iter()
-                            .map(ConstraintViolation::Forwarded),
-                    );
+                    violations.push(Outcome::Forwarded(ev.check_node(shape, value)?));
                 }
                 violations
             }
