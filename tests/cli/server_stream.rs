@@ -13,13 +13,14 @@ impl Drop for Server {
     fn drop(&mut self) { let _ = self.0.kill(); let _ = self.0.wait(); let _ = std::fs::remove_dir_all(&self.2); }
 }
 
-fn start() -> Server {
-    let dir = std::env::temp_dir().join(format!("tl-stream-{}", std::process::id()));
+/// A server over `rows` triples. Each test names its own directory: tests run in parallel inside one process.
+fn start(name: &str, rows: usize) -> Server {
+    let dir = std::env::temp_dir().join(format!("tl-stream-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let data = dir.join("data.nt");
-    let mut nt = String::with_capacity(ROWS * 40);
-    for i in 0..ROWS { nt.push_str(&format!("<urn:s{i}> <urn:p> \"v{i}\" .\n")) }
+    let mut nt = String::with_capacity(rows * 40);
+    for i in 0..rows { nt.push_str(&format!("<urn:s{i}> <urn:p> \"v{i}\" .\n")) }
     std::fs::write(&data, nt).unwrap();
     let store = dir.join("store");
     let port = { let l = TcpListener::bind("127.0.0.1:0").unwrap(); l.local_addr().unwrap().port() };
@@ -71,7 +72,7 @@ fn count(haystack: &[u8], needle: &[u8]) -> usize {
 
 #[test]
 fn a_large_json_answer_is_chunked_complete_and_identical_over_http_1_0() {
-    let server = start();
+    let server = start("large", ROWS);
     let q = "SELECT ?s WHERE { ?s <urn:p> ?o }";
     let (head, chunked) = body_of(&query(server.1, "1.1", q));
     assert!(head.starts_with("HTTP/1.1 200"), "{head}");
@@ -89,7 +90,7 @@ fn a_large_json_answer_is_chunked_complete_and_identical_over_http_1_0() {
 
 #[test]
 fn errors_before_the_first_byte_keep_their_status() {
-    let server = start();
+    let server = start("errors", 10);
     let (head, _) = body_of(&query(server.1, "1.1", "SELECT ?s WHERE {"));
     assert!(head.starts_with("HTTP/1.1 400"), "{head}");
     let (head, body) = body_of(&query(server.1, "1.1", "SELECT ?s WHERE { ?s <urn:absent> ?o }"));
