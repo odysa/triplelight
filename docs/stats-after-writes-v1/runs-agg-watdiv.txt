@@ -1,0 +1,40 @@
+main all_C1 1.66 87f603c08959
+main all_C2 3.77 7163e31850ef
+main all_C3 12.36 047b60fd3c2a
+main all_F1 0.39 7163e31850ef
+main all_F3 0.73 77e693da43a8
+main all_L1 0.28 d1597a402f61
+main all_S1 0.30 7163e31850ef
+main distinct_C3 12.34 8ed47ae59785
+cand all_C1 1.96 87f603c08959
+cand all_C2 4.15 7163e31850ef
+cand all_C3 12.49 047b60fd3c2a
+cand all_F1 0.42 7163e31850ef
+cand all_F3 0.79 77e693da43a8
+cand all_L1 0.30 d1597a402f61
+cand all_S1 0.32 7163e31850ef
+cand distinct_C3 11.99 8ed47ae59785
+cand all_C1 1.65 87f603c08959
+cand all_C2 3.61 7163e31850ef
+cand all_C3 12.51 047b60fd3c2a
+cand all_F1 0.42 7163e31850ef
+cand all_F3 0.79 77e693da43a8
+cand all_L1 0.31 d1597a402f61
+cand all_S1 0.31 7163e31850ef
+cand distinct_C3 11.95 8ed47ae59785
+main all_C1 1.67 87f603c08959
+main all_C2 3.58 7163e31850ef
+main all_C3 12.29 047b60fd3c2a
+main all_F1 0.42 7163e31850ef
+main all_F3 0.80 77e693da43a8
+main all_L1 0.29 d1597a402f61
+main all_S1 0.31 7163e31850ef
+main distinct_C3 12.06 8ed47ae59785
+SUMMARY all_C1       main      1.67 ms  cand      1.74 ms  cand/main 1.042  same
+SUMMARY all_C2       main      3.64 ms  cand      3.78 ms  cand/main 1.039  same
+SUMMARY all_C3       main     12.32 ms  cand     12.50 ms  cand/main 1.015  same
+SUMMARY all_F1       main      0.40 ms  cand      0.42 ms  cand/main 1.040  same
+SUMMARY all_F3       main      0.75 ms  cand      0.79 ms  cand/main 1.048  same
+SUMMARY all_L1       main      0.28 ms  cand      0.30 ms  cand/main 1.076  same
+SUMMARY all_S1       main      0.31 ms  cand      0.32 ms  cand/main 1.035  same
+SUMMARY distinct_C3  main     12.16 ms  cand     11.96 ms  cand/main 0.983  same

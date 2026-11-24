@@ -1,0 +1,70 @@
+main q1 0.29 2ebb94ec49cb
+main q2 2.47 1aa2cb9e3f39
+main q3 0.29 2e680807468b
+main q4 0.26 7026b1d5f295
+main q5 0.49 17bc351c2271
+main q6 116.24 d615ad05428b
+main q7 0.24 dd380a13ca41
+main q8 4.14 c836397187ec
+main q9 41.28 f4677ca6c0d0
+main q10 0.38 2ebb94ec49cb
+main q11 0.38 4bd0079b5184
+main q12 0.45 88dcf2409812
+main q13 0.39 93c4a0ebbd5a
+main q14 116.53 d615ad05428b
+cand q1 0.36 2ebb94ec49cb
+cand q2 2.42 1aa2cb9e3f39
+cand q3 0.28 2e680807468b
+cand q4 0.31 7026b1d5f295
+cand q5 0.51 17bc351c2271
+cand q6 115.57 d615ad05428b
+cand q7 0.23 dd380a13ca41
+cand q8 4.15 c836397187ec
+cand q9 41.14 f4677ca6c0d0
+cand q10 0.31 2ebb94ec49cb
+cand q11 0.38 4bd0079b5184
+cand q12 0.44 88dcf2409812
+cand q13 0.39 93c4a0ebbd5a
+cand q14 117.76 d615ad05428b
+cand q1 0.29 2ebb94ec49cb
+cand q2 2.43 1aa2cb9e3f39
+cand q3 0.33 2e680807468b
+cand q4 0.42 7026b1d5f295
+cand q5 0.67 17bc351c2271
+cand q6 115.89 d615ad05428b
+cand q7 0.33 dd380a13ca41
+cand q8 4.16 c836397187ec
+cand q9 41.79 f4677ca6c0d0
+cand q10 0.38 2ebb94ec49cb
+cand q11 0.36 4bd0079b5184
+cand q12 0.42 88dcf2409812
+cand q13 0.39 93c4a0ebbd5a
+cand q14 117.09 d615ad05428b
+main q1 0.30 2ebb94ec49cb
+main q2 2.64 1aa2cb9e3f39
+main q3 0.32 2e680807468b
+main q4 0.35 7026b1d5f295
+main q5 0.57 17bc351c2271
+main q6 113.87 d615ad05428b
+main q7 0.32 dd380a13ca41
+main q8 4.18 c836397187ec
+main q9 41.56 f4677ca6c0d0
+main q10 0.33 2ebb94ec49cb
+main q11 0.37 4bd0079b5184
+main q12 0.49 88dcf2409812
+main q13 0.40 93c4a0ebbd5a
+main q14 117.14 d615ad05428b
+SUMMARY q1   main      0.30 ms  cand      0.33 ms  cand/main 1.123  same
+SUMMARY q2   main      2.57 ms  cand      2.42 ms  cand/main 0.940  same
+SUMMARY q3   main      0.31 ms  cand      0.28 ms  cand/main 0.910  same
+SUMMARY q4   main      0.30 ms  cand      0.36 ms  cand/main 1.201  same
+SUMMARY q5   main      0.54 ms  cand      0.51 ms  cand/main 0.948  same
+SUMMARY q6   main    115.38 ms  cand    115.89 ms  cand/main 1.004  same
+SUMMARY q7   main      0.28 ms  cand      0.27 ms  cand/main 0.953  same
+SUMMARY q8   main      4.14 ms  cand      4.16 ms  cand/main 1.004  same
+SUMMARY q9   main     41.42 ms  cand     41.45 ms  cand/main 1.001  same
+SUMMARY q10  main      0.35 ms  cand      0.36 ms  cand/main 1.040  same
+SUMMARY q11  main      0.37 ms  cand      0.36 ms  cand/main 0.972  same
+SUMMARY q12  main      0.46 ms  cand      0.44 ms  cand/main 0.955  same
+SUMMARY q13  main      0.40 ms  cand      0.39 ms  cand/main 0.978  same
+SUMMARY q14  main    116.60 ms  cand    117.36 ms  cand/main 1.007  same
