@@ -1,6 +1,8 @@
 // Derived from oxrdf 0.3.5 (MIT); see THIRD_PARTY_NOTICES.md.
 #![allow(clippy::host_endian_bytes)] // We use it to go around 16 bytes alignment of u128
+use crate::syntax::{BlankNodeIdParseError, TermParseError, TermParseErrorKind};
 use std::io::Write;
+use std::str::FromStr;
 use std::{fmt, str};
 
 #[derive(Eq, PartialEq, Debug, Clone, Hash)]
@@ -276,16 +278,6 @@ fn to_integer_id(id: &str) -> Option<u128> {
     Some(value)
 }
 
-#[derive(Debug)]
-pub struct BlankNodeIdParseError;
-
-impl fmt::Display for BlankNodeIdParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("The blank node identifier is invalid")
-    }
-}
-
-impl std::error::Error for BlankNodeIdParseError {}
 
 /// The next blank-node ID of this thread, in place of `rand::random`: a 128-bit bijective mix of a counter that
 /// starts at a random seed (from the OS or the JS host), so IDs never repeat within a thread and threads, processes
@@ -309,4 +301,67 @@ fn random_u128() -> u128 {
     x ^= x >> 61;
     x = x.wrapping_mul(0x9e37_79b9_7f4a_7c15_f39c_c060_5ced_c835);
     x ^ (x >> 64)
+}
+
+impl FromStr for BlankNode {
+    type Err = TermParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (term, left) = BlankNode::read(s)?;
+        if !left.is_empty() {
+            return Err(Self::Err::msg(
+                "Blank node serialization should not contain whitespaces",
+            ));
+        }
+        Ok(term)
+    }
+}
+
+impl BlankNode {
+    pub(crate) fn read(s: &str) -> Result<(BlankNode, &str), TermParseError> {
+        let s = s.trim();
+        if let Some(remain) = s.strip_prefix("_:") {
+            let mut end = remain
+                .find(|v: char| {
+                    v.is_whitespace()
+                        || matches!(
+                            v,
+                            '<' | '?'
+                                | '$'
+                                | '"'
+                                | '\''
+                                | '>'
+                                | '@'
+                                | '^'
+                                | ':'
+                                | '('
+                                | ')'
+                                | '{'
+                                | '}'
+                                | '['
+                                | ']'
+                        )
+                })
+                .unwrap_or(remain.len());
+            if let Some(pos) = remain[..end].find("..") {
+                end = pos;
+            }
+            if remain[..end].ends_with('.') {
+                // It can't end with '.'
+                end -= 1;
+            }
+            let (value, remain) = remain.split_at(end);
+            let term = BlankNode::new(value).map_err(|error| {
+                TermParseError(TermParseErrorKind::BlankNode {
+                    value: value.to_owned(),
+                    error,
+                })
+            })?;
+            Ok((term, remain))
+        } else {
+            Err(TermParseError::msg(
+                "Blank node serialization should start with '_:'",
+            ))
+        }
+    }
 }
