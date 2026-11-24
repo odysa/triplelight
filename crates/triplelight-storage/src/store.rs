@@ -430,6 +430,25 @@ fn lock_directory(file: &File) -> std::io::Result<()> {
     }
 }
 
+/// Takes a shared directory lock (readers), retrying briefly like `lock_directory`; an open writer holds it exclusively.
+fn lock_directory_shared(file: &File) -> std::io::Result<()> {
+    let start = std::time::Instant::now();
+    let mut pause = std::time::Duration::from_millis(1);
+    loop {
+        match file.try_lock_shared() {
+            Ok(()) => return Ok(()),
+            Err(std::fs::TryLockError::Error(e)) => return Err(e),
+            Err(std::fs::TryLockError::WouldBlock) if start.elapsed() < std::time::Duration::from_millis(250) => {
+                std::thread::sleep(pause);
+                pause = (pause * 2).min(std::time::Duration::from_millis(32));
+            }
+            Err(std::fs::TryLockError::WouldBlock) => {
+                return Err(std::io::Error::new(std::io::ErrorKind::WouldBlock, "database directory is open for writing"))
+            }
+        }
+    }
+}
+
 /// The store root's scratch directory, beside the bases: large derived-order regroups spill here (`derived_order.rs`).
 /// Emptied at every open, which holds the directory lock.
 pub(crate) const SCRATCH_DIR: &str = "scratch";
@@ -452,6 +471,8 @@ pub struct Store {
     writer: Mutex<()>,
     /// Set if a WAL write or fsync failed: in-memory and durable state may differ, so further writes are refused.
     poisoned: std::sync::atomic::AtomicBool,
+    /// Opened by `open_read_only`: the directory lock is shared, nothing was written at open, and every write is refused.
+    read_only: bool,
     /// Held until the other store state is dropped; the persistent file must never be removed on close.
     _directory_lock: File,
     #[cfg(test)]
@@ -521,6 +542,48 @@ impl Store {
             wal: Mutex::new(Wal { file: wal, durable: 0 }),
             writer: Mutex::new(()),
             poisoned: std::sync::atomic::AtomicBool::new(false),
+            read_only: false,
+            _directory_lock: directory_lock,
+            #[cfg(test)]
+            fail_at: Mutex::new(None),
+        })
+    }
+
+    /// Opens an existing store for reading only: a shared lock on the directory (many readers, or one writer), and nothing
+    /// is written, truncated or deleted. The WAL is replayed up to its last complete record; a torn tail is ignored and left
+    /// in place, and a `base-N` that `CURRENT` does not name (a compaction in flight or abandoned) is left alone. Every write
+    /// and `compact` fail with `PermissionDenied`. A store that does not exist is an error, never created.
+    pub fn open_read_only(dir: impl AsRef<Path>, workers: usize) -> std::io::Result<Self> {
+        Self::open_read_only_with(dir, Box::new(NTriplesBase { workers }))
+    }
+
+    pub fn open_read_only_with(dir: impl AsRef<Path>, format: Box<dyn BaseFormat>) -> std::io::Result<Self> {
+        let dir = dir.as_ref().to_path_buf();
+        if !dir.join("CURRENT").is_file() {
+            return Err(std::io::Error::new(std::io::ErrorKind::NotFound, format!("{} is not a store (no CURRENT)", dir.display())));
+        }
+        // Read-only: never create the lock file either. A store that was never opened for writing has none; refuse it.
+        let directory_lock = OpenOptions::new().read(true).open(dir.join("LOCK"))?;
+        lock_directory_shared(&directory_lock)?;
+        let (generation, fenced, rdf12_fenced) = parse_current(&std::fs::read_to_string(dir.join("CURRENT"))?)?
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?;
+        let (base, named) = format.open_dataset(&dir.join(format!("base-{generation}")))?;
+        let mut overlay = Overlay::from_dataset_base(base, named);
+        let wal_path = dir.join("wal.log");
+        let (records, _valid_len) = read_wal(&wal_path)?;
+        for rec in records { overlay = overlay.with_dataset_changes(&rec)?.0; }
+        // A placeholder: no write path reaches it (`check_poisoned` refuses first).
+        let wal = File::open(&wal_path).or_else(|_| File::open(dir.join("CURRENT")))?;
+        let overlay = Arc::new(overlay);
+        Ok(Store {
+            dir, format, generation: Mutex::new(generation), fenced: std::sync::atomic::AtomicBool::new(fenced),
+            rdf12_fenced: std::sync::atomic::AtomicBool::new(rdf12_fenced),
+            current: RwLock::new(overlay.clone()),
+            pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0 }),
+            wal: Mutex::new(Wal { file: wal, durable: 0 }),
+            writer: Mutex::new(()),
+            poisoned: std::sync::atomic::AtomicBool::new(false),
+            read_only: true,
             _directory_lock: directory_lock,
             #[cfg(test)]
             fail_at: Mutex::new(None),
@@ -604,6 +667,9 @@ impl Store {
     }
 
     pub(crate) fn check_poisoned(&self) -> std::io::Result<()> {
+        if self.read_only {
+            return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "store was opened read-only"));
+        }
         if self.poisoned.load(std::sync::atomic::Ordering::SeqCst) {
             return Err(std::io::Error::other("store is read-only after a WAL write failure; reopen it to recover"));
         }
@@ -1860,5 +1926,81 @@ mod dataset_wal_tests {
                 assert_eq!(parse_current(text).unwrap_err().kind(), std::io::ErrorKind::Unsupported);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod read_only_tests {
+    use super::*;
+    use triplelight_rdf::{Literal, NamedNode};
+
+    fn iri(s: &str) -> NamedNode { NamedNode::new(format!("http://ex/{s}")).unwrap() }
+    fn t(s: &str, o: &str) -> Triple { Triple::new(iri(s), iri("p"), Literal::new_simple_literal(o)) }
+    fn rows(store: &Store) -> usize { store.snapshot().scan(Perm::Spo, &[]).map(|b| b.unwrap().cols[0].len()).sum() }
+
+    struct Dir(PathBuf);
+    impl Dir {
+        fn new(name: &str) -> Dir {
+            let d = std::env::temp_dir().join(format!("rdf-readonly-{name}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&d);
+            Dir(d)
+        }
+    }
+    impl std::ops::Drop for Dir { fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); } }
+
+    /// A store with two committed records, a torn third record, and a stray `base-7` that `CURRENT` does not name.
+    fn damaged(dir: &Dir) {
+        let store = Store::open(&dir.0, None, 1).unwrap();
+        store.commit(&[(Change::Insert, t("a", "1"))]).unwrap();
+        store.commit(&[(Change::Insert, t("b", "2"))]).unwrap();
+        drop(store);
+        let mut wal = OpenOptions::new().append(true).open(dir.0.join("wal.log")).unwrap();
+        std::io::Write::write_all(&mut wal, b"+ <http://ex/c> <http://ex/p> \"3\"").unwrap(); // no newline, no `C`
+        std::fs::create_dir(dir.0.join("base-7")).unwrap();
+    }
+
+    #[test]
+    fn a_read_only_open_changes_nothing_on_disk() {
+        let dir = Dir::new("pristine");
+        damaged(&dir);
+        let wal_before = std::fs::read(dir.0.join("wal.log")).unwrap();
+        let current_before = std::fs::read(dir.0.join("CURRENT")).unwrap();
+        let reader = Store::open_read_only(&dir.0, 1).unwrap();
+        assert_eq!(rows(&reader), 2, "the two complete records are visible, the torn one is not");
+        drop(reader);
+        assert_eq!(std::fs::read(dir.0.join("wal.log")).unwrap(), wal_before, "the torn tail is still there");
+        assert_eq!(std::fs::read(dir.0.join("CURRENT")).unwrap(), current_before);
+        assert!(dir.0.join("base-7").is_dir(), "a base that CURRENT does not name is not deleted");
+        // A writer still recovers it, as before.
+        let writer = Store::open(&dir.0, None, 1).unwrap();
+        assert_eq!(rows(&writer), 2);
+        assert!(!dir.0.join("base-7").exists());
+        assert_ne!(std::fs::read(dir.0.join("wal.log")).unwrap(), wal_before);
+    }
+
+    #[test]
+    fn readers_share_the_directory_and_exclude_a_writer_both_ways() {
+        let dir = Dir::new("locks");
+        Store::open(&dir.0, None, 1).unwrap().commit(&[(Change::Insert, t("a", "1"))]).unwrap();
+        let (r1, r2) = (Store::open_read_only(&dir.0, 1).unwrap(), Store::open_read_only(&dir.0, 1).unwrap());
+        assert_eq!((rows(&r1), rows(&r2)), (1, 1));
+        assert_eq!(Store::open(&dir.0, None, 1).err().unwrap().kind(), std::io::ErrorKind::WouldBlock, "no writer while readers are open");
+        drop((r1, r2));
+        let writer = Store::open(&dir.0, None, 1).unwrap();
+        assert_eq!(Store::open_read_only(&dir.0, 1).err().unwrap().kind(), std::io::ErrorKind::WouldBlock, "no reader while a writer is open");
+        drop(writer);
+    }
+
+    #[test]
+    fn a_read_only_store_refuses_every_write_and_a_missing_store_is_not_created() {
+        let dir = Dir::new("refuse");
+        Store::open(&dir.0, None, 1).unwrap().commit(&[(Change::Insert, t("a", "1"))]).unwrap();
+        let reader = Store::open_read_only(&dir.0, 1).unwrap();
+        assert_eq!(reader.commit(&[(Change::Insert, t("b", "2"))]).unwrap_err().kind(), std::io::ErrorKind::PermissionDenied);
+        assert_eq!(reader.compact().unwrap_err().kind(), std::io::ErrorKind::PermissionDenied);
+        assert_eq!(rows(&reader), 1);
+        let missing = std::env::temp_dir().join(format!("rdf-readonly-missing-{}", std::process::id()));
+        assert_eq!(Store::open_read_only(&missing, 1).err().unwrap().kind(), std::io::ErrorKind::NotFound);
+        assert!(!missing.exists());
     }
 }
