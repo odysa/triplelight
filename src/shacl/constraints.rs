@@ -8,6 +8,8 @@ use super::graph::Graph;
 use super::path::Path;
 use super::report::{ConstraintViolation, Outcome, ValidationResult};
 
+mod datatypes;
+
 pub type CheckNode<'a> =
     dyn FnMut(&Term, &Term) -> Result<Vec<ValidationResult>, ValidationError> + 'a;
 
@@ -33,8 +35,11 @@ pub enum Constraint {
     HasValue(Term),
     LanguageIn(Vec<String>),
     UniqueLang(bool),
+    Pattern(regex::Regex),
+    Range(ValueOrder, Term),
     Equals(NamedNode),
     Disjoint(NamedNode),
+    PairOrder(ValueOrder, NamedNode),
     Not(Term),
     And(Vec<Term>),
     Or(Vec<Term>),
@@ -48,6 +53,45 @@ pub enum Constraint {
         min: Option<Limit>,
         max: Option<Limit>,
     },
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ValueOrder {
+    MinExclusive,
+    MinInclusive,
+    MaxExclusive,
+    MaxInclusive,
+    LessThan,
+    LessThanOrEquals,
+}
+
+impl ValueOrder {
+    fn component(self) -> &'static str {
+        match self {
+            Self::MinExclusive => "MinExclusiveConstraintComponent",
+            Self::MinInclusive => "MinInclusiveConstraintComponent",
+            Self::MaxExclusive => "MaxExclusiveConstraintComponent",
+            Self::MaxInclusive => "MaxInclusiveConstraintComponent",
+            Self::LessThan => "LessThanConstraintComponent",
+            Self::LessThanOrEquals => "LessThanOrEqualsConstraintComponent",
+        }
+    }
+
+    fn accepts(self, left: &Term, right: &Term) -> bool {
+        use Ordering::{Equal, Greater, Less};
+        match datatypes::compare(left, right) {
+            Some(Less) => matches!(
+                self,
+                Self::MaxExclusive | Self::MaxInclusive | Self::LessThan | Self::LessThanOrEquals
+            ),
+            Some(Equal) => matches!(
+                self,
+                Self::MinInclusive | Self::MaxInclusive | Self::LessThanOrEquals
+            ),
+            Some(Greater) => matches!(self, Self::MinExclusive | Self::MinInclusive),
+            None => false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -117,16 +161,8 @@ fn typed_value<'a>(term: &'a Term, datatype: &str) -> Option<&'a str> {
     (literal.datatype().as_str().strip_prefix(XSD) == Some(datatype)).then(|| literal.value())
 }
 
-fn integer_text(text: &str) -> Option<(bool, &str)> {
-    let text = text.trim_matches([' ', '\t', '\n', '\r']);
-    let negative = text.starts_with('-');
-    let digits = text.strip_prefix(['+', '-']).unwrap_or(text);
-    (!digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()))
-        .then(|| (negative, digits.trim_start_matches('0')))
-}
-
 fn limit(term: &Term) -> Option<Limit> {
-    let (negative, digits) = integer_text(typed_value(term, "integer")?)?;
+    let (negative, digits) = datatypes::integer_text(typed_value(term, "integer")?)?;
     Some(if digits.is_empty() {
         Limit::Number(0)
     } else if negative {
@@ -156,15 +192,7 @@ fn datatype_matches(value: &Term, datatype: &NamedNode) -> bool {
     let Some(literal) = literal(value) else {
         return false;
     };
-    if literal.datatype().as_str() != datatype.as_str() {
-        return false;
-    }
-    let text = literal.value().trim_matches([' ', '\t', '\n', '\r']);
-    match datatype.as_str().strip_prefix(XSD) {
-        Some("integer") => integer_text(text).is_some(),
-        Some("boolean") => boolean(value).is_some(),
-        _ => true,
-    }
+    literal.datatype().as_str() == datatype.as_str() && datatypes::valid_lexical(literal)
 }
 
 fn language_matches(tag: &str, range: &str) -> bool {
@@ -210,6 +238,64 @@ fn optional<'a>(
         [term] => Ok(Some(term)),
         _ => Err(invalid(shape, parameter, "has more than one value")),
     }
+}
+
+fn pattern(shape: &Term, shapes: &Graph, term: &Term) -> Result<regex::Regex, ValidationError> {
+    let text = typed_value(term, "string")
+        .ok_or_else(|| invalid(shape, "pattern", "must be an xsd:string"))?;
+    let flags = optional(shapes, shape, "flags")?
+        .map(|value| {
+            typed_value(value, "string")
+                .ok_or_else(|| invalid(shape, "flags", "must be an xsd:string"))
+        })
+        .transpose()?
+        .unwrap_or_default();
+    if !flags
+        .bytes()
+        .all(|flag| matches!(flag, b'i' | b'm' | b's' | b'x'))
+    {
+        return Err(invalid(
+            shape,
+            "flags",
+            "contains an unknown SPARQL REGEX flag",
+        ));
+    }
+    let normalized;
+    let text = if flags.contains('x') {
+        // XPath free-spacing removes XML whitespace outside character classes.
+        // The regex crate's x flag also removes comments and class whitespace.
+        normalized = without_pattern_layout(text);
+        &normalized
+    } else {
+        text
+    };
+    regex::RegexBuilder::new(text)
+        .case_insensitive(flags.contains('i'))
+        .multi_line(flags.contains('m'))
+        .dot_matches_new_line(flags.contains('s'))
+        .build()
+        .map_err(|error| ValidationError::Unsupported(format!("{shape}: sh:pattern: {error}")))
+}
+
+fn without_pattern_layout(text: &str) -> String {
+    let mut output = String::with_capacity(text.len());
+    let mut class_depth = 0usize;
+    let mut escaped = false;
+    for ch in text.chars() {
+        if escaped {
+            escaped = false;
+        } else {
+            match ch {
+                '\\' => escaped = true,
+                '[' => class_depth += 1,
+                ']' => class_depth = class_depth.saturating_sub(1),
+                ' ' | '\t' | '\r' | '\n' if class_depth == 0 => continue,
+                _ => (),
+            }
+        }
+        output.push(ch);
+    }
+    output
 }
 
 fn closed(shape: &Term, shapes: &Graph) -> Result<Option<Constraint>, ValidationError> {
@@ -358,8 +444,23 @@ pub fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, Validation
             "uniqueLang" => Constraint::UniqueLang(
                 boolean(value).ok_or_else(|| invalid(shape, name, "must be an xsd:boolean"))?,
             ),
+            "pattern" => Constraint::Pattern(pattern(shape, shapes, value)?),
+            "minExclusive" | "minInclusive" | "maxExclusive" | "maxInclusive" => {
+                if !matches!(value, Term::Literal(_)) {
+                    return Err(invalid(shape, name, "must be a literal"));
+                }
+                let order = match name {
+                    "minExclusive" => ValueOrder::MinExclusive,
+                    "minInclusive" => ValueOrder::MinInclusive,
+                    "maxExclusive" => ValueOrder::MaxExclusive,
+                    _ => ValueOrder::MaxInclusive,
+                };
+                Constraint::Range(order, value.clone())
+            }
             "equals" => Constraint::Equals(named()?),
             "disjoint" => Constraint::Disjoint(named()?),
+            "lessThan" => Constraint::PairOrder(ValueOrder::LessThan, named()?),
+            "lessThanOrEquals" => Constraint::PairOrder(ValueOrder::LessThanOrEquals, named()?),
             "not" => Constraint::Not(shape_reference(shape, name, value)?),
             "and" => Constraint::And(shape_list()?),
             "or" => Constraint::Or(shape_list()?),
@@ -376,7 +477,11 @@ pub fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, Validation
             }
             _ => continue,
         };
-        if matches!(name, "minCount" | "maxCount" | "uniqueLang") && !property_shape {
+        if matches!(
+            name,
+            "minCount" | "maxCount" | "uniqueLang" | "lessThan" | "lessThanOrEquals"
+        ) && !property_shape
+        {
             return Err(invalid(shape, name, "requires a property shape"));
         }
         if !matches!(
@@ -385,6 +490,9 @@ pub fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, Validation
                 | "hasValue"
                 | "equals"
                 | "disjoint"
+                | "pattern"
+                | "lessThan"
+                | "lessThanOrEquals"
                 | "not"
                 | "and"
                 | "or"
@@ -526,6 +634,12 @@ impl Constraint {
                     .map(|_| violation("UniqueLangConstraintComponent", None))
                     .collect()
             }
+            Self::Pattern(pattern) => check_values("PatternConstraintComponent", values, |value| {
+                lexical(value).is_some_and(|text| pattern.is_match(text))
+            }),
+            Self::Range(order, bound) => check_values(order.component(), values, |value| {
+                order.accepts(value, bound)
+            }),
             Self::Equals(predicate) => {
                 let others = cx.data.objects(cx.focus, predicate);
                 let mut violations = check_values("EqualsConstraintComponent", values, |value| {
@@ -541,6 +655,15 @@ impl Constraint {
                 check_values("DisjointConstraintComponent", values, |value| {
                     !others.contains(value)
                 })
+            }
+            Self::PairOrder(order, predicate) => {
+                let mut violations = Vec::new();
+                for other in cx.data.objects(cx.focus, predicate) {
+                    violations.extend(check_values(order.component(), values, |value| {
+                        order.accepts(value, other)
+                    }));
+                }
+                violations
             }
             Self::Not(shape) => {
                 return check_conformance(
