@@ -74,11 +74,16 @@ pub(crate) fn join<T>(f: impl FnOnce() -> T) -> T { timed_outside_bgp(JOIN, &JOI
 /// Times an outermost BGP evaluation on this thread; nested ones run untimed.
 pub(crate) fn bgp<T>(f: impl FnOnce() -> T) -> T {
     if !active() { return f() }
-    let outer = BGP_DEPTH.with(|d| { let v = d.get(); d.set(v + 1); v == 0 });
-    let t = outer.then(Instant::now);
+    struct DepthGuard;
+    impl Drop for DepthGuard {
+        fn drop(&mut self) { BGP_DEPTH.with(|depth| depth.set(depth.get() - 1)); }
+    }
+    let outer = BGP_DEPTH.with(|depth| { let value = depth.get(); depth.set(value + 1); value == 0 });
+    let guard = DepthGuard;
+    let started = outer.then(Instant::now);
     let out = f();
-    BGP_DEPTH.with(|d| d.set(d.get() - 1));
-    if let Some(t) = t { record(BGP, &BGP_NS, t.elapsed().as_nanos()); }
+    if let Some(started) = started { record(BGP, &BGP_NS, started.elapsed().as_nanos()); }
+    drop(guard);
     out
 }
 
