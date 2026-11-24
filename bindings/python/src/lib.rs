@@ -41,16 +41,44 @@ fn err(e: DatabaseError) -> PyErr {
     }
 }
 
-/// Runs a query `f` under `timeout` (seconds) and `memory_mb` without the GIL (#110). On the main thread the query
-/// runs on a scoped worker while this thread checks for signals every 50 ms, so Ctrl-C cancels it: the worker stops
-/// at its next check and the `KeyboardInterrupt` is raised. Elsewhere signals cannot arrive, so it runs in place.
+/// Ctrl-C cancels a query running on the main thread (#110). The SIGINT action is installed on the first such
+/// query, never at import, and is chained by `signal-hook`, so Python's own handler (or the host's) still runs and
+/// raises `KeyboardInterrupt` as usual. The action only sets a flag, which the running query's interrupt watches.
+mod ctrl_c {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, OnceLock};
+
+    static ENABLED: AtomicBool = AtomicBool::new(true);
+    static FLAG: OnceLock<Option<Arc<AtomicBool>>> = OnceLock::new();
+
+    /// `set_cancel_on_ctrl_c`: off, no action is installed (or, once installed, queries stop watching it).
+    pub fn set_enabled(enabled: bool) { ENABLED.store(enabled, Ordering::SeqCst) }
+
+    /// The flag a main-thread query watches, cleared for this query: installs the action on first use.
+    pub fn flag() -> Option<Arc<AtomicBool>> {
+        if !ENABLED.load(Ordering::SeqCst) { return None }
+        let flag = FLAG.get_or_init(|| {
+            let flag = Arc::new(AtomicBool::new(false));
+            #[cfg(unix)]
+            { signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&flag)).ok().map(|_| flag) }
+            #[cfg(not(unix))]
+            { let _ = flag; None }
+        }).clone()?;
+        // A press before this query belongs to Python, which still raises it.
+        flag.store(false, Ordering::SeqCst);
+        Some(flag)
+    }
+}
+
+/// Runs a query `f` under `timeout` (seconds) and `memory_mb` without the GIL (#110). On the main thread, Ctrl-C
+/// cancels it (`ctrl_c`) and the `KeyboardInterrupt` is raised once it has stopped.
 fn limited<T: Send>(
     py: Python<'_>,
     timeout: Option<f64>,
     memory_mb: Option<u64>,
     f: impl FnOnce(QueryLimits<'_>) -> Result<T, DatabaseError> + Send,
 ) -> PyResult<T> {
-    let interrupt = match timeout {
+    let mut interrupt = match timeout {
         None => Interrupt::new(),
         Some(t) if t.is_finite() && t >= 0.0 => Interrupt::with_timeout(std::time::Duration::from_secs_f64(t)),
         Some(t) => return Err(pyo3::exceptions::PyValueError::new_err(format!("timeout must be a non-negative number of seconds, not {t}"))),
@@ -60,30 +88,32 @@ fn limited<T: Send>(
         Some(0) => return Err(pyo3::exceptions::PyValueError::new_err("memory_mb must be positive")),
         Some(mb) => Some(MemoryBudget::new(mb.saturating_mul(1 << 20))),
     };
+    let mut watching = false;
+    if on_main_thread(py)? && let Some(flag) = ctrl_c::flag() {
+        interrupt = interrupt.with_flag(flag);
+        watching = true;
+    }
     let limits = QueryLimits { interrupt: Some(&interrupt), memory: budget.as_ref() };
-    let main = py.import("threading")?.call_method0("current_thread")?.is(&py.import("threading")?.call_method0("main_thread")?);
-    if !main { return py.allow_threads(|| f(limits)).map_err(err) }
-    let mut signal = None;
-    let result = py.allow_threads(|| std::thread::scope(|scope| {
-        let (tx, rx) = std::sync::mpsc::channel();
-        scope.spawn(move || { let _ = tx.send(f(limits)); });
-        loop {
-            match rx.recv_timeout(std::time::Duration::from_millis(50)) {
-                Ok(result) => return Some(result),
-                // The worker panicked; the scope re-raises it when it ends.
-                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return None,
-                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                    if signal.is_none() && let Err(e) = Python::with_gil(|py| py.check_signals()) {
-                        signal = Some(e);
-                        interrupt.cancel();
-                    }
-                }
-            }
-        }
-    }));
-    if let Some(e) = signal { return Err(e) }
-    result.expect("a worker that sent nothing panicked, and the scope re-raised it").map_err(err)
+    let result = py.allow_threads(|| f(limits));
+    if watching && matches!(result, Err(DatabaseError::Interrupted { timed_out: false })) { py.check_signals()? }
+    result.map_err(err)
 }
+
+/// Whether this is Python's main thread, the only one signals reach.
+fn on_main_thread(py: Python<'_>) -> PyResult<bool> {
+    static MAIN: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+    let threading = py.import("threading")?;
+    let main = match MAIN.get() {
+        Some(&id) => id,
+        None => *MAIN.get_or_init(|| threading.call_method0("main_thread").and_then(|t| t.getattr("ident")).and_then(|i| i.extract()).unwrap_or(0)),
+    };
+    Ok(threading.call_method0("get_ident")?.extract::<u64>()? == main)
+}
+
+#[pyfunction]
+/// Whether Ctrl-C cancels a query running on the main thread (default True). Turning it off before the first query
+/// means triplelight never installs a SIGINT action, for hosts that manage SIGINT themselves.
+fn set_cancel_on_ctrl_c(enabled: bool) { ctrl_c::set_enabled(enabled) }
 
 /// Python classes from `triplelight/__init__.py`, looked up once per call.
 struct Classes<'py> { iri: Bound<'py, PyAny>, bnode: Bound<'py, PyAny>, literal: Bound<'py, PyAny>, triple: Bound<'py, PyAny> }
@@ -261,6 +291,7 @@ fn validate(py: Python<'_>, data: &str, shapes: &str, data_format: &str, shapes_
 #[pymodule]
 fn _triplelight(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(validate, m)?)?;
+    m.add_function(wrap_pyfunction!(set_cancel_on_ctrl_c, m)?)?;
     m.add("ShapesError", m.py().get_type::<ShapesError>())?;
     m.add_class::<PyDatabase>()?;
     m.add_class::<PySnapshot>()?;

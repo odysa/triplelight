@@ -14,12 +14,13 @@ from dataclasses import dataclass
 from typing import Iterator, Optional
 
 from . import _triplelight
+from ._triplelight import set_cancel_on_ctrl_c
 from ._triplelight import (GraphStateError, LockedError, QueryCancelled, QueryTimeout, ResourceLimitError, ShapesError,
                            TripleLightError, StorageError, SyntaxError, UnsupportedError)
 
 __all__ = ["Database", "Snapshot", "IRI", "BNode", "Literal", "Triple", "Result", "ExtensionInfo", "ValidationReport", "validate",
            "TripleLightError", "SyntaxError", "UnsupportedError", "StorageError", "LockedError", "GraphStateError",
-           "ShapesError", "QueryCancelled", "QueryTimeout", "ResourceLimitError"]
+           "ShapesError", "QueryCancelled", "QueryTimeout", "ResourceLimitError", "set_cancel_on_ctrl_c"]
 
 
 

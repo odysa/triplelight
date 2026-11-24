@@ -1,4 +1,4 @@
-import _thread, os, tempfile, threading, time
+import os, signal, tempfile, threading, time
 import pytest
 import triplelight
 
@@ -181,10 +181,26 @@ def test_query_timeout_and_memory_budget():
 
 def test_keyboard_interrupt_cancels_a_running_query():
     db = _big()
-    threading.Timer(0.1, _thread.interrupt_main).start()
+    # A real SIGINT, as Ctrl-C sends: the chained action cancels the query, and Python still raises.
+    threading.Timer(0.1, os.kill, (os.getpid(), signal.SIGINT)).start()
     start = time.monotonic()
     with pytest.raises(KeyboardInterrupt):
         db.query(ENDLESS)
     assert time.monotonic() - start < 10
     # The worker stopped: the database answers at once.
     assert db.query("ASK { <urn:s1> <urn:p> \"1\" }").boolean
+
+
+def test_ctrl_c_cancellation_can_be_turned_off():
+    db = _big()
+    triplelight.set_cancel_on_ctrl_c(False)
+    try:
+        # Not watched: the query runs to its own timeout, and Python raises the KeyboardInterrupt after.
+        threading.Timer(0.05, os.kill, (os.getpid(), signal.SIGINT)).start()
+        with pytest.raises(KeyboardInterrupt):
+            try:
+                db.query(ENDLESS, timeout=0.5)
+            except triplelight.QueryTimeout:
+                time.sleep(0.01)  # the pending signal is raised here
+    finally:
+        triplelight.set_cancel_on_ctrl_c(True)
