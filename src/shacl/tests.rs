@@ -1,7 +1,7 @@
 //! Tests of the graph adapter, paths, targets and the report. The constraint components have their own tests in `constraints`.
 use super::*;
 use crate::rdf::{Format, Term, Triple};
-use std::rc::Rc;
+use std::sync::Arc;
 
 fn parse(ttl: &str) -> Vec<Triple> {
     let doc = format!(
@@ -260,4 +260,13 @@ fn a_deactivated_malformed_or_recursive_shape_does_not_fail_validation() {
         "ex:S a sh:NodeShape ; sh:targetNode ex:n ; sh:node ex:D . \
          ex:D a sh:NodeShape ; sh:deactivated true ; sh:node ex:D ; sh:minCount \"not a number\" .");
     assert!(validate(&[], &shapes).unwrap().conforms);
+}
+
+#[test]
+fn the_report_and_its_parts_can_cross_threads() {
+    fn send_sync<T: Send + Sync>() {}
+    send_sync::<ValidationReport>();
+    send_sync::<ValidationResult>();
+    send_sync::<Path>();
+    send_sync::<ValidationError>();
 }

@@ -1,13 +1,13 @@
 //! SHACL property paths: parsing from the shapes graph, evaluation over the data graph, and writing back as RDF.
 //!
-//! A path node that several paths share (the same blank node reached twice) is parsed once and shared (`Rc`), and evaluating and writing a
+//! A path node that several paths share (the same blank node reached twice) is parsed once and shared (`Arc`, so a report that holds a path stays `Send`), and evaluating and writing a
 //! path memoize per shared node, so a shapes graph cannot make a path cost exponential time or memory in its nesting depth.
 use super::error::ValidationError;
 use super::graph::Graph;
 use super::vocab::{rdf, sh};
 use crate::rdf::{BlankNode, NamedNode, Term, Triple};
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// The deepest nesting of path nodes `Path::parse` accepts.
 const MAX_PATH_DEPTH: usize = 64;
