@@ -1,4 +1,5 @@
 //! SPARQL expression evaluation over resolved terms. `None` is the SPARQL "error" value.
+mod extend;
 pub(crate) mod order;
 use triplelight_rdf::vocab::xsd;
 use triplelight_rdf::{BlankNode, Literal, NamedNode, Term, Variable};

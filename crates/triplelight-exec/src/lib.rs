@@ -22,7 +22,6 @@ pub mod plan_trace;
 mod agg;
 mod bgp;
 mod count;
-mod extend;
 mod interrupt;
 mod views;
 use views::{dataset, entail};

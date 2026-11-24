@@ -1,5 +1,6 @@
 //! Extend one solution with BIND or SELECT expressions.
-use super::{Ctx, Row, UNBOUND, expr::BlankScope};
+use super::BlankScope;
+use crate::{Ctx, Row, UNBOUND};
 use crate::sparql::{Expression, Function, GraphPattern};
 use crate::storage::Snapshot;
 use triplelight_rdf::{Term, Variable};
@@ -10,7 +11,7 @@ fn has_named_blank(expression: &Expression) -> bool {
 }
 
 impl<S: Snapshot + ?Sized> Ctx<'_, S> {
-    pub(super) fn eval_extend(
+    pub(crate) fn eval_extend(
         &self,
         inner: &GraphPattern,
         variable: &Variable,
