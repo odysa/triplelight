@@ -1,0 +1,15 @@
++ <urn:a> <urn:p> "1" .
++ <urn:b> <urn:p> "2"@en .
+C
+G+ <urn:g1>
+C
+G+ <urn:g2>
++ <urn:a> <urn:q> <urn:b> <urn:g1> .
++ <urn:c> <urn:q> "x" <urn:g2> .
+C
+- <urn:b> <urn:p> "2"@en .
+C
+G- <urn:g2>
+C
++ <urn:d> <urn:p> "3"^^<http://www.w3.org/2001/XMLSchema#integer> .
+C

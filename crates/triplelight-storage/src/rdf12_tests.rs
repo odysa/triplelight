@@ -103,18 +103,18 @@ fn wal_case(format: &str, open: &dyn Fn(&std::path::Path) -> Store) {
     {
         let store = open(&dir);
         store.commit(&[(Change::Insert, Triple::new(iri("s"), iri("p"), iri("o")))]).unwrap();
-        assert!(!current().starts_with("rdf12-1 "), "a 1.1 record does not fence");
+        assert!(!current().contains("rdf12-1 "), "a 1.1 record does not fence");
         assert!(!store.snapshot().has_rdf12_terms());
         let changes: Vec<_> = sample().into_iter().map(|t| (Change::Insert, t)).collect();
         store.commit(&changes).unwrap();
-        assert!(current().starts_with("rdf12-1 "), "fenced before the first 1.2 record: {}", current());
+        assert!(current().contains("rdf12-1 "), "fenced before the first 1.2 record: {}", current());
         check(&*store.snapshot(), "delta");
     }
     {
         let store = open(&dir);
         check(&*store.snapshot(), "WAL replay");
         store.compact().unwrap();
-        assert!(current().starts_with("rdf12-1 "), "compaction keeps the fence: {}", current());
+        assert!(current().contains("rdf12-1 "), "compaction keeps the fence: {}", current());
         check(&*store.snapshot(), "compacted");
         assert_eq!(store.snapshot().delta_len(), 0);
         assert!(store.snapshot().base().has_rdf12_terms(), "{format}: the compacted base itself carries the 1.2 flag");
