@@ -94,7 +94,7 @@ impl ShapesGraph {
             _ => false,
         };
         let severity = match g.object(id, &sh("severity"))? {
-            Some(Term::NamedNode(n)) => Severity::from_iri(n).ok_or_else(|| ValidationError::MalformedShape(format!("{id}: unknown severity {n}")))?,
+            Some(Term::NamedNode(n)) => Severity::from_iri(n),
             Some(other) => return Err(ValidationError::MalformedShape(format!("{id}: severity {other} is not an IRI"))),
             None => Severity::Violation,
         };

@@ -3,15 +3,21 @@ use super::path::Path;
 use super::vocab::{rdf, sh};
 use crate::rdf::{BlankNode, Literal, NamedNode, NamedOrBlankNode, Term, Triple};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Severity { Info, Warning, Violation }
+/// A result's severity: the three SHACL ones, or any other IRI a shape names with `sh:severity` (SHACL allows user-defined severities).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Severity { Info, Warning, Violation, Custom(NamedNode) }
 
 impl Severity {
-    pub fn iri(self) -> NamedNode {
-        sh(match self { Severity::Info => "Info", Severity::Warning => "Warning", Severity::Violation => "Violation" })
+    pub fn iri(&self) -> NamedNode {
+        match self {
+            Severity::Info => sh("Info"),
+            Severity::Warning => sh("Warning"),
+            Severity::Violation => sh("Violation"),
+            Severity::Custom(iri) => iri.clone(),
+        }
     }
-    pub fn from_iri(iri: &NamedNode) -> Option<Severity> {
-        [Severity::Info, Severity::Warning, Severity::Violation].into_iter().find(|s| &s.iri() == iri)
+    pub fn from_iri(iri: &NamedNode) -> Severity {
+        [Severity::Info, Severity::Warning, Severity::Violation].into_iter().find(|s| &s.iri() == iri).unwrap_or_else(|| Severity::Custom(iri.clone()))
     }
 }
 
