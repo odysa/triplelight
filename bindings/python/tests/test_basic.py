@@ -154,8 +154,10 @@ def _big(n=2000):
     db.update("INSERT DATA { " + " ".join(f'<urn:s{i}> <urn:p> "{i}" .' for i in range(n)) + " }")
     return db
 
-ENDLESS = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f }"
+ENDLESS = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f FILTER(?b != ?d && ?d != ?f) }"
 GROUPED = "SELECT ?a (COUNT(*) AS ?n) { ?a ?p ?b } GROUP BY ?a"
+# Four million groups: far more than one megabyte of working memory.
+WIDE = "SELECT ?a ?c (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d } GROUP BY ?a ?c"
 
 
 def test_query_timeout_and_memory_budget():
@@ -165,7 +167,7 @@ def test_query_timeout_and_memory_budget():
         db.query(ENDLESS, timeout=0.05)
     assert time.monotonic() - start < 10
     with pytest.raises(triplelight.ResourceLimitError):
-        db.query_json(GROUPED, memory_mb=1)
+        db.query_json(WIDE, memory_mb=1)
     with db.read() as snap:
         with pytest.raises(triplelight.QueryTimeout):
             snap.query_json(ENDLESS, timeout=0.05)
