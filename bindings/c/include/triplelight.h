@@ -135,6 +135,18 @@ int32_t tl_query(const tl_db *db, const char *sparql, size_t len, tl_result **ou
 #define TL_ENTAILMENT_SIMPLE 0
 #define TL_ENTAILMENT_RDFS 1
 int32_t tl_query_with_entailment(const tl_db *db, const char *sparql, size_t len, int32_t entailment, tl_result **out, tl_error **err);
+
+/* Query limits (#110). An interrupt stops queries from outside them: tl_interrupt_cancel works from any thread, also
+ * while a query runs with it, and is final, so use a new interrupt per query. timeout_ms 0 means no deadline;
+ * otherwise a query stops timeout_ms after tl_interrupt_new. tl_interrupt_free must not race with its use. */
+typedef struct tl_interrupt tl_interrupt;
+int32_t tl_interrupt_new(uint64_t timeout_ms, tl_interrupt **out, tl_error **err);
+void tl_interrupt_cancel(const tl_interrupt *interrupt);
+void tl_interrupt_free(tl_interrupt *interrupt);
+/* tl_query_with_entailment under limits: interrupt (may be NULL) gives TL_ERR_INTERRUPTED when cancelled or past its
+ * deadline, and memory_bytes (0: unlimited) bounds the working memory, TL_ERR_RESOURCE_LIMIT past it. Neither leaves
+ * a partial result. */
+int32_t tl_query_with_limits(const tl_db *db, const char *sparql, size_t len, int32_t entailment, const tl_interrupt *interrupt, uint64_t memory_bytes, tl_result **out, tl_error **err);
 /* SHACL Core validation of a data document against a shapes document, each TL_FORMAT_TURTLE or TL_FORMAT_NTRIPLES.
  * On success *conforms is 1 or 0 and *report is the report graph (TL_RESULT_TRIPLES; free it with tl_result_free).
  * Data that violates the shapes is a success with *conforms 0. A document that does not parse is TL_ERR_SYNTAX, shapes
