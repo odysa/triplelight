@@ -3,7 +3,7 @@
 use super::constraints::ConstraintContext;
 use super::error::ValidationError;
 use super::graph::Graph;
-use super::report::{ValidationReport, ValidationResult};
+use super::report::{Outcome, ValidationReport, ValidationResult};
 use super::shapes::ShapesGraph;
 use crate::rdf::{Term, Triple};
 
@@ -41,7 +41,11 @@ impl<'a> Evaluator<'a> {
         let cx = ConstraintContext { focus, value_nodes: &value_nodes, shape, data };
         let mut results = Vec::new();
         for constraint in &shape.constraints {
-            for violation in constraint.evaluate(&cx, self)? {
+            for outcome in constraint.evaluate(&cx, self)? {
+                let violation = match outcome {
+                    Outcome::Violation(v) => v,
+                    Outcome::Forwarded(nested) => { results.extend(nested); continue }
+                };
                 let messages = if shape.messages.is_empty() { violation.message.into_iter().collect() } else { shape.messages.clone() };
                 results.push(ValidationResult {
                     focus_node: focus.clone(),

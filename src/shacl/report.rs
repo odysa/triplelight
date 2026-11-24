@@ -15,6 +15,14 @@ impl Severity {
     }
 }
 
+/// What evaluating one constraint yields: a violation of the constraint itself, or results of a nested shape that are reported
+/// as they are (`sh:property` creates no result of its own).
+#[derive(Clone, Debug)]
+pub enum Outcome {
+    Violation(ConstraintViolation),
+    Forwarded(Vec<ValidationResult>),
+}
+
 /// What a constraint component reports for one failed check: the evaluator adds the focus node, the path, the source
 /// shape and the severity.
 #[derive(Clone, Debug)]

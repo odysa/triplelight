@@ -3,7 +3,7 @@
 use super::error::ValidationError;
 use super::evaluator::Evaluator;
 use super::graph::Graph;
-use super::report::ConstraintViolation;
+use super::report::Outcome;
 use super::shapes::Shape;
 use crate::rdf::Term;
 
@@ -23,7 +23,7 @@ pub enum Constraint {}
 pub fn parse(_shape: &Term, _shapes: &Graph) -> Result<Vec<Constraint>, ValidationError> { Ok(Vec::new()) }
 
 impl Constraint {
-    pub fn evaluate(&self, _cx: &ConstraintContext<'_>, _ev: &mut Evaluator<'_>) -> Result<Vec<ConstraintViolation>, ValidationError> {
+    pub fn evaluate(&self, _cx: &ConstraintContext<'_>, _ev: &mut Evaluator<'_>) -> Result<Vec<Outcome>, ValidationError> {
         match *self {}
     }
 }
