@@ -1273,3 +1273,53 @@ fn named_blank_nodes_follow_each_solution_occurrence() {
         QueryResult::Boolean(true)
     ));
 }
+
+#[test]
+fn string_cast_uses_numeric_and_boolean_values() {
+    let result = rows(r#"
+        PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+        SELECT (xsd:string("  keep me  ") AS ?text)
+               (xsd:string("0"^^xsd:boolean) AS ?boolean)
+               (xsd:string("01.200"^^xsd:decimal) AS ?decimal)
+               (xsd:string("1E0"^^xsd:float) AS ?float)
+               (xsd:string("1E8"^^xsd:double) AS ?scientific)
+               (STR("1E0"^^xsd:float) AS ?lexical)
+        WHERE {}
+    "#);
+    assert_eq!(result, vec![vec![
+        "\"  keep me  \"", "\"false\"", "\"1.2\"", "\"1\"", "\"1.0E8\"", "\"1E0\"",
+    ]]);
+}
+
+#[test]
+fn timezone_string_canonicalizes_zero_offset() {
+    let result = rows(r#"
+        PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+        SELECT (TZ(?date) AS ?zone) WHERE {
+            VALUES ?date {
+                "2024-01-01T00:00:00+00:00"^^xsd:dateTime
+                "2024-01-01T00:00:00-00:00"^^xsd:dateTime
+                "2024-01-01T00:00:00-05:00"^^xsd:dateTime
+                "2024-01-01T00:00:00"^^xsd:dateTime
+            }
+        }
+    "#);
+    assert_eq!(result, vec![vec!["\"\""], vec!["\"-05:00\""], vec!["\"Z\""], vec!["\"Z\""]]);
+}
+
+#[test]
+fn fractional_and_integral_decimal_function_results() {
+    let result = rows(r#"
+        PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+        SELECT (CEIL(1.1) AS ?ceiling)
+               (FLOOR(-1.1) AS ?floor)
+               (ROUND(-1.5) AS ?nearest)
+               (SECONDS("2024-01-01T00:00:02Z"^^xsd:dateTime) AS ?seconds)
+               (SECONDS("2024-01-01T00:00:02.500Z"^^xsd:dateTime) AS ?fractional)
+        WHERE {}
+    "#);
+    let expected = ["2", "-2", "-1", "2", "2.5"].map(|value| {
+        format!(r#""{value}"^^<http://www.w3.org/2001/XMLSchema#decimal>"#)
+    });
+    assert_eq!(result, vec![expected.to_vec()]);
+}
