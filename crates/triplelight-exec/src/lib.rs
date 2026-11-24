@@ -257,7 +257,7 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     };
     // RDFS: the active default graph (the store's, or the FROM merge) and every named graph each get the closure of
     // their own triples (`entail.rs`).
-    let entail = |g: &'_ dyn Snapshot| entail::Entailed::new(g).unwrap_or_else(|e| storage_failure(e));
+    fn entail(g: &dyn Snapshot) -> entail::Entailed<'_> { entail::Entailed::new(g).unwrap_or_else(|e| storage_failure(e)) }
     let entailed = rdfs.then(|| entail(default.unwrap_or(snap as &dyn Snapshot)));
     let entailed_named: Vec<(TermId, entail::Entailed<'_>)> = match dataset {
         Some(ds) if rdfs => named.iter().filter_map(|&g| ds.graph(g).unwrap_or_else(|e| storage_failure(e)).map(|v| (g, entail(v)))).collect(),
@@ -266,6 +266,16 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     let default = match &entailed { Some(e) => Some(e as &dyn Snapshot), None => default };
     let mut ctx = Ctx::for_query(snap, dataset, default, named, q, opts, path::CsrLimits::default());
     ctx.entailed_named = entailed_named.iter().map(|(g, e)| (*g, e as &dyn Snapshot)).collect();
+    // A graph without one `rdf:type` triple has no ID for it, yet domain and range type its resources: the query's
+    // `rdf:type` gets a scratch ID that every entailed view types with.
+    if rdfs {
+        let ty: Term = triplelight_rdf::vocab::rdf::TYPE.into_owned().into();
+        if ctx.lookup(&ty).is_none() {
+            let id = ctx.intern(&ty);
+            ctx.virtual_type = Some((ty, id));
+            for e in entailed.iter().chain(entailed_named.iter().map(|(_, e)| e)) { e.set_rdf_type(id) }
+        }
+    }
     match q {
         Query::Select { pattern, .. } => run_select(&mut ctx, snap, pattern, opts),
         Query::Ask { pattern, .. } => run_ask(&mut ctx, pattern),
@@ -408,6 +418,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     named: Vec<TermId>,
     /// Under `Entailment::Rdfs`, the entailed view of each named graph of `named` (`eval_graph` reads through it).
     entailed_named: HashMap<TermId, &'a dyn Snapshot>,
+    /// Under `Entailment::Rdfs` with no stored `rdf:type`: that IRI and the scratch ID the query's patterns use for it.
+    virtual_type: Option<(Term, TermId)>,
     vars: HashMap<String, usize>,
     scratch: RefCell<(HashMap<Term, TermId>, Vec<Term>)>,
     stats: Option<(&'a Stats, &'a dyn Snapshot)>,
@@ -485,6 +497,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             dataset,
             named,
             entailed_named: HashMap::new(),
+            virtual_type: None,
             vars: HashMap::new(),
             scratch: RefCell::new((HashMap::new(), Vec::new())),
             stats: opts.stats.map(|stats| (stats, snap as &dyn Snapshot)),
@@ -531,7 +544,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         self.snap.resolve(id).unwrap_or_else(|e| storage_failure(e))
     }
     /// Dictionary lookup; a storage failure aborts the query.
-    fn lookup(&self, t: &Term) -> Option<TermId> { self.snap.lookup(t).unwrap_or_else(|e| storage_failure(e)) }
+    fn lookup(&self, t: &Term) -> Option<TermId> {
+        if let Some((ty, id)) = &self.virtual_type && ty == t { return Some(*id) }
+        self.snap.lookup(t).unwrap_or_else(|e| storage_failure(e))
+    }
     /// ID for any term: the store's ID if present, else a stable scratch ID.
     pub(crate) fn intern(&self, t: &Term) -> TermId {
         // `scratch.0` caches every interned term, stored or not: computed values (e.g. COUNT results, one per

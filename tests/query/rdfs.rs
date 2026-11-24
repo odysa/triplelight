@@ -180,3 +180,15 @@ fn rdfs_entails_each_graph_of_a_dataset_on_its_own() {
     assert!(students("SELECT ?x FROM <http://ex/g2> WHERE { ?x a <http://ex/Student> }").is_empty());
     assert_eq!(students("SELECT ?x FROM <http://ex/g1> FROM <http://ex/g2> WHERE { ?x a <http://ex/Student> }"), both);
 }
+
+/// W3C `rdfs03`: domain through a superproperty in a graph with no `rdf:type` triple at all.
+#[test]
+fn rdfs_types_by_domain_without_any_stored_type_triple() {
+    let data = "<http://ex/a> <http://ex/b1> <http://ex/c1> .\n<http://ex/b1> <http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <http://ex/b2> .\n<http://ex/b2> <http://www.w3.org/2000/01/rdf-schema#domain> <http://ex/c2> .\n";
+    let base = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    assert_eq!(solutions(&base, "SELECT ?x WHERE { ?x a <http://ex/c2> }", Entailment::Rdfs), vec![vec!["<http://ex/a>".to_string()]]);
+    assert_eq!(solutions(&base, "SELECT ?t WHERE { <http://ex/a> a ?t }", Entailment::Rdfs), vec![vec!["<http://ex/c2>".to_string()]]);
+    // The unbound-predicate view names the type triple with the right IRI.
+    assert!(solutions(&base, "SELECT ?p ?o WHERE { <http://ex/a> ?p ?o }", Entailment::Rdfs).contains(&vec!["<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>".to_string(), "<http://ex/c2>".to_string()]));
+    assert!(solutions(&base, "SELECT ?x WHERE { ?x a <http://ex/c2> }", Entailment::Simple).is_empty());
+}
