@@ -32,6 +32,40 @@ use std::sync::{Arc, Mutex, RwLock};
 
 mod named;
 pub use named::{GraphStateError, NamedGraph};
+#[cfg(test)]
+mod fault_tests;
+
+/// Test-only fault injection at named points of the write path (`fault_tests.rs` drives it). A point armed in the calling
+/// thread either returns an I/O error there (as a full disk or a failed fsync would) or ends the process on the spot,
+/// as a crash does: no destructor runs and no buffered write is flushed.
+#[cfg(test)]
+pub(crate) mod fault {
+    use std::cell::RefCell;
+    #[derive(Clone, Copy, Debug)]
+    pub enum Mode { NoSpace, Exit }
+    thread_local! { static ARMED: RefCell<Option<(String, Mode)>> = const { RefCell::new(None) }; }
+    pub fn arm(point: &str, mode: Mode) { ARMED.with(|a| *a.borrow_mut() = Some((point.to_string(), mode))) }
+    pub fn disarm() { ARMED.with(|a| *a.borrow_mut() = None) }
+    /// Exit status of a process ended at a fault point.
+    pub const EXIT: i32 = 86;
+    pub fn hit(point: &str) -> std::io::Result<()> {
+        let armed = ARMED.with(|a| a.borrow().clone());
+        match armed {
+            Some((p, Mode::Exit)) if p == point => {
+                eprintln!("fault: exit at {point}");
+                std::process::exit(EXIT)
+            }
+            // ENOSPC is 28 on Linux and macOS alike.
+            Some((p, Mode::NoSpace)) if p == point => Err(std::io::Error::from_raw_os_error(28)),
+            _ => Ok(()),
+        }
+    }
+}
+#[cfg(not(test))]
+mod fault {
+    #[inline(always)]
+    pub fn hit(_point: &str) -> std::io::Result<()> { Ok(()) }
+}
 
 /// IDs for terms first seen in the delta.
 const DELTA_TAG: u64 = crate::model::id_tag::DELTA;
@@ -424,6 +458,7 @@ impl Store {
                 // No CURRENT means no base was ever committed: a `base-0` here is an abandoned earlier attempt.
                 if base0.exists() { std::fs::remove_dir_all(&base0)?; }
                 format.import(&base0, initial)?;
+                fault::hit("init-after-import")?;
                 set_current(&dir, 0, false, false)?;
                 (0, false, false)
             }
@@ -591,6 +626,7 @@ impl Store {
             let fenced = dataset || self.fenced.load(std::sync::atomic::Ordering::SeqCst);
             let rdf12_fenced = rdf12 || self.rdf12_fenced.load(std::sync::atomic::Ordering::SeqCst);
             set_current(&self.dir, *generation, fenced, rdf12_fenced)?;
+            fault::hit("fence-after-current")?;
             self.fenced.store(fenced, std::sync::atomic::Ordering::SeqCst);
             self.rdf12_fenced.store(rdf12_fenced, std::sync::atomic::Ordering::SeqCst);
         }
@@ -610,10 +646,16 @@ impl Store {
             let mut p = self.pending.lock().unwrap();
             (std::mem::take(&mut p.buf), p.seq, p.latest.clone())
         };
-        let written = w.file.write_all(buf.as_bytes()).and_then(|_| w.file.sync_data());
+        let written = fault::hit("wal-before-write")
+            .and_then(|_| w.file.write_all(buf.as_bytes()))
+            .and_then(|_| fault::hit("wal-after-write"))
+            .and_then(|_| w.file.sync_data())
+            .and_then(|_| fault::hit("wal-after-sync"));
         if let Err(e) = written {
             self.poisoned.store(true, std::sync::atomic::Ordering::SeqCst);
-            return Err(e);
+            return Err(std::io::Error::new(e.kind(), format!(
+                "appending to {} failed: {e}; the update is not acknowledged and may or may not be durable, and the \
+                 store refuses writes until it is reopened", self.dir.join("wal.log").display())));
         }
         w.durable = upto;
         *self.current.write().unwrap() = overlay;
@@ -640,6 +682,7 @@ impl Store {
         // Named graphs go into the base when the format holds them (step 3c), otherwise into the new WAL below.
         let into_base = cur.has_named_graphs() && self.format.holds_named_graphs();
         self.format.rewrite(&self.dir.join(format!("base-{}", *generation)), &new_dir, &cur, into_base)?;
+        fault::hit("compact-after-base")?;
         // Open (and so validate) the new base before committing to it: if this fails, CURRENT, the WAL and the
         // in-memory state all still describe the old base.
         let (base, named) = self.format.open_dataset(&new_dir)?;
@@ -659,6 +702,7 @@ impl Store {
             let mut f = File::create(&tmp)?;
             f.write_all(buf.as_bytes())?;
             f.sync_all()?;
+            fault::hit("compact-after-wal-tmp")?;
             self.publish(|| {
                 set_current(&self.dir, next, fenced, rdf12_fenced)?;
                 std::fs::rename(&tmp, self.dir.join("wal.log"))?;
@@ -674,6 +718,7 @@ impl Store {
                 // The new base is durable and current; only now drop the log.
                 w.file.set_len(0)?;
                 w.file.sync_all()?;
+                fault::hit("compact-after-truncate")?;
                 use std::io::Seek;
                 w.file.seek(std::io::SeekFrom::Start(0)).map(|_| ())
             })?;
@@ -696,7 +741,7 @@ impl Store {
     #[cfg(test)]
     fn fail_point(&self, point: &str) -> std::io::Result<()> {
         if *self.fail_at.lock().unwrap() == Some(point.to_string()) { return Err(std::io::Error::other(format!("injected failure at {point}"))) }
-        Ok(())
+        fault::hit(point)
     }
     #[cfg(not(test))]
     fn fail_point(&self, _point: &str) -> std::io::Result<()> { Ok(()) }
@@ -724,10 +769,13 @@ fn parse_current(s: &str) -> std::io::Result<Option<(u64, bool, bool)>> {
 /// Atomically points CURRENT at `base-<n>` (with the dataset fence if `fenced`, the RDF 1.2 fence if `rdf12`).
 fn set_current(dir: &Path, n: u64, fenced: bool, rdf12: bool) -> std::io::Result<()> {
     let tmp = dir.join("CURRENT.tmp");
+    fault::hit("current-before-write")?;
     let mut f = File::create(&tmp)?;
     writeln!(f, "{}{}base-{n}", if rdf12 { "rdf12-1 " } else { "" }, if fenced { "dataset-1 " } else { "" })?;
     f.sync_all()?;
+    fault::hit("current-after-tmp")?;
     std::fs::rename(&tmp, dir.join("CURRENT"))?;
+    fault::hit("current-after-rename")?;
     sync_dir(dir)
 }
 
@@ -1024,7 +1072,7 @@ mod dataset_wal_tests {
     impl std::ops::Drop for Dir { fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); } }
 
     /// The default graph and every named graph, as sorted N-Triples strings keyed by graph IRI.
-    fn state(o: &Overlay) -> (Vec<String>, Vec<(String, Vec<String>)>) {
+    pub(super) fn state(o: &Overlay) -> (Vec<String>, Vec<(String, Vec<String>)>) {
         fn rows(view: &dyn Snapshot) -> Vec<String> {
             let mut v = Vec::new();
             for b in view.scan(Perm::Spo, &[]) {
