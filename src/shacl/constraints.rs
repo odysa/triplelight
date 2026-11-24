@@ -172,7 +172,7 @@ fn limit(term: &Term) -> Option<Limit> {
     })
 }
 
-fn boolean(term: &Term) -> Option<bool> {
+pub(super) fn parse_boolean(term: &Term) -> Option<bool> {
     match typed_value(term, "boolean")?.trim_matches([' ', '\t', '\n', '\r']) {
         "true" | "1" => Some(true),
         "false" | "0" => Some(false),
@@ -260,16 +260,12 @@ fn pattern(shape: &Term, shapes: &Graph, term: &Term) -> Result<regex::Regex, Va
             "contains an unknown SPARQL REGEX flag",
         ));
     }
-    let normalized;
-    let text = if flags.contains('x') {
-        // XPath free-spacing removes XML whitespace outside character classes.
-        // The regex crate's x flag also removes comments and class whitespace.
-        normalized = without_pattern_layout(text);
-        &normalized
-    } else {
-        text
-    };
-    regex::RegexBuilder::new(text)
+    let normalized = xpath_pattern(text, flags.contains('x')).ok_or_else(|| {
+        ValidationError::Unsupported(format!(
+            "{shape}: sh:pattern: XPath character class subtraction"
+        ))
+    })?;
+    regex::RegexBuilder::new(&normalized)
         .case_insensitive(flags.contains('i'))
         .multi_line(flags.contains('m'))
         .dot_matches_new_line(flags.contains('s'))
@@ -277,11 +273,12 @@ fn pattern(shape: &Term, shapes: &Graph, term: &Term) -> Result<regex::Regex, Va
         .map_err(|error| ValidationError::Unsupported(format!("{shape}: sh:pattern: {error}")))
 }
 
-fn without_pattern_layout(text: &str) -> String {
-    let mut output = String::with_capacity(text.len());
+fn xpath_pattern(text: &str, free_spacing: bool) -> Option<std::borrow::Cow<'_, str>> {
+    let mut output = free_spacing.then(|| String::with_capacity(text.len()));
     let mut class_depth = 0usize;
     let mut escaped = false;
-    for ch in text.chars() {
+    let mut chars = text.chars().peekable();
+    while let Some(ch) = chars.next() {
         if escaped {
             escaped = false;
         } else {
@@ -289,13 +286,16 @@ fn without_pattern_layout(text: &str) -> String {
                 '\\' => escaped = true,
                 '[' => class_depth += 1,
                 ']' => class_depth = class_depth.saturating_sub(1),
-                ' ' | '\t' | '\r' | '\n' if class_depth == 0 => continue,
+                '-' if class_depth != 0 && chars.peek() == Some(&'[') => return None,
+                ' ' | '\t' | '\r' | '\n' if free_spacing && class_depth == 0 => continue,
                 _ => (),
             }
         }
-        output.push(ch);
+        if let Some(output) = &mut output {
+            output.push(ch);
+        }
     }
-    output
+    Some(output.map_or(std::borrow::Cow::Borrowed(text), std::borrow::Cow::Owned))
 }
 
 fn closed(shape: &Term, shapes: &Graph) -> Result<Option<Constraint>, ValidationError> {
@@ -303,7 +303,7 @@ fn closed(shape: &Term, shapes: &Graph) -> Result<Option<Constraint>, Validation
         return Ok(None);
     };
     let enabled =
-        boolean(flag).ok_or_else(|| invalid(shape, "closed", "must be an xsd:boolean"))?;
+        parse_boolean(flag).ok_or_else(|| invalid(shape, "closed", "must be an xsd:boolean"))?;
     let mut allowed = HashSet::new();
     if let Some(head) = optional(shapes, shape, "ignoredProperties")? {
         for item in shapes.list_items(head)? {
@@ -353,7 +353,7 @@ fn qualified(
     let target = shape_reference(shape, "qualifiedValueShape", target)?;
     let disjoint = optional(shapes, shape, "qualifiedValueShapesDisjoint")?
         .map(|value| {
-            boolean(value).ok_or_else(|| {
+            parse_boolean(value).ok_or_else(|| {
                 invalid(
                     shape,
                     "qualifiedValueShapesDisjoint",
@@ -438,7 +438,8 @@ pub fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, Validation
                 Constraint::LanguageIn(ranges)
             }
             "uniqueLang" => {
-                boolean(value).ok_or_else(|| invalid(shape, name, "must be an xsd:boolean"))?;
+                parse_boolean(value)
+                    .ok_or_else(|| invalid(shape, name, "must be an xsd:boolean"))?;
                 // The Core test suite activates this constraint only for the RDF term true.
                 Constraint::UniqueLang(typed_value(value, "boolean") == Some("true"))
             }
@@ -758,5 +759,18 @@ impl Constraint {
             }
         };
         Ok(results)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::xpath_pattern;
+
+    #[test]
+    fn xpath_class_subtraction_is_unsupported() {
+        assert!(xpath_pattern("[a-z-[aeiou]]", false).is_none());
+        assert!(xpath_pattern(" [a-z-[aeiou]] ", true).is_none());
+        assert_eq!(xpath_pattern(" -[a ] ", true).as_deref(), Some("-[a ]"));
+        assert!(xpath_pattern(r"[a\-\[]", false).is_some());
     }
 }
