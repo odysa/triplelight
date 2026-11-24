@@ -30,6 +30,8 @@ pub const TL_ERR_LOCKED: i32 = 4;
 pub const TL_ERR_INVALID_ARGUMENT: i32 = 5;
 pub const TL_ERR_INTERNAL: i32 = 6;
 pub const TL_ERR_GRAPH_STATE: i32 = 7;
+/// The query was cancelled or ran past its deadline (not yet reachable from C: no interrupt is exposed).
+pub const TL_ERR_INTERRUPTED: i32 = 8;
 
 pub const TL_RESULT_BINDINGS: u32 = 0;
 pub const TL_RESULT_BOOLEAN: u32 = 1;
@@ -250,6 +252,7 @@ fn db_error(e: DatabaseError) -> TlError {
         DatabaseError::Storage(_) => TL_ERR_STORAGE,
         DatabaseError::Locked => TL_ERR_LOCKED,
         DatabaseError::GraphState(_) => TL_ERR_GRAPH_STATE,
+        DatabaseError::Interrupted { .. } => TL_ERR_INTERRUPTED,
     };
     TlError { kind, message: e.to_string() }
 }

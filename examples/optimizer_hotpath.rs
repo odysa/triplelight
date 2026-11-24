@@ -35,6 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         sorted_probe: true,
                         csr_paths: true,
                         entailment: Default::default(),
+                        interrupt: None,
                     },
                 )?;
                 let query_ns = start.elapsed().as_nanos();

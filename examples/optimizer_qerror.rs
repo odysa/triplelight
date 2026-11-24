@@ -210,6 +210,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         sorted_probe: true,
                         csr_paths: true,
                         entailment: Default::default(),
+                        interrupt: None,
                     },
                 )?
                 else {

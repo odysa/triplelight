@@ -20,6 +20,7 @@ fn err(e: DatabaseError) -> Error {
         DatabaseError::Storage(_) => "StorageError",
         DatabaseError::Locked => "LockedError",
         DatabaseError::GraphState(_) => "GraphStateError",
+        DatabaseError::Interrupted { .. } => "InterruptedError",
     };
     Error::new(Status::GenericFailure, format!("{kind}: {e}"))
 }

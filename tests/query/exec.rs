@@ -60,7 +60,7 @@ fn union_distinct_group_ask() {
 #[test]
 fn leapfrog_matches_bind_join() {
     let q = "SELECT ?a ?b ?c WHERE { ?a <http://ex/knows> ?b . ?b <http://ex/knows> ?c . ?c <http://ex/knows> ?a }";
-    let run = |wcoj| match triplelight::exec::query_with(&store(), q, &triplelight::exec::Options { stats: None, wcoj, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Default::default() }).unwrap() {
+    let run = |wcoj| match triplelight::exec::query_with(&store(), q, &triplelight::exec::Options { stats: None, wcoj, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Default::default(), interrupt: None }).unwrap() {
         QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.iter().map(|r| format!("{r:?}")).collect(); v.sort(); v }
         _ => unreachable!(),
     };
@@ -1091,4 +1091,36 @@ fn top_k_with_secondary_keys_matches_the_full_sort() {
             assert_eq!(ordered(&q(&format!("LIMIT {k} OFFSET 5"))), full[5.min(full.len())..(5 + k).min(full.len())].to_vec(), "ORDER BY {order} LIMIT {k} OFFSET 5");
         }
     }
+}
+
+/// `Options::interrupt` (#110): a cancelled or expired query ends with its own error kind and no partial answer,
+/// a cancel from another thread stops a long query mid-run, and an untouched interrupt changes nothing.
+#[test]
+fn interrupt_cancels_and_times_out_running_queries() {
+    use std::time::{Duration, Instant};
+    use triplelight::exec::{query_with, Interrupt, Options, QueryErrorKind};
+    let mut nt = String::new();
+    for i in 0..3000u32 { nt.push_str(&format!("<http://ex/s{i}> <http://ex/p> \"{i}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n")) }
+    let snap = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
+    // A cross product with a filter: about 9M rows to evaluate, far longer than the cancel delay below.
+    let heavy = "SELECT (COUNT(*) AS ?n) WHERE { ?a <http://ex/p> ?x . ?b <http://ex/p> ?y FILTER(?x + ?y > -1) }";
+    let run = |i: &Interrupt, q: &str| query_with(&snap, q, &Options { interrupt: Some(i), ..Options::default() });
+    let cancelled = Interrupt::new();
+    cancelled.cancel();
+    assert_eq!(run(&cancelled, heavy).unwrap_err().kind, QueryErrorKind::Cancelled);
+    let expired = Interrupt::with_timeout(Duration::ZERO);
+    assert_eq!(run(&expired, heavy).unwrap_err().kind, QueryErrorKind::Timeout);
+    let live = Interrupt::new();
+    let started = Instant::now();
+    let err = std::thread::scope(|scope| {
+        scope.spawn(|| { std::thread::sleep(Duration::from_millis(50)); live.cancel() });
+        run(&live, heavy).unwrap_err()
+    });
+    assert_eq!(err.kind, QueryErrorKind::Cancelled);
+    assert!(started.elapsed() < Duration::from_secs(5), "stopped mid-run, not at the end: {:?}", started.elapsed());
+    // An interrupt that never fires gives the same answer as none.
+    let small = "SELECT ?a WHERE { ?a <http://ex/p> ?x FILTER(?x < 5) } ORDER BY ?a";
+    let plain = query_with(&snap, small, &Options::default()).unwrap();
+    let with = run(&Interrupt::with_timeout(Duration::from_secs(60)), small).unwrap();
+    assert_eq!(format!("{plain:?}"), format!("{with:?}"));
 }

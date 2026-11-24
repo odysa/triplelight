@@ -3,7 +3,7 @@
 use crate::load;
 use std::io::Read;
 use std::time::Instant;
-use triplelight::exec::{query_with, Entailment, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids_v, serialize_csv, serialize_tsv}};
+use triplelight::exec::{query_with, Entailment, Interrupt, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids_v, serialize_csv, serialize_tsv}};
 use triplelight::opt::stats::Stats;
 use triplelight::store::StoreUpdate;
 
@@ -39,6 +39,15 @@ fn request_entailment(url: &str, form: Option<&str>, default: Entailment) -> Res
     }
 }
 
+/// `--query-timeout=<seconds>`: each query request stops with HTTP 503 once it has run that long (#110). None: no limit.
+fn query_timeout(args: &[String]) -> Option<std::time::Duration> {
+    let v = args.iter().find_map(|a| a.strip_prefix("--query-timeout="))?;
+    match v.parse::<f64>() {
+        Ok(s) if s > 0.0 && s.is_finite() => Some(std::time::Duration::from_secs_f64(s)),
+        _ => { eprintln!("--query-timeout must be a positive number of seconds, not {v:?}"); std::process::exit(2) }
+    }
+}
+
 /// Result format chosen from the `Accept` header: the first of SPARQL JSON, TSV and CSV that it names (JSON when none).
 /// Boolean and graph results have no CSV or TSV form and are always answered in their own format.
 #[derive(Clone, Copy, PartialEq)]
@@ -70,7 +79,7 @@ fn accept_of(req: &tiny_http::Request) -> Format {
 
 type Resp = tiny_http::Response<std::io::Cursor<Vec<u8>>>;
 
-fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax => 400, QueryErrorKind::Unsupported => 501, QueryErrorKind::Storage => 500, QueryErrorKind::GraphState => 400 } }
+fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax => 400, QueryErrorKind::Unsupported => 501, QueryErrorKind::Storage => 500, QueryErrorKind::GraphState => 400, QueryErrorKind::Cancelled | QueryErrorKind::Timeout => 503 } }
 
 /// One SPARQL query against a snapshot, as an HTTP response. Errors: 400 (bad query), 501 (unsupported), 500 (storage);
 /// never an empty result in place of a failure.
@@ -135,6 +144,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
     let init = args.iter().position(|a| a == "--init").map(|i| std::path::PathBuf::from(&args[i + 1]));
     let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
     let ablations = ablations(args);
+    let timeout = query_timeout(args);
     let t = Instant::now();
     let store = if args.iter().any(|a| a == "--disk") {
         triplelight::store::Store::open_with(&args[2], init.as_deref(), Box::new(triplelight::storage::DiskBase { workers }))
@@ -198,7 +208,8 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
                         let st = stats.read().unwrap().clone();
                         let st = st.filter(|(base, _)| snap.delta_len() == 0 && *base == snap.base_id());
                         let fmt = accept_of(&req);
-                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), raw_ids: fmt == Format::Json, entailment, ..ablations };
+                        let interrupt = timeout.map(Interrupt::with_timeout);
+                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), raw_ids: fmt == Format::Json, entailment, interrupt: interrupt.as_ref(), ..ablations };
                         answer(&*snap, &q, &opts, fmt)
                     }
                 }
@@ -311,6 +322,7 @@ fn serve_memory(args: &[String]) {
             let want_stats = !args.iter().any(|a| a == "--no-stats");
             eprintln!("optimizer statistics: {}", if want_stats { "building in background" } else { "off" });
             let ablations = ablations(args);
+            let timeout = query_timeout(args);
             let server = tiny_http::Server::http(format!("{}:{port}", bind_host())).expect("bind");
             eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql");
             // One worker per core: queries run concurrently against the same immutable snapshot.
@@ -340,7 +352,8 @@ fn serve_memory(args: &[String]) {
                     (None, _) => tiny_http::Response::from_string("missing query").with_status_code(400),
                     (_, Err(e)) => tiny_http::Response::from_string(e).with_status_code(400),
                     (Some(q), Ok(entailment)) => {
-                        let opts = Options { stats: st.as_deref(), raw_ids: fmt == Format::Json, entailment, ..ablations };
+                        let interrupt = timeout.map(Interrupt::with_timeout);
+                        let opts = Options { stats: st.as_deref(), raw_ids: fmt == Format::Json, entailment, interrupt: interrupt.as_ref(), ..ablations };
                         answer(snap, &q, &opts, fmt)
                     }
                 };
