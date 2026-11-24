@@ -23,6 +23,7 @@ mod agg;
 mod bgp;
 mod count;
 mod dataset;
+mod entail;
 mod path;
 mod pattern;
 mod range;
@@ -149,8 +150,23 @@ pub struct Options<'a> {
     /// closures in parallel) instead of one index seek per visited node. Above a size cap it keeps the seeks.
     /// Answers and their order are identical; off (`--ablate=csrpaths`) always seeks.
     pub csr_paths: bool,
+    /// Which entailment regime basic graph patterns are matched under (`entail.rs`). `Simple` (the default) matches
+    /// the stored triples; `Rdfs` matches the default graph's RDFS closure, computed at query time.
+    pub entailment: Entailment,
 }
-impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true } } }
+impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Entailment::Simple } } }
+
+/// The entailment regime of a query's graph matching.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Entailment {
+    /// Simple entailment: the stored triples, as SPARQL specifies by default.
+    #[default]
+    Simple,
+    /// RDFS: subclass and subproperty transitivity, type and property propagation, domain and range (the rule set of
+    /// Jena's RDFS reasoner at level `simple`, `entail.rs`). The default graph only: GRAPH and FROM / FROM NAMED are
+    /// refused.
+    Rdfs,
+}
 
 pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     catching_storage(|| run(snap, None, text, opts))
@@ -223,6 +239,10 @@ fn resolve_dataset<'a, S: Snapshot>(snap: &S, ds: &'a dyn DatasetView, spec: Opt
 fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
     if let Some(reason) = support::unsupported(q, dataset.is_some()) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
+    let rdfs = opts.entailment == Entailment::Rdfs;
+    if rdfs && let Some(reason) = support::unsupported(q, false) {
+        return Err(QueryError::new(QueryErrorKind::Unsupported, format!("{reason}; RDFS entailment covers the default graph only")))
+    }
     let spec = match q { Query::Select { dataset, .. } | Query::Ask { dataset, .. } | Query::Construct { dataset, .. } | Query::Describe { dataset, .. } => dataset };
     // Graph views for the active dataset; they outlive `ctx`, which borrows them.
     let (from, named) = match dataset { Some(ds) => resolve_dataset(snap, ds, spec.as_ref())?, None => (Vec::new(), Vec::new()) };
@@ -238,6 +258,8 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     } else {
         None
     };
+    let entailed = if rdfs { Some(entail::Entailed::new(snap as &dyn Snapshot).unwrap_or_else(|e| storage_failure(e))) } else { None };
+    let default = match &entailed { Some(e) => Some(e as &dyn Snapshot), None => default };
     let mut ctx = Ctx::for_query(snap, dataset, default, named, q, opts, path::CsrLimits::default());
     match q {
         Query::Select { pattern, .. } => run_select(&mut ctx, snap, pattern, opts),

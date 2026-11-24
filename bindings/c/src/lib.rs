@@ -317,11 +317,28 @@ pub unsafe extern "C" fn tl_close(db: *mut TlDb) {
 /// Runs a SPARQL query (SELECT, ASK or CONSTRUCT) and returns an owned result.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tl_query(db: *const TlDb, sparql: *const c_char, len: usize, out: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
+    unsafe { tl_query_with_entailment(db, sparql, len, TL_ENTAILMENT_SIMPLE, out, err) }
+}
+
+/// `entailment` of `tl_query_with_entailment`: the stored triples (`tl_query`'s regime).
+pub const TL_ENTAILMENT_SIMPLE: i32 = 0;
+/// `entailment` of `tl_query_with_entailment`: the default graph's RDFS closure, computed at query time (#108).
+pub const TL_ENTAILMENT_RDFS: i32 = 1;
+
+/// `tl_query` under an entailment regime, `TL_ENTAILMENT_SIMPLE` or `TL_ENTAILMENT_RDFS`; any other value is
+/// `TL_ERR_INVALID_ARGUMENT`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_query_with_entailment(db: *const TlDb, sparql: *const c_char, len: usize, entailment: i32, out: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
     unsafe { guard(err, || {
         if out.is_null() { return Err(invalid("null output pointer")) }
+        let entailment = match entailment {
+            TL_ENTAILMENT_SIMPLE => triplelight::exec::Entailment::Simple,
+            TL_ENTAILMENT_RDFS => triplelight::exec::Entailment::Rdfs,
+            _ => return Err(invalid("unknown entailment")),
+        };
         let (d, q) = (handle(db)?, text(sparql, len)?);
         let snap = d.read();
-        let r = match snap.query_ids(q).map_err(db_error)? {
+        let r = match snap.query_ids_with_entailment(q, entailment).map_err(db_error)? {
             QueryResult::Ids(ids) => build_ids(&snap, ids)?,
             other => build(other)?,
         };
@@ -468,6 +485,27 @@ mod tests {
         unsafe { tl_error_free(e) };
         Err(out)
     }
+
+    #[test]
+    fn rdfs_entailment_is_opt_in_and_checked() { unsafe {
+        let mut db = std::ptr::null_mut();
+        assert_eq!(tl_open_in_memory(&mut db, std::ptr::null_mut()), TL_OK);
+        let up = "INSERT DATA { <urn:ann> a <urn:Student> . <urn:Student> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <urn:Person> }";
+        assert_eq!(tl_update(db, up.as_ptr() as _, up.len(), std::ptr::null_mut(), std::ptr::null_mut()), TL_OK);
+        let sparql = "SELECT ?x WHERE { ?x a <urn:Person> }";
+        let rows = |entailment| {
+            let mut r = std::ptr::null_mut();
+            let code = tl_query_with_entailment(db, sparql.as_ptr() as _, sparql.len(), entailment, &mut r, std::ptr::null_mut());
+            if code != TL_OK { return Err(code) }
+            let n = (*tl_result_get_view(r)).n_rows;
+            tl_result_free(r);
+            Ok(n)
+        };
+        assert_eq!(rows(TL_ENTAILMENT_SIMPLE), Ok(0));
+        assert_eq!(rows(TL_ENTAILMENT_RDFS), Ok(1));
+        assert_eq!(rows(7), Err(TL_ERR_INVALID_ARGUMENT));
+        tl_close(db);
+    } }
 
     #[test]
     fn typed_terms_unbound_dedup_and_empty_projection() { unsafe {

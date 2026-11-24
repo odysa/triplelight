@@ -88,3 +88,16 @@ def test_rdf12_triple_terms_and_direction():
     assert isinstance(t, triplelight.Triple)
     assert t.subject == triplelight.IRI("urn:b") and t.predicate == triplelight.IRI("urn:p") and t.object == "v"
     assert rows["urn:label"] == triplelight.Literal("שלום", None, "he", "rtl")
+
+
+def test_rdfs_entailment_is_opt_in():
+    db = triplelight.Database.in_memory()
+    db.update("INSERT DATA { <urn:ann> a <urn:Student> . <urn:Student> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <urn:Person> }")
+    q = "SELECT ?x WHERE { ?x a <urn:Person> }"
+    assert len(db.query(q)) == 0
+    assert [row["x"] for row in db.query(q, entailment="rdfs")] == [triplelight.IRI("urn:ann")]
+    assert "urn:ann" in db.query_json(q, entailment="rdfs")
+    with db.read() as snap:
+        assert len(snap.query(q, entailment="rdfs")) == 1
+    with pytest.raises(ValueError):
+        db.query(q, entailment="owl")

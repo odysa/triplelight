@@ -3,7 +3,7 @@
 use crate::load;
 use std::io::Read;
 use std::time::Instant;
-use triplelight::exec::{query_with, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids_v, serialize_csv, serialize_tsv}};
+use triplelight::exec::{query_with, Entailment, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids_v, serialize_csv, serialize_tsv}};
 use triplelight::opt::stats::Stats;
 use triplelight::store::StoreUpdate;
 
@@ -26,6 +26,17 @@ fn decode(s: &str) -> String {
 
 fn form_param(body: &str, key: &str) -> Option<String> {
     body.split('&').find_map(|kv| { let (k, v) = kv.split_once('=')?; (k == key).then(|| decode(v)) })
+}
+/// A request's entailment regime (#108): `entailment=simple|rdfs` in the URL or the form body, else the server's
+/// `--entailment=` default. A SPARQL query body has no form fields, so only the URL counts then.
+fn request_entailment(url: &str, form: Option<&str>, default: Entailment) -> Result<Entailment, String> {
+    let named = url.split_once('?').and_then(|(_, qs)| form_param(qs, "entailment")).or_else(|| form.and_then(|b| form_param(b, "entailment")));
+    match named.as_deref() {
+        None => Ok(default),
+        Some("simple") => Ok(Entailment::Simple),
+        Some("rdfs") => Ok(Entailment::Rdfs),
+        Some(other) => Err(format!("entailment must be simple or rdfs, not {other:?}")),
+    }
 }
 
 /// Result format chosen from the `Accept` header: the first of SPARQL JSON, TSV and CSV that it names (JSON when none).
@@ -175,17 +186,19 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
                     },
                 }
             } else {
+                let entailment = request_entailment(&url, (!ctype.starts_with("application/sparql-query")).then_some(body.as_str()), ablations.entailment);
                 let q = if ctype.starts_with("application/sparql-query") { Some(body) } else {
                     url.split_once('?').and_then(|(_, qs)| form_param(qs, "query")).or_else(|| form_param(&body, "query"))
                 };
-                match q {
-                    None => tiny_http::Response::from_string("missing query").with_status_code(400),
-                    Some(q) => {
+                match (q, entailment) {
+                    (None, _) => tiny_http::Response::from_string("missing query").with_status_code(400),
+                    (_, Err(e)) => tiny_http::Response::from_string(e).with_status_code(400),
+                    (Some(q), Ok(entailment)) => {
                         let snap = store.snapshot();
                         let st = stats.read().unwrap().clone();
                         let st = st.filter(|(base, _)| snap.delta_len() == 0 && *base == snap.base_id());
                         let fmt = accept_of(&req);
-                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), raw_ids: fmt == Format::Json, ..ablations };
+                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), raw_ids: fmt == Format::Json, entailment, ..ablations };
                         answer(&*snap, &q, &opts, fmt)
                     }
                 }
@@ -267,7 +280,8 @@ pub(crate) fn run(cmd: &str, args: &[String]) {
 /// characteristic-pair join estimates, sort-then-probe and the CSR adjacency for single-predicate path closures. (`--no-stats` turns
 /// off the cost-based planner.) Unknown names are refused so a typo cannot silently measure the default.
 fn ablations(args: &[String]) -> Options<'static> {
-    let mut opts = Options::default();
+    // Not an ablation: the default entailment regime of requests that name none (`request_entailment`).
+    let mut opts = Options { entailment: crate::entailment_arg(args), ..Options::default() };
     for name in args.iter().filter_map(|a| a.strip_prefix("--ablate=")).flat_map(|v| v.split(',')).filter(|n| !n.is_empty()) {
         match name {
             "wcoj" => opts.wcoj = false,
@@ -316,13 +330,20 @@ fn serve_memory(args: &[String]) {
                 let mut body = String::new();
                 let _ = req.as_reader().read_to_string(&mut body);
                 let is_query_body = req.headers().iter().any(|h| h.field.equiv("Content-Type") && h.value.as_str().starts_with("application/sparql-query"));
+                let entailment = request_entailment(&url, (!is_query_body).then_some(body.as_str()), ablations.entailment);
                 let q = if is_query_body { Some(body) } else {
                     url.split_once('?').and_then(|(_, qs)| form_param(qs, "query")).or_else(|| form_param(&body, "query"))
                 };
                 let st = stats.read().unwrap().clone();
                 let fmt = accept_of(&req);
-                let opts = Options { stats: st.as_deref(), raw_ids: fmt == Format::Json, ..ablations };
-                let resp = match q { Some(q) => answer(snap, &q, &opts, fmt), None => tiny_http::Response::from_string("missing query").with_status_code(400) };
+                let resp = match (q, entailment) {
+                    (None, _) => tiny_http::Response::from_string("missing query").with_status_code(400),
+                    (_, Err(e)) => tiny_http::Response::from_string(e).with_status_code(400),
+                    (Some(q), Ok(entailment)) => {
+                        let opts = Options { stats: st.as_deref(), raw_ids: fmt == Format::Json, entailment, ..ablations };
+                        answer(snap, &q, &opts, fmt)
+                    }
+                };
                 let _ = req.respond(resp);
             }
             }); } });
@@ -331,6 +352,18 @@ fn serve_memory(args: &[String]) {
 #[cfg(test)]
 mod accept_tests {
     use super::*;
+
+    #[test]
+    fn entailment_comes_from_the_url_then_the_form_then_the_server_default() {
+        let rdfs = Entailment::Rdfs;
+        assert_eq!(request_entailment("/sparql", None, Entailment::Simple), Ok(Entailment::Simple));
+        assert_eq!(request_entailment("/sparql", None, rdfs), Ok(rdfs));
+        assert_eq!(request_entailment("/sparql?entailment=rdfs", None, Entailment::Simple), Ok(rdfs));
+        assert_eq!(request_entailment("/sparql?entailment=simple", Some("entailment=rdfs"), rdfs), Ok(Entailment::Simple));
+        assert_eq!(request_entailment("/sparql", Some("query=ASK%7B%7D&entailment=rdfs"), Entailment::Simple), Ok(rdfs));
+        // A typo is refused, never silently answered under the default.
+        assert!(request_entailment("/sparql?entailment=owl", None, Entailment::Simple).is_err());
+    }
 
     #[test]
     fn q_zero_is_not_acceptable() {
