@@ -27,7 +27,8 @@ let as_rdf = report.to_triples();                          // a sh:ValidationRep
   specifies, and nothing else.
 - **Errors, not reports:** a shapes graph that breaks a SHACL rule (a malformed path or list, a bad parameter), a recursive shape reference
   (which SHACL leaves undefined), or an unsupported feature returns a `ValidationError` and no report. A data graph that violates the shapes is a
-  report, not an error.
+  report, not an error. Two nesting limits apply: a property path nested more than 64 deep is `MalformedShape`, and shape references nested
+  more than 128 deep are `Unsupported`.
 
 ## Semantics worth knowing
 
@@ -35,9 +36,10 @@ let as_rdf = report.to_triples();                          // a sh:ValidationRep
 - Value nodes of a property shape are a set (duplicates collapse), in the order they are reached.
 - A shape's `sh:message` values replace a component's default message in every result of that shape.
 - `sh:pattern` uses the Rust `regex` engine, not the XPath regular-expression dialect SHACL names. The two agree on common patterns and
-  differ on a few features (for example look-around is not supported). A pattern the engine cannot compile returns `Unsupported`; an unknown
-  `sh:flags` character or a mistyped parameter returns `MalformedShape`. The `x` flag removes whitespace outside character classes before the
-  pattern is compiled.
+  differ on a few features (for example look-around is not supported). XPath character-class subtraction (`[a-z-[aeiou]]`) returns
+  `Unsupported`, as does any other pattern the engine cannot compile; an unknown
+  `sh:flags` character or a mistyped parameter returns `MalformedShape`. The `x` flag removes XML whitespace (space, tab, CR, LF) outside
+  character classes before the pattern is compiled.
 
 ## Layers
 
@@ -51,7 +53,7 @@ path        parsing and evaluating property paths               graph, report   
 ```
 
 The constraint components do not depend on the evaluator: a component that refers to another shape (`sh:node`, `sh:property`, `sh:not`, ...)
-receives a `check_node(shape, focus)` callback, so the layer boundary has no cycle (the repository's `deslop-please` gate enforces this).
+receives a `CheckNode` trait object with two calls, `conforms(shape, focus)` for a yes/no answer and `report(shape, focus)` for the full results, so the layer boundary has no cycle (the repository's `deslop-please` gate enforces this).
 
 ## Conformance
 
