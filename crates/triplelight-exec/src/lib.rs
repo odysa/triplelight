@@ -24,6 +24,7 @@ mod bgp;
 mod count;
 mod dataset;
 mod entail;
+mod order;
 mod path;
 mod pattern;
 mod range;
@@ -764,32 +765,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }).collect();
         // Column keys decode once per distinct ID. Other expressions are evaluated per row.
         let mut memo: HashMap<TermId, Option<Term>> = HashMap::new();
-        let keys: Vec<Vec<Option<Term>>> = rows.iter().map(|r| keys_by_column.iter().map(|&(e, column)| {
+        let mut key_of = |r: &Row, (e, column): (&Expression, Option<usize>)| -> Option<Term> {
             match column {
                 Some(i) if r[i] == UNBOUND => None,
                 Some(i) => memo.entry(r[i]).or_insert_with(|| Some(self.resolve(r[i]))).clone(),
                 None => self.value(e, r),
             }
-        }).collect()).collect();
-        let cmp = |a: &usize, b: &usize| -> std::cmp::Ordering {
-            for (k, e) in expression.iter().enumerate() {
-                let c = expr::order_cmp(keys[*a][k].as_ref(), keys[*b][k].as_ref());
-                let c = if matches!(e, OrderExpression::Desc(_)) { c.reverse() } else { c };
-                if c.is_ne() { return c }
-            }
-            a.cmp(b) // ties keep input order (as the stable sort did)
         };
-        let mut idx: Vec<usize> = (0..rows.len()).collect();
-        match limit {
-            Some(k) if k < idx.len() => {
-                // Stable top-k: the comparator is a total order (index tie-break), so the k smallest equal the
-                // first k of a full stable sort.
-                if k > 0 { idx.select_nth_unstable_by(k - 1, cmp); }
-                idx.truncate(k);
-                idx.sort_unstable_by(cmp);
-            }
-            _ => idx.sort_unstable_by(cmp),
-        }
+        let desc: Vec<bool> = expression.iter().map(|e| matches!(e, OrderExpression::Desc(_))).collect();
+        let idx = order::order(rows.len(), &desc, limit, |i, k| key_of(&rows[i], keys_by_column[k]));
         let mut rows: Vec<Option<Row>> = rows.into_iter().map(Some).collect();
         idx.into_iter().map(|i| rows[i].take().unwrap()).collect()
     }
