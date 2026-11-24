@@ -5,7 +5,7 @@ use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use triplelight::embedded::{Database, DatabaseError, ReadSnapshot};
-use triplelight::exec::QueryResult;
+use triplelight::exec::{Entailment, QueryResult};
 use std::sync::Arc;
 
 create_exception!(_triplelight, TripleLightError, PyException);
@@ -14,6 +14,15 @@ create_exception!(_triplelight, UnsupportedError, TripleLightError);
 create_exception!(_triplelight, StorageError, TripleLightError);
 create_exception!(_triplelight, LockedError, TripleLightError);
 create_exception!(_triplelight, GraphStateError, TripleLightError);
+
+/// `entailment="simple"|"rdfs"` of the query methods (#108); anything else is a `ValueError`.
+fn entailment(name: &str) -> PyResult<Entailment> {
+    match name {
+        "simple" => Ok(Entailment::Simple),
+        "rdfs" => Ok(Entailment::Rdfs),
+        other => Err(pyo3::exceptions::PyValueError::new_err(format!("entailment must be \"simple\" or \"rdfs\", not {other:?}"))),
+    }
+}
 
 fn err(e: DatabaseError) -> PyErr {
     match e {
@@ -116,9 +125,11 @@ impl PyDatabase {
     /// Creates a non-durable in-memory database.
     #[staticmethod]
     fn in_memory() -> Self { Self { db: Arc::new(Database::in_memory()) } }
-    fn query(&self, py: Python<'_>, sparql: &str) -> PyResult<PyObject> {
-        let db = Arc::clone(&self.db);
-        let r = py.allow_threads(|| db.query(sparql)).map_err(err)?;
+    /// `entailment="rdfs"` matches the default graph's RDFS closure, computed at query time; the default is "simple".
+    #[pyo3(signature = (sparql, entailment="simple"))]
+    fn query(&self, py: Python<'_>, sparql: &str, entailment: &str) -> PyResult<PyObject> {
+        let (db, e) = (Arc::clone(&self.db), self::entailment(entailment)?);
+        let r = py.allow_threads(|| db.query_with_entailment(sparql, e)).map_err(err)?;
         convert(py, r)
     }
     fn update(&self, py: Python<'_>, sparql: &str) -> PyResult<usize> {
@@ -126,9 +137,10 @@ impl PyDatabase {
         py.allow_threads(|| db.update(sparql)).map_err(err)
     }
     /// SPARQL 1.1 JSON results as a string (fast path: terms written straight from the dictionary).
-    fn query_json(&self, py: Python<'_>, sparql: &str) -> PyResult<String> {
-        let db = Arc::clone(&self.db);
-        py.allow_threads(|| db.query_json(sparql)).map_err(err)
+    #[pyo3(signature = (sparql, entailment="simple"))]
+    fn query_json(&self, py: Python<'_>, sparql: &str, entailment: &str) -> PyResult<String> {
+        let (db, e) = (Arc::clone(&self.db), self::entailment(entailment)?);
+        py.allow_threads(|| db.query_json_with_entailment(sparql, e)).map_err(err)
     }
     /// Atomically imports an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file; returns triples added.
     fn load(&self, py: Python<'_>, path: std::path::PathBuf) -> PyResult<usize> {
@@ -148,14 +160,16 @@ struct PySnapshot { snap: Arc<ReadSnapshot> }
 
 #[pymethods]
 impl PySnapshot {
-    fn query(&self, py: Python<'_>, sparql: &str) -> PyResult<PyObject> {
-        let s = Arc::clone(&self.snap);
-        let r = py.allow_threads(|| s.query(sparql)).map_err(err)?;
+    #[pyo3(signature = (sparql, entailment="simple"))]
+    fn query(&self, py: Python<'_>, sparql: &str, entailment: &str) -> PyResult<PyObject> {
+        let (s, e) = (Arc::clone(&self.snap), self::entailment(entailment)?);
+        let r = py.allow_threads(|| s.query_with_entailment(sparql, e)).map_err(err)?;
         convert(py, r)
     }
-    fn query_json(&self, py: Python<'_>, sparql: &str) -> PyResult<String> {
-        let s = Arc::clone(&self.snap);
-        py.allow_threads(|| s.query_json(sparql)).map_err(err)
+    #[pyo3(signature = (sparql, entailment="simple"))]
+    fn query_json(&self, py: Python<'_>, sparql: &str, entailment: &str) -> PyResult<String> {
+        let (s, e) = (Arc::clone(&self.snap), self::entailment(entailment)?);
+        py.allow_threads(|| s.query_json_with_entailment(sparql, e)).map_err(err)
     }
 }
 

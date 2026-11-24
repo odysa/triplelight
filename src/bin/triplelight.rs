@@ -1,6 +1,6 @@
 //! `triplelight query <data> <query>` — run one query and print JSON results.
 //! With the `server` feature: `triplelight serve` / `serve-store` speak the SPARQL 1.1 protocol (see `server.rs`).
-use triplelight::exec::{query, results::serialize};
+use triplelight::exec::{Entailment, Options, query_with, results::serialize};
 use triplelight::storage::{MemorySnapshot, DiskSnapshot, Dictionary, Snapshot, StorageError};
 use triplelight::model::{Perm, TermId, TripleBatch};
 use triplelight_rdf::{Term, TermRef};
@@ -56,6 +56,15 @@ pub(crate) fn load(path: &str, args: &[String]) -> Backend {
     };
     eprintln!("loaded {path} in {:.2}s", t.elapsed().as_secs_f64());
     Backend::Memory(s)
+}
+
+/// `--entailment=simple|rdfs` (default simple): the regime `query` matches graph patterns under (#108).
+pub(crate) fn entailment_arg(args: &[String]) -> Entailment {
+    match args.iter().find_map(|a| a.strip_prefix("--entailment=")) {
+        None | Some("simple") => Entailment::Simple,
+        Some("rdfs") => Entailment::Rdfs,
+        Some(other) => { eprintln!("--entailment must be simple or rdfs, not {other}"); std::process::exit(2) }
+    }
 }
 
 fn main() {
@@ -128,8 +137,9 @@ fn main() {
         }
         Some("query") => {
             let snap = load(&args[2], &args);
+            let opts = Options { entailment: entailment_arg(&args), ..Default::default() };
             let t = Instant::now();
-            match query(&snap, &args[3]) {
+            match query_with(&snap, &args[3], &opts) {
                 Ok(r) => { println!("{}", serialize(&r).1); eprintln!("query {:.3} ms", t.elapsed().as_secs_f64() * 1e3) }
                 Err(e) => { eprintln!("error: {e}"); std::process::exit(1) }
             }
@@ -154,7 +164,7 @@ fn main() {
                 std::process::exit(2);
             }
         }
-        _ => eprintln!("usage: triplelight query <data> <sparql> | triplelight build-disk <source> <dir> | triplelight verify <dir>\n\
+        _ => eprintln!("usage: triplelight query <data> <sparql> [--entailment=simple|rdfs] | triplelight build-disk <source> <dir> | triplelight verify <dir>\n\
             with --features server: triplelight serve <data.nt|.ttl> [port] | triplelight serve-store <dir> [port] [--init data.nt] [--read-only]"),
     }
 }

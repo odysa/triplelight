@@ -116,3 +116,17 @@ test("RDF 1.2 triple terms and base direction (skipped on a build without the rd
   assert.strictEqual(byP["urn:label"].direction, "rtl");
   db.close();
 });
+
+test("RDFS entailment is opt-in per query", async () => {
+  const db = tl.Database.inMemory();
+  await db.update("INSERT DATA { <urn:ann> a <urn:Student> . <urn:Student> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <urn:Person> }");
+  const q = "SELECT ?x WHERE { ?x a <urn:Person> }";
+  assert.strictEqual((await db.query(q)).bindings.length, 0);
+  const r = await db.query(q, { entailment: "rdfs" });
+  assert.deepStrictEqual(r.bindings.map((b) => b.x.value), ["urn:ann"]);
+  assert.strictEqual(db.querySync(q, { entailment: "rdfs" }).bindings.length, 1);
+  assert.ok((await db.queryJson(q, { entailment: "rdfs" })).includes("urn:ann"));
+  assert.strictEqual(db.read().querySync(q, { entailment: "rdfs" }).bindings.length, 1);
+  assert.throws(() => db.querySync(q, { entailment: "owl" }), /entailment must be/);
+  db.close();
+});

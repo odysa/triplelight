@@ -126,6 +126,11 @@ int32_t tl_open_in_memory(tl_db **out, tl_error **err);
 void tl_close(tl_db *db);
 
 int32_t tl_query(const tl_db *db, const char *sparql, size_t len, tl_result **out, tl_error **err);
+/* tl_query under an entailment regime: TL_ENTAILMENT_SIMPLE (tl_query's) or TL_ENTAILMENT_RDFS, the default graph's
+ * RDFS closure computed at query time. Any other value fails with TL_ERR_INVALID_ARGUMENT. */
+#define TL_ENTAILMENT_SIMPLE 0
+#define TL_ENTAILMENT_RDFS 1
+int32_t tl_query_with_entailment(const tl_db *db, const char *sparql, size_t len, int32_t entailment, tl_result **out, tl_error **err);
 int32_t tl_update(const tl_db *db, const char *sparql, size_t len, uint64_t *changed, tl_error **err);
 int32_t tl_load(const tl_db *db, const char *path, size_t len, uint64_t *loaded, tl_error **err);
 int32_t tl_compact(const tl_db *db, tl_error **err);
