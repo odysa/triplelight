@@ -125,6 +125,15 @@ impl<'a> ExactNumber<'a> {
     }
 }
 
+/// Rust float parsing also accepts case-insensitive infinities and NaNs.
+fn xsd_float_text(text: &str) -> Option<&str> {
+    (matches!(text, "INF" | "+INF" | "-INF" | "NaN")
+        || text
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || matches!(byte, b'+' | b'-' | b'.' | b'e' | b'E')))
+    .then_some(text)
+}
+
 pub(super) fn valid_lexical(literal: &Literal) -> bool {
     if literal.datatype().as_str() == "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString" {
         return literal.language().is_some();
@@ -134,8 +143,8 @@ pub(super) fn valid_lexical(literal: &Literal) -> bool {
         Some(name) if is_integer(name) => integer_in_range(name, text),
         Some("decimal") => ExactNumber::new(text).is_some(),
         Some("boolean") => text.parse::<Boolean>().is_ok(),
-        Some("float") => text.parse::<Float>().is_ok(),
-        Some("double") => text.parse::<Double>().is_ok(),
+        Some("float") => xsd_float_text(text).is_some_and(|text| text.parse::<Float>().is_ok()),
+        Some("double") => xsd_float_text(text).is_some_and(|text| text.parse::<Double>().is_ok()),
         Some("dateTime") => text.parse::<DateTime>().is_ok(),
         Some("date") => text.parse::<Date>().is_ok(),
         Some("time") => text.parse::<Time>().is_ok(),
@@ -207,5 +216,34 @@ pub(super) fn compare(left: &Term, right: &Term) -> Option<Ordering> {
             .ok()?
             .partial_cmp(&r.parse::<YearMonthDuration>().ok()?),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{XSD, compare, valid_lexical};
+    use crate::rdf::{Literal, NamedNode, Term};
+
+    #[test]
+    fn floating_datatypes_require_xsd_spellings() {
+        for datatype in ["float", "double"] {
+            let kind = NamedNode::new_unchecked(format!("{XSD}{datatype}"));
+            let literal = |text| Literal::new_typed_literal(text, kind.clone());
+            let zero = Term::from(literal("0"));
+            for text in ["INF", "+INF", "-INF", "NaN", " -12.5e+3 ", ".5", "5."] {
+                assert!(valid_lexical(&literal(text)), "{datatype} {text}");
+            }
+            for text in [
+                "inf", "infinity", "nan", "+NaN", "-NaN", "InF", "1_0", "1e", "",
+            ] {
+                let value = literal(text);
+                assert!(!valid_lexical(&value), "{datatype} {text}");
+                assert_eq!(
+                    compare(&Term::from(value), &zero),
+                    None,
+                    "{datatype} {text}"
+                );
+            }
+        }
     }
 }
