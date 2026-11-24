@@ -1174,7 +1174,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     pub(crate) fn ebv(&self, e: &Expression, r: &Row) -> bool {
         self.value(e, r).and_then(|t| expr::ebv(&t)).unwrap_or(false)
     }
-    pub(crate) fn value(&self, e: &Expression, r: &Row) -> Option<Term> { expr::eval(self, e, r) }
+    pub(crate) fn value(&self, e: &Expression, r: &Row) -> Option<Term> {
+        expr::eval(
+            e,
+            &|variable| self.var_value(variable, r),
+            &|pattern| self.exists(pattern, r),
+            self.base.as_deref(),
+            &self.now,
+        )
+    }
     pub(crate) fn var_value(&self, v: &Variable, r: &Row) -> Option<Term> {
         let id = *r.get(*self.vars.get(v.as_str())?)?;
         (id != UNBOUND).then(|| self.resolve(id))

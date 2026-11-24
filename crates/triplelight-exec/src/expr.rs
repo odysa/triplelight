@@ -1,11 +1,9 @@
 //! SPARQL expression evaluation over resolved terms. `None` is the SPARQL "error" value.
-use super::{Ctx, Row};
-use crate::storage::Snapshot;
 use triplelight_rdf::vocab::xsd;
-use triplelight_rdf::{Literal, NamedNode, Term};
+use triplelight_rdf::{Literal, NamedNode, Term, Variable};
 #[cfg(feature = "rdf-12")]
 use triplelight_rdf::{BaseDirection, NamedOrBlankNode, Triple};
-use crate::sparql::{Expression, Function};
+use crate::sparql::{Expression, Function, GraphPattern};
 use std::cmp::Ordering;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -301,13 +299,20 @@ fn lit(t: &Term) -> Option<&Literal> { if let Term::Literal(l) = t { Some(l) } e
 /// A string literal (simple, xsd:string or language-tagged), the argument type of SPARQL string functions.
 fn strlit(t: &Term) -> Option<&Literal> { lit(t).filter(|l| is_stringish(l)) }
 
-pub(super) fn eval<S: Snapshot + ?Sized>(ctx: &Ctx<'_, S>, e: &Expression, r: &Row) -> Option<Term> {
-    let v = |e: &Expression| eval(ctx, e, r);
+/// Resolve one expression using the current solution's bindings and correlated pattern test.
+pub(super) fn eval(
+    e: &Expression,
+    binding: &impl Fn(&Variable) -> Option<Term>,
+    exists: &impl Fn(&GraphPattern) -> bool,
+    base: Option<&str>,
+    now: &str,
+) -> Option<Term> {
+    let v = |e: &Expression| eval(e, binding, exists, base, now);
     match e {
         Expression::NamedNode(n) => Some(n.clone().into()),
         Expression::Literal(l) => Some(l.clone().into()),
-        Expression::Variable(x) => ctx.var_value(x, r),
-        Expression::Bound(x) => Some(bool_term(ctx.var_value(x, r).is_some())),
+        Expression::Variable(x) => binding(x),
+        Expression::Bound(x) => Some(bool_term(binding(x).is_some())),
         Expression::Or(a, b) => match (v(a).and_then(|t| ebv(&t)), v(b).and_then(|t| ebv(&t))) {
             (Some(true), _) | (_, Some(true)) => Some(bool_term(true)),
             (Some(false), Some(false)) => Some(bool_term(false)),
@@ -339,10 +344,10 @@ pub(super) fn eval<S: Snapshot + ?Sized>(ctx: &Ctx<'_, S>, e: &Expression, r: &R
         Expression::Divide(a, b) => arith('/', &v(a)?, &v(b)?),
         Expression::UnaryPlus(a) => { let t = v(a)?; num(&t)?; Some(t) }
         Expression::UnaryMinus(a) => arith('*', &v(a)?, &Literal::from(-1i64).into()),
-        Expression::Exists(p) => Some(bool_term(ctx.exists(p, r))),
+        Expression::Exists(p) => Some(bool_term(exists(p))),
         Expression::If(c, a, b) => if ebv(&v(c)?)? { v(a) } else { v(b) },
         Expression::Coalesce(l) => l.iter().find_map(v),
-        Expression::FunctionCall(f, args) => call(f, args, &|e| v(e), ctx.base.as_deref(), &ctx.now),
+        Expression::FunctionCall(f, args) => call(f, args, &|e| v(e), base, now),
     }
 }
 
