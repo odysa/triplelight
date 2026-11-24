@@ -5,7 +5,7 @@ use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use triplelight::embedded::{Database, DatabaseError, ReadSnapshot};
-use triplelight::exec::{Entailment, QueryResult};
+use triplelight::exec::{Entailment, Interrupt, MemoryBudget, QueryLimits, QueryResult};
 use std::sync::Arc;
 
 create_exception!(_triplelight, TripleLightError, PyException);
@@ -15,6 +15,9 @@ create_exception!(_triplelight, StorageError, TripleLightError);
 create_exception!(_triplelight, LockedError, TripleLightError);
 create_exception!(_triplelight, GraphStateError, TripleLightError);
 create_exception!(_triplelight, ShapesError, TripleLightError);
+create_exception!(_triplelight, QueryCancelled, TripleLightError);
+create_exception!(_triplelight, QueryTimeout, TripleLightError);
+create_exception!(_triplelight, ResourceLimitError, TripleLightError);
 
 /// `entailment="simple"|"rdfs"` of the query methods (#108); anything else is a `ValueError`.
 fn entailment(name: &str) -> PyResult<Entailment> {
@@ -32,9 +35,54 @@ fn err(e: DatabaseError) -> PyErr {
         DatabaseError::Storage(e) => StorageError::new_err(e.to_string()),
         DatabaseError::Locked => LockedError::new_err("database directory is already open by another instance"),
         DatabaseError::GraphState(m) => GraphStateError::new_err(m),
-        // Not yet reachable from Python (no interrupt is exposed); the base class until it is.
-        e @ (DatabaseError::Interrupted { .. } | DatabaseError::ResourceLimit(_)) => TripleLightError::new_err(e.to_string()),
+        DatabaseError::Interrupted { timed_out: true } => QueryTimeout::new_err("query timed out"),
+        DatabaseError::Interrupted { timed_out: false } => QueryCancelled::new_err("query cancelled"),
+        DatabaseError::ResourceLimit(m) => ResourceLimitError::new_err(m),
     }
+}
+
+/// Runs a query `f` under `timeout` (seconds) and `memory_mb` without the GIL (#110). On the main thread the query
+/// runs on a scoped worker while this thread checks for signals every 50 ms, so Ctrl-C cancels it: the worker stops
+/// at its next check and the `KeyboardInterrupt` is raised. Elsewhere signals cannot arrive, so it runs in place.
+fn limited<T: Send>(
+    py: Python<'_>,
+    timeout: Option<f64>,
+    memory_mb: Option<u64>,
+    f: impl FnOnce(QueryLimits<'_>) -> Result<T, DatabaseError> + Send,
+) -> PyResult<T> {
+    let interrupt = match timeout {
+        None => Interrupt::new(),
+        Some(t) if t.is_finite() && t >= 0.0 => Interrupt::with_timeout(std::time::Duration::from_secs_f64(t)),
+        Some(t) => return Err(pyo3::exceptions::PyValueError::new_err(format!("timeout must be a non-negative number of seconds, not {t}"))),
+    };
+    let budget = match memory_mb {
+        None => None,
+        Some(0) => return Err(pyo3::exceptions::PyValueError::new_err("memory_mb must be positive")),
+        Some(mb) => Some(MemoryBudget::new(mb.saturating_mul(1 << 20))),
+    };
+    let limits = QueryLimits { interrupt: Some(&interrupt), memory: budget.as_ref() };
+    let main = py.import("threading")?.call_method0("current_thread")?.is(&py.import("threading")?.call_method0("main_thread")?);
+    if !main { return py.allow_threads(|| f(limits)).map_err(err) }
+    let mut signal = None;
+    let result = py.allow_threads(|| std::thread::scope(|scope| {
+        let (tx, rx) = std::sync::mpsc::channel();
+        scope.spawn(move || { let _ = tx.send(f(limits)); });
+        loop {
+            match rx.recv_timeout(std::time::Duration::from_millis(50)) {
+                Ok(result) => return Some(result),
+                // The worker panicked; the scope re-raises it when it ends.
+                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return None,
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                    if signal.is_none() && let Err(e) = Python::with_gil(|py| py.check_signals()) {
+                        signal = Some(e);
+                        interrupt.cancel();
+                    }
+                }
+            }
+        }
+    }));
+    if let Some(e) = signal { return Err(e) }
+    result.expect("a worker that sent nothing panicked, and the scope re-raised it").map_err(err)
 }
 
 /// Python classes from `triplelight/__init__.py`, looked up once per call.
@@ -129,10 +177,12 @@ impl PyDatabase {
     #[staticmethod]
     fn in_memory() -> Self { Self { db: Arc::new(Database::in_memory()) } }
     /// `entailment="rdfs"` matches the default graph's RDFS closure, computed at query time; the default is "simple".
-    #[pyo3(signature = (sparql, entailment="simple"))]
-    fn query(&self, py: Python<'_>, sparql: &str, entailment: &str) -> PyResult<PyObject> {
+    /// `timeout` (seconds) raises `QueryTimeout`, `memory_mb` bounds the working memory (`ResourceLimitError`), and
+    /// Ctrl-C cancels a running query.
+    #[pyo3(signature = (sparql, entailment="simple", timeout=None, memory_mb=None))]
+    fn query(&self, py: Python<'_>, sparql: &str, entailment: &str, timeout: Option<f64>, memory_mb: Option<u64>) -> PyResult<PyObject> {
         let (db, e) = (Arc::clone(&self.db), self::entailment(entailment)?);
-        let r = py.allow_threads(|| db.query_with_entailment(sparql, e)).map_err(err)?;
+        let r = limited(py, timeout, memory_mb, |limits| db.query_with_limits(sparql, e, limits))?;
         convert(py, r)
     }
     fn update(&self, py: Python<'_>, sparql: &str) -> PyResult<usize> {
@@ -140,10 +190,10 @@ impl PyDatabase {
         py.allow_threads(|| db.update(sparql)).map_err(err)
     }
     /// SPARQL 1.1 JSON results as a string (fast path: terms written straight from the dictionary).
-    #[pyo3(signature = (sparql, entailment="simple"))]
-    fn query_json(&self, py: Python<'_>, sparql: &str, entailment: &str) -> PyResult<String> {
+    #[pyo3(signature = (sparql, entailment="simple", timeout=None, memory_mb=None))]
+    fn query_json(&self, py: Python<'_>, sparql: &str, entailment: &str, timeout: Option<f64>, memory_mb: Option<u64>) -> PyResult<String> {
         let (db, e) = (Arc::clone(&self.db), self::entailment(entailment)?);
-        py.allow_threads(|| db.query_json_with_entailment(sparql, e)).map_err(err)
+        limited(py, timeout, memory_mb, |limits| db.query_json_with_limits(sparql, e, limits))
     }
     /// Atomically imports an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file; returns triples added.
     fn load(&self, py: Python<'_>, path: std::path::PathBuf) -> PyResult<usize> {
@@ -169,16 +219,16 @@ struct PySnapshot { snap: Arc<ReadSnapshot> }
 
 #[pymethods]
 impl PySnapshot {
-    #[pyo3(signature = (sparql, entailment="simple"))]
-    fn query(&self, py: Python<'_>, sparql: &str, entailment: &str) -> PyResult<PyObject> {
+    #[pyo3(signature = (sparql, entailment="simple", timeout=None, memory_mb=None))]
+    fn query(&self, py: Python<'_>, sparql: &str, entailment: &str, timeout: Option<f64>, memory_mb: Option<u64>) -> PyResult<PyObject> {
         let (s, e) = (Arc::clone(&self.snap), self::entailment(entailment)?);
-        let r = py.allow_threads(|| s.query_with_entailment(sparql, e)).map_err(err)?;
+        let r = limited(py, timeout, memory_mb, |limits| s.query_with_limits(sparql, e, limits))?;
         convert(py, r)
     }
-    #[pyo3(signature = (sparql, entailment="simple"))]
-    fn query_json(&self, py: Python<'_>, sparql: &str, entailment: &str) -> PyResult<String> {
+    #[pyo3(signature = (sparql, entailment="simple", timeout=None, memory_mb=None))]
+    fn query_json(&self, py: Python<'_>, sparql: &str, entailment: &str, timeout: Option<f64>, memory_mb: Option<u64>) -> PyResult<String> {
         let (s, e) = (Arc::clone(&self.snap), self::entailment(entailment)?);
-        py.allow_threads(|| s.query_json_with_entailment(sparql, e)).map_err(err)
+        limited(py, timeout, memory_mb, |limits| s.query_json_with_limits(sparql, e, limits))
     }
 }
 
@@ -220,5 +270,8 @@ fn _triplelight(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("GraphStateError", m.py().get_type::<GraphStateError>())?;
     m.add("StorageError", m.py().get_type::<StorageError>())?;
     m.add("LockedError", m.py().get_type::<LockedError>())?;
+    m.add("QueryCancelled", m.py().get_type::<QueryCancelled>())?;
+    m.add("QueryTimeout", m.py().get_type::<QueryTimeout>())?;
+    m.add("ResourceLimitError", m.py().get_type::<ResourceLimitError>())?;
     Ok(())
 }

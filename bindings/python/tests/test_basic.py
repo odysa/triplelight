@@ -1,4 +1,4 @@
-import tempfile, os
+import _thread, os, tempfile, threading, time
 import pytest
 import triplelight
 
@@ -147,3 +147,42 @@ def test_extension_registry_load_and_autoload():
             assert after[name].loaded == before[name].compiled_in
         with pytest.raises(triplelight.UnsupportedError, match="unknown extension"):
             db.load_extension("missing")
+
+
+def _big(n=2000):
+    db = triplelight.Database.in_memory()
+    db.update("INSERT DATA { " + " ".join(f'<urn:s{i}> <urn:p> "{i}" .' for i in range(n)) + " }")
+    return db
+
+ENDLESS = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f }"
+GROUPED = "SELECT ?a (COUNT(*) AS ?n) { ?a ?p ?b } GROUP BY ?a"
+
+
+def test_query_timeout_and_memory_budget():
+    db = _big()
+    start = time.monotonic()
+    with pytest.raises(triplelight.QueryTimeout):
+        db.query(ENDLESS, timeout=0.05)
+    assert time.monotonic() - start < 10
+    with pytest.raises(triplelight.ResourceLimitError):
+        db.query_json(GROUPED, memory_mb=1)
+    with db.read() as snap:
+        with pytest.raises(triplelight.QueryTimeout):
+            snap.query_json(ENDLESS, timeout=0.05)
+    assert len(db.query(GROUPED, timeout=60, memory_mb=1024)) == 2000
+    assert issubclass(triplelight.QueryTimeout, triplelight.TripleLightError)
+    with pytest.raises(ValueError):
+        db.query(GROUPED, timeout=-1)
+    with pytest.raises(ValueError):
+        db.query(GROUPED, memory_mb=0)
+
+
+def test_keyboard_interrupt_cancels_a_running_query():
+    db = _big()
+    threading.Timer(0.1, _thread.interrupt_main).start()
+    start = time.monotonic()
+    with pytest.raises(KeyboardInterrupt):
+        db.query(ENDLESS)
+    assert time.monotonic() - start < 10
+    # The worker stopped: the database answers at once.
+    assert db.query("ASK { <urn:s1> <urn:p> \"1\" }").boolean

@@ -14,11 +14,12 @@ from dataclasses import dataclass
 from typing import Iterator, Optional
 
 from . import _triplelight
-from ._triplelight import GraphStateError, LockedError, ShapesError, TripleLightError, StorageError, SyntaxError, UnsupportedError
+from ._triplelight import (GraphStateError, LockedError, QueryCancelled, QueryTimeout, ResourceLimitError, ShapesError,
+                           TripleLightError, StorageError, SyntaxError, UnsupportedError)
 
 __all__ = ["Database", "Snapshot", "IRI", "BNode", "Literal", "Triple", "Result", "ExtensionInfo", "ValidationReport", "validate",
            "TripleLightError", "SyntaxError", "UnsupportedError", "StorageError", "LockedError", "GraphStateError",
-           "ShapesError"]
+           "ShapesError", "QueryCancelled", "QueryTimeout", "ResourceLimitError"]
 
 
 
@@ -100,8 +101,13 @@ class Snapshot:
     """An immutable view of the database; unaffected by later updates."""
 
     def __init__(self, raw): self._raw = raw
-    def query(self, sparql: str, entailment: str = "simple") -> Result: return Result(self._raw.query(sparql, entailment))
-    def query_json(self, sparql: str, entailment: str = "simple") -> str: return self._raw.query_json(sparql, entailment)
+    def query(self, sparql: str, entailment: str = "simple", timeout: Optional[float] = None,
+              memory_mb: Optional[int] = None) -> Result:
+        return Result(self._raw.query(sparql, entailment, timeout, memory_mb))
+
+    def query_json(self, sparql: str, entailment: str = "simple", timeout: Optional[float] = None,
+                   memory_mb: Optional[int] = None) -> str:
+        return self._raw.query_json(sparql, entailment, timeout, memory_mb)
     def __enter__(self): return self
     def __exit__(self, *exc): return False
 
@@ -130,17 +136,23 @@ class Database:
         db._db = _triplelight.Database.in_memory()
         return db
 
-    def query(self, sparql: str, entailment: str = "simple") -> Result:
+    def query(self, sparql: str, entailment: str = "simple", timeout: Optional[float] = None,
+              memory_mb: Optional[int] = None) -> Result:
         """Run a SPARQL SELECT / ASK / CONSTRUCT query on the current state.
 
         `entailment="rdfs"` matches the default graph's RDFS closure (subclasses, subproperties, domain and range),
         computed at query time; nothing inferred is stored. The default, "simple", matches the stored triples.
+        `timeout` (seconds) raises `QueryTimeout`; `memory_mb` bounds the query's working memory and raises
+        `ResourceLimitError` past it. Ctrl-C (KeyboardInterrupt) cancels a running query. None of these leaves a
+        partial result, and the database serves the next query as usual.
         """
-        return Result(self._db.query(sparql, entailment))
+        return Result(self._db.query(sparql, entailment, timeout, memory_mb))
 
-    def query_json(self, sparql: str, entailment: str = "simple") -> str:
-        """SPARQL 1.1 Query Results JSON as a string for SELECT and ASK; no Python row objects are created."""
-        return self._db.query_json(sparql, entailment)
+    def query_json(self, sparql: str, entailment: str = "simple", timeout: Optional[float] = None,
+                   memory_mb: Optional[int] = None) -> str:
+        """SPARQL 1.1 Query Results JSON as a string for SELECT and ASK; no Python row objects are created.
+        `timeout` and `memory_mb` as for `query`."""
+        return self._db.query_json(sparql, entailment, timeout, memory_mb)
 
     def load(self, path) -> int:
         """Atomically import an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file. For N-Triples and Turtle, an empty in-memory store builds its indexes as it parses, then sorts them before publishing; N-Quads and TriG take the dataset-change path."""
