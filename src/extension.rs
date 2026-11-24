@@ -6,6 +6,7 @@ pub use triplelight_core::storage::EntailmentProvider;
 
 /// An extension could not be registered or used.
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ExtensionError {
     Unsupported(String),
     InvalidRegistration(String),
@@ -152,11 +153,11 @@ impl ExtensionRegistry {
         }
         #[cfg(feature = "rdfs")]
         if name == "rdfs" {
-            return self.publish(&RdfsExtension);
+            return self.publish(&RdfsExtension, true);
         }
         #[cfg(feature = "shacl")]
         if name == "shacl" {
-            return self.publish(&ShaclExtension);
+            return self.publish(&ShaclExtension, true);
         }
         let message = if is_official(name) {
             format!("extension {name:?} requires the {name} Cargo feature")
@@ -173,18 +174,27 @@ impl ExtensionRegistry {
                 extension.name()
             )));
         }
-        self.publish(extension)
+        self.publish(extension, false)
     }
 
-    fn publish(&self, extension: &dyn Extension) -> Result<(), ExtensionError> {
+    fn publish(&self, extension: &dyn Extension, idempotent: bool) -> Result<(), ExtensionError> {
         let name = extension.name();
         if name.is_empty() {
             return Err(ExtensionError::InvalidRegistration(
                 "extension name is empty".into(),
             ));
         }
+        let duplicate = || {
+            if idempotent {
+                Ok(())
+            } else {
+                Err(ExtensionError::InvalidRegistration(format!(
+                    "extension {name:?} is already registered"
+                )))
+            }
+        };
         if self.0.read().unwrap().0.contains_key(name) {
-            return Ok(());
+            return duplicate();
         }
         let mut stage = Registrar::default();
         extension.register(&mut stage)?;
@@ -193,10 +203,11 @@ impl ExtensionRegistry {
                 "extension {name:?} declared no capabilities"
             )));
         }
-        Arc::make_mut(&mut self.0.write().unwrap())
-            .0
-            .entry(name.into())
-            .or_insert(stage);
+        let mut registry = self.0.write().unwrap();
+        if registry.0.contains_key(name) {
+            return duplicate();
+        }
+        Arc::make_mut(&mut registry).0.insert(name.into(), stage);
         Ok(())
     }
 }

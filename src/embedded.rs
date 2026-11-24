@@ -237,7 +237,7 @@ impl Database {
     }
     /// `query_json` under explicit limits (see `ReadSnapshot::query_with_limits`).
     pub fn query_json_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<String, DatabaseError> {
-        self.read().query_json_with_limits(sparql, entailment, limits)
+        self.read_for(entailment)?.query_json_with_limits(sparql, entailment, limits)
     }
 
     /// Loads a linked official extension for this database. Loading the same extension again succeeds.
@@ -257,10 +257,15 @@ impl Database {
 
     /// Runs a query under a registered named entailment provider.
     pub fn query_with_extension(&self, sparql: &str, name: &str) -> Result<QueryResult, DatabaseError> {
+        self.query_with_extension_and_limits(sparql, name, exec::QueryLimits::default())
+    }
+
+    /// Runs a query under a named entailment provider with explicit limits.
+    pub fn query_with_extension_and_limits(&self, sparql: &str, name: &str, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
         if name == "rdfs" {
-            return self.query_with_entailment(sparql, exec::Entailment::Rdfs);
+            return self.query_with_limits(sparql, exec::Entailment::Rdfs, limits);
         }
-        self.read().query_with_extension(sparql, name)
+        self.read().query_with_extension_and_limits(sparql, name, limits)
     }
 
     /// Validates two RDF graphs with the named validator. The official SHACL provider loads on use.
@@ -483,10 +488,8 @@ impl ReadSnapshot {
     fn run_with(&self, sparql: &str, raw_ids: bool, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
         let stats = self.applicable_stats();
         let opts = exec::Options { stats: stats.as_deref(), raw_ids, entailment, interrupt: limits.interrupt, memory_budget: limits.memory, ..Default::default() };
-        if entailment == exec::Entailment::Rdfs
-            && let Some(provider) = self.extensions.entailment("rdfs")
-        {
-            return Ok(exec::query_dataset_with_provider(&*self.snapshot, &*self.snapshot, sparql, &opts, provider)?);
+        if entailment == exec::Entailment::Rdfs {
+            return Ok(exec::query_dataset_with_provider(&*self.snapshot, &*self.snapshot, sparql, &opts, self.entailment_provider("rdfs")?)?);
         }
         Ok(exec::query_dataset_with(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
     }
@@ -498,17 +501,29 @@ impl ReadSnapshot {
 
     /// Runs a query under a named entailment provider captured by this read view.
     pub fn query_with_extension(&self, sparql: &str, name: &str) -> Result<QueryResult, DatabaseError> {
-        let provider = self.extensions.entailment(name).ok_or_else(|| {
-            DatabaseError::Unsupported(format!("extension {name:?} has no loaded entailment provider"))
-        })?;
+        self.query_with_extension_and_limits(sparql, name, exec::QueryLimits::default())
+    }
+
+    /// Runs a query with a provider captured by this read view and explicit limits.
+    pub fn query_with_extension_and_limits(&self, sparql: &str, name: &str, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
+        let provider = self.entailment_provider(name)?;
         let stats = self.applicable_stats();
-        let opts = exec::Options { stats: stats.as_deref(), ..Default::default() };
+        let opts = exec::Options { stats: stats.as_deref(), interrupt: limits.interrupt, memory_budget: limits.memory, ..Default::default() };
         Ok(exec::query_dataset_with_provider(&*self.snapshot, &*self.snapshot, sparql, &opts, provider)?)
+    }
+
+    fn entailment_provider(&self, name: &str) -> Result<&dyn crate::extension::EntailmentProvider, DatabaseError> {
+        self.extensions.entailment(name).ok_or_else(|| {
+            DatabaseError::Unsupported(format!("extension {name:?} has no loaded entailment provider in this read snapshot"))
+        })
     }
     /// Executes a SPARQL query on this pinned snapshot and returns its observed basic graph pattern plan.
     pub fn explain(&self, sparql: &str, entailment: exec::Entailment) -> Result<String, DatabaseError> {
         let stats = self.applicable_stats();
         let opts = exec::Options { stats: stats.as_deref(), entailment, ..Default::default() };
+        if entailment == exec::Entailment::Rdfs {
+            return Ok(exec::plan_trace::explain_dataset_with_provider(&*self.snapshot, &*self.snapshot, sparql, &opts, self.entailment_provider("rdfs")?)?);
+        }
         Ok(exec::plan_trace::explain_dataset(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
     }
     fn applicable_stats(&self) -> Option<Arc<Stats>> {
@@ -592,6 +607,7 @@ mod memory_tests {
         db.update("INSERT DATA { <urn:ann> a <urn:Student> . <urn:Student> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <urn:Person> }").unwrap();
         let persons = |r: QueryResult| match r { QueryResult::Solutions { rows, .. } => rows.len(), _ => unreachable!() };
         let q = "SELECT ?x { ?x a <urn:Person> }";
+        db.load_extension("rdfs").unwrap();
         let before = db.read();
         assert_eq!(persons(db.query(q).unwrap()), 0, "plain query keeps simple entailment");
         assert_eq!(persons(db.query_with_entailment(q, exec::Entailment::Rdfs).unwrap()), 1);
