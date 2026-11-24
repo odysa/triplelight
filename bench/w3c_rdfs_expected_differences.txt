@@ -1,0 +1,8 @@
+# W3C SPARQL 1.1 entailment cases (rdf-tests 56076c0e) that TripleLight's RDFS rule set cannot pass by design: the view
+# applies rdfs2, 3, 5, 7, 9 and 11 with no axiomatic triples, so a class or property is not its own subclass or
+# subproperty (rdfs6 and rdfs10 need every class to be typed rdfs:Class, an axiom). One case per line: id, reason.
+rdfs05 reflexive subClassOf (rdfs10): expects ?c = :d from :d rdfs:subClassOf :d
+rdfs11 reflexive subPropertyOf (rdfs6): expects ?x = ex:p from ex:p rdfs:subPropertyOf ex:p
+sparqldl-02 reflexive subClassOf (rdfs10): expects ?c = :c from :c rdfs:subClassOf :c
+sparqldl-03 reflexive subClassOf (rdfs10): expects ?c = :c from :c rdfs:subClassOf :c
+paper-sparqldl-Q1-rdfs reflexive subClassOf (rdfs10): expects ex:Student among its own subclasses
