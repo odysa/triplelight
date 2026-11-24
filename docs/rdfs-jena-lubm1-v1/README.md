@@ -8,6 +8,10 @@ ontology plus University0 of the UBA 1.7 data (seed 0): 103,410 triples, closed 
 
 All 14 queries give the same answers (`check.txt`).
 
+`infer` is riot's streaming RDFS, not Jena's rule-based `RDFSRuleReasoner`. I checked the closure directly: it has no
+`rdfs:Resource`, no `rdf:type rdfs:Class`, no `rdfs:Literal` or container-membership triples, and no type triples with
+a literal subject. So the agreement holds rule for rule, and doesn't depend on LUBM's queries missing those triples.
+
 Six queries are empty under RDFS, and the same on both sides, because what they need is OWL:
 - **Q6, Q8 and Q10** count `Student`. In univ-bench a graduate student is a `Student` only through an OWL class
   intersection, so RDFS finds the undergraduates alone (Q10 asks about a graduate course).
