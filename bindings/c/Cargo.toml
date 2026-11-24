@@ -19,6 +19,9 @@ arrow-schema = { version = "60.1", default-features = false }
 [workspace]
 
 [features]
+default = ["rdfs", "shacl"]
+rdfs = ["triplelight/rdfs"]
+shacl = ["triplelight/shacl"]
 # Benchmark instrumentation, off by default.
 benchmark-rayon-witness = ["dep:rayon"]
 # RDF 1.2 terms (triple terms, base direction) in results, forwarded to the engine. Off by default.

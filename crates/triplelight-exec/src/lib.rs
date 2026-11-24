@@ -25,7 +25,7 @@ mod join;
 mod limits;
 use join::join_rows;
 mod views;
-use views::{dataset, entail};
+use views::{dataset, Views};
 mod path;
 mod pattern;
 mod range;
@@ -179,7 +179,7 @@ pub enum Entailment {
     Simple,
     /// RDFS: subclass and subproperty transitivity, type and property propagation, domain and range (the rule set of
     /// Jena's RDFS reasoner at level `simple`, `entail.rs`). Each graph of the dataset is entailed on its own triples:
-    /// the default graph (a FROM merge: the merge), and each named graph under GRAPH.
+    /// the default graph (a FROM merge: the merge), and each named graph under GRAPH. Requires the `rdfs` feature.
     Rdfs,
 }
 
@@ -228,6 +228,9 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
     if let Some(reason) = support::unsupported(q, dataset.is_some()) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
     let rdfs = opts.entailment == Entailment::Rdfs;
+    if rdfs && !cfg!(feature = "rdfs") {
+        return Err(QueryError::new(QueryErrorKind::Unsupported, "RDFS entailment requires the rdfs Cargo feature"));
+    }
     let spec = match q { Query::Select { dataset, .. } | Query::Ask { dataset, .. } | Query::Construct { dataset, .. } | Query::Describe { dataset, .. } => dataset };
     // Graph views for the active dataset; they outlive `ctx`, which borrows them.
     let (from, named) = match dataset { Some(ds) => dataset::resolve(snap, ds, spec.as_ref())?, None => (Vec::new(), Vec::new()) };
@@ -245,7 +248,7 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     };
     // RDFS: the active default graph (the store's, or the FROM merge) and every named graph each get the closure of
     // their own triples (`entail.rs`).
-    let views = entail::Views::new(rdfs, snap as &dyn Snapshot, default, dataset, &named).unwrap_or_else(|e| storage_failure(e));
+    let views = Views::new(rdfs, snap as &dyn Snapshot, default, dataset, &named).unwrap_or_else(|e| storage_failure(e));
     let mut ctx = Ctx::for_query(snap, dataset, &views, named, q, opts, path::CsrLimits::default());
     match q {
         Query::Select { pattern, .. } => run_select(&mut ctx, snap, pattern, opts),
@@ -444,7 +447,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn for_query(
         snap: &'a S,
         dataset: Option<&'a dyn DatasetView>,
-        views: &'a entail::Views<'a>,
+        views: &'a Views<'a>,
         named: Vec<TermId>,
         query: &Query,
         opts: &Options<'a>,

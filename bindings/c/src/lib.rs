@@ -366,26 +366,34 @@ pub const TL_FORMAT_NTRIPLES: i32 = 1;
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tl_validate(data: *const c_char, data_len: usize, data_format: i32, shapes: *const c_char, shapes_len: usize, shapes_format: i32,
                                      conforms: *mut i32, report: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
-    use triplelight::rdf::Format;
-    use triplelight::shacl::{DocumentError, ValidationError};
-    unsafe { guard(err, || {
-        if conforms.is_null() || report.is_null() { return Err(invalid("null output pointer")) }
-        let format = |f| match f { TL_FORMAT_TURTLE => Ok(Format::Turtle), TL_FORMAT_NTRIPLES => Ok(Format::NTriples), _ => Err(invalid("unknown format")) };
-        let (df, sf) = (format(data_format)?, format(shapes_format)?);
-        let (d, s) = (text(data, data_len)?, text(shapes, shapes_len)?);
-        let r = triplelight::shacl::validate_documents(d.as_bytes(), df, s.as_bytes(), sf).map_err(|e| {
-            let kind = match &e {
-                DocumentError::Syntax { .. } => TL_ERR_SYNTAX,
-                DocumentError::Validation(ValidationError::Unsupported(_)) => TL_ERR_UNSUPPORTED,
-                DocumentError::Validation(_) => TL_ERR_SHAPES,
-            };
-            TlError { kind, message: e.to_string() }
-        })?;
-        let graph = build(QueryResult::Graph(r.to_triples()))?;
-        out!(conforms, i32::from(r.conforms));
-        out!(report, Box::into_raw(graph));
-        Ok(())
-    }) }
+    #[cfg(not(feature = "shacl"))]
+    {
+        let _ = (data, data_len, data_format, shapes, shapes_len, shapes_format, conforms, report);
+        unsafe { guard(err, || Err(TlError { kind: TL_ERR_UNSUPPORTED, message: "SHACL validation requires the shacl Cargo feature".into() })) }
+    }
+    #[cfg(feature = "shacl")]
+    {
+        use triplelight::rdf::Format;
+        use triplelight::shacl::{DocumentError, ValidationError};
+        unsafe { guard(err, || {
+            if conforms.is_null() || report.is_null() { return Err(invalid("null output pointer")) }
+            let format = |f| match f { TL_FORMAT_TURTLE => Ok(Format::Turtle), TL_FORMAT_NTRIPLES => Ok(Format::NTriples), _ => Err(invalid("unknown format")) };
+            let (df, sf) = (format(data_format)?, format(shapes_format)?);
+            let (d, s) = (text(data, data_len)?, text(shapes, shapes_len)?);
+            let r = triplelight::shacl::validate_documents(d.as_bytes(), df, s.as_bytes(), sf).map_err(|e| {
+                let kind = match &e {
+                    DocumentError::Syntax { .. } => TL_ERR_SYNTAX,
+                    DocumentError::Validation(ValidationError::Unsupported(_)) => TL_ERR_UNSUPPORTED,
+                    DocumentError::Validation(_) => TL_ERR_SHAPES,
+                };
+                TlError { kind, message: e.to_string() }
+            })?;
+            let graph = build(QueryResult::Graph(r.to_triples()))?;
+            out!(conforms, i32::from(r.conforms));
+            out!(report, Box::into_raw(graph));
+            Ok(())
+        }) }
+    }
 }
 
 /// Runs a SELECT query and returns its solutions as an Arrow C Stream written into caller-allocated `*out`

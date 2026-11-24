@@ -1,5 +1,7 @@
 # SHACL Core validation
 
+Build the Rust library or CLI with the `shacl` Cargo feature to enable validation. The binding builds enable it by default.
+
 TripleLight validates an RDF graph against a SHACL Core shapes graph ([SHACL, W3C Recommendation 2017-07-20](https://www.w3.org/TR/2017/REC-shacl-20170720/)).
 Both graphs are given as triples; the module (`src/shacl/`) uses only the platform-independent RDF types of `triplelight::rdf`. The Rust function below takes
 triples; `validate_documents` takes the two graphs as N-Triples or Turtle text, and is what the CLI and the bindings call. A data graph that violates the shapes
@@ -69,7 +71,7 @@ receives a `CheckNode` trait object with two calls, `conforms(shape, focus)` for
 ignored by default; point `TL_SHACL_TESTS` at that directory of a checkout of revision `eacdef4528d66ee116f0ac9118d968c5717c7233` and run
 
 ```
-TL_SHACL_TESTS=/path/to/data-shapes-test-suite/tests/core cargo test --test shacl -- --ignored --nocapture
+TL_SHACL_TESTS=/path/to/data-shapes-test-suite/tests/core cargo test --features shacl --test shacl -- --ignored --nocapture
 ```
 
 Each expected result is compared by focus node, value, result path, severity, source constraint component and source shape (as a multiset),

@@ -22,3 +22,8 @@ lto = true
 
 # Built on its own (own toolchain and lockfile), not as a member of the root workspace.
 [workspace]
+
+[features]
+default = ["rdfs", "shacl"]
+rdfs = ["triplelight/rdfs"]
+shacl = ["triplelight/shacl"]
