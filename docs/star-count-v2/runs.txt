@@ -1,0 +1,154 @@
+pre all_C3 13.20 047b60fd3c2a
+pre distinct_C3 41.24 8ed47ae59785
+pre all_L3 0.37 5c8529270f61
+pre distinct_L3 0.32 410e03ff30a7
+pre all_L4 0.41 dcfe8cf81814
+pre distinct_L4 0.43 dcfe8cf81814
+pre all_S1 0.31 7163e31850ef
+pre distinct_S1 0.23 7163e31850ef
+pre all_S2 0.34 406ea666cdb6
+pre distinct_S2 0.33 406ea666cdb6
+pre all_S3 0.52 7163e31850ef
+pre distinct_S3 0.50 7163e31850ef
+pre all_S4 0.65 fbe36ddccce9
+pre distinct_S4 0.68 fbe36ddccce9
+pre all_S5 0.53 7163e31850ef
+pre distinct_S5 0.53 7163e31850ef
+pre all_S6 0.37 be9d31473f9d
+pre distinct_S6 0.37 be9d31473f9d
+pre all_S7 0.16 7163e31850ef
+pre distinct_S7 0.16 7163e31850ef
+pre all_F5 0.25 999c4eab5ad3
+pre all_L2 1.09 a392213fe392
+cur all_C3 14.95 047b60fd3c2a
+cur distinct_C3 14.93 8ed47ae59785
+cur all_L3 0.37 5c8529270f61
+cur distinct_L3 0.31 410e03ff30a7
+cur all_L4 0.37 dcfe8cf81814
+cur distinct_L4 0.29 dcfe8cf81814
+cur all_S1 0.29 7163e31850ef
+cur distinct_S1 0.29 7163e31850ef
+cur all_S2 0.38 406ea666cdb6
+cur distinct_S2 0.39 406ea666cdb6
+cur all_S3 0.48 7163e31850ef
+cur distinct_S3 0.58 7163e31850ef
+cur all_S4 0.52 fbe36ddccce9
+cur distinct_S4 0.49 fbe36ddccce9
+cur all_S5 0.37 7163e31850ef
+cur distinct_S5 0.28 7163e31850ef
+cur all_S6 0.27 be9d31473f9d
+cur distinct_S6 0.27 be9d31473f9d
+cur all_S7 0.15 7163e31850ef
+cur distinct_S7 0.16 7163e31850ef
+cur all_F5 0.25 999c4eab5ad3
+cur all_L2 1.08 a392213fe392
+cand all_C3 7.82 047b60fd3c2a
+cand distinct_C3 7.80 8ed47ae59785
+cand all_L3 0.26 5c8529270f61
+cand distinct_L3 0.31 410e03ff30a7
+cand all_L4 0.45 dcfe8cf81814
+cand distinct_L4 0.45 dcfe8cf81814
+cand all_S1 0.31 7163e31850ef
+cand distinct_S1 0.31 7163e31850ef
+cand all_S2 0.37 406ea666cdb6
+cand distinct_S2 0.28 406ea666cdb6
+cand all_S3 0.32 7163e31850ef
+cand distinct_S3 0.42 7163e31850ef
+cand all_S4 0.42 fbe36ddccce9
+cand distinct_S4 0.42 fbe36ddccce9
+cand all_S5 0.31 7163e31850ef
+cand distinct_S5 0.21 7163e31850ef
+cand all_S6 0.22 be9d31473f9d
+cand distinct_S6 0.22 be9d31473f9d
+cand all_S7 0.16 7163e31850ef
+cand distinct_S7 0.16 7163e31850ef
+cand all_F5 0.26 999c4eab5ad3
+cand all_L2 1.09 a392213fe392
+cand all_C3 7.81 047b60fd3c2a
+cand distinct_C3 7.88 8ed47ae59785
+cand all_L3 0.34 5c8529270f61
+cand distinct_L3 0.36 410e03ff30a7
+cand all_L4 0.50 dcfe8cf81814
+cand distinct_L4 0.49 dcfe8cf81814
+cand all_S1 0.35 7163e31850ef
+cand distinct_S1 0.22 7163e31850ef
+cand all_S2 0.29 406ea666cdb6
+cand distinct_S2 0.29 406ea666cdb6
+cand all_S3 0.33 7163e31850ef
+cand distinct_S3 0.47 7163e31850ef
+cand all_S4 0.47 fbe36ddccce9
+cand distinct_S4 0.43 fbe36ddccce9
+cand all_S5 0.31 7163e31850ef
+cand distinct_S5 0.21 7163e31850ef
+cand all_S6 0.22 be9d31473f9d
+cand distinct_S6 0.22 be9d31473f9d
+cand all_S7 0.16 7163e31850ef
+cand distinct_S7 0.16 7163e31850ef
+cand all_F5 0.27 999c4eab5ad3
+cand all_L2 1.08 a392213fe392
+cur all_C3 14.77 047b60fd3c2a
+cur distinct_C3 14.76 8ed47ae59785
+cur all_L3 0.34 5c8529270f61
+cur distinct_L3 0.33 410e03ff30a7
+cur all_L4 0.38 dcfe8cf81814
+cur distinct_L4 0.37 dcfe8cf81814
+cur all_S1 0.39 7163e31850ef
+cur distinct_S1 0.39 7163e31850ef
+cur all_S2 0.49 406ea666cdb6
+cur distinct_S2 0.49 406ea666cdb6
+cur all_S3 0.59 7163e31850ef
+cur distinct_S3 0.59 7163e31850ef
+cur all_S4 0.50 fbe36ddccce9
+cur distinct_S4 0.50 fbe36ddccce9
+cur all_S5 0.38 7163e31850ef
+cur distinct_S5 0.37 7163e31850ef
+cur all_S6 0.38 be9d31473f9d
+cur distinct_S6 0.28 be9d31473f9d
+cur all_S7 0.16 7163e31850ef
+cur distinct_S7 0.16 7163e31850ef
+cur all_F5 0.26 999c4eab5ad3
+cur all_L2 1.09 a392213fe392
+pre all_C3 13.32 047b60fd3c2a
+pre distinct_C3 40.87 8ed47ae59785
+pre all_L3 0.38 5c8529270f61
+pre distinct_L3 0.30 410e03ff30a7
+pre all_L4 0.42 dcfe8cf81814
+pre distinct_L4 0.44 dcfe8cf81814
+pre all_S1 0.31 7163e31850ef
+pre distinct_S1 0.31 7163e31850ef
+pre all_S2 0.37 406ea666cdb6
+pre distinct_S2 0.43 406ea666cdb6
+pre all_S3 0.61 7163e31850ef
+pre distinct_S3 0.61 7163e31850ef
+pre all_S4 0.64 fbe36ddccce9
+pre distinct_S4 0.72 fbe36ddccce9
+pre all_S5 0.54 7163e31850ef
+pre distinct_S5 0.53 7163e31850ef
+pre all_S6 0.39 be9d31473f9d
+pre distinct_S6 0.38 be9d31473f9d
+pre all_S7 0.26 7163e31850ef
+pre distinct_S7 0.25 7163e31850ef
+pre all_F5 0.26 999c4eab5ad3
+pre all_L2 1.17 a392213fe392
+SUMMARY all_C3       pre    13.27 ms  cur    14.84 ms  cand     7.81 ms  cur/pre 1.118  cand/pre 0.589  same
+SUMMARY distinct_C3  pre    41.07 ms  cur    14.81 ms  cand     7.87 ms  cur/pre 0.361  cand/pre 0.192  same
+SUMMARY all_L3       pre     0.37 ms  cur     0.36 ms  cand     0.30 ms  cur/pre 0.961  cand/pre 0.794  same
+SUMMARY distinct_L3  pre     0.31 ms  cur     0.32 ms  cand     0.33 ms  cur/pre 1.028  cand/pre 1.058  same
+SUMMARY all_L4       pre     0.41 ms  cur     0.37 ms  cand     0.47 ms  cur/pre 0.904  cand/pre 1.147  same
+SUMMARY distinct_L4  pre     0.44 ms  cur     0.36 ms  cand     0.46 ms  cur/pre 0.833  cand/pre 1.046  same
+SUMMARY all_S1       pre     0.31 ms  cur     0.36 ms  cand     0.34 ms  cur/pre 1.150  cand/pre 1.100  same
+SUMMARY distinct_S1  pre     0.24 ms  cur     0.35 ms  cand     0.30 ms  cur/pre 1.435  cand/pre 1.230  same
+SUMMARY all_S2       pre     0.35 ms  cur     0.45 ms  cand     0.30 ms  cur/pre 1.287  cand/pre 0.851  same
+SUMMARY distinct_S2  pre     0.40 ms  cur     0.44 ms  cand     0.29 ms  cur/pre 1.115  cand/pre 0.722  same
+SUMMARY all_S3       pre     0.59 ms  cur     0.54 ms  cand     0.33 ms  cur/pre 0.914  cand/pre 0.560  same
+SUMMARY distinct_S3  pre     0.59 ms  cur     0.59 ms  cand     0.46 ms  cur/pre 0.986  cand/pre 0.769  same
+SUMMARY all_S4       pre     0.65 ms  cur     0.51 ms  cand     0.47 ms  cur/pre 0.789  cand/pre 0.720  same
+SUMMARY distinct_S4  pre     0.69 ms  cur     0.50 ms  cand     0.42 ms  cur/pre 0.714  cand/pre 0.611  same
+SUMMARY all_S5       pre     0.54 ms  cur     0.37 ms  cand     0.31 ms  cur/pre 0.695  cand/pre 0.577  same
+SUMMARY distinct_S5  pre     0.53 ms  cur     0.37 ms  cand     0.21 ms  cur/pre 0.686  cand/pre 0.391  same
+SUMMARY all_S6       pre     0.38 ms  cur     0.31 ms  cand     0.22 ms  cur/pre 0.809  cand/pre 0.575  same
+SUMMARY distinct_S6  pre     0.38 ms  cur     0.27 ms  cand     0.22 ms  cur/pre 0.722  cand/pre 0.571  same
+SUMMARY all_S7       pre     0.22 ms  cur     0.16 ms  cand     0.16 ms  cur/pre 0.734  cand/pre 0.744  same
+SUMMARY distinct_S7  pre     0.17 ms  cur     0.16 ms  cand     0.16 ms  cur/pre 0.939  cand/pre 0.937  same
+SUMMARY all_F5       pre     0.26 ms  cur     0.26 ms  cand     0.26 ms  cur/pre 0.994  cand/pre 1.026  same
+SUMMARY all_L2       pre     1.11 ms  cur     1.09 ms  cand     1.09 ms  cur/pre 0.975  cand/pre 0.977  same
