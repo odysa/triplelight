@@ -513,9 +513,17 @@ impl ReadSnapshot {
     }
 
     fn entailment_provider(&self, name: &str) -> Result<&dyn crate::extension::EntailmentProvider, DatabaseError> {
-        self.extensions.entailment(name).ok_or_else(|| {
-            DatabaseError::Unsupported(format!("extension {name:?} has no loaded entailment provider in this read snapshot"))
-        })
+        if let Some(provider) = self.extensions.entailment(name) {
+            return Ok(provider);
+        }
+        // Linked official providers are stateless and available independently of database registration.
+        if name == "rdfs" {
+            #[cfg(feature = "rdfs")]
+            return Ok(&triplelight_rdfs::Rdfs);
+            #[cfg(not(feature = "rdfs"))]
+            return Err(DatabaseError::Unsupported("RDFS entailment requires the rdfs Cargo feature".into()));
+        }
+        Err(DatabaseError::Unsupported(format!("extension {name:?} has no loaded entailment provider in this read snapshot")))
     }
     /// Executes a SPARQL query on this pinned snapshot and returns its observed basic graph pattern plan.
     pub fn explain(&self, sparql: &str, entailment: exec::Entailment) -> Result<String, DatabaseError> {

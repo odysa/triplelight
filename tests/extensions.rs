@@ -37,6 +37,12 @@ fn rdfs_autoload_is_local_to_the_database_and_preserves_existing_snapshots() {
     let old = db.read();
     let ask = "ASK { <urn:s> a <urn:Class> }";
     assert!(matches!(db.query(ask), Ok(QueryResult::Boolean(false))));
+    assert!(matches!(
+        old.query_with_entailment(ask, Entailment::Rdfs),
+        Ok(QueryResult::Boolean(true))
+    ));
+    assert!(old.explain(ask, Entailment::Rdfs).is_ok());
+    assert!(!db.list_extensions().iter().any(|entry| entry.loaded));
     let json = db
         .query_json_with_limits(ask, Entailment::Rdfs, QueryLimits::default())
         .unwrap();
@@ -56,12 +62,8 @@ fn rdfs_autoload_is_local_to_the_database_and_preserves_existing_snapshots() {
     assert!(!old.list_extensions().iter().any(|entry| entry.loaded));
     assert!(!other.list_extensions().iter().any(|entry| entry.loaded));
     assert!(matches!(
-        old.query_with_entailment(ask, Entailment::Rdfs),
-        Err(DatabaseError::Unsupported(_))
-    ));
-    assert!(matches!(
-        old.explain(ask, Entailment::Rdfs),
-        Err(DatabaseError::Unsupported(_))
+        old.query_with_extension(ask, "rdfs"),
+        Ok(QueryResult::Boolean(true))
     ));
     assert!(matches!(
         db.read().query_with_extension(ask, "rdfs"),
