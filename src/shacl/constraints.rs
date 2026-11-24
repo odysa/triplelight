@@ -762,6 +762,21 @@ impl Constraint {
     }
 }
 
+impl Constraint {
+    /// The shapes this constraint refers to (`sh:node`, `sh:property`, `sh:not`, `sh:and`, `sh:or`, `sh:xone`, `sh:qualifiedValueShape` and
+    /// its disjoint siblings). The shapes graph walks these edges to refuse recursive shape references before validating.
+    pub fn referenced_shapes(&self) -> Vec<&Term> {
+        match self {
+            Self::Not(shape) | Self::Node(shape) | Self::Property(shape) => vec![shape],
+            Self::And(shapes) | Self::Or(shapes) | Self::Xone(shapes) => shapes.iter().collect(),
+            Self::Qualified {
+                shape, siblings, ..
+            } => std::iter::once(shape).chain(siblings).collect(),
+            _ => Vec::new(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::xpath_pattern;

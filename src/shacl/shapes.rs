@@ -53,10 +53,49 @@ impl ShapesGraph {
             }
         }
         candidates.sort_by_key(|t| t.to_string());
-        Ok(ShapesGraph { graph, cache: RefCell::new(HashMap::new()), declared: candidates })
+        let shapes = ShapesGraph { graph, cache: RefCell::new(HashMap::new()), declared: candidates };
+        shapes.refuse_recursion()?;
+        Ok(shapes)
     }
 
     pub fn graph(&self) -> &Graph { &self.graph }
+
+    /// SHACL leaves a shape that (through `sh:node`, `sh:property`, `sh:not`, `sh:and`, `sh:or`, `sh:xone` or `sh:qualifiedValueShape`) refers
+    /// back to itself undefined, so it is refused here, before validation: otherwise the answer and the cost would depend on the data (a
+    /// long chain overflows the stack, a ladder of two references per level takes exponential time). Walks every shape reachable from the
+    /// shapes validation starts from, iteratively, so a long reference chain cannot overflow the stack either.
+    fn refuse_recursion(&self) -> Result<(), ValidationError> {
+        #[derive(PartialEq)]
+        enum Mark { Active, Done }
+        let mut marks: HashMap<Term, Mark> = HashMap::new();
+        for root in &self.declared {
+            if marks.contains_key(root) { continue }
+            // each frame: the shape and the references of it not yet visited
+            let mut stack: Vec<(Term, std::vec::IntoIter<Term>)> = Vec::new();
+            let refs = |id: &Term| -> Result<std::vec::IntoIter<Term>, ValidationError> {
+                let shape = self.shape(id)?;
+                let all: Vec<Term> = shape.constraints.iter().flat_map(|c| c.referenced_shapes().into_iter().cloned()).collect();
+                Ok(all.into_iter())
+            };
+            marks.insert(root.clone(), Mark::Active);
+            stack.push((root.clone(), refs(root)?));
+            while let Some((id, it)) = stack.last_mut() {
+                match it.next() {
+                    Some(next) => match marks.get(&next) {
+                        Some(Mark::Active) => return Err(ValidationError::UndefinedRecursion(format!("{id} reaches {next}, which is already being evaluated"))),
+                        Some(Mark::Done) => {}
+                        None => {
+                            marks.insert(next.clone(), Mark::Active);
+                            let nested = refs(&next)?;
+                            stack.push((next, nested));
+                        }
+                    },
+                    None => { marks.insert(id.clone(), Mark::Done); stack.pop(); }
+                }
+            }
+        }
+        Ok(())
+    }
 
     /// The work validation starts from, one shape at a time and in a fixed order: each shape that has targets with its focus nodes in
     /// `data`. It is lazy, so only one shape's focus nodes are held at once, and a malformed shape surfaces when its turn comes.
