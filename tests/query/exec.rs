@@ -1157,3 +1157,26 @@ fn memory_budget_stops_queries_that_do_not_fit_and_releases_everything() {
     drop(r);
     assert_eq!(b.used(), 0);
 }
+
+
+#[test]
+fn count_one_key_charges_its_group_table() {
+    use triplelight::exec::{query_with, MemoryBudget, Options, QueryErrorKind};
+
+    let values = (0..4096).map(|index| index.to_string()).collect::<Vec<_>>().join(" ");
+    let q = format!(
+        "SELECT ?key (COUNT(*) AS ?n) WHERE {{ VALUES ?key {{ {values} }} }} GROUP BY ?key"
+    );
+    let snapshot = store();
+    let limited = MemoryBudget::new(4096 * 96);
+    let opts = Options { memory_budget: Some(&limited), ..Default::default() };
+    assert_eq!(query_with(&snapshot, &q, &opts).unwrap_err().kind, QueryErrorKind::ResourceLimit);
+    assert_eq!(limited.used(), 0);
+
+    let roomy = MemoryBudget::new(1 << 20);
+    let opts = Options { memory_budget: Some(&roomy), ..Default::default() };
+    let with = query_with(&snapshot, &q, &opts).unwrap();
+    let without = query(&snapshot, &q).unwrap();
+    assert_eq!(format!("{with:?}"), format!("{without:?}"));
+    assert_eq!(roomy.used(), 0);
+}

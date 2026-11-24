@@ -86,15 +86,22 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     fn count_one_key(&self, rows: &[Row], key_col: usize, value_col: Option<usize>, out_col: usize) -> Vec<Row> {
         let mut positions = HashMap::new();
         let mut groups: Vec<(TermId, i64)> = Vec::new();
+        let bytes_per_group = 64 + 8 + 32;
+        let mut held = self.reserve(0);
         for (i, row) in rows.iter().enumerate() {
             if i.is_multiple_of(4096) { self.check() }
             let key = row[key_col];
             let index = *positions.entry(key).or_insert_with(|| {
                 groups.push((key, 0));
+                // Use the same per-group budget as one key and one generic aggregate.
+                if groups.len().is_multiple_of(4096) {
+                    Self::resize(&mut held, groups.len() as u64 * bytes_per_group);
+                }
                 groups.len() - 1
             });
             groups[index].1 += i64::from(value_col.is_none_or(|col| row[col] != UNBOUND));
         }
+        Self::resize(&mut held, groups.len() as u64 * bytes_per_group);
         groups.into_iter().map(|(key, count)| {
             let mut out = self.empty_row();
             out[key_col] = key;
