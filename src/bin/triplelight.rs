@@ -145,6 +145,18 @@ fn main() {
                 Err(e) => { eprintln!("error: {e}"); std::process::exit(1) }
             }
         }
+        Some("explain") => {
+            let [_, _, data, query, ..] = args.as_slice() else {
+                eprintln!("usage: triplelight explain <data> <sparql> [--entailment=simple|rdfs]");
+                std::process::exit(2);
+            };
+            let snap = load(data, &args);
+            let opts = Options { entailment: entailment_arg(&args), ..Default::default() };
+            match triplelight::exec::plan_trace::explain(&snap, query, &opts) {
+                Ok(report) => print!("{report}"),
+                Err(e) => { eprintln!("error: {e}"); std::process::exit(1) }
+            }
+        }
         Some("stress-commit") => {
             // Test helper: commit one triple per transaction and report each acknowledgement.
             let store = triplelight::store::Store::open(&args[2], None, 1).expect("open store");
@@ -165,7 +177,7 @@ fn main() {
                 std::process::exit(2);
             }
         }
-        _ => eprintln!("usage: triplelight query <data> <sparql> [--entailment=simple|rdfs] | triplelight build-disk <source> <dir> | triplelight verify <dir>\n\
+        _ => eprintln!("usage: triplelight query <data> <sparql> [--entailment=simple|rdfs] | triplelight explain <data> <sparql> | triplelight build-disk <source> <dir> | triplelight verify <dir>\n\
             with --features server: triplelight serve <data.nt|.ttl> [port] | triplelight serve-store <dir> [port] [--init data.nt] [--read-only]"),
     }
 }

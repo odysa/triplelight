@@ -208,6 +208,10 @@ impl Database {
     pub fn query(&self, sparql: &str) -> Result<QueryResult, DatabaseError> {
         self.read().query(sparql)
     }
+    /// Executes a SPARQL query and returns its observed basic graph pattern plan.
+    pub fn explain(&self, sparql: &str, entailment: exec::Entailment) -> Result<String, DatabaseError> {
+        self.read().explain(sparql, entailment)
+    }
     /// `query` under an explicit entailment regime: `Entailment::Rdfs` matches the default graph's RDFS closure,
     /// computed at query time (nothing inferred is stored). `query` is `Entailment::Simple`.
     pub fn query_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<QueryResult, DatabaseError> {
@@ -393,6 +397,12 @@ impl ReadSnapshot {
         let stats = self.applicable_stats();
         let opts = exec::Options { stats: stats.as_deref(), raw_ids, entailment, interrupt, ..Default::default() };
         Ok(exec::query_dataset_with(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
+    }
+    /// Executes a SPARQL query on this pinned snapshot and returns its observed basic graph pattern plan.
+    pub fn explain(&self, sparql: &str, entailment: exec::Entailment) -> Result<String, DatabaseError> {
+        let stats = self.applicable_stats();
+        let opts = exec::Options { stats: stats.as_deref(), entailment, ..Default::default() };
+        Ok(exec::plan_trace::explain_dataset(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
     }
     fn applicable_stats(&self) -> Option<Arc<Stats>> {
         if self.snapshot.delta_len() != 0 { return None; }

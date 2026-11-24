@@ -15,7 +15,7 @@ fn decode(s: &str) -> String {
         match b[i] {
             b'+' => out.push(b' '),
             b'%' if i + 2 < b.len() => {
-                if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) { out.push(v); i += 2 } else { out.push(b'%') }
+                if let Some(v) = s.get(i + 1..i + 3).and_then(|hex| u8::from_str_radix(hex, 16).ok()) { out.push(v); i += 2 } else { out.push(b'%') }
             }
             c => out.push(c),
         }
@@ -80,6 +80,35 @@ fn accept_of(req: &tiny_http::Request) -> Format {
 type Resp = tiny_http::Response<std::io::Cursor<Vec<u8>>>;
 
 fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax => 400, QueryErrorKind::Unsupported => 501, QueryErrorKind::Storage => 500, QueryErrorKind::GraphState => 400, QueryErrorKind::Cancelled | QueryErrorKind::Timeout => 503 } }
+
+/// A runtime explanation, requested explicitly with a raw SPARQL query body.
+fn explain<S: triplelight::storage::Snapshot>(req: &mut tiny_http::Request, snap: &S, opts: Options<'_>, timeout: Option<std::time::Duration>) -> Resp {
+    let reply = |body, code| tiny_http::Response::from_string(body).with_status_code(code);
+    if req.method() != &tiny_http::Method::Post {
+        return reply("use POST with a SPARQL query body".to_string(), 405)
+            .with_header(tiny_http::Header::from_bytes("Allow", "POST").unwrap());
+    }
+    if !req.headers().iter().any(|h| h.field.equiv("Content-Type")
+        && h.value.as_str().split(';').next().is_some_and(|media| media.trim().eq_ignore_ascii_case("application/sparql-query"))) {
+        return reply("expected application/sparql-query".to_string(), 415);
+    }
+    let entailment = match request_entailment(req.url(), None, opts.entailment) {
+        Ok(value) => value,
+        Err(e) => return reply(e, 400),
+    };
+    let mut query = String::new();
+    if req.as_reader().take(MAX_QUERY_BYTES + 1).read_to_string(&mut query).is_err() {
+        return reply("request body is not valid UTF-8".to_string(), 400);
+    }
+    if query.len() as u64 > MAX_QUERY_BYTES { return reply("query too large".to_string(), 413); }
+    let interrupt = timeout.map(Interrupt::with_timeout);
+    let opts = Options { entailment, interrupt: interrupt.as_ref(), ..opts };
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| triplelight::exec::plan_trace::explain(snap, &query, &opts))) {
+        Ok(Ok(report)) => reply(report, 200),
+        Ok(Err(e)) => reply(e.to_string(), error_code(e.kind)),
+        Err(_) => reply("query explanation failed".to_string(), 500),
+    }
+}
 
 /// One SPARQL query against a snapshot, as an HTTP response. Errors: 400 (bad query), 501 (unsupported), 500 (storage);
 /// never an empty result in place of a failure.
@@ -169,6 +198,15 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
         for mut req in server.incoming_requests() {
             let url = req.url().to_string();
             let path = url.split('?').next().unwrap_or("");
+            if path == "/explain" {
+                let snap = store.snapshot();
+                let st = stats.read().unwrap().clone();
+                let st = st.filter(|(base, _)| snap.delta_len() == 0 && *base == snap.base_id());
+                let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), ..ablations };
+                let resp = explain(&mut req, &*snap, opts, timeout);
+                let _ = req.respond(resp);
+                continue;
+            }
             // Authorize before reading the body, so an unauthorized client cannot make the server buffer it.
             if path == "/update" && let Err(denied) = auth.check(&req) { let _ = req.respond(denied); continue }
             let limit = if path == "/update" { u64::MAX } else { MAX_QUERY_BYTES };
@@ -339,6 +377,13 @@ fn serve_memory(args: &[String]) {
             for _ in 0..workers { scope.spawn(move || {
             for mut req in server.incoming_requests() {
                 let url = req.url().to_string();
+                if url.split('?').next() == Some("/explain") {
+                    let st = stats.read().unwrap().clone();
+                    let opts = Options { stats: st.as_deref(), ..ablations };
+                    let resp = explain(&mut req, snap, opts, timeout);
+                    let _ = req.respond(resp);
+                    continue;
+                }
                 let mut body = String::new();
                 let _ = req.as_reader().read_to_string(&mut body);
                 let is_query_body = req.headers().iter().any(|h| h.field.equiv("Content-Type") && h.value.as_str().starts_with("application/sparql-query"));
