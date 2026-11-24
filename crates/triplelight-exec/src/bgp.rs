@@ -452,8 +452,12 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// enumerating the leaves: the center's values are the leapfrog intersection of every pattern's range, and each
     /// contributes the product of its patterns' range counts. Split across rayon workers like `count_leapfrog`.
     pub fn count_star(&self, pats: &[[Slot; 3]], center: usize) -> (u64, u64) {
-        let counts: Vec<_> = self.const_counts(pats).collect();
-        if counts.contains(&0) { return (0, 0) }
+        let mut counted: Vec<(u64, [Slot; 3])> = self.const_counts(pats).zip(pats.iter().copied()).collect();
+        if counted.iter().any(|&(n, _)| n == 0) { return (0, 0) }
+        // The leapfrog seeks its patterns round-robin from the first: lead with the most selective (a constant leaf).
+        counted.sort_by_key(|&(n, _)| n);
+        let (counts, pats): (Vec<u64>, Vec<[Slot; 3]>) = counted.into_iter().unzip();
+        let pats = &pats[..];
         let mut order = vec![center];
         for p in pats { order.extend(vars_of(p).into_iter().filter(|&v| v != center)) }
         let (_, plans) = lf_plan(pats, &counts, Some(order));
