@@ -31,6 +31,7 @@ check_log() {
 
 if [ "${1:-}" = "--check-log" ]; then check_log "$2"; exit $?; fi
 
+dir=
 if [ -z "${SHACL_TESTS:-}" ]; then
   # a fresh private checkout every time, removed on exit: another invocation's checkout is never touched
   dir=$(mktemp -d "${TMPDIR:-/tmp}/tl-data-shapes.XXXXXX") || { echo "shacl-core: cannot create a temporary directory" >&2; exit 2; }
@@ -44,7 +45,8 @@ if [ -z "${SHACL_TESTS:-}" ]; then
   SHACL_TESTS="$dir/data-shapes-test-suite/tests/core"
 fi
 export TL_SHACL_TESTS="$SHACL_TESTS"
-log=$(mktemp); trap 'rm -f "$log"; [ -z "${dir:-}" ] || rm -rf "$dir"' EXIT
+log=$(mktemp) || { echo "shacl-core: cannot create a log file" >&2; exit 2; }
+trap 'rm -f "$log"; [ -z "${dir:-}" ] || rm -rf "$dir"' EXIT
 CARGO_TERM_COLOR=never cargo test --locked --release --test shacl -- --ignored --nocapture > "$log" 2>&1; rc=$?
 cat "$log"
 [ $rc -eq 0 ] || { echo "shacl-core: cargo test failed (exit $rc)" >&2; exit 1; }
