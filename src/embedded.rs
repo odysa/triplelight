@@ -20,10 +20,12 @@ pub enum DatabaseError {
     Locked,
     /// An update names a graph in the wrong state (see `exec::QueryErrorKind::GraphState`).
     GraphState(String),
+    /// The query was cancelled or ran past its deadline (`exec::Interrupt`); nothing partial was returned.
+    Interrupted { timed_out: bool },
 }
 impl std::fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self { Self::Syntax(s) | Self::Unsupported(s) | Self::GraphState(s) => f.write_str(s), Self::Storage(e) => e.fmt(f), Self::Locked => f.write_str("database directory is already open") }
+        match self { Self::Syntax(s) | Self::Unsupported(s) | Self::GraphState(s) => f.write_str(s), Self::Storage(e) => e.fmt(f), Self::Locked => f.write_str("database directory is already open"), Self::Interrupted { timed_out } => f.write_str(if *timed_out { "query timed out" } else { "query cancelled" }) }
     }
 }
 impl std::error::Error for DatabaseError {}
@@ -37,6 +39,8 @@ impl From<QueryError> for DatabaseError {
             exec::QueryErrorKind::Unsupported => Self::Unsupported(e.message),
             exec::QueryErrorKind::Storage => Self::Storage(std::io::Error::other(e.message)),
             exec::QueryErrorKind::GraphState => Self::GraphState(e.message),
+            exec::QueryErrorKind::Cancelled => Self::Interrupted { timed_out: false },
+            exec::QueryErrorKind::Timeout => Self::Interrupted { timed_out: true },
         }
     }
 }
@@ -209,6 +213,11 @@ impl Database {
     pub fn query_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<QueryResult, DatabaseError> {
         self.read().query_with_entailment(sparql, entailment)
     }
+    /// `query_with_entailment` that stops early when `interrupt` is cancelled (from any thread) or past its deadline:
+    /// `DatabaseError::Interrupted`, never a partial answer (#110).
+    pub fn query_with_interrupt(&self, sparql: &str, entailment: exec::Entailment, interrupt: &exec::Interrupt) -> Result<QueryResult, DatabaseError> {
+        self.read().query_with_interrupt(sparql, entailment, interrupt)
+    }
 
     /// Returns a stable read view that is unaffected by subsequent updates.
     pub fn read(&self) -> ReadSnapshot { ReadSnapshot { snapshot: self.snapshot(), stats: Arc::clone(&self.stats) } }
@@ -373,9 +382,16 @@ impl ReadSnapshot {
     pub fn query_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<QueryResult, DatabaseError> {
         self.run(sparql, false, entailment)
     }
+    /// `query` that stops early (`DatabaseError::Interrupted`) when `interrupt` is cancelled or past its deadline (#110).
+    pub fn query_with_interrupt(&self, sparql: &str, entailment: exec::Entailment, interrupt: &exec::Interrupt) -> Result<QueryResult, DatabaseError> {
+        self.run_with(sparql, false, entailment, Some(interrupt))
+    }
     fn run(&self, sparql: &str, raw_ids: bool, entailment: exec::Entailment) -> Result<QueryResult, DatabaseError> {
+        self.run_with(sparql, raw_ids, entailment, None)
+    }
+    fn run_with(&self, sparql: &str, raw_ids: bool, entailment: exec::Entailment, interrupt: Option<&exec::Interrupt>) -> Result<QueryResult, DatabaseError> {
         let stats = self.applicable_stats();
-        let opts = exec::Options { stats: stats.as_deref(), raw_ids, entailment, ..Default::default() };
+        let opts = exec::Options { stats: stats.as_deref(), raw_ids, entailment, interrupt, ..Default::default() };
         Ok(exec::query_dataset_with(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
     }
     fn applicable_stats(&self) -> Option<Arc<Stats>> {

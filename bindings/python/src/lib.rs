@@ -31,6 +31,8 @@ fn err(e: DatabaseError) -> PyErr {
         DatabaseError::Storage(e) => StorageError::new_err(e.to_string()),
         DatabaseError::Locked => LockedError::new_err("database directory is already open by another instance"),
         DatabaseError::GraphState(m) => GraphStateError::new_err(m),
+        // Not yet reachable from Python (no interrupt is exposed); the base class until it is.
+        e @ DatabaseError::Interrupted { .. } => TripleLightError::new_err(e.to_string()),
     }
 }
 

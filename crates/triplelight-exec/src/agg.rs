@@ -128,7 +128,8 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let mut key: Vec<TermId> = Vec::with_capacity(kidx.len());
         // MIN/MAX per (group, aggregate) that met an error.
         let mut poisoned: Vec<bool> = Vec::new();
-        for r in rows {
+        for (n, r) in rows.iter().enumerate() {
+            if n % 4096 == 0 { self.check() }
             key.clear();
             key.extend(kidx.iter().map(|&i| r[i]));
             let g = match pos.get(key.as_slice()) {

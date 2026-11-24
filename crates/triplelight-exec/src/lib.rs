@@ -23,6 +23,7 @@ mod agg;
 mod bgp;
 mod count;
 mod dataset;
+mod interrupt;
 mod entail;
 mod order;
 mod path;
@@ -100,7 +101,14 @@ pub enum QueryErrorKind {
     /// An update names a graph in the wrong state: `CREATE` of an existing graph, or `DROP`, `CLEAR`, `ADD`, `MOVE`
     /// or `COPY` of an absent one, without `SILENT`. The request is at fault, not the store.
     GraphState,
+    /// The caller cancelled the query (`Interrupt::cancel`) while it ran. No partial answer is returned.
+    Cancelled,
+    /// The query ran past its deadline (`Interrupt::with_timeout`). No partial answer is returned.
+    Timeout,
 }
+
+pub use interrupt::Interrupt;
+use interrupt::Interrupted;
 
 impl QueryError {
     pub fn new(kind: QueryErrorKind, message: impl Into<String>) -> Self { QueryError { kind, message: message.into() } }
@@ -154,8 +162,10 @@ pub struct Options<'a> {
     /// Which entailment regime basic graph patterns are matched under (`entail.rs`). `Simple` (the default) matches
     /// the stored triples; `Rdfs` matches the default graph's RDFS closure, computed at query time.
     pub entailment: Entailment,
+    /// Cancellation and deadline of this query (`Interrupt`); `None` runs to completion.
+    pub interrupt: Option<&'a Interrupt>,
 }
-impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Entailment::Simple } } }
+impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Entailment::Simple, interrupt: None } } }
 
 /// The entailment regime of a query's graph matching.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -179,7 +189,10 @@ fn catching_storage<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, Q
         Ok(r) => r,
         Err(p) => match p.downcast::<StorageFailure>() {
             Ok(f) => Err(QueryError::new(QueryErrorKind::Storage, format!("storage error: {}", f.0))),
-            Err(p) => std::panic::resume_unwind(p),
+            Err(p) => match p.downcast::<Interrupted>() {
+                Ok(i) => Err(QueryError::new(i.0, if i.0 == QueryErrorKind::Timeout { "query timed out" } else { "query cancelled" })),
+                Err(p) => std::panic::resume_unwind(p),
+            },
         },
     }
 }
@@ -365,6 +378,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// Dataset of a dataset-aware query (`query_dataset_with`); `None` for plain snapshot queries.
     dataset: Option<&'a dyn DatasetView>,
     /// Named graphs of the active dataset (catalog, or the FROM NAMED graphs present in it), ascending.
+    /// `Options::interrupt`, checked by `Ctx::check` and in the long loops.
+    interrupt: Option<&'a Interrupt>,
     named: Vec<TermId>,
     /// Under `Entailment::Rdfs`, the entailed view of each named graph of `named` (`eval_graph` reads through it).
     entailed_named: HashMap<TermId, &'a dyn Snapshot>,
@@ -448,6 +463,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             named,
             entailed_named: views.named(),
             virtual_type: None,
+            interrupt: opts.interrupt,
             vars: HashMap::new(),
             scratch: RefCell::new((HashMap::new(), Vec::new())),
             stats: opts.stats.map(|stats| (stats, snap as &dyn Snapshot)),
@@ -482,6 +498,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         ctx
     }
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
+    /// Stops the query here if it was cancelled or is past its deadline (`Interrupt`).
+    pub(crate) fn check(&self) { if let Some(i) = self.interrupt { i.check() } }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
     fn var_name(&mut self, name: &str) -> usize {
         let n = self.vars.len();
@@ -566,6 +584,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     // ---------- evaluation ----------
     /// Evaluates `p` for each input row (sideways information passing: bound values flow into scans).
     pub(crate) fn eval(&self, p: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
+        self.check();
         match p {
             GraphPattern::Bgp { patterns } => self.eval_bgp(patterns, input),
             GraphPattern::Join { left, right } => {
@@ -765,7 +784,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }).collect();
         // Column keys decode once per distinct ID. Other expressions are evaluated per row.
         let mut memo: HashMap<TermId, Option<Term>> = HashMap::new();
+        let mut computed = 0usize;
         let mut key_of = |r: &Row, (e, column): (&Expression, Option<usize>)| -> Option<Term> {
+            computed += 1;
+            if computed % 4096 == 0 { self.check() }
             match column {
                 Some(i) if r[i] == UNBOUND => None,
                 Some(i) => memo.entry(r[i]).or_insert_with(|| Some(self.resolve(r[i]))).clone(),
@@ -838,7 +860,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             && let Some(out) = self.try_fast_group(&rows, &kidx, aggs) { return out; }
         let mut groups: Vec<(Vec<TermId>, Vec<Row>)> = Vec::new();
         let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
-        for r in rows {
+        for (n, r) in rows.into_iter().enumerate() {
+            if n % 4096 == 0 { self.check() }
             let k: Vec<TermId> = kidx.iter().map(|&i| r[i]).collect();
             let g = *pos.entry(k.clone()).or_insert_with(|| { groups.push((k, Vec::new())); groups.len() - 1 });
             groups[g].1.push(r);
@@ -983,7 +1006,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let flat: Vec<TermId> = rows.concat();
         if let Some(tr) = tr.as_mut() { tr.note("ranges", ranges.len()); tr.note("filters", filters.len()) }
         let (out, strategy) = on_data!(self, |g| {
-            let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges), sorted_probe: self.sorted_probe };
+            let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges), sorted_probe: self.sorted_probe, interrupt: self.interrupt };
             if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(pattern::no_repeated_var) && pattern::cyclic(&pats) {
                 let given = self.variable_order(&pats);
                 let t = tr.as_mut().map(|tr| {
@@ -1076,7 +1099,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             // term ID, so e.g. a date range over many reviews decodes each distinct date once.
             let single = match vs.as_slice() { [c] if !impure(e) => Some(*c), _ => None };
             let mut by_id: HashMap<TermId, bool> = HashMap::new();
-            for r in rows.chunks_exact(w) {
+            for (n, r) in rows.chunks_exact(w).enumerate() {
+                if n % 4096 == 0 { self.check() }
                 let keep = match fast.as_ref().map(|f| f.eval(r, &mut val)) {
                     Some(Ok(b)) => b == Some(true),
                     _ => match single {

@@ -171,12 +171,18 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 self.all_pairs(q, &mut firsts);
                 let mut starts: Vec<TermId> = firsts.into_iter().map(|(s, _)| s).collect();
                 dedup_keep_order(&mut starts);
-                for x in starts { out.extend(self.closure(p, q, false, x).into_iter().map(|z| (x, z))) }
+                for (n, x) in starts.into_iter().enumerate() {
+                    if n % 1024 == 0 { self.check() }
+                    out.extend(self.closure(p, q, false, x).into_iter().map(|z| (x, z)))
+                }
             }
             P::Star(q) | P::Opt(q) => {
                 let csr = match p { P::Star(_) => simple_link(q, false).and_then(|(id, dir)| self.csr(id, dir, true)), _ => None };
                 if let Some(c) = csr { c.all_pairs(&self.graph_nodes(), true, out); return }
-                for x in self.graph_nodes() { out.extend(self.closure(p, q, false, x).into_iter().map(|z| (x, z))) }
+                for (n, x) in self.graph_nodes().into_iter().enumerate() {
+                    if n % 1024 == 0 { self.check() }
+                    out.extend(self.closure(p, q, false, x).into_iter().map(|z| (x, z)))
+                }
             }
         }
     }
@@ -265,7 +271,8 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let mut out = Vec::new();
         // Rows that bind the endpoints the same way share one traversal.
         let mut memo: HashMap<(Option<TermId>, Option<TermId>), Vec<(TermId, TermId)>> = HashMap::new();
-        for row in input {
+        for (n, row) in input.into_iter().enumerate() {
+            if n % 4096 == 0 { self.check() }
             let s = self.endpoint(subject, &row);
             let o = self.endpoint(object, &row);
             // A variable endpoint bound by an earlier pattern (VALUES, BIND, a join) stands for a solution of the path
