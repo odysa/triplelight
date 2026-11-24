@@ -14,7 +14,7 @@ bad = []
 copies = {"python": "bindings/python/notices", "node": "bindings/node", "go": "bindings/go", "java": "bindings/java", "c": "bindings/c"}
 # The published crates carry the licence; the crates with derived code also carry the notices.
 crate_copies = {f"crates/triplelight-{c}": ("LICENSE",) for c in ("plan", "sparql", "storage")}
-crate_copies.update({f"crates/triplelight-{c}": FILES for c in ("core", "exec", "iri", "rdf")})
+crate_copies.update({f"crates/triplelight-{c}": FILES for c in ("core", "exec", "iri", "rdf", "rdfs", "shacl")})
 for d, names in crate_copies.items():
     for n in names:
         f = root / d / n

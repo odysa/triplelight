@@ -1,0 +1,21 @@
+[package]
+name = "triplelight-shacl"
+description = "SHACL Core validation for TripleLight"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+rdf-12 = ["triplelight-core/rdf-12"]
+
+[dependencies]
+triplelight-core.workspace = true
+regex.workspace = true
+oxsdatatypes = "=0.2.3"
+
+[lints]
+workspace = true

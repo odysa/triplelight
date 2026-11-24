@@ -1,6 +1,6 @@
 //! The storage interface the query side is written against (snapshots and the term dictionary).
 use crate::model::{Perm, TermId, TripleBatch};
-use triplelight_rdf::{Term, TermRef};
+use triplelight_rdf::{NamedNodeRef, Term, TermRef};
 
 pub type StorageError = std::io::Error;
 
@@ -155,6 +155,19 @@ impl TextCandidates {
     pub fn heap_bytes(&self) -> u64 {
         ((self.matched.capacity() + self.unchecked.capacity()) * std::mem::size_of::<TermId>()) as u64
     }
+}
+
+/// A query-time entailment provider over a read-only RDF graph.
+pub trait EntailmentProvider: Send + Sync {
+    /// Predicates the provider can infer even when their IRIs are absent from the store dictionary.
+    fn virtual_predicates(&self) -> &'static [NamedNodeRef<'static>];
+
+    /// Wraps one graph. Each missing predicate has a stable ID assigned by the executor for this query.
+    fn graph<'a>(
+        &self,
+        source: &'a dyn Snapshot,
+        virtual_ids: &[(NamedNodeRef<'static>, TermId)],
+    ) -> Result<Box<dyn Snapshot + 'a>, StorageError>;
 }
 
 /// See `Snapshot::object_memo`: for a (predicate, datatype IRI), the predicate's stored-literal objects ascending if
