@@ -43,6 +43,7 @@ extern "C" {
 #define TL_ERR_INTERRUPTED 8
 /* tl_validate: SHACL rejects the shapes graph (a malformed shape or list, or an undefined recursion). */
 #define TL_ERR_SHAPES 9
+#define TL_ERR_RESOURCE_LIMIT 10
 
 #define TL_RESULT_BINDINGS 0u
 #define TL_RESULT_BOOLEAN 1u

@@ -22,7 +22,7 @@ pub mod plan_trace;
 mod agg;
 mod bgp;
 mod count;
-mod interrupt;
+mod limits;
 mod views;
 use views::{dataset, entail};
 mod path;
@@ -104,10 +104,12 @@ pub enum QueryErrorKind {
     Cancelled,
     /// The query ran past its deadline (`Interrupt::with_timeout`). No partial answer is returned.
     Timeout,
+    /// The query needed more working memory than its `MemoryBudget`. No partial answer is returned.
+    ResourceLimit,
 }
 
-pub use interrupt::Interrupt;
-use interrupt::Interrupted;
+pub use limits::{Interrupt, MemoryBudget, OverBudget, QueryLimits, Reservation};
+use limits::{Interrupted, OverBudgetStop};
 
 impl QueryError {
     pub fn new(kind: QueryErrorKind, message: impl Into<String>) -> Self { QueryError { kind, message: message.into() } }
@@ -163,8 +165,10 @@ pub struct Options<'a> {
     pub entailment: Entailment,
     /// Cancellation and deadline of this query (`Interrupt`); `None` runs to completion.
     pub interrupt: Option<&'a Interrupt>,
+    /// The working-memory budget of this query (`MemoryBudget`); `None` is unbounded.
+    pub memory_budget: Option<&'a MemoryBudget>,
 }
-impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Entailment::Simple, interrupt: None } } }
+impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Entailment::Simple, interrupt: None, memory_budget: None } } }
 
 /// The entailment regime of a query's graph matching.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -190,7 +194,11 @@ fn catching_storage<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, Q
             Ok(f) => Err(QueryError::new(QueryErrorKind::Storage, format!("storage error: {}", f.0))),
             Err(p) => match p.downcast::<Interrupted>() {
                 Ok(i) => Err(QueryError::new(i.0, if i.0 == QueryErrorKind::Timeout { "query timed out" } else { "query cancelled" })),
-                Err(p) => std::panic::resume_unwind(p),
+                Err(p) => match p.downcast::<OverBudgetStop>() {
+                    Ok(o) => Err(QueryError::new(QueryErrorKind::ResourceLimit, format!(
+                        "query needs more memory than its budget: {} more bytes requested, {} available", o.0.requested, o.0.available))),
+                    Err(p) => std::panic::resume_unwind(p),
+                },
             },
         },
     }
@@ -377,6 +385,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// Dataset of a dataset-aware query (`query_dataset_with`); `None` for plain snapshot queries.
     dataset: Option<&'a dyn DatasetView>,
     /// Named graphs of the active dataset (catalog, or the FROM NAMED graphs present in it), ascending.
+    /// `Options::memory_budget`, charged by the operators (`Ctx::fits`, `Ctx::reserve`).
+    budget: Option<&'a MemoryBudget>,
     /// `Options::interrupt`, checked by `Ctx::check` and in the long loops.
     interrupt: Option<&'a Interrupt>,
     named: Vec<TermId>,
@@ -463,6 +473,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             entailed_named: views.named(),
             virtual_type: None,
             interrupt: opts.interrupt,
+            budget: opts.memory_budget,
             vars: HashMap::new(),
             scratch: RefCell::new((HashMap::new(), Vec::new())),
             stats: opts.stats.map(|stats| (stats, snap as &dyn Snapshot)),
@@ -499,6 +510,21 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     fn empty_row(&self) -> Row { vec![UNBOUND; self.vars.len()] }
     /// Stops the query here if it was cancelled or is past its deadline (`Interrupt`).
     pub(crate) fn check(&self) { if let Some(i) = self.interrupt { i.check() } }
+    /// Estimated heap bytes of one materialized row (`Row`: its header plus one ID per variable).
+    pub(crate) fn row_bytes(&self) -> u64 { 24 + 8 * self.vars.len() as u64 }
+    /// Ends the query with `ResourceLimit` unless `bytes` more fit in the budget now (a structure about to exist, or one
+    /// that exists only while its operator runs). Without a budget, always fits.
+    pub(crate) fn fits(&self, bytes: u64) {
+        if let Some(b) = self.budget && bytes > b.available() { limits::over_budget(OverBudget { requested: bytes, available: b.available() }) }
+    }
+    /// Holds `bytes` against the budget until the returned reservation drops (`None` without a budget).
+    pub(crate) fn reserve(&self, bytes: u64) -> Option<Reservation<'a>> {
+        self.budget.map(|b| b.try_charge(bytes).unwrap_or_else(|e| limits::over_budget(e)))
+    }
+    /// Grows `r` (from `reserve`) to `total` bytes, or ends the query with `ResourceLimit`.
+    pub(crate) fn resize(r: &mut Option<Reservation<'_>>, total: u64) {
+        if let Some(r) = r { r.try_resize(total).unwrap_or_else(|e| limits::over_budget(e)) }
+    }
     fn var(&self, v: &Variable) -> usize { self.vars[v.as_str()] }
     fn var_name(&mut self, name: &str) -> usize {
         let n = self.vars.len();
@@ -584,6 +610,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     /// Evaluates `p` for each input row (sideways information passing: bound values flow into scans).
     pub(crate) fn eval(&self, p: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
         self.check();
+        let out = self.eval_op(p, input);
+        // Every operator's result is a materialized row set: it must fit next to what the others hold.
+        self.fits(out.len() as u64 * self.row_bytes());
+        out
+    }
+    fn eval_op(&self, p: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
         match p {
             GraphPattern::Bgp { patterns } => self.eval_bgp(patterns, input),
             GraphPattern::Join { left, right } => {
@@ -591,7 +623,11 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 // Passing the left solutions into the right group (sideways) is only equivalent to SPARQL's
                 // bottom-up join when no FILTER/BIND in the right group reads a variable that group does not bind
                 // itself; otherwise evaluate the right group on its own and join the solution sets.
-                if scope_safe(right) { self.eval(right, l) } else { join_rows(l, self.eval(right, vec![self.empty_row()])) }
+                if scope_safe(right) { self.eval(right, l) } else {
+                    let r = self.eval(right, vec![self.empty_row()]);
+                    let _table = self.reserve(r.len() as u64 * (self.row_bytes() + 32));
+                    join_rows(l, r)
+                }
             }
             GraphPattern::LeftJoin { left, right, expression } => self.eval_left_join(left, right, expression, input),
             GraphPattern::Filter { expr, inner } => self.eval_filter(expr, inner, input),
@@ -612,6 +648,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                     for (i, x) in r.iter_mut().enumerate() { if !keep.contains(&i) { *x = UNBOUND } }
                     r
                 }).collect();
+                let _table = self.reserve(projected.len() as u64 * (self.row_bytes() + 32));
                 join_rows(input, projected)
             }
             GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } => {
@@ -794,6 +831,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             }
         };
         let desc: Vec<bool> = expression.iter().map(|e| matches!(e, OrderExpression::Desc(_))).collect();
+        // Sort keys: one decoded term (about 48 bytes) per row and key, at most.
+        let _keys = self.reserve(rows.len() as u64 * desc.len() as u64 * 48);
         let idx = expr::order::order(rows.len(), &desc, limit, |i, k| key_of(&rows[i], keys_by_column[k]));
         let mut rows: Vec<Option<Row>> = rows.into_iter().map(Some).collect();
         idx.into_iter().map(|i| rows[i].take().unwrap()).collect()
@@ -859,7 +898,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             && let Some(out) = self.try_fast_group(&rows, &kidx, aggs) { return out; }
         let mut groups: Vec<(Vec<TermId>, Vec<Row>)> = Vec::new();
         let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
+        // The groups hold every row again, plus a key and a table entry per group.
+        let mut held = self.reserve(rows.len() as u64 * self.row_bytes());
         for (n, r) in rows.into_iter().enumerate() {
+            if n.is_multiple_of(4096) { Self::resize(&mut held, (n as u64 + groups.len() as u64) * self.row_bytes() + groups.len() as u64 * 64) }
             if n.is_multiple_of(4096) { self.check() }
             let k: Vec<TermId> = kidx.iter().map(|&i| r[i]).collect();
             let g = *pos.entry(k.clone()).or_insert_with(|| { groups.push((k, Vec::new())); groups.len() - 1 });
@@ -1005,7 +1047,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let flat: Vec<TermId> = rows.concat();
         if let Some(tr) = tr.as_mut() { tr.note("ranges", ranges.len()); tr.note("filters", filters.len()) }
         let (out, strategy) = on_data!(self, |g| {
-            let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges), sorted_probe: self.sorted_probe, interrupt: self.interrupt };
+            let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges), sorted_probe: self.sorted_probe, interrupt: self.interrupt, budget: self.budget };
             if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(pattern::no_repeated_var) && pattern::cyclic(&pats) {
                 let given = self.variable_order(&pats);
                 let t = tr.as_mut().map(|tr| {

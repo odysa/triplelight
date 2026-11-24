@@ -60,7 +60,7 @@ fn union_distinct_group_ask() {
 #[test]
 fn leapfrog_matches_bind_join() {
     let q = "SELECT ?a ?b ?c WHERE { ?a <http://ex/knows> ?b . ?b <http://ex/knows> ?c . ?c <http://ex/knows> ?a }";
-    let run = |wcoj| match triplelight::exec::query_with(&store(), q, &triplelight::exec::Options { stats: None, wcoj, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Default::default(), interrupt: None }).unwrap() {
+    let run = |wcoj| match triplelight::exec::query_with(&store(), q, &triplelight::exec::Options { stats: None, wcoj, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Default::default(), interrupt: None, memory_budget: None }).unwrap() {
         QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.iter().map(|r| format!("{r:?}")).collect(); v.sort(); v }
         _ => unreachable!(),
     };
@@ -1123,4 +1123,35 @@ fn interrupt_cancels_and_times_out_running_queries() {
     let plain = query_with(&snap, small, &Options::default()).unwrap();
     let with = run(&Interrupt::with_timeout(Duration::from_secs(60)), small).unwrap();
     assert_eq!(format!("{plain:?}"), format!("{with:?}"));
+}
+
+/// `Options::memory_budget` (#110): a query whose working set does not fit ends with `ResourceLimit` instead of
+/// growing, a budget that fits changes nothing, and every reservation is returned afterwards, also after the stop.
+#[test]
+fn memory_budget_stops_queries_that_do_not_fit_and_releases_everything() {
+    use triplelight::exec::{query_with, MemoryBudget, Options, QueryErrorKind};
+    let mut nt = String::new();
+    for i in 0..2000u32 { nt.push_str(&format!("<http://ex/s{i}> <http://ex/p> \"{}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n", i % 97)) }
+    let snap = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
+    let run = |b: &MemoryBudget, q: &str| query_with(&snap, q, &Options { memory_budget: Some(b), ..Options::default() });
+    // A 4M-row cross product: far above a 1 MB budget.
+    let cross = "SELECT ?a ?b WHERE { ?a <http://ex/p> ?x . ?b <http://ex/p> ?y }";
+    let small = MemoryBudget::new(1 << 20);
+    assert_eq!(run(&small, cross).unwrap_err().kind, QueryErrorKind::ResourceLimit);
+    assert_eq!(small.used(), 0, "reservations are returned on the stop");
+    // Grouping and sorting under a budget that fits give the same answer as without one, and return what they held.
+    let q = "SELECT ?x (COUNT(*) AS ?n) WHERE { ?a <http://ex/p> ?x } GROUP BY ?x ORDER BY DESC(?n) ?x LIMIT 5";
+    let roomy = MemoryBudget::new(64 << 20);
+    let with = run(&roomy, q).unwrap();
+    assert_eq!(format!("{with:?}"), format!("{:?}", query_with(&snap, q, &Options::default()).unwrap()));
+    assert_eq!(roomy.used(), 0);
+    // The reservation API on its own: charges add up, a charge past the limit fails, drops give back.
+    let b = MemoryBudget::new(1000);
+    let mut r = b.try_charge(600).unwrap();
+    assert!(b.try_charge(500).is_err());
+    r.try_resize(900).unwrap();
+    assert_eq!(b.available(), 100);
+    r.try_resize(100).unwrap();
+    drop(r);
+    assert_eq!(b.used(), 0);
 }

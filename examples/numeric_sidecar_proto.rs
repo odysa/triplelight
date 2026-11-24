@@ -54,7 +54,7 @@ fn main() -> R<()> {
     let a: Vec<String> = std::env::args().collect();
     let snap = DiskSnapshot::open(&a[1])?;
     let stats = Stats::from_snapshot(&snap)?;
-    let opts = Options { stats: Some(&stats), wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Default::default(), interrupt: None };
+    let opts = Options { stats: Some(&stats), wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Default::default(), interrupt: None, memory_budget: None };
     let q = std::fs::read_to_string(&a[2])?;
     // (1) the engine: q010, and q010 without the two numeric patterns and their filters.
     let without: String = q.lines().filter(|l| !l.contains("productPropertyNumeric") && !l.contains("simProperty")).collect::<Vec<_>>().join("\n");
