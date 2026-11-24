@@ -131,15 +131,22 @@ impl Registry {
     }
 }
 
+/// Loaded extensions for a database. Embedded frontends can share this registry.
 #[derive(Clone, Default)]
-pub(crate) struct Extensions(Arc<RwLock<Arc<Registry>>>);
+pub struct ExtensionRegistry(Arc<RwLock<Arc<Registry>>>);
 
-impl Extensions {
+impl ExtensionRegistry {
+    /// Lists compiled-in official extensions and current registrations.
+    pub fn list(&self) -> Vec<ExtensionInfo> {
+        self.snapshot().list()
+    }
+
     pub(crate) fn snapshot(&self) -> Arc<Registry> {
         Arc::clone(&self.0.read().unwrap())
     }
 
-    pub(crate) fn load(&self, name: &str) -> Result<(), ExtensionError> {
+    /// Loads a linked official extension by name.
+    pub fn load(&self, name: &str) -> Result<(), ExtensionError> {
         if self.0.read().unwrap().0.contains_key(name) {
             return Ok(());
         }

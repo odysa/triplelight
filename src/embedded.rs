@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 use crate::opt::stats::Stats;
-use crate::extension::{Extension, ExtensionError, ExtensionInfo, Extensions, Registry, Validation};
+use crate::extension::{Extension, ExtensionError, ExtensionInfo, ExtensionRegistry, Registry, Validation};
 use crate::exec::{self, QueryError, QueryResult};
 use crate::store::{Change, Overlay, Store, StoreUpdate};
 use crate::storage::{Dictionary, DiskBase, MemorySnapshot, Snapshot};
@@ -73,7 +73,7 @@ pub struct Database {
     store: Backend,
     stats: Arc<RwLock<Option<(Arc<Overlay>, Arc<Stats>)>>>,
     origin: Arc<Mutex<Option<(usize, StatsOrigin)>>>,
-    extensions: Extensions,
+    extensions: ExtensionRegistry,
 }
 
 /// Set when the last `Database` handle is dropped; a background statistics writer checks it (under the same lock)
@@ -111,7 +111,7 @@ impl Database {
         }
         let format = DiskBase { workers: options.import_workers };
         let store = Arc::new(Store::open_with(dir, options.initial.as_deref(), Box::new(format))?);
-        let db = Self { closer: Arc::new(CloseGate(Arc::new(Mutex::new(false)))), store: Backend::Disk(store), stats: Arc::new(RwLock::new(None)), origin: Arc::new(Mutex::new(None)), extensions: Extensions::default() };
+        let db = Self { closer: Arc::new(CloseGate(Arc::new(Mutex::new(false)))), store: Backend::Disk(store), stats: Arc::new(RwLock::new(None)), origin: Arc::new(Mutex::new(None)), extensions: ExtensionRegistry::default() };
         if !db.load_persisted_stats()? { db.refresh_stats(); }
         Ok(db)
     }
@@ -120,7 +120,7 @@ impl Database {
     pub fn in_memory() -> Self {
         let base = MemorySnapshot::from_triples(Vec::new());
         let current = Arc::new(Overlay::from_base(Arc::new(base)));
-        let db = Self { closer: Arc::new(CloseGate(Arc::new(Mutex::new(false)))), store: Backend::Memory(Arc::new(MemoryStore { current: RwLock::new(current), writer: Mutex::new(()) })), stats: Arc::new(RwLock::new(None)), origin: Arc::new(Mutex::new(None)), extensions: Extensions::default() };
+        let db = Self { closer: Arc::new(CloseGate(Arc::new(Mutex::new(false)))), store: Backend::Memory(Arc::new(MemoryStore { current: RwLock::new(current), writer: Mutex::new(()) })), stats: Arc::new(RwLock::new(None)), origin: Arc::new(Mutex::new(None)), extensions: ExtensionRegistry::default() };
         db.refresh_stats();
         db
     }
@@ -248,7 +248,7 @@ impl Database {
 
     /// Lists compiled-in official extensions and registrations visible to this database.
     pub fn list_extensions(&self) -> Vec<ExtensionInfo> {
-        self.extensions.snapshot().list()
+        self.extensions.list()
     }
 
     /// Runs a query under a registered named entailment provider.
