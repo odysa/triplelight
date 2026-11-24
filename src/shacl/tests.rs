@@ -270,3 +270,14 @@ fn the_report_and_its_parts_can_cross_threads() {
     send_sync::<Path>();
     send_sync::<ValidationError>();
 }
+
+#[test]
+fn the_nesting_limit_holds_for_a_shared_node_reached_after_a_short_branch() {
+    // _:a is a 1-deep node reached first directly; _:x (its own chain of 63 inverse nodes) ends in _:a below 63 others: the longest chain
+    // through the shared node is longer than the limit even though the first branch to reach it was short
+    let mut ttl = String::from("ex:shape ex:path _:top .\n_:top sh:alternativePath ( _:a _:c0 ) .\n_:a sh:inversePath ex:q .\n");
+    for i in 0..63 { ttl.push_str(&format!("_:c{i} sh:inversePath _:c{} .\n", i + 1)); }
+    ttl.push_str("_:c63 sh:inversePath _:a .\n");
+    let g = Graph::new(&parse(&ttl));
+    assert!(matches!(Path::parse(&g.objects(&iri("shape"), &pred("path"))[0], &g), Err(ValidationError::MalformedShape(_))));
+}
