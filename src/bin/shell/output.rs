@@ -16,7 +16,7 @@ impl FromStr for Mode {
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         match text {
-            "box" => Ok(Self::Box),
+            "box" | "table" => Ok(Self::Box),
             "tsv" => Ok(Self::Tsv),
             "csv" => Ok(Self::Csv),
             "json" => Ok(Self::Json),

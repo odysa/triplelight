@@ -125,3 +125,75 @@ fn shell_batch_stops_at_a_bad_statement() {
     assert!(out.stdout.is_empty());
     assert!(String::from_utf8_lossy(&out.stderr).contains("line 1: syntax error"));
 }
+
+#[test]
+fn shell_opens_a_bare_store_name_and_runs_ordered_startup_commands() {
+    let root =
+        std::env::temp_dir().join(format!("triplelight-shell-startup-{}", std::process::id()));
+    std::fs::create_dir(&root).unwrap();
+    std::fs::write(
+        root.join("init.rq"),
+        "INSERT DATA { <urn:s> <urn:p> \"value\" };\n",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("read.rq"),
+        ".output results.csv\nSELECT ?o WHERE { <urn:s> <urn:p> ?o };\n.output\n",
+    )
+    .unwrap();
+
+    let query = "SELECT ?o WHERE { <urn:s> <urn:p> ?o }";
+    let out = Command::new(env!("CARGO_BIN_EXE_triplelight"))
+        .current_dir(&root)
+        .args([
+            "my-store",
+            "-csv",
+            "-c",
+            ".once first.csv",
+            "-c",
+            query,
+            "-f",
+            "read.rq",
+            "-json",
+            "-c",
+            query,
+            "-init",
+            "init.rq",
+        ])
+        .output()
+        .unwrap();
+    let text = stdout(out);
+    assert!(text.starts_with("{\"head\":"), "{text}");
+    assert!(text.contains("\"value\":\"value\""), "{text}");
+    assert_eq!(
+        std::fs::read(root.join("first.csv")).unwrap(),
+        b"o\r\nvalue\r\n"
+    );
+    assert_eq!(
+        std::fs::read(root.join("results.csv")).unwrap(),
+        b"o\r\nvalue\r\n"
+    );
+    assert!(root.join("my-store/CURRENT").is_file());
+    let out = shell(
+        &["-batch", "-cmd", ".mode csv"],
+        "SELECT ?n WHERE { VALUES ?n { 7 } };\n",
+    );
+    assert_eq!(stdout(out), "n\r\n7\r\n");
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn shell_does_not_initialize_a_store_in_an_unrelated_directory() {
+    let root = std::env::temp_dir().join(format!(
+        "triplelight-shell-unrelated-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(root.join("base-0")).unwrap();
+    std::fs::write(root.join("base-0/data"), "keep").unwrap();
+    let out = shell(&[root.to_str().unwrap(), "-c", "ASK {}"], "");
+    assert!(!out.status.success());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("not an empty directory"));
+    assert_eq!(std::fs::read(root.join("base-0/data")).unwrap(), b"keep");
+    assert!(!root.join("LOCK").exists());
+    std::fs::remove_dir_all(root).unwrap();
+}

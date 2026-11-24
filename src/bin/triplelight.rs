@@ -81,14 +81,6 @@ fn print_query<E: std::fmt::Display>(query: impl FnOnce() -> Result<triplelight:
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    #[cfg(unix)]
-    match args.get(1).map(String::as_str) {
-        None => return shell::run(&[]),
-        Some("shell") => return shell::run(&args[2..]),
-        Some("-c" | "--command" | "--mode" | ":memory:") => return shell::run(&args[1..]),
-        Some(path) if !path.starts_with('-') && path.contains('/') => return shell::run(&args[1..]),
-        _ => {}
-    }
     for (i, arg) in args.iter().enumerate() {
         if arg == "--build-external" { triplelight::storage::external_build::force_external_build(); }
         // Task #73: `--orders=4` (the default) keeps SPO, PSO, POS and OSP (an RDFSNAP6 base, external builder only);
@@ -252,7 +244,12 @@ fn main() {
                 std::process::exit(2);
             }
         }
-        _ => eprintln!("usage: triplelight shell [store-directory] [-c SPARQL] (Unix) | triplelight query <data> <sparql> [--entailment=simple|rdfs] | triplelight explain <data> <sparql> | triplelight validate <data> <shapes> | triplelight build-disk <source> <dir> | triplelight verify <dir> | triplelight text-index <store-directory>\n\
+        #[cfg(unix)]
+        Some("shell") => shell::run(&args[2..]),
+        #[cfg(unix)]
+        _ => shell::run(&args[1..]),
+        #[cfg(not(unix))]
+        _ => eprintln!("usage: triplelight query <data> <sparql> [--entailment=simple|rdfs] | triplelight explain <data> <sparql> | triplelight validate <data> <shapes> | triplelight build-disk <source> <dir> | triplelight verify <dir> | triplelight text-index <store-directory>\n\
             with --features server: triplelight serve <data.nt|.ttl> [port] | triplelight serve-store <dir> [port] [--init data.nt] [--read-only]"),
     }
 }

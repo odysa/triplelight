@@ -4,23 +4,38 @@ mod output;
 use std::error::Error;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, IsTerminal, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 use triplelight::embedded::Database;
+use triplelight::exec::QueryResult;
 use triplelight::sparql::{parse_query, parse_update, statement_end};
 
 use output::Mode;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-const USAGE: &str =
-    "usage: triplelight shell [STORE|:memory:] [-c SPARQL] [--mode box|tsv|csv|json]";
+const USAGE: &str = "\
+usage: triplelight [STORE|:memory:] [OPTIONS]
+       triplelight shell [STORE|:memory:] [OPTIONS]
+
+-c COMMAND        Execute a SPARQL request or dot command, then exit
+-cmd COMMAND      Execute a command before reading stdin
+-f FILE           Run a script, then exit
+-init FILE        Run a startup script before other commands
+-batch            Read input without prompts
+-box -tsv -csv -json
+                  Change output mode for following commands
+-help -version    Show help or version
+
+Other commands: query, explain, validate, build-disk, verify, text-index, serve, serve-store.";
 const HELP: &str = "\
 .help             Show shell commands
 .open [STORE]     Open or create a store, or start a fresh in-memory session
 .import FILE      Load .nt, .ttl, .nq or .trig into the current store
 .read FILE        Run a script with SPARQL and shell commands
 .mode MODE        Use box, tsv, csv or json for SELECT results
+.output [FILE]    Redirect results to a file, or restore stdout
+.once FILE        Redirect the next statement's results
 .timer on|off     Show execution time on stderr
 .quit             Exit the shell
 End a SPARQL statement with a top-level semicolon. End of input also runs any pending statement.";
@@ -36,33 +51,86 @@ pub(super) fn run(args: &[String]) {
 
 fn start(args: &[String]) -> Result<()> {
     let mut path = None;
-    let mut command = None;
-    let mut mode = None;
+    let mut init = None;
+    let mut actions = Vec::new();
+    let mut batch = false;
+    let mut exit = false;
     let mut args = args.iter().map(String::as_str);
     while let Some(arg) = args.next() {
         match arg {
-            "-h" | "--help" => {
+            "-h" | "-help" | "--help" => {
                 println!("{USAGE}\n\n{HELP}");
                 return Ok(());
             }
-            "-c" | "--command" if command.is_none() => command = Some(args.next().ok_or(USAGE)?),
-            "--mode" if mode.is_none() => mode = Some(args.next().ok_or(USAGE)?.parse()?),
+            "-version" | "--version" => {
+                println!("TripleLight {}", env!("CARGO_PKG_VERSION"));
+                return Ok(());
+            }
+            "-c" | "-s" | "--command" | "-cmd" => {
+                actions.push(Action::Command(args.next().ok_or("expected a command")?));
+                exit |= arg != "-cmd";
+            }
+            "-f" => {
+                actions.push(Action::Script(args.next().ok_or("-f requires a file")?));
+                exit = true;
+            }
+            "-init" if init.is_none() => init = Some(args.next().ok_or("-init requires a file")?),
+            "-batch" => batch = true,
+            "-box" | "-table" | "-tsv" | "-csv" | "-json" => {
+                actions.push(Action::Mode(arg[1..].parse()?))
+            }
+            "--mode" => actions.push(Action::Mode(
+                args.next().ok_or("--mode requires a format")?.parse()?,
+            )),
+            "--" if path.is_none() => {
+                path = Some(args.next().ok_or("expected a store path after --")?);
+                if args.next().is_some() {
+                    return Err(USAGE.into());
+                }
+                break;
+            }
             arg if !arg.starts_with('-') && path.is_none() => path = Some(arg),
             _ => return Err(USAGE.into()),
         }
     }
-    let interactive = command.is_none() && io::stdin().is_terminal() && io::stdout().is_terminal();
+    let interactive = !exit && !batch && io::stdin().is_terminal() && io::stdout().is_terminal();
     let mut shell = Shell {
         db: Database::in_memory(),
         directory: None,
-        mode: mode.unwrap_or(if interactive { Mode::Box } else { Mode::Tsv }),
+        mode: if interactive { Mode::Box } else { Mode::Tsv },
         timer: false,
+        output: None,
+        next_output: None,
     };
     if let Some(path) = path.filter(|&path| path != ":memory:") {
         shell.open(path)?;
     }
-    if let Some(command) = command {
-        return shell.execute(command);
+    if let Some(file) = init
+        && shell.read(file, 0)?
+    {
+        return Ok(());
+    }
+    for action in actions {
+        let quit = match action {
+            Action::Mode(mode) => {
+                shell.mode = mode;
+                false
+            }
+            Action::Command(command) if command.trim_start().starts_with('.') => {
+                shell.dot(command.trim(), 0)?
+            }
+            Action::Command(command) => {
+                shell.execute(command)?;
+                false
+            }
+            Action::Script(file) => shell.read(file, 0)?,
+        };
+        if quit {
+            return Ok(());
+        }
+    }
+    if exit {
+        return Ok(());
     }
     if interactive {
         shell.interactive()
@@ -71,11 +139,19 @@ fn start(args: &[String]) -> Result<()> {
     }
 }
 
+enum Action<'a> {
+    Mode(Mode),
+    Command(&'a str),
+    Script(&'a str),
+}
+
 struct Shell {
     db: Database,
     directory: Option<PathBuf>,
     mode: Mode,
     timer: bool,
+    output: Option<File>,
+    next_output: Option<File>,
 }
 
 impl Shell {
@@ -89,6 +165,7 @@ impl Shell {
             if canonical.is_some() && canonical == self.directory {
                 return Ok(());
             }
+            check_store_directory(&directory)?;
             self.db = Database::open(&directory)?;
             self.directory = canonical.or_else(|| directory.canonicalize().ok());
         }
@@ -99,6 +176,7 @@ impl Shell {
         if !has_content(request) {
             return Ok(());
         }
+        let mut output = self.next_output.take();
         // The shell's optional final semicolon is not part of SPARQL Query syntax.
         // Feed Update the original text so -c can execute a multi-operation request atomically.
         let query = statement_end(request)
@@ -109,10 +187,7 @@ impl Shell {
             Ok(_) => {
                 let result = self.db.query(query)?;
                 self.print_time(started);
-                return self
-                    .mode
-                    .write(&result, &mut io::stdout().lock())
-                    .map_err(Into::into);
+                return self.write_query(&result, output.as_mut());
             }
             Err(error) => error,
         };
@@ -130,6 +205,14 @@ impl Shell {
         }
     }
 
+    fn write_query(&mut self, result: &QueryResult, once: Option<&mut File>) -> Result<()> {
+        match once.or(self.output.as_mut()) {
+            Some(file) => self.mode.write(result, file)?,
+            None => self.mode.write(result, &mut io::stdout().lock())?,
+        }
+        Ok(())
+    }
+
     fn print_time(&self, started: Instant) {
         if self.timer {
             eprintln!("Time: {:.3} ms", started.elapsed().as_secs_f64() * 1000.0);
@@ -137,6 +220,9 @@ impl Shell {
     }
 
     fn dot(&mut self, text: &str, depth: usize) -> Result<bool> {
+        if text.contains(['\r', '\n']) {
+            return Err("dot commands take one line; use -f or .read for scripts".into());
+        }
         let (command, arg) = text.split_once(char::is_whitespace).unwrap_or((text, ""));
         let arg = arg.trim();
         match (command, arg) {
@@ -150,18 +236,15 @@ impl Shell {
                 eprintln!("{count} triples loaded");
             }
             (".mode", value) => self.mode = value.parse()?,
+            (".output", "" | "stdout") => self.output = None,
+            (".output", path) => self.output = Some(File::create(path_arg(path)?)?),
+            (".once", "") => return Err("usage: .once FILE".into()),
+            (".once", path) => self.next_output = Some(File::create(path_arg(path)?)?),
             (".timer", "on") => self.timer = true,
             (".timer", "off") => self.timer = false,
             (".timer", _) => return Err("usage: .timer on|off".into()),
             (".read", "") => return Err("usage: .read FILE".into()),
-            (".read", _) if depth >= 8 => return Err(".read nesting limit exceeded".into()),
-            (".read", path) => {
-                let path = path_arg(path)?;
-                let file = File::open(path).map_err(|e| format!("{path}: {e}"))?;
-                return self
-                    .script(BufReader::new(file), depth + 1)
-                    .map_err(|error| with_context(error, path));
-            }
+            (".read", path) => return self.read(path_arg(path)?, depth),
             _ => {
                 return Err(format!(
                     "unknown command or unexpected arguments: {command}; use .help"
@@ -170,6 +253,15 @@ impl Shell {
             }
         }
         Ok(false)
+    }
+
+    fn read(&mut self, path: &str, depth: usize) -> Result<bool> {
+        if depth >= 8 {
+            return Err(".read nesting limit exceeded".into());
+        }
+        let file = File::open(path).map_err(|e| format!("{path}: {e}"))?;
+        self.script(BufReader::new(file), depth + 1)
+            .map_err(|error| with_context(error, path))
     }
 
     fn line(&mut self, pending: &mut String, line: &str, depth: usize) -> Result<bool> {
@@ -286,4 +378,24 @@ fn path_arg(arg: &str) -> Result<&str> {
             .ok_or_else(|| "expected a quoted path".into());
     }
     Ok(arg)
+}
+
+fn check_store_directory(path: &Path) -> Result<()> {
+    if !path.is_dir() || path.join("CURRENT").is_file() || path.join("MANIFEST").is_file() {
+        return Ok(());
+    }
+    // Permit the files left by an interrupted first open. Avoid initializing an unrelated
+    // directory since store recovery can delete uncommitted base directories.
+    let has_lock = path.join("LOCK").is_file();
+    for entry in path.read_dir()? {
+        let name = entry?.file_name();
+        if !has_lock || !matches!(name.to_str(), Some("LOCK" | "CURRENT.tmp" | "base-0")) {
+            return Err(format!(
+                "{} is not an empty directory or a TripleLight store",
+                path.display()
+            )
+            .into());
+        }
+    }
+    Ok(())
 }
