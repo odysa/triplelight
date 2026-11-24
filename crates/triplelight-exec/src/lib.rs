@@ -163,8 +163,8 @@ pub enum Entailment {
     #[default]
     Simple,
     /// RDFS: subclass and subproperty transitivity, type and property propagation, domain and range (the rule set of
-    /// Jena's RDFS reasoner at level `simple`, `entail.rs`). The default graph only: GRAPH and FROM / FROM NAMED are
-    /// refused.
+    /// Jena's RDFS reasoner at level `simple`, `entail.rs`). Each graph of the dataset is entailed on its own triples:
+    /// the default graph (a FROM merge: the merge), and each named graph under GRAPH.
     Rdfs,
 }
 
@@ -240,9 +240,6 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
     if let Some(reason) = support::unsupported(q, dataset.is_some()) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
     let rdfs = opts.entailment == Entailment::Rdfs;
-    if rdfs && let Some(reason) = support::unsupported(q, false) {
-        return Err(QueryError::new(QueryErrorKind::Unsupported, format!("{reason}; RDFS entailment covers the default graph only")))
-    }
     let spec = match q { Query::Select { dataset, .. } | Query::Ask { dataset, .. } | Query::Construct { dataset, .. } | Query::Describe { dataset, .. } => dataset };
     // Graph views for the active dataset; they outlive `ctx`, which borrows them.
     let (from, named) = match dataset { Some(ds) => resolve_dataset(snap, ds, spec.as_ref())?, None => (Vec::new(), Vec::new()) };
@@ -258,9 +255,17 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     } else {
         None
     };
-    let entailed = if rdfs { Some(entail::Entailed::new(snap as &dyn Snapshot).unwrap_or_else(|e| storage_failure(e))) } else { None };
+    // RDFS: the active default graph (the store's, or the FROM merge) and every named graph each get the closure of
+    // their own triples (`entail.rs`).
+    let entail = |g: &'_ dyn Snapshot| entail::Entailed::new(g).unwrap_or_else(|e| storage_failure(e));
+    let entailed = rdfs.then(|| entail(default.unwrap_or(snap as &dyn Snapshot)));
+    let entailed_named: Vec<(TermId, entail::Entailed<'_>)> = match dataset {
+        Some(ds) if rdfs => named.iter().filter_map(|&g| ds.graph(g).unwrap_or_else(|e| storage_failure(e)).map(|v| (g, entail(v)))).collect(),
+        _ => Vec::new(),
+    };
     let default = match &entailed { Some(e) => Some(e as &dyn Snapshot), None => default };
     let mut ctx = Ctx::for_query(snap, dataset, default, named, q, opts, path::CsrLimits::default());
+    ctx.entailed_named = entailed_named.iter().map(|(g, e)| (*g, e as &dyn Snapshot)).collect();
     match q {
         Query::Select { pattern, .. } => run_select(&mut ctx, snap, pattern, opts),
         Query::Ask { pattern, .. } => run_ask(&mut ctx, pattern),
@@ -401,6 +406,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     dataset: Option<&'a dyn DatasetView>,
     /// Named graphs of the active dataset (catalog, or the FROM NAMED graphs present in it), ascending.
     named: Vec<TermId>,
+    /// Under `Entailment::Rdfs`, the entailed view of each named graph of `named` (`eval_graph` reads through it).
+    entailed_named: HashMap<TermId, &'a dyn Snapshot>,
     vars: HashMap<String, usize>,
     scratch: RefCell<(HashMap<Term, TermId>, Vec<Term>)>,
     stats: Option<(&'a Stats, &'a dyn Snapshot)>,
@@ -477,6 +484,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             data: std::cell::Cell::new(default),
             dataset,
             named,
+            entailed_named: HashMap::new(),
             vars: HashMap::new(),
             scratch: RefCell::new((HashMap::new(), Vec::new())),
             stats: opts.stats.map(|stats| (stats, snap as &dyn Snapshot)),
@@ -828,7 +836,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     /// `?g` ranges over the dataset's named graphs (never the default graph) and is joined with P's solutions.
     fn eval_graph(&self, name: &NamedNodePattern, inner: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
         let ds = self.dataset.expect("GRAPH is rejected up front without a dataset");
-        let view = |g: TermId| ds.graph(g).unwrap_or_else(|e| storage_failure(e));
+        let view = |g: TermId| match self.entailed_named.get(&g) {
+            Some(&e) => Some(e),
+            None => ds.graph(g).unwrap_or_else(|e| storage_failure(e)),
+        };
         match name {
             NamedNodePattern::NamedNode(n) => {
                 let Some(id) = self.lookup(&n.clone().into()) else { return Vec::new() };

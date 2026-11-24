@@ -135,10 +135,48 @@ fn rdfs_answers_match_the_materialized_closure() {
     assert_eq!(plain, vec![vec!["<http://ex/bob>".to_string()]]);
 }
 
+/// GRAPH without a dataset stays refused under RDFS as under simple entailment.
 #[test]
-fn rdfs_refuses_named_graphs() {
+fn rdfs_refuses_graph_without_a_dataset() {
     let base = MemorySnapshot::from_ntriples(DATA.as_bytes()).unwrap();
     let opts = Options { entailment: Entailment::Rdfs, ..Options::default() };
     let e = query_with(&base, "SELECT * WHERE { GRAPH ?g { ?s ?p ?o } }", &opts).unwrap_err();
     assert_eq!(e.kind, QueryErrorKind::Unsupported, "{e:?}");
+}
+
+/// Each graph of a dataset is entailed on its own triples: a named graph with the schema infers, one without does
+/// not (the default graph's schema does not leak in), and a FROM merge is entailed as the merge.
+#[test]
+fn rdfs_entails_each_graph_of_a_dataset_on_its_own() {
+    use triplelight::exec::query_dataset_with;
+    use triplelight::model::{Change, DatasetChange, GraphTarget};
+    use triplelight::store::Overlay;
+    let n = |x: &str| triplelight_rdf::NamedNode::new(x.trim_matches(|c| c == '<' || c == '>')).unwrap();
+    let t = |a: &str, p: &str, o: &str| triplelight_rdf::Triple::new(n(a), n(p), n(o));
+    let schema = [t("http://ex/GradStudent", SC, "http://ex/Student"), t("http://ex/advisor", DOM, "http://ex/Student")];
+    let data = [t("http://ex/ann", RDF_TYPE, "http://ex/GradStudent"), t("http://ex/cat", "http://ex/advisor", "http://ex/bob")];
+    let g = |x: &str| n(&format!("http://ex/{x}"));
+    let mut changes = Vec::new();
+    for t in schema { changes.push(DatasetChange::Quad(GraphTarget::Default, Change::Insert, t.clone())); changes.push(DatasetChange::Quad(GraphTarget::Named(g("g1")), Change::Insert, t)) }
+    for t in data {
+        changes.push(DatasetChange::Quad(GraphTarget::Named(g("g1")), Change::Insert, t.clone()));
+        changes.push(DatasetChange::Quad(GraphTarget::Named(g("g2")), Change::Insert, t));
+    }
+    let ds = Overlay::from_base(std::sync::Arc::new(MemorySnapshot::from_triples([]))).with_dataset_changes(&changes).unwrap().0;
+    let opts = Options { entailment: Entailment::Rdfs, ..Options::default() };
+    let students = |q: &str| -> Vec<String> {
+        match query_dataset_with(&ds, &ds, q, &opts).unwrap() {
+            QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.into_iter().map(|r| r.into_iter().map(|t| t.map(|t| t.to_string()).unwrap_or("-".into())).collect::<Vec<_>>().join(" ")).collect(); v.sort(); v }
+            r => panic!("{r:?}"),
+        }
+    };
+    let both = vec!["<http://ex/ann>".to_string(), "<http://ex/cat>".to_string()];
+    assert_eq!(students("SELECT ?x WHERE { GRAPH <http://ex/g1> { ?x a <http://ex/Student> } }"), both);
+    assert!(students("SELECT ?x WHERE { GRAPH <http://ex/g2> { ?x a <http://ex/Student> } }").is_empty());
+    assert_eq!(students("SELECT ?g ?x WHERE { GRAPH ?g { ?x a <http://ex/Student> } }"), vec!["<http://ex/g1> <http://ex/ann>".to_string(), "<http://ex/g1> <http://ex/cat>".to_string()]);
+    // The default graph holds only the schema: no instances.
+    assert!(students("SELECT ?x WHERE { ?x a <http://ex/Student> }").is_empty());
+    // FROM g2 alone has no schema; the merge of g1 and g2 has g1's.
+    assert!(students("SELECT ?x FROM <http://ex/g2> WHERE { ?x a <http://ex/Student> }").is_empty());
+    assert_eq!(students("SELECT ?x FROM <http://ex/g1> FROM <http://ex/g2> WHERE { ?x a <http://ex/Student> }"), both);
 }
