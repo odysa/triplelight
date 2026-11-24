@@ -42,6 +42,22 @@ pub trait Dictionary {
     }
 }
 
+/// `Snapshot::first_keys` by one full scan of `perm`: for views that override it only in some states.
+pub fn first_keys_by_scan(snap: &(impl Snapshot + ?Sized), perm: Perm) -> Result<Vec<TermId>, StorageError> {
+    let (mut keys, mut sorted) = (Vec::<TermId>::new(), true);
+    for batch in snap.scan(perm, &[]) {
+        for &k in &batch?.cols[0] {
+            match keys.last() {
+                Some(&last) if last == k => {}
+                last => { sorted &= last.is_none_or(|&l| l < k); keys.push(k) }
+            }
+        }
+    }
+    // A scan is sorted by contract; a view that breaks it still gets the documented answer.
+    if !sorted { keys.sort_unstable(); keys.dedup() }
+    Ok(keys)
+}
+
 /// A consistent read view (snapshot) of the store.
 pub trait Snapshot: Dictionary + Send + Sync {
     /// Sorted scan of `perm` where the first `prefix.len()` key components (0..=3) equal `prefix`.
@@ -55,6 +71,9 @@ pub trait Snapshot: Dictionary + Send + Sync {
     fn scan_for_stats(&self) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + '_> {
         self.scan(Perm::Spo, &[])
     }
+    /// The distinct values of `perm`'s first key column, ascending (every subject for `Spo`, every object for `Osp`).
+    /// The default is one full scan; backends may answer it from their block layout instead.
+    fn first_keys(&self, perm: Perm) -> Result<Vec<TermId>, StorageError> { first_keys_by_scan(self, perm) }
     /// Exact number of triples matching the prefix (from block index / aggregated counts, no full scan).
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError>;
     /// Seek support for leapfrog joins: smallest value >= `target` in key position `prefix.len()` under `prefix`.
