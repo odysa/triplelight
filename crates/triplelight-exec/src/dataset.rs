@@ -91,3 +91,38 @@ impl Snapshot for UnionGraph<'_> {
         Ok(best)
     }
 }
+
+/// Graph views and named graphs of the active dataset. Every FROM / FROM NAMED source must be a graph of the catalog.
+pub(crate) fn resolve<'a, S: Snapshot>(snap: &S, ds: &'a dyn crate::storage::DatasetView, spec: Option<&crate::sparql::QueryDataset>) -> Result<(Vec<&'a dyn Snapshot>, Vec<TermId>), crate::QueryError> {
+    let storage = |e: crate::storage::StorageError| crate::QueryError::new(crate::QueryErrorKind::Storage, format!("storage error: {e}"));
+    let mut from: Vec<&dyn Snapshot> = Vec::new();
+    let mut named: Vec<TermId> = Vec::new();
+    // Local-only dataset construction: every FROM / FROM NAMED source must be a graph of the catalog (present,
+    // possibly empty). A missing source is refused rather than silently omitted or invented as an empty graph.
+    let present = |iris: &[triplelight_rdf::NamedNode]| -> Result<Vec<TermId>, crate::QueryError> {
+        let mut ids = Vec::new();
+        for iri in iris {
+            let id = snap.lookup(&iri.clone().into()).map_err(storage)?;
+            match id {
+                Some(id) if ds.graph(id).map_err(storage)?.is_some() => ids.push(id),
+                _ => return Err(crate::QueryError::new(crate::QueryErrorKind::Unsupported, format!(
+                    "dataset source <{}> is not a graph of this database (only local graphs can be named in FROM / FROM NAMED)", iri.as_str()))),
+            }
+        }
+        ids.sort_unstable(); ids.dedup();
+        Ok(ids)
+    };
+    match spec {
+        None => named = ds.graph_names().map_err(storage)?,
+        Some(spec) => {
+            let default = present(&spec.default)?;
+            if default.len() > 1 && ds.shares_blank_nodes(&default).map_err(storage)? != Some(false) {
+                return Err(crate::QueryError::new(crate::QueryErrorKind::Unsupported,
+                    "FROM over several graphs that share (or may share) blank nodes is not supported: the RDF merge would standardize them apart".to_string()));
+            }
+            for id in default { from.push(ds.graph(id).map_err(storage)?.expect("checked present")) }
+            if let Some(n) = &spec.named { named = present(n)? }
+        }
+    }
+    Ok((from, named))
+}

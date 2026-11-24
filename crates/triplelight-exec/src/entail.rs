@@ -48,7 +48,9 @@ const O: usize = 2;
 /// domain and range give (closed upward over `sc`, inherited from superproperties).
 #[derive(Default)]
 pub(crate) struct Schema {
-    pub(crate) rdf_type: Option<TermId>,
+    /// `rdf:type`'s ID, 0 if none: the store's, or (set by the executor when the store has no such IRI) the query's
+    /// scratch ID, so that domain and range still type resources in a graph without a single `rdf:type` triple.
+    rdf_type: std::sync::atomic::AtomicU64,
     sub_class_of: Option<TermId>,
     sub_property_of: Option<TermId>,
     super_props: HashMap<TermId, Vec<TermId>>,
@@ -134,7 +136,13 @@ impl Schema {
         let domain_of = inherited(pairs(domain)?);
         let range_of = inherited(pairs(range)?);
         let (by_domain, by_range) = (invert(&domain_of), invert(&range_of));
+        let rdf_type = std::sync::atomic::AtomicU64::new(rdf_type.map_or(0, |t| t.0));
         Ok(Schema { rdf_type, sub_class_of, sub_property_of, super_props, sub_props, super_classes, sub_classes, domain_of, range_of, by_domain, by_range })
+    }
+
+    pub(crate) fn rdf_type(&self) -> Option<TermId> {
+        let t = self.rdf_type.load(std::sync::atomic::Ordering::Relaxed);
+        (t != 0).then_some(TermId(t))
     }
 
     /// No rule can add a triple: the view is the graph.
@@ -185,6 +193,11 @@ impl<'a> Entailed<'a> {
         Ok(Entailed { base, schema: Schema::of(base)?, memo: Mutex::new((0, HashMap::new())) })
     }
 
+    /// Names `rdf:type` by `id` when the graph's dictionary has no such IRI (`Schema::rdf_type`); before any scan.
+    pub(crate) fn set_rdf_type(&self, id: TermId) {
+        if self.schema.rdf_type().is_none() { self.schema.rdf_type.store(id.0, std::sync::atomic::Ordering::Relaxed) }
+    }
+
     /// The bound S, P, O of `prefix` in `perm`'s key order.
     fn bound(perm: Perm, prefix: &[TermId]) -> [Option<TermId>; 3] {
         let mut b = [None; 3];
@@ -196,7 +209,7 @@ impl<'a> Entailed<'a> {
     fn delegates(&self, perm: Perm, prefix: &[TermId]) -> bool {
         if self.schema.is_empty() { return true }
         match Self::bound(perm, prefix)[P] {
-            Some(q) => Some(q) != self.schema.rdf_type && !is_schema_closure(&self.schema, q) && !self.schema.sub_props.contains_key(&q),
+            Some(q) => Some(q) != self.schema.rdf_type() && !is_schema_closure(&self.schema, q) && !self.schema.sub_props.contains_key(&q),
             None => false,
         }
     }
@@ -223,7 +236,7 @@ impl<'a> Entailed<'a> {
         let keep = |t: &[TermId; 3]| (0..3).all(|c| b[c].is_none_or(|v| v == t[c]));
         let mut out: Vec<[TermId; 3]> = Vec::new();
         match b[P] {
-            Some(q) if Some(q) == s.rdf_type => {
+            Some(q) if Some(q) == s.rdf_type() => {
                 for (x, c) in self.types(b[S], b[O])? { out.push([x, q, c]) }
             }
             Some(q) if is_schema_closure(s, q) => out.extend(self.closure_triples(q).filter(keep)),
@@ -242,7 +255,7 @@ impl<'a> Entailed<'a> {
                     for &q in s.super_props.get(&t[P]).into_iter().flatten() { out.push([t[S], q, t[O]]) }
                 }
                 for q in [s.sub_class_of, s.sub_property_of].into_iter().flatten() { out.extend(self.closure_triples(q).filter(keep)) }
-                if let Some(ty) = s.rdf_type {
+                if let Some(ty) = s.rdf_type() {
                     for (x, c) in self.types(b[S], b[O])? { out.push([x, ty, c]) }
                 }
             }
@@ -281,7 +294,7 @@ impl<'a> Entailed<'a> {
     fn types(&self, x: Option<TermId>, c: Option<TermId>) -> Result<Vec<(TermId, TermId)>, StorageError> {
         let s = &self.schema;
         // Without `rdf:type` in the dictionary no type triple can be named by a query.
-        let Some(ty) = s.rdf_type else { return Ok(Vec::new()) };
+        let Some(ty) = s.rdf_type() else { return Ok(Vec::new()) };
         let up = |c: TermId| std::iter::once(c).chain(s.super_classes.get(&c).into_iter().flatten().copied());
         let mut out = Vec::new();
         match (x, c) {
@@ -315,7 +328,7 @@ impl<'a> Entailed<'a> {
     /// Every entailed instance of `c` (duplicates allowed).
     fn instances(&self, c: TermId) -> Result<Vec<TermId>, StorageError> {
         let s = &self.schema;
-        let Some(ty) = s.rdf_type else { return Ok(Vec::new()) };
+        let Some(ty) = s.rdf_type() else { return Ok(Vec::new()) };
         let mut out = Vec::new();
         for k in std::iter::once(c).chain(s.sub_classes.get(&c).into_iter().flatten().copied()) {
             for b in self.base.scan(Perm::Pos, &[ty, k]) { out.extend_from_slice(&b?.cols[2]) }
@@ -372,5 +385,40 @@ impl Snapshot for Entailed<'_> {
         lo.push(target);
         let i = rows.partition_point(|r| r[..lo.len()] < lo[..]);
         Ok(rows.get(i).filter(|r| r[..prefix.len()] == *prefix).map(|r| r[prefix.len()]))
+    }
+}
+
+/// The graph views one query reads: the active default graph and, under RDFS, its entailed view and one per named
+/// graph of the dataset, each closed over its own triples.
+pub(crate) struct Views<'a> {
+    plain: Option<&'a dyn Snapshot>,
+    default: Option<Entailed<'a>>,
+    named: Vec<(TermId, Entailed<'a>)>,
+}
+
+impl<'a> Views<'a> {
+    /// `default`: the active default graph when it is not the store's own (`None`); `store`: the store's.
+    pub(crate) fn new(rdfs: bool, store: &'a dyn Snapshot, default: Option<&'a dyn Snapshot>, dataset: Option<&'a dyn crate::storage::DatasetView>, named: &[TermId]) -> Result<Self, StorageError> {
+        if !rdfs { return Ok(Views { plain: default, default: None, named: Vec::new() }) }
+        let mut views = Vec::new();
+        if let Some(ds) = dataset {
+            for &g in named { if let Some(v) = ds.graph(g)? { views.push((g, Entailed::new(v)?)) } }
+        }
+        Ok(Views { plain: default, default: Some(Entailed::new(default.unwrap_or(store))?), named: views })
+    }
+
+    /// The active default graph if it is not the store's own.
+    pub(crate) fn default_graph(&self) -> Option<&dyn Snapshot> {
+        match &self.default { Some(e) => Some(e), None => self.plain }
+    }
+
+    /// Named graph -> its entailed view (empty without RDFS).
+    pub(crate) fn named(&self) -> HashMap<TermId, &dyn Snapshot> { self.named.iter().map(|(g, e)| (*g, e as &dyn Snapshot)).collect() }
+
+    pub(crate) fn entailing(&self) -> bool { self.default.is_some() }
+
+    /// Names `rdf:type` by `id` in every entailed view (`Entailed::set_rdf_type`).
+    pub(crate) fn set_rdf_type(&self, id: TermId) {
+        for e in self.default.iter().chain(self.named.iter().map(|(_, e)| e)) { e.set_rdf_type(id) }
     }
 }
