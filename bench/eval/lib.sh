@@ -43,7 +43,7 @@ start_system() {  # start_system <system> <dataset> [budget args...]; waits unti
     scope=(systemd-run --scope --quiet --unit="bench-$s" -p MemoryMax="${mem}G" -p MemorySwapMax=0 -p AllowedCPUs="0-$((cpus - 1))" --)
     echo "start_system $s: native server in scope bench-$s, MemoryMax=${mem}G, no swap, CPUs 0-$((cpus - 1))" >> "$OUT/$s.server.log"
   fi
-  ${scope[@]+"${scope[@]}"} "$HERE/systems.sh" "$s" serve "$d" "$@" > "$OUT/$s.server.log" 2>&1 &
+  ${scope[@]+"${scope[@]}"} "$HERE/systems.sh" "$s" serve "$d" "$@" >> "$OUT/$s.server.log" 2>&1 &   # keeps the scope line above
   echo $! > "$(PIDFILE "$s")"
   local t0; t0=$(date +%s)
   # readiness probe with a constant predicate: QLever's two-order index cannot answer a variable predicate and drops the connection
