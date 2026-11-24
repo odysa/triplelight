@@ -627,6 +627,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                     char_pairs: true,
                     sorted_probe: true,
                     csr_paths: true,
+                    entailment: Default::default(),
                 },
             )
             .unwrap(),
@@ -645,6 +646,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                     char_pairs: true,
                     sorted_probe: true,
                     csr_paths: true,
+                    entailment: Default::default(),
                 },
             )
             .unwrap(),
@@ -665,6 +667,7 @@ fn index_nested_loop_model_matches_runtime_executor_bindings() {
                         char_pairs: true,
                         sorted_probe: true,
                         csr_paths: true,
+                        entailment: Default::default(),
                     },
                 )
                 .unwrap(),
@@ -806,6 +809,7 @@ fn optimizer_count_failure_reaches_query_error() {
             char_pairs: true,
             sorted_probe: true,
             csr_paths: true,
+            entailment: Default::default(),
         },
     )
     .unwrap_err();
@@ -940,6 +944,7 @@ fn wide_high_work_bgp_preserves_original_runtime_results() {
                 char_pairs: true,
                 sorted_probe: true,
                 csr_paths: true,
+                entailment: Default::default(),
             },
         )
         .unwrap(),
@@ -958,6 +963,7 @@ fn wide_high_work_bgp_preserves_original_runtime_results() {
                 char_pairs: true,
                 sorted_probe: true,
                 csr_paths: true,
+                entailment: Default::default(),
             },
         )
         .unwrap(),
