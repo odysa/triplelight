@@ -1652,6 +1652,7 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                     }
                 }
             }
+            Op::Load { silent: true, .. } => {}
             _ => return Err(unsupported("graph management")),
         }
     }
@@ -1667,7 +1668,8 @@ pub fn parse_update_operations(text: &str) -> Result<Vec<crate::sparql::GraphUpd
 /// The caller applies each operation's changes before computing the next one, so every operation sees the effects of
 /// the ones before it (SPARQL 1.1 Update semantics), and commits the concatenated list atomically.
 /// Supports INSERT DATA, DELETE DATA, DELETE/INSERT ... WHERE with GRAPH templates, `WITH` and `USING`, and graph
-/// management (CREATE, DROP, CLEAR, ADD, MOVE, COPY); LOAD is refused as unsupported (nothing is fetched).
+/// management (CREATE, DROP, CLEAR, ADD, MOVE, COPY). Without a source resolver, LOAD reports an error and
+/// LOAD SILENT leaves the dataset unchanged.
 pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &crate::sparql::GraphUpdateOperation) -> Result<Vec<crate::model::DatasetChange>, QueryError> {
     use crate::model::{Change, DatasetChange, GraphScope, GraphTarget};
     use crate::sparql::{ClearTarget, GraphName, GraphNamePattern, GroundTermPattern, TransferKind};
@@ -1749,6 +1751,7 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
             // Deletions of an operation precede its insertions.
             out.sort_by_key(|c| !matches!(c, DatasetChange::Quad(_, Change::Delete, _)));
         }
+        Op::Load { silent: true, .. } => {}
         Op::Load { .. } => return Err(unsupported("LOAD")),
         Op::Create { silent, graph } => out.push(DatasetChange::Create { graph: graph.clone(), silent: *silent }),
         Op::Clear { silent, graph } => out.push(DatasetChange::Clear { target: scope_of(graph), silent: *silent }),

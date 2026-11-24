@@ -154,3 +154,55 @@ fn graph_still_needs_a_term_or_close_after_a_dot() {
     assert!(db.update(&format!("{P}INSERT DATA {{ :a :p 1 . GRAPH }}")).is_err());
     assert!(db.update(&format!("{P}INSERT DATA {{ :a :p 1 . . }}")).is_err());
 }
+
+#[test]
+fn load_resolver_preserves_order_graphs_and_atomicity() {
+    use triplelight::embedded::DatabaseError;
+    use triplelight::rdf::{BlankNode, Literal, NamedNode, Triple};
+
+    let dir = std::env::temp_dir().join(format!("tl-load-update-{}", std::process::id()));
+    let load = |source: &NamedNode| match source.as_str() {
+        "urn:good" => Ok(vec![Triple::new(
+            BlankNode::new_unchecked("doc"),
+            NamedNode::new_unchecked("urn:p"),
+            Literal::new_simple_literal("loaded"),
+        )]),
+        "https://example.org/data.ttl" => Ok(vec![Triple::new(
+            NamedNode::new_unchecked("urn:default"),
+            NamedNode::new_unchecked("urn:p"),
+            Literal::new_simple_literal("resolved"),
+        )]),
+        "urn:empty" => Ok(Vec::new()),
+        _ => Err(DatabaseError::Storage(std::io::Error::from(std::io::ErrorKind::NotFound))),
+    };
+    let check = |db: &Database| {
+        assert!(matches!(db.query("ASK { GRAPH <urn:empty> {} }").unwrap(), QueryResult::Boolean(true)));
+        assert_eq!(
+            rows(db, "SELECT ?s WHERE { ?s <urn:p> 'resolved' }"),
+            one("<urn:default>"),
+        );
+        let solutions = rows(db, "SELECT ?s WHERE { ?s <urn:q> 'seen' }");
+        assert_eq!(solutions.len(), 2);
+        assert_ne!(solutions[0], solutions[1]);
+    };
+
+    for db in [Database::in_memory(), Database::open(&dir).unwrap()] {
+        assert!(db.update_with_loader(
+            "INSERT DATA { <urn:s> <urn:p> 'partial' }; LOAD <urn:missing>",
+            load,
+        ).is_err());
+        assert!(matches!(db.query("ASK { ?s ?p ?o }").unwrap(), QueryResult::Boolean(false)));
+
+        let changed = db.update_with_loader(
+            "BASE <https://example.org/> LOAD <data.ttl>; \
+             LOAD SILENT <urn:missing>; LOAD <urn:empty> INTO GRAPH <urn:empty>; \
+             LOAD <urn:good> INTO GRAPH <urn:g>; LOAD <urn:good> INTO GRAPH <urn:g>; \
+             INSERT { ?s <urn:q> 'seen' } WHERE { GRAPH <urn:g> { ?s <urn:p> 'loaded' } }",
+            load,
+        ).unwrap();
+        assert_eq!(changed, 5);
+        check(&db);
+    }
+    check(&Database::open(&dir).unwrap());
+    std::fs::remove_dir_all(dir).unwrap();
+}
