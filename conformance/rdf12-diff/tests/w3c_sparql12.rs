@@ -1,4 +1,4 @@
-//! The pinned W3C SPARQL 1.2 suites and SPARQL 1.1 Update syntax tests.
+//! The pinned W3C SPARQL 1.2 and SPARQL 1.1 Update suites.
 #[path = "w3c/eval.rs"]
 mod eval;
 #[path = "w3c/terms.rs"]
@@ -85,6 +85,52 @@ fn sparql11_w3c_update_manifest_syntax() {
     assert_eq!(totals["NegativeUpdateSyntaxTest11"], 13);
     assert_eq!(totals["NegativeSyntaxTest11"], 8);
     assert_floor("SPARQL 1.1 Update manifest syntax", passed, &failures, 63);
+}
+
+#[test]
+#[ignore = "requires the exact W3C rdf-tests checkout in TL_RDF_TESTS"]
+fn sparql11_w3c_update_evaluation() {
+    let root = pinned_checkout();
+    let mut failures = Vec::new();
+    let mut passed = 0;
+    for (suite, count) in [
+        ("add", 8),
+        ("basic-update", 13),
+        ("clear", 4),
+        ("copy", 6),
+        ("delete-data", 6),
+        ("delete-insert", 9),
+        ("delete-where", 6),
+        ("delete", 19),
+        ("drop", 4),
+        ("move", 6),
+        ("update-silent", 13),
+    ] {
+        let graph = load_manifest(&root, &format!("sparql/sparql11/{suite}/manifest.ttl"));
+        let mut updates = 0;
+        for entry in entries(&graph) {
+            let kind = iri(property(&graph, entry, RDF, "type"))
+                .strip_prefix(MF)
+                .expect("SPARQL test type");
+            match kind {
+                "UpdateEvaluationTest" => updates += 1,
+                "NegativeSyntaxTest11" => continue,
+                _ => panic!("unknown test type {kind}"),
+            }
+            match eval::evaluate_update11(&root, &graph, entry) {
+                Ok(()) => {
+                    passed += 1;
+                    println!("PASS {entry}");
+                }
+                Err(error) => {
+                    eprintln!("FAIL {entry} {error}");
+                    failures.push(entry.to_string());
+                }
+            }
+        }
+        assert_eq!(updates, count, "{suite}");
+    }
+    assert_floor("SPARQL 1.1 Update evaluation", passed, &failures, 94);
 }
 
 #[test]

@@ -7,13 +7,14 @@ use std::error::Error;
 use std::path::Path;
 use std::sync::Arc;
 use triplelight::exec::{Options, QueryResult, query_dataset_with, results::serialize};
-use triplelight::model::Perm;
+use triplelight::model::{DatasetChange, Perm};
 use triplelight::storage::{DatasetView, Dictionary, MemorySnapshot, Snapshot};
 use triplelight::store::{Overlay, dataset_update, quad_load_changes};
 use triplelight_rdf as tl;
 
 const QT: &str = "http://www.w3.org/2001/sw/DataAccess/tests/test-query#";
 const UT: &str = "http://www.w3.org/2009/sparql/tests/test-update#";
+const RDFS: &str = "http://www.w3.org/2000/01/rdf-schema#";
 type Fallible<T> = Result<T, Box<dyn Error>>;
 
 fn load_fixture(root: &Path, path: &str) -> Fallible<Vec<tl::Quad>> {
@@ -73,8 +74,66 @@ fn input_dataset(
     Ok(dataset)
 }
 
-fn read_output(dataset: &Overlay) -> Fallible<Dataset> {
+fn update_graphs<'a>(
+    manifest: &'a Graph,
+    state: oxrdf::NamedOrBlankNodeRef<'a>,
+) -> Fallible<Vec<(Option<&'a str>, &'a str)>> {
+    let data = format!("{UT}data");
+    let graph_data = format!("{UT}graphData");
+    let mut defaults = manifest.objects_for_subject_predicate(state, NamedNodeRef::new(&data)?);
+    let mut files = Vec::new();
+    if let Some(path) = defaults.next() {
+        files.push((None, iri(path)));
+    }
+    if defaults.next().is_some() {
+        return Err("multiple default graph fixtures".into());
+    }
+    for description in manifest.objects_for_subject_predicate(state, NamedNodeRef::new(&graph_data)?) {
+        let (name, path) = match description {
+            oxrdf::TermRef::NamedNode(path) => (path.as_str(), path.as_str()),
+            oxrdf::TermRef::BlankNode(_) => {
+                let description = node(description);
+                let label = property(manifest, description, RDFS, "label");
+                let oxrdf::TermRef::Literal(label) = label else {
+                    return Err("expected a literal graph label".into());
+                };
+                let path = iri(property(manifest, description, UT, "graph"));
+                (label.value(), path)
+            }
+            _ => return Err("expected a graph fixture IRI or descriptor".into()),
+        };
+        files.push((Some(name), path));
+    }
+    Ok(files)
+}
+
+fn update_input(root: &Path, files: &[(Option<&str>, &str)]) -> Fallible<Overlay> {
+    let mut dataset = Overlay::from_base(Arc::new(MemorySnapshot::from_triples([])));
+    for &(name, path) in files {
+        let mut quads = load_fixture(root, path)?;
+        let mut changes = Vec::new();
+        if let Some(name) = name {
+            let name = tl::NamedNode::new(name)?;
+            changes.push(DatasetChange::Create {
+                graph: name.clone(),
+                silent: false,
+            });
+            for quad in &mut quads {
+                if quad.graph_name != tl::GraphName::DefaultGraph {
+                    return Err(format!("expected a graph, found a dataset at {path}").into());
+                }
+                quad.graph_name = tl::GraphName::NamedNode(name.clone());
+            }
+        }
+        changes.extend(quad_load_changes(quads)?);
+        (dataset, _) = dataset.with_dataset_changes(&changes)?;
+    }
+    Ok(dataset)
+}
+
+fn read_output(dataset: &Overlay) -> Fallible<(Dataset, BTreeSet<NamedNode>)> {
     let mut rows = Vec::new();
+    let mut names = BTreeSet::new();
     let mut read = |snapshot: &dyn Snapshot, graph: tl::GraphName| -> Fallible<()> {
         for batch in snapshot.scan(Perm::Spo, &[]) {
             let [s, p, o] = batch?.cols;
@@ -92,12 +151,67 @@ fn read_output(dataset: &Overlay) -> Fallible<Dataset> {
     read(dataset.default_graph(), tl::GraphName::DefaultGraph)?;
     for id in dataset.graph_names()? {
         let name = tl::NamedNode::try_from(dataset.resolve(id)?)?;
+        names.insert(NamedNode::new(name.as_str())?);
         let snapshot = dataset
             .graph(id)?
             .ok_or("missing named graph from catalog")?;
         read(snapshot, tl::GraphName::NamedNode(name))?;
     }
-    Ok(rows.into_iter().collect())
+    Ok((rows.into_iter().collect(), names))
+}
+
+pub fn evaluate_update11(
+    root: &Path,
+    manifest: &Graph,
+    entry: oxrdf::NamedOrBlankNodeRef<'_>,
+) -> Fallible<()> {
+    let action = node(property(manifest, entry, MF, "action"));
+    let request = iri(property(manifest, action, UT, "request"));
+    let initial = update_input(root, &update_graphs(manifest, action)?)?;
+    let text = format!(
+        "BASE <{request}>\n{}",
+        String::from_utf8(fixture(root, request))?
+    );
+    let (updated, _, _) = dataset_update(&initial, &text)?;
+    let (actual, actual_names) = read_output(updated.as_ref().unwrap_or(&initial))?;
+
+    let result = node(property(manifest, entry, MF, "result"));
+    let mut expected = Dataset::new();
+    let mut expected_names = BTreeSet::new();
+    for (name, path) in update_graphs(manifest, result)? {
+        let graph = match name {
+            Some(name) => {
+                let name = NamedNode::new(name)?;
+                expected_names.insert(name.clone());
+                GraphName::NamedNode(name)
+            }
+            None => GraphName::DefaultGraph,
+        };
+        // Blank node labels are local to each input document.
+        let mut labels = HashMap::new();
+        let mut fresh = |label: BlankNode| labels.entry(label).or_insert_with(BlankNode::default).clone();
+        for quad in reference_graph(root, path)?.iter() {
+            let mut quad = quad.into_owned();
+            if quad.graph_name != GraphName::DefaultGraph {
+                return Err(format!("expected a graph, found a dataset at {path}").into());
+            }
+            quad.graph_name = graph.clone();
+            if let oxrdf::NamedOrBlankNode::BlankNode(label) = quad.subject {
+                quad.subject = fresh(label).into();
+            }
+            if let Term::BlankNode(label) = quad.object {
+                quad.object = fresh(label).into();
+            }
+            expected.insert(&quad);
+        }
+    }
+    if actual_names != expected_names {
+        return Err(format!("named graph catalog differs: expected {expected_names:?}, got {actual_names:?}").into());
+    }
+    if !isomorphic(expected, actual) {
+        return Err("dataset contents differ".into());
+    }
+    Ok(())
 }
 
 enum Answer {
@@ -227,7 +341,7 @@ pub fn evaluate(
         let (updated, _, _) = dataset_update(&initial, &text)?;
         isomorphic(
             reference_graph(root, path)?,
-            read_output(updated.as_ref().unwrap_or(&initial))?,
+            read_output(updated.as_ref().unwrap_or(&initial))?.0,
         )
     } else {
         let path = iri(reference);
