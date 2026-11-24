@@ -82,6 +82,25 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         Some((self.var(out), results))
     }
 
+    fn count_one_key(&self, rows: &[Row], key_col: usize, value_col: Option<usize>, out_col: usize) -> Vec<Row> {
+        let mut positions = HashMap::new();
+        let mut groups: Vec<(TermId, i64)> = Vec::new();
+        for row in rows {
+            let key = row[key_col];
+            let index = *positions.entry(key).or_insert_with(|| {
+                groups.push((key, 0));
+                groups.len() - 1
+            });
+            groups[index].1 += i64::from(value_col.is_none_or(|col| row[col] != UNBOUND));
+        }
+        groups.into_iter().map(|(key, count)| {
+            let mut out = self.empty_row();
+            out[key_col] = key;
+            out[out_col] = self.intern(&Literal::from(count).into());
+            out
+        }).collect()
+    }
+
     /// Fast GROUP BY over already evaluated rows; `None` if some aggregate isn't supported here.
     pub(super) fn try_fast_group(&self, rows: &[Row], kidx: &[usize], aggs: &[(Variable, AggregateExpression)]) -> Option<Vec<Row>> {
         let mut specs = Vec::with_capacity(aggs.len());
@@ -104,6 +123,13 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 }
                 _ => return None,
             });
+        }
+        if let ([key_col], [Spec { kind, col, distinct: false, out }]) = (kidx, specs.as_slice()) {
+            match kind {
+                Kind::CountAll { distinct: false } => return Some(self.count_one_key(rows, *key_col, None, *out)),
+                Kind::Count => return Some(self.count_one_key(rows, *key_col, Some(*col), *out)),
+                _ => {}
+            }
         }
         let nums: RefCell<HashMap<TermId, Option<Num>>> = RefCell::new(HashMap::new());
         let terms: RefCell<HashMap<TermId, Term>> = RefCell::new(HashMap::new());
