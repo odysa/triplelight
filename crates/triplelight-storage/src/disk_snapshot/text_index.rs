@@ -1,6 +1,6 @@
 //! Explicit, disposable literal postings bound to an immutable base generation.
 use super::DiskSnapshot;
-use crate::{external_sort::ExternalSort, store::{Store, text_postings::{HEADER_BYTES, MAGIC, MAX_ANALYZED_BYTES}}};
+use crate::{external_sort::ExternalSort, model::TermId, store::{Store, text_postings::{HEADER_BYTES, MAGIC, MAX_ANALYZED_BYTES, OVERSIZED}}};
 use sha2::{Digest, Sha256};
 use std::{
     fs::{self, File, OpenOptions},
@@ -31,22 +31,19 @@ impl DiskSnapshot {
             })
             .ok_or_else(generation_changed)??;
         let mut sort = ExternalSort::new(&root, sort_budget, literal_limit + 9)?;
+        let mut oversized = false;
         snapshot.visit_unified_literals(&mut |id, literal| {
             let kind = literal.datatype();
             if kind != xsd::STRING && kind != rdf::LANG_STRING {
                 return Ok(());
             }
-            let words = AnalyzedText::bounded(literal.value(), literal_limit)
-                .ok_or_else(|| io::Error::other("literal exceeds text index analysis buffer"))?;
-            for token in words.tokens() {
-                if token.as_bytes().contains(&0) {
-                    return Err(io::Error::other("invalid NUL in analyzed token"));
+            if let Some(words) = AnalyzedText::bounded(literal.value(), literal_limit) {
+                for token in words.tokens() {
+                    push_token(&mut sort, token, id)?;
                 }
-                let mut key = Vec::with_capacity(token.len() + 9);
-                key.extend_from_slice(token.as_bytes());
-                key.push(0);
-                key.extend_from_slice(&id.0.to_be_bytes());
-                sort.push(key)?;
+            } else {
+                push_token(&mut sort, OVERSIZED, id)?;
+                oversized = true;
             }
             Ok(())
         })?;
@@ -55,12 +52,29 @@ impl DiskSnapshot {
         let n = write_index(&mut sort, &file, generation, manifest)?;
         store.with_generation(generation, |root| {
             store.check_poisoned()?;
-            fs::rename(&file, root.join(format!("text-{generation}.v1")))?;
+            fs::rename(&file, root.join(format!("text-{generation}.v2")))?;
+            // Existing readers keep their v1 file descriptor after the unlink.
+            match fs::remove_file(root.join(format!("text-{generation}.v1"))) {
+                Ok(()) => {}
+                Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+                Err(err) => return Err(err),
+            }
             File::open(root)?.sync_all()
         })
         .ok_or_else(generation_changed)??;
-        Ok(n)
+        Ok(n - u64::from(oversized))
     }
+}
+
+fn push_token(sort: &mut ExternalSort, token: &str, id: TermId) -> io::Result<()> {
+    if token.as_bytes().contains(&0) {
+        return Err(io::Error::other("invalid NUL in analyzed token"));
+    }
+    let mut key = Vec::with_capacity(token.len() + 9);
+    key.extend_from_slice(token.as_bytes());
+    key.push(0);
+    key.extend_from_slice(&id.0.to_be_bytes());
+    sort.push(key)
 }
 
 fn generation_changed() -> io::Error {

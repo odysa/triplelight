@@ -677,7 +677,7 @@ impl Dictionary for DiskSnapshot {
 
 impl Snapshot for DiskSnapshot {
     fn has_rdf12_terms(&self) -> bool { self.rdf12 }
-    fn text_candidates(&self, tokens: &[&str], limit: usize) -> Option<Vec<TermId>> {
+    fn text_candidates(&self, tokens: &[&str], limit: usize) -> Option<triplelight_core::storage::TextCandidates> {
         self.text_index.get_or_init(|| crate::store::text_postings::TextIndex::open(&self.dir, &self.manifest_sha).ok())
             .as_ref()?.candidates(tokens, limit).ok()
     }
