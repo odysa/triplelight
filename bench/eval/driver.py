@@ -141,9 +141,10 @@ def post(url, query, timeout):
     return resp.status, chunks(), conn
 
 
-# QLever ends its JSON with a `"query-time-ms"` member whose digits vary from run to run, so two correct answers differ in length by a
-# few bytes. That member is not part of the answer: the byte counts used to compare a drained run with the hashed check run leave it out.
-VOLATILE_TRAILER = re.compile(rb',\s*"query-time-ms"\s*:\s*[-+0-9.eE]+')
+# QLever ends its JSON with `,"meta":{"query-time-ms":15,"result-size-total":4,"warnings":[]}}` (captured from a real response): the digits of the
+# time vary from run to run, so two correct answers differ in length by a few bytes. The time is not part of the answer: the byte counts used
+# to compare a drained run with the hashed check run leave it out.
+VOLATILE_TRAILER = re.compile(rb'"query-time-ms"\s*:\s*[-+0-9.eE]+')
 
 
 class ByteCount:
@@ -355,10 +356,10 @@ def _body(n, kind="ok"):
 
 
 def _body_qtime(n, ms):
-    """The ok body with QLever's trailing `"query-time-ms"` member, of a length that depends on `ms`."""
+    """The ok body with the `meta` member QLever appends, whose `query-time-ms` has a length that depends on `ms`."""
     text = "".join(_body(n))
     assert text.endswith("\n]}}")
-    return text[:-1] + f',"query-time-ms":{ms}}}'
+    return text[:-1] + f',"meta":{{"query-time-ms":{ms},"result-size-total":{n},"warnings":[]}}}}'
 
 
 def serve_fake(behaviors):
