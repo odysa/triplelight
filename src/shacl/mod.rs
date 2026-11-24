@@ -19,7 +19,7 @@ pub use error::ValidationError;
 pub use evaluator::{validate, Evaluator};
 pub use graph::Graph;
 pub use path::Path;
-pub use report::{ConstraintViolation, Severity, ValidationReport, ValidationResult};
+pub use report::{ConstraintViolation, Outcome, Severity, ValidationReport, ValidationResult};
 pub use shapes::{Shape, ShapesGraph, Target};
 
 #[cfg(test)]
