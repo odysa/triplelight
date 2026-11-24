@@ -211,6 +211,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         csr_paths: true,
                         entailment: Default::default(),
                         interrupt: None,
+                        memory_budget: None,
                     },
                 )?
                 else {

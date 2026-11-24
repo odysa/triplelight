@@ -28,6 +28,7 @@ fn query_error(e: exec::QueryError) -> JsValue {
         QueryErrorKind::GraphState => "GraphStateError",
         QueryErrorKind::Cancelled => "CancelledError",
         QueryErrorKind::Timeout => "TimeoutError",
+        QueryErrorKind::ResourceLimit => "ResourceLimitError",
     };
     error(kind, &e.message)
 }
