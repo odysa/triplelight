@@ -6,7 +6,8 @@ pub use triplelight_core::{model, ntriples, rdf, turtle};
 pub use triplelight_exec as exec;
 pub use triplelight_plan as opt;
 pub use triplelight_sparql as sparql;
-pub mod shacl;
+#[cfg(feature = "shacl")]
+pub use triplelight_shacl as shacl;
 
 /// Storage traits and implementations.
 pub mod storage {
@@ -91,6 +92,7 @@ pub mod store {
     }
 }
 
+pub mod extension;
 #[cfg(unix)]
 pub mod embedded;
 

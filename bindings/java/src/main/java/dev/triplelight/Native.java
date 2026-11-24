@@ -36,7 +36,7 @@ final class Native {
     static final long VIEW_BYTES = VIEW.byteOffset(MemoryLayout.PathElement.groupElement("bytes"));
 
     static final MethodHandle ABI, OPEN, OPEN_IN_MEMORY, CLOSE, QUERY, QUERY_ARROW, UPDATE, LOAD, COMPACT, STATS_READY,
-            RESULT_VIEW, RESULT_FREE, ERROR_KIND, ERROR_MESSAGE, ERROR_FREE;
+            LOAD_EXTENSION, LIST_EXTENSIONS, RESULT_VIEW, RESULT_FREE, ERROR_KIND, ERROR_MESSAGE, ERROR_FREE;
 
     static {
         String configured = System.getProperty("triplelight.library", System.getenv("TRIPLELIGHT_LIBRARY"));
@@ -54,6 +54,10 @@ final class Native {
         LOAD = h(linker, lib, "tl_load", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS));
         COMPACT = h(linker, lib, "tl_compact", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
         STATS_READY = h(linker, lib, "tl_stats_ready", FunctionDescriptor.of(JAVA_INT, ADDRESS));
+        LOAD_EXTENSION = lib.find("tl_load_extension").map(symbol ->
+                linker.downcallHandle(symbol, FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS))).orElse(null);
+        LIST_EXTENSIONS = lib.find("tl_list_extensions").map(symbol ->
+                linker.downcallHandle(symbol, FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS))).orElse(null);
         RESULT_VIEW = h(linker, lib, "tl_result_get_view", FunctionDescriptor.of(ADDRESS.withTargetLayout(VIEW), ADDRESS));
         RESULT_FREE = h(linker, lib, "tl_result_free", FunctionDescriptor.ofVoid(ADDRESS));
         ERROR_KIND = h(linker, lib, "tl_error_kind", FunctionDescriptor.of(JAVA_INT, ADDRESS));

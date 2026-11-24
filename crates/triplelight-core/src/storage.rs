@@ -1,6 +1,6 @@
 //! The storage interface the query side is written against (snapshots and the term dictionary).
 use crate::model::{Perm, TermId, TripleBatch};
-use triplelight_rdf::{Term, TermRef};
+use triplelight_rdf::{NamedNodeRef, Term, TermRef};
 
 pub type StorageError = std::io::Error;
 
@@ -120,13 +120,54 @@ pub trait Snapshot: Dictionary + Send + Sync {
     /// scan: `false` guarantees there is none, so outputs can stay exactly RDF 1.1. Stores without 1.2 support
     /// return `false`.
     fn has_rdf12_terms(&self) -> bool { false }
-    /// Sorted literal IDs containing every token. An absent or unusable index returns `None`.
+    /// Matches and unchecked literal IDs for every token. An unusable index returns `None`.
     /// The caller limits candidates to bound working memory; the default uses scalar filtering.
-    fn text_candidates(&self, _tokens: &[&str], _limit: usize) -> Option<Vec<TermId>> { None }
+    fn text_candidates(&self, _tokens: &[&str], _limit: usize) -> Option<TextCandidates> { None }
     /// A memo the executor may fill with facts that depend only on this view's contents (range pushdown's
     /// per-predicate check), shared by every query on it. Only an immutable view may return one; `None` (the default)
     /// makes the executor recompute per query.
     fn object_memo(&self) -> Option<&ObjectMemo> { None }
+}
+
+/// A text index's confirmed matches and literals that still require scalar matching.
+#[derive(Debug)]
+pub struct TextCandidates {
+    matched: Vec<TermId>,
+    unchecked: Vec<TermId>,
+}
+
+impl TextCandidates {
+    /// Both input lists must be sorted by term ID.
+    pub fn new(matched: Vec<TermId>, unchecked: Vec<TermId>) -> Self {
+        Self { matched, unchecked }
+    }
+
+    /// `None` means the literal must be evaluated by the scalar matcher.
+    pub fn matches(&self, id: TermId) -> Option<bool> {
+        if self.unchecked.binary_search(&id).is_ok() {
+            None
+        } else {
+            Some(self.matched.binary_search(&id).is_ok())
+        }
+    }
+
+    /// Bytes retained by both ID lists.
+    pub fn heap_bytes(&self) -> u64 {
+        ((self.matched.capacity() + self.unchecked.capacity()) * std::mem::size_of::<TermId>()) as u64
+    }
+}
+
+/// A query-time entailment provider over a read-only RDF graph.
+pub trait EntailmentProvider: Send + Sync {
+    /// Predicates the provider can infer even when their IRIs are absent from the store dictionary.
+    fn virtual_predicates(&self) -> &'static [NamedNodeRef<'static>];
+
+    /// Wraps one graph. Each missing predicate has a stable ID assigned by the executor for this query.
+    fn graph<'a>(
+        &self,
+        source: &'a dyn Snapshot,
+        virtual_ids: &[(NamedNodeRef<'static>, TermId)],
+    ) -> Result<Box<dyn Snapshot + 'a>, StorageError>;
 }
 
 /// See `Snapshot::object_memo`: for a (predicate, datatype IRI), the predicate's stored-literal objects ascending if

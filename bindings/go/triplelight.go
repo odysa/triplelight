@@ -245,6 +245,42 @@ type Result struct {
 	Bool bool
 }
 
+// ExtensionInfo reports build availability and load state for an extension.
+type ExtensionInfo struct {
+	Name       string
+	CompiledIn bool
+	Loaded     bool
+}
+
+// LoadExtension loads a linked official extension for this database.
+func (d *DB) LoadExtension(name string) error {
+	return d.with(func(h *C.tl_db) error {
+		var e *C.tl_error
+		p, n := cstr(name)
+		defer runtime.KeepAlive(name)
+		return check(C.tl_load_extension(h, p, n, &e), e)
+	})
+}
+
+// ListExtensions returns build availability and load state.
+func (d *DB) ListExtensions() ([]ExtensionInfo, error) {
+	var r *C.tl_result
+	err := d.with(func(h *C.tl_db) error {
+		var e *C.tl_error
+		return check(C.tl_list_extensions(h, &r, &e), e)
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer C.tl_result_free(r)
+	rows := decode(C.tl_result_get_view(r)).Rows
+	out := make([]ExtensionInfo, len(rows))
+	for i, row := range rows {
+		out[i] = ExtensionInfo{Name: row[0].Value, CompiledIn: row[1].Value == "true", Loaded: row[2].Value == "true"}
+	}
+	return out, nil
+}
+
 // Query runs a SPARQL SELECT, ASK or CONSTRUCT query.
 func (d *DB) Query(sparql string) (*Result, error) {
 	var r *C.tl_result

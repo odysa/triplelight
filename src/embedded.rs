@@ -6,6 +6,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 use crate::opt::stats::Stats;
+use crate::extension::{Extension, ExtensionError, ExtensionInfo, ExtensionRegistry, Registry, Validation};
 use crate::exec::{self, QueryError, QueryResult};
 use crate::store::{Change, Overlay, Store, StoreUpdate};
 use crate::storage::{Dictionary, DiskBase, MemorySnapshot, Snapshot};
@@ -69,7 +70,11 @@ pub struct Database {
     // Declared first so it drops first: closing waits for an in-flight statistics write, then the Store (and its
     // directory lock) is released, so the directory can be reopened as soon as the last handle is dropped.
     closer: Arc<CloseGate>,
-    store: Backend, stats: Arc<RwLock<Option<(Arc<Overlay>, Arc<Stats>)>>>, origin: Arc<Mutex<Option<(usize, StatsOrigin)>>> }
+    store: Backend,
+    stats: Arc<RwLock<Option<(Arc<Overlay>, Arc<Stats>)>>>,
+    origin: Arc<Mutex<Option<(usize, StatsOrigin)>>>,
+    extensions: ExtensionRegistry,
+}
 
 /// Set when the last `Database` handle is dropped; a background statistics writer checks it (under the same lock)
 /// before touching the directory, so nothing is written after close and close waits for a write in progress.
@@ -106,7 +111,7 @@ impl Database {
         }
         let format = DiskBase { workers: options.import_workers };
         let store = Arc::new(Store::open_with(dir, options.initial.as_deref(), Box::new(format))?);
-        let db = Self { closer: Arc::new(CloseGate(Arc::new(Mutex::new(false)))), store: Backend::Disk(store), stats: Arc::new(RwLock::new(None)), origin: Arc::new(Mutex::new(None)) };
+        let db = Self { closer: Arc::new(CloseGate(Arc::new(Mutex::new(false)))), store: Backend::Disk(store), stats: Arc::new(RwLock::new(None)), origin: Arc::new(Mutex::new(None)), extensions: ExtensionRegistry::default() };
         if !db.load_persisted_stats()? { db.refresh_stats(); }
         Ok(db)
     }
@@ -115,7 +120,7 @@ impl Database {
     pub fn in_memory() -> Self {
         let base = MemorySnapshot::from_triples(Vec::new());
         let current = Arc::new(Overlay::from_base(Arc::new(base)));
-        let db = Self { closer: Arc::new(CloseGate(Arc::new(Mutex::new(false)))), store: Backend::Memory(Arc::new(MemoryStore { current: RwLock::new(current), writer: Mutex::new(()) })), stats: Arc::new(RwLock::new(None)), origin: Arc::new(Mutex::new(None)) };
+        let db = Self { closer: Arc::new(CloseGate(Arc::new(Mutex::new(false)))), store: Backend::Memory(Arc::new(MemoryStore { current: RwLock::new(current), writer: Mutex::new(()) })), stats: Arc::new(RwLock::new(None)), origin: Arc::new(Mutex::new(None)), extensions: ExtensionRegistry::default() };
         db.refresh_stats();
         db
     }
@@ -214,25 +219,83 @@ impl Database {
     }
     /// Executes a SPARQL query and returns its observed basic graph pattern plan.
     pub fn explain(&self, sparql: &str, entailment: exec::Entailment) -> Result<String, DatabaseError> {
-        self.read().explain(sparql, entailment)
+        self.read_for(entailment)?.explain(sparql, entailment)
     }
     /// `query` under an explicit entailment regime: `Entailment::Rdfs` matches the default graph's RDFS closure,
     /// computed at query time (nothing inferred is stored). `query` is `Entailment::Simple`.
     pub fn query_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<QueryResult, DatabaseError> {
-        self.read().query_with_entailment(sparql, entailment)
+        self.read_for(entailment)?.query_with_entailment(sparql, entailment)
     }
     /// `query_with_entailment` that stops early when `interrupt` is cancelled (from any thread) or past its deadline:
     /// `DatabaseError::Interrupted`, never a partial answer (#110).
     pub fn query_with_interrupt(&self, sparql: &str, entailment: exec::Entailment, interrupt: &exec::Interrupt) -> Result<QueryResult, DatabaseError> {
-        self.read().query_with_interrupt(sparql, entailment, interrupt)
+        self.read_for(entailment)?.query_with_interrupt(sparql, entailment, interrupt)
     }
     /// `query` under explicit limits (see `ReadSnapshot::query_with_limits`).
     pub fn query_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
-        self.read().query_with_limits(sparql, entailment, limits)
+        self.read_for(entailment)?.query_with_limits(sparql, entailment, limits)
+    }
+    /// `query_json` under explicit limits (see `ReadSnapshot::query_with_limits`).
+    pub fn query_json_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<String, DatabaseError> {
+        self.read_for(entailment)?.query_json_with_limits(sparql, entailment, limits)
     }
 
-    /// Returns a stable read view that is unaffected by subsequent updates.
-    pub fn read(&self) -> ReadSnapshot { ReadSnapshot { snapshot: self.snapshot(), stats: Arc::clone(&self.stats) } }
+    /// Loads a linked official extension for this database. Loading the same extension again succeeds.
+    pub fn load_extension(&self, name: &str) -> Result<(), ExtensionError> {
+        self.extensions.load(name)
+    }
+
+    /// Registers the capabilities of an application-supplied Rust extension.
+    pub fn register_extension(&self, extension: &dyn Extension) -> Result<(), ExtensionError> {
+        self.extensions.register(extension)
+    }
+
+    /// Lists compiled-in official extensions and registrations visible to this database.
+    pub fn list_extensions(&self) -> Vec<ExtensionInfo> {
+        self.extensions.list()
+    }
+
+    /// Runs a query under a registered named entailment provider.
+    pub fn query_with_extension(&self, sparql: &str, name: &str) -> Result<QueryResult, DatabaseError> {
+        self.query_with_extension_and_limits(sparql, name, exec::QueryLimits::default())
+    }
+
+    /// Runs a query under a named entailment provider with explicit limits.
+    pub fn query_with_extension_and_limits(&self, sparql: &str, name: &str, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
+        if name == "rdfs" {
+            return self.query_with_limits(sparql, exec::Entailment::Rdfs, limits);
+        }
+        self.read().query_with_extension_and_limits(sparql, name, limits)
+    }
+
+    /// Validates two RDF graphs with the named validator. The official SHACL provider loads on use.
+    pub fn validate_with_extension(
+        &self,
+        name: &str,
+        data: &[crate::rdf::Triple],
+        shapes: &[crate::rdf::Triple],
+    ) -> Result<Validation, ExtensionError> {
+        if name == "shacl" {
+            self.load_extension(name)?;
+        }
+        self.extensions.snapshot().validate(name, data, shapes)
+    }
+
+    fn read_for(&self, entailment: exec::Entailment) -> Result<ReadSnapshot, DatabaseError> {
+        if entailment == exec::Entailment::Rdfs {
+            self.load_extension("rdfs").map_err(|error| DatabaseError::Unsupported(error.to_string()))?;
+        }
+        Ok(self.read())
+    }
+
+    /// Returns a stable read view with the registrations visible at the time of the call.
+    pub fn read(&self) -> ReadSnapshot {
+        ReadSnapshot {
+            snapshot: self.snapshot(),
+            stats: Arc::clone(&self.stats),
+            extensions: self.extensions.snapshot(),
+        }
+    }
 
     /// Applies a supported SPARQL Update atomically. Persistent updates are durable; in-memory updates are not.
     pub fn update(&self, sparql: &str) -> Result<usize, DatabaseError> {
@@ -252,7 +315,7 @@ impl Database {
     pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> { self.read().query_json(sparql) }
     /// `query_json` under an explicit entailment regime (see `query_with_entailment`).
     pub fn query_json_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<String, DatabaseError> {
-        self.read().query_json_with_entailment(sparql, entailment)
+        self.read_for(entailment)?.query_json_with_entailment(sparql, entailment)
     }
 
     /// Atomically imports an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file into this database.
@@ -399,7 +462,11 @@ pub fn statistics_cover(stats_base: usize, stats: &Stats, snap: &Overlay) -> boo
 }
 
 /// An immutable view of the database at the instant `Database::read` was called.
-pub struct ReadSnapshot { snapshot: Arc<Overlay>, stats: Arc<RwLock<Option<(Arc<Overlay>, Arc<Stats>)>>> }
+pub struct ReadSnapshot {
+    snapshot: Arc<Overlay>,
+    stats: Arc<RwLock<Option<(Arc<Overlay>, Arc<Stats>)>>>,
+    extensions: Arc<Registry>,
+}
 impl ReadSnapshot {
     pub fn query(&self, sparql: &str) -> Result<QueryResult, DatabaseError> { self.query_with_entailment(sparql, exec::Entailment::Simple) }
     /// `query` under an explicit entailment regime (see `Database::query_with_entailment`).
@@ -421,12 +488,50 @@ impl ReadSnapshot {
     fn run_with(&self, sparql: &str, raw_ids: bool, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
         let stats = self.applicable_stats();
         let opts = exec::Options { stats: stats.as_deref(), raw_ids, entailment, interrupt: limits.interrupt, memory_budget: limits.memory, ..Default::default() };
+        if entailment == exec::Entailment::Rdfs {
+            return Ok(exec::query_dataset_with_provider(&*self.snapshot, &*self.snapshot, sparql, &opts, self.entailment_provider("rdfs")?)?);
+        }
         Ok(exec::query_dataset_with(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
+    }
+
+    /// Lists the official extensions and registrations visible when this read view was created.
+    pub fn list_extensions(&self) -> Vec<ExtensionInfo> {
+        self.extensions.list()
+    }
+
+    /// Runs a query under a named entailment provider captured by this read view.
+    pub fn query_with_extension(&self, sparql: &str, name: &str) -> Result<QueryResult, DatabaseError> {
+        self.query_with_extension_and_limits(sparql, name, exec::QueryLimits::default())
+    }
+
+    /// Runs a query with a provider captured by this read view and explicit limits.
+    pub fn query_with_extension_and_limits(&self, sparql: &str, name: &str, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
+        let provider = self.entailment_provider(name)?;
+        let stats = self.applicable_stats();
+        let opts = exec::Options { stats: stats.as_deref(), interrupt: limits.interrupt, memory_budget: limits.memory, ..Default::default() };
+        Ok(exec::query_dataset_with_provider(&*self.snapshot, &*self.snapshot, sparql, &opts, provider)?)
+    }
+
+    fn entailment_provider(&self, name: &str) -> Result<&dyn crate::extension::EntailmentProvider, DatabaseError> {
+        if let Some(provider) = self.extensions.entailment(name) {
+            return Ok(provider);
+        }
+        // Linked official providers are stateless and available independently of database registration.
+        if name == "rdfs" {
+            #[cfg(feature = "rdfs")]
+            return Ok(&triplelight_rdfs::Rdfs);
+            #[cfg(not(feature = "rdfs"))]
+            return Err(DatabaseError::Unsupported("RDFS entailment requires the rdfs Cargo feature".into()));
+        }
+        Err(DatabaseError::Unsupported(format!("extension {name:?} has no loaded entailment provider in this read snapshot")))
     }
     /// Executes a SPARQL query on this pinned snapshot and returns its observed basic graph pattern plan.
     pub fn explain(&self, sparql: &str, entailment: exec::Entailment) -> Result<String, DatabaseError> {
         let stats = self.applicable_stats();
         let opts = exec::Options { stats: stats.as_deref(), entailment, ..Default::default() };
+        if entailment == exec::Entailment::Rdfs {
+            return Ok(exec::plan_trace::explain_dataset_with_provider(&*self.snapshot, &*self.snapshot, sparql, &opts, self.entailment_provider("rdfs")?)?);
+        }
         Ok(exec::plan_trace::explain_dataset(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
     }
     fn applicable_stats(&self) -> Option<Arc<Stats>> {
@@ -437,6 +542,10 @@ impl ReadSnapshot {
     /// `query_ids` under an explicit entailment regime (see `Database::query_with_entailment`).
     pub fn query_ids_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<QueryResult, DatabaseError> {
         self.run(sparql, true, entailment)
+    }
+    /// `query_ids_with_entailment` under explicit limits (see `query_with_limits`).
+    pub fn query_ids_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
+        self.run_with(sparql, true, entailment, limits)
     }
     /// Decodes stored term IDs returned by `query_ids` on this snapshot in one batched dictionary pass, calling
     /// `f(i, term)` for `ids[i]` (in any order). Computed terms are not stored: look them up in
@@ -452,7 +561,11 @@ impl ReadSnapshot {
     pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> { self.query_json_with_entailment(sparql, exec::Entailment::Simple) }
     /// `query_json` under an explicit entailment regime (see `Database::query_with_entailment`).
     pub fn query_json_with_entailment(&self, sparql: &str, entailment: exec::Entailment) -> Result<String, DatabaseError> {
-        let result = self.run(sparql, true, entailment)?;
+        self.query_json_with_limits(sparql, entailment, exec::QueryLimits::default())
+    }
+    /// `query_json` under explicit limits (see `query_with_limits`).
+    pub fn query_json_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<String, DatabaseError> {
+        let result = self.run_with(sparql, true, entailment, limits)?;
         match &result {
             QueryResult::Ids(ids) => self.serialize_ids(ids),
             QueryResult::Boolean(_) | QueryResult::Solutions { .. } => Ok(exec::results::serialize(&result).1),
@@ -499,12 +612,14 @@ mod memory_tests {
         std::fs::remove_dir_all(dir).unwrap();
     }
 
+    #[cfg(feature = "rdfs")]
     #[test]
     fn entailment_is_explicit_and_follows_each_snapshot() {
         let db = Database::in_memory();
         db.update("INSERT DATA { <urn:ann> a <urn:Student> . <urn:Student> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <urn:Person> }").unwrap();
         let persons = |r: QueryResult| match r { QueryResult::Solutions { rows, .. } => rows.len(), _ => unreachable!() };
         let q = "SELECT ?x { ?x a <urn:Person> }";
+        db.load_extension("rdfs").unwrap();
         let before = db.read();
         assert_eq!(persons(db.query(q).unwrap()), 0, "plain query keeps simple entailment");
         assert_eq!(persons(db.query_with_entailment(q, exec::Entailment::Rdfs).unwrap()), 1);

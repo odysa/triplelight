@@ -11,7 +11,8 @@
 //! `access=range` on its step.
 use crate::sparql::{NamedNodePattern, TermPattern, TriplePattern};
 use crate::storage::{DatasetView, Snapshot};
-use crate::{Options, QueryError, QueryResult, query_dataset_with, query_with};
+use crate::{Options, QueryError, QueryResult, query_dataset_with, query_dataset_with_provider, query_with};
+use crate::storage::EntailmentProvider;
 use std::cell::RefCell;
 use std::fmt::Write as _;
 use std::sync::OnceLock;
@@ -164,6 +165,17 @@ pub fn explain<S: Snapshot>(snapshot: &S, text: &str, options: &Options<'_>) -> 
 /// Executes against a dataset and returns the observed BGP plan as text.
 pub fn explain_dataset<S: Snapshot>(snapshot: &S, dataset: &dyn DatasetView, text: &str, options: &Options<'_>) -> Result<String, QueryError> {
     report(|| query_dataset_with(snapshot, dataset, text, &Options { raw_ids: true, ..*options }))
+}
+
+/// Executes a dataset query using the selected entailment provider and formats its observed plan.
+pub fn explain_dataset_with_provider<S: Snapshot>(
+    snapshot: &S,
+    dataset: &dyn DatasetView,
+    text: &str,
+    options: &Options<'_>,
+    provider: &dyn EntailmentProvider,
+) -> Result<String, QueryError> {
+    report(|| query_dataset_with_provider(snapshot, dataset, text, &Options { raw_ids: true, ..*options }, provider))
 }
 
 fn report(run: impl FnOnce() -> Result<QueryResult, QueryError>) -> Result<String, QueryError> {

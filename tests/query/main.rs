@@ -7,7 +7,23 @@ mod functions;
 mod optimizer;
 mod paths;
 mod range_pushdown;
+#[cfg(feature = "rdfs")]
 mod rdfs;
 mod results;
 #[cfg(feature = "rdf-12")]
 mod sparql12;
+
+#[cfg(not(feature = "rdfs"))]
+#[test]
+fn rdfs_requires_the_feature() {
+    use triplelight::exec::{Entailment, Options, QueryErrorKind, QueryResult, query, query_with};
+    use triplelight::storage::MemorySnapshot;
+
+    let snapshot = MemorySnapshot::from_ntriples(&b""[..]).unwrap();
+    let ask = "ASK {}";
+    assert!(matches!(query(&snapshot, ask), Ok(QueryResult::Boolean(true))));
+    let options = Options { entailment: Entailment::Rdfs, ..Options::default() };
+    let err = query_with(&snapshot, ask, &options).unwrap_err();
+    assert_eq!(err.kind, QueryErrorKind::Unsupported);
+    assert!(err.message.contains("rdfs Cargo feature"));
+}
