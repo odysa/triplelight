@@ -172,7 +172,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 let mut starts: Vec<TermId> = firsts.into_iter().map(|(s, _)| s).collect();
                 dedup_keep_order(&mut starts);
                 for (n, x) in starts.into_iter().enumerate() {
-                    if n % 1024 == 0 { self.check() }
+                    if n.is_multiple_of(1024) { self.check() }
                     out.extend(self.closure(p, q, false, x).into_iter().map(|z| (x, z)))
                 }
             }
@@ -180,7 +180,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 let csr = match p { P::Star(_) => simple_link(q, false).and_then(|(id, dir)| self.csr(id, dir, true)), _ => None };
                 if let Some(c) = csr { c.all_pairs(&self.graph_nodes(), true, out); return }
                 for (n, x) in self.graph_nodes().into_iter().enumerate() {
-                    if n % 1024 == 0 { self.check() }
+                    if n.is_multiple_of(1024) { self.check() }
                     out.extend(self.closure(p, q, false, x).into_iter().map(|z| (x, z)))
                 }
             }
@@ -272,7 +272,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         // Rows that bind the endpoints the same way share one traversal.
         let mut memo: HashMap<(Option<TermId>, Option<TermId>), Vec<(TermId, TermId)>> = HashMap::new();
         for (n, row) in input.into_iter().enumerate() {
-            if n % 4096 == 0 { self.check() }
+            if n.is_multiple_of(4096) { self.check() }
             let s = self.endpoint(subject, &row);
             let o = self.endpoint(object, &row);
             // A variable endpoint bound by an earlier pattern (VALUES, BIND, a join) stands for a solution of the path

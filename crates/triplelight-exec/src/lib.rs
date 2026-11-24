@@ -22,10 +22,9 @@ pub mod plan_trace;
 mod agg;
 mod bgp;
 mod count;
-mod dataset;
 mod interrupt;
-mod entail;
-mod order;
+mod views;
+use views::{dataset, entail};
 mod path;
 mod pattern;
 mod range;
@@ -787,7 +786,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let mut computed = 0usize;
         let mut key_of = |r: &Row, (e, column): (&Expression, Option<usize>)| -> Option<Term> {
             computed += 1;
-            if computed % 4096 == 0 { self.check() }
+            if computed.is_multiple_of(4096) { self.check() }
             match column {
                 Some(i) if r[i] == UNBOUND => None,
                 Some(i) => memo.entry(r[i]).or_insert_with(|| Some(self.resolve(r[i]))).clone(),
@@ -795,7 +794,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             }
         };
         let desc: Vec<bool> = expression.iter().map(|e| matches!(e, OrderExpression::Desc(_))).collect();
-        let idx = order::order(rows.len(), &desc, limit, |i, k| key_of(&rows[i], keys_by_column[k]));
+        let idx = expr::order::order(rows.len(), &desc, limit, |i, k| key_of(&rows[i], keys_by_column[k]));
         let mut rows: Vec<Option<Row>> = rows.into_iter().map(Some).collect();
         idx.into_iter().map(|i| rows[i].take().unwrap()).collect()
     }
@@ -861,7 +860,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let mut groups: Vec<(Vec<TermId>, Vec<Row>)> = Vec::new();
         let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
         for (n, r) in rows.into_iter().enumerate() {
-            if n % 4096 == 0 { self.check() }
+            if n.is_multiple_of(4096) { self.check() }
             let k: Vec<TermId> = kidx.iter().map(|&i| r[i]).collect();
             let g = *pos.entry(k.clone()).or_insert_with(|| { groups.push((k, Vec::new())); groups.len() - 1 });
             groups[g].1.push(r);
@@ -1100,7 +1099,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             let single = match vs.as_slice() { [c] if !impure(e) => Some(*c), _ => None };
             let mut by_id: HashMap<TermId, bool> = HashMap::new();
             for (n, r) in rows.chunks_exact(w).enumerate() {
-                if n % 4096 == 0 { self.check() }
+                if n.is_multiple_of(4096) { self.check() }
                 let keep = match fast.as_ref().map(|f| f.eval(r, &mut val)) {
                     Some(Ok(b)) => b == Some(true),
                     _ => match single {

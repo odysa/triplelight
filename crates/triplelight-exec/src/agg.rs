@@ -129,7 +129,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         // MIN/MAX per (group, aggregate) that met an error.
         let mut poisoned: Vec<bool> = Vec::new();
         for (n, r) in rows.iter().enumerate() {
-            if n % 4096 == 0 { self.check() }
+            if n.is_multiple_of(4096) { self.check() }
             key.clear();
             key.extend(kidx.iter().map(|&i| r[i]));
             let g = match pos.get(key.as_slice()) {

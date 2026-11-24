@@ -393,7 +393,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         let w = self.w;
         let mut out = Vec::with_capacity(rows.len());
         for (i, row) in rows.chunks_exact(w.max(1)).enumerate() {
-            if i % CHECK_ROWS == 0 { self.check() }
+            if i.is_multiple_of(CHECK_ROWS) { self.check() }
             self.probe_row(pat, &row[..w], &mut out)
         }
         out

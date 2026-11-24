@@ -1091,6 +1091,7 @@ fn top_k_with_secondary_keys_matches_the_full_sort() {
             assert_eq!(ordered(&q(&format!("LIMIT {k} OFFSET 5"))), full[5.min(full.len())..(5 + k).min(full.len())].to_vec(), "ORDER BY {order} LIMIT {k} OFFSET 5");
         }
     }
+}
 
 /// `Options::interrupt` (#110): a cancelled or expired query ends with its own error kind and no partial answer,
 /// a cancel from another thread stops a long query mid-run, and an untouched interrupt changes nothing.
