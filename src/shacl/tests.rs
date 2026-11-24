@@ -53,15 +53,15 @@ fn path_forms_evaluate_as_sets() {
     let data = Graph::new(&parse("ex:a ex:p ex:b . ex:b ex:p ex:c . ex:c ex:p ex:a . ex:a ex:q ex:z . ex:y ex:p ex:a ."));
     let p = Path::Predicate(pred("p"));
     assert_eq!(p.values(&iri("a"), &data), [iri("b")]);
-    assert_eq!(Path::Inverse(Rc::new(p.clone())).values(&iri("a"), &data), [iri("c"), iri("y")]);
-    assert_eq!(Path::Sequence(vec![Rc::new(p.clone()), Rc::new(p.clone())]).values(&iri("a"), &data), [iri("c")]);
-    assert_eq!(Path::Alternative(vec![Rc::new(p.clone()), Rc::new(Path::Predicate(pred("q")))]).values(&iri("a"), &data), [iri("b"), iri("z")]);
-    assert_eq!(Path::ZeroOrOne(Rc::new(p.clone())).values(&iri("a"), &data), [iri("a"), iri("b")]);
+    assert_eq!(Path::Inverse(Arc::new(p.clone())).values(&iri("a"), &data), [iri("c"), iri("y")]);
+    assert_eq!(Path::Sequence(vec![Arc::new(p.clone()), Arc::new(p.clone())]).values(&iri("a"), &data), [iri("c")]);
+    assert_eq!(Path::Alternative(vec![Arc::new(p.clone()), Arc::new(Path::Predicate(pred("q")))]).values(&iri("a"), &data), [iri("b"), iri("z")]);
+    assert_eq!(Path::ZeroOrOne(Arc::new(p.clone())).values(&iri("a"), &data), [iri("a"), iri("b")]);
     // a cycle a -> b -> c -> a: one or more steps reach all three (a again through the cycle), zero or more adds nothing new
-    let mut one_plus = Path::OneOrMore(Rc::new(p.clone())).values(&iri("a"), &data);
+    let mut one_plus = Path::OneOrMore(Arc::new(p.clone())).values(&iri("a"), &data);
     one_plus.sort_by_key(|t| t.to_string());
     assert_eq!(one_plus, [iri("a"), iri("b"), iri("c")]);
-    let zero_plus = Path::ZeroOrMore(Rc::new(p)).values(&iri("a"), &data);
+    let zero_plus = Path::ZeroOrMore(Arc::new(p)).values(&iri("a"), &data);
     assert_eq!(zero_plus.len(), 3);
     assert_eq!(zero_plus[0], iri("a"), "the focus node comes first");
 }
@@ -72,10 +72,10 @@ fn paths_parse_from_the_shapes_graph() {
                ex:pathZ [ sh:zeroOrMorePath ex:p ] ; ex:pathBad [ sh:inversePath ex:p ; sh:zeroOrOnePath ex:p ] .";
     let g = Graph::new(&parse(ttl));
     let get = |name: &str| Path::parse(&g.objects(&iri("shape"), &pred(name))[0], &g);
-    assert_eq!(get("pathI").unwrap(), Path::Inverse(Rc::new(Path::Predicate(pred("p")))));
-    assert_eq!(get("pathS").unwrap(), Path::Sequence(vec![Rc::new(Path::Predicate(pred("p"))), Rc::new(Path::Predicate(pred("q")))]));
-    assert_eq!(get("pathA").unwrap(), Path::Alternative(vec![Rc::new(Path::Predicate(pred("p"))), Rc::new(Path::Predicate(pred("q")))]));
-    assert_eq!(get("pathZ").unwrap(), Path::ZeroOrMore(Rc::new(Path::Predicate(pred("p")))));
+    assert_eq!(get("pathI").unwrap(), Path::Inverse(Arc::new(Path::Predicate(pred("p")))));
+    assert_eq!(get("pathS").unwrap(), Path::Sequence(vec![Arc::new(Path::Predicate(pred("p"))), Arc::new(Path::Predicate(pred("q")))]));
+    assert_eq!(get("pathA").unwrap(), Path::Alternative(vec![Arc::new(Path::Predicate(pred("p"))), Arc::new(Path::Predicate(pred("q")))]));
+    assert_eq!(get("pathZ").unwrap(), Path::ZeroOrMore(Arc::new(Path::Predicate(pred("p")))));
     assert!(matches!(get("pathBad"), Err(ValidationError::MalformedShape(_))), "two path forms on one node is malformed");
 }
 
@@ -117,7 +117,7 @@ fn a_shape_without_constraints_conforms_and_a_deactivated_shape_is_skipped() {
 #[test]
 fn the_report_is_written_as_rdf() {
     let result = ValidationResult {
-        focus_node: iri("n"), result_path: Some(Path::Inverse(Rc::new(Path::Predicate(pred("p"))))), value: Some(iri("v")),
+        focus_node: iri("n"), result_path: Some(Path::Inverse(Arc::new(Path::Predicate(pred("p"))))), value: Some(iri("v")),
         source_shape: iri("S"), source_constraint_component: crate::rdf::NamedNode::new_unchecked("http://www.w3.org/ns/shacl#MinCountConstraintComponent"),
         severity: Severity::Warning, messages: vec![crate::rdf::Literal::new_simple_literal("too few")], details: Vec::new(),
     };

@@ -15,13 +15,13 @@ const MAX_PATH_DEPTH: usize = 64;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Path {
     Predicate(NamedNode),
-    Inverse(Rc<Path>),
+    Inverse(Arc<Path>),
     /// Applied left to right.
-    Sequence(Vec<Rc<Path>>),
-    Alternative(Vec<Rc<Path>>),
-    ZeroOrMore(Rc<Path>),
-    OneOrMore(Rc<Path>),
-    ZeroOrOne(Rc<Path>),
+    Sequence(Vec<Arc<Path>>),
+    Alternative(Vec<Arc<Path>>),
+    ZeroOrMore(Arc<Path>),
+    OneOrMore(Arc<Path>),
+    ZeroOrOne(Arc<Path>),
 }
 
 impl Path {
@@ -58,23 +58,23 @@ struct PathParser<'a> {
     shapes: &'a Graph,
     /// The blank path nodes being parsed, outermost first: a node that contains itself is a malformed path.
     visiting: Vec<Term>,
-    done: HashMap<Term, Rc<Path>>,
+    done: HashMap<Term, Arc<Path>>,
 }
 
 impl PathParser<'_> {
-    fn parse_at(&mut self, node: &Term) -> Result<Rc<Path>, ValidationError> {
+    fn parse_at(&mut self, node: &Term) -> Result<Arc<Path>, ValidationError> {
         let bad = |why: &str| ValidationError::MalformedShape(format!("path {node}: {why}"));
         match node {
-            Term::NamedNode(p) => Ok(Rc::new(Path::Predicate(p.clone()))),
+            Term::NamedNode(p) => Ok(Arc::new(Path::Predicate(p.clone()))),
             Term::BlankNode(_) => {
-                if let Some(done) = self.done.get(node) { return Ok(Rc::clone(done)) }
+                if let Some(done) = self.done.get(node) { return Ok(Arc::clone(done)) }
                 if self.visiting.contains(node) { return Err(bad("a path contains itself")) }
                 if self.visiting.len() >= MAX_PATH_DEPTH { return Err(bad("paths nested more than 64 deep are not supported")) }
                 self.visiting.push(node.clone());
                 let parsed = self.parse_blank(node);
                 self.visiting.pop();
-                let parsed = Rc::new(parsed?);
-                self.done.insert(node.clone(), Rc::clone(&parsed));
+                let parsed = Arc::new(parsed?);
+                self.done.insert(node.clone(), Arc::clone(&parsed));
                 Ok(parsed)
             }
             _ => Err(bad("a path is an IRI or a blank node")),
@@ -109,16 +109,16 @@ impl PathParser<'_> {
 /// Evaluates a path over the data graph, in either direction, remembering what each shared path node reaches from each data node.
 struct Walk<'a> {
     data: &'a Graph,
-    memo: HashMap<(usize, bool, Term), Rc<Vec<Term>>>,
+    memo: HashMap<(usize, bool, Term), Arc<Vec<Term>>>,
 }
 
 impl Walk<'_> {
     /// What the shared path node `p` reaches from `node` (walked backwards when `inverse`), computed once.
-    fn go(&mut self, p: &Rc<Path>, node: &Term, inverse: bool) -> Rc<Vec<Term>> {
-        let key = (Rc::as_ptr(p) as usize, inverse, node.clone());
-        if let Some(hit) = self.memo.get(&key) { return Rc::clone(hit) }
-        let value = Rc::new(self.eval(p, node, inverse));
-        self.memo.insert(key, Rc::clone(&value));
+    fn go(&mut self, p: &Arc<Path>, node: &Term, inverse: bool) -> Arc<Vec<Term>> {
+        let key = (Arc::as_ptr(p) as usize, inverse, node.clone());
+        if let Some(hit) = self.memo.get(&key) { return Arc::clone(hit) }
+        let value = Arc::new(self.eval(p, node, inverse));
+        self.memo.insert(key, Arc::clone(&value));
         value
     }
 
@@ -129,7 +129,7 @@ impl Walk<'_> {
             Path::Sequence(parts) => {
                 let mut frontier = vec![node.clone()];
                 // forwards left to right; backwards, the last part first
-                let ordered: Vec<&Rc<Path>> = if inverse { parts.iter().rev().collect() } else { parts.iter().collect() };
+                let ordered: Vec<&Arc<Path>> = if inverse { parts.iter().rev().collect() } else { parts.iter().collect() };
                 for part in ordered {
                     let mut next = Vec::new();
                     let mut seen = HashSet::new();
@@ -150,7 +150,7 @@ impl Walk<'_> {
     }
 
     /// Reachability through `inner` (zero or more steps when `reflexive`, one or more otherwise), cycle-safe.
-    fn closure(&mut self, inner: &Rc<Path>, from: &Term, inverse: bool, reflexive: bool) -> Vec<Term> {
+    fn closure(&mut self, inner: &Arc<Path>, from: &Term, inverse: bool, reflexive: bool) -> Vec<Term> {
         let mut out = Vec::new();
         let mut seen: HashSet<Term> = HashSet::new();
         if reflexive { seen.insert(from.clone()); out.push(from.clone()) }
@@ -171,8 +171,8 @@ struct PathWriter<'a> {
 }
 
 impl PathWriter<'_> {
-    fn write_shared(&mut self, p: &Rc<Path>) -> Term {
-        let key = Rc::as_ptr(p) as usize;
+    fn write_shared(&mut self, p: &Arc<Path>) -> Term {
+        let key = Arc::as_ptr(p) as usize;
         if let Some(t) = self.done.get(&key) { return t.clone() }
         let t = self.write(p);
         self.done.insert(key, t.clone());
@@ -197,7 +197,7 @@ impl PathWriter<'_> {
         }
     }
 
-    fn list(&mut self, parts: &[Rc<Path>]) -> Term {
+    fn list(&mut self, parts: &[Arc<Path>]) -> Term {
         let mut tail = Term::from(rdf("nil"));
         for part in parts.iter().rev() {
             let item = self.write_shared(part);
