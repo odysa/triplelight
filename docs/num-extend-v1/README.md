@@ -14,7 +14,7 @@ general path: their lexical form differs from `Num::Dbl`'s.
 same expressions wrapped in `COALESCE` (which the numeric path does not compile) over integers, decimals, floats,
 doubles, zero divisors, overflow, non-numeric literals and unbound values.
 
-CLI ABBA on BSBM-100M (main `5ef61a80` against the branch, blocks main, branch, branch, main, 1 untimed + 3 timed per
+CLI ABBA on BSBM-100M (main `a10bf73d` against the branch, blocks main, branch, branch, main, 1 untimed + 3 timed per
 block, medians), stdout SHA-256 identical across all runs and both arms:
 
 | Query | main (ms) | branch (ms) | ratio |
