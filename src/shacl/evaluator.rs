@@ -38,10 +38,11 @@ impl<'a> Evaluator<'a> {
             Some(path) => path.values(focus, data),
             None => vec![focus.clone()],
         };
-        let cx = ConstraintContext { focus, value_nodes: &value_nodes, shape, data };
+        let cx = ConstraintContext { focus, value_nodes: &value_nodes, data };
         let mut results = Vec::new();
         for constraint in &shape.constraints {
-            for outcome in constraint.evaluate(&cx, self)? {
+            let mut check_node = |id: &Term, node: &Term| self.check_node(id, node);
+            for outcome in constraint.evaluate(&cx, &mut check_node)? {
                 let violation = match outcome {
                     Outcome::Violation(v) => v,
                     Outcome::Forwarded(nested) => { results.extend(nested); continue }
@@ -49,7 +50,7 @@ impl<'a> Evaluator<'a> {
                 let messages = if shape.messages.is_empty() { violation.message.into_iter().collect() } else { shape.messages.clone() };
                 results.push(ValidationResult {
                     focus_node: focus.clone(),
-                    result_path: shape.path.clone(),
+                    result_path: violation.path_override.or_else(|| shape.path.clone()),
                     value: violation.value,
                     source_shape: shape.id.clone(),
                     source_constraint_component: violation.component,
