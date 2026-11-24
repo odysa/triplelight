@@ -7,6 +7,7 @@
 //! SUM/AVG, same tie rules for MIN (first) and MAX (last) under `order_cmp`, same first-appearance group order.
 //! Anything else (expressions other than a plain variable, GROUP_CONCAT, custom aggregates) uses the general path.
 mod count;
+mod flat;
 use super::{expr, Ctx, Row, UNBOUND};
 use crate::model::TermId;
 use crate::storage::Snapshot;
@@ -83,12 +84,13 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         Some((self.var(out), results))
     }
 
-    fn count_one_key(&self, rows: &[Row], key_col: usize, value_col: Option<usize>, out_col: usize) -> Vec<Row> {
+    /// GROUP BY one key with one COUNT(*) (`value_col` `None`) or COUNT(?v), over rows given as ID slices.
+    fn count_one_key<'r>(&self, rows: impl IntoIterator<Item = &'r [TermId]>, key_col: usize, value_col: Option<usize>, out_col: usize) -> Vec<Row> {
         let mut positions = HashMap::new();
         let mut groups: Vec<(TermId, i64)> = Vec::new();
         let bytes_per_group = 64 + 8 + 32;
         let mut held = self.reserve(0);
-        for (i, row) in rows.iter().enumerate() {
+        for (i, row) in rows.into_iter().enumerate() {
             if i.is_multiple_of(4096) { self.check() }
             let key = row[key_col];
             let index = *positions.entry(key).or_insert_with(|| {
@@ -102,10 +104,12 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             groups[index].1 += i64::from(value_col.is_none_or(|col| row[col] != UNBOUND));
         }
         Self::resize(&mut held, groups.len() as u64 * bytes_per_group);
+        // Counts repeat across groups (most are small), so each distinct count becomes a term once.
+        let mut terms: HashMap<i64, TermId> = HashMap::new();
         groups.into_iter().map(|(key, count)| {
             let mut out = self.empty_row();
             out[key_col] = key;
-            out[out_col] = self.intern(&Literal::from(count).into());
+            out[out_col] = *terms.entry(count).or_insert_with(|| self.intern(&Literal::from(count).into()));
             out
         }).collect()
     }
@@ -135,8 +139,8 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         }
         if let ([key_col], [Spec { kind, col, distinct: false, out }]) = (kidx, specs.as_slice()) {
             match kind {
-                Kind::CountAll { distinct: false } => return Some(self.count_one_key(rows, *key_col, None, *out)),
-                Kind::Count => return Some(self.count_one_key(rows, *key_col, Some(*col), *out)),
+                Kind::CountAll { distinct: false } => return Some(self.count_one_key(rows.iter().map(Vec::as_slice), *key_col, None, *out)),
+                Kind::Count => return Some(self.count_one_key(rows.iter().map(Vec::as_slice), *key_col, Some(*col), *out)),
                 _ => {}
             }
         }

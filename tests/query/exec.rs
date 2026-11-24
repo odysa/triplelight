@@ -1273,3 +1273,39 @@ fn named_blank_nodes_follow_each_solution_occurrence() {
         QueryResult::Boolean(true)
     ));
 }
+
+/// GROUP BY one key with one COUNT over a BGP (optionally filtered inside it) counts the BGP's flat buffer in place
+/// (`agg::flat`); groups, their order and their counts equal the general grouping's, row for row.
+#[test]
+fn flat_count_group_matches_general_group() {
+    let mut data = String::new();
+    for r in 0..300 {
+        let (p, d) = (r * 7 % 23, 1 + r * 13 % 28);
+        data.push_str(&format!("<http://ex/r{r}> <http://ex/for> <http://ex/p{p}> .\n"));
+        data.push_str(&format!("<http://ex/r{r}> <http://ex/date> \"2008-02-{d:02}\"^^<http://www.w3.org/2001/XMLSchema#date> .\n"));
+        if r % 3 == 0 { data.push_str(&format!("<http://ex/r{r}> <http://ex/for> <http://ex/p{}> .\n", p + 1)) }
+    }
+    let s = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let run = |q: &str, general_group: bool| -> Vec<String> {
+        let opts = triplelight::exec::Options { general_group, count_pushdown: false, ..Default::default() };
+        match triplelight::exec::query_with(&s, q, &opts).unwrap() { QueryResult::Solutions { rows, .. } => rows.into_iter().map(|r| format!("{r:?}")).collect(), r => panic!("{r:?}") }
+    };
+    let date = "<http://www.w3.org/2001/XMLSchema#date>";
+    let queries = [
+        format!("SELECT ?p (COUNT(?r) AS ?n) WHERE {{ ?r <http://ex/for> ?p . ?r <http://ex/date> ?d FILTER(?d >= \"2008-02-05\"^^{date} && ?d < \"2008-02-20\"^^{date}) }} GROUP BY ?p"),
+        format!("SELECT ?p (COUNT(*) AS ?n) WHERE {{ ?r <http://ex/for> ?p . ?r <http://ex/date> ?d FILTER(?d < \"2008-02-10\"^^{date}) }} GROUP BY ?p"),
+        "SELECT ?p (COUNT(?d) AS ?n) WHERE { ?r <http://ex/for> ?p . ?r <http://ex/date> ?d } GROUP BY ?p".to_string(),
+        "SELECT ?d (COUNT(?r) AS ?n) WHERE { ?r <http://ex/date> ?d } GROUP BY ?d".to_string(),
+        "SELECT ?p (COUNT(?r) AS ?n) WHERE { ?r <http://ex/for> ?p . ?r <http://ex/none> ?d } GROUP BY ?p".to_string(),
+        // Not taken by the flat path (a filter left after the BGP, DISTINCT, two aggregates); still equal.
+        "SELECT ?p (COUNT(?r) AS ?n) WHERE { ?r <http://ex/for> ?p FILTER(BOUND(?zz) || true) } GROUP BY ?p".to_string(),
+        "SELECT ?p (COUNT(DISTINCT ?r) AS ?n) WHERE { ?r <http://ex/for> ?p } GROUP BY ?p".to_string(),
+        // The BI q3 shape: two grouped subqueries joined, HAVING, a ratio and top-k.
+        format!("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> SELECT ?p (xsd:float(?a)/?b AS ?x) WHERE {{ {{ SELECT ?p (COUNT(?r) AS ?a) WHERE {{ ?r <http://ex/for> ?p . ?r <http://ex/date> ?d FILTER(?d >= \"2008-02-14\"^^{date}) }} GROUP BY ?p }} {{ SELECT ?p (COUNT(?r) AS ?b) WHERE {{ ?r <http://ex/for> ?p . ?r <http://ex/date> ?d FILTER(?d < \"2008-02-14\"^^{date}) }} GROUP BY ?p HAVING (COUNT(?r) > 0) }} }} ORDER BY DESC(xsd:float(?a)/?b) ?p LIMIT 5"),
+    ];
+    for q in &queries {
+        let (flat, general) = (run(q, false), run(q, true));
+        assert!(!flat.is_empty() || q.contains("none"), "{q}");
+        assert_eq!(flat, general, "{q}");
+    }
+}
