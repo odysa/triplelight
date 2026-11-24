@@ -65,3 +65,5 @@ TL_SHACL_TESTS=/path/to/data-shapes-test-suite/tests/core cargo test --test shac
 Each expected result is compared by focus node, value, result path, severity, source constraint component and source shape (as a multiset),
 and `sh:conforms` must match; messages are compared when the expected result has any. Cases declared not to pass are listed with a reason in
 `tests/shacl/w3c-exclusions.txt`, and the run fails both on an unexpected failure and on an excluded case that now passes.
+
+At the merge of #247 (`cfaef4e8`) all 98 cases pass with an empty exclusions list. `ci/shacl-core.sh` runs the suite in CI against the pinned revision and fails if the case count is not 98, so the count above cannot silently shrink.
