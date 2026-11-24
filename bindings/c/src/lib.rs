@@ -32,6 +32,8 @@ pub const TL_ERR_INTERNAL: i32 = 6;
 pub const TL_ERR_GRAPH_STATE: i32 = 7;
 /// The query was cancelled or ran past its deadline (not yet reachable from C: no interrupt is exposed).
 pub const TL_ERR_INTERRUPTED: i32 = 8;
+/// SHACL rejects the shapes graph given to `tl_validate` (a malformed shape or list, or an undefined recursion).
+pub const TL_ERR_SHAPES: i32 = 9;
 
 pub const TL_RESULT_BINDINGS: u32 = 0;
 pub const TL_RESULT_BOOLEAN: u32 = 1;
@@ -350,6 +352,39 @@ pub unsafe extern "C" fn tl_query_with_entailment(db: *const TlDb, sparql: *cons
     }) }
 }
 
+/// `tl_validate` document formats.
+pub const TL_FORMAT_TURTLE: i32 = 0;
+pub const TL_FORMAT_NTRIPLES: i32 = 1;
+
+/// SHACL Core validation (#108) of a data document against a shapes document, each `TL_FORMAT_TURTLE` or
+/// `TL_FORMAT_NTRIPLES`. On success `*conforms` is 1 or 0 and `*report` is the report graph (`TL_RESULT_TRIPLES`, free
+/// it with `tl_result_free`); data that violates the shapes is a success with `*conforms` 0. A document that does not
+/// parse is `TL_ERR_SYNTAX`, shapes SHACL rejects are `TL_ERR_SHAPES`, a feature this build lacks `TL_ERR_UNSUPPORTED`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_validate(data: *const c_char, data_len: usize, data_format: i32, shapes: *const c_char, shapes_len: usize, shapes_format: i32,
+                                     conforms: *mut i32, report: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
+    use triplelight::rdf::Format;
+    use triplelight::shacl::{DocumentError, ValidationError};
+    unsafe { guard(err, || {
+        if conforms.is_null() || report.is_null() { return Err(invalid("null output pointer")) }
+        let format = |f| match f { TL_FORMAT_TURTLE => Ok(Format::Turtle), TL_FORMAT_NTRIPLES => Ok(Format::NTriples), _ => Err(invalid("unknown format")) };
+        let (df, sf) = (format(data_format)?, format(shapes_format)?);
+        let (d, s) = (text(data, data_len)?, text(shapes, shapes_len)?);
+        let r = triplelight::shacl::validate_documents(d.as_bytes(), df, s.as_bytes(), sf).map_err(|e| {
+            let kind = match &e {
+                DocumentError::Syntax { .. } => TL_ERR_SYNTAX,
+                DocumentError::Validation(ValidationError::Unsupported(_)) => TL_ERR_UNSUPPORTED,
+                DocumentError::Validation(_) => TL_ERR_SHAPES,
+            };
+            TlError { kind, message: e.to_string() }
+        })?;
+        let graph = build(QueryResult::Graph(r.to_triples()))?;
+        out!(conforms, i32::from(r.conforms));
+        out!(report, Box::into_raw(graph));
+        Ok(())
+    }) }
+}
+
 /// Runs a SELECT query and returns its solutions as an Arrow C Stream written into caller-allocated `*out`
 /// (see `struct ArrowArrayStream` in the header). On failure `*out` is left untouched. ASK and CONSTRUCT are
 /// `TL_ERR_UNSUPPORTED`. The stream owns its snapshot and stays valid after `tl_close`; batches it returns are
@@ -488,6 +523,26 @@ mod tests {
         unsafe { tl_error_free(e) };
         Err(out)
     }
+
+    #[test]
+    fn shacl_validate_reports_and_separates_errors() { unsafe {
+        let shapes = "@prefix sh: <http://www.w3.org/ns/shacl#> . <urn:S> a sh:NodeShape ; sh:targetClass <urn:Person> ; sh:property [ sh:path <urn:name> ; sh:minCount 1 ] .";
+        let run = |data: &str, shapes: &str| {
+            let (mut conforms, mut report, mut e) = (-1, std::ptr::null_mut(), std::ptr::null_mut());
+            let code = tl_validate(data.as_ptr() as _, data.len(), TL_FORMAT_TURTLE, shapes.as_ptr() as _, shapes.len(), TL_FORMAT_TURTLE, &mut conforms, &mut report, &mut e);
+            if code != TL_OK { tl_error_free(e); return Err(code) }
+            let v = &*tl_result_get_view(report);
+            let triples = (v.kind, v.n_rows);
+            tl_result_free(report);
+            Ok((conforms, triples))
+        };
+        let (conforms, (kind, _)) = run("<urn:ann> a <urn:Person> ; <urn:name> \"Ann\" .", shapes).unwrap();
+        assert_eq!((conforms, kind), (1, TL_RESULT_TRIPLES));
+        let (conforms, (_, n)) = run("<urn:bob> a <urn:Person> .", shapes).unwrap();
+        assert!(conforms == 0 && n > 2, "a violation is a report with results");
+        assert_eq!(run("<urn:bob> a", shapes), Err(TL_ERR_SYNTAX));
+        assert_eq!(run("", "@prefix sh: <http://www.w3.org/ns/shacl#> . <urn:S> a sh:NodeShape ; sh:targetClass <urn:P> ; sh:property [ sh:minCount 1 ] ."), Err(TL_ERR_SHAPES));
+    } }
 
     #[test]
     fn rdfs_entailment_is_opt_in_and_checked() { unsafe {

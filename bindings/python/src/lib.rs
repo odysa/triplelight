@@ -14,6 +14,7 @@ create_exception!(_triplelight, UnsupportedError, TripleLightError);
 create_exception!(_triplelight, StorageError, TripleLightError);
 create_exception!(_triplelight, LockedError, TripleLightError);
 create_exception!(_triplelight, GraphStateError, TripleLightError);
+create_exception!(_triplelight, ShapesError, TripleLightError);
 
 /// `entailment="simple"|"rdfs"` of the query methods (#108); anything else is a `ValueError`.
 fn entailment(name: &str) -> PyResult<Entailment> {
@@ -175,8 +176,28 @@ impl PySnapshot {
     }
 }
 
+/// SHACL Core validation (#108) of a data document against a shapes document, each "turtle" or "ntriples". Returns
+/// `(conforms, report)`, the report as a graph result. A syntax error raises `SyntaxError`; shapes SHACL rejects raise
+/// `ShapesError`; a feature this build lacks raises `UnsupportedError`. Data that violates the shapes is a report.
+#[pyfunction]
+#[pyo3(signature = (data, shapes, data_format="turtle", shapes_format="turtle"))]
+fn validate(py: Python<'_>, data: &str, shapes: &str, data_format: &str, shapes_format: &str) -> PyResult<(bool, PyObject)> {
+    use triplelight::shacl::{DocumentError, ValidationError};
+    let format = |name: &str| triplelight::rdf::Format::from_name(name)
+        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("format must be \"turtle\" or \"ntriples\", not {name:?}")));
+    let (df, sf) = (format(data_format)?, format(shapes_format)?);
+    let report = py.allow_threads(|| triplelight::shacl::validate_documents(data.as_bytes(), df, shapes.as_bytes(), sf)).map_err(|e| match &e {
+        DocumentError::Syntax { .. } => SyntaxError::new_err(e.to_string()),
+        DocumentError::Validation(ValidationError::Unsupported(_)) => UnsupportedError::new_err(e.to_string()),
+        DocumentError::Validation(_) => ShapesError::new_err(e.to_string()),
+    })?;
+    Ok((report.conforms, convert(py, QueryResult::Graph(report.to_triples()))?))
+}
+
 #[pymodule]
 fn _triplelight(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(validate, m)?)?;
+    m.add("ShapesError", m.py().get_type::<ShapesError>())?;
     m.add_class::<PyDatabase>()?;
     m.add_class::<PySnapshot>()?;
     m.add("TripleLightError", m.py().get_type::<TripleLightError>())?;

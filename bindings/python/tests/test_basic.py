@@ -101,3 +101,19 @@ def test_rdfs_entailment_is_opt_in():
         assert len(snap.query(q, entailment="rdfs")) == 1
     with pytest.raises(ValueError):
         db.query(q, entailment="owl")
+
+
+SHAPES = """@prefix sh: <http://www.w3.org/ns/shacl#> .
+<urn:S> a sh:NodeShape ; sh:targetClass <urn:Person> ; sh:property [ sh:path <urn:name> ; sh:minCount 1 ] ."""
+
+def test_shacl_validate_reports_and_errors():
+    ok = triplelight.validate("<urn:ann> a <urn:Person> ; <urn:name> \"Ann\" .", SHAPES)
+    assert ok.conforms and bool(ok)
+    bad = triplelight.validate("<urn:bob> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Person> .", SHAPES, data_format="ntriples")
+    assert not bad.conforms
+    focus = [o for s, p, o in bad.triples if p == triplelight.IRI("http://www.w3.org/ns/shacl#focusNode")]
+    assert focus == [triplelight.IRI("urn:bob")]
+    with pytest.raises(triplelight.SyntaxError):
+        triplelight.validate("<urn:bob> a", SHAPES)
+    with pytest.raises(triplelight.ShapesError):
+        triplelight.validate("", "@prefix sh: <http://www.w3.org/ns/shacl#> . <urn:S> a sh:NodeShape ; sh:targetClass <urn:P> ; sh:property [ sh:minCount 1 ] .")

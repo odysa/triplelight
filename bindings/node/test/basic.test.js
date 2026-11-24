@@ -130,3 +130,14 @@ test("RDFS entailment is opt-in per query", async () => {
   assert.throws(() => db.querySync(q, { entailment: "owl" }), /entailment must be/);
   db.close();
 });
+
+test("SHACL validate: reports, syntax errors and rejected shapes", () => {
+  const shapes = "@prefix sh: <http://www.w3.org/ns/shacl#> .\n<urn:S> a sh:NodeShape ; sh:targetClass <urn:Person> ; sh:property [ sh:path <urn:name> ; sh:minCount 1 ] .";
+  assert.strictEqual(tl.validate('<urn:ann> a <urn:Person> ; <urn:name> "Ann" .', shapes).conforms, true);
+  const bad = tl.validate("<urn:bob> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Person> .", shapes, { dataFormat: "ntriples" });
+  assert.strictEqual(bad.conforms, false);
+  const focus = bad.triples.filter((t) => t.predicate.value === "http://www.w3.org/ns/shacl#focusNode").map((t) => t.object);
+  assert.deepStrictEqual(focus.map((o) => [o.termType, o.value]), [["NamedNode", "urn:bob"]]);
+  assert.throws(() => tl.validate("<urn:bob> a", shapes), tl.SyntaxError);
+  assert.throws(() => tl.validate("", "@prefix sh: <http://www.w3.org/ns/shacl#> . <urn:S> a sh:NodeShape ; sh:targetClass <urn:P> ; sh:property [ sh:minCount 1 ] ."), tl.ShapesError);
+});

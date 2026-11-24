@@ -75,11 +75,15 @@ jobs:
           python bench/w3c_sparql11.py rdf-tests/sparql/sparql11 target/release/triplelight w3c.json
       - name: Check against the floor
         run: python ci/w3c_floor.py w3c.json ci/w3c_floor.json
+      - name: RDFS entailment cases (listed expected differences only shrink)
+        run: python bench/w3c_rdfs_entailment.py rdf-tests/sparql/sparql11 target/release/triplelight w3c-rdfs.json bench/w3c_rdfs_expected_differences.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: w3c-results
-          path: w3c.json
+          path: |
+            w3c.json
+            w3c-rdfs.json
 
   w3c12:
     name: W3C RDF and SPARQL 1.2 conformance
