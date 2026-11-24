@@ -565,10 +565,20 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         let probes: Vec<_> = probes.into_iter().map(|i| prefixes[i]).collect();
         let lists: Vec<_> = lists.into_iter().map(|i| plans[i]).collect();
         let candidates = self.intersect(&lists, center, &vec![UNBOUND; self.w]);
-        let part = |values: &[TermId]| {
+        // A probe whose whole range is small next to the candidates is cheaper as one sorted scan merged against them
+        // than as one range count (two index seeks) per candidate: `merged` holds those probes' counts, by candidate.
+        let (merged, probes): (Vec<_>, Vec<_>) = probes.into_iter().map(|p| (p, self.merged_counts(p, &candidates))).partition(|(_, m)| m.is_some());
+        let merged: Vec<Vec<u64>> = merged.into_iter().filter_map(|(_, m)| m).collect();
+        let probes: Vec<_> = probes.into_iter().map(|(p, _)| p).collect();
+        let part = |(at, values): (usize, &[TermId])| {
             let (mut sum, mut centers) = (0, 0);
-            'next: for &c in values {
+            'next: for (i, &c) in values.iter().enumerate() {
                 let mut product = 1;
+                for counts in &merged {
+                    let n = counts[at + i];
+                    if n == 0 { continue 'next }
+                    product = checked_count_product(product, n);
+                }
                 for &(perm, mut prefix, k) in &probes {
                     prefix[k] = c;
                     let n = self.count(perm, &prefix[..=k]);
@@ -580,7 +590,32 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             (sum, centers)
         };
         let add = |a: (u64, u64), b: (u64, u64)| (checked_count(a.0, b.0), a.1 + b.1);
-        if candidates.len() >= 64 { candidates.par_chunks(256).map(part).reduce(|| (0, 0), add) } else { part(&candidates) }
+        const CHUNK: usize = 256;
+        if candidates.len() >= 64 {
+            candidates.par_chunks(CHUNK).enumerate().map(|(j, v)| part((j * CHUNK, v))).reduce(|| (0, 0), add)
+        } else {
+            part((0, &candidates))
+        }
+    }
+
+    /// Per candidate, the rows of the probe `(perm, prefix, k)` with the center (key column `k`) equal to it, from one
+    /// scan of the probe's range merged against the sorted candidates; `None` when that range is more than
+    /// `MERGE_ROWS_PER_CANDIDATE` rows per candidate, so per-candidate counts read less.
+    fn merged_counts(&self, (perm, prefix, k): (Perm, [TermId; 3], usize), candidates: &[TermId]) -> Option<Vec<u64>> {
+        /// About what one per-candidate range count costs, in scanned rows (two seeks into the index).
+        const MERGE_ROWS_PER_CANDIDATE: u64 = 32;
+        if candidates.is_empty() || self.count(perm, &prefix[..k]) > candidates.len() as u64 * MERGE_ROWS_PER_CANDIDATE { return None }
+        let mut out = vec![0u64; candidates.len()];
+        let mut i = 0;
+        'scan: for batch in self.snap.scan(perm, &prefix[..k]) {
+            let batch = batch.unwrap_or_else(|e| storage_failure(e));
+            self.check();
+            for &c in &batch.cols[k] {
+                while candidates[i] < c { i += 1; if i == candidates.len() { break 'scan } }
+                if candidates[i] == c { out[i] += 1 }
+            }
+        }
+        Some(out)
     }
 
     fn lf_count_depth(&self, plans: &[(Perm, [Slot; 3])], order: &[usize], depth: usize, row: &mut Vec<TermId>) -> u64 {
