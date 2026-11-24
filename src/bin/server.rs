@@ -92,7 +92,7 @@ type Resp = tiny_http::Response<std::io::Cursor<Vec<u8>>>;
 fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax => 400, QueryErrorKind::Unsupported => 501, QueryErrorKind::Storage => 500, QueryErrorKind::GraphState => 400, QueryErrorKind::Cancelled | QueryErrorKind::Timeout | QueryErrorKind::ResourceLimit => 503 } }
 
 /// A runtime explanation, requested explicitly with a raw SPARQL query body.
-fn explain<S: triplelight::storage::Snapshot>(req: &mut tiny_http::Request, snap: &S, opts: Options<'_>, timeout: Option<std::time::Duration>) -> Resp {
+fn explain<S: triplelight::storage::Snapshot>(req: &mut tiny_http::Request, snap: &S, opts: Options<'_>, timeout: Option<std::time::Duration>, memory: Option<u64>) -> Resp {
     let reply = |body, code| tiny_http::Response::from_string(body).with_status_code(code);
     if req.method() != &tiny_http::Method::Post {
         return reply("use POST with a SPARQL query body".to_string(), 405)
@@ -112,7 +112,8 @@ fn explain<S: triplelight::storage::Snapshot>(req: &mut tiny_http::Request, snap
     }
     if query.len() as u64 > MAX_QUERY_BYTES { return reply("query too large".to_string(), 413); }
     let interrupt = timeout.map(Interrupt::with_timeout);
-    let opts = Options { entailment, interrupt: interrupt.as_ref(), ..opts };
+    let budget = memory.map(MemoryBudget::new);
+    let opts = Options { entailment, interrupt: interrupt.as_ref(), memory_budget: budget.as_ref(), ..opts };
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| triplelight::exec::plan_trace::explain(snap, &query, &opts))) {
         Ok(Ok(report)) => reply(report, 200),
         Ok(Err(e)) => reply(e.to_string(), error_code(e.kind)),
@@ -161,13 +162,13 @@ fn answer<S: triplelight::storage::Snapshot>(snap: &S, q: &str, opts: &Options<'
     }
     if let Some(t0) = phases {
         let end = Instant::now();
-        let [parse, bgp, group, count, sort] = triplelight::exec::phase::take();
+        let [parse, bgp, group, count, sort, filter, extend, join] = triplelight::exec::phase::take();
         let ranges = triplelight::exec::phase::take_ranges();
         let exec_us = exec_done.get().map_or(0, |e| (e - t0).as_micros());
         let output_us = exec_done.get().map_or(0, |e| (end - e).as_micros());
         let (rows, cols) = shape.get();
         let head: String = q.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
-        eprintln!("phase_trace total_us={} parse_us={parse} bgp_us={bgp} group_us={group} count_us={count} sort_us={sort} exec_us={exec_us} output_us={output_us} rows={rows} cols={cols} range_pushdown={ranges} query={head:?}", (end - t0).as_micros());
+        eprintln!("phase_trace total_us={} parse_us={parse} bgp_us={bgp} group_us={group} count_us={count} sort_us={sort} filter_us={filter} extend_us={extend} join_us={join} exec_us={exec_us} output_us={output_us} rows={rows} cols={cols} range_pushdown={ranges} query={head:?}", (end - t0).as_micros());
     }
     if let Some(t) = derived {
         let head: String = q.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
@@ -214,7 +215,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
                 let st = stats.read().unwrap().clone();
                 let st = st.filter(|(base, _)| snap.delta_len() == 0 && *base == snap.base_id());
                 let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), ..ablations };
-                let resp = explain(&mut req, &*snap, opts, timeout);
+                let resp = explain(&mut req, &*snap, opts, timeout, memory);
                 let _ = req.respond(resp);
                 continue;
             }
@@ -393,7 +394,7 @@ fn serve_memory(args: &[String]) {
                 if url.split('?').next() == Some("/explain") {
                     let st = stats.read().unwrap().clone();
                     let opts = Options { stats: st.as_deref(), ..ablations };
-                    let resp = explain(&mut req, snap, opts, timeout);
+                    let resp = explain(&mut req, snap, opts, timeout, memory);
                     let _ = req.respond(resp);
                     continue;
                 }

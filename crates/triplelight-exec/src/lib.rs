@@ -206,7 +206,7 @@ fn catching_storage<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, Q
 }
 
 fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
-    let q = phase::timed(&phase::PARSE_NS, || crate::sparql::parse_query(text, None)).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
+    let q = phase::parse(|| crate::sparql::parse_query(text, None)).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
     run_query(snap, dataset, &q, opts)
 }
 
@@ -611,7 +611,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     /// Evaluates `p` for each input row (sideways information passing: bound values flow into scans).
     pub(crate) fn eval(&self, p: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
         self.check();
+        let operator = plan_trace::operator(p, input.len());
         let out = self.eval_op(p, input);
+        operator.finish(out.len());
         // Every operator's result is a materialized row set: it must fit next to what the others hold.
         self.fits(out.len() as u64 * self.row_bytes());
         out
@@ -627,7 +629,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 if scope_safe(right) { self.eval(right, l) } else {
                     let r = self.eval(right, vec![self.empty_row()]);
                     let _table = self.reserve(r.len() as u64 * (self.row_bytes() + 32));
-                    join_rows(l, r)
+                    phase::join(|| join_rows(l, r))
                 }
             }
             GraphPattern::LeftJoin { left, right, expression } => self.eval_left_join(left, right, expression, input),
@@ -650,7 +652,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                     r
                 }).collect();
                 let _table = self.reserve(projected.len() as u64 * (self.row_bytes() + 32));
-                join_rows(input, projected)
+                phase::join(|| join_rows(input, projected))
             }
             GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } => {
                 let mut seen = HashSet::new();
@@ -671,8 +673,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         // expression is evaluated on the merged solution either way.
         let standalone = (!scope_safe(right)).then(|| self.eval(right, vec![self.empty_row()]));
         for row in l {
-            let merged = match &standalone { Some(r) => join_rows(vec![row.clone()], r.clone()), None => self.eval(right, vec![row.clone()]) };
-            let ext: Vec<Row> = merged.into_iter().filter(|r| expression.as_ref().is_none_or(|e| self.ebv(e, r))).collect();
+            let merged = match &standalone { Some(r) => phase::join(|| join_rows(vec![row.clone()], r.clone())), None => self.eval(right, vec![row.clone()]) };
+            let ext: Vec<Row> = phase::filter(|| merged.into_iter().filter(|r| expression.as_ref().is_none_or(|e| self.ebv(e, r))).collect());
             if ext.is_empty() { out.push(row) } else { out.extend(ext) }
         }
         out
@@ -707,7 +709,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                         self.eval(&GraphPattern::Filter { expr: e, inner: Box::new(inner2) }, input)
                     }
                 };
-                return rows.into_iter().map(|mut r| { r[bi] = r[ai]; r }).collect();
+                return phase::filter(|| rows.into_iter().map(|mut r| { r[bi] = r[ai]; r }).collect());
             }
             let bgp_vars: HashSet<usize> = { let mut v = Vec::new(); walk_vars(inner, &mut v); v.iter().filter_map(|n| self.vars.get(n).copied()).collect() };
             let (early, late): (Vec<&Expression>, Vec<&Expression>) = conjuncts(expr).into_iter().partition(|c| {
@@ -716,8 +718,11 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             });
             if !early.is_empty() {
                 let early: Vec<(&Expression, Vec<usize>)> = early.into_iter().map(|c| (c, expr_vars(c).iter().map(|n| self.vars[n]).collect())).collect();
+                // Pushdown bypasses `eval(inner)`, so install the BGP's observed-tree node explicitly.
+                let bgp_operator = plan_trace::operator(inner, input.len());
                 let rows = self.eval_bgp_filtered(patterns, input, &early);
-                return rows.into_iter().filter(|r| late.iter().all(|c| self.ebv(c, r))).collect();
+                bgp_operator.finish(rows.len());
+                return phase::filter(|| rows.into_iter().filter(|r| late.iter().all(|c| self.ebv(c, r))).collect());
             }
         }
         let rows = self.eval(inner, input);
@@ -727,10 +732,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let fast = expr::NumFilter::compile(expr, &self.vars);
         let mut nums: HashMap<TermId, Option<expr::Num>> = HashMap::new();
         let mut val = |id: TermId| *nums.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
-        rows.into_iter().filter(|r| match fast.as_ref().map(|f| f.eval(r, &mut val)) {
+        phase::filter(|| rows.into_iter().filter(|r| match fast.as_ref().map(|f| f.eval(r, &mut val)) {
             Some(Ok(b)) => b == Some(true),
             _ => self.ebv(expr, r),
-        }).collect()
+        }).collect())
     }
 
     fn eval_extend(&self, inner: &GraphPattern, variable: &Variable, expression: &Expression, input: Vec<Row>) -> Vec<Row> {
@@ -748,7 +753,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let mut nums: HashMap<TermId, Option<expr::Num>> = HashMap::new();
         let mut val = |id: TermId| *nums.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
         let mut results: HashMap<expr::NumKey, TermId> = HashMap::new();
-        self.eval(inner, input).into_iter().filter_map(|mut r| {
+        let rows = self.eval(inner, input);
+        phase::extend(|| rows.into_iter().filter_map(|mut r| {
             let id = match fast.as_ref().map(|f| f.value(&r, &mut val)) {
                 Some(Ok(Some(n))) => Some(*results.entry(expr::NumKey::of(n)).or_insert_with(|| self.intern(&n.term()))),
                 Some(Ok(None)) => None,
@@ -758,7 +764,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 if r[i] == UNBOUND { r[i] = id } else if r[i] != id { return None }
             }
             Some(r)
-        }).collect()
+        }).collect())
     }
 
     fn eval_minus(&self, left: &GraphPattern, right: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
@@ -795,10 +801,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let limit = self.order_limit.take();
         let alias = self.order_alias(inner, expression, &input);
         let rows = self.eval(inner, input);
-        let started = phase::enabled().then(std::time::Instant::now);
-        let out = self.sort_rows(expression, limit, rows, alias);
-        if let Some(t) = started { phase::SORT_NS.fetch_add(t.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed); }
-        out
+        phase::sort(|| self.sort_rows(expression, limit, rows, alias))
     }
 
     /// A fresh alias computed immediately below ORDER BY can supply the same pure expression.
@@ -907,12 +910,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
 
     fn eval_group(&self, inner: &GraphPattern, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], input: Vec<Row>) -> Vec<Row> {
-        if self.count_pushdown && let Some(rows) = phase::timed(&phase::COUNT_NS, || self.try_count_group(inner, keys, aggs, &input)) { return rows; }
+        if self.count_pushdown && let Some(rows) = phase::count(|| self.try_count_group(inner, keys, aggs, &input)) { return rows; }
         let rows = self.eval(inner, input);
-        let started = phase::enabled().then(std::time::Instant::now);
-        let out = self.group_rows(keys, aggs, rows);
-        if let Some(t) = started { phase::GROUP_NS.fetch_add(t.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed); }
-        out
+        phase::group(|| self.group_rows(keys, aggs, rows))
     }
 
     fn group_rows(&self, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], rows: Vec<Row>) -> Vec<Row> {
@@ -1139,7 +1139,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     /// Applies each not-yet-applied filter whose variables are all bound, keeping rows whose filter is true.
     fn apply_filters(&self, rows: &mut Vec<TermId>, w: usize, filters: &[(&Expression, Vec<usize>)], bound: &HashSet<usize>, applied: &mut [bool], numeric_memo: &mut HashMap<TermId, Option<expr::Num>>) {
-        for (k, (e, vs)) in filters.iter().enumerate() {
+        phase::filter(|| for (k, (e, vs)) in filters.iter().enumerate() {
             if applied[k] || !vs.iter().all(|v| bound.contains(v)) { continue }
             applied[k] = true;
             if let Some(kept) = self.filter_text_literals(e, rows, w) {
@@ -1181,7 +1181,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 if keep { kept.extend_from_slice(r) }
             }
             *rows = kept;
-        }
+        })
     }
 
     /// `(column, constant's stored ID, is_equality)` for `?x = <iri>`, `?x != <iri>`, `sameTerm(?x, <iri>)` and their
