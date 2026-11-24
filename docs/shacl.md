@@ -1,8 +1,8 @@
 # SHACL Core validation
 
 TripleLight validates an RDF graph against a SHACL Core shapes graph ([SHACL, W3C Recommendation 2017-07-20](https://www.w3.org/TR/2017/REC-shacl-20170720/)).
-Both graphs are given as triples; the module (`src/shacl/`) uses only the platform-independent RDF types of `triplelight::rdf`, so the CLI and
-the language bindings load the two graphs with the existing RDF readers and call one function.
+Both graphs are given as triples; the module (`src/shacl/`) uses only the platform-independent RDF types of `triplelight::rdf`. The Rust function below is the API
+today; the CLI and the language bindings can load the two graphs with the existing RDF readers and call it once they are wired to it (not done yet).
 
 ```rust
 use triplelight::shacl::validate;
@@ -35,7 +35,9 @@ let as_rdf = report.to_triples();                          // a sh:ValidationRep
 - Value nodes of a property shape are a set (duplicates collapse), in the order they are reached.
 - A shape's `sh:message` values replace a component's default message in every result of that shape.
 - `sh:pattern` uses the Rust `regex` engine, not the XPath regular-expression dialect SHACL names. The two agree on common patterns and
-  differ on a few features (for example look-around is not supported); a pattern the engine cannot compile is a malformed shape.
+  differ on a few features (for example look-around is not supported). A pattern the engine cannot compile returns `Unsupported`; an unknown
+  `sh:flags` character or a mistyped parameter returns `MalformedShape`. The `x` flag removes whitespace outside character classes before the
+  pattern is compiled.
 
 ## Layers
 
