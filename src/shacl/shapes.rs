@@ -58,8 +58,10 @@ impl ShapesGraph {
 
     pub fn graph(&self) -> &Graph { &self.graph }
 
-    /// The shapes validation starts from, in a fixed order.
-    pub fn declared(&self) -> &[Term] { &self.declared }
+    /// The work validation starts from: each shape that has targets with its focus nodes in `data`, in a fixed order.
+    pub fn work_list(&self, data: &Graph) -> Result<Vec<(Term, Vec<Term>)>, ValidationError> {
+        self.declared.iter().map(|id| Ok((id.clone(), self.focus_nodes(&*self.shape(id)?, data)))).collect()
+    }
 
     /// The shape with this id, parsed on first use. A node that has no shape properties is still a (trivial) shape.
     pub fn shape(&self, id: &Term) -> Result<Rc<Shape>, ValidationError> {

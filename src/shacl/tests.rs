@@ -83,13 +83,16 @@ fn targets_select_focus_nodes() {
     let shapes = parse("ex:S a sh:NodeShape ; sh:targetNode ex:n ; sh:targetClass ex:C ; sh:targetSubjectsOf ex:p ; sh:targetObjectsOf ex:q .");
     let data = Graph::new(&parse("ex:x a ex:C . ex:y ex:p ex:o1 . ex:o2 ex:q ex:z . ex:Sub rdfs:subClassOf ex:C . ex:w a ex:Sub ."));
     let sg = ShapesGraph::new(Graph::new(&shapes)).unwrap();
-    assert_eq!(sg.declared(), [iri("S")]);
     let shape = sg.shape(&iri("S")).unwrap();
     let mut foci = sg.focus_nodes(&shape, &data);
     foci.sort_by_key(|t| t.to_string());
     let mut want = vec![iri("n"), iri("x"), iri("w"), iri("y"), iri("z")];
     want.sort_by_key(|t| t.to_string());
     assert_eq!(foci, want);
+    let work = sg.work_list(&data).unwrap();
+    assert_eq!(work.len(), 1);
+    assert_eq!(work[0].0, iri("S"));
+    assert_eq!(work[0].1.len(), 5);
 }
 
 #[test]

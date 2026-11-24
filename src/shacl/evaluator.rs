@@ -70,9 +70,8 @@ pub fn validate(data: &[Triple], shapes: &[Triple]) -> Result<ValidationReport, 
     let shapes = ShapesGraph::new(Graph::new(shapes))?;
     let mut ev = Evaluator::new(&shapes, &data);
     let mut results = Vec::new();
-    for id in shapes.declared() {
-        let shape = shapes.shape(id)?;
-        for focus in shapes.focus_nodes(&shape, &data) { results.extend(ev.check_node(id, &focus)?) }
+    for (id, foci) in shapes.work_list(&data)? {
+        for focus in foci { results.extend(ev.check_node(&id, &focus)?) }
     }
     Ok(ValidationReport::new(results))
 }
