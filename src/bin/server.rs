@@ -136,7 +136,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
     let stats: std::sync::RwLock<Option<(usize, std::sync::Arc<Stats>)>> = std::sync::RwLock::new(None);
     let refresh = |stats: &std::sync::RwLock<Option<(usize, std::sync::Arc<Stats>)>>, snap: &triplelight::store::Overlay| {
         if args.iter().any(|a| a == "--no-stats") { return }
-        let st = Stats::from_snapshot(snap.base()).expect("statistics");
+        let st = Stats::from_scans(|| snap.scan_base_for_stats()).expect("statistics");
         *stats.write().unwrap() = Some((snap.base_id(), std::sync::Arc::new(st)));
     };
     refresh(&stats, &store.snapshot());
