@@ -51,6 +51,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         csr_paths: true,
         entailment: Default::default(),
         interrupt: None,
+        memory_budget: None,
     };
     let mut paths: Vec<_> = fs::read_dir(&a[2])?
         .map(|p| p.map(|e| e.path()))
