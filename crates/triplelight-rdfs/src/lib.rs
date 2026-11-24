@@ -44,13 +44,23 @@ const S: usize = 0;
 const P: usize = 1;
 const O: usize = 2;
 
+const EQUIVALENT_CLASS: NamedNodeRef<'static> =
+    NamedNodeRef::new_unchecked("http://www.w3.org/2002/07/owl#equivalentClass");
+const EQUIVALENT_PROPERTY: NamedNodeRef<'static> =
+    NamedNodeRef::new_unchecked("http://www.w3.org/2002/07/owl#equivalentProperty");
+
+#[derive(Clone, Copy)]
+enum Rules {
+    Rdfs,
+    OwlEquivalence,
+}
+
 /// The schema of one graph, closed: strict transitive super- and sub-relations, and per property the classes its
 /// domain and range give (closed upward over `sc`, inherited from superproperties).
 #[derive(Default)]
 pub(crate) struct Schema {
-    /// `rdf:type`'s ID, 0 if none: the store's, or (set by the executor when the store has no such IRI) the query's
-    /// scratch ID, so that domain and range still type resources in a graph without a single `rdf:type` triple.
-    rdf_type: std::sync::atomic::AtomicU64,
+    /// The store's `rdf:type` ID or the executor's query-local ID for that IRI.
+    rdf_type: Option<TermId>,
     sub_class_of: Option<TermId>,
     sub_property_of: Option<TermId>,
     super_props: HashMap<TermId, Vec<TermId>>,
@@ -100,8 +110,9 @@ fn rows_of(g: &dyn Snapshot, perm: Perm, prefix: &[TermId]) -> Result<Vec<[TermI
 }
 
 impl Schema {
-    pub(crate) fn of(g: &dyn Snapshot) -> Result<Schema, StorageError> {
+    fn of(g: &dyn Snapshot, virtual_ids: &[(NamedNodeRef<'static>, TermId)], rules: Rules) -> Result<Schema, StorageError> {
         let iri = |n: NamedNodeRef<'_>| g.lookup(&Term::NamedNode(n.into_owned()));
+        let virtual_id = |predicate| virtual_ids.iter().find(|(iri, _)| *iri == predicate).map(|(_, id)| *id);
         let (rdf_type, sub_class_of, sub_property_of, domain, range) =
             (iri(rdf::TYPE)?, iri(rdfs::SUB_CLASS_OF)?, iri(rdfs::SUB_PROPERTY_OF)?, iri(rdfs::DOMAIN)?, iri(rdfs::RANGE)?);
         // (subject, object) pairs of one predicate, from its PSO range (key order: p, s, o).
@@ -109,8 +120,34 @@ impl Schema {
             let Some(p) = p else { return Ok(Vec::new()) };
             Ok(rows_of(g, Perm::Pso, &[p])?.into_iter().map(|r| (r[1], r[2])).collect())
         };
-        let super_classes = closure(&pairs(sub_class_of)?);
-        let super_props = closure(&pairs(sub_property_of)?);
+        let mut class_edges = pairs(sub_class_of)?;
+        let mut property_edges = pairs(sub_property_of)?;
+        if matches!(rules, Rules::OwlEquivalence) {
+            let named = |id: TermId, property: bool| -> Result<bool, StorageError> {
+                let mut accepted = false;
+                g.with_term(id, &mut |term| {
+                    if let TermRef::NamedNode(name) = term {
+                        accepted = !property || ![
+                            rdf::TYPE, rdfs::SUB_CLASS_OF, rdfs::SUB_PROPERTY_OF, rdfs::DOMAIN,
+                            rdfs::RANGE, EQUIVALENT_CLASS, EQUIVALENT_PROPERTY,
+                        ].contains(&name);
+                    }
+                })?;
+                Ok(accepted)
+            };
+            for (predicate, edges, property) in [
+                (EQUIVALENT_CLASS, &mut class_edges, false),
+                (EQUIVALENT_PROPERTY, &mut property_edges, true),
+            ] {
+                for (a, b) in pairs(iri(predicate)?)? {
+                    if named(a, property)? && named(b, property)? {
+                        edges.extend([(a, b), (b, a)]);
+                    }
+                }
+            }
+        }
+        let super_classes = closure(&class_edges);
+        let super_props = closure(&property_edges);
         let (sub_classes, sub_props) = (invert(&super_classes), invert(&super_props));
         // Per property, its declared classes and those of its superproperties, closed upward.
         let inherited = |declared: Vec<(TermId, TermId)>| -> HashMap<TermId, Vec<TermId>> {
@@ -136,13 +173,14 @@ impl Schema {
         let domain_of = inherited(pairs(domain)?);
         let range_of = inherited(pairs(range)?);
         let (by_domain, by_range) = (invert(&domain_of), invert(&range_of));
-        let rdf_type = std::sync::atomic::AtomicU64::new(rdf_type.map_or(0, |t| t.0));
+        let rdf_type = rdf_type.or_else(|| virtual_id(rdf::TYPE));
+        let sub_class_of = sub_class_of.or_else(|| virtual_id(rdfs::SUB_CLASS_OF));
+        let sub_property_of = sub_property_of.or_else(|| virtual_id(rdfs::SUB_PROPERTY_OF));
         Ok(Schema { rdf_type, sub_class_of, sub_property_of, super_props, sub_props, super_classes, sub_classes, domain_of, range_of, by_domain, by_range })
     }
 
     pub(crate) fn rdf_type(&self) -> Option<TermId> {
-        let t = self.rdf_type.load(std::sync::atomic::Ordering::Relaxed);
-        (t != 0).then_some(TermId(t))
+        self.rdf_type
     }
 
     /// No rule can add a triple: the view is the graph.
@@ -189,13 +227,8 @@ struct Entailed<'a> {
 }
 
 impl<'a> Entailed<'a> {
-    fn new(base: &'a dyn Snapshot) -> Result<Self, StorageError> {
-        Ok(Entailed { base, schema: Schema::of(base)?, memo: Mutex::new((0, HashMap::new())) })
-    }
-
-    /// Names `rdf:type` by `id` when the graph's dictionary has no such IRI (`Schema::rdf_type`); before any scan.
-    fn set_rdf_type(&self, id: TermId) {
-        if self.schema.rdf_type().is_none() { self.schema.rdf_type.store(id.0, std::sync::atomic::Ordering::Relaxed) }
+    fn new(base: &'a dyn Snapshot, virtual_ids: &[(NamedNodeRef<'static>, TermId)], rules: Rules) -> Result<Self, StorageError> {
+        Ok(Entailed { base, schema: Schema::of(base, virtual_ids, rules)?, memo: Mutex::new((0, HashMap::new())) })
     }
 
     /// The bound S, P, O of `prefix` in `perm`'s key order.
@@ -401,10 +434,23 @@ impl EntailmentProvider for Rdfs {
         source: &'a dyn Snapshot,
         virtual_ids: &[(NamedNodeRef<'static>, TermId)],
     ) -> Result<Box<dyn Snapshot + 'a>, StorageError> {
-        let view = Entailed::new(source)?;
-        if let Some((_, id)) = virtual_ids.iter().find(|(predicate, _)| *predicate == rdf::TYPE) {
-            view.set_rdf_type(*id);
-        }
-        Ok(Box::new(view))
+        Ok(Box::new(Entailed::new(source, virtual_ids, Rules::Rdfs)?))
+    }
+}
+
+/// Read-only OWL 2 RL equivalence rules for named classes and application properties.
+pub struct OwlRlEquivalence;
+
+impl EntailmentProvider for OwlRlEquivalence {
+    fn virtual_predicates(&self) -> &'static [NamedNodeRef<'static>] {
+        &[rdf::TYPE, rdfs::SUB_CLASS_OF, rdfs::SUB_PROPERTY_OF]
+    }
+
+    fn graph<'a>(
+        &self,
+        source: &'a dyn Snapshot,
+        virtual_ids: &[(NamedNodeRef<'static>, TermId)],
+    ) -> Result<Box<dyn Snapshot + 'a>, StorageError> {
+        Ok(Box::new(Entailed::new(source, virtual_ids, Rules::OwlEquivalence)?))
     }
 }
