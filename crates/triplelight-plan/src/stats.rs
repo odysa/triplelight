@@ -2,7 +2,11 @@
 //! multiplicity independence, bounded object frequencies and chain NDVs are estimates.
 use super::plan::{Slot, TriplePattern};
 use crate::model::{Perm, TermId};
-use crate::storage::Snapshot;
+use crate::model::TripleBatch;
+use crate::storage::{Snapshot, StorageError};
+
+/// A fresh SPO scan of the triples statistics are built from.
+pub type StatsScan<'a> = Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a>;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 use std::sync::Arc;
@@ -195,11 +199,16 @@ impl Stats {
     /// object's set up by binary search. Auxiliary memory is otherwise bounded object sketches + CS/property
     /// summaries + the largest subject group + at most `MAX_PAIR_KEYS` pair counters.
     pub fn from_snapshot(snapshot: &dyn Snapshot) -> Result<Self, StatsError> {
-        fn each(
-            snapshot: &dyn Snapshot,
+        Self::from_scans(|| snapshot.scan_for_stats())
+    }
+    /// The same two passes over any source that can start a fresh SPO scan each time it is asked (a snapshot's
+    /// `scan_for_stats`, or an overlay's base alone, `Overlay::scan_base_for_stats`).
+    pub fn from_scans<'a>(scan: impl Fn() -> StatsScan<'a>) -> Result<Self, StatsError> {
+        fn each<'a>(
+            scan: &impl Fn() -> StatsScan<'a>,
             mut f: impl FnMut([TermId; 3]) -> Result<(), StatsError>,
         ) -> Result<(), StatsError> {
-            for batch in snapshot.scan_for_stats() {
+            for batch in scan() {
                 let batch = batch?;
                 let n = batch.cols[0].len();
                 if batch.cols[1].len() != n || batch.cols[2].len() != n {
@@ -212,9 +221,9 @@ impl Stats {
             Ok(())
         }
         let mut builder = Builder::default();
-        each(snapshot, |t| builder.push(t))?;
+        each(&scan, |t| builder.push(t))?;
         let (mut stats, mut pairs) = builder.finish();
-        each(snapshot, |t| {
+        each(&scan, |t| {
             pairs.push(t);
             Ok(())
         })?;
