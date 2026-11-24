@@ -22,10 +22,12 @@ pub enum DatabaseError {
     GraphState(String),
     /// The query was cancelled or ran past its deadline (`exec::Interrupt`); nothing partial was returned.
     Interrupted { timed_out: bool },
+    /// The query needed more working memory than its `exec::MemoryBudget` (#110).
+    ResourceLimit(String),
 }
 impl std::fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self { Self::Syntax(s) | Self::Unsupported(s) | Self::GraphState(s) => f.write_str(s), Self::Storage(e) => e.fmt(f), Self::Locked => f.write_str("database directory is already open"), Self::Interrupted { timed_out } => f.write_str(if *timed_out { "query timed out" } else { "query cancelled" }) }
+        match self { Self::Syntax(s) | Self::Unsupported(s) | Self::GraphState(s) | Self::ResourceLimit(s) => f.write_str(s), Self::Storage(e) => e.fmt(f), Self::Locked => f.write_str("database directory is already open"), Self::Interrupted { timed_out } => f.write_str(if *timed_out { "query timed out" } else { "query cancelled" }) }
     }
 }
 impl std::error::Error for DatabaseError {}
@@ -41,6 +43,7 @@ impl From<QueryError> for DatabaseError {
             exec::QueryErrorKind::GraphState => Self::GraphState(e.message),
             exec::QueryErrorKind::Cancelled => Self::Interrupted { timed_out: false },
             exec::QueryErrorKind::Timeout => Self::Interrupted { timed_out: true },
+            exec::QueryErrorKind::ResourceLimit => Self::ResourceLimit(e.message),
         }
     }
 }
@@ -222,6 +225,10 @@ impl Database {
     pub fn query_with_interrupt(&self, sparql: &str, entailment: exec::Entailment, interrupt: &exec::Interrupt) -> Result<QueryResult, DatabaseError> {
         self.read().query_with_interrupt(sparql, entailment, interrupt)
     }
+    /// `query` under explicit limits (see `ReadSnapshot::query_with_limits`).
+    pub fn query_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
+        self.read().query_with_limits(sparql, entailment, limits)
+    }
 
     /// Returns a stable read view that is unaffected by subsequent updates.
     pub fn read(&self) -> ReadSnapshot { ReadSnapshot { snapshot: self.snapshot(), stats: Arc::clone(&self.stats) } }
@@ -388,14 +395,19 @@ impl ReadSnapshot {
     }
     /// `query` that stops early (`DatabaseError::Interrupted`) when `interrupt` is cancelled or past its deadline (#110).
     pub fn query_with_interrupt(&self, sparql: &str, entailment: exec::Entailment, interrupt: &exec::Interrupt) -> Result<QueryResult, DatabaseError> {
-        self.run_with(sparql, false, entailment, Some(interrupt))
+        self.run_with(sparql, false, entailment, exec::QueryLimits { interrupt: Some(interrupt), memory: None })
+    }
+    /// `query` under explicit limits: an interrupt and/or a working-memory budget (`DatabaseError::Interrupted`,
+    /// `DatabaseError::ResourceLimit`), never a partial answer (#110).
+    pub fn query_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
+        self.run_with(sparql, false, entailment, limits)
     }
     fn run(&self, sparql: &str, raw_ids: bool, entailment: exec::Entailment) -> Result<QueryResult, DatabaseError> {
-        self.run_with(sparql, raw_ids, entailment, None)
+        self.run_with(sparql, raw_ids, entailment, exec::QueryLimits::default())
     }
-    fn run_with(&self, sparql: &str, raw_ids: bool, entailment: exec::Entailment, interrupt: Option<&exec::Interrupt>) -> Result<QueryResult, DatabaseError> {
+    fn run_with(&self, sparql: &str, raw_ids: bool, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
         let stats = self.applicable_stats();
-        let opts = exec::Options { stats: stats.as_deref(), raw_ids, entailment, interrupt, ..Default::default() };
+        let opts = exec::Options { stats: stats.as_deref(), raw_ids, entailment, interrupt: limits.interrupt, memory_budget: limits.memory, ..Default::default() };
         Ok(exec::query_dataset_with(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
     }
     /// Executes a SPARQL query on this pinned snapshot and returns its observed basic graph pattern plan.

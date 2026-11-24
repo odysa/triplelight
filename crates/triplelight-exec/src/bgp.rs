@@ -32,6 +32,8 @@ pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
     pub sorted_probe: bool,
     /// Checked every `CHECK_ROWS` input rows of a probe or merge join (`Options::interrupt`).
     pub interrupt: Option<&'a super::Interrupt>,
+    /// The query's working-memory budget: a join step's input and output rows must fit in what is left of it.
+    pub budget: Option<&'a super::MemoryBudget>,
 }
 
 /// Input rows between two interrupt checks inside a probe join (each row may extend into many).
@@ -71,6 +73,10 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         let t = trace.is_some().then(std::time::Instant::now);
         let (mut out, access) = self.extend_via(pat, rows);
         let extended = out.len();
+        let step_bytes = (rows.len() + out.len()) as u64 * 8;
+        if let Some(b) = self.budget && step_bytes > b.available() {
+            super::limits::over_budget(super::OverBudget { requested: step_bytes, available: b.available() })
+        }
         for s in pat { if let Slot::Var(v) = s { bound.insert(*v); } }
         post(&mut out, bound);
         if let (Some(tr), Some(t)) = (trace, t) { let w = self.w.max(1); tr.step(Some(pi), access, rows.len() / w, extended / w, out.len() / w, t) }
@@ -838,8 +844,8 @@ pub(crate) mod sorted_probe_tests {
         }
         rows[2] = UNBOUND; // the first row decides the key: only ?0 bound
         rows[w] = rows[0]; // a duplicate key next to it
-        let on = Bgp { snap: &snap, w, ranges: None, sorted_probe: true, interrupt: None };
-        let off = Bgp { snap: &snap, w, ranges: None, sorted_probe: false, interrupt: None };
+        let on = Bgp { snap: &snap, w, ranges: None, sorted_probe: true, interrupt: None, budget: None };
+        let off = Bgp { snap: &snap, w, ranges: None, sorted_probe: false, interrupt: None, budget: None };
         let patterns = [
             [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)], // key as subject
             [Slot::Var(1), Slot::Const(Some(TermId(1001))), Slot::Var(0)], // key as object
@@ -883,7 +889,7 @@ pub(crate) mod sorted_probe_tests {
         let mut keys: Vec<u64> = (0..MERGE_MORSEL as u64 * 2 + 777).map(|i| 1 + (i * 2654435761) % 470).collect();
         keys.sort_unstable();
         let rows: Vec<TermId> = keys.iter().flat_map(|&k| [TermId(k), UNBOUND, TermId(9)]).collect();
-        let b = Bgp { snap: &snap, w, ranges: None, sorted_probe: false, interrupt: None };
+        let b = Bgp { snap: &snap, w, ranges: None, sorted_probe: false, interrupt: None, budget: None };
         for pat in [
             [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)],
             [Slot::Var(1), Slot::Const(Some(TermId(1001))), Slot::Var(0)],

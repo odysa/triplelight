@@ -3,7 +3,7 @@
 use crate::load;
 use std::io::Read;
 use std::time::Instant;
-use triplelight::exec::{query_with, Entailment, Interrupt, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids_v, serialize_csv, serialize_tsv}};
+use triplelight::exec::{query_with, Entailment, Interrupt, MemoryBudget, Options, QueryErrorKind, QueryResult, results::{serialize, serialize_ids_v, serialize_csv, serialize_tsv}};
 use triplelight::opt::stats::Stats;
 use triplelight::store::StoreUpdate;
 
@@ -48,6 +48,16 @@ fn query_timeout(args: &[String]) -> Option<std::time::Duration> {
     }
 }
 
+/// `--query-memory-mb=<n>`: each query request gets a working-memory budget of that size and fails with HTTP 503 instead
+/// of growing past it (#110). None: unbounded.
+fn query_memory(args: &[String]) -> Option<u64> {
+    let v = args.iter().find_map(|a| a.strip_prefix("--query-memory-mb="))?;
+    match v.parse::<u64>() {
+        Ok(n) if n > 0 => Some(n << 20),
+        _ => { eprintln!("--query-memory-mb must be a positive integer, not {v:?}"); std::process::exit(2) }
+    }
+}
+
 /// Result format chosen from the `Accept` header: the first of SPARQL JSON, TSV and CSV that it names (JSON when none).
 /// Boolean and graph results have no CSV or TSV form and are always answered in their own format.
 #[derive(Clone, Copy, PartialEq)]
@@ -79,7 +89,7 @@ fn accept_of(req: &tiny_http::Request) -> Format {
 
 type Resp = tiny_http::Response<std::io::Cursor<Vec<u8>>>;
 
-fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax => 400, QueryErrorKind::Unsupported => 501, QueryErrorKind::Storage => 500, QueryErrorKind::GraphState => 400, QueryErrorKind::Cancelled | QueryErrorKind::Timeout => 503 } }
+fn error_code(kind: QueryErrorKind) -> u16 { match kind { QueryErrorKind::Syntax => 400, QueryErrorKind::Unsupported => 501, QueryErrorKind::Storage => 500, QueryErrorKind::GraphState => 400, QueryErrorKind::Cancelled | QueryErrorKind::Timeout | QueryErrorKind::ResourceLimit => 503 } }
 
 /// A runtime explanation, requested explicitly with a raw SPARQL query body.
 fn explain<S: triplelight::storage::Snapshot>(req: &mut tiny_http::Request, snap: &S, opts: Options<'_>, timeout: Option<std::time::Duration>) -> Resp {
@@ -174,6 +184,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
     let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
     let ablations = ablations(args);
     let timeout = query_timeout(args);
+    let memory = query_memory(args);
     let t = Instant::now();
     let store = if args.iter().any(|a| a == "--disk") {
         triplelight::store::Store::open_with(&args[2], init.as_deref(), Box::new(triplelight::storage::DiskBase { workers }))
@@ -247,7 +258,8 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
                         let st = st.filter(|(base, _)| snap.delta_len() == 0 && *base == snap.base_id());
                         let fmt = accept_of(&req);
                         let interrupt = timeout.map(Interrupt::with_timeout);
-                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), raw_ids: fmt == Format::Json, entailment, interrupt: interrupt.as_ref(), ..ablations };
+                        let budget = memory.map(MemoryBudget::new);
+                        let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), raw_ids: fmt == Format::Json, entailment, interrupt: interrupt.as_ref(), memory_budget: budget.as_ref(), ..ablations };
                         answer(&*snap, &q, &opts, fmt)
                     }
                 }
@@ -361,6 +373,7 @@ fn serve_memory(args: &[String]) {
             eprintln!("optimizer statistics: {}", if want_stats { "building in background" } else { "off" });
             let ablations = ablations(args);
             let timeout = query_timeout(args);
+            let memory = query_memory(args);
             let server = tiny_http::Server::http(format!("{}:{port}", bind_host())).expect("bind");
             eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql");
             // One worker per core: queries run concurrently against the same immutable snapshot.
@@ -398,7 +411,8 @@ fn serve_memory(args: &[String]) {
                     (_, Err(e)) => tiny_http::Response::from_string(e).with_status_code(400),
                     (Some(q), Ok(entailment)) => {
                         let interrupt = timeout.map(Interrupt::with_timeout);
-                        let opts = Options { stats: st.as_deref(), raw_ids: fmt == Format::Json, entailment, interrupt: interrupt.as_ref(), ..ablations };
+                        let budget = memory.map(MemoryBudget::new);
+                        let opts = Options { stats: st.as_deref(), raw_ids: fmt == Format::Json, entailment, interrupt: interrupt.as_ref(), memory_budget: budget.as_ref(), ..ablations };
                         answer(snap, &q, &opts, fmt)
                     }
                 };
