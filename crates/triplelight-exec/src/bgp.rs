@@ -520,9 +520,10 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     }
 
     /// Solutions of a star BGP (`pattern::star_center`), and how many distinct center values they have, without
-    /// enumerating the leaves. The candidates are the center's values in the most selective pattern; each other pattern
-    /// is probed with one range count per candidate (zero drops it), and a candidate contributes the product of its
-    /// patterns' counts. Split across rayon workers like `count_leapfrog`.
+    /// enumerating the leaves. The candidates are the leapfrog intersection of the most selective pattern and every
+    /// pattern with no leaf; each pattern with leaves is probed with one range count per candidate (zero drops it), and
+    /// a candidate contributes the product of those counts. Split across rayon workers
+    /// like `count_leapfrog`.
     pub fn count_star(&self, pats: &[[Slot; 3]], center: usize) -> (u64, u64) {
         let mut counted: Vec<(u64, [Slot; 3])> = self.const_counts(pats).zip(pats.iter().copied()).collect();
         if counted.iter().any(|&(n, _)| n == 0) { return (0, 0) }
@@ -539,12 +540,19 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             for (j, s) in key[..k].iter().enumerate() { if let Slot::Const(id) = s { prefix[j] = id.unwrap() } }
             (*perm, prefix, k)
         }).collect();
-        let candidates = self.intersect(&plans[..1], center, &vec![UNBOUND; self.w]);
+        // A pattern whose only variable is the center (`?c p o`) is a sorted list of exactly the centers it admits:
+        // the leapfrog intersects those, skipping ahead in each, and only the patterns with leaves are probed.
+        let (lists, probes): (Vec<usize>, Vec<usize>) = (0..plans.len()).partition(|&i| prefixes[i].2 == 2);
+        // The most selective pattern leads the intersection too, leaves or not (it is then also probed for its count).
+        let lists = if lists.contains(&0) { lists } else { std::iter::once(0).chain(lists).collect() };
+        let probes: Vec<_> = probes.into_iter().map(|i| prefixes[i]).collect();
+        let lists: Vec<_> = lists.into_iter().map(|i| plans[i]).collect();
+        let candidates = self.intersect(&lists, center, &vec![UNBOUND; self.w]);
         let part = |values: &[TermId]| {
             let (mut sum, mut centers) = (0, 0);
             'next: for &c in values {
                 let mut product = 1;
-                for &(perm, mut prefix, k) in &prefixes {
+                for &(perm, mut prefix, k) in &probes {
                     prefix[k] = c;
                     let n = self.count(perm, &prefix[..=k]);
                     if n == 0 { continue 'next }
