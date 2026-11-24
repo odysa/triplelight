@@ -156,6 +156,7 @@ a missing header give SPARQL JSON. `ASK` and graph results keep their own format
 - [Persistence and disk formats](docs/persistence.md)
 - [Query optimizer](docs/optimizer.md)
 - [Explain a query](docs/explain.md)
+- [Match words in RDF literals](docs/text-search.md)
 - [Documentation](docs/)
 
 ## License
