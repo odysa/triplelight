@@ -1101,6 +1101,51 @@ mod wal_batch_tests {
         std::fs::remove_dir_all(d).unwrap();
     }
 
+    /// The steps of the updates in `deliverables/wal-fixture/make.sh`, which wrote `fixtures/wal-main.log` with the
+    /// binary before #114 (main 5c74061d): two default inserts, CREATE <g1>, an insert into <g1> and one into <g2>, a
+    /// default delete, DROP <g2>, a typed default insert.
+    fn fixture_steps() -> Vec<Vec<DatasetChange>> {
+        use triplelight_rdf::Literal;
+        let n = |s: &str| NamedNode::new(s).unwrap();
+        let tr = |s: &str, p: &str, o: Term| Triple::new(n(s), n(p), o);
+        let b2 = tr("urn:b", "urn:p", Literal::new_language_tagged_literal("2", "en").unwrap().into());
+        let def = |c, t| DatasetChange::Quad(GraphTarget::Default, c, t);
+        vec![
+            vec![def(Change::Insert, tr("urn:a", "urn:p", Literal::new_simple_literal("1").into())), def(Change::Insert, b2.clone())],
+            vec![DatasetChange::Create { graph: n("urn:g1"), silent: false }],
+            vec![DatasetChange::Quad(GraphTarget::Named(n("urn:g1")), Change::Insert, tr("urn:a", "urn:q", n("urn:b").into())),
+                 DatasetChange::Quad(GraphTarget::Named(n("urn:g2")), Change::Insert, tr("urn:c", "urn:q", Literal::new_simple_literal("x").into()))],
+            vec![def(Change::Delete, b2)],
+            vec![DatasetChange::Drop { target: GraphScope::Graph(n("urn:g2")), silent: false }],
+            vec![def(Change::Insert, tr("urn:d", "urn:p", Literal::new_typed_literal("3", n("http://www.w3.org/2001/XMLSchema#integer")).into()))],
+        ]
+    }
+
+    /// Condition 1 of #114: a log written by the previous binary, with named-graph and catalog records and a torn tail,
+    /// replays to the state the same updates give today; then new batches follow it and survive a reopen.
+    #[test]
+    fn a_log_written_by_the_previous_binary_replays() {
+        let d = dir("fixture");
+        drop(Store::open(&d, None, 1).unwrap());
+        std::fs::write(d.join("CURRENT"), include_str!("store/fixtures/CURRENT-main")).unwrap();
+        let mut wal = include_bytes!("store/fixtures/wal-main.log").to_vec();
+        wal.extend_from_slice(b"+ <urn:torn> <urn:p> \"cut"); // the previous binary's torn tail: no newline
+        std::fs::write(d.join("wal.log"), &wal).unwrap();
+        let reference = dir("fixture-reference");
+        let fresh = Store::open(&reference, None, 1).unwrap();
+        for steps in fixture_steps() { fresh.commit_dataset(&steps).unwrap(); }
+        let want = super::dataset_wal_tests::state(&fresh.snapshot());
+        let store = Store::open(&d, None, 1).unwrap();
+        assert_eq!(super::dataset_wal_tests::state(&store.snapshot()), want, "the old log replays");
+        store.commit(&[(Change::Insert, t(9))]).unwrap();
+        drop(store);
+        let store = Store::open(&d, None, 1).unwrap();
+        assert_eq!(triples(&store), triples(&fresh) + 1, "old records, then a batch, after a reopen");
+        drop((store, fresh));
+        std::fs::remove_dir_all(d).unwrap();
+        std::fs::remove_dir_all(reference).unwrap();
+    }
+
     /// Damage in the middle of the log, in each place a batch can break, refuses the store and changes nothing.
     #[test]
     fn mid_log_damage_of_any_kind_refuses_the_store() {
