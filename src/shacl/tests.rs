@@ -89,7 +89,7 @@ fn targets_select_focus_nodes() {
     let mut want = vec![iri("n"), iri("x"), iri("w"), iri("y"), iri("z")];
     want.sort_by_key(|t| t.to_string());
     assert_eq!(foci, want);
-    let work = sg.work_list(&data).unwrap();
+    let work: Vec<_> = sg.work_list(&data).collect::<Result<_, _>>().unwrap();
     assert_eq!(work.len(), 1);
     assert_eq!(work[0].0, iri("S"));
     assert_eq!(work[0].1.len(), 5);
