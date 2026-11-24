@@ -68,6 +68,14 @@ pub(crate) fn entailment_arg(args: &[String]) -> Entailment {
     }
 }
 
+fn print_query<E: std::fmt::Display>(query: impl FnOnce() -> Result<triplelight::exec::QueryResult, E>) {
+    let t = Instant::now();
+    match query() {
+        Ok(result) => { println!("{}", serialize(&result).1); eprintln!("query {:.3} ms", t.elapsed().as_secs_f64() * 1e3) }
+        Err(e) => { eprintln!("error: {e}"); std::process::exit(1) }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     for (i, arg) in args.iter().enumerate() {
@@ -137,13 +145,20 @@ fn main() {
             }
         }
         Some("query") => {
-            let snap = load(&args[2], &args);
+            let path = &args[2];
             let opts = Options { entailment: entailment_arg(&args), ..Default::default() };
-            let t = Instant::now();
-            match query_with(&snap, &args[3], &opts) {
-                Ok(r) => { println!("{}", serialize(&r).1); eprintln!("query {:.3} ms", t.elapsed().as_secs_f64() * 1e3) }
-                Err(e) => { eprintln!("error: {e}"); std::process::exit(1) }
+            #[cfg(unix)]
+            if !args.iter().any(|a| a == "--disk") && (path.ends_with(".trig") || path.ends_with(".nq")) {
+                let db = triplelight::embedded::Database::in_memory();
+                if let Err(e) = db.load(path) {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+                print_query(|| db.query_with_entailment(&args[3], opts.entailment));
+                return;
             }
+            let snap = load(path, &args);
+            print_query(|| query_with(&snap, &args[3], &opts));
         }
         Some("text-index") => {
             let usage = || -> ! {
