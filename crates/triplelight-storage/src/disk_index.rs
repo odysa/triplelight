@@ -666,6 +666,28 @@ where
     pub fn get(&self, i: u64) -> io::Result<[TermId; N]> {
         self.row(i)
     }
+    /// The distinct first-column values, ascending: every block is read, verified and decoded as by a scan, in
+    /// parallel and without populating the shared cache (like `block_slice_uncached`).
+    pub fn first_keys(&self) -> io::Result<Vec<TermId>> {
+        use rayon::prelude::*;
+        let parts: Vec<Vec<TermId>> = (0..self.blocks.len())
+            .into_par_iter()
+            .with_min_len(64)
+            .map(|id| {
+                let rows = self.read_block(id as u64)?;
+                let mut keys: Vec<TermId> = Vec::new();
+                for r in &rows { if keys.last() != Some(&r[0]) { keys.push(r[0]) } }
+                Ok(keys)
+            })
+            .collect::<io::Result<_>>()?;
+        let mut out: Vec<TermId> = Vec::with_capacity(parts.iter().map(Vec::len).sum());
+        for part in parts {
+            // Blocks are in key order, so only a block's first value can repeat the previous block's last.
+            let skip = usize::from(out.last().is_some() && out.last() == part.first());
+            out.extend_from_slice(&part[skip..]);
+        }
+        Ok(out)
+    }
     /// Read and verify every data block; can be expensive for large indexes.
     pub fn validate(&self) -> io::Result<()> {
         for i in 0..self.blocks.len() {
@@ -844,6 +866,32 @@ mod tests {
         let cut = index.blocks[2].offset as usize + index.blocks[2].length / 2;
         std::fs::write(&path, &bytes[..cut]).unwrap();
         assert!(index.get(699).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn first_keys_match_a_scan_across_block_boundaries_and_check_corruption() {
+        let path = std::env::temp_dir().join(format!("rdf-first-keys-{}", std::process::id()));
+        // Runs of 1..=300 rows per key, so keys span block boundaries (256 rows) in every way: a key ending a block,
+        // starting the next, and one covering whole blocks.
+        let rows: Vec<[TermId; 3]> = (1..=200u64)
+            .flat_map(|k| (1..=(k * 37) % 301 + 1).map(move |j| [TermId(k * 3), TermId(1), TermId(j)]))
+            .collect();
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.clone().into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::<3>::open(&path).unwrap();
+        assert!(index.blocks.len() > 64, "enough blocks to split across threads");
+        let mut expected: Vec<TermId> = rows.iter().map(|r| r[0]).collect();
+        expected.dedup();
+        assert_eq!(index.first_keys().unwrap(), expected);
+        // Every block is verified, as by a scan.
+        drop(index);
+        let mut bad = bytes.clone();
+        let index = DiskIndex::<3>::open(&path).unwrap();
+        let at = index.blocks[70].offset as usize + 3;
+        bad[at] ^= 0xff;
+        std::fs::write(&path, &bad).unwrap();
+        assert!(index.first_keys().is_err());
         std::fs::remove_file(path).unwrap();
     }
     #[test]

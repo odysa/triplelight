@@ -179,6 +179,11 @@ impl Snapshot for Overlay {
         Box::new(MergeScan { base: self.base.scan_for_stats(), cur: None, at: 0, adds, ai: 0, dels, done: false })
     }
 
+    fn first_keys(&self, perm: Perm) -> Result<Vec<TermId>, StorageError> {
+        if self.delta.is_empty() { return self.base.first_keys(perm) }
+        triplelight_core::storage::first_keys_by_scan(self, perm)
+    }
+
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
         merged_count(&*self.base, &self.delta.adds[slot(perm)], &self.delta.dels[slot(perm)], perm, prefix)
     }
@@ -938,6 +943,24 @@ mod borrowed_overlay_tests {
         assert_eq!(deleted.count(Perm::Spo, &[]).unwrap(), 0);
         let (restored, _) = added.with_changes(&[(Change::Delete, b)]).unwrap();
         assert_eq!(restored.matching_tail(Perm::Pso, &[p]).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn first_keys_follow_the_delta() {
+        let t = |s: &str, o: &str| Triple::new(NamedNode::new(s).unwrap(), NamedNode::new("urn:p").unwrap(), NamedNode::new(o).unwrap());
+        let base = Arc::new(MemorySnapshot::from_triples([t("urn:a", "urn:x"), t("urn:b", "urn:x")]));
+        let original = Overlay::from_base(base);
+        let id = |o: &Overlay, s: &str| o.lookup(&NamedNode::new(s).unwrap().into()).unwrap().unwrap();
+        assert_eq!(original.first_keys(Perm::Spo).unwrap(), vec![id(&original, "urn:a"), id(&original, "urn:b")]);
+        // Deleting a's only triple removes it as a subject; inserting c adds a subject and an object.
+        let (changed, _) = original.with_changes(&[(Change::Delete, t("urn:a", "urn:x")), (Change::Insert, t("urn:c", "urn:y"))]).unwrap();
+        let mut subjects = vec![id(&changed, "urn:b"), id(&changed, "urn:c")];
+        subjects.sort();
+        assert_eq!(changed.first_keys(Perm::Spo).unwrap(), subjects);
+        assert_eq!(changed.first_keys(Perm::Sop).unwrap(), subjects);
+        let mut objects = vec![id(&changed, "urn:x"), id(&changed, "urn:y")];
+        objects.sort();
+        assert_eq!(changed.first_keys(Perm::Osp).unwrap(), objects);
     }
 }
 

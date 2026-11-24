@@ -664,6 +664,11 @@ impl Snapshot for DiskSnapshot {
             }
         }))
     }
+    /// From the always-kept order that shares `perm`'s first column (SPO, PSO or OSP), block-parallel.
+    fn first_keys(&self, perm: Perm) -> Result<Vec<TermId>, StorageError> {
+        let kept = match perm { Perm::Spo | Perm::Sop => Perm::Spo, Perm::Pso | Perm::Pos => Perm::Pso, Perm::Osp | Perm::Ops => Perm::Osp };
+        self.index(kept).first_keys()
+    }
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> { super::derived_order::count(self, perm, prefix) }
     fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
         super::derived_order::seek(self, perm, prefix, target)
@@ -941,6 +946,12 @@ mod tests {
         let full = std::sync::Arc::new(DiskSnapshot::open(&six).unwrap());
         let derived = std::sync::Arc::new(DiskSnapshot::open(&four).unwrap());
         derived.verify().unwrap();
+        // The block-parallel first keys match a scan of every order, derived ones included.
+        for view in [&*full, &*derived] {
+            for perm in Perm::ALL {
+                assert_eq!(view.first_keys(perm).unwrap(), triplelight_core::storage::first_keys_by_scan(view, perm).unwrap(), "{perm:?}");
+            }
+        }
         // Cache shares follow the kept files: 3 + 6 + 6 = 15 for the six-order dataset base, 3 + 4 + 4 = 11 for the
         // four-order one, so each kept index of the smaller base gets a larger share.
         let capacity = |shares: usize| (crate::disk_index::cache_budget_mb() * 1024 * 1024 / (shares * 16 * 256 * 24)).max(1);
