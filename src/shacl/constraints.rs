@@ -329,6 +329,10 @@ fn qualified(
     shapes: &Graph,
     property_shape: bool,
 ) -> Result<Option<Constraint>, ValidationError> {
+    let Some(target) = optional(shapes, shape, "qualifiedValueShape")? else {
+        // The counts do not instantiate a constraint without a qualified shape.
+        return Ok(None);
+    };
     let parse_limit = |name| {
         optional(shapes, shape, name)?
             .map(|value| limit(value).ok_or_else(|| invalid(shape, name, "must be an xsd:integer")))
@@ -336,7 +340,6 @@ fn qualified(
     };
     let min = parse_limit("qualifiedMinCount")?;
     let max = parse_limit("qualifiedMaxCount")?;
-    let target = optional(shapes, shape, "qualifiedValueShape")?;
     if min.is_none() && max.is_none() {
         return Ok(None);
     }
@@ -347,13 +350,6 @@ fn qualified(
             "requires a property shape",
         ));
     }
-    let target = target.ok_or_else(|| {
-        invalid(
-            shape,
-            "qualifiedValueShape",
-            "must be present with a qualified count",
-        )
-    })?;
     let target = shape_reference(shape, "qualifiedValueShape", target)?;
     let disjoint = optional(shapes, shape, "qualifiedValueShapesDisjoint")?
         .map(|value| {
@@ -441,9 +437,11 @@ pub fn parse(shape: &Term, shapes: &Graph) -> Result<Vec<Constraint>, Validation
                     .collect::<Result<_, _>>()?;
                 Constraint::LanguageIn(ranges)
             }
-            "uniqueLang" => Constraint::UniqueLang(
-                boolean(value).ok_or_else(|| invalid(shape, name, "must be an xsd:boolean"))?,
-            ),
+            "uniqueLang" => {
+                boolean(value).ok_or_else(|| invalid(shape, name, "must be an xsd:boolean"))?;
+                // The Core test suite activates this constraint only for the RDF term true.
+                Constraint::UniqueLang(typed_value(value, "boolean") == Some("true"))
+            }
             "pattern" => Constraint::Pattern(pattern(shape, shapes, value)?),
             "minExclusive" | "minInclusive" | "maxExclusive" | "maxInclusive" => {
                 if !matches!(value, Term::Literal(_)) {
