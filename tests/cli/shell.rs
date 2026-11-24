@@ -190,10 +190,12 @@ fn shell_does_not_initialize_a_store_in_an_unrelated_directory() {
     ));
     std::fs::create_dir_all(root.join("base-0")).unwrap();
     std::fs::write(root.join("base-0/data"), "keep").unwrap();
+    std::fs::write(root.join("LOCK"), "unrelated lock").unwrap();
     let out = shell(&[root.to_str().unwrap(), "-c", "ASK {}"], "");
     assert!(!out.status.success());
     assert!(String::from_utf8_lossy(&out.stderr).contains("not an empty directory"));
     assert_eq!(std::fs::read(root.join("base-0/data")).unwrap(), b"keep");
-    assert!(!root.join("LOCK").exists());
+    assert_eq!(std::fs::read(root.join("LOCK")).unwrap(), b"unrelated lock");
+    assert!(!root.join("CURRENT").exists());
     std::fs::remove_dir_all(root).unwrap();
 }

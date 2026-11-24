@@ -56,7 +56,7 @@ durable local storage. Updates are atomic, persistent updates sync the write-ahe
 
 ### Interactive SPARQL shell
 
-On macOS and Linux, launch `triplelight` for an in-memory session or `triplelight my-store` to open or create a durable store directory. Use the explicit `triplelight shell STORE` form if the store name matches a subcommand. The shell retains data across query and update requests.
+On macOS and Linux, launch `triplelight` for an in-memory session or `triplelight my-store` to open or create a durable store directory. To create a store, use a new path or an empty directory. Use the explicit `triplelight shell STORE` form if the store name matches a subcommand. The shell retains data across query and update requests.
 
 ```text
 $ triplelight my-store

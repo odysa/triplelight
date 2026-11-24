@@ -381,21 +381,17 @@ fn path_arg(arg: &str) -> Result<&str> {
 }
 
 fn check_store_directory(path: &Path) -> Result<()> {
-    if !path.is_dir() || path.join("CURRENT").is_file() || path.join("MANIFEST").is_file() {
-        return Ok(());
-    }
-    // Permit the files left by an interrupted first open. Avoid initializing an unrelated
-    // directory since store recovery can delete uncommitted base directories.
-    let has_lock = path.join("LOCK").is_file();
-    for entry in path.read_dir()? {
-        let name = entry?.file_name();
-        if !has_lock || !matches!(name.to_str(), Some("LOCK" | "CURRENT.tmp" | "base-0")) {
-            return Err(format!(
-                "{} is not an empty directory or a TripleLight store",
-                path.display()
-            )
-            .into());
-        }
+    // Without CURRENT the store treats any base-0 as abandoned and removes it.
+    // A nonempty directory could contain unrelated files with the same names.
+    if path.is_dir()
+        && !path.join("CURRENT").is_file()
+        && path.read_dir()?.next().transpose()?.is_some()
+    {
+        return Err(format!(
+            "{} is not an empty directory or a TripleLight store",
+            path.display()
+        )
+        .into());
     }
     Ok(())
 }
