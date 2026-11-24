@@ -1,5 +1,5 @@
 //! SPARQL expression evaluation over resolved terms. `None` is the SPARQL "error" value.
-mod extend;
+pub(super) mod extend;
 pub(crate) mod order;
 pub(crate) mod text;
 use triplelight_rdf::vocab::{rdf, xsd};
@@ -602,7 +602,7 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
 /// materialization. A variable whose value is unbound or not numeric makes the row fall back to the general evaluator,
 /// so results are identical to `eval` by construction (comparison is by `f64`, integer arithmetic is checked).
 pub(super) enum NumFilter { Cmp(Ordering, bool, NumExpr, NumExpr), And(Box<NumFilter>, Box<NumFilter>), Or(Box<NumFilter>, Box<NumFilter>), Not(Box<NumFilter>) }
-pub(super) enum NumExpr { Var(usize), Const(Num), Op(char, Box<NumExpr>, Box<NumExpr>) }
+pub(super) enum NumExpr { Var(usize), Const(Num), Op(char, Box<NumExpr>, Box<NumExpr>), Float(Box<NumExpr>) }
 /// `Err(())`: this row needs the general evaluator.
 type Fast<T> = Result<T, ()>;
 
@@ -614,9 +614,16 @@ impl NumExpr {
             Expression::Add(a, b) => NumExpr::Op('+', Box::new(Self::compile(a, vars)?), Box::new(Self::compile(b, vars)?)),
             Expression::Subtract(a, b) => NumExpr::Op('-', Box::new(Self::compile(a, vars)?), Box::new(Self::compile(b, vars)?)),
             Expression::Multiply(a, b) => NumExpr::Op('*', Box::new(Self::compile(a, vars)?), Box::new(Self::compile(b, vars)?)),
+            Expression::Divide(a, b) => NumExpr::Op('/', Box::new(Self::compile(a, vars)?), Box::new(Self::compile(b, vars)?)),
+            // `xsd:float(x)` of a numeric x, as `xsd_cast` computes it (a non-numeric x makes the row fall back).
+            Expression::FunctionCall(Function::Custom(f), args) if args.len() == 1 && f.as_str() == xsd::FLOAT.as_str() =>
+                NumExpr::Float(Box::new(Self::compile(&args[0], vars)?)),
             _ => return None,
         })
     }
+    /// An expression evaluated on numbers (`eval`), for BIND / SELECT expressions and HAVING: arithmetic over variables
+    /// and constants, and `xsd:float` casts. `None` when any part is not of that form.
+    pub(super) fn compile_value(e: &Expression, vars: &std::collections::HashMap<String, usize>) -> Option<NumExpr> { Self::compile(e, vars) }
     /// `Ok(None)`: SPARQL error (integer overflow), as in `arith`.
     fn eval(&self, r: &[crate::model::TermId], val: &mut dyn FnMut(crate::model::TermId) -> Option<Num>) -> Fast<Option<Num>> {
         match self {
@@ -626,8 +633,11 @@ impl NumExpr {
                 let (Some(x), Some(y)) = (a.eval(r, val)?, b.eval(r, val)?) else { return Ok(None) };
                 Ok(num_op(*op, x, y))
             }
+            NumExpr::Float(a) => Ok(a.eval(r, val)?.map(|n| Num::Flt(n.f() as f32 as f64))),
         }
     }
+    /// `eval` for callers outside this module: `Ok(Some(n))` a number, `Ok(None)` a SPARQL error, `Err` fall back.
+    pub(super) fn value(&self, r: &[crate::model::TermId], val: &mut dyn FnMut(crate::model::TermId) -> Option<Num>) -> Result<Option<Num>, ()> { self.eval(r, val) }
 }
 
 impl NumFilter {
@@ -663,6 +673,20 @@ impl NumFilter {
             },
             NumFilter::Not(a) => a.eval(r, val)?.map(|b| !b),
         })
+    }
+}
+
+/// A number as a hash key: kind and exact bits, so equal keys give the same term (`Num::term`).
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub(super) enum NumKey { Int(i64), Dec([u8; 16]), Flt(u64), Dbl(u64) }
+impl NumKey {
+    pub(super) fn of(n: Num) -> NumKey {
+        match n {
+            Num::Int(i) => NumKey::Int(i),
+            Num::Dec(d) => NumKey::Dec(d.serialize()),
+            Num::Flt(f) => NumKey::Flt(f.to_bits()),
+            Num::Dbl(f) => NumKey::Dbl(f.to_bits()),
+        }
     }
 }
 

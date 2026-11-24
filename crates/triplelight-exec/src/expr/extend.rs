@@ -5,13 +5,13 @@ use crate::sparql::{Expression, Function, GraphPattern};
 use crate::storage::Snapshot;
 use triplelight_rdf::{Term, Variable};
 
-fn has_named_blank(expression: &Expression) -> bool {
+pub(crate) fn has_named_blank(expression: &Expression) -> bool {
     matches!(expression, Expression::FunctionCall(Function::BNode, args) if args.len() == 1)
         || expression.children().any(has_named_blank)
 }
 
 impl<S: Snapshot + ?Sized> Ctx<'_, S> {
-    pub(crate) fn eval_extend(
+    pub(crate) fn eval_scoped_extend(
         &self,
         inner: &GraphPattern,
         variable: &Variable,
@@ -19,17 +19,6 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         input: Vec<Row>,
     ) -> Vec<Row> {
         let column = self.var(variable);
-        if !has_named_blank(expression) {
-            return self
-                .eval(inner, input)
-                .into_iter()
-                .filter_map(|mut row| {
-                    let value = self.value(expression, &row);
-                    self.bind_value(&mut row, column, value).then_some(row)
-                })
-                .collect();
-        }
-
         // SELECT projections are consecutive Extend nodes. Evaluate them in order with one label
         // map for each occurrence, even when two input solutions have identical variable values.
         let mut bindings = vec![(column, expression)];

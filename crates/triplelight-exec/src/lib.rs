@@ -722,7 +722,43 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }
         let rows = self.eval(inner, input);
         if let Some(out) = self.exists_batch(expr, &rows) { return out }
-        rows.into_iter().filter(|r| self.ebv(expr, r)).collect()
+        // Numeric comparisons (a HAVING over aggregate results, #121) on numbers, each distinct ID decoded once; a row
+        // the numeric path cannot evaluate takes `ebv`.
+        let fast = expr::NumFilter::compile(expr, &self.vars);
+        let mut nums: HashMap<TermId, Option<expr::Num>> = HashMap::new();
+        let mut val = |id: TermId| *nums.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
+        rows.into_iter().filter(|r| match fast.as_ref().map(|f| f.eval(r, &mut val)) {
+            Some(Ok(b)) => b == Some(true),
+            _ => self.ebv(expr, r),
+        }).collect()
+    }
+
+    fn eval_extend(&self, inner: &GraphPattern, variable: &Variable, expression: &Expression, input: Vec<Row>) -> Vec<Row> {
+        if expr::extend::has_named_blank(expression) {
+            return self.eval_scoped_extend(inner, variable, expression, input);
+        }
+        let i = self.var(variable);
+        // If an outer solution passed in sideways already binds the target, the BIND result must be
+        // compatible with it (the group's solution is joined with the outer one): equal keeps the row, a
+        // different value drops it, an expression error leaves the outer value (W3C-style `{ BIND(2 AS ?x) }`).
+        // Arithmetic and `xsd:float` over numbers (#121) skip the per-row `Term`: each distinct input ID is decoded once,
+        // the result is a number, and only distinct results become terms (`intern_num`). A row the numeric path cannot
+        // evaluate (a non-numeric input) takes the general evaluator, so the values are those of `value` either way.
+        let fast = expr::NumExpr::compile_value(expression, &self.vars);
+        let mut nums: HashMap<TermId, Option<expr::Num>> = HashMap::new();
+        let mut val = |id: TermId| *nums.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
+        let mut results: HashMap<expr::NumKey, TermId> = HashMap::new();
+        self.eval(inner, input).into_iter().filter_map(|mut r| {
+            let id = match fast.as_ref().map(|f| f.value(&r, &mut val)) {
+                Some(Ok(Some(n))) => Some(*results.entry(expr::NumKey::of(n)).or_insert_with(|| self.intern(&n.term()))),
+                Some(Ok(None)) => None,
+                _ => self.value(expression, &r).map(|t| self.intern(&t)),
+            };
+            if let Some(id) = id {
+                if r[i] == UNBOUND { r[i] = id } else if r[i] != id { return None }
+            }
+            Some(r)
+        }).collect()
     }
 
     fn eval_minus(&self, left: &GraphPattern, right: &GraphPattern, input: Vec<Row>) -> Vec<Row> {

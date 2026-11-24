@@ -1180,6 +1180,44 @@ fn count_one_key_charges_its_group_table() {
     assert_eq!(format!("{with:?}"), format!("{without:?}"));
     assert_eq!(roomy.used(), 0);
 }
+/// The numeric path for BIND / SELECT expressions and HAVING (#121) gives exactly the general evaluator's values:
+/// each expression is compared with the same expression wrapped in `COALESCE`, which the numeric path does not
+/// compile. Values cover integers, decimals, floats, doubles, zero divisors, non-numeric literals and unbound.
+#[test]
+fn numeric_extend_and_having_match_the_general_evaluator() {
+    let mut nt = String::new();
+    let lits = [
+        "\"7\"^^<http://www.w3.org/2001/XMLSchema#integer>", "\"0\"^^<http://www.w3.org/2001/XMLSchema#integer>",
+        "\"-3\"^^<http://www.w3.org/2001/XMLSchema#integer>", "\"2.50\"^^<http://www.w3.org/2001/XMLSchema#decimal>",
+        "\"1.25E1\"^^<http://www.w3.org/2001/XMLSchema#double>", "\"0.1\"^^<http://www.w3.org/2001/XMLSchema#float>",
+        "\"9223372036854775807\"^^<http://www.w3.org/2001/XMLSchema#integer>", "\"abc\"", "\"3\"",
+        "\"NaN\"^^<http://www.w3.org/2001/XMLSchema#double>",
+    ];
+    for (i, a) in lits.iter().enumerate() {
+        for (j, b) in lits.iter().enumerate() {
+            nt.push_str(&format!("<http://ex/s{i}_{j}> <http://ex/a> {a} .\n<http://ex/s{i}_{j}> <http://ex/b> {b} .\n<http://ex/s{i}_{j}> <http://ex/g> <http://ex/g{} > .\n", (i + j) % 4).replace(" >", ">"));
+        }
+    }
+    nt.push_str("<http://ex/lone> <http://ex/a> \"5\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n");
+    let snap = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
+    let rows = |q: &str| -> Vec<Vec<String>> {
+        match query(&snap, q).unwrap() {
+            QueryResult::Solutions { rows, .. } => { let mut v: Vec<Vec<String>> = rows.into_iter().map(|r| r.into_iter().map(|t| t.map(|t| t.to_string()).unwrap_or("-".into())).collect()).collect(); v.sort(); v }
+            r => panic!("{r:?}"),
+        }
+    };
+    let xsd = "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> ";
+    for e in ["?a / ?b", "xsd:float(?a) / ?b", "?a * ?b - 1", "xsd:float(?a)", "?a + 2.5", "(?a - ?b) / 3", "xsd:float(?a / ?b)"] {
+        let fast = format!("{xsd}SELECT ?s ({e} AS ?r) WHERE {{ ?s <http://ex/a> ?a OPTIONAL {{ ?s <http://ex/b> ?b }} }}");
+        let slow = format!("{xsd}SELECT ?s (COALESCE({e}) AS ?r) WHERE {{ ?s <http://ex/a> ?a OPTIONAL {{ ?s <http://ex/b> ?b }} }}");
+        assert_eq!(rows(&fast), rows(&slow), "{e}");
+    }
+    for h in ["COUNT(*) > 20", "SUM(?a) > 10", "xsd:float(COUNT(?b)) / COUNT(*) >= 1", "MAX(?a) < 8 && COUNT(*) > 0"] {
+        let fast = format!("{xsd}SELECT ?g (COUNT(*) AS ?n) WHERE {{ ?s <http://ex/g> ?g . ?s <http://ex/a> ?a OPTIONAL {{ ?s <http://ex/b> ?b }} }} GROUP BY ?g HAVING ({h})");
+        let slow = format!("{xsd}SELECT ?g (COUNT(*) AS ?n) WHERE {{ ?s <http://ex/g> ?g . ?s <http://ex/a> ?a OPTIONAL {{ ?s <http://ex/b> ?b }} }} GROUP BY ?g HAVING (COALESCE({h}))");
+        assert_eq!(rows(&fast), rows(&slow), "{h}");
+    }
+}
 
 #[test]
 fn named_blank_nodes_follow_each_solution_occurrence() {
@@ -1202,6 +1240,24 @@ fn named_blank_nodes_follow_each_solution_occurrence() {
     }
     assert_ne!(rows[0][0], rows[1][0]);
     assert_ne!(rows[0][3], rows[1][3]);
+
+    let mixed = r#"
+        PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+        SELECT (BNODE("same") AS ?a) (xsd:float(?n) / ?d AS ?ratio)
+               (BNODE("same") AS ?b)
+        WHERE { VALUES (?n ?d) { (9 2) } }
+    "#;
+    let QueryResult::Solutions { rows, .. } = query(&store(), mixed).unwrap() else {
+        panic!("expected a blank node and a float");
+    };
+    assert_eq!(rows.len(), 1);
+    assert!(matches!(rows[0][0], Some(triplelight::rdf::Term::BlankNode(_))));
+    assert_eq!(rows[0][0], rows[0][2]);
+    let ratio = triplelight::rdf::Literal::new_typed_literal(
+        "4.5",
+        triplelight::rdf::vocab::xsd::FLOAT,
+    );
+    assert_eq!(rows[0][1], Some(ratio.into()));
     assert!(matches!(
         query(&store(), r#"ASK { FILTER(sameTerm(BNODE("x"), BNODE("x"))) }"#).unwrap(),
         QueryResult::Boolean(true)
