@@ -247,6 +247,8 @@ fn fast_group_matches_general_group() {
     let run = |q: &str| run_with(q, false);
     let queries = [
         "SELECT ?g (COUNT(*) AS ?n) (COUNT(?v) AS ?c) (SUM(?v) AS ?s) (AVG(?v) AS ?a) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } } GROUP BY ?g",
+        "SELECT ?g (COUNT(*) AS ?n) WHERE { VALUES (?g ?v) { (<urn:b> UNDEF) (UNDEF 1) (<urn:a> 2) (<urn:b> 3) (UNDEF UNDEF) } } GROUP BY ?g",
+        "SELECT ?g (COUNT(?v) AS ?n) WHERE { VALUES (?g ?v) { (<urn:b> UNDEF) (UNDEF 1) (<urn:a> 2) (<urn:b> 3) (UNDEF UNDEF) } } GROUP BY ?g",
         "SELECT ?g (MIN(?v) AS ?lo) (MAX(?v) AS ?hi) (SAMPLE(?v) AS ?sm) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } } GROUP BY ?g",
         "SELECT (COUNT(DISTINCT ?g) AS ?n) (SUM(DISTINCT ?v) AS ?s) (COUNT(DISTINCT *) AS ?d) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } }",
         "SELECT (COUNT(*) AS ?n) (SUM(?v) AS ?s) (AVG(?v) AS ?a) WHERE { ?x <http://ex/none> ?v }",
