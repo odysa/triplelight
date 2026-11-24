@@ -1,4 +1,5 @@
 // Compile-only check of index.d.ts: `npx tsc --noEmit --strict test/types-check.ts`.
+import * as tl from "..";
 import { Database, QueryResult, Term, UnsupportedError } from "..";
 
 async function example(): Promise<string[]> {
@@ -22,6 +23,8 @@ async function example(): Promise<string[]> {
   try { db.querySync("SELECT * WHERE { SERVICE <urn:remote> { ?s ?p ?o } }"); } catch (e) { if (e instanceof UnsupportedError) out.push(e.kind); }
   db.read().querySync("ASK {}");
   db.querySync("ASK {}", { entailment: "rdfs" });
+  const report: tl.ValidationReport = tl.validate("", "", { dataFormat: "ntriples" });
+  void report.conforms;
   await db.compact();
   db.close();
   return out;

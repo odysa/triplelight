@@ -11,8 +11,8 @@ use triplelight::storage::MemorySnapshot;
 use triplelight::store::{Change, Overlay};
 use wasm_bindgen::prelude::*;
 
-/// A JS `Error` whose `name` and `kind` say what went wrong: `SyntaxError`, `UnsupportedError`, `StorageError` or
-/// `GraphStateError` (an update names a graph in the wrong state).
+/// A JS `Error` whose `name` and `kind` say what went wrong: `SyntaxError`, `UnsupportedError`, `StorageError`,
+/// `GraphStateError` (an update names a graph in the wrong state) or `ShapesError` (SHACL rejects a shapes graph).
 fn error(kind: &str, message: &str) -> JsValue {
     let e = js_sys::Error::new(message);
     e.set_name(kind);
@@ -101,6 +101,32 @@ fn results_json(r: QueryResult) -> Result<String, JsValue> {
         QueryResult::Graph(_) => Err(error("UnsupportedError", "queryJson supports SELECT and ASK; use query() for CONSTRUCT and DESCRIBE")),
         r => Ok(exec::results::serialize(&r).1),
     }
+}
+
+/// SHACL Core validation (#108) of a data document against a shapes document. `options.dataFormat` and
+/// `options.shapesFormat` are "turtle" (the default) or "ntriples". Returns `{ conforms, triples }`, the report graph.
+/// A syntax error throws a `SyntaxError`, shapes SHACL rejects a `ShapesError`, a missing feature an `UnsupportedError`;
+/// data that violates the shapes is a report.
+#[wasm_bindgen]
+pub fn validate(data: &str, shapes: &str, options: Option<Object>) -> Result<JsValue, JsValue> {
+    use triplelight::shacl::{DocumentError, ValidationError};
+    let format = |key: &str| -> Result<Format, JsValue> {
+        let value = match &options { Some(o) => Reflect::get(o, &JsValue::from_str(key))?, None => JsValue::UNDEFINED };
+        let name = if value.is_undefined() || value.is_null() { "turtle".to_owned() } else { value.as_string().unwrap_or_default() };
+        Format::from_name(&name).ok_or_else(|| js_sys::TypeError::new(&format!("{key} must be \"turtle\" or \"ntriples\"")).into())
+    };
+    let (df, sf) = (format("dataFormat")?, format("shapesFormat")?);
+    let report = triplelight::shacl::validate_documents(data.as_bytes(), df, shapes.as_bytes(), sf).map_err(|e| {
+        let kind = match &e {
+            DocumentError::Syntax { .. } => "SyntaxError",
+            DocumentError::Validation(ValidationError::Unsupported(_)) => "UnsupportedError",
+            DocumentError::Validation(_) => "ShapesError",
+        };
+        error(kind, &e.to_string())
+    })?;
+    let out = convert(QueryResult::Graph(report.to_triples()))?;
+    Reflect::set(&out, &JsValue::from_str("conforms"), &JsValue::from_bool(report.conforms))?;
+    Ok(out)
 }
 
 /// Blank-node labels are scoped to the document they appear in: `_:b` in two `load` calls are two different nodes.

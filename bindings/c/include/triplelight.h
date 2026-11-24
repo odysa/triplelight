@@ -41,6 +41,8 @@ extern "C" {
  * absent one, without SILENT). */
 #define TL_ERR_GRAPH_STATE 7
 #define TL_ERR_INTERRUPTED 8
+/* tl_validate: SHACL rejects the shapes graph (a malformed shape or list, or an undefined recursion). */
+#define TL_ERR_SHAPES 9
 
 #define TL_RESULT_BINDINGS 0u
 #define TL_RESULT_BOOLEAN 1u
@@ -132,6 +134,14 @@ int32_t tl_query(const tl_db *db, const char *sparql, size_t len, tl_result **ou
 #define TL_ENTAILMENT_SIMPLE 0
 #define TL_ENTAILMENT_RDFS 1
 int32_t tl_query_with_entailment(const tl_db *db, const char *sparql, size_t len, int32_t entailment, tl_result **out, tl_error **err);
+/* SHACL Core validation of a data document against a shapes document, each TL_FORMAT_TURTLE or TL_FORMAT_NTRIPLES.
+ * On success *conforms is 1 or 0 and *report is the report graph (TL_RESULT_TRIPLES; free it with tl_result_free).
+ * Data that violates the shapes is a success with *conforms 0. A document that does not parse is TL_ERR_SYNTAX, shapes
+ * SHACL rejects are TL_ERR_SHAPES. */
+#define TL_FORMAT_TURTLE 0
+#define TL_FORMAT_NTRIPLES 1
+int32_t tl_validate(const char *data, size_t data_len, int32_t data_format, const char *shapes, size_t shapes_len,
+                    int32_t shapes_format, int32_t *conforms, tl_result **report, tl_error **err);
 int32_t tl_update(const tl_db *db, const char *sparql, size_t len, uint64_t *changed, tl_error **err);
 int32_t tl_load(const tl_db *db, const char *path, size_t len, uint64_t *loaded, tl_error **err);
 int32_t tl_compact(const tl_db *db, tl_error **err);

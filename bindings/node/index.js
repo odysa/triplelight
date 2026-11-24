@@ -28,10 +28,11 @@ class UnsupportedError extends TripleLightError {}
 class StorageError extends TripleLightError {}
 class LockedError extends TripleLightError {}
 class GraphStateError extends TripleLightError {}
-const KINDS = { SyntaxError: SyntaxError_, UnsupportedError, StorageError, LockedError, GraphStateError };
+class ShapesError extends TripleLightError {}
+const KINDS = { SyntaxError: SyntaxError_, UnsupportedError, StorageError, LockedError, GraphStateError, ShapesError };
 
 function wrapError(e) {
-  const m = /^(SyntaxError|UnsupportedError|StorageError|LockedError|GraphStateError): ([\s\S]*)$/.exec(e && e.message);
+  const m = /^(SyntaxError|UnsupportedError|StorageError|LockedError|GraphStateError|ShapesError): ([\s\S]*)$/.exec(e && e.message);
   if (!m) return e;
   const err = new KINDS[m[1]](m[2], m[1]);
   err.cause = e;
@@ -69,4 +70,10 @@ class Database {
   close() { this._raw.close(); }
 }
 
-module.exports = { Database, Snapshot, TripleLightError, SyntaxError: SyntaxError_, UnsupportedError, StorageError, LockedError, GraphStateError };
+/** SHACL Core validation of a data document against a shapes document (`options.dataFormat` / `options.shapesFormat`:
+ * "turtle", the default, or "ntriples"). Returns `{ conforms, triples }`. */
+function validate(data, shapes, options = {}) {
+  return sync(() => native.validate(String(data), String(shapes), options.dataFormat ?? null, options.shapesFormat ?? null));
+}
+
+module.exports = { Database, Snapshot, validate, TripleLightError, SyntaxError: SyntaxError_, UnsupportedError, StorageError, LockedError, GraphStateError, ShapesError };

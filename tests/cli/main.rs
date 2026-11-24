@@ -2,5 +2,6 @@
 #[cfg(unix)]
 mod disk_cli;
 mod parallel_cli;
+mod shacl_cli;
 #[cfg(all(unix, feature = "server"))]
 mod server_auth;
