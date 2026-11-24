@@ -18,6 +18,18 @@ pub(super) fn no_repeated_var(p: &[Slot; 3]) -> bool {
     vs.iter().collect::<HashSet<_>>().len() == vs.len()
 }
 
+/// The center of a star BGP: the one variable in every pattern of at least two, when every other variable occurs in
+/// one pattern only. Given the center, the patterns are independent, so a solution count is a sum of products of
+/// per-pattern range counts (`Bgp::count_star`). Callers reject repeated-variable patterns.
+pub(super) fn star_center(pats: &[[Slot; 3]]) -> Option<usize> {
+    if pats.len() < 2 { return None }
+    let mut occ: HashMap<usize, usize> = HashMap::new();
+    for p in pats { for v in vars_of(p) { *occ.entry(v).or_default() += 1 } }
+    let mut shared = occ.iter().filter(|&(_, &n)| n > 1);
+    let (&center, &n) = shared.next()?;
+    (n == pats.len() && shared.next().is_none()).then_some(center)
+}
+
 /// GYO reduction: a BGP is acyclic iff repeatedly removing variables that occur in one pattern only, and patterns
 /// whose variables are contained in another pattern's, empties the hypergraph.
 pub(super) fn cyclic(pats: &[[Slot; 3]]) -> bool {

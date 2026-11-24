@@ -448,6 +448,36 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         if first.len()>=64 { first.par_chunks(16).map(part).reduce(||0,checked_count) } else { part(&first) }
     }
 
+    /// Solutions of a star BGP (`pattern::star_center`), and how many distinct center values they have, without
+    /// enumerating the leaves: the center's values are the leapfrog intersection of every pattern's range, and each
+    /// contributes the product of its patterns' range counts. Split across rayon workers like `count_leapfrog`.
+    pub fn count_star(&self, pats: &[[Slot; 3]], center: usize) -> (u64, u64) {
+        let counts: Vec<_> = self.const_counts(pats).collect();
+        if counts.contains(&0) { return (0, 0) }
+        let mut order = vec![center];
+        for p in pats { order.extend(vars_of(p).into_iter().filter(|&v| v != center)) }
+        let (_, plans) = lf_plan(pats, &counts, Some(order));
+        // Each plan is keyed constants, then the center, then its own leaves: the center's count prefix.
+        let at: Vec<usize> = plans.iter().map(|(_, key)| key.iter().position(|s| matches!(s, Slot::Var(v) if *v == center)).unwrap()).collect();
+        let row = vec![UNBOUND; self.w];
+        let values = self.intersect(&plans, center, &row);
+        let part = |values: &[TermId]| {
+            let mut sum = 0;
+            for &c in values {
+                let product = plans.iter().zip(&at).map(|((perm, key), &k)| {
+                    let mut prefix = [UNBOUND; 3];
+                    for (j, s) in key[..=k].iter().enumerate() { prefix[j] = match s { Slot::Const(id) => id.unwrap(), Slot::Var(_) => c } }
+                    // A plan with the center last needs no count: the intersection already proved its one row.
+                    if k == 2 { 1 } else { self.count(*perm, &prefix[..=k]) }
+                }).fold(1, checked_count_product);
+                sum = checked_count(sum, product);
+            }
+            sum
+        };
+        let n = if values.len() >= 64 { values.par_chunks(256).map(part).reduce(|| 0, checked_count) } else { part(&values) };
+        (n, values.len() as u64)
+    }
+
     fn lf_count_depth(&self, plans: &[(Perm, [Slot; 3])], order: &[usize], depth: usize, row: &mut Vec<TermId>) -> u64 {
         let v = order[depth];
         if depth + 1 == order.len() {
