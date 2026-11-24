@@ -108,7 +108,7 @@ impl SolutionsWriter {
 /// over (the earlier collect-then-concat kept every chunk, their concatenation and `out` alive together).
 fn append_chunks<T: Sync, E: Send>(items: &[T], chunk: usize, out: &mut String,
                                    f: impl Fn(&[T]) -> Result<String, E> + Sync + Send) -> Result<(), E> {
-    emit_chunks(items, chunk, f, |s| { out.push_str(s); Ok(()) }).map_err(|e| match e { EmitError::Chunk(e) => e, EmitError::Sink(never) => match never {} })
+    emit_chunks(items, chunk, f, |s| { out.push_str(s); Ok::<(), std::convert::Infallible>(()) }).map_err(|e| match e { EmitError::Chunk(e) => e, EmitError::Sink(never) => match never {} })
 }
 
 /// Why `emit_chunks` stopped: a chunk failed to serialize, or the sink refused the bytes.
