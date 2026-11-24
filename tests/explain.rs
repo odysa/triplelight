@@ -1,7 +1,7 @@
 #![cfg(unix)]
 
 use triplelight::embedded::Database;
-use triplelight::exec::{Entailment, Interrupt, Options, QueryErrorKind};
+use triplelight::exec::{Entailment, Interrupt, MemoryBudget, Options, QueryErrorKind};
 
 #[test]
 fn explain_uses_the_pinned_snapshot_and_keeps_query_results() {
@@ -66,6 +66,19 @@ fn pushed_filter_stays_in_the_existing_bgp_phase() {
     let report = triplelight::exec::plan_trace::explain(&snapshot, "SELECT ?s WHERE { ?s <urn:p> ?n FILTER(?n > 50) }", &Default::default()).unwrap();
     assert!(phase(&report, "bgp_us=") > 0, "{report}");
     assert_eq!(phase(&report, "filter_us="), 0, "pushed filter was counted twice:\n{report}");
+}
+
+#[test]
+fn failed_bgp_restores_phase_depth_for_the_next_explain() {
+    let data = (0..5_000).map(|n| format!("<urn:s{n}> <urn:p> \"{n}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n")).collect::<String>();
+    let snapshot = triplelight::storage::MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let budget = MemoryBudget::new(1);
+    let options = Options { memory_budget: Some(&budget), ..Default::default() };
+    let stopped = triplelight::exec::plan_trace::explain(&snapshot, "SELECT ?s WHERE { ?s <urn:p> ?n }", &options);
+    assert_eq!(stopped.unwrap_err().kind, QueryErrorKind::ResourceLimit);
+    let report = triplelight::exec::plan_trace::explain(&snapshot, "SELECT ?s WHERE { ?s <urn:p> ?n FILTER(?n > 2500) }", &Default::default()).unwrap();
+    assert!(phase(&report, "bgp_us=") > 0, "stale BGP depth suppressed the next capture:\n{report}");
+    assert_eq!(phase(&report, "filter_us="), 0, "{report}");
 }
 
 #[test]
