@@ -201,11 +201,11 @@ pub(super) fn compare(left: &Term, right: &Term) -> Option<Ordering> {
         ("dayTimeDuration", "dayTimeDuration") => l
             .parse::<DayTimeDuration>()
             .ok()?
-            .partial_cmp(&r.parse().ok()?),
+            .partial_cmp(&r.parse::<DayTimeDuration>().ok()?),
         ("yearMonthDuration", "yearMonthDuration") => l
             .parse::<YearMonthDuration>()
             .ok()?
-            .partial_cmp(&r.parse().ok()?),
+            .partial_cmp(&r.parse::<YearMonthDuration>().ok()?),
         _ => None,
     }
 }
