@@ -1053,16 +1053,19 @@ mod borrowed_overlay_tests {
                 let want: Vec<[TermId; 3]> = all.iter().filter(|r| r[..prefix.len()] == prefix[..]).copied().collect();
                 let got: Vec<[TermId; 3]> = o.scan(perm, &prefix).flat_map(|b| { let b = b.unwrap(); (0..b.len()).map(move |i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]).collect::<Vec<_>>() }).collect();
                 let label = format!("{perm:?} {prefix:?}");
-                assert_eq!(got.iter().map(|r| key(perm, *r)).collect::<Vec<_>>(), want, "scan {label}");
+                assert_eq!(got, want, "scan {label}"); // batches are in key order
                 assert_eq!(o.count(perm, &prefix).unwrap(), want.len() as u64, "count {label}");
-                if let Some(rows) = o.matching_rows(perm, &prefix) { assert_eq!(rows.iter().map(|r| key(perm, *r)).collect::<Vec<_>>(), want, "rows {label}") }
+                if let Some(rows) = o.matching_rows(perm, &prefix) { assert_eq!(rows, &want[..], "rows {label}") }
+                if let (Some(tail), false) = (o.matching_tail(perm, &prefix), prefix.is_empty()) {
+                    assert_eq!(tail.iter().map(|t| [prefix[0], t[0], t[1]]).collect::<Vec<_>>(), want, "tail {label}");
+                }
                 if prefix.len() < 3 {
                     let next: Vec<TermId> = want.iter().map(|r| r[prefix.len()]).collect();
                     for target in [TermId(0), ids[ids.len() / 2], TermId(u64::MAX)] {
                         assert_eq!(o.seek(perm, &prefix, target).unwrap(), next.iter().copied().find(|&v| v >= target), "seek {label} {target:?}");
                         let from: Vec<[TermId; 3]> = o.scan_from(perm, &prefix, target).flat_map(|b| { let b = b.unwrap(); (0..b.len()).map(move |i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]).collect::<Vec<_>>() }).collect();
                         let want_from: Vec<[TermId; 3]> = want.iter().filter(|r| r[prefix.len()] >= target).copied().collect();
-                        assert_eq!(from.iter().map(|r| key(perm, *r)).collect::<Vec<_>>(), want_from, "scan_from {label} {target:?}");
+                        assert_eq!(from, want_from, "scan_from {label} {target:?}");
                     }
                 }
             }
