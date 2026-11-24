@@ -158,8 +158,8 @@ fn management_survives_reopen() {
 fn unresolved_load_obeys_silent_and_management_syntax_is_checked() {
     let db = Database::in_memory();
     assert!(matches!(fails(&db, "LOAD <http://example.org/data.nt>"), DatabaseError::Unsupported(_)));
-    assert_eq!(update(&db, "LOAD SILENT <http://example.org/data.nt>"), 0);
-    assert_eq!(update(&db, "LOAD SILENT <http://example.org/data.nt> INTO GRAPH :g"), 0);
+    assert_eq!(db.update("LOAD SILENT <http://example.org/data.nt>").unwrap(), 0);
+    assert_eq!(db.update("LOAD SILENT <http://example.org/data.nt> INTO GRAPH <http://ex/g>").unwrap(), 0);
     assert!(graphs(&db).is_empty());
     assert!(matches!(fails(&db, "CREATE :g"), DatabaseError::Syntax(_)));
     assert!(matches!(fails(&db, "DROP :g"), DatabaseError::Syntax(_)));
