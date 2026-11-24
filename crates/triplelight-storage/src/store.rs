@@ -37,7 +37,7 @@ use crate::storage::{Dictionary, MemorySnapshot, Snapshot, StorageError};
 use triplelight_rdf::{Term, TermRef, Triple};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 
