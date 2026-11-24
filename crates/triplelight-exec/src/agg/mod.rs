@@ -6,6 +6,7 @@
 //! Semantics are those of `Ctx::aggregate`, operation for operation: same numeric typing and overflow-as-error for
 //! SUM/AVG, same tie rules for MIN (first) and MAX (last) under `order_cmp`, same first-appearance group order.
 //! Anything else (expressions other than a plain variable, GROUP_CONCAT, custom aggregates) uses the general path.
+mod count;
 use super::{expr, Ctx, Row, UNBOUND};
 use crate::model::TermId;
 use crate::storage::Snapshot;

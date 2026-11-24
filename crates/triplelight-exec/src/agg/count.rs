@@ -1,5 +1,5 @@
 //! Exact aggregate pushdown for pure BGPs. Unsupported algebra keeps the ordinary evaluator.
-use super::{Ctx, Row, UNBOUND, bgp, pattern, storage_failure};
+use crate::{Ctx, Row, UNBOUND, bgp, pattern, storage_failure};
 use crate::{
     model::{Perm, TermId},
     storage::Snapshot,
@@ -15,7 +15,7 @@ enum Count {
     Variable { index: Option<usize>, distinct: bool },
 }
 impl<S: Snapshot + ?Sized> Ctx<'_, S> {
-    pub(super) fn try_count_group(
+    pub(crate) fn try_count_group(
         &self,
         inner: &GraphPattern,
         keys: &[Variable],
