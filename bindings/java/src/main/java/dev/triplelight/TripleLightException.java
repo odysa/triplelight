@@ -2,7 +2,7 @@ package dev.triplelight;
 
 /** Raised by every failing call; {@link #kind()} classifies the failure. */
 public final class TripleLightException extends RuntimeException {
-    public enum Kind { SYNTAX, UNSUPPORTED, STORAGE, LOCKED, INVALID_ARGUMENT, INTERNAL, CLOSED, GRAPH_STATE }
+    public enum Kind { SYNTAX, UNSUPPORTED, STORAGE, LOCKED, INVALID_ARGUMENT, INTERNAL, CLOSED, GRAPH_STATE, INTERRUPTED, RESOURCE_LIMIT }
 
     private final Kind kind;
 
@@ -21,6 +21,8 @@ public final class TripleLightException extends RuntimeException {
             case 4 -> Kind.LOCKED;
             case 5 -> Kind.INVALID_ARGUMENT;
             case 7 -> Kind.GRAPH_STATE;
+            case 8 -> Kind.INTERRUPTED;
+            case 10 -> Kind.RESOURCE_LIMIT;
             default -> Kind.INTERNAL;
         };
     }

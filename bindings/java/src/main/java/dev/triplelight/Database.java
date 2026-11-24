@@ -51,14 +51,24 @@ public final class Database implements AutoCloseable {
     }
 
     /** Runs a SPARQL SELECT, ASK or CONSTRUCT query. */
-    public Result query(String sparql) {
+    public Result query(String sparql) { return query(sparql, null, 0); }
+
+    /**
+     * {@link #query(String)} under limits (#110): {@code interrupt} (may be null) stops it when cancelled or past its
+     * deadline ({@link TripleLightException.Kind#INTERRUPTED}), and {@code memoryBytes} (0: unlimited) bounds its
+     * working memory ({@link TripleLightException.Kind#RESOURCE_LIMIT}). Neither leaves a partial result.
+     */
+    public Result query(String sparql, QueryInterrupt interrupt, long memoryBytes) {
+        if (memoryBytes < 0) throw new IllegalArgumentException("memoryBytes must not be negative");
         lock.readLock().lock();
         MemorySegment result = MemorySegment.NULL;
         try (Arena a = Arena.ofConfined()) {
             MemorySegment h = live();
             byte[] q = sparql.getBytes(StandardCharsets.UTF_8);
             MemorySegment out = a.allocate(ADDRESS), err = a.allocate(ADDRESS);
-            check((int) Native.QUERY.invokeExact(h, a.allocateFrom(JAVA_BYTE, q), (long) q.length, out, err), err);
+            MemorySegment text = a.allocateFrom(JAVA_BYTE, q);
+            Call<Integer> run = i -> (int) Native.QUERY_WITH_LIMITS.invokeExact(h, text, (long) q.length, 0, i, memoryBytes, out, err);
+            check(interrupt == null ? run.run(MemorySegment.NULL) : interrupt.use(run), err);
             result = out.get(ADDRESS, 0);
             return decode((MemorySegment) Native.RESULT_VIEW.invokeExact(result));
         } catch (TripleLightException e) {
@@ -241,7 +251,10 @@ public final class Database implements AutoCloseable {
         return len == 0 ? "" : new String(bytes, Math.toIntExact(off), Math.toIntExact(len), StandardCharsets.UTF_8);
     }
 
-    private static void check(int code, MemorySegment errOut) throws Throwable {
+    /** A native call given the interrupt handle (`QueryInterrupt.use`). */
+    interface Call<T> { T run(MemorySegment interrupt) throws Throwable; }
+
+    static void check(int code, MemorySegment errOut) throws Throwable {
         if (code == 0) return;
         MemorySegment e = errOut.get(ADDRESS, 0);
         String message = "";
@@ -258,7 +271,7 @@ public final class Database implements AutoCloseable {
         throw new TripleLightException(TripleLightException.fromCode(code), message);
     }
 
-    private static TripleLightException internal(Throwable t) {
+    static TripleLightException internal(Throwable t) {
         return new TripleLightException(TripleLightException.Kind.INTERNAL, String.valueOf(t));
     }
 
