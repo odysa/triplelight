@@ -28,6 +28,8 @@ pub enum Outcome {
 #[derive(Clone, Debug)]
 pub struct ConstraintViolation {
     pub value: Option<Term>,
+    /// A path to report in place of the shape's own (`sh:closed` reports the offending predicate).
+    pub path_override: Option<Path>,
     pub component: NamedNode,
     pub message: Option<Literal>,
     pub details: Vec<ValidationResult>,
