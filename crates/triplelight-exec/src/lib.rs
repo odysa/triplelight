@@ -764,13 +764,34 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }).collect();
         // Column keys decode once per distinct ID. Other expressions are evaluated per row.
         let mut memo: HashMap<TermId, Option<Term>> = HashMap::new();
-        let keys: Vec<Vec<Option<Term>>> = rows.iter().map(|r| keys_by_column.iter().map(|&(e, column)| {
+        let mut key_of = |r: &Row, (e, column): (&Expression, Option<usize>)| -> Option<Term> {
             match column {
                 Some(i) if r[i] == UNBOUND => None,
                 Some(i) => memo.entry(r[i]).or_insert_with(|| Some(self.resolve(r[i]))).clone(),
                 None => self.value(e, r),
             }
-        }).collect()).collect();
+        };
+        let first_cmp = |a: &Option<Term>, b: &Option<Term>| -> std::cmp::Ordering {
+            let c = expr::order_cmp(a.as_ref(), b.as_ref());
+            if matches!(expression[0], OrderExpression::Desc(_)) { c.reverse() } else { c }
+        };
+        // Top-k with more than one key: a row can be among the first k only if its first key is no later than the
+        // k-th smallest first key, so the other keys are computed only for those rows (for an ORDER BY on a value and
+        // then an IRI, the IRIs of all other rows are never decoded).
+        let mut idx: Vec<usize> = (0..rows.len()).collect();
+        let mut keys: Vec<Vec<Option<Term>>> = vec![Vec::new(); rows.len()];
+        match limit {
+            Some(k) if k > 0 && k < rows.len() && keys_by_column.len() > 1 => {
+                let first: Vec<Option<Term>> = rows.iter().map(|r| key_of(r, keys_by_column[0])).collect();
+                let mut order: Vec<usize> = idx.clone();
+                order.select_nth_unstable_by(k - 1, |a, b| first_cmp(&first[*a], &first[*b]));
+                let bound = first[order[k - 1]].clone();
+                idx.retain(|&i| first_cmp(&first[i], &bound).is_le());
+                for (i, f) in first.into_iter().enumerate() { if idx.binary_search(&i).is_ok() { keys[i].push(f) } }
+                for &i in &idx { for &kc in &keys_by_column[1..] { let v = key_of(&rows[i], kc); keys[i].push(v) } }
+            }
+            _ => for (i, r) in rows.iter().enumerate() { keys[i] = keys_by_column.iter().map(|&kc| key_of(r, kc)).collect() },
+        }
         let cmp = |a: &usize, b: &usize| -> std::cmp::Ordering {
             for (k, e) in expression.iter().enumerate() {
                 let c = expr::order_cmp(keys[*a][k].as_ref(), keys[*b][k].as_ref());
@@ -779,7 +800,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             }
             a.cmp(b) // ties keep input order (as the stable sort did)
         };
-        let mut idx: Vec<usize> = (0..rows.len()).collect();
         match limit {
             Some(k) if k < idx.len() => {
                 // Stable top-k: the comparator is a total order (index tie-break), so the k smallest equal the
