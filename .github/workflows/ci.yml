@@ -111,6 +111,17 @@ jobs:
           name: w3c12-results
           path: w3c12.log
 
+  shacl:
+    name: W3C SHACL Core conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain (from rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - name: Fetch the pinned suite, run it and check the summary
+        run: ci/shacl-core.sh
+
   python:
     name: Python binding
     runs-on: ubuntu-latest
