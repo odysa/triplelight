@@ -17,8 +17,43 @@ const ID_MAGIC: &[u8; 8] = b"RDFDID01";
 /// One file in ID order whose directory also carries each block's last term text, so term lookups can search a
 /// kind's run of blocks (inside a kind, ID order is term-text order).
 const UNIFIED_MAGIC: &[u8; 8] = b"RDFDID02";
-/// The unified layout with lean entry framing (`term_block_codec`, #105). Written by default; `RDFDID02` stays readable.
+/// The unified layout with lean entry framing (`term_block_codec`, #105). Still read.
 const UNIFIED_LEAN_MAGIC: &[u8; 8] = b"RDFDID03";
+/// `RDFDID03` blocks behind a codec tag, literal blocks zstd-compressed (`term_block_codec::encode_tagged`, #105).
+/// Written by default; `RDFDID03` and `RDFDID02` stay readable.
+const UNIFIED_TAGGED_MAGIC: &[u8; 8] = b"RDFDID04";
+#[cfg(test)]
+thread_local! {
+    /// Tests: the unified block format this thread writes, instead of the current one.
+    static FORMAT_OVERRIDE: std::cell::Cell<Option<BlockFormat>> = const { std::cell::Cell::new(None) };
+}
+/// How a dictionary file's blocks are encoded, from its magic.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum BlockFormat {
+    /// `RDFDID01`/`RDFDTM01`/`RDFDID02`: an 8-byte ID and two 4-byte lengths per entry.
+    Fixed,
+    /// `RDFDID03`: varint framing.
+    Lean,
+    /// `RDFDID04`: a codec tag, then a lean block, raw or zstd.
+    Tagged,
+}
+impl BlockFormat {
+    fn decode(self, bytes: &[u8], canonical: bool) -> io::Result<Vec<(TermId, Term)>> {
+        match self {
+            Self::Fixed => term_block_codec::decode(bytes, false, canonical),
+            Self::Lean => term_block_codec::decode(bytes, true, canonical),
+            Self::Tagged => term_block_codec::decode_tagged(bytes, canonical),
+        }
+    }
+    /// Literal blocks are compressed: their text is most of a dictionary and front coding barely shrinks it.
+    fn encode(self, block: &[(TermId, Term)]) -> io::Result<Vec<u8>> {
+        match self {
+            Self::Fixed => term_block_codec::encode(block, false),
+            Self::Lean => term_block_codec::encode(block, true),
+            Self::Tagged => term_block_codec::encode_tagged(block, block.first().is_some_and(|(id, _)| id_kind(id.0) == 3)),
+        }
+    }
+}
 /// File name of the unified dictionary inside a snapshot directory.
 pub(super) const UNIFIED_FILE: &str = "dictionary.unified";
 /// Largest encoded block, and the byte budget a block is filled to: one maximum-length term plus its codec overhead.
@@ -43,14 +78,27 @@ impl Order {
         match self {
             Self::Term => TERM_MAGIC,
             Self::Id => ID_MAGIC,
-            Self::Unified => UNIFIED_LEAN_MAGIC,
+            Self::Unified => UNIFIED_TAGGED_MAGIC,
         }
     }
-    /// Whether this order's current format uses lean entry framing. Tests can make a thread (and the build's workers)
-    /// write the previous unified format, as an older binary would (`disk_index::write_older_format_on_this_thread`).
-    fn lean(self) -> bool { matches!(self, Self::Unified) && !super::disk_index::index_format_of_this_thread() }
+    /// The block format this process writes for the order. Tests can make a thread (and the build's workers) write the
+    /// previous unified format, as an older binary would (`disk_index::write_older_format_on_this_thread`).
+    fn write_format(self) -> BlockFormat {
+        #[cfg(test)]
+        if let (Self::Unified, Some(f)) = (self, FORMAT_OVERRIDE.with(|c| c.get())) { return f }
+        match self {
+            Self::Unified if !super::disk_index::index_format_of_this_thread() => BlockFormat::Tagged,
+            _ => BlockFormat::Fixed,
+        }
+    }
     /// The magic this process writes for the order.
-    fn write_magic(self) -> &'static [u8; 8] { if matches!(self, Self::Unified) && !self.lean() { UNIFIED_MAGIC } else { self.magic() } }
+    fn write_magic(self) -> &'static [u8; 8] {
+        match (self, self.write_format()) {
+            (Self::Unified, BlockFormat::Fixed) => UNIFIED_MAGIC,
+            (Self::Unified, BlockFormat::Lean) => UNIFIED_LEAN_MAGIC,
+            _ => self.magic(),
+        }
+    }
     fn key(self, id: TermId, term: &Term) -> Vec<u8> {
         match self {
             Self::Term => term.to_string().into_bytes(),
@@ -220,8 +268,8 @@ pub(super) struct LazyIndex {
     entries: Vec<Meta>,
     identity: [u8; 32],
     cache: Arc<DictionaryCache>,
-    /// Blocks use lean entry framing (`RDFDID03`).
-    lean: bool,
+    /// How the file's blocks are encoded, from its magic.
+    format: BlockFormat,
 }
 fn exact(file: &File, bytes: &mut [u8], offset: u64) -> io::Result<()> {
     exact_traced(file, bytes, offset, None)
@@ -268,12 +316,12 @@ impl LazyIndex {
         }
         let mut header = [0; 8];
         exact(&file, &mut header, 0)?;
-        let lean = if &header == order.magic() {
-            matches!(order, Order::Unified)
-        } else if matches!(order, Order::Unified) && &header == UNIFIED_MAGIC {
-            false
-        } else {
-            return Err(bad("bad dictionary index magic"));
+        let format = match (order, &header) {
+            (Order::Unified, h) if h == UNIFIED_TAGGED_MAGIC => BlockFormat::Tagged,
+            (Order::Unified, h) if h == UNIFIED_LEAN_MAGIC => BlockFormat::Lean,
+            (Order::Unified, h) if h == UNIFIED_MAGIC => BlockFormat::Fixed,
+            (Order::Term | Order::Id, h) if h == order.magic() => BlockFormat::Fixed,
+            _ => return Err(bad("bad dictionary index magic")),
         };
         let mut footer = [0; 40];
         exact(&file, &mut footer, len - 40)?;
@@ -382,7 +430,7 @@ impl LazyIndex {
             order,
             entries,
             identity,
-            lean,
+            format,
             cache,
         })
     }
@@ -421,7 +469,7 @@ impl LazyIndex {
         if Sha256::digest(&bytes).as_slice() != meta.hash {
             return Err(bad("dictionary block checksum mismatch"));
         }
-        let rows = term_block_codec::decode(&bytes, self.lean, false)?;
+        let rows = self.format.decode(&bytes, false)?;
         let keys: Vec<_> = rows.iter().map(|(id, t)| self.order.key(*id, t)).collect();
         if keys.windows(2).any(|w| w[0] >= w[1])
             || keys.last() != Some(&meta.last)
@@ -492,7 +540,7 @@ impl LazyIndex {
             if Sha256::digest(&bytes).as_slice() != meta.hash {
                 return Err(bad("dictionary block checksum mismatch"));
             }
-            term_block_codec::decode(&bytes, self.lean, true)?;
+            self.format.decode(&bytes, true)?;
         }
         let mut previous: Option<(u64, String)> = None;
         let mut count = 0u64;
@@ -695,7 +743,7 @@ impl<W: Write> BlockWriter<W> {
         if self.block.is_empty() {
             return Ok(());
         }
-        let bytes = term_block_codec::encode(&self.block, self.order.lean())?;
+        let bytes = self.order.write_format().encode(&self.block)?;
         let (id, t) = self.block.last().unwrap();
         let key = self.order.key(*id, t);
         self.out.write_all(&bytes)?;
@@ -1521,5 +1569,40 @@ mod b2_hit_bench {
         let new_admit_frac = admitted_r0 as f64 / MISSES as f64;
         let per_admission_new = if new_admit_frac > 0.0 { n / new_admit_frac } else { f64::NAN };
         println!("b2 miss path (full shard, {MISSES} misses/round, 10 interleaved rounds): old FIFO {o:.1} ns/miss = {o:.1} ns/admission (admits 1.000, sweep steps 0); new {n:.1} ns/miss, admits {new_admit_frac:.3} -> {per_admission_new:.1} ns/admission, sweep steps {} per admission; added cost per miss {:+.1} ns = {:.4}% of ~180,000 ns decode per miss (a38 scope: conversion-window decode_ms / slot-7 misses, Q9 and Q14 at 1x); frozen ceiling 9,000 ns/miss", EVICTION_SAMPLE, n - o, 100.0 * (n - o).max(0.0) / 180_000.0);
+    }
+}
+
+#[cfg(test)]
+mod format_tests {
+    use super::*;
+    use triplelight_rdf::{Literal, NamedNode};
+    /// Every unified format still in use reads back the same entries, and `RDFDID04` compresses literal blocks only.
+    #[test]
+    fn all_unified_formats_read_back_the_same_entries() {
+        let mut rows: Vec<(TermId, Term)> = (0..700u64).map(|i| (TermId((1 << 60) | (i + 1)), NamedNode::new(format!("http://example.org/r/{i:05}")).unwrap().into())).collect();
+        let words = ["red", "green", "blue", "cyan", "magenta", "yellow"];
+        let mut lits: Vec<String> = (0..700u64).map(|i| (0..30).map(|k| words[((i + k * 5) % 6) as usize]).collect::<Vec<_>>().join(" ") + &format!(" {i:05}")).collect();
+        lits.sort();
+        rows.extend(lits.into_iter().enumerate().map(|(i, t)| (TermId((3 << 60) | (i as u64 + 1)), Literal::new_simple_literal(t).into())));
+        let dir = std::env::temp_dir().join(format!("rdf-dict-formats-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir(&dir).unwrap();
+        let mut sizes = Vec::new();
+        for (format, magic) in [(BlockFormat::Fixed, b"RDFDID02"), (BlockFormat::Lean, b"RDFDID03"), (BlockFormat::Tagged, b"RDFDID04")] {
+            let path = dir.join(format!("{format:?}"));
+            FORMAT_OVERRIDE.with(|c| c.set(Some(format)));
+            write_index(&path, Order::Unified, rows.iter().cloned().map(Ok)).unwrap();
+            FORMAT_OVERRIDE.with(|c| c.set(None));
+            assert_eq!(&std::fs::read(&path).unwrap()[..8], magic);
+            let index = LazyIndex::open(&path, Order::Unified).unwrap();
+            assert_eq!(index.format, format);
+            let mut got = Vec::new();
+            index.for_each(&mut |id, t| { got.push((id, t.clone())); Ok(()) }).unwrap();
+            assert_eq!(got, rows, "{format:?}");
+            assert_eq!(index.check_text_order().unwrap(), rows.len() as u64);
+            sizes.push(std::fs::metadata(&path).unwrap().len());
+        }
+        assert!(sizes[1] < sizes[0] && sizes[2] < sizes[1], "each format is smaller than the last: {sizes:?}");
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
