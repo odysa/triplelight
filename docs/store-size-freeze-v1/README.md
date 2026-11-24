@@ -21,7 +21,10 @@ These are the sizes the paper cites, as Kaiming asked: one table, one binary, ev
 - LUBM-1000: **0.625×**, so 37.5% smaller.
 - BSBM-100M: **0.789×**, so 21.1% smaller.
 
-The two derived orders (SOP and OPS) are what four orders save. On LUBM, SOP is SPO's size, so it is the larger saving.
+The two derived orders (SOP and OPS) are what four orders save, and on both datasets SOP is as large as SPO. The
+saving differs because of the dictionary's share of the store: 7% of the LUBM-1000 four-order store against 58% of
+BSBM-100M's (2.10 of 3.65 GB), so the same derived orders are a larger fraction of LUBM's total. (WindowsXP's
+correction, #105.)
 
 **Where these numbers came from:**
 - `docs/codec-rotate-v1/`: SPO went to 0.64× its earlier size.
