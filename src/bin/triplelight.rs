@@ -34,6 +34,9 @@ use std::time::Instant;
 
 #[cfg(feature = "server")]
 mod server;
+#[cfg(unix)]
+#[path = "shell/mod.rs"]
+mod shell;
 
 pub(crate) fn load(path: &str, args: &[String]) -> Backend {
     let t = Instant::now();
@@ -241,6 +244,11 @@ fn main() {
                 std::process::exit(2);
             }
         }
+        #[cfg(unix)]
+        Some("shell") => shell::run(&args[2..]),
+        #[cfg(unix)]
+        _ => shell::run(&args[1..]),
+        #[cfg(not(unix))]
         _ => eprintln!("usage: triplelight query <data> <sparql> [--entailment=simple|rdfs] | triplelight explain <data> <sparql> | triplelight validate <data> <shapes> | triplelight build-disk <source> <dir> | triplelight verify <dir> | triplelight text-index <store-directory>\n\
             with --features server: triplelight serve <data.nt|.ttl> [port] | triplelight serve-store <dir> [port] [--init data.nt] [--read-only]"),
     }

@@ -54,6 +54,29 @@ An in-memory database is discarded when its last handle is released. Open `Datab
 durable local storage. Updates are atomic, persistent updates sync the write-ahead log before returning, and
 `db.read()` gives a consistent snapshot across queries. See the [Python binding source and tests](bindings/python).
 
+### Interactive SPARQL shell
+
+On macOS and Linux, launch `triplelight` for an in-memory session or `triplelight my-store` to open or create a durable store directory. To create a store, use a new path or an empty directory. Use the explicit `triplelight shell STORE` form if the store name matches a subcommand. The shell retains data across query and update requests.
+
+```text
+$ triplelight my-store
+sparql> .import data.ttl
+sparql> SELECT ?s ?p ?o
+   ...> WHERE { ?s ?p ?o } LIMIT 5;
+sparql> .timer on
+sparql> .quit
+```
+
+Use `.help` to list commands, `.open` to switch stores, and `.read FILE` to run a script. Use `.output FILE` or `.once FILE` to write query results to a file. The terminal displays a table with up to 40 rows. Use `.mode tsv`, `.mode csv`, or `.mode json` for complete SELECT output. ASK prints a Boolean in box mode and SPARQL Results JSON in the other modes. Graph queries write N-Triples. Default builds support editing and recalling input within the session.
+
+Piped input has no prompts and defaults to TSV for SELECT. A top-level semicolon ends a shell statement. Use `-c` to execute a single SPARQL request or dot command. A multi-operation SPARQL Update passed with `-c` runs atomically. Repeat `-c` and change output flags in order to run several commands in one session. Use `-init FILE` to run an explicit startup script, `-cmd COMMAND` to run a command before reading stdin, or `-f FILE` to execute a script and exit.
+
+```sh
+triplelight my-store -json -c 'SELECT * WHERE { ?s ?p ?o } LIMIT 5'
+triplelight my-store -f commands.rq
+triplelight my-store < commands.rq
+```
+
 ### Optional SPARQL HTTP server
 
 Enable the `server` Cargo feature to serve the quickstart dataset over HTTP.

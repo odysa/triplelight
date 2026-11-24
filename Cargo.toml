@@ -70,7 +70,8 @@ path = "src/bin/triplelight.rs"
 workspace = true
 
 [features]
-default = ["rdfs", "shacl"]
+default = ["rdfs", "shacl", "shell-editing"]
+shell-editing = ["dep:rustyline"]
 # Query-time RDFS inference.
 rdfs = ["dep:triplelight-rdfs", "triplelight-exec/rdfs"]
 # SHACL Core validation of RDF documents.
@@ -102,6 +103,10 @@ asyncband = { version = "0.8", optional = true, features = ["oneshot", "semaphor
 [dev-dependencies]
 sha2.workspace = true
 rayon.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+rustyline = { version = "18.0.1", default-features = false, optional = true }
+unicode-width = "0.2"
 
 # glibc malloc costs ~20-25% on Linux (BSBM/LUBM in the VM); on macOS the system allocator is as fast, so Linux only.
 [target.'cfg(target_os = "linux")'.dependencies]

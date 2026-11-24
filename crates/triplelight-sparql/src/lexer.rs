@@ -80,6 +80,26 @@ pub fn tokenize(src: &str) -> Result<Vec<Spanned>, LexError> {
     }
 }
 
+/// Byte offset of the first top-level semicolon in shell input. Semicolons inside RDF terms,
+/// comments and delimited SPARQL expressions are part of the request.
+pub fn statement_end(text: &str) -> Option<usize> {
+    let mut lexer = Lexer { s: text, i: 0 };
+    let mut depth = 0usize;
+    loop {
+        lexer.skip_ws();
+        let pos = lexer.i;
+        match lexer.next() {
+            Ok(Tok::Eof) => return None,
+            Ok(Tok::Punct(";")) if depth == 0 => return Some(pos),
+            Ok(Tok::Punct("{" | "[" | "(" | "{|" | "<<" | "<<(")) => depth += 1,
+            Ok(Tok::Punct("}" | "]" | ")" | "|}" | ">>" | ")>>")) => depth = depth.saturating_sub(1),
+            // Leave syntax reporting to the parser. Advance only if the lexer did not consume anything.
+            Err(_) if lexer.i == pos => { lexer.bump(); }
+            _ => {}
+        }
+    }
+}
+
 struct Lexer<'a> { s: &'a str, i: usize }
 
 fn is_pn_chars_base(c: char) -> bool {
