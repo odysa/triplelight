@@ -141,15 +141,31 @@ def post(url, query, timeout):
     return resp.status, chunks(), conn
 
 
+# QLever ends its JSON with `,"meta":{"query-time-ms":15,"result-size-total":4,"warnings":[]}}` (captured from a real response): the digits of the
+# time vary from run to run, so two correct answers differ in length by a few bytes. The time is not part of the answer: the byte counts used
+# to compare a drained run with the hashed check run leave it out.
+VOLATILE_TRAILER = re.compile(rb'"query-time-ms"\s*:\s*[-+0-9.eE]+')
+
+
+class ByteCount:
+    """Counts a body's bytes and remembers its last 512, so the volatile trailer can be left out of the count."""
+    def __init__(self): self.n, self.tail = 0, b""
+    def add(self, chunk): self.n += len(chunk); self.tail = (self.tail + chunk)[-512:]
+    def stable(self):
+        """The byte count without the volatile trailer."""
+        return self.n - sum(m.end() - m.start() for m in VOLATILE_TRAILER.finditer(self.tail))
+    def ends_closed(self): return self.tail.rstrip().endswith(b"}")
+
+
 def drain(chunks, deadline):
-    """Reads the body to the last byte without parsing it: returns its byte count and whether it ends like a complete SPARQL JSON
-    document (the closing braces). Used for the timed runs of large answers, where hashing the rows in Python is slower than any
-    engine (7.9M rows take about 20 s to fold) and would be what gets timed."""
-    n, tail = 0, b""
+    """Reads the body to the last byte without parsing it: returns its byte count (without the volatile trailer) and whether it ends
+    like a complete SPARQL JSON document (the closing braces). Used for the timed runs of large answers, where hashing the rows in
+    Python is slower than any engine (7.9M rows take about 20 s to fold) and would be what gets timed."""
+    count = ByteCount()
     for c in chunks:
         if time.monotonic() > deadline: raise Timeout()
-        n += len(c); tail = (tail + c)[-32:]
-    return {"bytes": n, "tail_ok": tail.rstrip().endswith(b"}")}
+        count.add(c)
+    return {"bytes": count.stable(), "tail_ok": count.ends_closed()}
 
 
 def one_run(url, query, timeout, drain_only=False):
@@ -164,11 +180,11 @@ def one_run(url, query, timeout, drain_only=False):
             if drain_only:
                 rec = drain(chunks, deadline)
             else:
-                box = [0]
+                count = ByteCount()
                 def counted():
-                    for c in chunks: box[0] += len(c); yield c
+                    for c in chunks: count.add(c); yield c
                 rec = stream_fold(counted(), deadline)
-                rec["bytes"] = box[0]
+                rec["bytes"] = count.stable()
         finally:
             conn.close()
         rec["status"] = "ok"
@@ -339,6 +355,13 @@ def _body(n, kind="ok"):
     yield "\n]}}"
 
 
+def _body_qtime(n, ms):
+    """The ok body with the `meta` member QLever appends, whose `query-time-ms` has a length that depends on `ms`."""
+    text = "".join(_body(n))
+    assert text.endswith("\n]}}")
+    return text[:-1] + f',"meta":{{"query-time-ms":{ms},"result-size-total":{n},"warnings":[]}}}}'
+
+
 def serve_fake(behaviors):
     import threading, http.server
     class H(http.server.BaseHTTPRequestHandler):
@@ -351,7 +374,10 @@ def serve_fake(behaviors):
             self.send_response(200); self.send_header("Content-Type", "application/sparql-results+json"); self.end_headers()
             if kind == "slow": time.sleep(3)
             if kind == "ask": self.wfile.write(b'{"head":{},"boolean":true}'); return
-            text = "".join(_body(n, kind if kind in ("int", "wrong") else "ok"))
+            if kind == "qtime":
+                self.qtime_calls = getattr(self.server, "qtime_calls", 0) + 1; self.server.qtime_calls = self.qtime_calls
+                text = _body_qtime(n, 7 if self.qtime_calls % 2 else 12345)   # alternating digit counts
+            else: text = "".join(_body(n, kind if kind in ("int", "wrong") else "ok"))
             if kind == "trunc": text = text[: len(text) // 2]
             self.wfile.write(text.encode())
     srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
@@ -394,6 +420,12 @@ def cmd_selftest(a):
         if name == "good": good = dr["status"] == "ok" and dr["bytes"] == full["bytes"] and dr["tail_ok"]
         else: good = full["status"] == "truncated" and dr["status"] == "ok" and not dr["tail_ok"]
         print(f"drain    {name}: bytes {dr.get('bytes')}, tail_ok {dr.get('tail_ok')}", "ok" if good else "FAIL"); ok &= good
+    # a volatile `query-time-ms` trailer of changing length: the check run and every drained run agree, and the answer still classifies as pass
+    behaviors["/qtime"] = ("qtime", 50)
+    full, _ = one_run(f"http://127.0.0.1:{port}/qtime", "SELECT * WHERE {}", 30)
+    drains = [one_run(f"http://127.0.0.1:{port}/qtime", "SELECT * WHERE {}", 30, drain_only=True)[0] for _ in range(3)]
+    good = classify(full, ref) == "pass" and all(d["status"] == "ok" and d["bytes"] == full["bytes"] and d["tail_ok"] for d in drains)
+    print(f"qtime    trailer of changing length: check {full.get('bytes')}, drained {[d.get('bytes') for d in drains]}", "ok" if good else "FAIL"); ok &= good
     print("SELFTEST", "PASSED" if ok else "FAILED"); sys.exit(0 if ok else 1)
 
 
