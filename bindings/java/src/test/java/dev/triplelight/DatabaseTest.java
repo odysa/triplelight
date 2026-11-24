@@ -127,7 +127,7 @@ class DatabaseTest {
             StringBuilder data = new StringBuilder("INSERT DATA { ");
             for (int i = 0; i < 2000; i++) data.append("<urn:s").append(i).append("> <urn:p> \"").append(i).append("\" . ");
             db.update(data.append("}").toString());
-            String endless = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f }";
+            String endless = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f FILTER(?b != ?d && ?d != ?f) }";
             String grouped = "SELECT ?a (COUNT(*) AS ?n) { ?a ?p ?b } GROUP BY ?a";
             // Cancelled from another thread while it runs.
             try (QueryInterrupt interrupt = QueryInterrupt.create()) {
