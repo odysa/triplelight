@@ -1,5 +1,5 @@
-//! Per-BGP plan trace. Off unless `TRIPLELIGHT_TRACE_PLAN` is set; when off, each hook costs one cached flag read
-//! (no clock, no allocation). Logging only: no answer or plan depends on it.
+//! Per-BGP runtime tracing and request-scoped explanations. Trace hooks record observations independently of
+//! query planning. Ordinary queries only check the process flag and the thread-local capture slot unless tracing is on.
 //! One stderr line per BGP evaluation, prefixed `plan_trace ` (greppable next to `phase_trace`):
 //! `plan_trace strategy=planner patterns=3 in=1 out=42 us=310 ranges=0 order=2,0,1 | #2[?p type ProductType] access=probe
 //! est=120.0 in=1 out=120 us=40 | ...` (one line). Per step: the pattern (index and compact text, IRIs cut to their local
@@ -10,6 +10,8 @@
 //! `count-binary-greedy`, `count-single`, `count-empty`; no steps). A pushed-down range shows as `ranges=N` and
 //! `access=range` on its step.
 use crate::sparql::{NamedNodePattern, TermPattern, TriplePattern};
+use crate::storage::{DatasetView, Snapshot};
+use crate::{Options, QueryError, QueryResult, query_dataset_with, query_with};
 use std::cell::RefCell;
 use std::fmt::Write as _;
 use std::sync::OnceLock;
@@ -17,27 +19,62 @@ use std::time::Instant;
 
 static ON: OnceLock<bool> = OnceLock::new();
 
-pub fn enabled() -> bool { *ON.get_or_init(|| std::env::var_os("TRIPLELIGHT_TRACE_PLAN").is_some()) }
+pub fn enabled() -> bool { logging_enabled() || CAPTURE.with(|slot| slot.borrow().is_some()) }
+
+fn logging_enabled() -> bool { *ON.get_or_init(|| std::env::var_os("TRIPLELIGHT_TRACE_PLAN").is_some()) }
 
 /// Turns the trace on for this process, for tests. Effective only before the first `enabled` call (the flag is read
 /// once), so a test using it must run in its own test binary; returns whether the trace is now on.
 #[doc(hidden)]
-pub fn force_on() -> bool { let _ = ON.set(true); enabled() }
+pub fn force_on() -> bool { let _ = ON.set(true); logging_enabled() }
 
-thread_local! { static CAPTURE: RefCell<Option<Vec<String>>> = const { RefCell::new(None) }; }
+thread_local! { static CAPTURE: RefCell<Option<Capture>> = const { RefCell::new(None) }; }
+
+struct Capture {
+    lines: Vec<String>,
+    remaining: usize,
+    truncated: bool,
+}
+
+struct CaptureScope(Option<Capture>);
+
+impl Drop for CaptureScope {
+    fn drop(&mut self) {
+        CAPTURE.with(|slot| *slot.borrow_mut() = self.0.take());
+    }
+}
 
 /// Runs `f` with this thread's trace lines collected instead of printed, for tests.
 #[doc(hidden)]
 pub fn capture<T>(f: impl FnOnce() -> T) -> (T, Vec<String>) {
-    let saved = CAPTURE.with(|c| c.borrow_mut().replace(Vec::new()));
-    let out = f();
-    let lines = CAPTURE.with(|c| std::mem::replace(&mut *c.borrow_mut(), saved)).unwrap_or_default();
+    let (out, lines, _) = capture_bounded(usize::MAX, f);
     (out, lines)
 }
 
+fn capture_bounded<T>(limit: usize, f: impl FnOnce() -> T) -> (T, Vec<String>, bool) {
+    let _scope = CaptureScope(CAPTURE.with(|slot| slot.borrow_mut().replace(Capture {
+        lines: Vec::new(),
+        remaining: limit,
+        truncated: false,
+    })));
+    let out = f();
+    let capture = CAPTURE.with(|slot| slot.borrow_mut().take().expect("active trace capture"));
+    (out, capture.lines, capture.truncated)
+}
+
 fn emit(line: String) {
-    let line = CAPTURE.with(|c| match c.borrow_mut().as_mut() { Some(v) => { v.push(line); None } None => Some(line) });
-    if let Some(l) = line { eprintln!("{l}") }
+    let line = CAPTURE.with(|slot| {
+        let mut slot = slot.borrow_mut();
+        let Some(capture) = slot.as_mut() else { return Some(line) };
+        if !capture.truncated && line.len() < capture.remaining {
+            capture.remaining -= line.len() + 1;
+            capture.lines.push(line);
+        } else {
+            capture.truncated = true;
+        }
+        None
+    });
+    if let Some(line) = line { eprintln!("{line}") }
 }
 
 struct Step { pattern: Option<usize>, access: &'static str, rows_in: usize, rows_out: usize, kept: usize, us: u128 }
@@ -115,4 +152,29 @@ pub(crate) fn var_names(order: &[usize], vars: &std::collections::HashMap<String
         Some((n, _)) => format!("?{n}"),
         None => format!("#{i}"),
     }).collect::<Vec<_>>().join(",")
+}
+
+const TRACE_LIMIT: usize = 256 * 1024;
+
+/// Executes against a single graph and returns the observed BGP plan as text.
+pub fn explain<S: Snapshot>(snapshot: &S, text: &str, options: &Options<'_>) -> Result<String, QueryError> {
+    report(|| query_with(snapshot, text, &Options { raw_ids: true, ..*options }))
+}
+
+/// Executes against a dataset and returns the observed BGP plan as text.
+pub fn explain_dataset<S: Snapshot>(snapshot: &S, dataset: &dyn DatasetView, text: &str, options: &Options<'_>) -> Result<String, QueryError> {
+    report(|| query_dataset_with(snapshot, dataset, text, &Options { raw_ids: true, ..*options }))
+}
+
+fn report(run: impl FnOnce() -> Result<QueryResult, QueryError>) -> Result<String, QueryError> {
+    let (result, lines, truncated) = capture_bounded(TRACE_LIMIT, run);
+    drop(result?);
+    let mut report = String::from("Observed basic graph pattern plan\n");
+    if lines.is_empty() && !truncated { report.push_str("No basic graph pattern was traced.\n"); }
+    for line in lines {
+        report.push_str(&line);
+        report.push('\n');
+    }
+    if truncated { report.push_str("Plan trace truncated.\n"); }
+    Ok(report)
 }

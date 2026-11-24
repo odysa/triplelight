@@ -17,6 +17,10 @@ fn disk_snapshot_cli_survives_process_restart() {
         assert!(disk.status.success(),"{}",String::from_utf8_lossy(&disk.stderr));
         assert_eq!(disk.stdout,memory.stdout);
     }
+    let explain = Command::new(exe).arg("explain").arg(&snapshot).arg(query).arg("--disk").output().unwrap();
+    assert!(explain.status.success(), "{}", String::from_utf8_lossy(&explain.stderr));
+    let report = String::from_utf8(explain.stdout).unwrap();
+    assert!(report.contains("patterns=1 in=1 out=2 "), "{report}");
     let second=Command::new(exe).arg("build-disk").arg(&nt).arg(&snapshot).arg("--parallel-load=1").output().unwrap();
     assert!(!second.status.success());
     std::fs::remove_dir_all(root).unwrap();
