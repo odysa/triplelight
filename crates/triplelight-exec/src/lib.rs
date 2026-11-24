@@ -21,6 +21,7 @@ pub mod phase;
 pub mod plan_trace;
 mod agg;
 mod bgp;
+mod binding;
 mod count;
 mod interrupt;
 mod views;
@@ -45,10 +46,8 @@ use crate::sparql::Query;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
-pub const UNBOUND: TermId = TermId(0);
+pub use binding::{Row, UNBOUND};
 const SCRATCH: u64 = crate::model::id_tag::SCRATCH << 60;
-
-pub type Row = Vec<TermId>;
 
 #[derive(Debug)]
 pub enum QueryResult {
@@ -688,33 +687,11 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
 
     fn eval_extend(&self, inner: &GraphPattern, variable: &Variable, expression: &Expression, input: Vec<Row>) -> Vec<Row> {
-        let i = self.var(variable);
-        let source = match expression {
-            Expression::Variable(v) => self.vars.get(v.as_str()).copied(),
-            _ => None,
-        };
-        let mut alias_ids = HashMap::new();
-        // If an outer solution passed in sideways already binds the target, the BIND result must be
-        // compatible with it (the group's solution is joined with the outer one): equal keeps the row, a
-        // different value drops it, an expression error leaves the outer value (W3C-style `{ BIND(2 AS ?x) }`).
-        self.eval(inner, input).into_iter().filter_map(|mut r| {
-            let id = match source {
-                Some(source) => r.get(source).copied().filter(|&id| id != UNBOUND).map(|id| {
-                    // A scratch ID has already gone through intern. Retain the resolve-and-intern
-                    // check for IDs from the store, but reuse it for repeated input values.
-                    if id.0 >> 60 == crate::model::id_tag::SCRATCH { return id }
-                    if let Some(&id) = alias_ids.get(&id) { return id }
-                    let canonical = self.intern(&self.resolve(id));
-                    if alias_ids.len() < 256 { alias_ids.insert(id, canonical); }
-                    canonical
-                }),
-                None => self.value(expression, &r).map(|term| self.intern(&term)),
-            };
-            if let Some(id) = id {
-                if r[i] == UNBOUND { r[i] = id } else if r[i] != id { return None }
-            }
-            Some(r)
-        }).collect()
+        let target = self.var(variable);
+        let source = if let Expression::Variable(v) = expression { self.vars.get(v.as_str()).copied() } else { None };
+        binding::extend(self.eval(inner, input), target, source,
+            |row| self.value(expression, row).map(|term| self.intern(&term)),
+            |id| self.intern(&self.resolve(id)))
     }
 
     fn eval_minus(&self, left: &GraphPattern, right: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
