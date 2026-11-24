@@ -664,6 +664,17 @@ impl Snapshot for DiskSnapshot {
             }
         }))
     }
+    /// Positioned on a kept order: the first row at or after `(prefix, from)` by the block directory.
+    fn scan_from<'a>(&'a self, perm: Perm, prefix: &[TermId], from: TermId) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
+        let Some(index) = self.kept(perm) else { return triplelight_core::storage::scan_from_by_scan(self, perm, prefix, from) };
+        if prefix.len() >= 3 { return self.scan(perm, prefix) }
+        let mut at = prefix.to_vec();
+        at.push(from);
+        match (index.range(&at), index.range(prefix)) {
+            (Ok(a), Ok(r)) => scan_positions(index, a.start.max(r.start)..r.end),
+            (Err(e), _) | (_, Err(e)) => Box::new(std::iter::once(Err(e))),
+        }
+    }
     /// From the always-kept order that shares `perm`'s first column (SPO, PSO or OSP), block-parallel.
     fn first_keys(&self, perm: Perm) -> Result<Vec<TermId>, StorageError> {
         let kept = match perm { Perm::Spo | Perm::Sop => Perm::Spo, Perm::Pso | Perm::Pos => Perm::Pso, Perm::Osp | Perm::Ops => Perm::Osp };
@@ -686,33 +697,7 @@ impl super::derived_order::KeptOrders for DiskSnapshot {
         let index = self.index(perm);
         match index.range(prefix) {
             Err(e) => Box::new(std::iter::once(Err(e))),
-            Ok(range) => {
-                let mut pos = range.start;
-                Box::new(std::iter::from_fn(move || {
-                    if pos >= range.end {
-                        return None;
-                    }
-                    let end = pos.saturating_add(4096).min(range.end);
-                    let mut batch = TripleBatch::default();
-                    while pos < end {
-                        match index.block_slice(pos, end) {
-                            Ok(rows) => {
-                                pos += rows.len() as u64;
-                                for row in rows {
-                                    for (col, value) in batch.cols.iter_mut().zip(row) {
-                                        col.push(value);
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                pos = range.end;
-                                return Some(Err(e));
-                            }
-                        }
-                    }
-                    Some(Ok(batch))
-                }))
-            }
+            Ok(range) => scan_positions(index, range),
         }
     }
     fn count_kept(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
@@ -722,6 +707,35 @@ impl super::derived_order::KeptOrders for DiskSnapshot {
     fn seek_kept(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
         self.index(perm).seek_value(prefix, target)
     }
+}
+
+/// Rows `range` (positions) of `index` as 4096-row batches.
+fn scan_positions(index: &DiskIndex, range: std::ops::Range<u64>) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + '_> {
+    let mut pos = range.start;
+    Box::new(std::iter::from_fn(move || {
+        if pos >= range.end {
+            return None;
+        }
+        let end = pos.saturating_add(4096).min(range.end);
+        let mut batch = TripleBatch::default();
+        while pos < end {
+            match index.block_slice(pos, end) {
+                Ok(rows) => {
+                    pos += rows.len() as u64;
+                    for row in rows {
+                        for (col, value) in batch.cols.iter_mut().zip(row) {
+                            col.push(value);
+                        }
+                    }
+                }
+                Err(e) => {
+                    pos = range.end;
+                    return Some(Err(e));
+                }
+            }
+        }
+        Some(Ok(batch))
+    }))
 }
 
 /// One named graph of an `RDFSNAP5` base: the graph-first quad orders with `g` bound, over the base's dictionary.
@@ -946,6 +960,22 @@ mod tests {
         let full = std::sync::Arc::new(DiskSnapshot::open(&six).unwrap());
         let derived = std::sync::Arc::new(DiskSnapshot::open(&four).unwrap());
         derived.verify().unwrap();
+        // Positioned scans match a scan that skips, on kept and derived orders, at, between and past keys.
+        for view in [&*full, &*derived] {
+            for perm in Perm::ALL {
+                let keys = view.first_keys(perm).unwrap();
+                let collect = |it: Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + '_>| -> Vec<[TermId; 3]> {
+                    it.flat_map(|b| { let b = b.unwrap(); (0..b.len()).map(move |i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]).collect::<Vec<_>>() }).collect()
+                };
+                for (i, &k) in keys.iter().enumerate().step_by(7) {
+                    let seconds = view.first_keys(perm).unwrap(); // any IDs serve as `from` values
+                    for from in [TermId(0), k, TermId(k.0 + 1), seconds[i % seconds.len()], TermId(u64::MAX)] {
+                        assert_eq!(collect(view.scan_from(perm, &[], from)), collect(triplelight_core::storage::scan_from_by_scan(view, perm, &[], from)), "{perm:?} [] {from:?}");
+                        assert_eq!(collect(view.scan_from(perm, &[k], from)), collect(triplelight_core::storage::scan_from_by_scan(view, perm, &[k], from)), "{perm:?} [{k:?}] {from:?}");
+                    }
+                }
+            }
+        }
         // The block-parallel first keys match a scan of every order, derived ones included.
         for view in [&*full, &*derived] {
             for perm in Perm::ALL {

@@ -22,6 +22,7 @@ impl Dictionary for Backend {
 impl Snapshot for Backend {
     fn scan<'a>(&'a self, p: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + 'a> { each!(self, s => s.scan(p, prefix)) }
     fn scan_for_stats(&self) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + '_> { each!(self, s => s.scan_for_stats()) }
+    fn scan_from<'a>(&'a self, p: Perm, prefix: &[TermId], from: TermId) -> Box<dyn Iterator<Item=Result<TripleBatch, StorageError>> + 'a> { each!(self, s => s.scan_from(p, prefix, from)) }
     fn first_keys(&self, p: Perm) -> Result<Vec<TermId>, StorageError> { each!(self, s => s.first_keys(p)) }
     fn count(&self, p: Perm, prefix: &[TermId]) -> Result<u64, StorageError> { each!(self, s => s.count(p, prefix)) }
     fn seek(&self, p: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> { each!(self, s => s.seek(p, prefix, target)) }
