@@ -157,6 +157,23 @@ fn main() {
                 Err(e) => { eprintln!("error: {e}"); std::process::exit(1) }
             }
         }
+        Some("validate") => {
+            // SHACL Core (#108). Exit status: 0 the data conforms, 1 it does not (the report says why), 2 usage or I/O,
+            // 3 a syntax error in either document, 4 shapes SHACL rejects or this build does not support.
+            let [data, shapes] = [args.get(2), args.get(3)].map(|p| p.cloned().unwrap_or_else(|| {
+                eprintln!("usage: triplelight validate <data.nt|.ttl> <shapes.ttl|.nt>"); std::process::exit(2)
+            }));
+            let read = |path: &str| std::fs::read(path).unwrap_or_else(|e| { eprintln!("{path}: {e}"); std::process::exit(2) });
+            let format = |path: &str| if path.ends_with(".nt") { triplelight::rdf::Format::NTriples } else { triplelight::rdf::Format::Turtle };
+            match triplelight::shacl::validate_documents(&read(&data), format(&data), &read(&shapes), format(&shapes)) {
+                Ok(report) => {
+                    for t in report.to_triples() { println!("{t} .") }
+                    std::process::exit(if report.conforms { 0 } else { 1 })
+                }
+                Err(e @ triplelight::shacl::DocumentError::Syntax { .. }) => { eprintln!("error: {e}"); std::process::exit(3) }
+                Err(e) => { eprintln!("error: {e}"); std::process::exit(4) }
+            }
+        }
         Some("stress-commit") => {
             // Test helper: commit one triple per transaction and report each acknowledgement.
             let store = triplelight::store::Store::open(&args[2], None, 1).expect("open store");
@@ -177,7 +194,7 @@ fn main() {
                 std::process::exit(2);
             }
         }
-        _ => eprintln!("usage: triplelight query <data> <sparql> [--entailment=simple|rdfs] | triplelight explain <data> <sparql> | triplelight build-disk <source> <dir> | triplelight verify <dir>\n\
+        _ => eprintln!("usage: triplelight query <data> <sparql> [--entailment=simple|rdfs] | triplelight explain <data> <sparql> | triplelight validate <data> <shapes> | triplelight build-disk <source> <dir> | triplelight verify <dir>\n\
             with --features server: triplelight serve <data.nt|.ttl> [port] | triplelight serve-store <dir> [port] [--init data.nt] [--read-only]"),
     }
 }

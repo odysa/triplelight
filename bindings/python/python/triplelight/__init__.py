@@ -14,10 +14,11 @@ from dataclasses import dataclass
 from typing import Iterator, Optional
 
 from . import _triplelight
-from ._triplelight import GraphStateError, LockedError, TripleLightError, StorageError, SyntaxError, UnsupportedError
+from ._triplelight import GraphStateError, LockedError, ShapesError, TripleLightError, StorageError, SyntaxError, UnsupportedError
 
-__all__ = ["Database", "Snapshot", "IRI", "BNode", "Literal", "Triple", "Result",
-           "TripleLightError", "SyntaxError", "UnsupportedError", "StorageError", "LockedError", "GraphStateError"]
+__all__ = ["Database", "Snapshot", "IRI", "BNode", "Literal", "Triple", "Result", "ValidationReport", "validate",
+           "TripleLightError", "SyntaxError", "UnsupportedError", "StorageError", "LockedError", "GraphStateError",
+           "ShapesError"]
 
 
 
@@ -159,3 +160,25 @@ class Database:
 
     def __enter__(self): return self
     def __exit__(self, *exc): self.close(); return False
+
+
+class ValidationReport:
+    """A SHACL validation report: `conforms`, and `triples`, the report graph (`sh:ValidationReport` and its results)."""
+
+    def __init__(self, conforms: bool, graph: Result):
+        self.conforms = conforms
+        self.triples: list[tuple] = graph.triples
+
+    def __bool__(self) -> bool: return self.conforms
+    def __repr__(self) -> str: return f"ValidationReport(conforms={self.conforms}, {len(self.triples)} triples)"
+
+
+def validate(data: str, shapes: str, data_format: str = "turtle", shapes_format: str = "turtle") -> ValidationReport:
+    """Validate a data document against a shapes document with SHACL Core.
+
+    Each document is RDF text, "turtle" (the default) or "ntriples". Data that violates the shapes is not an error: the
+    report says why (`conforms` is False). A document that does not parse raises `SyntaxError`, shapes SHACL rejects
+    raise `ShapesError`, and a feature this build does not provide raises `UnsupportedError`.
+    """
+    conforms, raw = _triplelight.validate(data, shapes, data_format, shapes_format)
+    return ValidationReport(conforms, Result(raw))

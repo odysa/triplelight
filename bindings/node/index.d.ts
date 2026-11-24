@@ -63,7 +63,18 @@ export class Snapshot {
   queryJson(sparql: string, options?: QueryOptions): Promise<string>;
 }
 
-export class TripleLightError extends Error { kind: "SyntaxError" | "UnsupportedError" | "StorageError" | "LockedError" | "GraphStateError" }
+/** A SHACL validation report: `conforms`, and the report graph (`sh:ValidationReport` and its results) as triples. */
+export interface ValidationReport {
+  conforms: boolean;
+  triples: Array<{ subject: NamedNode | BlankNode; predicate: NamedNode; object: Term }>;
+}
+export interface ValidateOptions { dataFormat?: "turtle" | "ntriples"; shapesFormat?: "turtle" | "ntriples" }
+/** SHACL Core validation of a data document against a shapes document. Violations are a report (`conforms` false); a
+ * document that does not parse throws `SyntaxError`, shapes SHACL rejects throw `ShapesError`. */
+export function validate(data: string, shapes: string, options?: ValidateOptions): ValidationReport;
+
+export class TripleLightError extends Error { kind: "SyntaxError" | "UnsupportedError" | "StorageError" | "LockedError" | "GraphStateError" | "ShapesError" }
+export class ShapesError extends TripleLightError {}
 export class SyntaxError extends TripleLightError {}
 export class UnsupportedError extends TripleLightError {}
 export class GraphStateError extends TripleLightError {}
