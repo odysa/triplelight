@@ -17,6 +17,7 @@ impl Store {
     /// Returns the number of indexed tokens. A concurrent compaction discards the candidate.
     /// The budget controls sorter buffers and the maximum size of each normalization buffer.
     pub fn build_text_index(&self, memory_mb: usize) -> io::Result<u64> {
+        self.check_poisoned()?;
         let budget = memory_mb.checked_mul(MIB).filter(|bytes| *bytes != 0)
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "invalid text index build budget"))?;
         let literal_limit = (budget / 16).min(MAX_ANALYZED_BYTES);
@@ -53,11 +54,27 @@ impl Store {
         let file = sort.scratch_dir().join("text-index");
         let n = write_index(&mut sort, &file, generation, manifest)?;
         self.with_generation(generation, |root| {
+            self.check_poisoned()?;
             fs::rename(&file, root.join(format!("text-{generation}.v1")))?;
             File::open(root)?.sync_all()
         })
         .ok_or_else(generation_changed)??;
         Ok(n)
+    }
+}
+
+/// Only used after opening or publishing a base while holding the store's exclusive lock.
+pub(super) fn sweep(root: &Path, active_generation: u64) {
+    let Ok(entries) = fs::read_dir(root) else { return; };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let generation = name.to_str().and_then(|name| name.strip_prefix("text-"))
+            .and_then(|name| name.strip_suffix(".v1")).and_then(|name| name.parse::<u64>().ok());
+        if generation.is_some_and(|generation| generation != active_generation) {
+            // An old reader that opened the index holds a descriptor. A later first lookup can use scalar.
+            // When enabling cross-process snapshot pins, respect them here as well as in base cleanup.
+            let _ = fs::remove_file(entry.path());
+        }
     }
 }
 

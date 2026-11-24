@@ -85,12 +85,16 @@ fn text_index_preserves_store_bytes_and_sorts_unique_postings() {
     let updated = answer(&store);
     assert!(updated.contains("urn:new"));
     store.compact().unwrap();
+    assert!(!root.join("text-0.v1").exists());
+    assert_eq!(pinned.text_candidates(&["graph"], 8).unwrap().len(), 2);
     assert!(store.snapshot().text_candidates(&["graph"], 8).is_none());
     assert_eq!(answer(&store), updated);
     assert_eq!(store.build_text_index(2).unwrap(), 2);
     drop(store);
 
+    fs::write(root.join("text-0.v1"), "abandoned").unwrap();
     let store = reopen();
+    assert!(!root.join("text-0.v1").exists());
     assert_eq!(store.snapshot().text_candidates(&["graph"], 8).unwrap().len(), 3);
     assert_eq!(pinned.text_candidates(&["graph"], 8).unwrap().len(), 2);
     assert_eq!(answer(&store), updated);

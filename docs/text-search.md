@@ -36,8 +36,11 @@ triplelight text-index /path/to/store
 The builder requires the unified disk dictionary. It visits the immutable
 base, including its named-graph dictionary entries, and writes
 `text-<generation>.v1` outside the base directory. The active base and WAL
-remain authoritative. Reopen the store to use the sidecar. TripleLight
-checks its generation, manifest hash, analyzer version and payload hash.
+remain authoritative. Reopen the store after building the sidecar. The
+first eligible text filter checks its generation, manifest hash, analyzer
+version, and payload hash. Later filters on that snapshot reuse the result
+of the check. An open snapshot that already cached a missing index keeps
+using scalar matching.
 A simple positive filter with a constant search string can check eligible
 stored literal IDs against its postings. Other expressions, dirty
 overlays, large posting lists, and missing or invalid sidecars use scalar
@@ -49,5 +52,7 @@ and normalized string is one-sixteenth of the budget, up to 8 MiB. Dictionary de
 and I/O buffers contribute to process memory separately. An input larger
 than the analyzer can handle aborts the build. Temporary files are cleaned
 up on ordinary error paths. The completed file is synced and published
-atomically. A crash or base change can leave the store without a usable
-index. The scalar function remains available.
+atomically. The store removes retired sidecar paths after a successful
+compaction or reopen. A pinned snapshot that already opened a retired
+sidecar keeps its file descriptor. A pinned snapshot whose first lookup
+comes after the file is removed can still use scalar matching.

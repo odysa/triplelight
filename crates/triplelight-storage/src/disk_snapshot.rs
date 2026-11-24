@@ -14,6 +14,20 @@ use super::base_format::{ALL_ORDERS, CATALOG_FILE, FILES, QUAD_FILES, REQUIRED_O
 fn bad(s: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, s)
 }
+/// Hashes the exact bytes consumed by the existing manifest parser.
+struct ManifestReader<R> {
+    input: R,
+    hash: Sha256,
+}
+
+impl<R: Read> Read for ManifestReader<R> {
+    fn read(&mut self, out: &mut [u8]) -> io::Result<usize> {
+        let n = self.input.read(out)?;
+        self.hash.update(&out[..n]);
+        Ok(n)
+    }
+}
+
 pub(super) fn digest(path: &Path) -> io::Result<[u8; 32]> {
     let mut f = BufReader::new(File::open(path)?);
     let mut hash = Sha256::new();
@@ -195,7 +209,7 @@ pub struct DiskSnapshot {
     /// not a tmpfs `/tmp` whose pages a cgroup charges as memory).
     dir: std::path::PathBuf,
     dictionary: DictionaryBackend,
-    text_index: Option<crate::store::text_postings::TextIndex>,
+    text_index: std::sync::OnceLock<Option<crate::store::text_postings::TextIndex>>,
     manifest_sha: [u8; 32],
     /// The six triple orders in `Perm::ALL` order; `None` for an order this base does not keep (SOP and OPS are then
     /// served from the others, see `derived_order`).
@@ -259,11 +273,10 @@ impl DiskSnapshot {
     /// Files must remain immutable after opening; previously cached blocks are not re-read automatically.
     pub fn open(dir: impl AsRef<Path>) -> io::Result<Self> {
         let dir = dir.as_ref();
-        let mut manifest_bytes = Vec::new();
-        File::open(dir.join("MANIFEST"))?.take(4097).read_to_end(&mut manifest_bytes)?;
-        if manifest_bytes.len() > 4096 { return Err(bad("base manifest too large")); }
-        let manifest_sha = Sha256::digest(&manifest_bytes).into();
-        let mut manifest = manifest_bytes.as_slice();
+        let mut manifest = ManifestReader {
+            input: BufReader::new(File::open(dir.join("MANIFEST"))?),
+            hash: Sha256::new(),
+        };
         let mut magic = [0; 8];
         manifest.read_exact(&mut magic)?;
         // RDFSNAP2: one legacy dictionary file; RDFSNAP3: dictionary.term + dictionary.id; RDFSNAP4: one unified file.
@@ -312,6 +325,7 @@ impl DiskSnapshot {
         if manifest.read(&mut extra)? != 0 {
             return Err(bad("manifest trailing bytes"));
         }
+        let manifest_sha = manifest.hash.finalize().into();
         let (dictionary, index_offset) = if version >= 4 {
             use super::lazy_dictionary::{DictionaryCache, LazyIndex, Order, UNIFIED_FILE};
             let unified = LazyIndex::open_shared(&dir.join(UNIFIED_FILE), Order::Unified, DictionaryCache::with_shares(shares))?;
@@ -381,7 +395,7 @@ impl DiskSnapshot {
         };
         Ok(Self {
             dictionary,
-            text_index: crate::store::text_postings::TextIndex::open(dir, &manifest_sha).ok(),
+            text_index: Default::default(),
             manifest_sha,
             indexes,
             named,
@@ -662,7 +676,8 @@ impl Dictionary for DiskSnapshot {
 impl Snapshot for DiskSnapshot {
     fn has_rdf12_terms(&self) -> bool { self.rdf12 }
     fn text_candidates(&self, tokens: &[&str], limit: usize) -> Option<Vec<TermId>> {
-        self.text_index.as_ref()?.candidates(tokens, limit).ok()
+        self.text_index.get_or_init(|| crate::store::text_postings::TextIndex::open(&self.dir, &self.manifest_sha).ok())
+            .as_ref()?.candidates(tokens, limit).ok()
     }
     fn object_memo(&self) -> Option<&triplelight_core::storage::ObjectMemo> { Some(&self.object_memo) }
     fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
