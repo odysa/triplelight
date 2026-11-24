@@ -247,6 +247,8 @@ fn fast_group_matches_general_group() {
     let run = |q: &str| run_with(q, false);
     let queries = [
         "SELECT ?g (COUNT(*) AS ?n) (COUNT(?v) AS ?c) (SUM(?v) AS ?s) (AVG(?v) AS ?a) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } } GROUP BY ?g",
+        "SELECT ?g (COUNT(*) AS ?n) WHERE { VALUES (?g ?v) { (<urn:b> UNDEF) (UNDEF 1) (<urn:a> 2) (<urn:b> 3) (UNDEF UNDEF) } } GROUP BY ?g",
+        "SELECT ?g (COUNT(?v) AS ?n) WHERE { VALUES (?g ?v) { (<urn:b> UNDEF) (UNDEF 1) (<urn:a> 2) (<urn:b> 3) (UNDEF UNDEF) } } GROUP BY ?g",
         "SELECT ?g (MIN(?v) AS ?lo) (MAX(?v) AS ?hi) (SAMPLE(?v) AS ?sm) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } } GROUP BY ?g",
         "SELECT (COUNT(DISTINCT ?g) AS ?n) (SUM(DISTINCT ?v) AS ?s) (COUNT(DISTINCT *) AS ?d) WHERE { ?x <http://ex/g> ?g OPTIONAL { ?x <http://ex/v> ?v } }",
         "SELECT (COUNT(*) AS ?n) (SUM(?v) AS ?s) (AVG(?v) AS ?a) WHERE { ?x <http://ex/none> ?v }",
@@ -1154,6 +1156,29 @@ fn memory_budget_stops_queries_that_do_not_fit_and_releases_everything() {
     r.try_resize(100).unwrap();
     drop(r);
     assert_eq!(b.used(), 0);
+}
+
+
+#[test]
+fn count_one_key_charges_its_group_table() {
+    use triplelight::exec::{query_with, MemoryBudget, Options, QueryErrorKind};
+
+    let values = (0..4096).map(|index| index.to_string()).collect::<Vec<_>>().join(" ");
+    let q = format!(
+        "SELECT ?key (COUNT(*) AS ?n) WHERE {{ VALUES ?key {{ {values} }} }} GROUP BY ?key"
+    );
+    let snapshot = store();
+    let limited = MemoryBudget::new(4096 * 96);
+    let opts = Options { memory_budget: Some(&limited), ..Default::default() };
+    assert_eq!(query_with(&snapshot, &q, &opts).unwrap_err().kind, QueryErrorKind::ResourceLimit);
+    assert_eq!(limited.used(), 0);
+
+    let roomy = MemoryBudget::new(1 << 20);
+    let opts = Options { memory_budget: Some(&roomy), ..Default::default() };
+    let with = query_with(&snapshot, &q, &opts).unwrap();
+    let without = query(&snapshot, &q).unwrap();
+    assert_eq!(format!("{with:?}"), format!("{without:?}"));
+    assert_eq!(roomy.used(), 0);
 }
 
 #[test]

@@ -1,7 +1,8 @@
 //! SPARQL expression evaluation over resolved terms. `None` is the SPARQL "error" value.
 mod extend;
 pub(crate) mod order;
-use triplelight_rdf::vocab::xsd;
+pub(crate) mod text;
+use triplelight_rdf::vocab::{rdf, xsd};
 use triplelight_rdf::{BlankNode, Literal, NamedNode, Term, Variable};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -546,6 +547,17 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
                 _ => sha2::Sha512::digest(x.as_bytes()).to_vec(),
             };
             Some(simple(bytes.iter().map(|b| format!("{b:02x}")).collect::<String>()))
+        }
+        Function::Custom(f) if f.as_str() == text::MATCHES_IRI => {
+            if args.len() != 2 { return None; }
+            let left = a(0)?;
+            let right = a(1)?;
+            let left = lit(&left)?;
+            let right = lit(&right)?;
+            if [left, right].into_iter().any(|l| l.datatype() != xsd::STRING && l.datatype() != rdf::LANG_STRING) {
+                return None;
+            }
+            Some(bool_term(text::matches(left.value(), right.value())))
         }
         Function::Custom(f) => xsd_cast(f.as_str(), &a(0)?),
         // SPARQL 1.2 §17.4.6: TRIPLE errors unless (s, p, o) is an RDF triple (IRI or blank-node subject, IRI
