@@ -2,8 +2,10 @@
 use crate::blank_node::BlankNode;
 use crate::literal::Literal;
 use crate::named_node::NamedNode;
+use crate::syntax::{TermParseError, MAX_NUMBER_OF_NESTED_TRIPLES};
 use crate::{BlankNodeRef, LiteralRef, NamedNodeRef};
 use std::fmt;
+use std::str::FromStr;
 
 #[derive(Eq, PartialEq, Debug, Clone, Hash)]
 pub enum NamedOrBlankNode {
@@ -981,4 +983,131 @@ pub fn triple_term_depth(term: TermRef<'_>) -> usize {
         cur = t.object.as_ref();
     }
     depth
+}
+
+impl FromStr for Term {
+    type Err = TermParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (term, left) = Term::read(s, 0)?;
+        if !left.is_empty() {
+            return Err(Self::Err::msg("Invalid term serialization"));
+        }
+        Ok(term)
+    }
+}
+
+impl FromStr for Triple {
+    type Err = TermParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (triple, left) = Triple::read(s, 0)?;
+        if !matches!(left.trim(), "" | ".") {
+            return Err(Self::Err::msg("Invalid triple serialization"));
+        }
+        Ok(triple)
+    }
+}
+
+impl FromStr for Quad {
+    type Err = TermParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (triple, left) = Triple::read(s, 0)?;
+        if matches!(left.trim(), "" | ".") {
+            return Ok(triple.in_graph(GraphName::DefaultGraph));
+        }
+        let (graph_name, left) = Term::read(left, 0)?;
+        if !matches!(left.trim(), "" | ".") {
+            return Err(Self::Err::msg("Invalid triple serialization"));
+        }
+        Ok(triple.in_graph(match graph_name {
+            Term::NamedNode(graph_name) => GraphName::from(graph_name),
+            Term::BlankNode(graph_name) => GraphName::from(graph_name),
+            Term::Literal(_) => {
+                return Err(TermParseError::msg(
+                    "Literals are not allowed in graph name position",
+                ));
+            }
+            #[cfg(feature = "rdf-12")]
+            Term::Triple(_) => {
+                return Err(TermParseError::msg(
+                    "Triple terms are not allowed in graph name position",
+                ));
+            }
+        }))
+    }
+}
+
+impl Term {
+    pub(crate) fn read(s: &str, number_of_recursive_calls: usize) -> Result<(Term, &str), TermParseError> {
+        if number_of_recursive_calls == MAX_NUMBER_OF_NESTED_TRIPLES {
+            return Err(TermParseError::msg(
+                "Too many nested triples. The parser fails here to avoid a stack overflow.",
+            ));
+        }
+        let s = s.trim();
+        #[allow(unused_variables, clippy::allow_attributes)]
+        if let Some(remain) = s.strip_prefix("<<(") {
+            #[cfg(feature = "rdf-12")]
+            {
+                let (triple, remain) = Triple::read(remain, number_of_recursive_calls + 1)?;
+                let remain = remain.trim_start();
+                if let Some(remain) = remain.strip_prefix(")>>") {
+                    Ok((triple.into(), remain))
+                } else {
+                    Err(TermParseError::msg(
+                        "Triple term serialization must be enclosed between <<( and )>>",
+                    ))
+                }
+            }
+            #[cfg(not(feature = "rdf-12"))]
+            {
+                Err(TermParseError::msg("RDF 1.2 is not supported"))
+            }
+        } else if s.starts_with('<') {
+            let (term, remain) = NamedNode::read(s)?;
+            Ok((term.into(), remain))
+        } else if s.starts_with('_') {
+            let (term, remain) = BlankNode::read(s)?;
+            Ok((term.into(), remain))
+        } else {
+            let (term, remain) = Literal::read(s)?;
+            Ok((term.into(), remain))
+        }
+    }
+}
+
+impl Triple {
+    pub(crate) fn read(
+        s: &str,
+        number_of_recursive_calls: usize,
+    ) -> Result<(Triple, &str), TermParseError> {
+        let s = s.trim();
+        let (subject, remain) = Term::read(s, number_of_recursive_calls + 1)?;
+        let (predicate, remain) = NamedNode::read(remain)?;
+        let (object, remain) = Term::read(remain, number_of_recursive_calls + 1)?;
+        Ok((
+            Triple {
+                subject: match subject {
+                    Term::NamedNode(s) => s.into(),
+                    Term::BlankNode(s) => s.into(),
+                    Term::Literal(_) => {
+                        return Err(TermParseError::msg(
+                            "Literals are not allowed in subject position",
+                        ));
+                    }
+                    #[cfg(feature = "rdf-12")]
+                    Term::Triple(_) => {
+                        return Err(TermParseError::msg(
+                            "Triple terms are not allowed in subject position",
+                        ));
+                    }
+                },
+                predicate,
+                object,
+            },
+            remain,
+        ))
+    }
 }

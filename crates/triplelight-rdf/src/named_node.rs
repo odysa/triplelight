@@ -1,4 +1,7 @@
 // Derived from oxrdf 0.3.5 (MIT); see THIRD_PARTY_NOTICES.md.
+use crate::syntax::{read_hexa_char, TermParseError, TermParseErrorKind};
+use std::borrow::Cow;
+use std::str::FromStr;
 use triplelight_iri::Iri;
 
 /// An invalid IRI (`oxiri::IriParseError` in oxrdf).
@@ -175,5 +178,65 @@ impl PartialOrd<NamedNodeRef<'_>> for NamedNode {
     #[inline]
     fn partial_cmp(&self, other: &NamedNodeRef<'_>) -> Option<Ordering> {
         self.as_ref().partial_cmp(other)
+    }
+}
+
+impl FromStr for NamedNode {
+    type Err = TermParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (term, left) = NamedNode::read(s)?;
+        if !left.is_empty() {
+            return Err(Self::Err::msg(
+                "Named node serialization should end with a >",
+            ));
+        }
+        Ok(term)
+    }
+}
+
+impl NamedNode {
+    pub(crate) fn read(s: &str) -> Result<(NamedNode, &str), TermParseError> {
+        let s = s.trim();
+        if let Some(remain) = s.strip_prefix('<') {
+            let end = remain
+                .find('>')
+                .ok_or_else(|| TermParseError::msg("Named node serialization should end with a >"))?;
+            let (value, remain) = remain.split_at(end);
+            let remain = &remain[1..];
+            let value = if value.contains('\\') {
+                let mut escaped = String::with_capacity(value.len());
+                let mut chars = value.chars();
+                while let Some(c) = chars.next() {
+                    if c == '\\' {
+                        match chars.next() {
+                            Some('u') => escaped.push(read_hexa_char(&mut chars, 4)?),
+                            Some('U') => escaped.push(read_hexa_char(&mut chars, 8)?),
+                            Some(c) => {
+                                escaped.push('\\');
+                                escaped.push(c);
+                            }
+                            None => escaped.push('\\'),
+                        }
+                    } else {
+                        escaped.push(c);
+                    }
+                }
+                Cow::Owned(escaped)
+            } else {
+                Cow::Borrowed(value)
+            };
+            let term = NamedNode::new(value.as_ref()).map_err(|error| {
+                TermParseError(TermParseErrorKind::Iri {
+                    value: value.into_owned(),
+                    error,
+                })
+            })?;
+            Ok((term, remain))
+        } else {
+            Err(TermParseError::msg(
+                "Named node serialization should start with a <",
+            ))
+        }
     }
 }
