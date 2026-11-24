@@ -61,7 +61,16 @@ impl<'a> Views<'a> {
         self.named.iter().map(|(name, graph)| (*name, graph.as_ref())).collect()
     }
 
-    pub(crate) fn virtual_terms(&self) -> &[(Term, TermId)] {
-        &self.virtual_terms
+    /// A synthetic predicate can participate in a query even when absent from the store dictionary.
+    pub(crate) fn virtual_id(&self, term: &Term) -> Option<TermId> {
+        self.virtual_terms.iter().find(|(value, _)| value == term).map(|(_, id)| *id)
+    }
+
+    /// Preallocate the virtual predicate IDs before expression evaluation interns any terms.
+    pub(crate) fn seeded_scratch(&self) -> (HashMap<Term, TermId>, Vec<Term>) {
+        (
+            self.virtual_terms.iter().cloned().collect(),
+            self.virtual_terms.iter().map(|(term, _)| term.clone()).collect(),
+        )
     }
 }
