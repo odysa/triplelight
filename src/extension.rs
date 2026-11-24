@@ -1,7 +1,10 @@
 //! Registration of linked TripleLight extensions.
+use crate::exec::builtin_iri;
+use crate::exec::udf::{FunctionLookup, RegisteredFunction};
+pub use crate::exec::udf::{FunctionOptions, ScalarFunction};
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
-use triplelight_core::rdf::Triple;
+use triplelight_core::rdf::{NamedNode, Triple};
 pub use triplelight_core::storage::EntailmentProvider;
 
 /// An extension could not be registered or used.
@@ -47,9 +50,20 @@ pub trait Extension: Send + Sync {
 pub struct Registrar {
     entailment: Option<Arc<dyn EntailmentProvider>>,
     validator: Option<Arc<dyn Validator>>,
+    functions: BTreeMap<String, RegisteredFunction>,
 }
 
 impl Registrar {
+    /// Stages a scalar function. All of the extension's capabilities publish together.
+    pub fn function(
+        &mut self,
+        iri: &str,
+        options: FunctionOptions,
+        callback: impl ScalarFunction,
+    ) -> Result<(), ExtensionError> {
+        insert_function(&mut self.functions, iri, options, callback)
+    }
+
     pub fn entailment(
         &mut self,
         provider: impl EntailmentProvider + 'static,
@@ -88,7 +102,16 @@ const OFFICIAL: [(&str, bool); 2] = [
 ];
 
 #[derive(Clone, Default)]
-pub(crate) struct Registry(BTreeMap<String, Registrar>);
+pub(crate) struct Registry {
+    extensions: BTreeMap<String, Registrar>,
+    functions: BTreeMap<String, RegisteredFunction>,
+}
+
+impl FunctionLookup for Registry {
+    fn scalar(&self, iri: &str) -> Option<&RegisteredFunction> {
+        self.functions.get(iri)
+    }
+}
 
 impl Registry {
     pub(crate) fn list(&self) -> Vec<ExtensionInfo> {
@@ -97,10 +120,10 @@ impl Registry {
             .map(|&(name, compiled_in)| ExtensionInfo {
                 name: name.into(),
                 compiled_in,
-                loaded: self.0.contains_key(name),
+                loaded: self.extensions.contains_key(name),
             })
             .chain(
-                self.0
+                self.extensions
                     .keys()
                     .filter(|name| !is_official(name))
                     .map(|name| ExtensionInfo {
@@ -113,7 +136,7 @@ impl Registry {
     }
 
     pub(crate) fn entailment(&self, name: &str) -> Option<&dyn EntailmentProvider> {
-        self.0.get(name)?.entailment.as_deref()
+        self.extensions.get(name)?.entailment.as_deref()
     }
 
     pub(crate) fn validate(
@@ -122,7 +145,7 @@ impl Registry {
         data: &[Triple],
         shapes: &[Triple],
     ) -> Result<Validation, ExtensionError> {
-        self.0
+        self.extensions
             .get(name)
             .and_then(|entry| entry.validator.as_deref())
             .ok_or_else(|| {
@@ -148,7 +171,7 @@ impl ExtensionRegistry {
 
     /// Loads a linked official extension by name.
     pub fn load(&self, name: &str) -> Result<(), ExtensionError> {
-        if self.0.read().unwrap().0.contains_key(name) {
+        if self.0.read().unwrap().extensions.contains_key(name) {
             return Ok(());
         }
         #[cfg(feature = "rdfs")]
@@ -177,6 +200,23 @@ impl ExtensionRegistry {
         self.publish(extension, false)
     }
 
+    /// Registers a scalar function for future snapshots of this database.
+    pub fn register_function(
+        &self,
+        iri: &str,
+        options: FunctionOptions,
+        callback: impl ScalarFunction,
+    ) -> Result<(), ExtensionError> {
+        let iri = function_iri(iri)?;
+        let function = RegisteredFunction::new(options, callback);
+        let mut registry = self.0.write().unwrap();
+        if registry.functions.contains_key(&iri) {
+            return Err(duplicate_function(&iri));
+        }
+        Arc::make_mut(&mut registry).functions.insert(iri, function);
+        Ok(())
+    }
+
     fn publish(&self, extension: &dyn Extension, idempotent: bool) -> Result<(), ExtensionError> {
         let name = extension.name();
         if name.is_empty() {
@@ -193,23 +233,63 @@ impl ExtensionRegistry {
                 )))
             }
         };
-        if self.0.read().unwrap().0.contains_key(name) {
+        if self.0.read().unwrap().extensions.contains_key(name) {
             return duplicate();
         }
         let mut stage = Registrar::default();
         extension.register(&mut stage)?;
-        if stage.entailment.is_none() && stage.validator.is_none() {
+        if stage.entailment.is_none() && stage.validator.is_none() && stage.functions.is_empty() {
             return Err(ExtensionError::InvalidRegistration(format!(
                 "extension {name:?} declared no capabilities"
             )));
         }
         let mut registry = self.0.write().unwrap();
-        if registry.0.contains_key(name) {
+        if registry.extensions.contains_key(name) {
             return duplicate();
         }
-        Arc::make_mut(&mut registry).0.insert(name.into(), stage);
+        if let Some(iri) = stage
+            .functions
+            .keys()
+            .find(|iri| registry.functions.contains_key(*iri))
+        {
+            return Err(duplicate_function(iri));
+        }
+        let registry = Arc::make_mut(&mut registry);
+        registry.functions.append(&mut stage.functions);
+        registry.extensions.insert(name.into(), stage);
         Ok(())
     }
+}
+
+fn function_iri(iri: &str) -> Result<String, ExtensionError> {
+    if builtin_iri(iri) {
+        return Err(ExtensionError::InvalidRegistration(format!(
+            "built-in function <{iri}> is reserved"
+        )));
+    }
+    NamedNode::new(iri)
+        .map(|iri| iri.into_string())
+        .map_err(|err| {
+            ExtensionError::InvalidRegistration(format!("invalid function IRI {iri:?}: {err}"))
+        })
+}
+
+fn duplicate_function(iri: &str) -> ExtensionError {
+    ExtensionError::InvalidRegistration(format!("function <{iri}> is already registered"))
+}
+
+fn insert_function(
+    functions: &mut BTreeMap<String, RegisteredFunction>,
+    iri: &str,
+    options: FunctionOptions,
+    callback: impl ScalarFunction,
+) -> Result<(), ExtensionError> {
+    let iri = function_iri(iri)?;
+    if functions.contains_key(&iri) {
+        return Err(duplicate_function(&iri));
+    }
+    functions.insert(iri, RegisteredFunction::new(options, callback));
+    Ok(())
 }
 
 fn is_official(name: &str) -> bool {

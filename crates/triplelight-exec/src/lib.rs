@@ -18,6 +18,10 @@ macro_rules! on_data {
 }
 
 pub mod phase;
+#[doc(hidden)]
+pub use expr::udf;
+#[doc(hidden)]
+pub use expr::builtin_iri;
 pub mod plan_trace;
 mod agg;
 mod bgp;
@@ -184,7 +188,7 @@ pub enum Entailment {
 }
 
 pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
-    catching_storage(|| run(snap, None, text, opts, None))
+    query_with_extensions(snap, None, text, opts, udf::QueryExtensions::default())
 }
 
 /// Storage reads inside evaluation unwind with `StorageFailure`; turn that into a `Storage` error.
@@ -205,9 +209,9 @@ fn catching_storage<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, Q
     }
 }
 
-fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opts: &Options<'_>, provider: Option<&dyn storage::EntailmentProvider>) -> Result<QueryResult, QueryError> {
+fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opts: &Options<'_>, extensions: udf::QueryExtensions<'_>) -> Result<QueryResult, QueryError> {
     let q = phase::timed(&phase::PARSE_NS, || crate::sparql::parse_query(text, None)).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
-    run_query(snap, dataset, &q, opts, provider)
+    run_query(snap, dataset, &q, opts, extensions)
 }
 
 /// Evaluates `text` against an RDF dataset (task #36): `snap` is the dataset's stored default graph and dictionary,
@@ -220,7 +224,7 @@ fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opt
 /// `Unsupported` error (present-but-empty graphs are fine); nothing is loaded remotely. `GRAPH <missing>` without a
 /// dataset clause is simply an empty match. The default graph is never a value of a GRAPH variable.
 pub fn query_dataset_with<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, text: &str, opts: &Options<'_>) -> Result<QueryResult, QueryError> {
-    catching_storage(|| run(snap, Some(dataset), text, opts, None))
+    query_with_extensions(snap, Some(dataset), text, opts, udf::QueryExtensions::default())
 }
 
 
@@ -232,20 +236,31 @@ pub fn query_dataset_with_provider<S: Snapshot>(
     opts: &Options<'_>,
     provider: &dyn storage::EntailmentProvider,
 ) -> Result<QueryResult, QueryError> {
-    catching_storage(|| run(snap, Some(dataset), text, opts, Some(provider)))
+    query_with_extensions(snap, Some(dataset), text, opts, udf::QueryExtensions { entailment: Some(provider), ..Default::default() })
 }
 
-fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query, opts: &Options<'_>, provider: Option<&dyn storage::EntailmentProvider>) -> Result<QueryResult, QueryError> {
+#[doc(hidden)]
+pub fn query_with_extensions<S: Snapshot>(
+    snap: &S,
+    dataset: Option<&dyn DatasetView>,
+    text: &str,
+    opts: &Options<'_>,
+    extensions: udf::QueryExtensions<'_>,
+) -> Result<QueryResult, QueryError> {
+    catching_storage(|| run(snap, dataset, text, opts, extensions))
+}
+
+fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query, opts: &Options<'_>, extensions: udf::QueryExtensions<'_>) -> Result<QueryResult, QueryError> {
     // Reject what we do not evaluate instead of answering it wrongly (ignored GRAPH, a function that errors per row).
-    if let Some(reason) = support::unsupported(q, dataset.is_some()) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
+    if let Some(reason) = support::unsupported(q, dataset.is_some(), extensions.functions) { return Err(QueryError::new(QueryErrorKind::Unsupported, reason)) }
     // Direct executor callers may request the linked RDFS provider without an embedded registry.
-    let provider = if provider.is_none() && opts.entailment == Entailment::Rdfs {
+    let provider = if extensions.entailment.is_none() && opts.entailment == Entailment::Rdfs {
         #[cfg(feature = "rdfs")]
         { Some(&triplelight_rdfs::Rdfs as &dyn storage::EntailmentProvider) }
         #[cfg(not(feature = "rdfs"))]
         { return Err(QueryError::new(QueryErrorKind::Unsupported, "RDFS entailment requires the rdfs Cargo feature")); }
     } else {
-        provider
+        extensions.entailment
     };
     let spec = match q { Query::Select { dataset, .. } | Query::Ask { dataset, .. } | Query::Construct { dataset, .. } | Query::Describe { dataset, .. } => dataset };
     // Graph views for the active dataset; they outlive `ctx`, which borrows them.
@@ -264,7 +279,7 @@ fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query
     };
     // The provider sees each active graph separately, including the merged default graph for FROM.
     let views = Views::new(provider, snap as &dyn Snapshot, default, dataset, &named).unwrap_or_else(|e| storage_failure(e));
-    let mut ctx = Ctx::for_query(snap, dataset, &views, named, q, opts, path::CsrLimits::default());
+    let mut ctx = Ctx::for_query(snap, dataset, &views, named, q, opts, extensions, path::CsrLimits::default());
     match q {
         Query::Select { pattern, .. } => run_select(&mut ctx, snap, pattern, opts),
         Query::Ask { pattern, .. } => run_ask(&mut ctx, pattern),
@@ -454,6 +469,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// one offer's price) recurs in many groups, and evaluating it means a dictionary decode each time.
     agg_arg_memo: RefCell<HashMap<(usize, TermId), Option<Term>>>,
     agg_arg_slots: RefCell<HashMap<usize, (Expression, usize)>>,
+    functions: Option<&'a dyn udf::FunctionLookup>,
+    function_memo: Option<RefCell<udf::Memo<'a>>>,
 }
 
 impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
@@ -465,6 +482,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         named: Vec<TermId>,
         query: &Query,
         opts: &Options<'a>,
+        extensions: udf::QueryExtensions<'a>,
         csr_limits: path::CsrLimits,
     ) -> Self
     where
@@ -511,6 +529,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             exists_vars: RefCell::new(HashMap::new()),
             agg_arg_memo: RefCell::new(HashMap::new()),
             agg_arg_slots: RefCell::new(HashMap::new()),
+            functions: extensions.functions,
+            function_memo: (!extensions.disable_function_memo && extensions.functions.is_some()).then(RefCell::default),
             memo_slots: std::cell::Cell::new(0),
         }
     }
@@ -1338,6 +1358,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             e,
             &|variable| self.var_value(variable, r),
             &|pattern| self.exists(pattern, r),
+            &|iri, args, evaluate| self.call_scalar(iri, args, evaluate),
             self.base.as_deref(),
             &self.now,
             blanks,
@@ -1502,7 +1523,11 @@ fn memo_safe(p: &GraphPattern) -> bool {
         GraphPattern::Extend { inner, expression, .. } => memo_safe(inner) && !impure(expression),
         GraphPattern::OrderBy { inner, .. }
         | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } | GraphPattern::Slice { inner, .. }
-        | GraphPattern::Project { inner, .. } | GraphPattern::Group { inner, .. } => memo_safe(inner),
+        | GraphPattern::Project { inner, .. } => memo_safe(inner),
+        GraphPattern::Group { inner, aggregates, .. } => memo_safe(inner) && aggregates.iter().all(|(_, aggregate)| match aggregate {
+            AggregateExpression::CountSolutions { .. } => true,
+            AggregateExpression::FunctionCall { expr, .. } => !impure(expr),
+        }),
     }
 }
 
@@ -1657,7 +1682,7 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                 if delete.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph))
                     || insert.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph)) { return Err(unsupported("named graphs")) }
                 let q = Query::Select { dataset: None, pattern: (**pattern).clone(), base_iri: None };
-                let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, None, &q, &Options::default(), None))? else { unreachable!() };
+                let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, None, &q, &Options::default(), udf::QueryExtensions::default()))? else { unreachable!() };
                 let col: HashMap<&str, usize> = vars.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
                 for (n, row) in rows.iter().enumerate() {
                     let var = |v: &Variable| col.get(v.as_str()).and_then(|&i| row[i].clone());
@@ -1747,7 +1772,7 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
                 _ => (**pattern).clone(),
             };
             let q = Query::Select { dataset: using.clone(), pattern, base_iri: None };
-            let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, Some(dataset), &q, &Options::default(), None))? else { unreachable!() };
+            let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, Some(dataset), &q, &Options::default(), udf::QueryExtensions::default()))? else { unreachable!() };
             let col: HashMap<&str, usize> = vars.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
             let default_target = || with.as_ref().map_or(GraphTarget::Default, |g| GraphTarget::Named(g.clone()));
             for (n, row) in rows.iter().enumerate() {
@@ -1848,7 +1873,7 @@ fn graph_triples<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &crate::sp
         GraphName::NamedNode(n) => GraphPattern::Graph { name: NamedNodePattern::NamedNode(n.clone()), inner: Box::new(bgp) },
     };
     let q = Query::Select { dataset: None, pattern, base_iri: None };
-    let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, Some(dataset), &q, &Options::default(), None))? else { unreachable!() };
+    let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, Some(dataset), &q, &Options::default(), udf::QueryExtensions::default()))? else { unreachable!() };
     let col = |name: &str| vars.iter().position(|x| x.as_str() == name).expect("projected variable");
     let (s, p, o) = (col("s"), col("p"), col("o"));
     Ok(rows.into_iter().filter_map(|r| match (r[s].clone(), r[p].clone(), r[o].clone()) {
@@ -1932,6 +1957,7 @@ fn impure(e: &Expression) -> bool {
     match e {
         Expression::Exists(_) => true,
         Expression::FunctionCall(Function::Rand | Function::Uuid | Function::StrUuid | Function::BNode, _) => true,
+        Expression::FunctionCall(Function::Custom(iri), _) if !expr::builtin_iri(iri.as_str()) => true,
         e => e.children().any(impure),
     }
 }

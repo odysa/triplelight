@@ -2,6 +2,8 @@
 pub(super) mod extend;
 pub(crate) mod order;
 pub(crate) mod text;
+#[doc(hidden)]
+pub mod udf;
 use triplelight_rdf::vocab::{rdf, xsd};
 use triplelight_rdf::{BlankNode, Literal, NamedNode, Term, Variable};
 use std::cell::RefCell;
@@ -323,16 +325,29 @@ impl BlankScope {
     }
 }
 
+/// XSD constructor casts implemented by `expr::xsd_cast`.
+const XSD_CASTS: &[&str] = &["string", "double", "float", "decimal", "integer", "int", "long", "short", "byte", "boolean", "dateTime", "date", "time"];
+
+#[doc(hidden)]
+pub fn builtin_iri(iri: &str) -> bool {
+    iri == text::MATCHES_IRI
+        || iri.strip_prefix("http://www.w3.org/2001/XMLSchema#").is_some_and(|local| XSD_CASTS.contains(&local))
+}
+
+type ScalarCall<'a> =
+    dyn Fn(&NamedNode, &[Expression], &dyn Fn(&Expression) -> Option<Term>) -> Option<Term> + 'a;
+
 /// Resolve one expression using the current solution's bindings and correlated pattern test.
 pub(super) fn eval(
     e: &Expression,
     binding: &impl Fn(&Variable) -> Option<Term>,
     exists: &impl Fn(&GraphPattern) -> bool,
+    scalar: &ScalarCall<'_>,
     base: Option<&str>,
     now: &str,
     blanks: &BlankScope,
 ) -> Option<Term> {
-    let v = |e: &Expression| eval(e, binding, exists, base, now, blanks);
+    let v = |e: &Expression| eval(e, binding, exists, scalar, base, now, blanks);
     match e {
         Expression::NamedNode(n) => Some(n.clone().into()),
         Expression::Literal(l) => Some(l.clone().into()),
@@ -375,11 +390,18 @@ pub(super) fn eval(
         Expression::FunctionCall(Function::BNode, args) if args.len() == 1 => {
             blanks.blank_for(&v(&args[0])?)
         }
-        Expression::FunctionCall(f, args) => call(f, args, &|e| v(e), base, now),
+        Expression::FunctionCall(f, args) => call(f, args, &v, scalar, base, now),
     }
 }
 
-fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Term>, base: Option<&str>, now: &str) -> Option<Term> {
+fn call(
+    f: &Function,
+    args: &[Expression],
+    v: &dyn Fn(&Expression) -> Option<Term>,
+    scalar: &ScalarCall<'_>,
+    base: Option<&str>,
+    now: &str,
+) -> Option<Term> {
     let a = |i: usize| v(args.get(i)?);
     // SPARQL string functions take string literals only (simple, xsd:string or language-tagged); anything else,
     // including numbers and other typed literals, is a type error (§17.4.3).
@@ -571,7 +593,8 @@ fn call(f: &Function, args: &[Expression], v: &dyn Fn(&Expression) -> Option<Ter
             }
             Some(bool_term(text::matches(left.value(), right.value())))
         }
-        Function::Custom(f) => xsd_cast(f.as_str(), &a(0)?),
+        Function::Custom(f) if builtin_iri(f.as_str()) => xsd_cast(f.as_str(), &a(0)?),
+        Function::Custom(f) => scalar(f, args, v),
         // SPARQL 1.2 §17.4.6: TRIPLE errors unless (s, p, o) is an RDF triple (IRI or blank-node subject, IRI
         // predicate); SUBJECT / PREDICATE / OBJECT error on anything but a triple term.
         #[cfg(feature = "rdf-12")]
