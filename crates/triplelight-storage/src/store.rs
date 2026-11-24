@@ -104,6 +104,14 @@ pub struct Delta {
 impl Delta {
     pub fn len(&self) -> usize { self.adds[0].len() + self.dels[0].len() }
     pub fn is_empty(&self) -> bool { self.len() == 0 }
+    /// No change among `perm`'s rows that start with `prefix`, so the base alone answers that range (#111): two binary
+    /// searches. A prefix holding an ID first seen in the delta is exact too: rows with that ID exist only as adds.
+    fn untouched(&self, perm: Perm, prefix: &[TermId]) -> bool { untouched(&self.adds[slot(perm)], &self.dels[slot(perm)], prefix) }
+}
+
+/// `adds` and `dels` (sorted rows of one order) have nothing starting with `prefix`.
+fn untouched(adds: &[[TermId; 3]], dels: &[[TermId; 3]], prefix: &[TermId]) -> bool {
+    range(adds, prefix).is_empty() && range(dels, prefix).is_empty()
 }
 
 /// A read snapshot: base plus a frozen delta.
@@ -206,14 +214,13 @@ impl Snapshot for Overlay {
         self.base.text_candidates(tokens, limit)
     }
     fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> {
-        if self.delta.is_empty() { self.base.matching_rows(perm, prefix) } else { None }
+        if self.delta.untouched(perm, prefix) { self.base.matching_rows(perm, prefix) } else { None }
     }
     fn matching_tail(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 2]]> {
-        if self.delta.is_empty() { self.base.matching_tail(perm, prefix) } else { None }
+        if self.delta.untouched(perm, prefix) { self.base.matching_tail(perm, prefix) } else { None }
     }
 
     fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
-        if self.delta.is_empty() { return self.base.scan(perm, prefix) }
         merged_scan(&*self.base, &self.delta.adds[slot(perm)], &self.delta.dels[slot(perm)], perm, prefix)
     }
 
@@ -224,7 +231,7 @@ impl Snapshot for Overlay {
     }
 
     fn scan_from<'a>(&'a self, perm: Perm, prefix: &[TermId], from: TermId) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
-        if self.delta.is_empty() { return self.base.scan_from(perm, prefix, from) }
+        if self.delta.untouched(perm, prefix) { return self.base.scan_from(perm, prefix, from) }
         triplelight_core::storage::scan_from_by_scan(self, perm, prefix, from)
     }
 
@@ -238,7 +245,6 @@ impl Snapshot for Overlay {
     }
 
     fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
-        if self.delta.is_empty() { return self.base.seek(perm, prefix, target) }
         merged_seek(&*self.base, &self.delta.adds[slot(perm)], &self.delta.dels[slot(perm)], perm, prefix, target)
     }
 }
@@ -247,6 +253,8 @@ impl Snapshot for Overlay {
 /// in it): the scan, count and seek that the default graph and every stored named graph share.
 fn merged_scan<'a>(base: &'a dyn Snapshot, adds: &'a [[TermId; 3]], dels: &'a [[TermId; 3]], perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + 'a> {
     let (adds, dels) = (range(adds, prefix), range(dels, prefix));
+    // A range the changes don't touch keeps the base's own scan (no merge step per row).
+    if adds.is_empty() && dels.is_empty() { return base.scan(perm, prefix) }
     Box::new(MergeScan { base: base.scan(perm, prefix), cur: None, at: 0, adds, ai: 0, dels, done: false })
 }
 fn merged_count(base: &dyn Snapshot, adds: &[[TermId; 3]], dels: &[[TermId; 3]], perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> {
@@ -257,6 +265,8 @@ fn merged_count(base: &dyn Snapshot, adds: &[[TermId; 3]], dels: &[[TermId; 3]],
 fn merged_seek(base: &dyn Snapshot, adds: &[[TermId; 3]], dels: &[[TermId; 3]], perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
     let k = prefix.len();
     if k >= 3 { return Ok(None) }
+    // A range the changes don't touch: the base's seek, without a count per candidate value.
+    if untouched(adds, dels, prefix) { return base.seek(perm, prefix, target) }
     // Smallest base value >= target that still has a visible triple under prefix + [value].
     let mut t = target;
     let from_base = loop {
@@ -1010,6 +1020,60 @@ mod borrowed_overlay_tests {
         assert_eq!(deleted.count(Perm::Spo, &[]).unwrap(), 0);
         let (restored, _) = added.with_changes(&[(Change::Delete, b)]).unwrap();
         assert_eq!(restored.matching_tail(Perm::Pso, &[p]).unwrap().len(), 1);
+    }
+
+    /// #111: a range the delta doesn't touch takes the base's direct paths; every answer still equals the merged
+    /// view's. Checked against the full merged scan for every order and every prefix of length 0 to 2, built from base
+    /// IDs, IDs first seen in the delta (a query constant that exists only in the delta) and an ID nothing uses.
+    #[test]
+    fn untouched_ranges_answer_like_the_merged_view() {
+        let iri = |s: String| NamedNode::new(format!("urn:{s}")).unwrap();
+        let tr = |s: u32, p: u32, o: u32| Triple::new(iri(format!("s{s}")), iri(format!("p{p}")), iri(format!("o{o}")));
+        let base = Arc::new(MemorySnapshot::from_triples((0..40).flat_map(|s| (0..3).map(move |p| tr(s, p, (s * 7 + p) % 11)))));
+        let original = Overlay::from_base(base);
+        // Changes touch subjects 3 and 4, predicate 2 of subject 5, and a brand-new subject, predicate and object.
+        let changes = vec![(Change::Delete, tr(3, 0, 21 % 11)), (Change::Insert, tr(4, 1, 99)), (Change::Delete, tr(5, 2, 37 % 11)),
+                           (Change::Insert, tr(500, 77, 3))];
+        let (o, _) = original.with_changes(&changes).unwrap();
+        let rows_in = |perm: Perm| {
+            let mut rows: Vec<[TermId; 3]> = o.scan(Perm::Spo, &[]).flat_map(|b| { let b = b.unwrap(); (0..b.len()).map(move |i| key(perm, [b.cols[0][i], b.cols[1][i], b.cols[2][i]])).collect::<Vec<_>>() }).collect();
+            rows.sort();
+            rows
+        };
+        let mut ids: Vec<TermId> = rows_in(Perm::Spo).iter().flat_map(|r| r.iter().copied()).collect();
+        ids.push(TermId(123_456)); // an ID nothing uses
+        ids.sort(); ids.dedup();
+        for perm in Perm::ALL {
+            let all = rows_in(perm);
+            let mut prefixes: Vec<Vec<TermId>> = vec![vec![]];
+            prefixes.extend(ids.iter().map(|&a| vec![a]));
+            prefixes.extend(all.iter().map(|r| vec![r[0], r[1]]));
+            prefixes.push(vec![TermId(123_456), ids[0]]);
+            for prefix in prefixes {
+                let want: Vec<[TermId; 3]> = all.iter().filter(|r| r[..prefix.len()] == prefix[..]).copied().collect();
+                let got: Vec<[TermId; 3]> = o.scan(perm, &prefix).flat_map(|b| { let b = b.unwrap(); (0..b.len()).map(move |i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]).collect::<Vec<_>>() }).collect();
+                let label = format!("{perm:?} {prefix:?}");
+                assert_eq!(got.iter().map(|r| key(perm, *r)).collect::<Vec<_>>(), want, "scan {label}");
+                assert_eq!(o.count(perm, &prefix).unwrap(), want.len() as u64, "count {label}");
+                if let Some(rows) = o.matching_rows(perm, &prefix) { assert_eq!(rows.iter().map(|r| key(perm, *r)).collect::<Vec<_>>(), want, "rows {label}") }
+                if prefix.len() < 3 {
+                    let next: Vec<TermId> = want.iter().map(|r| r[prefix.len()]).collect();
+                    for target in [TermId(0), ids[ids.len() / 2], TermId(u64::MAX)] {
+                        assert_eq!(o.seek(perm, &prefix, target).unwrap(), next.iter().copied().find(|&v| v >= target), "seek {label} {target:?}");
+                        let from: Vec<[TermId; 3]> = o.scan_from(perm, &prefix, target).flat_map(|b| { let b = b.unwrap(); (0..b.len()).map(move |i| [b.cols[0][i], b.cols[1][i], b.cols[2][i]]).collect::<Vec<_>>() }).collect();
+                        let want_from: Vec<[TermId; 3]> = want.iter().filter(|r| r[prefix.len()] >= target).copied().collect();
+                        assert_eq!(from.iter().map(|r| key(perm, *r)).collect::<Vec<_>>(), want_from, "scan_from {label} {target:?}");
+                    }
+                }
+            }
+        }
+        // The point of the change: an untouched range keeps the base's borrowed view; a touched one doesn't.
+        let p0 = o.lookup(&iri("p0".into()).into()).unwrap().unwrap();
+        let s3 = o.lookup(&iri("s3".into()).into()).unwrap().unwrap();
+        let s10 = o.lookup(&iri("s10".into()).into()).unwrap().unwrap();
+        assert!(o.matching_rows(Perm::Spo, &[s10]).is_some() || original.matching_rows(Perm::Spo, &[s10]).is_none());
+        assert!(o.matching_rows(Perm::Spo, &[s3]).is_none());
+        assert!(o.matching_tail(Perm::Pso, &[p0]).is_none(), "p0 lost a triple");
     }
 
     #[test]
