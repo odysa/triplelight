@@ -46,10 +46,8 @@ use crate::sparql::Query;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
-pub const UNBOUND: TermId = TermId(0);
+pub use expr::binding::{Row, UNBOUND};
 const SCRATCH: u64 = crate::model::id_tag::SCRATCH << 60;
-
-pub type Row = Vec<TermId>;
 
 #[derive(Debug)]
 pub enum QueryResult {
@@ -726,17 +724,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
 
     fn eval_extend(&self, inner: &GraphPattern, variable: &Variable, expression: &Expression, input: Vec<Row>) -> Vec<Row> {
-        let i = self.var(variable);
-        // If an outer solution passed in sideways already binds the target, the BIND result must be
-        // compatible with it (the group's solution is joined with the outer one): equal keeps the row, a
-        // different value drops it, an expression error leaves the outer value (W3C-style `{ BIND(2 AS ?x) }`).
-        self.eval(inner, input).into_iter().filter_map(|mut r| {
-            if let Some(t) = self.value(expression, &r) {
-                let id = self.intern(&t);
-                if r[i] == UNBOUND { r[i] = id } else if r[i] != id { return None }
-            }
-            Some(r)
-        }).collect()
+        let target = self.var(variable);
+        let source = if let Expression::Variable(v) = expression { self.vars.get(v.as_str()).copied() } else { None };
+        expr::binding::extend(self.eval(inner, input), target, source,
+            |row| self.value(expression, row).map(|term| self.intern(&term)),
+            |id| self.intern(&self.resolve(id)),
+            || self.check())
     }
 
     fn eval_minus(&self, left: &GraphPattern, right: &GraphPattern, input: Vec<Row>) -> Vec<Row> {
