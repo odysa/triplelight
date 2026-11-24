@@ -121,4 +121,16 @@ class DatabaseTest {
             assertEquals("rtl", label.direction());
         }
     }
+    @Test
+    void officialExtensions() {
+        try (Database db = Database.inMemory()) {
+            db.loadExtension("rdfs");
+            db.loadExtension("rdfs");
+            var extensions = db.listExtensions();
+            assertEquals(new Database.ExtensionInfo("rdfs", true, true), extensions.get(0));
+            assertEquals(new Database.ExtensionInfo("shacl", true, false), extensions.get(1));
+            var error = assertThrows(TripleLightException.class, () -> db.loadExtension("missing"));
+            assertEquals(TripleLightException.Kind.UNSUPPORTED, error.kind());
+        }
+    }
 }

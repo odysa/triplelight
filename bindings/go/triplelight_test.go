@@ -173,3 +173,23 @@ func TestRDF12TripleTermsAndDirection(t *testing.T) {
 		t.Fatalf("directional literal: %+v", l)
 	}
 }
+
+func TestOfficialExtensions(t *testing.T) {
+	db := mustMem(t)
+	for i := 0; i < 2; i++ {
+		if err := db.LoadExtension("rdfs"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := db.ListExtensions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0] != (ExtensionInfo{Name: "rdfs", CompiledIn: true, Loaded: true}) ||
+		got[1] != (ExtensionInfo{Name: "shacl", CompiledIn: true}) {
+		t.Fatalf("extensions: %+v", got)
+	}
+	if err := db.LoadExtension("missing"); err == nil {
+		t.Fatal("expected an unsupported extension error")
+	}
+}

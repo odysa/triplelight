@@ -96,6 +96,56 @@ public final class Database implements AutoCloseable {
         }
     }
 
+    /** Build availability and load state for an extension. */
+    public record ExtensionInfo(String name, boolean compiledIn, boolean loaded) {}
+
+    /** Loads a linked official extension for this database. */
+    public void loadExtension(String name) {
+        lock.readLock().lock();
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment h = live();
+            if (Native.LOAD_EXTENSION == null) {
+                throw new TripleLightException(TripleLightException.Kind.UNSUPPORTED, "native library lacks extension loading");
+            }
+            byte[] text = name.getBytes(StandardCharsets.UTF_8);
+            MemorySegment err = arena.allocate(ADDRESS);
+            check((int) Native.LOAD_EXTENSION.invokeExact(h, arena.allocateFrom(JAVA_BYTE, text), (long) text.length, err), err);
+        } catch (TripleLightException error) {
+            throw error;
+        } catch (Throwable error) {
+            throw internal(error);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    /** Returns build availability and load state. */
+    public List<ExtensionInfo> listExtensions() {
+        lock.readLock().lock();
+        MemorySegment result = MemorySegment.NULL;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment h = live();
+            if (Native.LIST_EXTENSIONS == null) {
+                throw new TripleLightException(TripleLightException.Kind.UNSUPPORTED, "native library lacks extension status");
+            }
+            MemorySegment out = arena.allocate(ADDRESS), err = arena.allocate(ADDRESS);
+            check((int) Native.LIST_EXTENSIONS.invokeExact(h, out, err), err);
+            result = out.get(ADDRESS, 0);
+            List<ExtensionInfo> entries = new ArrayList<>();
+            for (Term[] row : decode((MemorySegment) Native.RESULT_VIEW.invokeExact(result)).rows()) {
+                entries.add(new ExtensionInfo(row[0].value(), Boolean.parseBoolean(row[1].value()), Boolean.parseBoolean(row[2].value())));
+            }
+            return entries;
+        } catch (TripleLightException error) {
+            throw error;
+        } catch (Throwable error) {
+            throw internal(error);
+        } finally {
+            try { Native.RESULT_FREE.invokeExact(result); } catch (Throwable ignored) { }
+            lock.readLock().unlock();
+        }
+    }
+
     /** Applies a SPARQL Update; returns the number of triples inserted or deleted. */
     public long update(String sparql) { return counted(Native.UPDATE_KIND, sparql); }
 

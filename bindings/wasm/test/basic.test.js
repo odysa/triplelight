@@ -138,3 +138,16 @@ test("SHACL validate: reports, syntax errors and rejected shapes", () => {
   assert.throws(() => validate("<urn:bob> a", shapes), (e) => e.kind === "SyntaxError");
   assert.throws(() => validate("", "@prefix sh: <http://www.w3.org/ns/shacl#> . <urn:S> a sh:NodeShape ; sh:targetClass <urn:P> ; sh:property [ sh:minCount 1 ] ."), (e) => e.kind === "ShapesError");
 });
+
+test("extension availability, autoload and load", () => {
+  const db = new Database();
+  try {
+    assert.ok(db.listExtensions().every(({ compiledIn, loaded }) => compiledIn && !loaded));
+    assert.strictEqual(db.querySync("ASK {}", { entailment: "rdfs" }).boolean, true);
+    db.loadExtension("shacl");
+    assert.deepStrictEqual(db.listExtensions().filter(({ loaded }) => loaded).map(({ name }) => name), ["rdfs", "shacl"]);
+    assert.throws(() => db.loadExtension("missing"), (error) => error.kind === "UnsupportedError");
+  } finally {
+    db.free();
+  }
+});

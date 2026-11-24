@@ -117,3 +117,14 @@ def test_shacl_validate_reports_and_errors():
         triplelight.validate("<urn:bob> a", SHAPES)
     with pytest.raises(triplelight.ShapesError):
         triplelight.validate("", "@prefix sh: <http://www.w3.org/ns/shacl#> . <urn:S> a sh:NodeShape ; sh:targetClass <urn:P> ; sh:property [ sh:minCount 1 ] .")
+
+
+def test_extension_registry_load_and_autoload():
+    with triplelight.Database.in_memory() as db:
+        assert all(entry.compiled_in and not entry.loaded for entry in db.list_extensions())
+        assert db.query("ASK {}", entailment="rdfs")
+        db.load_extension("shacl")
+        db.load_extension("shacl")
+        assert {entry.name for entry in db.list_extensions() if entry.loaded} == {"rdfs", "shacl"}
+        with pytest.raises(triplelight.UnsupportedError, match="unknown extension"):
+            db.load_extension("missing")

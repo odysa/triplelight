@@ -296,6 +296,23 @@ impl Database {
     }
     /// True once background optimizer statistics are built (queries work before that, with simpler plans).
     #[napi]
+    pub fn load_extension(&self, name: String) -> Result<()> {
+        self.db()?.load_extension(&name)
+            .map_err(|error| Error::new(Status::GenericFailure, format!("UnsupportedError: {error}")))
+    }
+
+    #[napi(ts_return_type = "ExtensionInfo[]")]
+    pub fn list_extensions(&self, env: Env) -> Result<Vec<JsObject>> {
+        self.db()?.list_extensions().into_iter().map(|entry| {
+            let mut object = env.create_object()?;
+            object.set_named_property("name", env.create_string(&entry.name)?)?;
+            object.set_named_property("compiledIn", env.get_boolean(entry.compiled_in)?)?;
+            object.set_named_property("loaded", env.get_boolean(entry.loaded)?)?;
+            Ok(object)
+        }).collect()
+    }
+
+    #[napi]
     pub fn stats_ready(&self) -> Result<bool> { Ok(self.db()?.stats_ready()) }
     /// A consistent, immutable view for several queries; later updates do not change it.
     #[napi]

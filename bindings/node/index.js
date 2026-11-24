@@ -65,6 +65,8 @@ class Database {
   update(sparql) { return async_(() => this._raw.update(sparql)); }
   load(path) { return async_(() => this._raw.load(String(path))); }
   compact() { return async_(() => this._raw.compact()).then(() => undefined); }
+  loadExtension(name) { return sync(() => this._raw.loadExtension(name)); }
+  listExtensions() { return sync(() => this._raw.listExtensions()); }
   statsReady() { return sync(() => this._raw.statsReady()); }
   read() { return new Snapshot(sync(() => this._raw.read())); }
   close() { this._raw.close(); }
