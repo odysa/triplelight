@@ -1265,7 +1265,7 @@ fn named_blank_nodes_follow_each_solution_occurrence() {
     assert_eq!(rows[0][0], rows[0][2]);
     let ratio = triplelight::rdf::Literal::new_typed_literal(
         "4.5",
-        triplelight::rdf::vocab::xsd::FLOAT,
+        triplelight_rdf::vocab::xsd::FLOAT,
     );
     assert_eq!(rows[0][1], Some(ratio.into()));
     assert!(matches!(
