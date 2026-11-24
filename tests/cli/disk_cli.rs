@@ -1,4 +1,3 @@
-#![cfg(unix)]
 use std::process::Command;
 #[test]
 fn disk_snapshot_cli_survives_process_restart() {

@@ -1,6 +1,8 @@
 // Derived from oxrdf 0.3.5 (MIT); see THIRD_PARTY_NOTICES.md.
+use crate::syntax::{TermParseError, TermParseErrorKind, VariableNameParseError};
 use std::cmp::Ordering;
 use std::fmt;
+use std::str::FromStr;
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Hash)]
 pub struct Variable {
@@ -175,14 +177,20 @@ fn validate_variable_identifier(id: &str) -> Result<(), VariableNameParseError> 
     Ok(())
 }
 
-#[derive(Debug)]
-pub struct VariableNameParseError;
+impl FromStr for Variable {
+    type Err = TermParseError;
 
-impl fmt::Display for VariableNameParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("The variable name is invalid")
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if !s.starts_with('?') && !s.starts_with('$') {
+            return Err(Self::Err::msg(
+                "Variable serialization should start with ? or $",
+            ));
+        }
+        Self::new(&s[1..]).map_err(|error| {
+            TermParseError(TermParseErrorKind::Variable {
+                value: s.to_owned(),
+                error,
+            })
+        })
     }
 }
-
-impl std::error::Error for VariableNameParseError {}
-
