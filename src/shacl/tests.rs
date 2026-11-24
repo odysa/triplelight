@@ -1,6 +1,7 @@
 //! Tests of the graph adapter, paths, targets and the report. The constraint components have their own tests in `constraints`.
 use super::*;
 use crate::rdf::{Format, Term, Triple};
+use std::rc::Rc;
 
 fn parse(ttl: &str) -> Vec<Triple> {
     let doc = format!(
@@ -52,15 +53,15 @@ fn path_forms_evaluate_as_sets() {
     let data = Graph::new(&parse("ex:a ex:p ex:b . ex:b ex:p ex:c . ex:c ex:p ex:a . ex:a ex:q ex:z . ex:y ex:p ex:a ."));
     let p = Path::Predicate(pred("p"));
     assert_eq!(p.values(&iri("a"), &data), [iri("b")]);
-    assert_eq!(Path::Inverse(Box::new(p.clone())).values(&iri("a"), &data), [iri("c"), iri("y")]);
-    assert_eq!(Path::Sequence(vec![p.clone(), p.clone()]).values(&iri("a"), &data), [iri("c")]);
-    assert_eq!(Path::Alternative(vec![p.clone(), Path::Predicate(pred("q"))]).values(&iri("a"), &data), [iri("b"), iri("z")]);
-    assert_eq!(Path::ZeroOrOne(Box::new(p.clone())).values(&iri("a"), &data), [iri("a"), iri("b")]);
+    assert_eq!(Path::Inverse(Rc::new(p.clone())).values(&iri("a"), &data), [iri("c"), iri("y")]);
+    assert_eq!(Path::Sequence(vec![Rc::new(p.clone()), Rc::new(p.clone())]).values(&iri("a"), &data), [iri("c")]);
+    assert_eq!(Path::Alternative(vec![Rc::new(p.clone()), Rc::new(Path::Predicate(pred("q")))]).values(&iri("a"), &data), [iri("b"), iri("z")]);
+    assert_eq!(Path::ZeroOrOne(Rc::new(p.clone())).values(&iri("a"), &data), [iri("a"), iri("b")]);
     // a cycle a -> b -> c -> a: one or more steps reach all three (a again through the cycle), zero or more adds nothing new
-    let mut one_plus = Path::OneOrMore(Box::new(p.clone())).values(&iri("a"), &data);
+    let mut one_plus = Path::OneOrMore(Rc::new(p.clone())).values(&iri("a"), &data);
     one_plus.sort_by_key(|t| t.to_string());
     assert_eq!(one_plus, [iri("a"), iri("b"), iri("c")]);
-    let zero_plus = Path::ZeroOrMore(Box::new(p)).values(&iri("a"), &data);
+    let zero_plus = Path::ZeroOrMore(Rc::new(p)).values(&iri("a"), &data);
     assert_eq!(zero_plus.len(), 3);
     assert_eq!(zero_plus[0], iri("a"), "the focus node comes first");
 }
@@ -71,10 +72,10 @@ fn paths_parse_from_the_shapes_graph() {
                ex:pathZ [ sh:zeroOrMorePath ex:p ] ; ex:pathBad [ sh:inversePath ex:p ; sh:zeroOrOnePath ex:p ] .";
     let g = Graph::new(&parse(ttl));
     let get = |name: &str| Path::parse(&g.objects(&iri("shape"), &pred(name))[0], &g);
-    assert_eq!(get("pathI").unwrap(), Path::Inverse(Box::new(Path::Predicate(pred("p")))));
-    assert_eq!(get("pathS").unwrap(), Path::Sequence(vec![Path::Predicate(pred("p")), Path::Predicate(pred("q"))]));
-    assert_eq!(get("pathA").unwrap(), Path::Alternative(vec![Path::Predicate(pred("p")), Path::Predicate(pred("q"))]));
-    assert_eq!(get("pathZ").unwrap(), Path::ZeroOrMore(Box::new(Path::Predicate(pred("p")))));
+    assert_eq!(get("pathI").unwrap(), Path::Inverse(Rc::new(Path::Predicate(pred("p")))));
+    assert_eq!(get("pathS").unwrap(), Path::Sequence(vec![Rc::new(Path::Predicate(pred("p"))), Rc::new(Path::Predicate(pred("q")))]));
+    assert_eq!(get("pathA").unwrap(), Path::Alternative(vec![Rc::new(Path::Predicate(pred("p"))), Rc::new(Path::Predicate(pred("q")))]));
+    assert_eq!(get("pathZ").unwrap(), Path::ZeroOrMore(Rc::new(Path::Predicate(pred("p")))));
     assert!(matches!(get("pathBad"), Err(ValidationError::MalformedShape(_))), "two path forms on one node is malformed");
 }
 
@@ -116,7 +117,7 @@ fn a_shape_without_constraints_conforms_and_a_deactivated_shape_is_skipped() {
 #[test]
 fn the_report_is_written_as_rdf() {
     let result = ValidationResult {
-        focus_node: iri("n"), result_path: Some(Path::Inverse(Box::new(Path::Predicate(pred("p"))))), value: Some(iri("v")),
+        focus_node: iri("n"), result_path: Some(Path::Inverse(Rc::new(Path::Predicate(pred("p"))))), value: Some(iri("v")),
         source_shape: iri("S"), source_constraint_component: crate::rdf::NamedNode::new_unchecked("http://www.w3.org/ns/shacl#MinCountConstraintComponent"),
         severity: Severity::Warning, messages: vec![crate::rdf::Literal::new_simple_literal("too few")], details: Vec::new(),
     };
@@ -223,4 +224,32 @@ fn deactivation_requires_an_xsd_boolean() {
     assert!(!validate(&[], &shapes("false")).unwrap().conforms);
     assert!(matches!(validate(&[], &shapes("\"true\"@en")),
         Err(ValidationError::MalformedShape(_))));
+}
+
+#[test]
+fn shared_path_nodes_are_parsed_evaluated_and_written_once() {
+    // _:p0 = (_:p1 | _:p1), _:p1 = (_:p2 | _:p2), ... 60 deep: a tree would have 2^60 leaves
+    let mut ttl = String::from("ex:shape ex:path _:p0 .\n");
+    for i in 0..60 { ttl.push_str(&format!("_:p{i} sh:alternativePath ( _:p{} _:p{} ) .\n", i + 1, i + 1)); }
+    ttl.push_str("_:p60 sh:inversePath ex:q .\n");
+    let g = Graph::new(&parse(&ttl));
+    let path = Path::parse(&g.objects(&iri("shape"), &pred("path"))[0], &g).expect("a shared path parses in linear time");
+    let data = Graph::new(&parse("ex:s ex:q ex:o ."));
+    assert_eq!(path.values(&iri("o"), &data), [iri("s")], "evaluation is memoized per shared node");
+    let mut triples = Vec::new();
+    path.to_rdf(&mut triples);
+    assert!(triples.len() < 1000, "the shared nodes are written once, not expanded: {} triples", triples.len());
+}
+
+#[test]
+fn a_shared_sequence_ladder_evaluates_in_polynomial_time() {
+    // _:p0 = (_:p1 _:p1), ... : a tree has 2^40 steps; with sharing and memoization it is a few hundred
+    let mut ttl = String::from("ex:shape ex:path _:p0 .\n");
+    for i in 0..40 { ttl.push_str(&format!("_:p{i} rdf:first _:p{} ; rdf:rest ( _:p{} ) .\n", i + 1, i + 1)); }
+    ttl.push_str("_:p40 sh:zeroOrOnePath ex:r .\n");
+    let g = Graph::new(&parse(&ttl));
+    let path = Path::parse(&g.objects(&iri("shape"), &pred("path"))[0], &g).unwrap();
+    let data = Graph::new(&parse("ex:a ex:r ex:b . ex:b ex:r ex:c ."));
+    let reached = path.values(&iri("a"), &data);
+    assert!(reached.contains(&iri("a")) && reached.contains(&iri("b")) && reached.contains(&iri("c")));
 }
