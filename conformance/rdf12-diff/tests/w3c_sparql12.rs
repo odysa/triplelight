@@ -1,4 +1,4 @@
-//! The pinned W3C SPARQL 1.2 query and update tests.
+//! The pinned W3C SPARQL 1.2 suites and SPARQL 1.1 Update syntax tests.
 #[path = "w3c/eval.rs"]
 mod eval;
 #[path = "w3c/terms.rs"]
@@ -28,6 +28,65 @@ fn assert_floor(suite: &str, passed: usize, failures: &[String], total: usize) {
     assert!(failures.is_empty(), "{suite} has failing cases: {failures:?}");
 }
 
+fn check_syntax(
+    root: &std::path::Path,
+    action: &str,
+    update: bool,
+    positive: bool,
+) -> Result<(), String> {
+    let text = String::from_utf8(fixture(root, action)).expect("SPARQL source must be UTF-8");
+    let status = if update {
+        parse_update(&text, Some(action)).map(drop)
+    } else {
+        parse_query(&text, Some(action)).map(drop)
+    };
+    match (positive, status) {
+        (true, Ok(())) | (false, Err(_)) => Ok(()),
+        (true, Err(error)) => Err(error.to_string()),
+        (false, Ok(())) => Err("negative syntax accepted".into()),
+    }
+}
+
+#[test]
+#[ignore = "requires the exact W3C rdf-tests checkout in TL_RDF_TESTS"]
+fn sparql11_w3c_update_manifest_syntax() {
+    let root = pinned_checkout();
+    let mut totals = std::collections::BTreeMap::new();
+    let mut failures = Vec::new();
+    let mut passed = 0;
+    for suite in ["delete-insert", "syntax-update-1", "syntax-update-2"] {
+        let graph = load_manifest(&root, &format!("sparql/sparql11/{suite}/manifest.ttl"));
+        for entry in entries(&graph) {
+            let kind = iri(property(&graph, entry, RDF, "type"))
+                .strip_prefix(MF)
+                .expect("SPARQL test type");
+            let (update, positive) = match kind {
+                "PositiveUpdateSyntaxTest11" => (true, true),
+                "NegativeUpdateSyntaxTest11" => (true, false),
+                "NegativeSyntaxTest11" => (false, false),
+                "UpdateEvaluationTest" => continue,
+                _ => panic!("unknown test type {kind}"),
+            };
+            *totals.entry(kind.to_owned()).or_insert(0) += 1;
+            let action = iri(property(&graph, entry, MF, "action"));
+            match check_syntax(&root, action, update, positive) {
+                Ok(()) => {
+                    passed += 1;
+                    println!("PASS {entry}");
+                }
+                Err(error) => {
+                    eprintln!("FAIL {entry} {error}");
+                    failures.push(entry.to_string());
+                }
+            }
+        }
+    }
+    assert_eq!(totals["PositiveUpdateSyntaxTest11"], 42);
+    assert_eq!(totals["NegativeUpdateSyntaxTest11"], 13);
+    assert_eq!(totals["NegativeSyntaxTest11"], 8);
+    assert_floor("SPARQL 1.1 Update manifest syntax", passed, &failures, 63);
+}
+
 #[test]
 #[ignore = "requires the exact W3C rdf-tests checkout in TL_RDF_TESTS"]
 fn sparql12_w3c_query_and_update_syntax() {
@@ -53,25 +112,13 @@ fn sparql12_w3c_query_and_update_syntax() {
                 _ => panic!("unknown test type {kind}"),
             };
             let action = iri(property(&graph, entry, MF, "action"));
-            let text =
-                String::from_utf8(fixture(&root, action)).expect("SPARQL source must be UTF-8");
-            let status = if update {
-                parse_update(&text, Some(action)).map(drop)
-            } else {
-                parse_query(&text, Some(action)).map(drop)
-            };
-
-            match (positive, status) {
-                (true, Ok(())) | (false, Err(_)) => {
+            match check_syntax(&root, action, update, positive) {
+                Ok(()) => {
                     passed += 1;
                     println!("PASS {entry}");
                 }
-                (true, Err(error)) => {
+                Err(error) => {
                     eprintln!("FAIL {entry} {error}");
-                    failures.push(entry.to_string());
-                }
-                (false, Ok(())) => {
-                    eprintln!("FAIL {entry} negative syntax accepted");
                     failures.push(entry.to_string());
                 }
             }
