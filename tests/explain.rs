@@ -39,3 +39,17 @@ fn explain_respects_the_query_deadline() {
     let error = triplelight::exec::plan_trace::explain(&snapshot, "ASK { ?s ?p ?o }", &options).unwrap_err();
     assert_eq!(error.kind, QueryErrorKind::Timeout);
 }
+
+#[test]
+fn explain_reports_the_operator_tree_and_request_scoped_phase_totals() {
+    let snapshot = triplelight::storage::MemorySnapshot::from_ntriples(&b""[..]).unwrap();
+    let query = "SELECT ?bucket (COUNT(*) AS ?n) WHERE { VALUES ?x { 1 2 3 } BIND((?x + 1) AS ?bucket) FILTER(?bucket > 1) } GROUP BY ?bucket ORDER BY DESC(?n)";
+    let report = triplelight::exec::plan_trace::explain(&snapshot, query, &Default::default()).unwrap();
+    for expected in ["Observed operator tree", "OrderBy keys=1", "Group keys=1 aggregates=1", "Filter", "Extend ?bucket", "Values variables=1 rows=3"] {
+        assert!(report.contains(expected), "missing {expected:?}:\n{report}");
+    }
+    assert!(report.contains("Phase timings (exclusive work, microseconds)"), "{report}");
+    for phase in ["parse_us=", "bgp_us=", "group_us=", "count_us=", "sort_us=", "filter_us=", "extend_us=", "join_us="] {
+        assert!(report.contains(phase), "missing {phase}:\n{report}");
+    }
+}
