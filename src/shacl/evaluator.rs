@@ -54,7 +54,7 @@ impl<'a> Evaluator<'a> {
                     value: violation.value,
                     source_shape: shape.id.clone(),
                     source_constraint_component: violation.component,
-                    severity: shape.severity,
+                    severity: shape.severity.clone(),
                     messages,
                     details: violation.details,
                 });

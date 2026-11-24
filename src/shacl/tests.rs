@@ -127,7 +127,10 @@ fn the_report_is_written_as_rdf() {
 }
 
 #[test]
-fn a_negative_severity_name_is_rejected() {
-    let shapes = parse("ex:S a sh:NodeShape ; sh:targetNode ex:n ; sh:severity ex:Bogus .");
-    assert!(matches!(validate(&[], &shapes), Err(ValidationError::MalformedShape(_))));
+fn a_user_defined_severity_is_kept() {
+    let shape = parse("ex:S a sh:NodeShape ; sh:targetNode ex:n ; sh:severity ex:Bogus .");
+    let sg = ShapesGraph::new(Graph::new(&shape)).unwrap();
+    assert_eq!(sg.shape(&iri("S")).unwrap().severity, Severity::Custom(pred("Bogus")));
+    assert!(matches!(Severity::from_iri(&pred("Bogus")), Severity::Custom(_)));
+    assert_eq!(Severity::from_iri(&crate::rdf::NamedNode::new_unchecked("http://www.w3.org/ns/shacl#Warning")), Severity::Warning);
 }
