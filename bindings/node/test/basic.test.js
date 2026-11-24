@@ -160,6 +160,11 @@ test("extension availability, autoload and load", () => {
     const byName = () => Object.fromEntries(db.listExtensions().map((entry) => [entry.name, entry]));
     const before = byName();
     const snapshot = db.read();
+    if (before.rdfs.compiledIn) {
+      assert.strictEqual(snapshot.querySync("ASK {}", { entailment: "rdfs" }).boolean, true);
+    } else {
+      assert.throws(() => snapshot.querySync("ASK {}", { entailment: "rdfs" }), (error) => error.kind === "UnsupportedError");
+    }
     for (const name of ["rdfs", "shacl"]) {
       assert.strictEqual(before[name].loaded, false);
       if (before[name].compiledIn) {
@@ -172,7 +177,6 @@ test("extension availability, autoload and load", () => {
         assert.throws(() => db.loadExtension(name), (error) => error.kind === "UnsupportedError");
       }
     }
-    assert.throws(() => snapshot.querySync("ASK {}", { entailment: "rdfs" }), (error) => error.kind === "UnsupportedError");
     const after = byName();
     for (const name of ["rdfs", "shacl"]) {
       assert.strictEqual(after[name].loaded, before[name].compiledIn);

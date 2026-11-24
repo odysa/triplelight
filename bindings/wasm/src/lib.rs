@@ -153,7 +153,11 @@ fn fresh_blank_nodes(triples: Vec<Triple>) -> Vec<Triple> {
 }
 
 /// Runs a query over the whole dataset: the default graph plus the named graphs (`GRAPH`, `FROM`, `FROM NAMED`).
-fn run(cur: &Overlay, sparql: &str, entailment: exec::Entailment) -> Result<QueryResult, JsValue> {
+fn run(cur: &Overlay, sparql: &str, options: Option<Object>, extensions: Option<&ExtensionRegistry>) -> Result<QueryResult, JsValue> {
+    let entailment = entailment(options)?;
+    if entailment == exec::Entailment::Rdfs && let Some(extensions) = extensions {
+        extensions.load("rdfs").map_err(|e| error("UnsupportedError", &e.to_string()))?;
+    }
     let opts = exec::Options { entailment, ..Default::default() };
     exec::query_dataset_with(cur, cur, sparql, &opts).map_err(query_error)
 }
@@ -260,7 +264,7 @@ impl Database {
     /// Runs a SPARQL SELECT / ASK / CONSTRUCT / DESCRIBE query.
     #[wasm_bindgen(js_name = querySync)]
     pub fn query_sync(&self, sparql: &str, options: Option<Object>) -> Result<JsValue, JsValue> {
-        convert(run(&self.cur, sparql, self.query_entailment(options)?)?)
+        convert(run(&self.cur, sparql, options, Some(&self.extensions))?)
     }
 
     pub fn query(&self, sparql: &str, options: Option<Object>) -> Promise { settle(self.query_sync(sparql, options)) }
@@ -268,25 +272,14 @@ impl Database {
     /// SPARQL 1.1 Query Results JSON for SELECT and ASK, as a string.
     #[wasm_bindgen(js_name = queryJsonSync)]
     pub fn query_json_sync(&self, sparql: &str, options: Option<Object>) -> Result<String, JsValue> {
-        results_json(run(&self.cur, sparql, self.query_entailment(options)?)?)
+        results_json(run(&self.cur, sparql, options, Some(&self.extensions))?)
     }
 
     #[wasm_bindgen(js_name = queryJson)]
     pub fn query_json(&self, sparql: &str, options: Option<Object>) -> Promise { settle(self.query_json_sync(sparql, options).map(JsValue::from)) }
 
     /// A consistent view for several queries; later updates do not change it.
-    pub fn read(&self) -> Snapshot {
-        let rdfs_loaded = self.extensions.list().iter().any(|entry| entry.name == "rdfs" && entry.loaded);
-        Snapshot { cur: Arc::clone(&self.cur), rdfs_loaded }
-    }
-
-    fn query_entailment(&self, options: Option<Object>) -> Result<exec::Entailment, JsValue> {
-        let regime = entailment(options)?;
-        if regime == exec::Entailment::Rdfs {
-            self.load_extension("rdfs")?;
-        }
-        Ok(regime)
-    }
+    pub fn read(&self) -> Snapshot { Snapshot { cur: Arc::clone(&self.cur) } }
 
     /// Number of triples in the default graph (named graphs are not counted).
     #[wasm_bindgen(getter)]
@@ -310,25 +303,17 @@ fn base_len(base: &MemorySnapshot) -> usize {
 
 /// An immutable view of the database, unaffected by later updates.
 #[wasm_bindgen]
-pub struct Snapshot { cur: Arc<Overlay>, rdfs_loaded: bool }
+pub struct Snapshot { cur: Arc<Overlay> }
 
 #[wasm_bindgen]
 impl Snapshot {
-    fn query_entailment(&self, options: Option<Object>) -> Result<exec::Entailment, JsValue> {
-        let regime = entailment(options)?;
-        if regime == exec::Entailment::Rdfs && !self.rdfs_loaded {
-            return Err(error("UnsupportedError", "RDFS is not loaded in this read snapshot"));
-        }
-        Ok(regime)
-    }
-
     #[wasm_bindgen(js_name = querySync)]
     pub fn query_sync(&self, sparql: &str, options: Option<Object>) -> Result<JsValue, JsValue> {
-        convert(run(&self.cur, sparql, self.query_entailment(options)?)?)
+        convert(run(&self.cur, sparql, options, None)?)
     }
     pub fn query(&self, sparql: &str, options: Option<Object>) -> Promise { settle(self.query_sync(sparql, options)) }
     #[wasm_bindgen(js_name = queryJson)]
     pub fn query_json(&self, sparql: &str, options: Option<Object>) -> Promise {
-        settle(self.query_entailment(options).and_then(|regime| run(&self.cur, sparql, regime)).and_then(results_json).map(JsValue::from))
+        settle(run(&self.cur, sparql, options, None).and_then(results_json).map(JsValue::from))
     }
 }
