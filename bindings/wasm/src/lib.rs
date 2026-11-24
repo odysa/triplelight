@@ -110,24 +110,32 @@ fn results_json(r: QueryResult) -> Result<String, JsValue> {
 /// data that violates the shapes is a report.
 #[wasm_bindgen]
 pub fn validate(data: &str, shapes: &str, options: Option<Object>) -> Result<JsValue, JsValue> {
-    use triplelight::shacl::{DocumentError, ValidationError};
-    let format = |key: &str| -> Result<Format, JsValue> {
-        let value = match &options { Some(o) => Reflect::get(o, &JsValue::from_str(key))?, None => JsValue::UNDEFINED };
-        let name = if value.is_undefined() || value.is_null() { "turtle".to_owned() } else { value.as_string().unwrap_or_default() };
-        Format::from_name(&name).ok_or_else(|| js_sys::TypeError::new(&format!("{key} must be \"turtle\" or \"ntriples\"")).into())
-    };
-    let (df, sf) = (format("dataFormat")?, format("shapesFormat")?);
-    let report = triplelight::shacl::validate_documents(data.as_bytes(), df, shapes.as_bytes(), sf).map_err(|e| {
-        let kind = match &e {
-            DocumentError::Syntax { .. } => "SyntaxError",
-            DocumentError::Validation(ValidationError::Unsupported(_)) => "UnsupportedError",
-            DocumentError::Validation(_) => "ShapesError",
+    #[cfg(not(feature = "shacl"))]
+    {
+        let _ = (data, shapes, options);
+        Err(error("UnsupportedError", "SHACL validation requires the shacl Cargo feature"))
+    }
+    #[cfg(feature = "shacl")]
+    {
+        use triplelight::shacl::{DocumentError, ValidationError};
+        let format = |key: &str| -> Result<Format, JsValue> {
+            let value = match &options { Some(o) => Reflect::get(o, &JsValue::from_str(key))?, None => JsValue::UNDEFINED };
+            let name = if value.is_undefined() || value.is_null() { "turtle".to_owned() } else { value.as_string().unwrap_or_default() };
+            Format::from_name(&name).ok_or_else(|| js_sys::TypeError::new(&format!("{key} must be \"turtle\" or \"ntriples\"")).into())
         };
-        error(kind, &e.to_string())
-    })?;
-    let out = convert(QueryResult::Graph(report.to_triples()))?;
-    Reflect::set(&out, &JsValue::from_str("conforms"), &JsValue::from_bool(report.conforms))?;
-    Ok(out)
+        let (df, sf) = (format("dataFormat")?, format("shapesFormat")?);
+        let report = triplelight::shacl::validate_documents(data.as_bytes(), df, shapes.as_bytes(), sf).map_err(|e| {
+            let kind = match &e {
+                DocumentError::Syntax { .. } => "SyntaxError",
+                DocumentError::Validation(ValidationError::Unsupported(_)) => "UnsupportedError",
+                DocumentError::Validation(_) => "ShapesError",
+            };
+            error(kind, &e.to_string())
+        })?;
+        let out = convert(QueryResult::Graph(report.to_triples()))?;
+        Reflect::set(&out, &JsValue::from_str("conforms"), &JsValue::from_bool(report.conforms))?;
+        Ok(out)
+    }
 }
 
 /// Blank-node labels are scoped to the document they appear in: `_:b` in two `load` calls are two different nodes.

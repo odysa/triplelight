@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SHACL Core conformance gate (task #108): runs the W3C SHACL Core test suite through `triplelight::shacl::validate` and checks the result.
-#   ci/shacl-core.sh                       fetches the pinned suite revision, runs `cargo test --release --test shacl`, checks the summary
+#   ci/shacl-core.sh                       fetches the pinned suite revision, runs `cargo test --release --features shacl --test shacl`, checks the summary
 #   SHACL_TESTS=<dir> ci/shacl-core.sh     use an existing checkout's `data-shapes-test-suite/tests/core` (its revision is not checked)
 #   ci/shacl-core.sh --check-log FILE      only check the summary of a finished run's output (used to test this script)
 # Fails on:
@@ -47,7 +47,7 @@ fi
 export TL_SHACL_TESTS="$SHACL_TESTS"
 log=$(mktemp) || { echo "shacl-core: cannot create a log file" >&2; exit 2; }
 trap 'rm -f "$log"; [ -z "${dir:-}" ] || rm -rf "$dir"' EXIT
-CARGO_TERM_COLOR=never cargo test --locked --release --test shacl -- --ignored --nocapture > "$log" 2>&1; rc=$?
+CARGO_TERM_COLOR=never cargo test --locked --release --features shacl --test shacl -- --ignored --nocapture > "$log" 2>&1; rc=$?
 cat "$log"
 [ $rc -eq 0 ] || { echo "shacl-core: cargo test failed (exit $rc)" >&2; exit 1; }
 check_log "$log"
