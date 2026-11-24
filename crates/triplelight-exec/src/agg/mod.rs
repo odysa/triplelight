@@ -18,6 +18,34 @@ use crate::sparql::{AggregateExpression, AggregateFunction, Expression};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
+use std::hash::{BuildHasher, BuildHasherDefault, Hasher, RandomState};
+
+/// The COUNT position table accepts one pre-mixed u64 per key.
+#[derive(Default)]
+struct GroupPositionHasher(u64);
+
+impl Hasher for GroupPositionHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        self.0 = u64::from_ne_bytes(bytes.try_into().expect("group position keys are u64"));
+    }
+
+    fn write_u64(&mut self, value: u64) {
+        self.0 = value;
+    }
+}
+
+/// SplitMix64's finalizer permutes all 64 bits. The table can store its output as
+/// the key and reuse it on resize, while the output row retains the original ID.
+fn count_position_key(id: TermId, seed: u64) -> u64 {
+    let key = id.0 ^ seed;
+    let key = (key ^ (key >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    let key = (key ^ (key >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    key ^ (key >> 31)
+}
 
 #[derive(Clone, Copy)]
 enum Kind { CountAll { distinct: bool }, Count, Sum, Avg, Min, Max, Sample }
@@ -86,14 +114,15 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
 
     /// GROUP BY one key with one COUNT(*) (`value_col` `None`) or COUNT(?v), over rows given as ID slices.
     fn count_one_key<'r>(&self, rows: impl IntoIterator<Item = &'r [TermId]>, key_col: usize, value_col: Option<usize>, out_col: usize) -> Vec<Row> {
-        let mut positions = HashMap::new();
+        let seed = RandomState::new().hash_one(0_u64);
+        let mut positions = HashMap::with_hasher(BuildHasherDefault::<GroupPositionHasher>::default());
         let mut groups: Vec<(TermId, i64)> = Vec::new();
         let bytes_per_group = 64 + 8 + 32;
         let mut held = self.reserve(0);
         for (i, row) in rows.into_iter().enumerate() {
             if i.is_multiple_of(4096) { self.check() }
             let key = row[key_col];
-            let index = *positions.entry(key).or_insert_with(|| {
+            let index = *positions.entry(count_position_key(key, seed)).or_insert_with(|| {
                 groups.push((key, 0));
                 // Use the same per-group budget as one key and one generic aggregate.
                 if groups.len().is_multiple_of(4096) {
