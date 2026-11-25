@@ -3,7 +3,9 @@
 //! so the operator can work one partition at a time and restore the order the in-memory path would produce.
 //!
 //! Each record is `seq` then the row's IDs, as little-endian `u64`s. The run files live in a fresh directory that
-//! `Partitions` removes when it drops, which also happens when a cancelled or over-budget query unwinds.
+//! `Partitions` removes when it drops, which also happens when a cancelled or over-budget query unwinds. A process that
+//! is killed cannot remove it, so each directory holds a `LOCK` file locked by its owner for as long as it exists, and
+//! `sweep_stale` (run by the server at startup) removes the directories whose lock nobody holds.
 use crate::model::TermId;
 use std::fs::File;
 use std::hash::{BuildHasher, Hasher};
@@ -13,6 +15,8 @@ use std::path::{Path, PathBuf};
 /// The rows of one operator's input, split by key hash into run files.
 pub(crate) struct Partitions {
     dir: PathBuf,
+    /// Held (locked) while the directory exists: `sweep_stale` leaves it alone.
+    _lock: File,
     width: usize,
     rows: Vec<u64>,
     bytes: u64,
@@ -30,9 +34,9 @@ impl Partitions {
         rows: impl IntoIterator<Item = &'r [TermId]>,
         mut check: impl FnMut(),
     ) -> io::Result<Partitions> {
-        let dir = fresh_dir(scratch)?;
+        let (dir, lock) = fresh_dir(scratch)?;
         // From here on the directory is owned, so an error or unwind below still removes it.
-        let mut out = Partitions { dir, width, rows: vec![0; parts], bytes: 0 };
+        let mut out = Partitions { dir, _lock: lock, width, rows: vec![0; parts], bytes: 0 };
         let mut files = Vec::with_capacity(parts);
         for p in 0..parts { files.push(BufWriter::with_capacity(buffer, File::create(out.path(p))?)); }
         let hasher = std::hash::RandomState::new();
@@ -78,19 +82,63 @@ impl Drop for Partitions {
     fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.dir); }
 }
 
-/// A directory of its own under `scratch`, unique within this process and across processes sharing `scratch`.
-fn fresh_dir(scratch: &Path) -> io::Result<PathBuf> {
+const PREFIX: &str = ".rdf-spill-";
+const NEW_PREFIX: &str = ".rdf-spill-new-";
+
+/// A directory of its own under `scratch`, unique within this process and across processes sharing `scratch`, with its
+/// `LOCK` held. It is made under a `NEW_PREFIX` name and renamed once locked, so `sweep_stale` never sees it unlocked.
+fn fresh_dir(scratch: &Path) -> io::Result<(PathBuf, File)> {
     static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     std::fs::create_dir_all(scratch)?;
     loop {
         let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let dir = scratch.join(format!(".rdf-spill-{}-{n}", std::process::id()));
-        match std::fs::create_dir(&dir) {
-            Ok(()) => return Ok(dir),
+        let name = format!("{}-{n}", std::process::id());
+        let new = scratch.join(format!("{NEW_PREFIX}{name}"));
+        match std::fs::create_dir(&new) {
+            Ok(()) => {}
             Err(e) if e.kind() == io::ErrorKind::AlreadyExists => continue,
             Err(e) => return Err(e),
         }
+        let locked = (|| {
+            let lock = File::create(new.join("LOCK"))?;
+            lock.try_lock().map_err(|e| match e { std::fs::TryLockError::Error(e) => e, std::fs::TryLockError::WouldBlock => io::Error::other("fresh spill LOCK is held") })?;
+            let dir = scratch.join(format!("{PREFIX}{name}"));
+            std::fs::rename(&new, &dir)?;
+            Ok((dir, lock))
+        })();
+        if locked.is_err() { let _ = std::fs::remove_dir_all(&new); }
+        return locked;
     }
+}
+
+/// Removes the spill directories under `scratch` that no live process owns: a `.rdf-spill-*` directory whose `LOCK`
+/// can be taken (its owner exited, normally or killed), and `.rdf-spill-new-*` leftovers of a crash while one was being
+/// made that are over an hour old. Returns how many it removed; a missing `scratch` removes none.
+pub fn sweep_stale(scratch: &Path) -> io::Result<usize> {
+    let entries = match std::fs::read_dir(scratch) {
+        Ok(e) => e,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0),
+        Err(e) => return Err(e),
+    };
+    let mut removed = 0;
+    for entry in entries {
+        let entry = entry?;
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else { continue };
+        let path = entry.path();
+        let stale = if name.starts_with(NEW_PREFIX) {
+            entry.metadata()?.modified()?.elapsed().is_ok_and(|age| age > std::time::Duration::from_secs(3600))
+        } else if name.starts_with(PREFIX) && path.is_dir() {
+            // An owner holds the lock; a directory without one (only possible from an older build) is stale too.
+            match File::open(path.join("LOCK")) {
+                Ok(lock) => lock.try_lock().is_ok(),
+                Err(e) if e.kind() == io::ErrorKind::NotFound => true,
+                Err(e) => return Err(e),
+            }
+        } else { false };
+        if stale && std::fs::remove_dir_all(&path).is_ok() { removed += 1 }
+    }
+    Ok(removed)
 }
 
 /// The most run files written at once: well under the usual open-file limit (256 on macOS), and with the write buffers
@@ -149,6 +197,30 @@ mod tests {
         }));
         assert!(stopped.is_err());
         assert_eq!(std::fs::read_dir(&scratch).unwrap().count(), 0, "no run directory is left behind");
+        let _ = std::fs::remove_dir_all(&scratch);
+    }
+
+    #[test]
+    fn a_sweep_removes_only_directories_nobody_holds() {
+        let scratch = std::env::temp_dir().join(format!("rdf-spill-sweep-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&scratch);
+        let rows: Vec<Vec<TermId>> = (0..100u64).map(|i| vec![TermId(i + 1)]).collect();
+        let live = Partitions::write(&scratch, 1, &[0], (2, 1 << 12), rows.iter().map(Vec::as_slice), || {}).unwrap();
+        // A killed process's directory: locked by nobody (this one was never locked), plus one with an unheld LOCK.
+        let dead = scratch.join(format!("{PREFIX}999999-0"));
+        std::fs::create_dir_all(&dead).unwrap();
+        std::fs::write(dead.join("part-0"), b"x").unwrap();
+        let unheld = scratch.join(format!("{PREFIX}999999-1"));
+        std::fs::create_dir_all(&unheld).unwrap();
+        std::fs::write(unheld.join("LOCK"), b"").unwrap();
+        let other = scratch.join("unrelated");
+        std::fs::create_dir_all(&other).unwrap();
+        assert_eq!(sweep_stale(&scratch).unwrap(), 2);
+        assert!(live.dir.is_dir(), "a directory whose owner is alive is kept");
+        assert!(!dead.exists() && !unheld.exists());
+        assert!(other.is_dir(), "only spill directories are touched");
+        drop(live);
+        assert_eq!(sweep_stale(&std::env::temp_dir().join("rdf-spill-sweep-missing")).unwrap(), 0);
         let _ = std::fs::remove_dir_all(&scratch);
     }
 

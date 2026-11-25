@@ -114,6 +114,7 @@ pub enum QueryErrorKind {
 }
 
 pub use limits::{Interrupt, MemoryBudget, OverBudget, QueryLimits, Reservation};
+pub use limits::spill::sweep_stale as sweep_stale_spills;
 use limits::{Interrupted, OverBudgetStop};
 
 impl QueryError {
