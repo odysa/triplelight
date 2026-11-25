@@ -1215,11 +1215,11 @@ fn spilled_group_by_matches_the_in_memory_answer_and_cleans_up() {
 fn a_group_by_over_the_budget_spills_instead_of_failing() {
     use triplelight::exec::{query_with, MemoryBudget, Options, QueryErrorKind};
     let mut nt = String::new();
-    for i in 0..40_000u32 { nt.push_str(&format!("<http://ex/s{i}> <http://ex/p> \"v{i}\" .\n")) }
+    for i in 0..40_000u32 { nt.push_str(&format!("<http://ex/s{}> <http://ex/p> \"v{i}\" .\n", i / 4)) }
     let snap = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
-    // One group per row, on the general path: the groups hold every row again. HAVING keeps the answer small, so the
-    // projection after it fits and only the grouping is over the budget.
-    let q = "SELECT ?s (GROUP_CONCAT(?o) AS ?all) WHERE { ?s <http://ex/p> ?o } GROUP BY ?s HAVING (STRENDS(STR(?s), \"77\"))";
+    // 10,000 groups of 4 rows on the general path: the groups hold every row again, which does not fit next to the
+    // input; one partition's rows and groups, plus the grouped answer so far, do.
+    let q = "SELECT ?s (GROUP_CONCAT(?o) AS ?all) WHERE { ?s <http://ex/p> ?o } GROUP BY ?s";
     let opts = |b| Options { memory_budget: Some(b), general_group: true, ..Options::default() };
     let budget = 3 << 20;
     let tight = MemoryBudget::new(budget);

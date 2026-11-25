@@ -64,7 +64,8 @@ fn an_unusable_scratch_directory_is_a_storage_error() {
     let file = scratch.0.join("not-a-dir");
     std::fs::write(&file, b"x").unwrap();
     let budget = MemoryBudget::new(64 << 20).with_scratch_dir(&file).with_spill_rows(100);
-    let q = "SELECT ?o (COUNT(*) AS ?n) WHERE { ?s <http://ex/p> ?o } GROUP BY ?o";
+    // SUM, not COUNT(*): a COUNT(*) GROUP BY is answered from the index counts without grouping rows at all
+    let q = "SELECT ?o (SUM(?o) AS ?t) WHERE { ?s <http://ex/p> ?o } GROUP BY ?o";
     let got = db.query_with_limits(q, Entailment::Simple, QueryLimits { interrupt: None, memory: Some(&budget) });
     assert!(matches!(got, Err(DatabaseError::Storage(_))), "{got:?}");
     assert_eq!(scratch.entries(), 1, "only the file itself");

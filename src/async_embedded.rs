@@ -48,9 +48,9 @@ pub struct QueryOptions {
     pub timeout: Option<std::time::Duration>,
     /// Bytes of working memory the query may hold at once (see [`exec::MemoryBudget`]).
     pub memory_bytes: Option<u64>,
-    /// With `memory_bytes`: a directory where GROUP BY may spill its input instead of failing when it does not fit
-    /// (#111). `None` (the default) never writes to disk.
-    pub spill_dir: Option<std::path::PathBuf>,
+    /// With `memory_bytes`: let GROUP BY spill its input to `TRIPLELIGHT_SCRATCH_DIR` (else the system temporary
+    /// directory) instead of failing when it does not fit (#111). `false` (the default) never writes to disk.
+    pub spill: bool,
 }
 
 /// Cancels its query when dropped: a query future dropped before it finishes takes it down with it.
@@ -66,10 +66,7 @@ async fn run_query<T: Send + 'static>(
     job: impl FnOnce(exec::Entailment, exec::QueryLimits<'_>) -> Result<T, DatabaseError> + Send + 'static,
 ) -> Result<T, DatabaseError> {
     let interrupt = Arc::new(options.timeout.map_or_else(exec::Interrupt::new, exec::Interrupt::with_timeout));
-    let memory = options.memory_bytes.map(|bytes| match &options.spill_dir {
-        Some(dir) => exec::MemoryBudget::new(bytes).with_scratch_dir(dir),
-        None => exec::MemoryBudget::new(bytes),
-    });
+    let memory = options.memory_bytes.map(|bytes| if options.spill { exec::MemoryBudget::spilling(bytes) } else { exec::MemoryBudget::new(bytes) });
     let _cancel = CancelOnDrop(Arc::clone(&interrupt));
     run(limit, move || job(options.entailment, exec::QueryLimits { interrupt: Some(&interrupt), memory: memory.as_ref() })).await
 }
