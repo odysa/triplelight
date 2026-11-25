@@ -268,8 +268,18 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
                 continue;
             }
             // Authorize before reading the body, so an unauthorized client cannot make the server buffer it.
-            if path == "/update" && let Err(denied) = auth.check(&req) { let _ = req.respond(denied); continue }
+            if path == "/update" && let Err(denied) = auth.check(&req) {
+                early_rejection(path, denied.status_code().0);
+                let _ = req.respond(denied);
+                continue
+            }
             let limit = if path == "/update" { u64::MAX } else { MAX_QUERY_BYTES };
+            // A body declared too large is refused before any of it is read.
+            if declared_length(&req).is_some_and(|n| n > limit) {
+                early_rejection(path, 413);
+                let _ = req.respond(tiny_http::Response::from_string("query too large").with_status_code(413));
+                continue
+            }
             let mut body = String::new();
             if req.as_reader().take(limit.saturating_add(1)).read_to_string(&mut body).is_err() {
                 let _ = req.respond(tiny_http::Response::from_string("request body is not valid UTF-8").with_status_code(400)); continue
@@ -316,6 +326,19 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
             let _ = req.respond(resp);
         }
     }); });
+}
+
+/// Requests answered before their body was read (#123): an unauthorized update, or a declared body over the limit.
+/// Each is logged with the running count, so a CI log shows whether that path ran when a client saw a reset.
+fn early_rejection(path: &str, status: u16) {
+    static COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let n = COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+    eprintln!("early rejection {n}: {status} {path}");
+}
+
+/// The declared `Content-Length`, if any.
+fn declared_length(req: &tiny_http::Request) -> Option<u64> {
+    req.headers().iter().find(|h| h.field.equiv("Content-Length")).and_then(|h| h.value.as_str().trim().parse().ok())
 }
 
 /// Listen address host: 127.0.0.1 unless TRIPLELIGHT_HOST is set, e.g. 0.0.0.0 in a container.

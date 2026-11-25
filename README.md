@@ -97,6 +97,8 @@ disabled. For local scripts you can pass `--allow-unauthenticated-updates` inste
 still refuses requests from browser pages. The token travels in plain HTTP, so on an untrusted network put the server behind a
 TLS-terminating proxy.
 
+A query body declared over 16 MiB is refused with 413 before any of it is read.
+
 Query the server with any SPARQL client, for example:
 
 ```sh
