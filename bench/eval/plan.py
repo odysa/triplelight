@@ -16,6 +16,7 @@ Plan keys (all required unless marked optional):
   mode warm|cold, runs, timeout, seed, drain_rows,
   expect_unsupported (optional) {system: [case ids]},
   arms (optional) [{label, binary}]  and  sequence (optional, e.g. "ABBA"): TRIPLELIGHT_BIN per arm; default one arm "A", sequence "A".
+  The run directory also gets report.md and report.json (report.py): scored results only, refused ones listed with their reasons.
   fail_on_regression (optional, default false): with exactly two arms, abba.py --scored compares them per system and a counted slowdown fails the plan.
 """
 import argparse, hashlib, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time
@@ -192,6 +193,9 @@ def cmd_run(a):
             if r.returncode != 0: status = 1          # keep going: every session's logs are evidence; the plan's status says it failed
         (out / "plan.json").write_text(json.dumps(plan, indent=1, sort_keys=True))
         if len(plan["arms"]) == 2 and status == 0 and not os.environ.get("PLAN_SKIP_COMPARE"): status = compare_arms(plan, out, sessions)      # the skip is for the stub-session test
+        if not os.environ.get("PLAN_SKIP_COMPARE"):      # the report names refused results and gives them no timing row; exit 1 means nothing in the run is publishable
+            rr = subprocess.run([sys.executable, str(HERE / "report.py"), "report", str(out), "--out", str(out / "report.md"), "--json", str(out / "report.json")])
+            if rr.returncode != 0: status = 1
         sys.exit(status)
     finally:
         release_lock(owner)
@@ -325,6 +329,8 @@ def cmd_selftest(a):
         res = t / "w1" / "session-1-A" / "triplelight.warm.json"
         data = json.loads(res.read_text()) if res.exists() else {}
         check("real wiring, warm: the session runs, the results are scored: true, no failures", r.returncode == 0 and data.get("scored") is True and data.get("eligible") is True and not (t / "w1" / "session-1-A" / "failures.txt").exists(), r.stdout[-300:] + r.stderr[-500:])
+        rep = (t / "w1" / "report.md").read_text() if (t / "w1" / "report.md").exists() else ""
+        check("real wiring, warm: the run directory gets a report with the scored timing row and no local path", "| q1 |" in rep and str(t) not in rep and (t / "w1" / "report.json").exists())
         check("real wiring, warm: the plan's seed and repeat count reach the driver", data.get("seed") == 5 and data.get("runs_per_query") == 2)
         check("real wiring, warm: the reference staged for the session is the plan's file", (t / "w1" / "session-1-A" / "reference.json").read_bytes() == (t / "wref.json").read_bytes())
         check("real wiring, warm: the endpoint is the private port, not the shared service port", f":{port}/" in data.get("url", "") and ":7979/" not in data.get("url", ""))
