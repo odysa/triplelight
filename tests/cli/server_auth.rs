@@ -184,7 +184,9 @@ fn graph_state_errors_are_client_errors() {
 
 /// More clients than workers declare an update body and never send it (#123). Each is answered 401 at once, and then
 /// holds a worker while tiny_http reads off the body; the read idle timeout releases them, so a normal query still
-/// answers promptly instead of waiting behind them forever.
+/// answers promptly instead of waiting behind them forever. Linux only: accepted sockets inherit the listener's
+/// timeouts there, and not on macOS (see `listen` in the server).
+#[cfg(target_os = "linux")]
 #[test]
 fn withheld_bodies_are_released_by_the_read_idle_timeout() {
     let s = start_with("idle", &[], Some("s3cret"), &[("TRIPLELIGHT_READ_IDLE_MS", "300")]);

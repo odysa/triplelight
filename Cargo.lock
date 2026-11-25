@@ -847,6 +847,7 @@ name = "triplelight"
 version = "0.1.0"
 dependencies = [
  "asyncband",
+ "libc",
  "mimalloc",
  "rayon",
  "rustyline",

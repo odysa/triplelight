@@ -330,7 +330,9 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
 
 /// Idle timeouts on every connection (#123). tiny_http reads off an unread request body (one we rejected before
 /// reading it) inside the worker that answered, with no cap, and it gives handlers no access to the socket; so the
-/// timeouts are set on the listening socket, whose accepted connections inherit them on Linux and macOS. A read that
+/// timeouts are set on the listening socket, whose accepted connections inherit them on Linux. **macOS does not
+/// copy them to accepted sockets**, so there a withheld body still holds its worker until the client goes away;
+/// deploy on Linux, or put a proxy with its own timeouts in front. A read that
 /// waits longer than the read timeout for a client's next bytes, or a write that waits longer than the write timeout
 /// for a client to take more of an answer, fails and closes the connection, which releases its worker. They bound
 /// each wait, not the whole transfer: a slow but steady upload or download keeps going. Defaults: 10 s and 60 s;
