@@ -28,9 +28,9 @@ parsed with rdflib 7.1.4), so the driver checks the projection as well as the ro
 `run.sh` fixes the session budget to `--mem 12 --cpus 8` for every engine (refusing a different caller `BUDGET`), and the
 config files the manifests hash say the same.
 
-**Before the scored acceptance run** three pieces must be on main: the machine check (#296), the report (#305) and the
-frozen BSBM BI case policy (#130). Until the policy is in, BI answers inside the registered rounding, lexical and
-cutoff rules show as mismatches, and those sessions are unscored.
+The `bi100` plan is scored under the frozen BSBM BI-100M case policy (`policy/bi100m/`): `make-plans.py` stages the
+verified bundle next to the plans and names it under `case_policy`, so answers inside the registered rounding, lexical
+and cutoff rules count as `value-compatible`, each with its reason in the report.
 
 Each system gets 3 server sessions (`--sessions`), so queries under 5 ms can pass the noise gate in
 `bench/eval/abba.py` when two profiles are compared.

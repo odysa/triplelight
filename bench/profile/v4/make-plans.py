@@ -7,8 +7,11 @@ Plans name absolute dataset and store paths (plan.py checks them against what sy
 per machine from $TOOLS (default <repo>/bench/tools) and never committed. Protocol as in profile v3: warm, 3 timed runs,
 120 s timeout, seed 0, drain threshold 200000 rows; plus 3 server sessions per system (sequence AAA), which the noise
 gate needs for queries under 5 ms.
+
+The BI suite's plan carries the frozen BSBM BI-100M case policy (#130): the verified bundle is staged next to the plan
+directory (`<OUT_DIR>/../bi100m-policy`, by policy/bi100m/replay.py --stage) and named under `case_policy`.
 """
-import argparse, json, os, pathlib, subprocess
+import argparse, json, os, pathlib, subprocess, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
@@ -21,14 +24,31 @@ def version(system):
     return pins[f"{system.upper()}_IMAGE"].split()[0]
 
 
+# Suites scored under a frozen case policy: suite -> policy bundle directory under policy/.
+POLICIES = {"bi100": "bi100m"}
+
+
+def stage_policy(name, where):
+    """Stages the verified bundle into a new directory with policy/<name>/replay.py --stage (which refuses a bad archive)
+    and returns the plan's case_policy, with resolved paths. A directory that already exists is refused rather than
+    trusted: the bundle a scored plan names must be the one this command just verified."""
+    where = where.resolve()
+    if where.exists(): raise SystemExit(f"make-plans: {where} already exists; stage the policy into a new output directory")
+    subprocess.run([sys.executable, "-B", str(HERE / "policy" / name / "replay.py"), "--repo", str(ROOT), "--stage", str(where)],
+                   check=True, cwd=ROOT)
+    module = where / "bi_case_policy.py"
+    if not module.is_file(): raise SystemExit(f"make-plans: staged policy {where} has no bi_case_policy.py")
+    return {"file": str(module), "bundle": str(where)}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("out"); ap.add_argument("--suite", action="append")
     ap.add_argument("--systems", default="triplelight,qlever,virtuoso"); ap.add_argument("--runs", type=int, default=3)
     ap.add_argument("--sessions", type=int, default=3, help="server starts per system (the noise gate needs 3 for queries under 5 ms)")
     a = ap.parse_args()
-    tools = pathlib.Path(os.environ.get("TOOLS") or ROOT / "bench" / "tools")
-    out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
+    tools = pathlib.Path(os.environ.get("TOOLS") or ROOT / "bench" / "tools").resolve()
+    out = pathlib.Path(a.out).resolve(); out.mkdir(parents=True, exist_ok=True)
     systems = a.systems.split(",")
     for line in (HERE / "suites.tsv").read_text().splitlines():
         if line.startswith("#") or not line.strip(): continue
@@ -39,6 +59,7 @@ def main():
                 "stores": [{"name": f"{s}-{dataset}", "path": str(tools / f"{s}-{dataset}")} for s in systems],
                 "systems": [{"name": s, "version": version(s), "config": str(HERE / "configs" / f"{s}.txt")} for s in systems],
                 "mode": "warm", "runs": a.runs, "timeout": 120, "seed": 0, "drain_rows": 200000, "sequence": "A" * a.sessions}
+        if suite in POLICIES: plan["case_policy"] = stage_policy(POLICIES[suite], out.parent / f"{POLICIES[suite]}-policy")
         (out / f"{suite}.json").write_text(json.dumps(plan, indent=1) + "\n")
         print(out / f"{suite}.json")
 
