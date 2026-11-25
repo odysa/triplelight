@@ -227,6 +227,8 @@ def classify(rec, ref):
     if s == "timeout": return "timeout"
     if s == "error": return "unsupported" if UNSUPPORTED_QLEVER_TWO_ORDER in rec.get("detail", "") else "error"
     if s == "truncated": return "incomplete"
+    # the digests hash values by position, so a renamed or reordered projection would pass them: compare the projected variables first, for every suite
+    if "vars" in ref and rec.get("vars") != ref["vars"]: return "mismatch"
     if rec["rows"] == ref["rows"] and rec["bag"] == ref["bag"]: return "pass"
     if rec["rows"] == ref["rows"] and rec["bag_norm"] == ref["bag_norm"]: return "value-compatible"
     if rec["rows"] < ref["rows"] and rec["rows"] == CAP: return "incomplete"
@@ -384,6 +386,9 @@ def check_manifest(a):
             return False, {"manifest": str(a.manifest), "scored_reason": "cold runs are scored only by the plan runner"}
     try: m, problems = mf.load_checked(a.manifest)
     except Exception as e: m, problems = {}, [f"cannot read the manifest: {e}"]
+    try: lacking = sorted(q for q, rec in json.load(open(a.reference))["queries"].items() if "vars" not in rec)
+    except Exception as e: lacking = [f"unreadable reference ({e})"]
+    if lacking: problems = problems + [f"reference lacks projection (`vars`) for {len(lacking)} case(s), e.g. {lacking[:3]}: regenerate it from its source system"]
     if not problems:
         # the manifest must describe this run: its query set, reference, engine, protocol, mode and expected-unsupported policy
         problems = mf.run_bindings(m, queries_sha256=mf.sha256_tree(a.queries), reference_sha256=mf.sha256_file(a.reference), system=a.system, url=a.url, clear_cache_url=a.clear_cache_url, runs=a.runs,
@@ -403,6 +408,7 @@ def judge(policy, name, rec, r):
     failed (rows, bag and, for an ordered query, sequence) or the answer is empty (the typed-projection check). A verdict the policy may not
     give is a mismatch with that reason: `pass` only for an exact empty answer, never for an inexact one."""
     if policy is None or rec.get("status") != "ok": return None
+    if "vars" in r and rec.get("vars") != r["vars"]: return ("mismatch", f"the projected variables {rec.get('vars')} differ from the reference's {r['vars']}")
     exact = rec["rows"] == r["rows"] and rec["bag"] == r["bag"] and (not r.get("ordered") or rec["seq"] == r["seq"])
     if exact and rec["rows"] > 0: return None
     answer = rec.get("answer")
@@ -816,6 +822,17 @@ def gate_tests(port, behaviors_raw):
                             "--case-policy", str(bundle / "policy.py"), "--policy-bundle", str(bundle)], capture_output=True, text=True)
         flip = json.load(open(out))["queries"]["q_empty"] if out.exists() else {}
         check("policy: a correct empty projection on the checking run and a wrong one on the repeats is a mismatch, exit 3", r.returncode == 3 and flip.get("class") == "mismatch" and any("projected variables" in x for x in flip.get("policy_reasons", [])))
+        # the projected variables are compared on every suite: the digests hash values by position, so a renamed projection would otherwise pass
+        served(q_interval=doc_(["w"], [[float_("1.0")]]))
+        rc, res, _ = prun("projrename", "--lenient", policy=False)
+        check("a renamed projected variable with the same values is a mismatch, with or without a policy", res["queries"]["q_interval"]["class"] == "mismatch")
+        rc, res, _ = prun("projrename-policy", "--lenient")
+        check("a renamed projection is a mismatch before the policy is consulted (no policy reason, no relaxation)", res["queries"]["q_interval"]["class"] == "mismatch" and not any("within" in x for x in res["queries"]["q_interval"].get("policy_reasons", [])))
+        served()
+        novars = {"queries": {c: {k: v for k, v in rec.items() if k != "vars"} for c, rec in json.loads((tmp / "refpolicy.json").read_text())["queries"].items()}}
+        (tmp / "refnovars.json").write_text(json.dumps(novars))
+        rc, res, err = prun("novars-unscored", "--lenient", ref="refnovars.json", policy=False)
+        check("a reference without projections still works unscored (the old comparison)", res is not None and res["scored"] is False)
         # a case the policy judged is never timed by draining (only the bytes of a drained repeat are compared)
         served(q_interval=doc_(["v"], [[float_("1.0004")]]))
         rc, res, _ = prun("policydrain", "--lenient", "--drain-rows", "1")
@@ -839,6 +856,8 @@ def gate_tests(port, behaviors_raw):
         pm["policy"] = mf2.policy_identity(bundle / "policy.py", bundle, qmap)
         (mdir / "manifest.json").write_text(json.dumps(pm))
         manifest_args = ("--manifest", str(mdir / "manifest.json"), "--scored")
+        rc, res, err = prun("pscored-novars", *manifest_args, ref="refnovars.json")
+        check("scored: a reference without projections (`vars`) is refused, naming the reason", rc != 0 and res is None and "reference lacks projection" in err)
         rc, res, err = prun("pscored", *manifest_args)
         check("policy, scored: a run whose manifest records the policy is scored (exact answers)", rc == 0 and res and res["scored"] is True and res["case_policy"]["bundle_sha256"] == pm["policy"]["bundle_sha256"])
         rc, res, err = prun("pscored-nopolicy", *manifest_args, policy=False)
