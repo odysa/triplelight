@@ -446,6 +446,7 @@ def budget_from_env():
 def check_manifest(a):
     """(scored, info): a run is scored only with a complete manifest and a fresh passing machine receipt (manifest.py). `--scored`
     refuses to start without them; otherwise the results file says `scored: false` and the report will not compare it."""
+    if a.unscored and a.scored: sys.exit("--unscored and --scored are opposites")
     if not a.manifest:
         if a.scored: sys.exit("--scored needs --manifest (see bench/eval/manifest.py write)")
         return False, {"scored_reason": "no manifest"}
@@ -478,9 +479,10 @@ def check_manifest(a):
         input_problems = [f"--plan-runner {a.plan_runner!r} is not this manifest's run ({m.get('run_id')!r})"]
     if not input_problems: a._manifest = m          # verified inputs: the case policy may be given them whether or not the machine qualifies
     problems = input_problems + machine_problems
+    if a.unscored: problems = problems + ["run explicitly as unscored harness acceptance (--unscored), whatever the machine receipt says"]      # a copied-out session can never be scored
     if problems:
         if a.scored: sys.exit("run is not scorable:\n  " + "\n  ".join(problems))
-        return False, {"manifest": str(a.manifest), "scored_reason": problems}
+        return False, {"manifest": str(a.manifest), "scored_reason": problems, **({"run_mode": "unscored"} if a.unscored else {})}
     return True, {"manifest": str(a.manifest), "manifest_sha256": mf.sha256_file(a.manifest), "run_id": m.get("run_id")}
 
 
@@ -1106,6 +1108,7 @@ def main():
     x.add_argument("--manifest", help="run manifest (manifest.py write); a run without a complete one, or whose machine receipt is stale, failed or from another boot, is not scored")
     x.add_argument("--case-policy", help="a Python module inside --policy-bundle that judges answers the exact comparison rejects (a registered, weaker comparison); see load_policy")
     x.add_argument("--policy-bundle", help="the directory holding the case policy, everything it imports and its sidecars; the manifest binds the digest of the whole directory")
+    x.add_argument("--unscored", action="store_true", help="harness acceptance: the result is never scored, even when the manifest verifies and the machine receipt passes")
     x.add_argument("--plan-runner", help="set by bench/eval/plan.py: the manifest's run id; the only way a cold run can be scored")
     x.add_argument("--scored", action="store_true", help="refuse to run unless the manifest and the machine receipt qualify")
     x.add_argument("--expect-unsupported", help="comma-separated case IDs this system configuration is known not to answer (QLever's two-order index and a predicate variable); only these may come back `unsupported` in an eligible run")

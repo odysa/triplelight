@@ -133,7 +133,8 @@ def manifest_command(plan, arm, receipt, out, reference=None, plan_file=None, un
 def session_env(plan, arm, manifest, unscored=False):
     env = dict(os.environ, MANIFEST=str(manifest), **({} if unscored else {"SCORED": "1"}), MODE=plan["mode"], RUNS=str(plan["runs"]), TIMEOUT=str(plan["timeout"]),
                SEED=str(plan["seed"]), DRAIN_ROWS=str(plan["drain_rows"]), PLAN_RUNNER=json.loads(manifest.read_text())["run_id"] if manifest.exists() else "")
-    if unscored: env.pop("SCORED", None)
+    if unscored: env.pop("SCORED", None); env["UNSCORED"] = "1"      # the driver writes scored: false for every result, even with a passing receipt
+    else: env.pop("UNSCORED", None)
     env["BUDGET"] = f"--mem {plan['budget']['mem_gb']} --cpus {plan['budget']['cpus']}" if plan.get("budget") else ""      # never inherited from the caller
     if arm.get("binary"): env["TRIPLELIGHT_BIN"] = arm["binary"]
     if plan.get("case_policy"): env["CASE_POLICY"], env["POLICY_BUNDLE"] = plan["case_policy"]["file"], plan["case_policy"]["bundle"]
@@ -168,6 +169,9 @@ def compare_arms(plan, out, sessions, unscored=False):
         if plan.get("fail_on_regression"): cmd.append("--fail-on-regression")
         r = subprocess.run(cmd, capture_output=True, text=True)
         (out / f"abba-{system}.log").write_text(r.stdout + r.stderr)
+        if unscored and (out / f"abba-{system}.json").exists():
+            ab = json.loads((out / f"abba-{system}.json").read_text()); ab["run_mode"] = "unscored"; ab["label"] = "UNSCORED: harness acceptance, not for publication"
+            (out / f"abba-{system}.json").write_text(json.dumps(ab, indent=1, sort_keys=True) + "\n")
         print(f"abba {system}: exit {r.returncode}")
         if r.returncode != 0: status = 1
     return status
@@ -376,6 +380,11 @@ def cmd_selftest(a):
         bd = subprocess.run([sys.executable, str(ev / "report.py"), "scoreboard", "add", str(t / "wu1"), "--board", str(t / "board.jsonl")], capture_output=True, text=True)
         check("--unscored: the scoreboard refuses the run", bd.returncode != 0 and "refuses an unscored" in bd.stderr and not (t / "board.jsonl").exists())
         check("--unscored: the failing receipt is recorded with the run, not hidden", json.loads((t / "wu1" / "session-1-A" / "manifest.json").read_text())["machine"]["receipt_sha256"] == hashlib.sha256((t / "recbad.json").read_bytes()).hexdigest())
+        r = runplan(wire(), t / "wu2", "--unscored")
+        ud2 = json.loads((t / "wu2" / "session-1-A" / "triplelight.warm.json").read_text()) if (t / "wu2" / "session-1-A" / "triplelight.warm.json").exists() else {}
+        check("--unscored with a PASSING receipt still writes scored: false, with the reason, so a copied-out session can never be scored", r.returncode == 0 and ud2.get("scored") is False and ud2.get("eligible") is True and "unscored harness acceptance" in " ".join(ud2.get("scored_reason", [])), r.stderr[-300:])
+        ab = subprocess.run([sys.executable, str(ev / "abba.py"), "--scored", "--a", str(t / "wu2" / "session-1-A" / "triplelight.warm.json"), str(t / "wu2" / "session-1-A" / "triplelight.warm.json"), "--b", str(t / "wu2" / "session-1-A" / "triplelight.warm.json")], capture_output=True, text=True)
+        check("abba.py --scored refuses that unscored session", ab.returncode == 2, ab.stdout[-200:] + ab.stderr[-200:])
         r = runplan(wire(mode="cold"), t / "w2")
         sd = t / "w2" / "session-1-A"
         cold = json.loads((sd / "triplelight.cold.json").read_text()) if (sd / "triplelight.cold.json").exists() else {}
@@ -391,6 +400,8 @@ def cmd_selftest(a):
         check("real wiring, BAAB: the manifest records BAAB, not the default ABBA", man3.get("protocol", {}).get("order") == "BAAB")
         r = runplan(wire(arms=two, sequence="ABBA"), t / "w3u", "--unscored", receipt="recbad.json")
         check("real wiring, ABBA, --unscored: the arms are compared without --scored on a machine whose receipt fails, and the report shows it", r.returncode == 0 and (t / "w3u" / "abba-triplelight.json").exists() and "UNSCORED" in (t / "w3u" / "report.md").read_text(), r.stdout[-300:] + r.stderr[-300:])
+        abu = json.loads((t / "w3u" / "abba-triplelight.json").read_text()) if (t / "w3u" / "abba-triplelight.json").exists() else {}
+        check("the unscored A/B comparison output carries the unscored label", abu.get("run_mode") == "unscored" and "not for publication" in abu.get("label", ""))
         check("real wiring, ABBA: four sessions run and abba.py --scored compares the arms", all((t / "w3" / f"session-{i}-{l}" / "triplelight.warm.json").exists() for i, l in enumerate("BAAB", 1)) and (t / "w3" / "abba-triplelight.json").exists() and r.returncode == 0, r.stdout[-300:] + r.stderr[-400:])
     print("PLAN SELFTEST", "PASSED" if ok else "FAILED"); sys.exit(0 if ok else 1)
 
