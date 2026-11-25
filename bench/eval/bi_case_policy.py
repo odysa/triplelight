@@ -180,13 +180,13 @@ class BICasePolicy:
 
 
 NAME = "bsbm-bi-frozen-v1"
+BI_100M = ("bi100m", "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d")
 REGISTRATIONS = {
     "734c77aedb9cdd72fa09b1b96d816230343f18a5366b3501067b073211275892": (
         "bi10m", "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
     ),
-    "7b3f640bbab516db80ceba87549b9670802a93c5ff77181bdda66c0855fc3dfb": (
-        "bi100m", "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d",
-    ),
+    "7b3f640bbab516db80ceba87549b9670802a93c5ff77181bdda66c0855fc3dfb": BI_100M,
+    "0fe0651540f3435e3f76b476dd89fc9921761669fd34fa48dc1a88f34cb882d8": BI_100M,
 }
 REGISTRY = Path(__file__).resolve().parent / "registry"
 FREEZE_PATH = REGISTRY / "policies/value-policy-freeze.json"
