@@ -340,6 +340,8 @@ fn early_rejection(path: &str, status: u16) {
 /// The declared `Content-Length`, if any.
 fn declared_length(req: &tiny_http::Request) -> Option<u64> {
     req.headers().iter().find(|h| h.field.equiv("Content-Length")).and_then(|h| h.value.as_str().trim().parse().ok())
+}
+
 /// Idle timeouts on every connection (#123). tiny-http reads off an unread request body (one we rejected before
 /// reading it) inside the worker that answered, with no cap; the vendored tiny-http (`vendor/tiny_http`) sets these
 /// timeouts on each accepted connection, so a read that waits longer than the read timeout for a client's next bytes,

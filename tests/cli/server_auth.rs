@@ -192,6 +192,8 @@ fn an_oversized_declared_body_is_refused_before_reading() {
     let mut buf = [0u8; 64];
     let n = c.read(&mut buf).expect("the 413 is sent without waiting for the body");
     assert!(String::from_utf8_lossy(&buf[..n]).contains(" 413 "));
+}
+
 /// More clients than workers declare an update body and never send it (#123). Each is answered 401 at once, and then
 /// holds a worker while tiny-http reads off the body; the read idle timeout on each connection releases them, so a
 /// normal query still answers promptly instead of waiting behind them forever.
