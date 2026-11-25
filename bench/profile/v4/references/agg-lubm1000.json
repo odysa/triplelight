@@ -1,0 +1,255 @@
+{
+ "reference_url": "http://127.0.0.1:7001/",
+ "git": "8b1019dea422083d3404f8cc6dceefbb99360fe0",
+ "versions": {
+  "JENA_VERSION": "6.2.0",
+  "FUSEKI_VERSION": "6.2.0",
+  "OXIGRAPH_VERSION": "0.5.13",
+  "QLEVER_IMAGE": "adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cba4e894ca1ba8117cef6727",
+  "VIRTUOSO_IMAGE": "openlink/virtuoso-opensource-7@sha256:0dbe1ab4fa0cb7bbafc1f6c0c2b0a5d6f22d918dbd17672f2ddb24580aa6756a",
+  "RDF4J_IMAGE": "eclipse/rdf4j-workbench@sha256:0944c151198f33d4694f0f09637cbc56c20970014082cbc7bae305daa231b0e6   # 5.0.0, Tomcat with rdf4j-server and workbench",
+  "MILLENNIUMDB_COMMIT": "126c387a7b4fbcd6f8a970c0a19766586be60d0e   # upstream main on 2026-11-22, newer than the latest tag v1.1.0 (kept per Kaiming: main is likelier to have the SPARQL support we need; if the rerun shows main broken where v1.1.0 works, switch to the tag and record why); image built locally by build-millenniumdb.sh as mdb:$MILLENNIUMDB_COMMIT"
+ },
+ "queries": {
+  "all_q1": {
+   "rows": 1,
+   "bag": "231c5edb991898fc2250c3c579bb5477",
+   "bag_norm": "ed6a3f9c097c0fbf5ddaa25a8bb451ea",
+   "seq": "baf3af4d164e2db21ce6e5b0ecb95e084fc1f4ae",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q2": {
+   "rows": 1,
+   "bag": "4b9183a8650016b56c23c077c9f4fda7",
+   "bag_norm": "60c51affdababb88d301983627f3adcf",
+   "seq": "abbd9fee6b5cb3c6b3aebea4a27fae5c3e9ffa4f",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q3": {
+   "rows": 1,
+   "bag": "65cd0da16a39c37612c90242e53972e7",
+   "bag_norm": "1f37172bb9c4504d773b69b0b3e134f5",
+   "seq": "edde85ddce4c71809af33437a6ec1649b93a2a68",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q4": {
+   "rows": 1,
+   "bag": "59ed86bfca79b1542f068546765f09c0",
+   "bag_norm": "438148a493e5e2406026f533871cd8f6",
+   "seq": "b61828c287b13d3e19155d23ce4745aac91e8633",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q5": {
+   "rows": 1,
+   "bag": "7dcd84910955c78caff26de919b1caee",
+   "bag_norm": "a2a1f84dd904a3cb4186f18cc82e9181",
+   "seq": "014cb22c797e6c1ffde1458ef08c82a2b93a76e8",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q6": {
+   "rows": 1,
+   "bag": "95dc91316dd6e77f4bcd98151e0d546a",
+   "bag_norm": "f22487a4b06b2365b7c3d2d0e457dea9",
+   "seq": "6317771565c0baf4ac9bdbec0d5dfcbb349c0d80",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q7": {
+   "rows": 1,
+   "bag": "8af8615cd67272ad4b54e90247b8eeec",
+   "bag_norm": "157e0d117cd75fd93be8c22fb0d7e13a",
+   "seq": "4945c32b1af19af3eb152800cdb2fe36ab395da7",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q8": {
+   "rows": 1,
+   "bag": "22684d1400dced17353b61e06e685bf3",
+   "bag_norm": "a28806af9f69dff38fed70486cd6d0c8",
+   "seq": "c9d31fdc67ed331e07267bfefc334fa1979a7b53",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q9": {
+   "rows": 1,
+   "bag": "383316ca17ae13cafff02229415b1014",
+   "bag_norm": "fa43d1c58f7d7790465b74ec78a6d5f3",
+   "seq": "458c0d44979f107d15e4058c1863d3840703bc81",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q10": {
+   "rows": 1,
+   "bag": "231c5edb991898fc2250c3c579bb5477",
+   "bag_norm": "ed6a3f9c097c0fbf5ddaa25a8bb451ea",
+   "seq": "baf3af4d164e2db21ce6e5b0ecb95e084fc1f4ae",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q11": {
+   "rows": 1,
+   "bag": "59ed86bfca79b1542f068546765f09c0",
+   "bag_norm": "438148a493e5e2406026f533871cd8f6",
+   "seq": "b61828c287b13d3e19155d23ce4745aac91e8633",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q12": {
+   "rows": 1,
+   "bag": "eaeef0b052918cbaedb0430c9a7c2771",
+   "bag_norm": "1afe3157f7e78aade3d8c830c57ec29e",
+   "seq": "7a64721f721e147bb700180d70e7c266810d5f87",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q13": {
+   "rows": 1,
+   "bag": "d2c635e171123783ce225f2086a4bac0",
+   "bag_norm": "34178ee0690f614022bb4f3a7b73848e",
+   "seq": "7af0bb2e3c96355d166996940847f7dce70b1ad5",
+   "status": "ok",
+   "ordered": false
+  },
+  "all_q14": {
+   "rows": 1,
+   "bag": "95dc91316dd6e77f4bcd98151e0d546a",
+   "bag_norm": "f22487a4b06b2365b7c3d2d0e457dea9",
+   "seq": "6317771565c0baf4ac9bdbec0d5dfcbb349c0d80",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q1": {
+   "rows": 1,
+   "bag": "231c5edb991898fc2250c3c579bb5477",
+   "bag_norm": "ed6a3f9c097c0fbf5ddaa25a8bb451ea",
+   "seq": "baf3af4d164e2db21ce6e5b0ecb95e084fc1f4ae",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q2": {
+   "rows": 1,
+   "bag": "4b9183a8650016b56c23c077c9f4fda7",
+   "bag_norm": "60c51affdababb88d301983627f3adcf",
+   "seq": "abbd9fee6b5cb3c6b3aebea4a27fae5c3e9ffa4f",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q3": {
+   "rows": 1,
+   "bag": "65cd0da16a39c37612c90242e53972e7",
+   "bag_norm": "1f37172bb9c4504d773b69b0b3e134f5",
+   "seq": "edde85ddce4c71809af33437a6ec1649b93a2a68",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q4": {
+   "rows": 1,
+   "bag": "59ed86bfca79b1542f068546765f09c0",
+   "bag_norm": "438148a493e5e2406026f533871cd8f6",
+   "seq": "b61828c287b13d3e19155d23ce4745aac91e8633",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q5": {
+   "rows": 1,
+   "bag": "7dcd84910955c78caff26de919b1caee",
+   "bag_norm": "a2a1f84dd904a3cb4186f18cc82e9181",
+   "seq": "014cb22c797e6c1ffde1458ef08c82a2b93a76e8",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q6": {
+   "rows": 1,
+   "bag": "95dc91316dd6e77f4bcd98151e0d546a",
+   "bag_norm": "f22487a4b06b2365b7c3d2d0e457dea9",
+   "seq": "6317771565c0baf4ac9bdbec0d5dfcbb349c0d80",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q7": {
+   "rows": 1,
+   "bag": "d7a3625c0691457f93ab5ed0804d68b6",
+   "bag_norm": "2cdb49d38e6901f6dbb85e902de69a57",
+   "seq": "1ddb886c39621414278199e5c6e3c8e292703c3d",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q8": {
+   "rows": 1,
+   "bag": "22684d1400dced17353b61e06e685bf3",
+   "bag_norm": "a28806af9f69dff38fed70486cd6d0c8",
+   "seq": "c9d31fdc67ed331e07267bfefc334fa1979a7b53",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q9": {
+   "rows": 1,
+   "bag": "82ba8ee2f8f6e003ad9718d81e2b3fcc",
+   "bag_norm": "f40fe7f5a3d3844628f0344ed0a1dca0",
+   "seq": "4c5324b0239f7b5ec49f76e5bd23403789560558",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q10": {
+   "rows": 1,
+   "bag": "231c5edb991898fc2250c3c579bb5477",
+   "bag_norm": "ed6a3f9c097c0fbf5ddaa25a8bb451ea",
+   "seq": "baf3af4d164e2db21ce6e5b0ecb95e084fc1f4ae",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q11": {
+   "rows": 1,
+   "bag": "59ed86bfca79b1542f068546765f09c0",
+   "bag_norm": "438148a493e5e2406026f533871cd8f6",
+   "seq": "b61828c287b13d3e19155d23ce4745aac91e8633",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q12": {
+   "rows": 1,
+   "bag": "eaeef0b052918cbaedb0430c9a7c2771",
+   "bag_norm": "1afe3157f7e78aade3d8c830c57ec29e",
+   "seq": "7a64721f721e147bb700180d70e7c266810d5f87",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q13": {
+   "rows": 1,
+   "bag": "d2c635e171123783ce225f2086a4bac0",
+   "bag_norm": "34178ee0690f614022bb4f3a7b73848e",
+   "seq": "7af0bb2e3c96355d166996940847f7dce70b1ad5",
+   "status": "ok",
+   "ordered": false
+  },
+  "distinct_q14": {
+   "rows": 1,
+   "bag": "95dc91316dd6e77f4bcd98151e0d546a",
+   "bag_norm": "f22487a4b06b2365b7c3d2d0e457dea9",
+   "seq": "6317771565c0baf4ac9bdbec0d5dfcbb349c0d80",
+   "status": "ok",
+   "ordered": false
+  },
+  "group_advisors": {
+   "rows": 599101,
+   "bag": "21d3e0e8374dea6754266245b041e19c",
+   "bag_norm": "fdd6cdfc7c5d637ba0804640e267466e",
+   "seq": "1db80a5a8784f735024f50b02e2a6219e61360f3",
+   "status": "ok",
+   "ordered": false
+  },
+  "group_type": {
+   "rows": 15,
+   "bag": "ba86a8e3b75858556ebbe2ff9c5720fb",
+   "bag_norm": "ef5eebaa2dc3c1914477c34f05a9a389",
+   "seq": "3825d01edaa00712a44fb32cf5667eb26e42484b",
+   "status": "ok",
+   "ordered": false
+  }
+ }
+}

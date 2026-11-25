@@ -1,0 +1,175 @@
+{
+ "reference_url": "Jena TDB2 (Fuseki 6.2.0) store <tools>/tdb2-bsbm100",
+ "git": "8b1019dea422083d3404f8cc6dceefbb99360fe0",
+ "versions": {
+  "JENA_VERSION": "6.2.0",
+  "FUSEKI_VERSION": "6.2.0",
+  "OXIGRAPH_VERSION": "0.5.13",
+  "QLEVER_IMAGE": "adfreiburg/qlever@sha256:d7ecda47b4d0132c190b4a73279761fd1c614f24cba4e894ca1ba8117cef6727",
+  "VIRTUOSO_IMAGE": "openlink/virtuoso-opensource-7@sha256:0dbe1ab4fa0cb7bbafc1f6c0c2b0a5d6f22d918dbd17672f2ddb24580aa6756a",
+  "RDF4J_IMAGE": "eclipse/rdf4j-workbench@sha256:0944c151198f33d4694f0f09637cbc56c20970014082cbc7bae305daa231b0e6   # 5.0.0, Tomcat with rdf4j-server and workbench",
+  "MILLENNIUMDB_COMMIT": "126c387a7b4fbcd6f8a970c0a19766586be60d0e   # upstream main on 2026-11-22, newer than the latest tag v1.1.0 (kept per Kaiming: main is likelier to have the SPARQL support we need; if the rerun shows main broken where v1.1.0 works, switch to the tag and record why); image built locally by build-millenniumdb.sh as mdb:$MILLENNIUMDB_COMMIT"
+ },
+ "queries": {
+  "q001": {
+   "rows": 10,
+   "bag": "dcbd0caabd24a477671082b0f3b7e720",
+   "bag_norm": "dcbd0caabd24a477671082b0f3b7e720",
+   "seq": "394390c0e2cbbdd553a8efac8f25e6e13103f526",
+   "status": "ok",
+   "ordered": true
+  },
+  "q002": {
+   "rows": 13,
+   "bag": "46b233eb5212252bc87d716faf12fcae",
+   "bag_norm": "46b233eb5212252bc87d716faf12fcae",
+   "seq": "bec3155a7234633e343ff97b8e581475c161ec12",
+   "status": "ok",
+   "ordered": false
+  },
+  "q003": {
+   "rows": 22,
+   "bag": "ce978c19dff7dea09e204f651aef3864",
+   "bag_norm": "ce978c19dff7dea09e204f651aef3864",
+   "seq": "955871ff012ebe3f9c0ff0d5dc071919da911180",
+   "status": "ok",
+   "ordered": false
+  },
+  "q004": {
+   "rows": 5,
+   "bag": "2c7171d735cc94d882918068daf07de6",
+   "bag_norm": "2c7171d735cc94d882918068daf07de6",
+   "seq": "f8781d3f5a0a3aea42c9c3ff4df2c06607c90491",
+   "status": "ok",
+   "ordered": true
+  },
+  "q005": {
+   "rows": 13,
+   "bag": "a1030c0abd4a6f5b9b8a45c7cf88b0ac",
+   "bag_norm": "a1030c0abd4a6f5b9b8a45c7cf88b0ac",
+   "seq": "8d2a83400b46c3d93be60c5d685d3a38c678652d",
+   "status": "ok",
+   "ordered": false
+  },
+  "q006": {
+   "rows": 20,
+   "bag": "56b85081f2b907dbb5917a948ee2f46d",
+   "bag_norm": "56b85081f2b907dbb5917a948ee2f46d",
+   "seq": "4a6fe8b9d545c9ac48233160960e14b73328ed7e",
+   "status": "ok",
+   "ordered": false
+  },
+  "q007": {
+   "rows": 10,
+   "bag": "e9cbe6ae1a98b1e4c9895d06588926a7",
+   "bag_norm": "e9cbe6ae1a98b1e4c9895d06588926a7",
+   "seq": "bd051b216692f548cb9aa4e9bf7f35347ca5a5a9",
+   "status": "ok",
+   "ordered": true
+  },
+  "q008": {
+   "rows": 17,
+   "bag": "2889072f8d8801be81c1c06022428683",
+   "bag_norm": "2889072f8d8801be81c1c06022428683",
+   "seq": "3636d2a4b34cca130fa07525fd9ed145d679b6f4",
+   "status": "ok",
+   "ordered": false
+  },
+  "q009": {
+   "rows": 28,
+   "bag": "3e6fa87768e3dd0029e0dee585bf8d60",
+   "bag_norm": "3e6fa87768e3dd0029e0dee585bf8d60",
+   "seq": "a742f53c040d083bee620326cdc17af498a82531",
+   "status": "ok",
+   "ordered": false
+  },
+  "q010": {
+   "rows": 5,
+   "bag": "e6f084ba19e4ff587abbff67aaa3ffe6",
+   "bag_norm": "e6f084ba19e4ff587abbff67aaa3ffe6",
+   "seq": "aa2dbf9d56f4263d7283cebc5d55b8af78f3ac98",
+   "status": "ok",
+   "ordered": true
+  },
+  "q011": {
+   "rows": 11,
+   "bag": "d9aaedcf6d623c1c4a7f4d2167d1e9fe",
+   "bag_norm": "d9aaedcf6d623c1c4a7f4d2167d1e9fe",
+   "seq": "53797ca80b6e218ec19b1150243fc7a7973dda54",
+   "status": "ok",
+   "ordered": false
+  },
+  "q012": {
+   "rows": 11,
+   "bag": "3e9522425d2657d9f99b4a64d7105a00",
+   "bag_norm": "3e9522425d2657d9f99b4a64d7105a00",
+   "seq": "d618f4512fc6b7a426070003b5a50b3aab3875e6",
+   "status": "ok",
+   "ordered": false
+  },
+  "q013": {
+   "rows": 5,
+   "bag": "c6302c3c2a19c6e5e1481fbcea28d889",
+   "bag_norm": "c6302c3c2a19c6e5e1481fbcea28d889",
+   "seq": "9a56041a01bf2ca306c144123a02f2d38fd9adad",
+   "status": "ok",
+   "ordered": true
+  },
+  "q014": {
+   "rows": 9,
+   "bag": "6c4a35debc52d0932239f223dafc38f2",
+   "bag_norm": "6c4a35debc52d0932239f223dafc38f2",
+   "seq": "134eb06edb08b425240020d8e7b8d64aee05e769",
+   "status": "ok",
+   "ordered": false
+  },
+  "q015": {
+   "rows": 4,
+   "bag": "f6df066f677114d08d1b3831d999fc72",
+   "bag_norm": "f6df066f677114d08d1b3831d999fc72",
+   "seq": "9ec55fb35b330a403905cafc6e38b527c1c85d40",
+   "status": "ok",
+   "ordered": false
+  },
+  "q016": {
+   "rows": 1,
+   "bag": "f4e2c07d1c074849be62cbef5e45e9cf",
+   "bag_norm": "f4e2c07d1c074849be62cbef5e45e9cf",
+   "seq": "8d99e8b577eb722d7e8928f5c9f8cdd3c4e91ac2",
+   "status": "ok",
+   "ordered": true
+  },
+  "q019": {
+   "rows": 7,
+   "bag": "4d8e0866c94265de22966f0e9aa6e59c",
+   "bag_norm": "4d8e0866c94265de22966f0e9aa6e59c",
+   "seq": "318830e6cb1c73279eff6af8e6b410169f4ce6ad",
+   "status": "ok",
+   "ordered": true
+  },
+  "q022": {
+   "rows": 1,
+   "bag": "c7168a6d9a70c6ecd8c9e00450b5fe95",
+   "bag_norm": "c7168a6d9a70c6ecd8c9e00450b5fe95",
+   "seq": "f71738d6ac6a2673209575b6bd5752a531d7f59b",
+   "status": "ok",
+   "ordered": true
+  },
+  "q023": {
+   "rows": 5,
+   "bag": "a127ddfd3150c8779f26c2161be5a072",
+   "bag_norm": "a127ddfd3150c8779f26c2161be5a072",
+   "seq": "f70db51c02b71dbb5a57f1d7bef29c18b9eb92ef",
+   "status": "ok",
+   "ordered": true
+  },
+  "q024": {
+   "rows": 10,
+   "bag": "df44f2e0d31df5d357a51c1c99d2b668",
+   "bag_norm": "df44f2e0d31df5d357a51c1c99d2b668",
+   "seq": "d83c97f74a69c4103d99b3d8f73bbb3e40c39c83",
+   "status": "ok",
+   "ordered": false
+  }
+ }
+}

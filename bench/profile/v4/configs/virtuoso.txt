@@ -1,0 +1,3 @@
+# Virtuoso 7 open source in profile v4: the pinned image (bench/eval/VERSIONS VIRTUOSO_IMAGE), default indexes,
+# buffers sized by systems.sh for the session memory.
+memory_gb=12 cpus=8 indexes=default
