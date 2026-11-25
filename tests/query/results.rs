@@ -224,3 +224,25 @@ fn a_dictionary_failure_surfaces_as_a_storage_error_before_any_row_bytes() {
     }
     assert!(!sink.bytes.ends_with(b"]}}"));
 }
+
+#[test]
+fn a_dictionary_failure_after_the_first_window_leaves_a_body_that_never_ends_in_the_closing_braces() {
+    // Rows 0..n-1 use ids 1 and 2; the very last row uses id 3, which the dictionary refuses. The failure therefore falls in a later window than the
+    // first, after the head and the first window were already written.
+    let mut dict = two_term_dictionary();
+    dict.terms.push(Literal::new_simple_literal("third").into());
+    dict.fail = Some(TermId(3));
+    let n = 200_000;
+    let mut ids = many_rows(n).ids;
+    *ids.last_mut().unwrap() = TermId(3);
+    let sol = IdSolutions { vars: variables(&["x"]), ids, scratch: HashMap::new(), rows: n };
+    let mut sink = CountingWriter { bytes: Vec::new(), writes: 0, limit: usize::MAX };
+    match serialize_ids_to(&sol, &dict, false, &mut sink) {
+        Err(WriteIdsError::Storage(e)) => assert_eq!(e.to_string(), "planted batch failure"),
+        other => panic!("expected a storage error, got {other:?}"),
+    }
+    assert!(sink.bytes.starts_with(br#"{"head":{"vars":["x"]},"results":{"bindings":["#), "the head was written before the failure");
+    assert!(sink.bytes.len() > 1_000, "at least one window of rows was written before the failure");
+    assert!(!sink.bytes.ends_with(b"]}}"), "a failed stream must never look complete");
+    assert!(!sink.bytes.windows(3).any(|w| w == b"]}}"), "the closing braces were never written");
+}
