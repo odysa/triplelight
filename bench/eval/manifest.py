@@ -30,7 +30,7 @@ def sha256_tree(path):
     """One digest over a directory: every file's relative path, size and content digest, in sorted order."""
     h = hashlib.sha256()
     root = pathlib.Path(path)
-    files = sorted(x for x in root.rglob("*") if x.is_file()) if root.is_dir() else []
+    files = sorted(x for x in root.rglob("*") if x.is_file() and "__pycache__" not in x.parts) if root.is_dir() else []      # an interpreter's bytecode cache is not part of the input
     if not files: raise SystemExit(f"cannot digest {path}: not a directory with files")      # the empty-tree digest must never pass for a real input
     for p in files:
         h.update(f"{p.relative_to(root)}\0{p.stat().st_size}\0{sha256_file(p)}\n".encode())
@@ -179,20 +179,38 @@ HERE_DIR = pathlib.Path(__file__).resolve().parent
 RESET_DIR = HERE_DIR      # bench/eval of this checkout: the only place the reset procedure may come from
 
 
+def query_file_digests(queries_dir):
+    """Case ID (file stem) to the sha256 of the query file's bytes, exactly as the frozen registries digest them (CRLF stays CRLF)."""
+    return {f.stem: hashlib.sha256(f.read_bytes()).hexdigest() for f in sorted(pathlib.Path(queries_dir).glob("*.rq"))}
+
+
+def policy_declarations(file):
+    """NAME and DATASET_SHA256 of a case-policy module, read from its source without importing it: both must be module-level literal assignments,
+    and `start` and `check` must be defined at module level. Identity is computed from bytes, never by running code."""
+    import ast
+    tree = ast.parse(pathlib.Path(file).read_text(), filename=str(file))
+    found, funcs = {}, set()
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and node.targets[0].id in ("NAME", "DATASET_SHA256"):
+            try: found[node.targets[0].id] = ast.literal_eval(node.value)
+            except ValueError: raise SystemExit(f"the case policy's {node.targets[0].id} must be a literal, so its identity is read without running it")
+        elif isinstance(node, ast.FunctionDef): funcs.add(node.name)
+    for attr in ("NAME", "DATASET_SHA256"):
+        if attr not in found: raise SystemExit(f"the case policy lacks a module-level literal {attr}")
+    for fn in ("start", "check"):
+        if fn not in funcs: raise SystemExit(f"the case policy lacks a module-level function {fn}")
+    return found["NAME"], found["DATASET_SHA256"]
+
+
 def policy_identity(case_policy, bundle, case_queries):
     """What a manifest binds for a run's case policy: its name, the module's path inside the bundle, the digest of the whole bundle (the module,
-    everything it imports and its sidecars), the dataset digests it is bound to, and the digest of the case-ID to query-file-digest map."""
-    import importlib.util
+    everything it imports and its sidecars, hashed as bytes: no code is loaded, no bytecode cache is written), the dataset digests it is bound to, and
+    the digest of the case-ID to query-file-digest map."""
     bundle, file = pathlib.Path(bundle).resolve(), pathlib.Path(case_policy).resolve()
     if bundle not in file.parents: raise SystemExit("the case policy module must be inside its bundle: the bundle digest covers it and everything it imports")
-    spec = importlib.util.spec_from_file_location("case_policy_id", file); module = importlib.util.module_from_spec(spec)
-    sys.path.insert(0, str(bundle))
-    try: spec.loader.exec_module(module)
-    finally: sys.path.remove(str(bundle))
-    for attr in ("NAME", "DATASET_SHA256", "start", "check"):
-        if not hasattr(module, attr): raise SystemExit(f"the case policy lacks {attr}")
-    bound = module.DATASET_SHA256 if isinstance(module.DATASET_SHA256, (list, tuple)) else [module.DATASET_SHA256]
-    return {"name": module.NAME, "module": str(file.relative_to(bundle)), "bundle_sha256": sha256_tree(bundle), "dataset_sha256": sorted(bound),
+    name, dataset = policy_declarations(file)
+    bound = dataset if isinstance(dataset, (list, tuple)) else [dataset]
+    return {"name": name, "module": str(file.relative_to(bundle)), "bundle_sha256": sha256_tree(bundle), "dataset_sha256": sorted(bound),
             "case_queries_sha256": hashlib.sha256(json.dumps(case_queries, sort_keys=True).encode()).hexdigest()}
 
 
@@ -276,8 +294,7 @@ def cmd_write(a):
     }
     if a.case_policy:
         if not a.policy_bundle: sys.exit("--case-policy needs --policy-bundle")
-        sys.path.insert(0, str(HERE_DIR)); import driver as drv
-        m["policy"] = policy_identity(a.case_policy, a.policy_bundle, {n: hashlib.sha256(q.encode()).hexdigest() for n, q in drv.load_queries(a.queries)})
+        m["policy"] = policy_identity(a.case_policy, a.policy_bundle, query_file_digests(a.queries))
     if not a.store and not a.no_store: sys.exit("give --store NAME:PATH for every persisted store the run reads, or --no-store if the systems keep no store")
     out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
     problems = verify(m, receipt)

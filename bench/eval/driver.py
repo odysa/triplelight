@@ -64,7 +64,7 @@ class Fold:
         self.bag_norm = (self.bag_norm + int.from_bytes(hashlib.blake2b(b.encode(), digest_size=16).digest(), "big")) % (1 << 128)
         self.seq.update(a.encode() + b"\n")
     def result(self):
-        r = {"rows": self.n, "bag": f"{self.bag:032x}", "bag_norm": f"{self.bag_norm:032x}", "seq": self.seq.hexdigest()}
+        r = {"rows": self.n, "bag": f"{self.bag:032x}", "bag_norm": f"{self.bag_norm:032x}", "seq": self.seq.hexdigest(), "vars": list(self.vars)}
         if self.rows is not None: r["answer"] = {"vars": self.vars, "rows": self.rows}
         return r
 
@@ -343,12 +343,12 @@ def load_policy(a, scored_manifest=None, reference=None):
     bundle = pathlib.Path(a.policy_bundle).resolve(); file = pathlib.Path(a.case_policy).resolve()
     if bundle not in file.parents: sys.exit("the case policy module must be inside its bundle: the bundle digest covers it and everything it imports")
     spec = importlib.util.spec_from_file_location("case_policy", file); module = importlib.util.module_from_spec(spec)
-    sys.path.insert(0, str(bundle))
+    sys.path.insert(0, str(bundle)); keep, sys.dont_write_bytecode = sys.dont_write_bytecode, True      # importing must not write a __pycache__ into the bundle it binds
     try: spec.loader.exec_module(module)
-    finally: sys.path.remove(str(bundle))
+    finally: sys.path.remove(str(bundle)); sys.dont_write_bytecode = keep
     for attr in ("NAME", "DATASET_SHA256", "start", "check"):
         if not hasattr(module, attr): sys.exit(f"the case policy lacks {attr}")
-    case_queries = {name: hashlib.sha256(q.encode()).hexdigest() for name, q in load_queries(a.queries)}
+    case_queries = mf.query_file_digests(a.queries)
     datasets = [d["sha256"] for d in (scored_manifest or {}).get("datasets", [])]
     bound = module.DATASET_SHA256 if isinstance(module.DATASET_SHA256, (list, tuple)) else [module.DATASET_SHA256]
     if scored_manifest is not None and (not datasets or set(bound) != set(datasets)):
@@ -365,7 +365,7 @@ def policy_identity(a):
     if not a.case_policy: return None
     import manifest as mf
     if not a.policy_bundle: sys.exit("--case-policy needs --policy-bundle")
-    return mf.policy_identity(a.case_policy, a.policy_bundle, {name: hashlib.sha256(q.encode()).hexdigest() for name, q in load_queries(a.queries)})
+    return mf.policy_identity(a.case_policy, a.policy_bundle, mf.query_file_digests(a.queries))
 
 
 def check_manifest(a):
@@ -446,6 +446,9 @@ def cmd_run(a):
             # drained run must return exactly as many bytes as that check or it is recorded as unstable.
             if r["rows"] >= a.drain_rows:
                 check_cls = classify(check, r)
+                if v:      # a case the policy had to judge cannot be re-validated on drained repeats (only their bytes are compared): it is not timed
+                    check_cls = "mismatch"
+                    entry.setdefault("policy_reasons", []).append("the case policy judged this answer, which is too large to validate on drained timed repeats: " + v[1])
                 entry["timed_by"] = "drain"
                 entry["check_class"] = check_cls
                 if check_cls not in ("pass", "value-compatible"): runs = 0      # a wrong or incomplete answer is never timed
@@ -470,7 +473,10 @@ def cmd_run(a):
                 rec = {**rec, **{k: check[k] for k in ("rows", "bag", "seq") if k in check}}
             else:
                 cls = classify(rec, r)
-                if checked and rec.get("status") == "ok" and all(rec.get(k) == checked[0].get(k) for k in ("rows", "bag", "seq")):
+                if policy is not None and checked and rec.get("status") == "ok" and rec.get("rows") == 0 and rec.get("vars") != checked[0].get("vars"):
+                    cls = "mismatch"      # an empty answer's digest carries no values: its projection must be the one the policy checked
+                    entry.setdefault("policy_reasons", []).append(f"the projected variables {rec.get('vars')} differ from the checked answer's {checked[0].get('vars')}")
+                elif checked and rec.get("status") == "ok" and all(rec.get(k) == checked[0].get(k) for k in ("rows", "bag", "seq", "vars")):
                     cls = checked[1][0]                      # the same answer the case policy judged: it keeps the policy's class
                     entry.setdefault("policy_reasons", [])
                     if checked[1][1] not in entry["policy_reasons"]: entry["policy_reasons"].append(checked[1][1])
@@ -550,6 +556,9 @@ def serve_fake(behaviors):
                 rows = ["1", "2"] if kind == "asc" else ["2", "1"]
                 self.wfile.write(('{"head":{"vars":["n"]},"results":{"bindings":[%s]}}' % ",".join('{"n":{"type":"literal","value":"%s","datatype":"%sinteger"}}' % (v, XSD) for v in rows)).encode()); return
             if kind == "raw": self.wfile.write(n.encode()); return
+            if kind == "flipempty":      # an empty answer with the right projection on the first request and a wrong one on every later request
+                self.server.flips = getattr(self.server, "flips", 0) + 1
+                self.wfile.write((BYCASE["q_empty"] if self.server.flips == 1 else BYCASE["q_empty_wrong"]).encode()); return
             if kind == "bycase":      # the answer for the case named in the query text (`# case: NAME`), from BYCASE
                 query = urllib.parse.parse_qs(self.body.decode())["query"][0]
                 self.wfile.write(BYCASE[re.search(r"# case: (\S+)", query).group(1)].encode()); return
@@ -589,7 +598,7 @@ TYPED_REFERENCE = {
 started = {}
 
 def start(context):
-    if sorted(context["case_queries"]) != sorted(TYPED_REFERENCE): raise RuntimeError("the run's cases are not the policy's frozen cases")
+    if not set(context["case_queries"]) <= set(TYPED_REFERENCE): raise RuntimeError("the run has cases the policy has not frozen")
     started["context"] = context
 
 def _cells(answer):
@@ -613,6 +622,9 @@ def check(case_id, observed, reference_record):
     if case_id == "q_order_bad": return "mismatch", "the registered order is strict"
     return "mismatch", "unknown case"
 """
+
+
+HERE_DIR = pathlib.Path(__file__).resolve().parent
 
 
 def gate_tests(port, behaviors_raw):
@@ -796,8 +808,29 @@ def gate_tests(port, behaviors_raw):
         served(q_interval=doc_(["v"], [[float_("1.0")]]), q_lexical=doc_(["v"], [[float_("1.0")]]), q_cutoff=ref_answers["q_cutoff"], q_order_ok=ref_answers["q_order_ok"], q_order_bad=ref_answers["q_order_bad"])
         rc, res, _ = prun("policy3")
         check("policy: exact answers stay pass and the policy is not consulted (only the empty answer is, and it passes): eligible, exit 0", rc == 0 and res and res["eligible"] and all(e["class"] == "pass" for e in res["queries"].values()) and not any(e.get("policy_reasons") for e in res["queries"].values() if e["class"] != "pass"))
+        # the typed projection of an empty answer is kept on the timed repeats, not only on the checking run
+        edir = tmp / "pe"; edir.mkdir(); (edir / "q_empty.rq").write_text("# case: q_empty\nSELECT * WHERE {}")
+        BYCASE["q_empty_wrong"] = doc_(["y"], []); behaviors_raw["/flipempty"] = ("flipempty", 0)
+        out = tmp / "flip.json"
+        r = subprocess.run([sys.executable, __file__, "run", "--system", "flip", "--url", f"http://127.0.0.1:{port}/flipempty", "--queries", str(edir), "--reference", str(tmp / "refpolicy.json"), "--out", str(out), "--runs", "3", "--timeout", "30",
+                            "--case-policy", str(bundle / "policy.py"), "--policy-bundle", str(bundle)], capture_output=True, text=True)
+        flip = json.load(open(out))["queries"]["q_empty"] if out.exists() else {}
+        check("policy: a correct empty projection on the checking run and a wrong one on the repeats is a mismatch, exit 3", r.returncode == 3 and flip.get("class") == "mismatch" and any("projected variables" in x for x in flip.get("policy_reasons", [])))
+        # a case the policy judged is never timed by draining (only the bytes of a drained repeat are compared)
+        served(q_interval=doc_(["v"], [[float_("1.0004")]]))
+        rc, res, _ = prun("policydrain", "--lenient", "--drain-rows", "1")
+        qd = res["queries"]["q_interval"]
+        check("policy: a relaxed answer is not timed by draining: mismatch, no median, with the reason", qd["class"] == "mismatch" and "median_s" not in qd and any("drained" in x for x in qd.get("policy_reasons", [])))
+        # identity is read from bytes, not by running the module
+        (bundle / "evil_policy.py").write_text("import os\nNAME = os.environ.get('X', 'n')\nDATASET_SHA256 = []\ndef start(c): pass\ndef check(*a): pass\n")
+        try: mf2.policy_identity(bundle / "evil_policy.py", bundle, {}); lit = False
+        except SystemExit as e: lit = "literal" in str(e)
+        check("policy: a policy whose NAME is not a literal is refused, and nothing was run to find that out", lit)
+        (bundle / "evil_policy.py").unlink()
+        (tmp / "crlf").mkdir(); (tmp / "crlf" / "q.rq").write_bytes(b"SELECT *\r\nWHERE {}\r\n")
+        check("policy: case queries are digested as file bytes (CRLF kept), as the frozen registries do", mf2.query_file_digests(tmp / "crlf")["q"] == hashlib.sha256(b"SELECT *\r\nWHERE {}\r\n").hexdigest())
         # scored runs bind the policy: the manifest records its identity, the bundle digest covers every file, and a policy bound to other data refuses
-        qmap = {n: hashlib.sha256(qq.encode()).hexdigest() for n, qq in load_queries(pdir)}
+        qmap = mf2.query_file_digests(pdir)
         pm_rec = mf2.good_receipt(datetime.datetime.now(datetime.timezone.utc), mf2.boot_id()); (mdir / "machine-check.json").write_text(json.dumps(pm_rec))
         pm = mf2.good_manifest(pm_rec); pm["machine"]["receipt_sha256"] = mf2.sha256_file(mdir / "machine-check.json")
         pm["queries_sha256"] = mf2.sha256_tree(pdir); pm["reference_sha256"] = mf2.sha256_file(tmp / "refpolicy.json"); pm["protocol"].update(runs=2, timeout_s=30, seed=0, drain_rows=200000)
@@ -814,6 +847,12 @@ def gate_tests(port, behaviors_raw):
         rc, res, err = prun("pscored-unrecorded", *manifest_args)
         check("policy, scored: a policy the manifest does not record is refused", rc != 0 and res is None and "case policy" in err)
         (mdir / "manifest.json").write_text(json.dumps(pm))
+        (bundle / "helper.py").write_text("VALUE = 1\n")
+        before = mf2.sha256_tree(bundle)
+        env_plain = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
+        subprocess.run([sys.executable, "-c", f"import sys; sys.path.insert(0, {str(HERE_DIR)!r}); import manifest as m; m.policy_identity({str(bundle / 'policy.py')!r}, {str(bundle)!r}, {{}})"], env=env_plain, capture_output=True)
+        check("policy: importing the policy under plain python writes no bytecode cache into the bundle, and its digest is unchanged", not list(bundle.rglob("__pycache__")) and mf2.sha256_tree(bundle) == before)
+        (bundle / "helper.py").unlink()
         (bundle / "sidecar.json").write_text("{}")
         rc, res, err = prun("pscored-sidecar", *manifest_args)
         check("policy, scored: a file added to the bundle after the manifest changes the bundle digest and is refused", rc != 0 and res is None and "case policy" in err)
