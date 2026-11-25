@@ -271,7 +271,10 @@ def cmd_write(a):
         datasets.append({"name": name, "bytes": os.path.getsize(path), "sha256": sha[0] if supplied_unchecked else actual, "sha256_verified": not supplied_unchecked})
     systems = []
     for spec in a.system:
-        name, version, config = split(spec, 3, "--system")
+        # VERSION may itself hold colons (a Docker image pin, `image@sha256:…`): the name ends at the first colon, the config path starts after the last
+        name, rest = split(spec, 2, "--system")
+        version, colon, config = rest.rpartition(":")
+        if not colon or not version or not config: sys.exit(f"--system must look like NAME:VERSION:CONFIG, got {spec!r}")
         urls, clears = dict(x.split("=", 1) for x in a.system_url), dict(x.split("=", 1) for x in a.system_clear_cache)
         if name not in urls: sys.exit(f"system {name}: give --system-url {name}=URL, the endpoint the run will query")
         systems.append({"name": name, "version": version, "config_sha256": sha256_file(config), "url": urls[name], "clear_cache_url": clears.get(name, ""),
@@ -418,6 +421,7 @@ def cmd_selftest(a):
         check(f"a different {word} than the manifest's is refused", run_bindings(m, **{**bind, field: other}), "")
     check("macOS boot time keeps only the seconds", [] if boottime_seconds("{ sec = 1700000000, usec = 123456 } Tue Nov 14 22:13:20 2023") == "1700000000" else ["wrong"])
     # write then verify, end to end, in a temporary directory
+    PIN = "example/engine@sha256:" + "ab" * 32
     with tempfile.TemporaryDirectory() as t:
         t = pathlib.Path(t)
         (t / "bin").write_bytes(b"binary"); (t / "q").mkdir(); (t / "q" / "q1.rq").write_text("SELECT * WHERE {}")
@@ -425,16 +429,19 @@ def cmd_selftest(a):
         (t / "store").mkdir(); (t / "store" / "f").write_text("x")
         rec = good_receipt(datetime.datetime.now(datetime.timezone.utc), boot_id()); (t / "rec.json").write_text(json.dumps(rec))
         base = [sys.executable, __file__, "write", "--out", str(t / "out"), "--receipt", str(t / "rec.json"), "--binary", str(t / "bin"), "--queries", str(t / "q"),
-                "--reference", str(t / "ref.json"), "--dataset", f"tiny:{t / 'data.nt'}", "--store", f"tiny:{t / 'store'}", "--system", f"ts:1.0:{t / 'cfg'}", "--system-url", "ts=http://127.0.0.1:1/sparql"]
+                "--reference", str(t / "ref.json"), "--dataset", f"tiny:{t / 'data.nt'}", "--store", f"tiny:{t / 'store'}", "--system", f"ts:{PIN}:{t / 'cfg'}", "--system-url", "ts=http://127.0.0.1:1/sparql"]
         bad = subprocess.run(base[:-1] + [f"ts:1.0:{t / 'cfg'}", "--dataset", f"x:{t / 'data.nt'}:{'0' * 64}"], capture_output=True, text=True)
         print(f"manifest {'a supplied dataset digest that does not match the data is refused':<64} {'ok' if bad.returncode != 0 and 'does not match' in bad.stderr else 'FAIL'}"); ok &= bad.returncode != 0 and "does not match" in bad.stderr
         gone = subprocess.run([x if x != str(t / 'q') else str(t / 'nope') for x in base], capture_output=True, text=True)
         print(f"manifest {'a missing query directory is refused, not digested as empty':<64} {'ok' if gone.returncode != 0 and 'cannot digest' in gone.stderr else 'FAIL'}"); ok &= gone.returncode != 0 and "cannot digest" in gone.stderr
         w = subprocess.run(base, capture_output=True, text=True)
+        print(f"manifest {'a system version holding colons (a Docker image pin) is accepted':<64} {'ok' if 'cannot digest' not in w.stderr else 'FAIL ' + w.stderr[-300:]}"); ok &= "cannot digest" not in w.stderr
         wrote = w.returncode == 0 or "git.dirty" in w.stderr      # a checkout with local edits is refused by design; the write path is still exercised
         print(f"manifest {'write runs end to end (or is refused only for a dirty tree)':<64} {'ok' if wrote else 'FAIL ' + w.stderr[-300:]}"); ok &= wrote
         if w.returncode == 0:
             v = subprocess.run([sys.executable, __file__, "verify", str(t / "out" / "manifest.json")], capture_output=True, text=True)
+            pinned = json.loads((t / "out" / "manifest.json").read_text())["systems"][0]["version"] == PIN
+            print(f"manifest {'the image pin is recorded whole as the system version':<64} {'ok' if pinned else 'FAIL'}"); ok &= pinned
             print(f"manifest {'verify accepts what write produced':<64} {'ok' if v.returncode == 0 else 'FAIL ' + v.stderr[-300:]}"); ok &= v.returncode == 0
             mm = json.loads((t / "out" / "manifest.json").read_text()); mm["build"]["binary_sha256"] = ""; (t / "out" / "manifest.json").write_text(json.dumps(mm))
             v = subprocess.run([sys.executable, __file__, "verify", str(t / "out" / "manifest.json")], capture_output=True, text=True)
