@@ -119,6 +119,10 @@ def build(run):
         try: ab = json.loads(f.read_text())
         except Exception: continue
         rows = ab.get("rows") or []
+        if ab.get("refused"):
+            # a refused comparison publishes its reasons only: its provisional rows, ratios and verdicts are not results
+            lines += [f"## A/B comparison: {f.stem[5:]}", "", "Refused. No ratio or verdict is published for this comparison.", ""] + [f"- {x}" for x in ab["refused"]] + [""]
+            continue
         counts = {}
         for r in rows: counts[r.get("verdict", "?")] = counts.get(r.get("verdict", "?"), 0) + 1
         lines += [f"## A/B comparison: {f.stem[5:]}", "", "Verdicts: " + (", ".join(f"{k} {v}" for k, v in sorted(counts.items())) or "none") + f" over {len(rows)} queries; geometric mean B/A {ab.get('geomean_ratio')}.", ""]
@@ -127,8 +131,6 @@ def build(run):
             lines += ["| Query | A ms | B ms | B/A | spread | verdict |", "| --- | ---: | ---: | ---: | ---: | --- |"]
             lines += [f"| {r['query']} | {r['a_s'] * 1e3:.2f} | {r['b_s'] * 1e3:.2f} | {r['ratio']:.3f} | {r.get('spread', 0):.1%} | {r['verdict']} |" for r in counted]
             lines.append("")
-        if ab.get("refused"):
-            lines += ["Refused:", ""] + [f"- {x}" for x in ab["refused"]] + [""]
     return "\n".join(lines) + "\n", {"meta": meta, "arms": {a: sorted(i) for a, i in arms.items()}, "scored": [(s, sy, m) for s, sy, m, _, _ in scored], "refused": [(s, sy, m, p) for s, sy, m, _, p in refused]}
 
 
@@ -218,7 +220,10 @@ def selftest(a):
         text3, _ = build(t3)
         check("an A/B run shows each arm in its own column, never pooled", "| Query | triplelight (A) | triplelight (B) |" in text3 and "| q1 | 100.00 | 20.00 |" in text3, text3)
         check("an A/B run lists the commit and binary of each arm", "arm A: commit `aaaaaaaaaaaa`, binary `111111111111`" in text3 and "arm B: commit `bbbbbbbbbbbb`, binary `222222222222`" in text3)
-        check("the A/B section reads abba.py's schema: verdict counts, the counted row, and the refusal", "faster 1" in text3 and "| q1 | 100.00 | 20.00 | 0.200 |" in text3 and "answers differ between sessions or arms" in text3)
+        check("a refused comparison shows its reasons only: no verdict, ratio or geometric mean from its provisional rows", "answers differ between sessions or arms" in text3 and "faster 1" not in text3 and "0.200" not in text3 and "geometric mean" not in text3 and "No ratio or verdict" in text3)
+        (t3 / "abba-triplelight.json").write_text(json.dumps({"geomean_ratio": 0.2, "refused": [], "rows": [{"query": "q1", "a_s": 0.1, "b_s": 0.02, "ratio": 0.2, "spread": 0.01, "verdict": "faster"}]}))
+        text3b, _ = build(t3)
+        check("a comparable A/B comparison shows the verdict counts and the counted rows", "faster 1" in text3b and "| q1 | 100.00 | 20.00 | 0.200 |" in text3b and "geometric mean B/A 0.2" in text3b)
         # a relaxed comparison is never silent
         sd4 = t.parent / "run4" / "session-1-A"; sd4.mkdir(parents=True); h4 = manifest(sd4, "a", "1")
         res(sd4, h4, "ontop", queries={"q1": {"class": "value-compatible", "median_s": 0.01, "policy_reasons": ["within the registered binary32 interval"]}, "q2": {"class": "value-compatible", "median_s": 0.02}})
