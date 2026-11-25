@@ -168,7 +168,7 @@ def compare_arms(plan, out, sessions, unscored=False):
         cmd = [sys.executable, str(HERE / "abba.py"), *([] if unscored else ["--scored"]), "--a", *files[a_label], "--b", *files[b_label], "--json", str(out / f"abba-{system}.json")]
         if plan.get("fail_on_regression"): cmd.append("--fail-on-regression")
         r = subprocess.run(cmd, capture_output=True, text=True)
-        (out / f"abba-{system}.log").write_text(r.stdout + r.stderr)
+        (out / f"abba-{system}.log").write_text(("UNSCORED: harness acceptance, not for publication.\n\n" if unscored else "") + r.stdout + r.stderr)
         if unscored and (out / f"abba-{system}.json").exists():
             ab = json.loads((out / f"abba-{system}.json").read_text()); ab["run_mode"] = "unscored"; ab["label"] = "UNSCORED: harness acceptance, not for publication"
             (out / f"abba-{system}.json").write_text(json.dumps(ab, indent=1, sort_keys=True) + "\n")
@@ -400,6 +400,7 @@ def cmd_selftest(a):
         check("real wiring, BAAB: the manifest records BAAB, not the default ABBA", man3.get("protocol", {}).get("order") == "BAAB")
         r = runplan(wire(arms=two, sequence="ABBA"), t / "w3u", "--unscored", receipt="recbad.json")
         check("real wiring, ABBA, --unscored: the arms are compared without --scored on a machine whose receipt fails, and the report shows it", r.returncode == 0 and (t / "w3u" / "abba-triplelight.json").exists() and "UNSCORED" in (t / "w3u" / "report.md").read_text(), r.stdout[-300:] + r.stderr[-300:])
+        check("the saved unscored comparison log starts with the banner", (t / "w3u" / "abba-triplelight.log").read_text().startswith("UNSCORED: harness acceptance, not for publication"))
         abu = json.loads((t / "w3u" / "abba-triplelight.json").read_text()) if (t / "w3u" / "abba-triplelight.json").exists() else {}
         check("the unscored A/B comparison output carries the unscored label", abu.get("run_mode") == "unscored" and "not for publication" in abu.get("label", ""))
         check("real wiring, ABBA: four sessions run and abba.py --scored compares the arms", all((t / "w3" / f"session-{i}-{l}" / "triplelight.warm.json").exists() for i, l in enumerate("BAAB", 1)) and (t / "w3" / "abba-triplelight.json").exists() and r.returncode == 0, r.stdout[-300:] + r.stderr[-400:])
