@@ -13,7 +13,7 @@ import sys
 import tarfile
 from tempfile import TemporaryDirectory
 
-PROFILE = "30f38a23b2984443f64d4242cbdbcca0ae9cd68e"
+PROFILE = "69e3a555824e30f4365bb8ae674004b3bb2dd2c2"
 HISTORICAL = "c35006126a48c6df516ad6fa8de6eb73da74e9ba"
 ARMS = {f"pass{n}-{engine}" for n in (1, 2) for engine in ("duckdb", "qlever", "rdfdb")}
 
@@ -22,10 +22,9 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def run(repo, archive_path, bundle):
-    def git(*args):
-        return subprocess.check_output(["git", "-C", str(repo), *args])
-
+def stage(repo, archive_path, bundle):
+    if bundle.exists():
+        raise ValueError("Choose a new directory for the staged policy bundle")
     evidence = json.loads(archive_path.with_name("PATH-SCRUB.json").read_bytes())
     if sha(archive_path.read_bytes()) != evidence["archive_sha256"]:
         raise ValueError("Registry archive digest differs")
@@ -34,13 +33,24 @@ def run(repo, archive_path, bundle):
         if (len(members) != evidence["files"] or any(not m.isfile() for m in members)
                 or len({m.name for m in members}) != len(members)):
             raise ValueError("Unexpected policy archive inventory")
-        archive.extractall(bundle, members=members, filter="data")
+        with TemporaryDirectory(dir=bundle.parent) as temporary:
+            staging = Path(temporary) / "bundle"
+            staging.mkdir()
+            archive.extractall(staging, members=members, filter="data")
+            shutil.copyfile(repo / "bench/eval/bi_case_policy.py", staging / "bi_case_policy.py")
+            staging.rename(bundle)
+    return evidence
 
+
+def run(repo, archive_path, bundle):
+    def git(*args):
+        return subprocess.check_output(["git", "-C", str(repo), *args])
+
+    evidence = stage(repo, archive_path, bundle)
     sys.path.insert(0, str(repo / "bench/eval"))
     from driver import Fold
 
     module_path = bundle / "bi_case_policy.py"
-    shutil.copyfile(repo / "bench/eval/bi_case_policy.py", module_path)
     spec = importlib.util.spec_from_file_location("bi100m_replay_policy", module_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -106,7 +116,14 @@ def run(repo, archive_path, bundle):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, default=Path.cwd())
+    parser.add_argument("--stage", type=Path, metavar="DIR",
+                        help="verify and stage a bundle into a new directory without replaying answers")
     args = parser.parse_args()
     archive_path = Path(__file__).with_name("registry.tar.gz")
-    with TemporaryDirectory() as tmp:
-        print(json.dumps(run(args.repo.resolve(), archive_path, Path(tmp)), indent=2, sort_keys=True))
+    repo = args.repo.resolve()
+    if args.stage:
+        stage(repo, archive_path, args.stage.resolve())
+    else:
+        with TemporaryDirectory() as tmp:
+            result = run(repo, archive_path, Path(tmp) / "bundle")
+        print(json.dumps(result, indent=2, sort_keys=True))

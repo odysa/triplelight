@@ -6,20 +6,18 @@ This archive contains the typed Jena references, Q7 cutoff diagnostics and numer
 
 ## Prepare the bundle
 
-From the repository root, extract the registry into a fresh directory and add the adapter at that directory's root. Use the directory as the policy bundle in the plan and name `bi_case_policy.py` as its policy module. The runner binds the digest of the resulting directory when it writes the scored run manifest.
+From the repository root, stage the verified registry and adapter into a fresh directory under the run output. Use the directory as the policy bundle in the plan and name `bi_case_policy.py` as its policy module. The runner binds the digest of the resulting directory when it writes the scored run manifest.
 
 ```sh
-bundle=$(mktemp -d)
-tar -xzf docs/eval-plan/bi100m-policy-v1/registry.tar.gz -C "$bundle"
-cp bench/eval/bi_case_policy.py "$bundle/"
+python3 -B bench/profile/v4/policy/bi100m/replay.py --stage "$out/bi100m-policy"
 ```
 
-For BI-10M, extract the [separate BI-10M packet](../../index-layout-watdiv-bi-laptop-v1/bi10m/packet.tar.gz), copy both `bi_case_policy.py` and `bi10m_case_policy.py` into its root, and select `bi10m_case_policy.py`. Each entry point declares its own dataset digest.
+For BI-10M, extract the [separate BI-10M packet](../../../../../docs/index-layout-watdiv-bi-laptop-v1/bi10m/packet.tar.gz), copy both `bi_case_policy.py` and `bi10m_case_policy.py` into its root, and select `bi10m_case_policy.py`. Each entry point declares its own dataset digest.
 
 The published replay binds the profile v4 query and reference files and checks the 360 saved answers from both historical sessions for each engine. It does not start a server or time queries.
 
 ```sh
-python3 -B docs/eval-plan/bi100m-policy-v1/replay.py
+python3 -B bench/profile/v4/policy/bi100m/replay.py
 ```
 
 `REPLAY.json` records the pinned commits and replay result. All 360 saved answers pass their registered check. Each session has 40 exact and 20 value-compatible DuckDB answers, 23 exact and 37 value-compatible QLever answers, and 58 exact and two value-compatible TripleLight answers.
