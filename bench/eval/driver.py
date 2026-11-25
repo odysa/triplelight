@@ -348,9 +348,9 @@ def cmd_run(a):
         r = ref[name]; entry = {"mode": a.mode, "runs": []}
         if a.mode == "cold":
             if not a.cold_hook: sys.exit("--mode cold needs --cold-hook")
-            ok, note = run_hook(a.cold_hook, a.url)
-            entry["cold_hook_ok"], entry["cold_hook_note"] = ok, note
-            runs = 1 if ok else 0          # a cold start that did not happen is not timed as one
+            # one reset before every requested repeat: N cold samples per query. A reset that fails ends the query: it is not-run.
+            entry["cold_hook_ok"] = True
+            runs = a.runs
         elif not clear_engine_cache(a, entry):
             runs = 0
         else:
@@ -367,6 +367,10 @@ def cmd_run(a):
                 if check_cls not in ("pass", "value-compatible"): runs = 0      # a wrong or incomplete answer is never timed
                 else: drain_bytes = check["bytes"]
         for _ in range(runs):
+            if a.mode == "cold":
+                ok, note = run_hook(a.cold_hook, a.url)
+                entry["cold_hook_note"] = note
+                if not ok: entry["cold_hook_ok"] = False; entry["runs"] = []; break      # no timed sample of this query survives a failed reset
             if not clear_engine_cache(a, entry): break
             t0 = time.time()   # wall-clock bounds of the run, so S1's cgroup samples can be joined per query (s1-report.py)
             drained = entry.get("timed_by") == "drain"
@@ -529,7 +533,12 @@ def gate_tests(port, behaviors_raw):
         e = res["queries"]["q1"] if res else {}
         check("a failed hook with the server gone returns within 20 s with its output", time.time() - t0 < 20 and rc == 3 and "reset refused" in e.get("cold_hook_note", ""))
         rc, res, _ = run("coldok", "count9", "--mode", "cold", "--cold-hook", "true")
-        check("a working cold hook: timed once, eligible, exit 0", rc == 0 and res and res["queries"]["q1"]["class"] == "pass" and len(res["queries"]["q1"]["runs"]) == 1)
+        check("a working cold hook: one reset and one timed sample per requested repeat (2), eligible, exit 0", rc == 0 and res and res["queries"]["q1"]["class"] == "pass" and len(res["queries"]["q1"]["runs"]) == 2)
+        counter = tmp / "resets"
+        flaky = f'n=$(cat "{counter}" 2>/dev/null || echo 0); echo $((n+1)) > "{counter}"; [ "$n" -lt 1 ]'       # the first reset works, the second fails
+        rc, res, _ = run("coldmid", "count9", "--mode", "cold", "--cold-hook", flaky)
+        e = res["queries"]["q1"] if res else {}
+        check("a reset that fails before the second repeat: the query is not-run, no timing survives, exit 3", rc == 3 and e.get("class") == "not-run" and not e.get("runs") and "median_s" not in e and e.get("cold_hook_ok") is False)
         # a failing cache clear: not timed, recorded, the results file still written
         rc, res, _ = run("clearfail", "count9", "--clear-cache-url", "http://127.0.0.1:9/none")
         e = res["queries"]["q1"] if res else {}

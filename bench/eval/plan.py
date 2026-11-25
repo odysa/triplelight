@@ -18,7 +18,7 @@ Plan keys (all required unless marked optional):
   arms (optional) [{label, binary}]  and  sequence (optional, e.g. "ABBA"): TRIPLELIGHT_BIN per arm; default one arm "A", sequence "A".
   fail_on_regression (optional, default false): with exactly two arms, abba.py --scored compares them per system and a counted slowdown fails the plan.
 """
-import argparse, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time
+import argparse, hashlib, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time
 
 HERE = pathlib.Path(__file__).resolve().parent
 LOCK = pathlib.Path(os.environ.get("PLAN_LOCK", "/tmp/rdf-bench.lock"))      # PLAN_LOCK is for the self-test only: it must never touch the real queue
@@ -76,10 +76,30 @@ def load_plan(path):
     return plan
 
 
-def manifest_command(plan, arm, receipt, out, reference=None):
+def tools_dir():
+    """Where systems.sh looks: $TOOLS, else <repo>/bench/tools (systems.sh: T=${TOOLS:-$ROOT/bench/tools}). Datasets are $T/<dataset>.nt and a system's store is $T/<system>-<dataset>."""
+    return pathlib.Path(os.environ.get("TOOLS") or HERE.parents[1] / "bench" / "tools")
+
+
+def check_session_inputs(plan):
+    """The manifest must hash what the session will actually load and serve, so the plan's dataset and store paths must be the ones systems.sh derives."""
+    t, d = tools_dir(), plan["dataset"]
+    want = os.path.realpath(t / f"{d}.nt")
+    named = [x for x in plan["datasets"] if x["name"] == d]
+    if len(named) != 1 or os.path.realpath(named[0]["path"]) != want:
+        raise PlanError(f"dataset {d!r}: the session loads {want}; the plan must list exactly that file under the dataset's name")
+    if len(plan["datasets"]) != 1: raise PlanError("a session loads one dataset: list only the plan's dataset")
+    if not plan.get("no_store"):
+        expected = {os.path.realpath(t / f"{s['name']}-{d}") for s in plan["systems"]}
+        listed = {os.path.realpath(x["path"]) for x in plan.get("stores", [])}
+        if listed != expected: raise PlanError(f"stores: the session serves {sorted(expected)}; the plan lists {sorted(listed)}")
+
+
+def manifest_command(plan, arm, receipt, out, reference=None, plan_file=None):
     cmd = [sys.executable, str(HERE / "manifest.py"), "write", "--out", str(out), "--receipt", str(receipt), "--queries", plan["queries"],
            "--reference", str(reference or plan["reference"]), "--mode", plan["mode"], "--runs", str(plan["runs"]), "--timeout", str(plan["timeout"]),
-           "--seed", str(plan["seed"]), "--drain-rows", str(plan["drain_rows"]), "--run-id", f"{plan['name']}-{out.name}"]
+           "--seed", str(plan["seed"]), "--drain-rows", str(plan["drain_rows"]), "--order", plan["sequence"], "--run-id", f"{plan['name']}-{out.name}"]
+    if plan_file: cmd += ["--plan", str(plan_file)]
     cmd += ["--binary", arm.get("binary") or os.environ.get("TRIPLELIGHT_BIN") or str(HERE.parents[1] / "target" / "release" / "triplelight")]
     for d in plan["datasets"]: cmd += ["--dataset", f"{d['name']}:{d['path']}" + (f":{d['sha256']}" if d.get("sha256") else "")]
     for st in plan.get("stores", []): cmd += ["--store", f"{st['name']}:{st['path']}"]
@@ -136,6 +156,7 @@ def compare_arms(plan, out, sessions):
 
 def cmd_run(a):
     plan = load_plan(a.plan)
+    check_session_inputs(plan)
     out = pathlib.Path(a.out)
     receipt = pathlib.Path(a.receipt or out / "machine-check.json")
     sessions = [(i + 1, label, next(x for x in plan["arms"] if x["label"] == label)) for i, label in enumerate(plan["sequence"])]
@@ -162,7 +183,7 @@ def cmd_run(a):
             sdir = out / f"session-{i}-{label}"
             sdir.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(plan["reference"], sdir / "reference.json")      # session.sh reads $OUT/reference.json: the very bytes the manifest hashes
-            m = subprocess.run(manifest_command(plan, arm, receipt, sdir, sdir / "reference.json"), capture_output=True, text=True)
+            m = subprocess.run(manifest_command(plan, arm, receipt, sdir, sdir / "reference.json", a.plan), capture_output=True, text=True)
             (out / f"session-{i}-{label}.manifest.log").write_text(m.stdout + m.stderr)
             if m.returncode != 0: print(f"session {i} ({label}): manifest refused: {m.stderr.strip()[-400:]}", file=sys.stderr); status = 1; break
             script = os.environ.get("PLAN_SESSION_SCRIPT") or str(HERE / "session.sh")
@@ -184,9 +205,10 @@ def cmd_selftest(a):
     with tempfile.TemporaryDirectory() as t:
         t = pathlib.Path(t)
         (t / "q").mkdir(); (t / "q" / "q1.rq").write_text("SELECT * WHERE {}"); (t / "ref.json").write_text("{}")
-        (t / "data.nt").write_text("<a> <b> <c> .\n"); (t / "cfg").write_text("x"); (t / "bin").write_text("b"); (t / "store").mkdir(); (t / "store" / "f").write_text("s")
-        base = {"name": "t1", "dataset": "lubm1", "queries": str(t / "q"), "reference": str(t / "ref.json"), "datasets": [{"name": "lubm1", "path": str(t / "data.nt")}],
-                "stores": [{"name": "lubm1", "path": str(t / "store")}], "systems": [{"name": "triplelight", "version": "x", "config": str(t / "cfg")}],
+        tools0 = t / "tools0"; (tools0 / "triplelight-lubm1").mkdir(parents=True); (tools0 / "triplelight-lubm1" / "f").write_text("s"); (tools0 / "lubm1.nt").write_text("<a> <b> <c> .\n")
+        (t / "cfg").write_text("x"); (t / "bin").write_text("b")
+        base = {"name": "t1", "dataset": "lubm1", "queries": str(t / "q"), "reference": str(t / "ref.json"), "datasets": [{"name": "lubm1", "path": str(tools0 / "lubm1.nt")}],
+                "stores": [{"name": "lubm1", "path": str(tools0 / "triplelight-lubm1")}], "systems": [{"name": "triplelight", "version": "x", "config": str(t / "cfg")}],
                 "mode": "warm", "runs": 3, "timeout": 30, "seed": 0, "drain_rows": 1000}
         def plan_file(**kw):
             p = {**base, **kw}
@@ -195,7 +217,16 @@ def cmd_selftest(a):
         def refuses(label, word, **kw):
             try: load_plan(plan_file(**kw)); check(label, False, "accepted")
             except PlanError as e: check(label, word in str(e), str(e))
+        os.environ["TOOLS"] = str(tools0)           # where systems.sh would look for this plan's dataset and store
         check("a complete plan loads", bool(load_plan(plan_file())["sequence"] == "A"))
+        def refuses_inputs(label, word, **kw):
+            try: check_session_inputs(load_plan(plan_file(**kw))); check(label, False, "accepted")
+            except PlanError as e: check(label, word in str(e), str(e))
+        check_session_inputs(load_plan(plan_file())); check("the plan's dataset and store are the ones the session serves", True)
+        (t / "elsewhere.nt").write_text("<x> <y> <z> .\n"); (t / "elsewhere").mkdir(); (t / "elsewhere" / "f").write_text("e")
+        refuses_inputs("a dataset path that is not the session's file is refused", "the session loads", datasets=[{"name": "lubm1", "path": str(t / "elsewhere.nt")}])
+        refuses_inputs("a store path that is not the session's store is refused", "the session serves", stores=[{"name": "lubm1", "path": str(t / "elsewhere")}])
+        refuses_inputs("an extra dataset is refused", "one dataset", datasets=[{"name": "lubm1", "path": str(tools0 / "lubm1.nt")}, {"name": "other", "path": str(t / "elsewhere.nt")}])
         refuses("an unknown key is refused", "unknown plan keys", bogus=1)
         refuses("a missing key is refused", "missing plan keys", runs=None)
         refuses("zero runs are refused", "at least 1", runs=0)
@@ -214,7 +245,7 @@ def cmd_selftest(a):
         cmd = manifest_command(load_plan(plan_file(mode="cold")), {"label": "A", "binary": str(t / "bin")}, t / "r.json", t / "out")
         check("a cold plan records this repository's restart.sh --cold as the hook", f"{HERE / 'restart.sh'}' --cold" in " ".join(cmd))
         # dry run starts nothing and takes no lock
-        r = subprocess.run([sys.executable, __file__, "run", str(plan_file()), "--out", str(t / "o1"), "--dry-run"], capture_output=True, text=True)
+        r = subprocess.run([sys.executable, __file__, "run", str(plan_file()), "--out", str(t / "o1"), "--dry-run"], capture_output=True, text=True, env=dict(os.environ, TOOLS=str(tools0)))
         check("--dry-run prints the sessions, starts nothing and creates no output", r.returncode == 0 and "nothing was started" in r.stdout and not (t / "o1").exists(), r.stderr[-200:])
         # a real run with a stub session script: lock taken, manifest written per session, session invoked with SCORED
         stub = t / "stub.sh"
@@ -223,7 +254,7 @@ def cmd_selftest(a):
                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "failures": [], **{f: "x" for f in ("model", "cpu", "cores", "ram_gb", "os", "kernel")}}
         (t / "rec.json").write_text(json.dumps(rec))
         lock = t / "lock"            # a private lock: the self-test never touches the shared machine lock
-        env = dict(os.environ, PLAN_SESSION_SCRIPT=str(stub), STUB_LOG=str(t / "stub.log"), PLAN_TEST_ALLOW_UNQUALIFIED="1", PLAN_LOCK=str(lock), PLAN_SKIP_COMPARE="1")
+        env = dict(os.environ, PLAN_SESSION_SCRIPT=str(stub), STUB_LOG=str(t / "stub.log"), PLAN_TEST_ALLOW_UNQUALIFIED="1", PLAN_LOCK=str(lock), PLAN_SKIP_COMPARE="1", TOOLS=str(tools0))
         if True:
             r = subprocess.run([sys.executable, __file__, "run", str(plan_file(arms=[{"label": "A", "binary": str(t / "bin")}, {"label": "B", "binary": str(t / "bin")}], sequence="ABBA")),
                                 "--out", str(t / "o2"), "--receipt", str(t / "rec.json")], capture_output=True, text=True, env=env)
@@ -241,52 +272,67 @@ def cmd_selftest(a):
                 check("a held machine lock refuses the plan, naming the owner, and leaves it alone", r.returncode != 0 and "someone else" in r.stderr and lock.exists())
             finally: subprocess.run(["rm", "-rf", str(lock)])
 
-        # The real plan-to-session wiring: plan.py -> manifest.py -> session.sh -> systems.sh -> driver.py, with only the engine stubbed
-        # (a tiny HTTP server on triplelight's port that answers every query with one aggregate row). Nothing here replaces session.sh.
-        import socket
+        # The real plan-to-session wiring: plan.py -> manifest.py -> session.sh -> systems.sh -> driver.py -> restart.sh, with only the engine and the
+        # host-touching reset stubbed. The self-test runs a COPY of bench/eval in the temporary directory, patched so that it can never reach the
+        # shared machine: the engine's port is a free private one (not the shared service port), and `drop_caches` is a stub (the real one purges the
+        # host's page cache when permissions allow). Nothing else is replaced: the copy is the same plan, session, driver and reset scripts.
+        import shutil, socket
+        ev = t / "eval"; shutil.copytree(HERE, ev, ignore=shutil.ignore_patterns("__pycache__"))
         with socket.socket() as probe:
-            busy = probe.connect_ex(("127.0.0.1", 7979)) == 0
-        if busy: check("(skipped: port 7979, triplelight's port, is in use, so the real session wiring is not tested)", True)
-        else:
-            sys.path.insert(0, str(HERE)); import driver as drv
-            doc = '{"head":{"vars":["n"]},"results":{"bindings":[{"n":{"type":"literal","value":"9","datatype":"' + drv.XSD + 'integer"}}]}}'
-            (t / "wref.json").write_text(json.dumps({"queries": {"q1": {**drv.fold_of([doc]), "ordered": False}}}))
-            tools = t / "tools"; (tools / "triplelight-wire").mkdir(parents=True); (tools / "wire.nt").write_text("<a> <b> <c> .\n")
-            fake = t / "fake-triplelight"
-            fake.write_text("#!/usr/bin/env python3\nimport http.server, sys\n"
-                            "if len(sys.argv) < 4 or sys.argv[2] == '/nonexistent': sys.exit(0)\n"
-                            f"BODY = {doc!r}.encode()\n"
-                            "class H(http.server.BaseHTTPRequestHandler):\n"
-                            "    def log_message(self, *a): pass\n"
-                            "    def do_POST(self):\n"
-                            "        self.rfile.read(int(self.headers.get('Content-Length', 0))); self.send_response(200); self.send_header('Content-Type', 'application/sparql-results+json'); self.end_headers(); self.wfile.write(BODY)\n"
-                            "http.server.ThreadingHTTPServer(('127.0.0.1', 7979), H).serve_forever()\n")
-            fake.chmod(0o755)
-            repo = t / "cleanrepo"; repo.mkdir()
-            for cmd in (["init", "-q"], ["config", "user.email", "t@example.org"], ["config", "user.name", "t"]): subprocess.run(["git", "-C", str(repo), *cmd], check=True)
-            (repo / "f").write_text("x"); subprocess.run(["git", "-C", str(repo), "add", "f"], check=True); subprocess.run(["git", "-C", str(repo), "commit", "-qm", "c"], check=True)
-            wenv = dict(os.environ, PLAN_LOCK=str(t / "wlock"), MANIFEST_REPO_ROOT=str(repo), TOOLS=str(tools), TRIPLELIGHT_BIN=str(fake))
-            wenv.pop("PLAN_SESSION_SCRIPT", None); wenv.pop("PLAN_TEST_ALLOW_UNQUALIFIED", None); wenv.pop("PLAN_SKIP_COMPARE", None)
-            wire = lambda **kw: plan_file(dataset="wire", reference=str(t / "wref.json"), datasets=[{"name": "wire", "path": str(tools / "wire.nt")}],
-                                          stores=[{"name": "wire", "path": str(tools / "triplelight-wire")}], runs=2, drain_rows=200000, seed=5, **kw)
-            (tools / "triplelight-wire" / "f").write_text("s")
-            r = subprocess.run([sys.executable, __file__, "run", str(wire()), "--out", str(t / "w1"), "--receipt", str(t / "rec.json")], capture_output=True, text=True, env=wenv)
-            res = t / "w1" / "session-1-A" / "triplelight.warm.json"
-            data = json.loads(res.read_text()) if res.exists() else {}
-            check("real wiring, warm: the session runs, the results are scored: true, no failures", r.returncode == 0 and data.get("scored") is True and data.get("eligible") is True and not (t / "w1" / "session-1-A" / "failures.txt").exists(), r.stdout[-300:] + r.stderr[-500:])
-            check("real wiring, warm: the plan's seed and repeat count reach the driver", data.get("seed") == 5 and data.get("runs_per_query") == 2)
-            check("real wiring, warm: the reference staged for the session is the plan's file", (t / "w1" / "session-1-A" / "reference.json").read_bytes() == (t / "wref.json").read_bytes())
-            r = subprocess.run([sys.executable, __file__, "run", str(wire(mode="cold")), "--out", str(t / "w2"), "--receipt", str(t / "rec.json")], capture_output=True, text=True, env=wenv)
-            sd = t / "w2" / "session-1-A"
-            check("real wiring, cold: only the cold run happens (no warm results), and its repeat count is passed", (sd / "triplelight.cold.json").exists() and not (sd / "triplelight.warm.json").exists())
-            cold = json.loads((sd / "triplelight.cold.json").read_text()) if (sd / "triplelight.cold.json").exists() else {}
-            check("real wiring, cold: the manifest check passes under the plan runner (failing only on this machine's page-cache reset, which times nothing)",
-                  bool(cold.get("manifest_sha256")) and all(q["class"] in ("pass", "not-run") for q in cold.get("queries", {}).values()), json.dumps(cold)[:300])
-            check("real wiring: the machine lock is released afterwards", not (t / "wlock").exists())
-            two = [{"label": "A", "binary": str(fake)}, {"label": "B", "binary": str(fake)}]
-            r = subprocess.run([sys.executable, __file__, "run", str(wire(arms=two, sequence="ABBA")), "--out", str(t / "w3"), "--receipt", str(t / "rec.json")], capture_output=True, text=True, env=wenv)
-            cmp = t / "w3" / "abba-triplelight.json"
-            check("real wiring, ABBA: four sessions run and abba.py --scored compares the arms", all((t / "w3" / f"session-{i}-{l}" / "triplelight.warm.json").exists() for i, l in enumerate("ABBA", 1)) and cmp.exists() and r.returncode == 0, r.stdout[-300:] + r.stderr[-400:])
+            probe.bind(("127.0.0.1", 0)); port = probe.getsockname()[1]
+        for name in ("lib.sh", "systems.sh"):
+            text = (ev / name).read_text()
+            if name == "lib.sh":
+                text = text.replace("7979", str(port))
+                text, n = re.subn(r"(?ms)^drop_caches\(\) \{.*?^\}\n", 'drop_caches() { echo "page cache drop stubbed in the self-test"; }\n', text)
+                check("the copy's drop_caches is stubbed (it never touches the host's page cache)", n == 1 and "purge" not in text.split("drop_caches()")[1].split("\n")[0])
+            else: text = text.replace("7979", str(port))
+            (ev / name).write_text(text)
+        sys.path.insert(0, str(ev)); import driver as drv
+        doc = '{"head":{"vars":["n"]},"results":{"bindings":[{"n":{"type":"literal","value":"9","datatype":"' + drv.XSD + 'integer"}}]}}'
+        (t / "wref.json").write_text(json.dumps({"queries": {"q1": {**drv.fold_of([doc]), "ordered": False}}}))
+        tools = t / "tools"; (tools / "triplelight-wire").mkdir(parents=True); (tools / "wire.nt").write_text("<a> <b> <c> .\n")
+        fake = t / "fake-triplelight"
+        fake.write_text("#!/usr/bin/env python3\nimport http.server, sys\n"
+                        "if len(sys.argv) < 4 or sys.argv[2] == '/nonexistent': sys.exit(0)\n"
+                        f"BODY = {doc!r}.encode()\n"
+                        "class H(http.server.BaseHTTPRequestHandler):\n"
+                        "    def log_message(self, *a): pass\n"
+                        "    def do_POST(self):\n"
+                        "        self.rfile.read(int(self.headers.get('Content-Length', 0))); self.send_response(200); self.send_header('Content-Type', 'application/sparql-results+json'); self.end_headers(); self.wfile.write(BODY)\n"
+                        f"http.server.ThreadingHTTPServer(('127.0.0.1', {port}), H).serve_forever()\n")
+        fake.chmod(0o755)
+        repo = t / "cleanrepo"; repo.mkdir()
+        for cmd in (["init", "-q"], ["config", "user.email", "t@example.org"], ["config", "user.name", "t"]): subprocess.run(["git", "-C", str(repo), *cmd], check=True)
+        (repo / "f").write_text("x"); subprocess.run(["git", "-C", str(repo), "add", "f"], check=True); subprocess.run(["git", "-C", str(repo), "commit", "-qm", "c"], check=True)
+        wenv = dict(os.environ, PLAN_LOCK=str(t / "wlock"), MANIFEST_REPO_ROOT=str(repo), TOOLS=str(tools), TRIPLELIGHT_BIN=str(fake))
+        for k in ("PLAN_SESSION_SCRIPT", "PLAN_TEST_ALLOW_UNQUALIFIED", "PLAN_SKIP_COMPARE"): wenv.pop(k, None)
+        wire = lambda **kw: plan_file(dataset="wire", reference=str(t / "wref.json"), datasets=[{"name": "wire", "path": str(tools / "wire.nt")}],
+                                      stores=[{"name": "wire", "path": str(tools / "triplelight-wire")}], runs=2, drain_rows=200000, seed=5, **kw)
+        (tools / "triplelight-wire" / "f").write_text("s")
+        runplan = lambda plan, out: subprocess.run([sys.executable, str(ev / "plan.py"), "run", str(plan), "--out", str(out), "--receipt", str(t / "rec.json")], capture_output=True, text=True, env=wenv)
+        pf1 = wire(); h1 = hashlib.sha256(pf1.read_bytes()).hexdigest()          # plan.json is rewritten by later calls: hash it now
+        r = runplan(pf1, t / "w1")
+        res = t / "w1" / "session-1-A" / "triplelight.warm.json"
+        data = json.loads(res.read_text()) if res.exists() else {}
+        check("real wiring, warm: the session runs, the results are scored: true, no failures", r.returncode == 0 and data.get("scored") is True and data.get("eligible") is True and not (t / "w1" / "session-1-A" / "failures.txt").exists(), r.stdout[-300:] + r.stderr[-500:])
+        check("real wiring, warm: the plan's seed and repeat count reach the driver", data.get("seed") == 5 and data.get("runs_per_query") == 2)
+        check("real wiring, warm: the reference staged for the session is the plan's file", (t / "w1" / "session-1-A" / "reference.json").read_bytes() == (t / "wref.json").read_bytes())
+        check("real wiring, warm: the endpoint is the private port, not the shared service port", f":{port}/" in data.get("url", "") and ":7979/" not in data.get("url", ""))
+        r = runplan(wire(mode="cold"), t / "w2")
+        sd = t / "w2" / "session-1-A"
+        cold = json.loads((sd / "triplelight.cold.json").read_text()) if (sd / "triplelight.cold.json").exists() else {}
+        check("real wiring, cold: only the cold run happens, under the plan runner, with the stubbed reset: scored", r.returncode == 0 and not (sd / "triplelight.warm.json").exists() and cold.get("scored") is True and cold.get("runs_per_query") == 2, json.dumps(cold)[:300] + r.stderr[-300:])
+        check("real wiring, cold: one reset and one timed sample per requested repeat (2 runs, 2 resets)", len(cold.get("queries", {}).get("q1", {}).get("runs", [])) == 2 and cold["queries"]["q1"].get("cold_hook_ok") is True)
+        man = json.loads((t / "w1" / "session-1-A" / "manifest.json").read_text())
+        check("real wiring: the manifest records the plan's hash and its actual sequence", man["protocol"]["plan_sha256"] == h1 and man["protocol"]["order"] == "A")
+        check("real wiring: the manifest hashes the dataset and store the session served", man["datasets"][0]["sha256"] == hashlib.sha256((tools / "wire.nt").read_bytes()).hexdigest() and man["stores"][0]["name"] == "wire")
+        check("real wiring: the machine lock is released afterwards", not (t / "wlock").exists())
+        two = [{"label": "A", "binary": str(fake)}, {"label": "B", "binary": str(fake)}]
+        r = runplan(wire(arms=two, sequence="BAAB"), t / "w3")
+        man3 = json.loads((t / "w3" / "session-1-B" / "manifest.json").read_text()) if (t / "w3" / "session-1-B" / "manifest.json").exists() else {}
+        check("real wiring, BAAB: the manifest records BAAB, not the default ABBA", man3.get("protocol", {}).get("order") == "BAAB")
+        check("real wiring, ABBA: four sessions run and abba.py --scored compares the arms", all((t / "w3" / f"session-{i}-{l}" / "triplelight.warm.json").exists() for i, l in enumerate("BAAB", 1)) and (t / "w3" / "abba-triplelight.json").exists() and r.returncode == 0, r.stdout[-300:] + r.stderr[-400:])
     print("PLAN SELFTEST", "PASSED" if ok else "FAILED"); sys.exit(0 if ok else 1)
 
 
