@@ -457,22 +457,30 @@ def check_manifest(a):
         if not a.plan_runner: 
             if a.scored: sys.exit("cold scoring needs the plan runner: --scored --mode cold is refused outside bench/eval/plan.py")
             return False, {"manifest": str(a.manifest), "scored_reason": "cold runs are scored only by the plan runner"}
-    try: m, problems = mf.load_checked(a.manifest)
-    except Exception as e: m, problems = {}, [f"cannot read the manifest: {e}"]
+    try: m, loaded = mf.load_checked(a.manifest)
+    except Exception as e: m, loaded = {}, [f"cannot read the manifest: {e}"]
+    # What a run's INPUTS must satisfy (the manifest is well formed, and describes this run) is separate from what its MACHINE must satisfy (a fresh,
+    # passing receipt). Both keep a run from being scored; only the first decides whether the case policy may be told the verified inputs, so a harness
+    # acceptance run on a machine whose receipt fails still starts a policy that needs its dataset digest, query hashes and reference records.
+    try: structural = mf.verify(m) if m else []
+    except Exception as e: structural = [f"the manifest is not well formed: {e}"]
+    machine_problems = [p for p in loaded if p not in structural]
     try: lacking = sorted(q for q, rec in json.load(open(a.reference))["queries"].items() if "vars" not in rec)
     except Exception as e: lacking = [f"unreadable reference ({e})"]
-    if lacking: problems = problems + [f"reference lacks projection (`vars`) for {len(lacking)} case(s), e.g. {lacking[:3]}: regenerate it from its source system"]
-    if not problems:
+    input_problems = list(structural)
+    if lacking: input_problems.append(f"reference lacks projection (`vars`) for {len(lacking)} case(s), e.g. {lacking[:3]}: regenerate it from its source system")
+    if not input_problems:
         # the manifest must describe this run: its query set, reference, engine, protocol, mode and expected-unsupported policy
-        problems = mf.run_bindings(m, queries_sha256=mf.sha256_tree(a.queries), reference_sha256=mf.sha256_file(a.reference), system=a.system, url=a.url, clear_cache_url=a.clear_cache_url, runs=a.runs,
-                                   timeout_s=a.timeout, seed=a.seed, drain_rows=a.drain_rows, mode=a.mode, cold_hook=a.cold_hook or "",
-                                   expect_unsupported=[x for x in re.split(r"[,\s]+", (a.expect_unsupported or "").strip()) if x], policy=policy_identity(a), budget=budget_from_env())
-    if not problems and a.mode == "cold" and a.plan_runner != m.get("run_id"):
-        problems = [f"--plan-runner {a.plan_runner!r} is not this manifest's run ({m.get('run_id')!r})"]
+        input_problems = mf.run_bindings(m, queries_sha256=mf.sha256_tree(a.queries), reference_sha256=mf.sha256_file(a.reference), system=a.system, url=a.url, clear_cache_url=a.clear_cache_url, runs=a.runs,
+                                         timeout_s=a.timeout, seed=a.seed, drain_rows=a.drain_rows, mode=a.mode, cold_hook=a.cold_hook or "",
+                                         expect_unsupported=[x for x in re.split(r"[,\s]+", (a.expect_unsupported or "").strip()) if x], policy=policy_identity(a), budget=budget_from_env())
+    if not input_problems and a.mode == "cold" and a.plan_runner != m.get("run_id"):
+        input_problems = [f"--plan-runner {a.plan_runner!r} is not this manifest's run ({m.get('run_id')!r})"]
+    if not input_problems: a._manifest = m          # verified inputs: the case policy may be given them whether or not the machine qualifies
+    problems = input_problems + machine_problems
     if problems:
         if a.scored: sys.exit("run is not scorable:\n  " + "\n  ".join(problems))
         return False, {"manifest": str(a.manifest), "scored_reason": problems}
-    a._manifest = m
     return True, {"manifest": str(a.manifest), "manifest_sha256": mf.sha256_file(a.manifest), "run_id": m.get("run_id")}
 
 
@@ -498,7 +506,7 @@ def cmd_run(a):
     budget_from_env()            # a malformed or repeated budget stops the run here, before a manifest check or a query
     scored, scored_info = check_manifest(a)
     ref = json.load(open(a.reference))["queries"]
-    policy = load_policy(a, getattr(a, "_manifest", None) if scored else None, ref)
+    policy = load_policy(a, getattr(a, "_manifest", None), ref)      # the verified inputs, even when the machine receipt keeps the run unscored
     if a.case_policy and not scored: scored_info = {**scored_info, "scored_reason": scored_info.get("scored_reason", "a case policy needs a manifest that binds it")}
     records = {}
     rng = random.Random(a.seed)
@@ -681,6 +689,8 @@ TYPED_REFERENCE = {
 started = {}
 
 def start(context):
+    import os
+    if os.environ.get("STUB_STRICT") and not context["dataset_sha256"]: raise RuntimeError("no verified dataset digests: the run's manifest was not given to the policy")
     if not set(context["case_queries"]) <= set(TYPED_REFERENCE): raise RuntimeError("the run has cases the policy has not frozen")
     started["context"] = context
 
@@ -884,11 +894,11 @@ def gate_tests(port, behaviors_raw):
         (bundle / "policy.py").write_text(STUB_POLICY % dataset_digest)
         def served(**over):
             BYCASE.clear(); BYCASE.update(ref_answers); BYCASE.update(over)
-        def prun(name, *extra, qd=None, ref="refpolicy.json", policy=True):
+        def prun(name, *extra, qd=None, ref="refpolicy.json", policy=True, env_strict=False):
             out = tmp / f"{name}.json"
             cmd = [sys.executable, __file__, "run", "--system", name, "--url", f"http://127.0.0.1:{port}/bycase", "--queries", str(qd or pdir), "--reference", str(tmp / ref),
                    "--out", str(out), "--runs", "2", "--timeout", "30", *(["--case-policy", str(bundle / "policy.py"), "--policy-bundle", str(bundle)] if policy else []), *extra]
-            r = subprocess.run(cmd, capture_output=True, text=True)
+            r = subprocess.run(cmd, capture_output=True, text=True, env={**os.environ, **({"STUB_STRICT": "1"} if env_strict else {})})
             return r.returncode, (json.load(open(out)) if out.exists() else None), r.stderr
         behaviors_raw["/bycase"] = ("bycase", 0)
         served(q_interval=doc_(["v"], [[float_("1.0004")]]), q_lexical=doc_(["v"], [[float_("1")]]), q_cutoff=doc_(["p"], [[uri_("a")], [uri_("b")], [uri_("d")]]),
@@ -966,6 +976,14 @@ def gate_tests(port, behaviors_raw):
         pm["policy"] = mf2.policy_identity(bundle / "policy.py", bundle, qmap)
         (mdir / "manifest.json").write_text(json.dumps(pm))
         manifest_args = ("--manifest", str(mdir / "manifest.json"), "--scored")
+        # an unscored run (the machine receipt fails) still hands the case policy the manifest's verified inputs; without a manifest it gets none
+        stale = mf2.good_receipt(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=30), mf2.boot_id()); (mdir / "machine-check.json").write_text(json.dumps(stale))
+        um = json.loads(json.dumps(pm)); um["machine"]["receipt_sha256"] = mf2.sha256_file(mdir / "machine-check.json"); um["machine"]["receipt_passed_at"] = stale["timestamp"]; um["systems"][0]["name"] = "policy-unscored"; (mdir / "manifest.json").write_text(json.dumps(um))
+        rc, res, err = prun("policy-unscored", "--manifest", str(mdir / "manifest.json"), "--lenient", env_strict=True)
+        check("policy: a run whose machine receipt is stale is unscored, and the policy still started with the manifest's verified datasets", rc == 0 and res is not None and res["scored"] is False and "old" in " ".join(res.get("scored_reason", [])))
+        rc, res, err = prun("policy-nomanifest", "--lenient", env_strict=True)
+        check("policy: without a manifest the policy gets no verified inputs and refuses to start", rc != 0 and res is None and "refuses to start" in err)
+        (mdir / "machine-check.json").write_text(json.dumps(pm_rec)); (mdir / "manifest.json").write_text(json.dumps(pm))
         rc, res, err = prun("pscored-novars", *manifest_args, ref="refnovars.json")
         check("scored: a reference without projections (`vars`) is refused, naming the reason", rc != 0 and res is None and "reference lacks projection" in err)
         rc, res, err = prun("pscored", *manifest_args)

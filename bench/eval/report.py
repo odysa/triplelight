@@ -66,7 +66,32 @@ def inconsistent(data, system, manifest):
 def ms(x): return f"{x * 1000:.2f}" if x < 1 else f"{x * 1000:.0f}"
 
 
+def run_mode(run):
+    try: return json.loads((pathlib.Path(run) / "plan.json").read_text()).get("run_mode", "scored")
+    except Exception: return "scored"
+
+
+def build_unscored(run):
+    """The report of a harness acceptance run: classes and eligibility only, never a time. It is not a result and the scoreboard refuses it."""
+    results = load_results(run)
+    lines = [f"# Benchmark report: {pathlib.Path(run).name}", "", "> **UNSCORED: harness acceptance.** This run checks the harness and the protocol. It carries no timing and is not a result; the scoreboard refuses it.", ""]
+    table = {}
+    for sess, system, mode, data, _ in results:
+        for q, e in data["queries"].items(): table.setdefault((mode, q), {}).setdefault(f"{system} ({data['_arm']})" if data.get("_arm") else system, []).append(e.get("class", "?"))
+    for mode in sorted({k[0] for k in table}):
+        cols = sorted({c for (m, _), row in table.items() if m == mode for c in row})
+        lines += [f"## {mode}: answer classes", "", "| Query | " + " | ".join(cols) + " |", "| --- | " + " | ".join("---" for _ in cols) + " |"]
+        for (m, q), row in sorted(table.items(), key=lambda kv: (kv[0][1].rstrip("0123456789"), int("".join(c for c in kv[0][1] if c.isdigit()) or 0))):
+            if m == mode: lines.append(f"| {q} | " + " | ".join("/".join(sorted(set(row.get(c, ["-"])))) for c in cols) + " |")
+        lines.append("")
+    lines += ["## Eligibility", ""]
+    for sess, system, mode, data, _ in results:
+        lines.append(f"- `{sess}/{system}.{mode}`: " + ("eligible" if data.get("eligible") else "ineligible: " + "; ".join(data.get("ineligible_reasons") or ["unknown"])))
+    return "\n".join(lines) + "\n", {"meta": {"run_mode": "unscored"}, "scored": [], "refused": [(s_, sy, m, ["unscored: harness acceptance"]) for s_, sy, m, _, _ in results]}
+
+
 def build(run):
+    if run_mode(run) == "unscored": return build_unscored(run)
     results = load_results(run)
     scored = [r for r in results if not r[4]]
     refused = [r for r in results if r[4]]
@@ -138,7 +163,7 @@ def cmd_report(a):
     text, data = build(a.run)
     pathlib.Path(a.out).write_text(text) if a.out else print(text, end="")
     if a.json: pathlib.Path(a.json).write_text(json.dumps(data, indent=1, sort_keys=True) + "\n")
-    if data["refused"] and not data["scored"]: sys.exit(1)       # nothing in this run may be published
+    if data["refused"] and not data["scored"] and data["meta"].get("run_mode") != "unscored": sys.exit(1)       # nothing in this run may be published
 
 
 def board_rows(run):
@@ -154,6 +179,7 @@ def board_rows(run):
 
 
 def cmd_board(a):
+    if a.action == "add" and run_mode(a.run) == "unscored": sys.exit("the scoreboard refuses an unscored harness acceptance run")
     board = pathlib.Path(a.board)
     existing = [json.loads(l) for l in board.read_text().splitlines() if l.strip()] if board.exists() else []
     if a.action == "show":
