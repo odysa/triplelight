@@ -1,6 +1,9 @@
 # Streaming results and multi-process readers (design, task #112)
 
-Status: partly implemented. The streaming serializer (`serialize_ids_to`) is on main (#272). The chunked JSON response and `Store::open_read_only` are on branches `wxp-stream-http` and `wxp-readonly`, awaiting CI. Step B (readers during writes) builds on the WAL batch format of #282, now on main; its storage side is Alex's. It was written for review by the executor (Kaiming) and storage (Alex) lanes.
+Status: steps 1 and A are implemented; see the list below for what remains.
+- Streaming serializer, `serialize_ids_to` (#272), and the chunked JSON response (#308, with its failure-mode test #309): on main. A SELECT answered in SPARQL JSON over id rows streams window by window; CSV, TSV, ASK, CONSTRUCT and traced requests stay buffered.
+- Step A, `Store::open_read_only` (#317): on main. `serve-store --read-only` (#327) serves a store under a shared lock, in review.
+- Remaining: the embedded `query_to_writer`; a `read_only` flag on the overlay and base in place of the process-wide list of read-only roots (a snapshot that outlives its store can still spill under the root); CSV and TSV streaming; the first-byte and peak-memory measurement; step B (readers during writes), whose storage side is Alex's on top of the WAL batch format of #282.
 
 ## 1. Streaming query results
 
