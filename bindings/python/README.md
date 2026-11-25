@@ -34,7 +34,8 @@ for row in db.query("SELECT ?who ?age WHERE { ?who <urn:age> ?age } ORDER BY ?ag
 - `compact()` merges updates into a new base. `stats_ready()` is true once background optimizer statistics are built
   (queries work before that).
 - `query` and `query_json` take `timeout=` (seconds) and `memory_mb=`: a query past either raises `QueryTimeout` or
-  `ResourceLimitError`, never a partial result. On Unix, Ctrl-C cancels a query running on the main thread and raises
+  `ResourceLimitError`, never a partial result. With `spill=True`, a GROUP BY over `memory_mb` spills its input to
+  `TRIPLELIGHT_SCRATCH_DIR` (else the system temporary directory) and finishes instead; by default nothing is written. On Unix, Ctrl-C cancels a query running on the main thread and raises
   `KeyboardInterrupt` (the SIGINT action is installed on the first such query and chained to Python's handler;
   `triplelight.set_cancel_on_ctrl_c(False)` turns it off). On Windows, Ctrl-C is raised once the query ends.
 - Errors are `TripleLightError` subclasses: `SyntaxError`, `UnsupportedError`, `StorageError`, `LockedError`,

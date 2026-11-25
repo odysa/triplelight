@@ -35,6 +35,9 @@ export interface QueryOptions {
   signal?: AbortSignal;
   /** Working-memory budget in megabytes; a query that needs more fails with `ResourceLimitError`. */
   memoryMb?: number;
+  /** With `memoryMb`: a GROUP BY whose input does not fit spills it to `TRIPLELIGHT_SCRATCH_DIR` (else the system
+   * temporary directory) and finishes. The default, `false`, never writes to disk. */
+  spill?: boolean;
 }
 
 export interface ExtensionInfo { name: string; compiledIn: boolean; loaded: boolean }

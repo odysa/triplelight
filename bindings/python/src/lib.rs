@@ -76,6 +76,7 @@ fn limited<T: Send>(
     py: Python<'_>,
     timeout: Option<f64>,
     memory_mb: Option<u64>,
+    spill: bool,
     f: impl FnOnce(QueryLimits<'_>) -> Result<T, DatabaseError> + Send,
 ) -> PyResult<T> {
     let mut interrupt = match timeout {
@@ -86,6 +87,8 @@ fn limited<T: Send>(
     let budget = match memory_mb {
         None => None,
         Some(0) => return Err(pyo3::exceptions::PyValueError::new_err("memory_mb must be positive")),
+        // `spill=True`: GROUP BY over the budget spills to TRIPLELIGHT_SCRATCH_DIR (else the temp directory) (#111)
+        Some(mb) if spill => Some(MemoryBudget::spilling(mb.saturating_mul(1 << 20))),
         Some(mb) => Some(MemoryBudget::new(mb.saturating_mul(1 << 20))),
     };
     let mut watching = false;
@@ -209,10 +212,10 @@ impl PyDatabase {
     /// `entailment="rdfs"` matches the default graph's RDFS closure, computed at query time; the default is "simple".
     /// `timeout` (seconds) raises `QueryTimeout`, `memory_mb` bounds the working memory (`ResourceLimitError`), and
     /// Ctrl-C cancels a running query.
-    #[pyo3(signature = (sparql, entailment="simple", timeout=None, memory_mb=None))]
-    fn query(&self, py: Python<'_>, sparql: &str, entailment: &str, timeout: Option<f64>, memory_mb: Option<u64>) -> PyResult<PyObject> {
+    #[pyo3(signature = (sparql, entailment="simple", timeout=None, memory_mb=None, spill=false))]
+    fn query(&self, py: Python<'_>, sparql: &str, entailment: &str, timeout: Option<f64>, memory_mb: Option<u64>, spill: bool) -> PyResult<PyObject> {
         let (db, e) = (Arc::clone(&self.db), self::entailment(entailment)?);
-        let r = limited(py, timeout, memory_mb, |limits| db.query_with_limits(sparql, e, limits))?;
+        let r = limited(py, timeout, memory_mb, spill, |limits| db.query_with_limits(sparql, e, limits))?;
         convert(py, r)
     }
     fn update(&self, py: Python<'_>, sparql: &str) -> PyResult<usize> {
@@ -220,10 +223,10 @@ impl PyDatabase {
         py.allow_threads(|| db.update(sparql)).map_err(err)
     }
     /// SPARQL 1.1 JSON results as a string (fast path: terms written straight from the dictionary).
-    #[pyo3(signature = (sparql, entailment="simple", timeout=None, memory_mb=None))]
-    fn query_json(&self, py: Python<'_>, sparql: &str, entailment: &str, timeout: Option<f64>, memory_mb: Option<u64>) -> PyResult<String> {
+    #[pyo3(signature = (sparql, entailment="simple", timeout=None, memory_mb=None, spill=false))]
+    fn query_json(&self, py: Python<'_>, sparql: &str, entailment: &str, timeout: Option<f64>, memory_mb: Option<u64>, spill: bool) -> PyResult<String> {
         let (db, e) = (Arc::clone(&self.db), self::entailment(entailment)?);
-        limited(py, timeout, memory_mb, |limits| db.query_json_with_limits(sparql, e, limits))
+        limited(py, timeout, memory_mb, spill, |limits| db.query_json_with_limits(sparql, e, limits))
     }
     /// Atomically imports an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file; returns triples added.
     fn load(&self, py: Python<'_>, path: std::path::PathBuf) -> PyResult<usize> {
@@ -249,16 +252,16 @@ struct PySnapshot { snap: Arc<ReadSnapshot> }
 
 #[pymethods]
 impl PySnapshot {
-    #[pyo3(signature = (sparql, entailment="simple", timeout=None, memory_mb=None))]
-    fn query(&self, py: Python<'_>, sparql: &str, entailment: &str, timeout: Option<f64>, memory_mb: Option<u64>) -> PyResult<PyObject> {
+    #[pyo3(signature = (sparql, entailment="simple", timeout=None, memory_mb=None, spill=false))]
+    fn query(&self, py: Python<'_>, sparql: &str, entailment: &str, timeout: Option<f64>, memory_mb: Option<u64>, spill: bool) -> PyResult<PyObject> {
         let (s, e) = (Arc::clone(&self.snap), self::entailment(entailment)?);
-        let r = limited(py, timeout, memory_mb, |limits| s.query_with_limits(sparql, e, limits))?;
+        let r = limited(py, timeout, memory_mb, spill, |limits| s.query_with_limits(sparql, e, limits))?;
         convert(py, r)
     }
-    #[pyo3(signature = (sparql, entailment="simple", timeout=None, memory_mb=None))]
-    fn query_json(&self, py: Python<'_>, sparql: &str, entailment: &str, timeout: Option<f64>, memory_mb: Option<u64>) -> PyResult<String> {
+    #[pyo3(signature = (sparql, entailment="simple", timeout=None, memory_mb=None, spill=false))]
+    fn query_json(&self, py: Python<'_>, sparql: &str, entailment: &str, timeout: Option<f64>, memory_mb: Option<u64>, spill: bool) -> PyResult<String> {
         let (s, e) = (Arc::clone(&self.snap), self::entailment(entailment)?);
-        limited(py, timeout, memory_mb, |limits| s.query_json_with_limits(sparql, e, limits))
+        limited(py, timeout, memory_mb, spill, |limits| s.query_json_with_limits(sparql, e, limits))
     }
 }
 

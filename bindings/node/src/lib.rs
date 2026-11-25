@@ -76,15 +76,16 @@ impl Interrupt {
 
 /// The limits of one query: an interrupt and a working-memory budget in megabytes.
 #[derive(Default)]
-pub struct Limits { interrupt: Option<Arc<triplelight::exec::Interrupt>>, memory_mb: Option<u32> }
+pub struct Limits { interrupt: Option<Arc<triplelight::exec::Interrupt>>, memory_mb: Option<u32>, spill: bool }
 
 impl Limits {
-    fn new(interrupt: Option<&Interrupt>, memory_mb: Option<u32>) -> Result<Self> {
+    fn new(interrupt: Option<&Interrupt>, memory_mb: Option<u32>, spill: Option<bool>) -> Result<Self> {
         if memory_mb == Some(0) { return Err(Error::new(Status::InvalidArg, "memoryMb must be positive".to_string())) }
-        Ok(Limits { interrupt: interrupt.map(|i| Arc::clone(&i.0)), memory_mb })
+        Ok(Limits { interrupt: interrupt.map(|i| Arc::clone(&i.0)), memory_mb, spill: spill.unwrap_or(false) })
     }
     fn with<T>(&self, f: impl FnOnce(QueryLimits<'_>) -> T) -> T {
-        let budget = self.memory_mb.map(|mb| MemoryBudget::new(u64::from(mb) << 20));
+        // `spill`: GROUP BY over the budget spills to TRIPLELIGHT_SCRATCH_DIR (else the temp directory) (#111)
+        let budget = self.memory_mb.map(|mb| if self.spill { MemoryBudget::spilling(u64::from(mb) << 20) } else { MemoryBudget::new(u64::from(mb) << 20) });
         f(QueryLimits { interrupt: self.interrupt.as_deref(), memory: budget.as_ref() })
     }
 }
@@ -301,23 +302,23 @@ impl Database {
 
     /// Runs a SPARQL SELECT / ASK / CONSTRUCT / DESCRIBE query on the current state. `entailment` "rdfs" matches the
     /// default graph's RDFS closure, computed at query time; the default is "simple".
-    /// `interrupt` and `memoryMb` limit it (#110).
+    /// `interrupt` and `memoryMb` limit it (#110); `spill` lets a GROUP BY over `memoryMb` spill to disk (#111).
     #[napi(ts_return_type = "Promise<QueryResult>")]
-    pub fn query(&self, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>) -> Result<AsyncTask<QueryTask>> {
-        let limits = Limits::new(interrupt, memory_mb)?;
+    pub fn query(&self, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>, spill: Option<bool>) -> Result<AsyncTask<QueryTask>> {
+        let limits = Limits::new(interrupt, memory_mb, spill)?;
         Ok(AsyncTask::new(QueryTask { src: Source::Db(self.db()?), sparql, entailment: self::entailment(entailment)?, limits }))
     }
     /// Like `query`, but blocks the calling thread (for scripts and tests).
     #[napi(ts_return_type = "QueryResult")]
-    pub fn query_sync(&self, env: Env, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>) -> Result<JsObject> {
-        let limits = Limits::new(interrupt, memory_mb)?;
+    pub fn query_sync(&self, env: Env, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>, spill: Option<bool>) -> Result<JsObject> {
+        let limits = Limits::new(interrupt, memory_mb, spill)?;
         let r = Source::Db(self.db()?).query(&sparql, self::entailment(entailment)?, &limits).map_err(err)?;
         convert(&env, r)
     }
     /// SPARQL 1.1 Query Results JSON as a string: the fastest path for large results.
     #[napi(ts_return_type = "Promise<string>")]
-    pub fn query_json(&self, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>) -> Result<AsyncTask<JsonTask>> {
-        let limits = Limits::new(interrupt, memory_mb)?;
+    pub fn query_json(&self, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>, spill: Option<bool>) -> Result<AsyncTask<JsonTask>> {
+        let limits = Limits::new(interrupt, memory_mb, spill)?;
         Ok(AsyncTask::new(JsonTask { src: Source::Db(self.db()?), sparql, entailment: self::entailment(entailment)?, limits }))
     }
     /// Applies a SPARQL Update atomically and durably (fsync before the Promise resolves). Resolves to the number of
@@ -372,19 +373,19 @@ pub struct Snapshot { db: Arc<Db>, snap: Arc<ReadSnapshot> }
 #[napi]
 impl Snapshot {
     #[napi(ts_return_type = "Promise<QueryResult>")]
-    pub fn query(&self, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>) -> Result<AsyncTask<QueryTask>> {
-        let limits = Limits::new(interrupt, memory_mb)?;
+    pub fn query(&self, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>, spill: Option<bool>) -> Result<AsyncTask<QueryTask>> {
+        let limits = Limits::new(interrupt, memory_mb, spill)?;
         Ok(AsyncTask::new(QueryTask { src: self.source(), sparql, entailment: self::entailment(entailment)?, limits }))
     }
     #[napi(ts_return_type = "QueryResult")]
-    pub fn query_sync(&self, env: Env, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>) -> Result<JsObject> {
-        let limits = Limits::new(interrupt, memory_mb)?;
+    pub fn query_sync(&self, env: Env, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>, spill: Option<bool>) -> Result<JsObject> {
+        let limits = Limits::new(interrupt, memory_mb, spill)?;
         let r = self.source().query(&sparql, self::entailment(entailment)?, &limits).map_err(err)?;
         convert(&env, r)
     }
     #[napi(ts_return_type = "Promise<string>")]
-    pub fn query_json(&self, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>) -> Result<AsyncTask<JsonTask>> {
-        let limits = Limits::new(interrupt, memory_mb)?;
+    pub fn query_json(&self, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>, spill: Option<bool>) -> Result<AsyncTask<JsonTask>> {
+        let limits = Limits::new(interrupt, memory_mb, spill)?;
         Ok(AsyncTask::new(JsonTask { src: self.source(), sparql, entailment: self::entailment(entailment)?, limits }))
     }
 }

@@ -103,12 +103,12 @@ class Snapshot:
 
     def __init__(self, raw): self._raw = raw
     def query(self, sparql: str, entailment: str = "simple", timeout: Optional[float] = None,
-              memory_mb: Optional[int] = None) -> Result:
-        return Result(self._raw.query(sparql, entailment, timeout, memory_mb))
+              memory_mb: Optional[int] = None, spill: bool = False) -> Result:
+        return Result(self._raw.query(sparql, entailment, timeout, memory_mb, spill))
 
     def query_json(self, sparql: str, entailment: str = "simple", timeout: Optional[float] = None,
-                   memory_mb: Optional[int] = None) -> str:
-        return self._raw.query_json(sparql, entailment, timeout, memory_mb)
+                   memory_mb: Optional[int] = None, spill: bool = False) -> str:
+        return self._raw.query_json(sparql, entailment, timeout, memory_mb, spill)
     def __enter__(self): return self
     def __exit__(self, *exc): return False
 
@@ -138,23 +138,25 @@ class Database:
         return db
 
     def query(self, sparql: str, entailment: str = "simple", timeout: Optional[float] = None,
-              memory_mb: Optional[int] = None) -> Result:
+              memory_mb: Optional[int] = None, spill: bool = False) -> Result:
         """Run a SPARQL SELECT / ASK / CONSTRUCT query on the current state.
 
         `entailment="rdfs"` matches the default graph's RDFS closure (subclasses, subproperties, domain and range),
         computed at query time; nothing inferred is stored. The default, "simple", matches the stored triples.
         `timeout` (seconds) raises `QueryTimeout`; `memory_mb` bounds the query's working memory and raises
-        `ResourceLimitError` past it. On Unix, Ctrl-C (KeyboardInterrupt) cancels a running query on the main
+        `ResourceLimitError` past it. With `spill=True`, a GROUP BY whose input does not fit `memory_mb` writes it to
+        `TRIPLELIGHT_SCRATCH_DIR` (else the system temporary directory) and finishes instead; the default never
+        writes to disk. On Unix, Ctrl-C (KeyboardInterrupt) cancels a running query on the main
         thread (see `set_cancel_on_ctrl_c`); on Windows it is raised once the query ends. None of these leaves a
         partial result, and the database serves the next query as usual.
         """
-        return Result(self._db.query(sparql, entailment, timeout, memory_mb))
+        return Result(self._db.query(sparql, entailment, timeout, memory_mb, spill))
 
     def query_json(self, sparql: str, entailment: str = "simple", timeout: Optional[float] = None,
-                   memory_mb: Optional[int] = None) -> str:
+                   memory_mb: Optional[int] = None, spill: bool = False) -> str:
         """SPARQL 1.1 Query Results JSON as a string for SELECT and ASK; no Python row objects are created.
-        `timeout` and `memory_mb` as for `query`."""
-        return self._db.query_json(sparql, entailment, timeout, memory_mb)
+        `timeout`, `memory_mb` and `spill` as for `query`."""
+        return self._db.query_json(sparql, entailment, timeout, memory_mb, spill)
 
     def load(self, path) -> int:
         """Atomically import an N-Triples (.nt), Turtle (.ttl), N-Quads (.nq) or TriG (.trig) file. For N-Triples and Turtle, an empty in-memory store builds its indexes as it parses, then sorts them before publishing; N-Quads and TriG take the dataset-change path."""

@@ -187,6 +187,26 @@ test("extension availability, autoload and load", () => {
   }
 });
 
+test("spill lets a GROUP BY over memoryMb finish (#111)", async () => {
+  // 10,000 groups of 4 rows: grouping in memory does not fit 3 MB; spilling by key partition does.
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "tl-node-spill-"));
+  const before = process.env.TRIPLELIGHT_SCRATCH_DIR;
+  process.env.TRIPLELIGHT_SCRATCH_DIR = scratch;
+  const db = tl.Database.inMemory();
+  try {
+    const data = Array.from({ length: 40000 }, (_, i) => `<urn:s${i >> 2}> <urn:p> "v${i}" .`).join(" ");
+    await db.update(`INSERT DATA { ${data} }`);
+    const q = "SELECT ?s (GROUP_CONCAT(?o) AS ?all) WHERE { ?s <urn:p> ?o } GROUP BY ?s";
+    await assert.rejects(db.query(q, { memoryMb: 3 }), tl.ResourceLimitError);
+    assert.strictEqual((await db.query(q, { memoryMb: 3, spill: true })).bindings.length, 10000);
+    assert.deepStrictEqual(fs.readdirSync(scratch), [], "no spill files are left behind");
+  } finally {
+    db.close();
+    if (before === undefined) delete process.env.TRIPLELIGHT_SCRATCH_DIR; else process.env.TRIPLELIGHT_SCRATCH_DIR = before;
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
 test("query limits: AbortSignal, timeoutMs and memoryMb", async () => {
   const db = tl.Database.inMemory();
   const data = Array.from({ length: 2000 }, (_, i) => `<urn:s${i}> <urn:p> "${i}" .`).join(" ");
