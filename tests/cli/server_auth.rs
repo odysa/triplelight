@@ -105,12 +105,20 @@ fn read_only_rejects_updates_but_answers_queries() {
     let _ = writer.0.wait();
     let port = { let l = TcpListener::bind("127.0.0.1:0").unwrap(); l.local_addr().unwrap().port() };
     let mut reader = Command::new(env!("CARGO_BIN_EXE_triplelight"));
-    reader.arg("serve-store").arg(&writer.2).arg(port.to_string()).arg("--read-only").stdout(Stdio::null()).stderr(Stdio::null())
+    reader.arg("serve-store").arg(&writer.2).arg(port.to_string()).arg("--read-only").stdout(Stdio::null()).stderr(Stdio::piped())
         .env_remove("TRIPLELIGHT_UPDATE_TOKEN").env_remove("TRIPLELIGHT_HOST");
     let mut reader = reader.spawn().unwrap();
     let deadline = Instant::now() + Duration::from_secs(10);
     while TcpStream::connect(("127.0.0.1", port)).is_err() {
-        assert!(Instant::now() < deadline, "read-only server did not start");
+        // a server that exited (or never came up) explains itself on stderr: show it instead of a bare timeout
+        let exited = reader.try_wait().unwrap();
+        if exited.is_some() || Instant::now() >= deadline {
+            let _ = reader.kill();
+            let _ = reader.wait();
+            let mut why = String::new();
+            let _ = reader.stderr.take().unwrap().read_to_string(&mut why);
+            panic!("read-only server did not start (exited: {exited:?}): {why}");
+        }
         std::thread::sleep(Duration::from_millis(20));
     }
     assert!(post(port, "/update", "application/sparql-update", "", None).contains(" 403 "));
