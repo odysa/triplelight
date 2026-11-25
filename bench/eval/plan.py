@@ -156,14 +156,15 @@ def release_lock(what):
     except OSError: pass
 
 
-def compare_arms(plan, out, sessions):
+def compare_arms(plan, out, sessions, unscored=False):
     """A/B plan: abba.py --scored per system, A (the first arm) the baseline and B the candidate. Exit 2 (refused) fails the plan; a counted
     slowdown fails it only with fail_on_regression. The comparison JSON is kept beside the sessions."""
     a_label, b_label = (x["label"] for x in plan["arms"])
     status = 0
     for system in [s["name"] for s in plan["systems"]]:
         files = {l: [str(out / f"session-{i}-{l}" / f"{system}.{plan['mode']}.json") for i, lab, _ in sessions if lab == l] for l in (a_label, b_label)}
-        cmd = [sys.executable, str(HERE / "abba.py"), "--scored", "--a", *files[a_label], "--b", *files[b_label], "--json", str(out / f"abba-{system}.json")]
+        # an unscored run compares without --scored (which refuses `scored: false`): that is how the laptop hill-climbs, and the comparison stays internal
+        cmd = [sys.executable, str(HERE / "abba.py"), *([] if unscored else ["--scored"]), "--a", *files[a_label], "--b", *files[b_label], "--json", str(out / f"abba-{system}.json")]
         if plan.get("fail_on_regression"): cmd.append("--fail-on-regression")
         r = subprocess.run(cmd, capture_output=True, text=True)
         (out / f"abba-{system}.log").write_text(r.stdout + r.stderr)
@@ -214,7 +215,7 @@ def cmd_run(a):
             print(f"session {i} ({label}): exit {r.returncode}")
             if r.returncode != 0: status = 1          # keep going: every session's logs are evidence; the plan's status says it failed
         (out / "plan.json").write_text(json.dumps({**plan, "run_mode": "unscored" if a.unscored else "scored"}, indent=1, sort_keys=True))
-        if len(plan["arms"]) == 2 and status == 0 and not os.environ.get("PLAN_SKIP_COMPARE"): status = compare_arms(plan, out, sessions)      # the skip is for the stub-session test
+        if len(plan["arms"]) == 2 and status == 0 and not os.environ.get("PLAN_SKIP_COMPARE"): status = compare_arms(plan, out, sessions, a.unscored)      # the skip is for the stub-session test
         if not os.environ.get("PLAN_SKIP_COMPARE"):      # the report names refused results and gives them no timing row; exit 1 means nothing in the run is publishable
             rr = subprocess.run([sys.executable, str(HERE / "report.py"), "report", str(out), "--out", str(out / "report.md"), "--json", str(out / "report.json")])
             if rr.returncode != 0: status = 1
@@ -371,7 +372,7 @@ def cmd_selftest(a):
         ud = json.loads((t / "wu1" / "session-1-A" / "triplelight.warm.json").read_text()) if (t / "wu1" / "session-1-A" / "triplelight.warm.json").exists() else {}
         urep = (t / "wu1" / "report.md").read_text() if (t / "wu1" / "report.md").exists() else ""
         check("--unscored with a failing receipt runs the plan: answers pass, eligible, but scored: false", r.returncode == 0 and ud.get("eligible") is True and ud.get("scored") is False, r.stdout[-300:] + r.stderr[-400:])
-        check("--unscored: the report says so at the top, shows classes and never a time", urep.startswith("# Benchmark report") and "UNSCORED: harness acceptance" in urep.split("\n\n")[1] and "| q1 | pass |" in urep and " ms" not in urep)
+        check("--unscored: the report says so at the top and on the timing table, marks each row, and shows the time (it drives the hill climbing)", urep.startswith("# Benchmark report") and "UNSCORED: harness acceptance, not for publication" in urep.split("\n\n")[1] and "| q1 † |" in urep and "1 session" in urep)
         bd = subprocess.run([sys.executable, str(ev / "report.py"), "scoreboard", "add", str(t / "wu1"), "--board", str(t / "board.jsonl")], capture_output=True, text=True)
         check("--unscored: the scoreboard refuses the run", bd.returncode != 0 and "refuses an unscored" in bd.stderr and not (t / "board.jsonl").exists())
         check("--unscored: the failing receipt is recorded with the run, not hidden", json.loads((t / "wu1" / "session-1-A" / "manifest.json").read_text())["machine"]["receipt_sha256"] == hashlib.sha256((t / "recbad.json").read_bytes()).hexdigest())
@@ -388,6 +389,8 @@ def cmd_selftest(a):
         r = runplan(wire(arms=two, sequence="BAAB"), t / "w3")
         man3 = json.loads((t / "w3" / "session-1-B" / "manifest.json").read_text()) if (t / "w3" / "session-1-B" / "manifest.json").exists() else {}
         check("real wiring, BAAB: the manifest records BAAB, not the default ABBA", man3.get("protocol", {}).get("order") == "BAAB")
+        r = runplan(wire(arms=two, sequence="ABBA"), t / "w3u", "--unscored", receipt="recbad.json")
+        check("real wiring, ABBA, --unscored: the arms are compared without --scored on a machine whose receipt fails, and the report shows it", r.returncode == 0 and (t / "w3u" / "abba-triplelight.json").exists() and "UNSCORED" in (t / "w3u" / "report.md").read_text(), r.stdout[-300:] + r.stderr[-300:])
         check("real wiring, ABBA: four sessions run and abba.py --scored compares the arms", all((t / "w3" / f"session-{i}-{l}" / "triplelight.warm.json").exists() for i, l in enumerate("BAAB", 1)) and (t / "w3" / "abba-triplelight.json").exists() and r.returncode == 0, r.stdout[-300:] + r.stderr[-400:])
     print("PLAN SELFTEST", "PASSED" if ok else "FAILED"); sys.exit(0 if ok else 1)
 

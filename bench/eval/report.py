@@ -72,18 +72,30 @@ def run_mode(run):
 
 
 def build_unscored(run):
-    """The report of a harness acceptance run: classes and eligibility only, never a time. It is not a result and the scoreboard refuses it."""
+    """The report of a harness acceptance run: it also drives the hill-climbing round, so it shows medians and the spread across sessions, but every
+    timing table carries the banner and every row is marked with a dagger. It is not a result: the scoreboard and `abba.py --scored` refuse the run."""
     results = load_results(run)
-    lines = [f"# Benchmark report: {pathlib.Path(run).name}", "", "> **UNSCORED: harness acceptance.** This run checks the harness and the protocol. It carries no timing and is not a result; the scoreboard refuses it.", ""]
+    banner = "> **UNSCORED: harness acceptance, not for publication.**"
+    lines = [f"# Benchmark report: {pathlib.Path(run).name}", "", banner + " This run checks the harness and the protocol on a machine whose receipt may not qualify. Its timings are internal; the scoreboard refuses it.", ""]
     table = {}
     for sess, system, mode, data, _ in results:
-        for q, e in data["queries"].items(): table.setdefault((mode, q), {}).setdefault(f"{system} ({data['_arm']})" if data.get("_arm") else system, []).append(e.get("class", "?"))
+        for q, e in data["queries"].items(): table.setdefault((mode, q), {}).setdefault(f"{system} ({data['_arm']})" if data.get("_arm") else system, []).append(e)
     for mode in sorted({k[0] for k in table}):
         cols = sorted({c for (m, _), row in table.items() if m == mode for c in row})
-        lines += [f"## {mode}: answer classes", "", "| Query | " + " | ".join(cols) + " |", "| --- | " + " | ".join("---" for _ in cols) + " |"]
+        lines += [f"## {mode}: median per session and spread across sessions, in milliseconds", "", banner, "", "| Query | " + " | ".join(cols) + " |", "| --- | " + " | ".join("---:" for _ in cols) + " |"]
         for (m, q), row in sorted(table.items(), key=lambda kv: (kv[0][1].rstrip("0123456789"), int("".join(c for c in kv[0][1] if c.isdigit()) or 0))):
-            if m == mode: lines.append(f"| {q} | " + " | ".join("/".join(sorted(set(row.get(c, ["-"])))) for c in cols) + " |")
-        lines.append("")
+            if m != mode: continue
+            cells = []
+            for c in cols:
+                es = row.get(c, [])
+                if not es: cells.append("-")
+                elif all(e.get("class") in GOOD and "median_s" in e for e in es):
+                    meds = [e["median_s"] for e in es]; mid = statistics.median(meds)
+                    spread = f"±{(max(meds) - min(meds)) / mid / 2:.1%}" if len(meds) > 1 and mid else "1 session"
+                    cells.append(f"{ms(mid)} ({spread})" + ("\\*" if any(e["class"] == "value-compatible" for e in es) else ""))
+                else: cells.append("/".join(sorted({e.get("class", "?") for e in es})))
+            lines.append(f"| {q} † | " + " | ".join(cells) + " |")
+        lines += ["", "† unscored: harness acceptance, not for publication. `\\*` marks a value-compatible answer.", ""]
     lines += ["## Eligibility", ""]
     for sess, system, mode, data, _ in results:
         lines.append(f"- `{sess}/{system}.{mode}`: " + ("eligible" if data.get("eligible") else "ineligible: " + "; ".join(data.get("ineligible_reasons") or ["unknown"])))
@@ -259,6 +271,20 @@ def selftest(a):
         res(sd4, h4, "ontop", queries={"q1": {"class": "value-compatible", "median_s": 0.01, "policy_reasons": ["within the registered binary32 interval"]}, "q2": {"class": "value-compatible", "median_s": 0.02}})
         text4, _ = build(t.parent / "run4")
         check("a value-compatible answer is marked and its reason is listed (the policy's own, or the default)", "\\*" in text4 and "q1: within the registered binary32 interval" in text4 and "q2: narrower integer types normalized" in text4)
+        # an unscored harness run: times and spreads are shown (they drive the hill climbing), under a banner on every table, every row marked
+        tu = t.parent / "run5"
+        for i, ms_ in enumerate((0.100, 0.110), 1):
+            d = tu / f"session-{i}-A"; d.mkdir(parents=True); hh = manifest(d, "a", "1")
+            res(d, hh, "triplelight", scored=False, scored_reason="machine check did not pass", queries={"q1": {"class": "pass", "median_s": ms_}, "q2": {"class": "mismatch", "median_s": 0.001}})
+        (tu / "plan.json").write_text(json.dumps({"run_mode": "unscored"}))
+        textu, datau = build(tu)
+        check("an unscored report shows the median and the spread across sessions", "| q1 † | 105.00 (±4.8%) |" in textu, textu)
+        check("an unscored report carries the banner on its heading and on every timing table", textu.count("UNSCORED: harness acceptance, not for publication") >= 2 and "## warm: median per session" in textu)
+        check("an unscored report marks every row with a dagger and shows a mismatch as its class, never a time", "| q2 † | mismatch |" in textu and all(l.startswith("| q") and " † |" in l for l in textu.splitlines() if l.startswith("| q")))
+        class B: pass
+        bb = B(); bb.action = "add"; bb.run = str(tu); bb.board = str(t.parent / "board5.jsonl")
+        try: cmd_board(bb); check("the scoreboard refuses an unscored run", False)
+        except SystemExit as e: check("the scoreboard refuses an unscored run", "refuses an unscored" in str(e) and not (t.parent / "board5.jsonl").exists())
         for f in sd.glob("*.json"):
             if f.name != "manifest.json": f.unlink()
         res(sd, h, "wrong", eligible=False, ineligible_reasons=["x"])
