@@ -58,7 +58,8 @@ def main():
                 "datasets": [{"name": dataset, "path": str(tools / f"{dataset}.nt")}],
                 "stores": [{"name": f"{s}-{dataset}", "path": str(tools / f"{s}-{dataset}")} for s in systems],
                 "systems": [{"name": s, "version": version(s), "config": str(HERE / "configs" / f"{s}.txt")} for s in systems],
-                "mode": "warm", "runs": a.runs, "timeout": 120, "seed": 0, "drain_rows": 200000, "sequence": "A" * a.sessions}
+                "mode": "warm", "runs": a.runs, "timeout": 120, "seed": 0, "drain_rows": 200000, "sequence": "A" * a.sessions,
+                "budget": {"mem_gb": 12, "cpus": 8}}
         if suite in POLICIES: plan["case_policy"] = stage_policy(POLICIES[suite], out.parent / f"{POLICIES[suite]}-policy")
         (out / f"{suite}.json").write_text(json.dumps(plan, indent=1) + "\n")
         print(out / f"{suite}.json")
