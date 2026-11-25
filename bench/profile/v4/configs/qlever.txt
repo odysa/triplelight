@@ -1,0 +1,4 @@
+# QLever in profile v4: system `qlever` in bench/eval/systems.sh (the default index build, as in profile v3; not the
+# `qlever-two-order` arm), the pinned image (bench/eval/VERSIONS QLEVER_IMAGE), result cache cleared before every
+# request (lib.sh clear_cache_url_of qlever). Budget: BUDGET="--mem 12 --cpus 8" (run.sh).
+memory_gb=12 cpus=8 system=qlever result_cache=cleared-per-request

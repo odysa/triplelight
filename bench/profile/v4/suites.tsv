@@ -1,0 +1,7 @@
+# suite	dataset	queries (repo-relative)	reference	source of the reference answers
+bi100	bsbm100	bench/profile/v4/queries/bi100	bench/profile/v4/references/bi100.json	Jena 6.2.0, frozen (docs/virtuoso100-qualification-v1)
+bsbm100	bsbm100	bench/bsbm100q	bench/profile/v4/references/bsbm100.json	Jena TDB2 (Fuseki 6.2.0)
+lubm1000	lubm1000	bench/lubm	bench/profile/v4/references/lubm1000.json	Jena TDB2 (Fuseki 6.2.0)
+agg-lubm1000	lubm1000	bench/profile/v4/queries/agg-lubm	bench/profile/v4/references/agg-lubm1000.json	QLever-derived (not Jena), as in profile v3
+watdiv100	watdiv100	bench/watdiv	bench/profile/v4/references/watdiv100.json	Jena TDB2 (Fuseki 6.2.0)
+agg-watdiv100	watdiv100	bench/profile/v4/queries/agg-watdiv	bench/profile/v4/references/agg-watdiv100.json	Jena 6.2.0, frozen (docs/aggregate72-reference)
