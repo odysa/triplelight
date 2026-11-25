@@ -565,19 +565,21 @@ impl Store {
         // Read-only: never create the lock file either. A store that was never opened for writing has none; refuse it.
         let directory_lock = OpenOptions::new().read(true).open(dir.join("LOCK"))?;
         lock_directory_shared(&directory_lock)?;
-        let (generation, fenced, rdf12_fenced) = parse_current(&std::fs::read_to_string(dir.join("CURRENT"))?)?
+        // `parse_current` reads the fences (batch checksums, RDF 1.2, datasets) and refuses a store this build cannot read, as a writer's open does.
+        let (generation, fences) = parse_current(&std::fs::read_to_string(dir.join("CURRENT"))?)?
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "corrupt CURRENT"))?;
         let (base, named) = format.open_dataset(&dir.join(format!("base-{generation}")))?;
         let mut overlay = Overlay::from_dataset_base(base, named);
         let wal_path = dir.join("wal.log");
+        // Damage before a valid batch is `InvalidData` here as for a writer, and nothing is truncated: a bad final batch is a torn tail that only a
+        // writer cuts off, so this open ignores it and leaves the file as it is.
         let (records, _valid_len) = read_wal(&wal_path)?;
         for rec in records { overlay = overlay.with_dataset_changes(&rec)?.0; }
         // A placeholder: no write path reaches it (`check_poisoned` refuses first).
         let wal = File::open(&wal_path).or_else(|_| File::open(dir.join("CURRENT")))?;
         let overlay = Arc::new(overlay);
         Ok(Store {
-            dir, format, generation: Mutex::new(generation), fenced: std::sync::atomic::AtomicBool::new(fenced),
-            rdf12_fenced: std::sync::atomic::AtomicBool::new(rdf12_fenced),
+            dir, format, generation: Mutex::new(generation), fences: Mutex::new(fences),
             current: RwLock::new(overlay.clone()),
             pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0 }),
             wal: Mutex::new(Wal { file: wal, durable: 0 }),
@@ -1979,6 +1981,24 @@ mod read_only_tests {
         assert!(!dir.0.join("base-7").exists());
         assert!(!dir.0.join("text-9.v1").exists());
         assert_ne!(std::fs::read(dir.0.join("wal.log")).unwrap(), wal_before);
+    }
+
+    #[test]
+    fn damage_before_a_valid_batch_is_refused_and_left_untouched() {
+        let dir = Dir::new("midlog");
+        let store = Store::open(&dir.0, None, 1).unwrap();
+        for (s, o) in [("a", "1"), ("b", "2"), ("c", "3")] { store.commit(&[(Change::Insert, t(s, o))]).unwrap(); }
+        drop(store);
+        let wal_path = dir.0.join("wal.log");
+        let mut bytes = std::fs::read(&wal_path).unwrap();
+        let at = bytes.windows(7).position(|w| w == b"http://").expect("a triple in the first batch") + 8;
+        bytes[at] ^= 0x01;      // flip one bit inside the first batch; two valid batches follow it
+        std::fs::write(&wal_path, &bytes).unwrap();
+        let current_before = std::fs::read(dir.0.join("CURRENT")).unwrap();
+        let err = Store::open_read_only(&dir.0, 1).err().expect("a damaged log must be refused");
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData, "{err}");
+        assert_eq!(std::fs::read(&wal_path).unwrap(), bytes, "the damaged log is left exactly as it was");
+        assert_eq!(std::fs::read(dir.0.join("CURRENT")).unwrap(), current_before);
     }
 
     #[test]
