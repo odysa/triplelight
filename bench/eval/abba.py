@@ -93,7 +93,9 @@ def compare(a_sessions, b_sessions, threshold=0.03):
         rows.append(row)
     timed = [r["ratio"] for r in rows if "ratio" in r and r["ratio"] > 0 and math.isfinite(r["ratio"])]
     geomean = math.exp(sum(map(math.log, timed)) / len(timed)) if timed else None
-    return {"refused": refused, "geomean_ratio": geomean, "rows": rows}
+    result = {"refused": refused, "comparable": not refused, "geomean_ratio": geomean, "rows": rows}
+    if refused: withhold(result)
+    return result
 
 
 SHARED = ("queries_sha256", "reference_sha256", "datasets", "stores", "protocol")
@@ -135,6 +137,14 @@ def scored_problems(a_sessions, b_sessions):
         builds = {b for p, *_, b in workloads if arm_of[p] == arm}
         if len(builds) > 1: problems.append(f"arm {arm}: sessions come from different commits or builds")
     return problems
+
+
+def withhold(result):
+    """A refused comparison publishes no performance claim: verdicts and ratios are withheld, reasons kept."""
+    result["comparable"] = False; result["geomean_ratio"] = None
+    for r in result["rows"]:
+        for k in ("a_s", "b_s", "ratio", "spread"): r.pop(k, None)
+        if r["verdict"] in ("faster", "slower", "noise", "too few sessions"): r["verdict"] = "withheld"
 
 
 def render(result):
@@ -222,6 +232,9 @@ def self_test():
         check("--scored: a different engine configuration refuses", any("engine configuration" in x for x in scored_problems(A, [(f"sh{i}", scored(fast, me, de)) for i in range(2)])))
         mf_, df_ = manifest("f.json", systems=[{"name": "triplelight", "version": "0.1", "config_sha256": "cfg", "clear_cache_url": "http://x/clear"}])
         check("--scored: a different cache-clear policy refuses", any("engine configuration" in x for x in scored_problems(A, [(f"si{i}", scored(fast, mf_, df_)) for i in range(2)])))
+    r = compare(arm(2, slow, eligible=False), arm(2, fast))
+    check("a refused comparison withholds every verdict, ratio and the geomean", r["comparable"] is False and r["geomean_ratio"] is None
+          and all(row["verdict"] not in ("faster", "slower", "noise") and "ratio" not in row for row in r["rows"]))
     return 0 if ok else 1
 
 
@@ -238,6 +251,7 @@ def main():
     a_s, b_s = load(a.a), load(a.b)
     result = compare(a_s, b_s, a.threshold)
     if a.scored: result["refused"] = scored_problems(a_s, b_s) + result["refused"]
+    if result["refused"]: withhold(result)
     print(render(result))
     if a.json:
         with open(a.json, "w") as f: json.dump(result, f, indent=1, allow_nan=False)
