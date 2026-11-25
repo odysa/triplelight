@@ -20,12 +20,13 @@ pub(crate) struct Partitions {
 
 impl Partitions {
     /// Writes `rows` (each `width` IDs) into `parts` run files under a new directory in `scratch`, routed by a hash of
-    /// the IDs at `key_cols`. `seq` is each row's position in `rows`.
+    /// the IDs at `key_cols`, through one `buffer`-byte writer per file (the caller charges `parts * buffer`). `seq` is
+    /// each row's position in `rows`.
     pub(crate) fn write<'r>(
         scratch: &Path,
         width: usize,
         key_cols: &[usize],
-        parts: usize,
+        (parts, buffer): (usize, usize),
         rows: impl IntoIterator<Item = &'r [TermId]>,
         mut check: impl FnMut(),
     ) -> io::Result<Partitions> {
@@ -33,7 +34,7 @@ impl Partitions {
         // From here on the directory is owned, so an error or unwind below still removes it.
         let mut out = Partitions { dir, width, rows: vec![0; parts], bytes: 0 };
         let mut files = Vec::with_capacity(parts);
-        for p in 0..parts { files.push(BufWriter::with_capacity(1 << 16, File::create(out.path(p))?)); }
+        for p in 0..parts { files.push(BufWriter::with_capacity(buffer, File::create(out.path(p))?)); }
         let hasher = std::hash::RandomState::new();
         let mut record = Vec::with_capacity(8 * (width + 1));
         for (seq, row) in rows.into_iter().enumerate() {
@@ -48,10 +49,13 @@ impl Partitions {
             out.rows[p] += 1;
             out.bytes += record.len() as u64;
         }
-        for f in files { f.into_inner().map_err(|e| e.into_error())?.sync_data().ok(); }
+        // Scratch runs need no durability: flush (keeping its error), no fsync.
+        for f in files { f.into_inner().map_err(|e| e.into_error())?; }
         Ok(out)
     }
     pub(crate) fn count(&self) -> usize { self.rows.len() }
+    /// Rows in partition `p`.
+    pub(crate) fn rows(&self, p: usize) -> u64 { self.rows[p] }
     pub(crate) fn bytes(&self) -> u64 { self.bytes }
     /// The rows of partition `p` with their input positions, in input order.
     pub(crate) fn read(&self, p: usize) -> io::Result<(Vec<u64>, Vec<Vec<TermId>>)> {
@@ -89,11 +93,19 @@ fn fresh_dir(scratch: &Path) -> io::Result<PathBuf> {
     }
 }
 
-/// How many partitions to split `bytes` of input into so one partition's rows and its working set fit in `available`
-/// bytes: each partition targets a quarter of what is free, between 2 and 1024 partitions.
-pub(crate) fn partitions_for(bytes: u64, available: u64) -> usize {
+/// The most run files written at once: well under the usual open-file limit (256 on macOS), and with the write buffers
+/// below, at most `MAX_PARTITIONS * 64 KiB` = 8 MiB of buffers. A partition that still does not fit ends its query with
+/// `ResourceLimit` when it is read back.
+pub(crate) const MAX_PARTITIONS: usize = 128;
+
+/// How to split `bytes` of input when `available` bytes are free: the number of partitions, so one partition's rows and
+/// working set fit (each targets a quarter of what is free; 2 to `MAX_PARTITIONS`), and each run file's write buffer,
+/// so all buffers together take at most a quarter of what is free (4 KiB to 64 KiB).
+pub(crate) fn partitions_for(bytes: u64, available: u64) -> (usize, usize) {
     let target = (available / 4).max(1 << 16);
-    (bytes.div_ceil(target) as usize).clamp(2, 1024)
+    let parts = (bytes.div_ceil(target) as usize).clamp(2, MAX_PARTITIONS);
+    let buffer = (available / (4 * parts as u64)).clamp(4 << 10, 64 << 10) as usize;
+    (parts, buffer)
 }
 
 #[cfg(test)]
@@ -104,7 +116,7 @@ mod tests {
     fn rows_come_back_by_partition_in_input_order_and_the_directory_is_removed() {
         let scratch = std::env::temp_dir().join(format!("rdf-spill-test-{}", std::process::id()));
         let rows: Vec<Vec<TermId>> = (0..10_000u64).map(|i| vec![TermId(i % 37 + 1), TermId(i + 1)]).collect();
-        let parts = Partitions::write(&scratch, 2, &[0], 8, rows.iter().map(Vec::as_slice), || {}).unwrap();
+        let parts = Partitions::write(&scratch, 2, &[0], (8, 1 << 16), rows.iter().map(Vec::as_slice), || {}).unwrap();
         let dir = parts.dir.clone();
         assert!(dir.is_dir());
         let mut seen = vec![false; rows.len()];
@@ -133,7 +145,7 @@ mod tests {
         let rows: Vec<Vec<TermId>> = (0..20_000u64).map(|i| vec![TermId(i + 1)]).collect();
         let mut calls = 0;
         let stopped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            Partitions::write(&scratch, 1, &[0], 4, rows.iter().map(Vec::as_slice), || { calls += 1; if calls == 3 { panic!("stop") } })
+            Partitions::write(&scratch, 1, &[0], (4, 1 << 12), rows.iter().map(Vec::as_slice), || { calls += 1; if calls == 3 { panic!("stop") } })
         }));
         assert!(stopped.is_err());
         assert_eq!(std::fs::read_dir(&scratch).unwrap().count(), 0, "no run directory is left behind");
@@ -142,8 +154,12 @@ mod tests {
 
     #[test]
     fn partition_count_targets_a_quarter_of_what_is_free() {
-        assert_eq!(partitions_for(100, 1 << 30), 2);
-        assert_eq!(partitions_for(1 << 30, 1 << 28), 16);
-        assert_eq!(partitions_for(u64::MAX, 1), 1024);
+        assert_eq!(partitions_for(100, 1 << 30), (2, 64 << 10));
+        assert_eq!(partitions_for(1 << 30, 1 << 28), (16, 64 << 10));
+        // 100 MB under a 3 MB budget: capped partitions, buffers within a quarter of what is free
+        let (parts, buffer) = partitions_for(100 << 20, 3 << 20);
+        assert_eq!(parts, MAX_PARTITIONS);
+        assert!((parts * buffer) as u64 <= (3 << 20) / 4 + (parts * 4096) as u64);
+        assert_eq!(partitions_for(u64::MAX, 1), (MAX_PARTITIONS, 4 << 10));
     }
 }

@@ -27,7 +27,6 @@ mod agg;
 mod bgp;
 mod join;
 mod limits;
-mod spill;
 use join::join_rows;
 mod views;
 use views::{dataset, Views};
@@ -952,17 +951,30 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     fn group_rows(&self, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], rows: Vec<Row>) -> Vec<Row> {
         let kidx: Vec<usize> = keys.iter().map(|v| self.var(v)).collect();
-        // Over the budget: group one key partition at a time from disk (#111). The input is dropped once written.
-        if let Some(spilled) = self.spill_for_group(&kidx, rows.len(), rows.iter().map(Vec::as_slice)) {
-            drop(rows);
-            return self.group_partitions(&spilled, &kidx, |part| self.group_in_memory(keys, aggs, &kidx, part));
+        // Over the budget, GROUP BY works one key partition at a time from disk (#111; `agg/spilled.rs`). The fast
+        // paths borrow their input, so they try memory first; the general path decides up front.
+        let forced = self.forced_spill(rows.len());
+        if !self.general_group && !forced {
+            match self.in_memory_or_spill(!kidx.is_empty(), || self.try_fast_group(&rows, &kidx, aggs)) {
+                Some(Some(out)) => return out,
+                Some(None) => {}
+                None => return self.group_spilled(keys, aggs, &kidx, rows),
+            }
         }
-        self.group_in_memory(keys, aggs, &kidx, rows)
+        if !kidx.is_empty() && self.should_spill_general(rows.len()) { return self.group_spilled(keys, aggs, &kidx, rows) }
+        self.group_general(keys, aggs, &kidx, rows)
     }
 
-    fn group_in_memory(&self, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], kidx: &[usize], rows: Vec<Row>) -> Vec<Row> {
-        if !self.general_group
-            && let Some(out) = self.try_fast_group(&rows, kidx, aggs) { return out; }
+    fn group_spilled(&self, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], kidx: &[usize], rows: Vec<Row>) -> Vec<Row> {
+        let spilled = self.spill_for_group(kidx, rows.len(), rows.iter().map(Vec::as_slice));
+        drop(rows);
+        self.group_partitions(&spilled, kidx, |part| {
+            if !self.general_group && let Some(out) = self.try_fast_group(&part, kidx, aggs) { return out }
+            self.group_general(keys, aggs, kidx, part)
+        })
+    }
+
+    fn group_general(&self, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], kidx: &[usize], rows: Vec<Row>) -> Vec<Row> {
         let mut groups: Vec<(Vec<TermId>, Vec<Row>)> = Vec::new();
         let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
         // The groups hold every row again, plus a key and a table entry per group.

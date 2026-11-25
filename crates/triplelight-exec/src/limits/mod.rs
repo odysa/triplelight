@@ -2,6 +2,8 @@
 //! (`Options::memory_budget`). Hitting either ends the query with its own error kind, never a partial answer.
 use crate::QueryErrorKind;
 
+pub(crate) mod spill;
+
 /// Stops a running query from outside it (#110): `cancel()` from any thread, or a deadline. The executor checks it at
 /// every operator and every few thousand rows inside the long loops (BGP extends, grouping, sorting, path closures),
 /// and a hit ends the query with `QueryErrorKind::Cancelled` or `Timeout`, never with a partial answer. A check is a
@@ -57,15 +59,17 @@ pub struct OverBudget { pub requested: u64, pub available: u64 }
 impl MemoryBudget {
     pub fn new(limit_bytes: u64) -> Self { MemoryBudget { limit: limit_bytes, used: Default::default(), scratch_dir: None, spill_rows: None } }
     /// A budget whose blocking operators spill to `TRIPLELIGHT_SCRATCH_DIR`, else the system temporary directory, instead
-    /// of failing when their input does not fit (#111). The servers and bindings use this one.
+    /// of failing when their input does not fit (#111). The servers use this one; embedded callers opt in with
+    /// `with_scratch_dir`.
     pub fn spilling(limit_bytes: u64) -> Self {
         let dir = std::env::var_os("TRIPLELIGHT_SCRATCH_DIR").map(std::path::PathBuf::from).unwrap_or_else(std::env::temp_dir);
         Self::new(limit_bytes).with_scratch_dir(dir)
     }
     /// Where a spilling operator may write its runs (none: it cannot spill).
     pub fn with_scratch_dir(mut self, dir: impl Into<std::path::PathBuf>) -> Self { self.scratch_dir = Some(dir.into()); self }
-    /// Spills every blocking input of more than `rows` rows, whatever the budget, when a scratch directory is set: for
-    /// tests and measurements that compare the spilled path with the in-memory one at the same data.
+    /// Spills every blocking input of more than `rows` rows when a scratch directory is set, even if it would fit; the
+    /// budget's limit still applies to everything else. For tests and measurements that compare the spilled path with
+    /// the in-memory one on the same data.
     #[doc(hidden)]
     pub fn with_spill_rows(mut self, rows: usize) -> Self { self.spill_rows = Some(rows); self }
     pub(crate) fn spill_rows(&self) -> Option<usize> { self.spill_rows }

@@ -49,7 +49,10 @@ fn query_timeout(args: &[String]) -> Option<std::time::Duration> {
 }
 
 /// `--query-memory-mb=<n>`: each query request gets a working-memory budget of that size and fails with HTTP 503 instead
-/// of growing past it (#110). None: unbounded.
+/// of growing past it (#110). None: unbounded. Under a budget, a GROUP BY whose input does not fit spills it to
+/// `TRIPLELIGHT_SCRATCH_DIR` (else the system temporary directory) instead of failing (#111); `spill_bytes=` on the
+/// `TRIPLELIGHT_TRACE_PHASES` line shows how much it wrote. Point the variable at a local disk with room for the largest
+/// intermediate result: a tmpfs is charged to memory.
 fn query_memory(args: &[String]) -> Option<u64> {
     let v = args.iter().find_map(|a| a.strip_prefix("--query-memory-mb="))?;
     match v.parse::<u64>() {

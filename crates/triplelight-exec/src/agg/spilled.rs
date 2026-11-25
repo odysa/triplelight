@@ -3,48 +3,80 @@
 //! dropped, and each partition is grouped on its own, so one partition's rows and groups are in memory at a time. A
 //! key lives in exactly one partition, so every group is complete. Groups come out in first-seen order, as from the
 //! in-memory path: each is tagged with the input position of its first row and the partitions' groups are merged on it.
-use super::super::{phase, spill, storage_failure, Ctx, Row};
+//!
+//! When to spill: the fast paths (`count_one_key`, the fast aggregates) only borrow their input, so they run in memory
+//! first and spill only if that ends with `ResourceLimit` (a shape that fits never spills). The general path moves its
+//! rows into the groups, so it decides up front: it spills when twice the input does not fit what is free. A partition
+//! that still does not fit (most rows under one key) ends the query with `ResourceLimit`, as without spilling.
+use super::super::{phase, storage_failure, Ctx, Row};
+use crate::limits::{spill, OverBudgetStop};
 use crate::model::TermId;
 use crate::storage::Snapshot;
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 impl<S: Snapshot + ?Sized> Ctx<'_, S> {
-    /// Where to spill a blocking input of `rows` rows (`row_bytes` each), and into how many partitions: `None` keeps it
-    /// in memory. The input is resident but not held (`Ctx::eval` only checks that it fits), and the operator's working
-    /// set holds the rows once more (in groups or a table), so it spills when the budget has a scratch directory and
-    /// twice the input does not fit what is free.
-    pub(crate) fn spill_plan(&self, rows: usize) -> Option<(std::path::PathBuf, usize)> {
-        let bytes = rows as u64 * self.row_bytes();
-        let budget = self.budget?;
-        let dir = budget.scratch_dir()?;
-        if let Some(n) = budget.spill_rows() { return (rows > n).then(|| (dir.to_path_buf(), 4)) }
-        (bytes.saturating_mul(2) > budget.available()).then(|| (dir.to_path_buf(), spill::partitions_for(bytes, budget.available())))
+    /// Whether this query may spill: its budget has a scratch directory.
+    pub(crate) fn can_spill(&self) -> bool { self.budget.is_some_and(|b| b.scratch_dir().is_some()) }
+
+    /// `MemoryBudget::with_spill_rows`: spill any blocking input of more than that many rows (tests, measurements).
+    pub(crate) fn forced_spill(&self, rows: usize) -> bool {
+        self.can_spill() && self.budget.and_then(|b| b.spill_rows()).is_some_and(|n| rows > n)
     }
 
-    /// Writes a GROUP BY input of `n_rows` rows (each `vars.len()` IDs, keys at `kidx`) to disk by key partition when it
-    /// does not fit (`spill_plan`); `None` keeps it in memory. The caller drops its in-memory rows, then calls
-    /// `group_partitions`.
-    pub(crate) fn spill_for_group<'r>(&self, kidx: &[usize], n_rows: usize, rows: impl IntoIterator<Item = &'r [TermId]>) -> Option<spill::Partitions> {
-        if kidx.is_empty() { return None }
-        let (dir, parts) = self.spill_plan(n_rows)?;
-        let spilled = spill::Partitions::write(&dir, self.vars.len(), kidx, parts, rows, || self.check()).unwrap_or_else(|e| storage_failure(e));
+    /// For the general path, which holds its input once more in the groups: spill when twice the input does not fit.
+    pub(crate) fn should_spill_general(&self, rows: usize) -> bool {
+        self.forced_spill(rows) || self.budget.filter(|_| self.can_spill()).is_some_and(|b| (rows as u64 * self.row_bytes()).saturating_mul(2) > b.available())
+    }
+
+    /// Runs `f` in memory. `None` if it ran out of budget and the query can spill instead (`spillable` and a scratch
+    /// directory); its reservations were returned by the unwind. Other stops (cancel, timeout, storage) pass through.
+    pub(crate) fn in_memory_or_spill<T>(&self, spillable: bool, f: impl FnOnce() -> T) -> Option<T> {
+        if !(spillable && self.can_spill()) { return Some(f()) }
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
+            Ok(v) => Some(v),
+            Err(p) if p.is::<OverBudgetStop>() => None,
+            Err(p) => std::panic::resume_unwind(p),
+        }
+    }
+
+    /// Writes a GROUP BY input of `n_rows` rows (each `vars.len()` IDs, keys at `kidx`) to disk by key partition. The
+    /// caller then drops its in-memory rows and calls `group_partitions`. The write buffers are charged while it runs.
+    pub(crate) fn spill_for_group<'r>(&self, kidx: &[usize], n_rows: usize, rows: impl IntoIterator<Item = &'r [TermId]>) -> spill::Partitions {
+        let budget = self.budget.expect("spill needs a budget");
+        let dir = budget.scratch_dir().expect("spill needs a scratch directory");
+        let (parts, buffer) = spill::partitions_for(n_rows as u64 * self.row_bytes(), budget.available());
+        let _buffers = self.reserve((parts * buffer) as u64);
+        let spilled = spill::Partitions::write(dir, self.vars.len(), kidx, (parts, buffer), rows, || self.check())
+            .unwrap_or_else(|e| storage_failure(e));
         phase::spilled(spilled.bytes());
-        Some(spilled)
+        spilled
     }
 
-    /// Groups each partition with `group`, which must emit one row per group with its key at `kidx`, in first-seen
-    /// order, and merges the partitions' groups back into first-seen order.
+    /// Groups each partition with `group`, which must emit one row per group, in first-seen order, and merges the
+    /// partitions' groups back into first-seen order. The merged result is charged as it grows.
     pub(crate) fn group_partitions(&self, spilled: &spill::Partitions, kidx: &[usize], group: impl Fn(Vec<Row>) -> Vec<Row>) -> Vec<Row> {
-        let key = |r: &[TermId]| -> Vec<TermId> { kidx.iter().map(|&i| r[i]).collect() };
+        let mut held = self.reserve(0);
         let mut out: Vec<(u64, Row)> = Vec::new();
+        let mut key: Vec<TermId> = Vec::with_capacity(kidx.len());
         for p in 0..spilled.count() {
             self.check();
+            // One partition's rows are about to be in memory: refuse up front if they cannot be.
+            self.fits(spilled.rows(p) * self.row_bytes());
             let (seqs, rows) = spilled.read(p).unwrap_or_else(|e| storage_failure(e));
             if rows.is_empty() { continue }
-            let mut first: HashMap<Vec<TermId>, u64> = HashMap::new();
-            for (s, r) in seqs.iter().zip(&rows) { first.entry(key(r)).or_insert(*s); }
-            drop(seqs);
-            for g in group(rows) { out.push((first[&key(&g)], g)) }
+            // Each group's first input position, in first-seen order (the order `group` emits them in).
+            let mut seen: HashSet<Vec<TermId>> = HashSet::new();
+            let mut firsts: Vec<u64> = Vec::new();
+            for (s, r) in seqs.iter().zip(&rows) {
+                key.clear();
+                key.extend(kidx.iter().map(|&i| r[i]));
+                if !seen.contains(key.as_slice()) { seen.insert(key.clone()); firsts.push(*s) }
+            }
+            drop((seen, seqs));
+            let groups = group(rows);
+            assert_eq!(groups.len(), firsts.len(), "a grouping emits one row per group");
+            out.extend(firsts.into_iter().zip(groups));
+            Self::resize(&mut held, out.len() as u64 * (self.row_bytes() + 8));
         }
         out.sort_unstable_by_key(|(s, _)| *s);
         out.into_iter().map(|(_, r)| r).collect()
