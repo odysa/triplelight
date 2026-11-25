@@ -17,7 +17,7 @@ session (`driver.py --out`), with the noise gate the team agreed in #105 and #13
 
 With --scored (what the plan runner and the scoreboard use): every results file must say `scored: true`, its manifest
 must exist with the recorded digest, and both arms must share the workload: the same query set, reference, datasets,
-stores, protocol, machine (model, CPU, kernel) and engine configuration (name, configuration digest, memory budget,
+stores, protocol, case policy (the whole `policy` record, absent on both sides or equal), machine (model, CPU, kernel) and engine configuration (name, configuration digest, memory budget,
 indexes, cache-clear policy). Within an arm every session is one commit and build; the arms may differ there.
 
 Exit status: 0 comparable, 1 with --fail-on-regression and at least one counted slowdown, 2 refused.
@@ -98,7 +98,7 @@ def compare(a_sessions, b_sessions, threshold=0.03):
     return result
 
 
-SHARED = ("queries_sha256", "reference_sha256", "datasets", "stores", "protocol")
+SHARED = ("queries_sha256", "reference_sha256", "datasets", "stores", "protocol", "policy")
 MACHINE = ("model", "cpu", "kernel")
 # The engine's configuration must match across arms; its version may not (the candidate is a different build).
 ENGINE = ("name", "config_sha256", "memory_budget", "indexes", "clear_cache_url")
@@ -228,6 +228,10 @@ def self_test():
         mb2, db2 = manifest("b2.json", git={"commit": "c2"}, build={"binary_sha256": "b2"})
         check("--scored: the candidate arm on another commit than the baseline compares", not scored_problems(A, [(f"sf{i}", scored(fast, mb2, db2)) for i in range(2)]))
         check("--scored: one arm mixing two builds refuses", any("different commits or builds" in x for x in scored_problems(A, [("sg0", scored(fast, mb, db)), ("sg1", scored(fast, mb2, db2))])))
+        mp, dp = manifest("p.json", policy={"name": "bi", "bundle_sha256": "x"})
+        check("--scored: a case policy on one arm only refuses", any("policy differs" in x for x in scored_problems(A, [(f"sp{i}", scored(fast, mp, dp)) for i in range(2)])))
+        mp2, dp2 = manifest("p2.json", policy={"name": "bi", "bundle_sha256": "y"})
+        check("--scored: two different policy bundles refuse", any("policy differs" in x for x in scored_problems([(f"sq{i}", scored(slow, mp, dp)) for i in range(2)], [(f"sr{i}", scored(fast, mp2, dp2)) for i in range(2)])))
         me, de = manifest("e.json", systems=[{"name": "triplelight", "version": "0.1", "config_sha256": "other", "clear_cache_url": ""}])
         check("--scored: a different engine configuration refuses", any("engine configuration" in x for x in scored_problems(A, [(f"sh{i}", scored(fast, me, de)) for i in range(2)])))
         mf_, df_ = manifest("f.json", systems=[{"name": "triplelight", "version": "0.1", "config_sha256": "cfg", "clear_cache_url": "http://x/clear"}])
