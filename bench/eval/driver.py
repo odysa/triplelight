@@ -431,11 +431,11 @@ def budget_from_env():
     driver. {} when none is set, which a manifest binds as well, so a run cannot claim a budget it did not have (or hide one it did). Anything else
     than exactly one `--mem N` and one `--cpus M`, in either order, is refused before a query is sent: systems.sh reads the LAST of a repeated flag,
     so a tolerant parser here could record a budget other than the one the engines were launched with."""
-    text = os.environ.get("BUDGET", "").strip()
+    text = os.environ.get("BUDGET", "").strip(" \t\n")      # trim only what bash's default IFS trims: not a carriage return or a non-breaking space
     if not text: return {}
     # The session expands $BUDGET with plain word splitting: no quote or escape is interpreted. So split the same way (any whitespace), and take no
     # token that shell would treat differently: values are ASCII decimals without a leading zero (010 is eight in some contexts and ten in others).
-    tokens = text.split()
+    tokens = re.split(r"[ \t\n]+", text)       # bash's default IFS: space, tab, newline
     flags, vals = tokens[0::2], tokens[1::2]
     if len(tokens) != 4 or sorted(flags) != ["--cpus", "--mem"] or not all(re.fullmatch(r"[1-9][0-9]*", v, re.ASCII) for v in vals):
         sys.exit(f"BUDGET {text!r} is not exactly one '--mem GB' and one '--cpus N' as plain tokens with positive ASCII decimals and no leading zero (quotes, repeated, missing or extra flags are refused)")
@@ -844,7 +844,7 @@ def gate_tests(port, behaviors_raw):
         rc, res, err = run("budget-unrecorded", "count9", "--manifest", str(mdir / "manifest.json"), "--scored", env={"BUDGET": "--mem 4 --cpus 2"})
         check("--scored under a budget the manifest does not record: refused", rc != 0 and res is None and "budget" in err)
         for label, bad in (("a repeated --mem", "--mem 4 --cpus 2 --mem 12"), ("a repeated pair", "--mem 4 --cpus 2 --mem 12 --cpus 8"), ("a missing --cpus", "--mem 4"),
-                           ("an extra flag", "--mem 4 --cpus 2 --swap 1"), ("a non-numeric value", "--mem four --cpus 2"), ("a zero", "--mem 0 --cpus 2"), ("an unbalanced quote", "--mem '4 --cpus 2"), ("a quoted value", '--mem "4" --cpus 2'), ("a leading zero", "--mem 4 --cpus 010"), ("a unicode digit", "--mem 4 --cpus ٢"), ("a flag with =", "--mem=4 --cpus 2")):
+                           ("an extra flag", "--mem 4 --cpus 2 --swap 1"), ("a non-numeric value", "--mem four --cpus 2"), ("a zero", "--mem 0 --cpus 2"), ("an unbalanced quote", "--mem '4 --cpus 2"), ("a quoted value", '--mem "4" --cpus 2'), ("a leading zero", "--mem 4 --cpus 010"), ("a unicode digit", "--mem 4 --cpus ٢"), ("a flag with =", "--mem=4 --cpus 2"), ("a non-breaking space", "--mem\u00a04 --cpus 2"), ("a carriage return", "--mem 4 --cpus 2\r"), ("a carriage return inside", "--mem 4\r --cpus 2")):
             rc, res, err = run("budget-malformed", "count9", "--lenient", env={"BUDGET": bad})
             check(f"BUDGET with {label} is refused before any query ({bad!r})", rc != 0 and res is None and "BUDGET" in err)
             (tmp / "budget-malformed.json").unlink(missing_ok=True)
