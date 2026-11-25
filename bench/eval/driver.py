@@ -427,11 +427,20 @@ def policy_identity(a):
 
 
 def budget_from_env():
-    """The memory and CPU budget the session applies to every engine: session.sh passes its BUDGET ("--mem GB --cpus N") in the environment of
-    the driver. {} when none is set, which a manifest binds as well, so a run cannot claim a budget it did not have (or hide one it did)."""
-    text = os.environ.get("BUDGET", "")
-    mem, cpus = re.search(r"--mem\s+(\d+)\b", text), re.search(r"--cpus\s+(\d+)\b", text)
-    return {"mem_gb": int(mem.group(1)), "cpus": int(cpus.group(1))} if mem and cpus else {}
+    """The memory and CPU budget the session applies to every engine: session.sh passes its BUDGET ("--mem GB --cpus N") in the environment of the
+    driver. {} when none is set, which a manifest binds as well, so a run cannot claim a budget it did not have (or hide one it did). Anything else
+    than exactly one `--mem N` and one `--cpus M`, in either order, is refused before a query is sent: systems.sh reads the LAST of a repeated flag,
+    so a tolerant parser here could record a budget other than the one the engines were launched with."""
+    text = os.environ.get("BUDGET", "").strip(" \t\n")      # trim only what bash's default IFS trims: not a carriage return or a non-breaking space
+    if not text: return {}
+    # The session expands $BUDGET with plain word splitting: no quote or escape is interpreted. So split the same way (any whitespace), and take no
+    # token that shell would treat differently: values are ASCII decimals without a leading zero (010 is eight in some contexts and ten in others).
+    tokens = re.split(r"[ \t\n]+", text)       # bash's default IFS: space, tab, newline
+    flags, vals = tokens[0::2], tokens[1::2]
+    if len(tokens) != 4 or sorted(flags) != ["--cpus", "--mem"] or not all(re.fullmatch(r"[1-9][0-9]*", v, re.ASCII) for v in vals):
+        sys.exit(f"BUDGET {text!r} is not exactly one '--mem GB' and one '--cpus N' as plain tokens with positive ASCII decimals and no leading zero (quotes, repeated, missing or extra flags are refused)")
+    values = dict(zip(tokens[0::2], tokens[1::2]))
+    return {"mem_gb": int(values["--mem"]), "cpus": int(values["--cpus"])}
 
 
 def check_manifest(a):
@@ -486,6 +495,7 @@ def judge(policy, name, rec, r):
 
 
 def cmd_run(a):
+    budget_from_env()            # a malformed or repeated budget stops the run here, before a manifest check or a query
     scored, scored_info = check_manifest(a)
     ref = json.load(open(a.reference))["queries"]
     policy = load_policy(a, getattr(a, "_manifest", None) if scored else None, ref)
@@ -833,6 +843,16 @@ def gate_tests(port, behaviors_raw):
         # the session's budget is bound: the environment's BUDGET must be what the manifest records
         rc, res, err = run("budget-unrecorded", "count9", "--manifest", str(mdir / "manifest.json"), "--scored", env={"BUDGET": "--mem 4 --cpus 2"})
         check("--scored under a budget the manifest does not record: refused", rc != 0 and res is None and "budget" in err)
+        for label, bad in (("a repeated --mem", "--mem 4 --cpus 2 --mem 12"), ("a repeated pair", "--mem 4 --cpus 2 --mem 12 --cpus 8"), ("a missing --cpus", "--mem 4"),
+                           ("an extra flag", "--mem 4 --cpus 2 --swap 1"), ("a non-numeric value", "--mem four --cpus 2"), ("a zero", "--mem 0 --cpus 2"), ("an unbalanced quote", "--mem '4 --cpus 2"), ("a quoted value", '--mem "4" --cpus 2'), ("a leading zero", "--mem 4 --cpus 010"), ("a unicode digit", "--mem 4 --cpus ٢"), ("a flag with =", "--mem=4 --cpus 2"), ("a non-breaking space", "--mem\u00a04 --cpus 2"), ("a carriage return", "--mem 4 --cpus 2\r"), ("a carriage return inside", "--mem 4\r --cpus 2")):
+            rc, res, err = run("budget-malformed", "count9", "--lenient", env={"BUDGET": bad})
+            check(f"BUDGET with {label} is refused before any query ({bad!r})", rc != 0 and res is None and "BUDGET" in err)
+            (tmp / "budget-malformed.json").unlink(missing_ok=True)
+        pb = subprocess.run([sys.executable, __file__, "budget"], capture_output=True, text=True, env={**os.environ, "BUDGET": "--mem 4 --cpus 2 --mem 12"})
+        pg = subprocess.run([sys.executable, __file__, "budget"], capture_output=True, text=True, env={**os.environ, "BUDGET": "--mem 4 --cpus 2"})
+        check("`driver.py budget` (what session.sh runs first) refuses a repeated flag and prints a good budget", pb.returncode != 0 and pg.returncode == 0 and json.loads(pg.stdout) == {"mem_gb": 4, "cpus": 2})
+        rc, res, err = run("budget-reordered", "count9", "--lenient", env={"BUDGET": "--cpus 2 --mem 4"})
+        check("BUDGET in either order is accepted and recorded once", rc == 0 and res and res["budget"] == {"mem_gb": 4, "cpus": 2})
         withb = json.loads(json.dumps(good)); withb["protocol"]["budget"] = {"mem_gb": 4, "cpus": 2}; (mdir / "manifest.json").write_text(json.dumps(withb))
         rc, res, err = run("budget-recorded", "count9", "--manifest", str(mdir / "manifest.json"), "--scored", env={"BUDGET": "--mem 4 --cpus 2"})
         check("--scored under the budget the manifest records: accepted, and the results carry it", rc == 0 and res and res["scored"] is True and res["budget"] == {"mem_gb": 4, "cpus": 2})
@@ -1073,6 +1093,8 @@ def main():
     x.add_argument("--expect-unsupported", help="comma-separated case IDs this system configuration is known not to answer (QLever's two-order index and a predicate variable); only these may come back `unsupported` in an eligible run")
     x.add_argument("--lenient", action="store_true", help="exploration only: exit 0 even when the run is ineligible for a comparison. By default a wrong answer, a timeout, a failed hook or a failed cache clear exits with status 3; the results file (with `eligible: false` and the reasons) is written either way")
     x.set_defaults(f=cmd_run)
+    bu = sub.add_parser("budget", help="validate the BUDGET environment variable the way a run does, print it as JSON, or exit non-zero (session.sh calls this before it starts anything)")
+    bu.set_defaults(f=lambda a: print(json.dumps(budget_from_env())))
     s = sub.add_parser("selftest"); s.set_defaults(f=cmd_selftest)
     b = sub.add_parser("selftest-big"); b.add_argument("--rows", type=int, default=5_000_000); b.set_defaults(f=cmd_selftest_big)
     a = p.parse_args(); a.f(a)
