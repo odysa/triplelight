@@ -499,3 +499,48 @@ fn concurrent_commits_survive_a_kill_mid_group() {
     drop(store);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A writer that leaves (#105): after a batch of four, a lone writer's leader waits for four records that never come,
+/// but only up to the gather's cap; its own batch of one then ends the waiting for every later commit.
+#[test]
+fn a_departed_writer_costs_one_capped_gather_at_most() {
+    let dir = scratch("departed");
+    let store = open(Format::NTriples, &dir).unwrap();
+    store.commit_dataset(&record(Kind::Default, 0)).unwrap();
+    {
+        let mut w = store.wal.lock().unwrap();
+        (w.last_batch, w.last_sync) = (4, std::time::Duration::from_secs(1));
+    }
+    let t = std::time::Instant::now();
+    store.commit_dataset(&record(Kind::Default, 1)).unwrap();
+    assert!(t.elapsed() < std::time::Duration::from_millis(500), "the gather waited {:?}", t.elapsed());
+    assert_eq!(store.wal.lock().unwrap().last_batch, 1, "a batch of one ends the gather");
+    drop(store);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A follower whose record a finished batch did not cover (#105): it wakes, finds its record not yet durable and
+/// nobody leading, and leads the next batch itself instead of waiting.
+#[test]
+fn a_follower_left_out_of_a_batch_leads_the_next() {
+    let dir = scratch("left-out");
+    let store = std::sync::Arc::new(open(Format::NTriples, &dir).unwrap());
+    store.commit_dataset(&record(Kind::Default, 0)).unwrap();
+    // Stand in for a leader: hold the WAL lock while a writer enqueues and starts waiting.
+    let w = store.wal.lock().unwrap();
+    let writer = { let store = std::sync::Arc::clone(&store); std::thread::spawn(move || store.commit_dataset(&record(Kind::Default, 1))) };
+    while store.pending.lock().unwrap().records == 0 { std::thread::yield_now() }
+    // The stand-in's batch ends without the writer's record: publish only what was durable before, then let go.
+    let durable = store.durable.load(std::sync::atomic::Ordering::SeqCst);
+    store.publish(durable, store.snapshot());
+    drop(w);
+    let t = std::time::Instant::now();
+    writer.join().unwrap().unwrap();
+    assert!(t.elapsed() < std::time::Duration::from_secs(1), "the follower waited {:?}", t.elapsed());
+    assert!(store.durable.load(std::sync::atomic::Ordering::SeqCst) > durable);
+    drop(store);
+    let reopened = open(Format::NTriples, &dir).unwrap();
+    assert_eq!(state(&reopened.snapshot()).0.len(), 2);
+    drop(reopened);
+    let _ = std::fs::remove_dir_all(&dir);
+}
