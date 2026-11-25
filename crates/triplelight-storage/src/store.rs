@@ -41,6 +41,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 
+mod group_commit;
 mod named;
 #[cfg(unix)]
 pub(crate) mod text_postings;
@@ -769,86 +770,6 @@ impl Store {
         p.records += 1;
         self.enqueued.notify_all();
         Ok((p.seq, n))
-    }
-
-    /// Makes everything up to `seq` durable and visible (group commit, #105). Whoever takes the WAL lock is the
-    /// leader: it writes and fsyncs every pending record as one batch. The others wait on `flushed`, not on the WAL
-    /// lock, so a writer whose record a batch covered returns as soon as that fsync ends, while the next leader is
-    /// still syncing; it can then enqueue again in time for the batch after. Waiting on the WAL lock instead held
-    /// them until the next fsync ended too, which split concurrent writers into halves that took turns.
-    fn flush_until(&self, seq: u64) -> std::io::Result<()> {
-        use std::sync::atomic::Ordering::SeqCst;
-        loop {
-            if self.durable.load(SeqCst) >= seq { return Ok(()) }
-            self.check_poisoned()?;
-            match self.wal.try_lock() {
-                Ok(mut w) => self.lead_flush(&mut w)?,
-                Err(std::sync::TryLockError::WouldBlock) => {
-                    // A leader is flushing; it notifies `flushed` under `pending` after publishing, so this check
-                    // and wait cannot miss it. The timeout is only a safety net (compaction holds the WAL lock
-                    // without being a leader).
-                    let p = self.pending.lock().unwrap();
-                    let _ = self.flushed.wait_timeout_while(p, std::time::Duration::from_millis(20), |_| {
-                        self.durable.load(SeqCst) < seq && !self.poisoned.load(SeqCst)
-                    }).unwrap();
-                }
-                Err(std::sync::TryLockError::Poisoned(e)) => panic!("WAL lock poisoned: {e}"),
-            }
-        }
-    }
-
-    /// The leader's flush: takes every pending record, writes and fsyncs them as one batch, then publishes them.
-    fn lead_flush(&self, w: &mut Wal) -> std::io::Result<()> {
-        let (buf, upto, overlay, records) = {
-            let mut p = self.pending.lock().unwrap();
-            // Adaptive gather: after a batch of several commits, writers are committing concurrently, and those it
-            // acknowledged are about to enqueue again. Waiting for as many records as that batch held (never longer
-            // than a tenth of its fsync) lets one fsync carry them all. After a batch of one, as with a lone writer,
-            // the leader never waits.
-            if w.last_batch > 1 && p.records < w.last_batch {
-                let deadline = std::time::Instant::now() + (w.last_sync / 10).min(std::time::Duration::from_millis(2));
-                while p.records < w.last_batch {
-                    let Some(left) = deadline.checked_duration_since(std::time::Instant::now()) else { break };
-                    p = self.enqueued.wait_timeout(p, left).unwrap().0;
-                }
-            }
-            let records = std::mem::take(&mut p.records);
-            (std::mem::take(&mut p.buf), p.seq, p.latest.clone(), records)
-        };
-        // Nothing to make durable (a batch must hold at least one record, `read_batch`).
-        if buf.is_empty() {
-            self.publish(upto, overlay);
-            return Ok(())
-        }
-        // Every record reaches the WAL after the batch fence (`append`), so the whole flush is one batch.
-        let started = std::time::Instant::now();
-        let batch = batch(&buf);
-        let written = fault::hit("wal-before-write")
-            .and_then(|_| w.file.write_all(&batch))
-            .and_then(|_| fault::hit("wal-after-write"))
-            .and_then(|_| w.file.sync_data())
-            .and_then(|_| fault::hit("wal-after-sync"));
-        if let Err(e) = written {
-            self.poisoned.store(true, std::sync::atomic::Ordering::SeqCst);
-            // Wake the waiters: they see the poison and fail too.
-            drop(self.pending.lock().unwrap());
-            self.flushed.notify_all();
-            return Err(std::io::Error::new(e.kind(), format!(
-                "appending to {} failed: {e}; the update is not acknowledged and may or may not be durable, and the \
-                 store refuses writes until it is reopened", self.dir.join("wal.log").display())));
-        }
-        (w.last_batch, w.last_sync) = (records, started.elapsed());
-        self.publish(upto, overlay);
-        Ok(())
-    }
-
-    /// Makes `overlay` (everything up to `upto`) visible, then durable for `flush_until`, and wakes its waiters.
-    fn publish(&self, upto: u64, overlay: Arc<Overlay>) {
-        *self.current.write().unwrap() = overlay;
-        let p = self.pending.lock().unwrap();
-        self.durable.store(upto, std::sync::atomic::Ordering::SeqCst);
-        drop(p);
-        self.flushed.notify_all();
     }
 
     /// Writes base and delta as a new base, switches to it atomically, and empties the WAL. Readers are not
