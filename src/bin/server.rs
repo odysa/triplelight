@@ -94,7 +94,8 @@ type Resp = tiny_http::Response<std::io::Cursor<Vec<u8>>>;
 enum Reply<'a> { Whole(Resp), Stream(tiny_http::Response<Box<dyn Read + 'a>>) }
 
 /// The body of a streamed JSON answer. `read` serializes the next window when the previous one is sent; an error ends the
-/// body without its closing braces and without the terminating chunk, so a client sees a truncated answer, never a wrong one.
+/// body without its closing braces, so the body is invalid JSON: a client sees a truncated answer, never a wrong one. (tiny_http still writes the
+/// chunked encoding's final `0` chunk when the reader returns an error, so the missing `]}}` is what protects the client, not a broken framing.)
 struct JsonBody<'a, S: triplelight::storage::Snapshot> {
     stream: IdsJsonStream<triplelight::exec::IdSolutions>,
     snap: &'a S,
