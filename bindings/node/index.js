@@ -29,23 +29,44 @@ class StorageError extends TripleLightError {}
 class LockedError extends TripleLightError {}
 class GraphStateError extends TripleLightError {}
 class ShapesError extends TripleLightError {}
-const KINDS = { SyntaxError: SyntaxError_, UnsupportedError, StorageError, LockedError, GraphStateError, ShapesError };
+/** A query stopped by its `signal` or its `timeoutMs`; `timedOut` tells which. */
+class InterruptedError extends TripleLightError {
+  constructor(message, kind) { super(message, kind); this.timedOut = message === "query timed out"; }
+}
+/** A query that needed more working memory than its `memoryMb`. */
+class ResourceLimitError extends TripleLightError {}
+const KINDS = { SyntaxError: SyntaxError_, UnsupportedError, StorageError, LockedError, GraphStateError, ShapesError, InterruptedError, ResourceLimitError };
 
 function wrapError(e) {
-  const m = /^(SyntaxError|UnsupportedError|StorageError|LockedError|GraphStateError|ShapesError): ([\s\S]*)$/.exec(e && e.message);
+  const m = /^(SyntaxError|UnsupportedError|StorageError|LockedError|GraphStateError|ShapesError|InterruptedError|ResourceLimitError): ([\s\S]*)$/.exec(e && e.message);
   if (!m) return e;
   const err = new KINDS[m[1]](m[2], m[1]);
   err.cause = e;
   return err;
+}
+
+// The native limit arguments of a query's options (#110): `timeoutMs` and `signal` share one interrupt, which an
+// aborted signal cancels; `memoryMb` is a working-memory budget. A signal aborted already cancels at once.
+function limits(options) {
+  let interrupt = null;
+  if (options.timeoutMs != null || options.signal != null) {
+    interrupt = new native.Interrupt(options.timeoutMs ?? null);
+    const signal = options.signal;
+    if (signal) {
+      if (signal.aborted) interrupt.cancel();
+      else signal.addEventListener("abort", () => interrupt.cancel(), { once: true });
+    }
+  }
+  return [options.entailment ?? null, interrupt, options.memoryMb ?? null];
 }
 const sync = (f) => { try { return f(); } catch (e) { throw wrapError(e); } };
 const async_ = (f) => { try { return f().catch((e) => { throw wrapError(e); }); } catch (e) { return Promise.reject(wrapError(e)); } };
 
 class Snapshot {
   constructor(raw) { this._raw = raw; }
-  query(sparql, options = {}) { return async_(() => this._raw.query(sparql, options.entailment ?? null)); }
-  querySync(sparql, options = {}) { return sync(() => this._raw.querySync(sparql, options.entailment ?? null)); }
-  queryJson(sparql, options = {}) { return async_(() => this._raw.queryJson(sparql, options.entailment ?? null)); }
+  query(sparql, options = {}) { return async_(() => this._raw.query(sparql, ...limits(options))); }
+  querySync(sparql, options = {}) { return sync(() => this._raw.querySync(sparql, ...limits(options))); }
+  queryJson(sparql, options = {}) { return async_(() => this._raw.queryJson(sparql, ...limits(options))); }
 }
 
 class Database {
@@ -59,9 +80,9 @@ class Database {
   }
   /** Creates a non-durable in-memory database. */
   static inMemory() { return new Database(sync(() => native.Database.inMemory())); }
-  query(sparql, options = {}) { return async_(() => this._raw.query(sparql, options.entailment ?? null)); }
-  querySync(sparql, options = {}) { return sync(() => this._raw.querySync(sparql, options.entailment ?? null)); }
-  queryJson(sparql, options = {}) { return async_(() => this._raw.queryJson(sparql, options.entailment ?? null)); }
+  query(sparql, options = {}) { return async_(() => this._raw.query(sparql, ...limits(options))); }
+  querySync(sparql, options = {}) { return sync(() => this._raw.querySync(sparql, ...limits(options))); }
+  queryJson(sparql, options = {}) { return async_(() => this._raw.queryJson(sparql, ...limits(options))); }
   update(sparql) { return async_(() => this._raw.update(sparql)); }
   load(path) { return async_(() => this._raw.load(String(path))); }
   compact() { return async_(() => this._raw.compact()).then(() => undefined); }
@@ -78,4 +99,4 @@ function validate(data, shapes, options = {}) {
   return sync(() => native.validate(String(data), String(shapes), options.dataFormat ?? null, options.shapesFormat ?? null));
 }
 
-module.exports = { Database, Snapshot, validate, TripleLightError, SyntaxError: SyntaxError_, UnsupportedError, StorageError, LockedError, GraphStateError, ShapesError };
+module.exports = { Database, Snapshot, validate, TripleLightError, SyntaxError: SyntaxError_, UnsupportedError, StorageError, LockedError, GraphStateError, ShapesError, InterruptedError, ResourceLimitError };

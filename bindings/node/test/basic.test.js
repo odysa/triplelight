@@ -186,3 +186,31 @@ test("extension availability, autoload and load", () => {
     db.close();
   }
 });
+
+test("query limits: AbortSignal, timeoutMs and memoryMb", async () => {
+  const db = tl.Database.inMemory();
+  const data = Array.from({ length: 2000 }, (_, i) => `<urn:s${i}> <urn:p> "${i}" .`).join(" ");
+  await db.update(`INSERT DATA { ${data} }`);
+  const endless = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f FILTER(?b != ?d && ?d != ?f) }";
+  const grouped = "SELECT ?a (COUNT(*) AS ?n) { ?a ?p ?b } GROUP BY ?a";
+  // Aborting a running query rejects it, and the worker is free for the next query.
+  const controller = new AbortController();
+  const running = db.queryJson(endless, { signal: controller.signal });
+  setTimeout(() => controller.abort(), 100);
+  const started = Date.now();
+  await assert.rejects(running, (e) => e instanceof tl.InterruptedError && e.timedOut === false);
+  assert.ok(Date.now() - started < 10000);
+  assert.strictEqual((await db.query("ASK { <urn:s1> <urn:p> \"1\" }")).boolean, true);
+  // An aborted signal cancels at once.
+  await assert.rejects(db.query(grouped, { signal: AbortSignal.abort() }), tl.InterruptedError);
+  // A deadline, also on a snapshot and synchronously.
+  await assert.rejects(db.read().query(endless, { timeoutMs: 50 }), (e) => e instanceof tl.InterruptedError && e.timedOut);
+  assert.throws(() => db.querySync(endless, { timeoutMs: 50 }), tl.InterruptedError);
+  // A memory budget.
+  // Four million groups: far more than one megabyte of working memory.
+  const wide = "SELECT ?a ?c (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d } GROUP BY ?a ?c";
+  await assert.rejects(db.query(wide, { memoryMb: 1 }), tl.ResourceLimitError);
+  assert.strictEqual((await db.query(grouped, { memoryMb: 1024, timeoutMs: 60000 })).bindings.length, 2000);
+  assert.throws(() => db.querySync(grouped, { memoryMb: 0 }), /memoryMb must be positive/);
+  db.close();
+});
