@@ -14,6 +14,8 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 pub mod arrow;
 #[doc(hidden)]
 pub mod export;
+mod scalar;
+pub use scalar::*;
 pub use arrow::BATCH_ROWS;
 use arrow_array::ffi_stream::FFI_ArrowArrayStream;
 
