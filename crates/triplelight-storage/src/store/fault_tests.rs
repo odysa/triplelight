@@ -532,7 +532,7 @@ fn a_follower_left_out_of_a_batch_leads_the_next() {
     while store.pending.lock().unwrap().records == 0 { std::thread::yield_now() }
     // The stand-in's batch ends without the writer's record: publish only what was durable before, then let go.
     let durable = store.durable.load(std::sync::atomic::Ordering::SeqCst);
-    store.publish(durable, store.snapshot());
+    store.publish_durable(durable, store.snapshot());
     drop(w);
     let t = std::time::Instant::now();
     writer.join().unwrap().unwrap();

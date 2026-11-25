@@ -51,7 +51,7 @@ impl Store {
         };
         // Nothing to make durable (a batch must hold at least one record, `read_batch`).
         if buf.is_empty() {
-            self.publish(upto, overlay);
+            self.publish_durable(upto, overlay);
             return Ok(())
         }
         // Every record reaches the WAL after the batch fence (`append`), so the whole flush is one batch.
@@ -72,12 +72,12 @@ impl Store {
                  store refuses writes until it is reopened", self.dir.join("wal.log").display())));
         }
         (w.last_batch, w.last_sync) = (records, started.elapsed());
-        self.publish(upto, overlay);
+        self.publish_durable(upto, overlay);
         Ok(())
     }
 
     /// Makes `overlay` (everything up to `upto`) visible, then durable for `flush_until`, and wakes its waiters.
-    pub(super) fn publish(&self, upto: u64, overlay: Arc<Overlay>) {
+    pub(super) fn publish_durable(&self, upto: u64, overlay: Arc<Overlay>) {
         *self.current.write().unwrap() = overlay;
         let p = self.pending.lock().unwrap();
         self.durable.store(upto, std::sync::atomic::Ordering::SeqCst);
