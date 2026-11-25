@@ -69,6 +69,30 @@ fn pushed_filter_stays_in_the_existing_bgp_phase() {
 }
 
 #[test]
+fn flat_count_path_records_the_filter_and_bgp_children() {
+    let data = (0..2_000).map(|n| format!("<urn:r{n}> <urn:reviewFor> <urn:p> .\n<urn:r{n}> <urn:date> \"2\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n")).collect::<String>();
+    let snapshot = triplelight::storage::MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let options = Options { count_pushdown: false, ..Default::default() };
+    let query = "SELECT ?p (COUNT(?r) AS ?n) WHERE { ?r <urn:reviewFor> ?p . ?r <urn:date> ?d FILTER(?d > 1) } GROUP BY ?p";
+    let report = triplelight::exec::plan_trace::explain(&snapshot, query, &options).unwrap();
+    let tree = report.split("Observed operator tree").nth(1).unwrap().split("Phase timings").next().unwrap();
+    let lines: Vec<&str> = tree.lines().collect();
+    let find = |label: &str| lines.iter().enumerate().find(|(_, line)| line.trim_start().starts_with(label)).map(|(i, line)| (i, *line)).unwrap_or_else(|| panic!("missing {label:?} from observed tree:\n{report}"));
+    let (group_pos, group) = find("- Group keys=1 aggregates=1");
+    let (filter_pos, filter) = find("- Filter");
+    let (bgp_pos, bgp) = find("- BGP patterns=2");
+    let indent = |line: &str| line.len() - line.trim_start().len();
+    assert!(group_pos < filter_pos && filter_pos < bgp_pos, "unexpected tree order:\n{report}");
+    assert_eq!(indent(filter), indent(group) + 2, "Filter is not a Group child:\n{report}");
+    assert_eq!(indent(bgp), indent(filter) + 2, "BGP is not a Filter child:\n{report}");
+    for line in [filter, bgp] {
+        assert!(line.contains("rows_out=2000"), "fused path row count missing:\n{report}");
+    }
+    assert!(group.contains("rows_out=1"), "grouped row count missing:\n{report}");
+    assert!(phase(&report, "group_us=") > 0, "flat COUNT group time was missing from request capture:\n{report}");
+}
+
+#[test]
 fn failed_bgp_restores_phase_depth_for_the_next_explain() {
     let data = (0..5_000).map(|n| format!("<urn:s{n}> <urn:p> \"{n}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n")).collect::<String>();
     let snapshot = triplelight::storage::MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
