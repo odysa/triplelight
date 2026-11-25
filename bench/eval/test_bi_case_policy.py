@@ -107,7 +107,8 @@ def replay(packet):
         folded = Fold(reference["head"]["vars"])
         for row in reference["results"]["bindings"]:
             folded.add(row)
-        records[case] = folded.result()
+        ordered = adapter.queries[case]["template"] in adapter.qualify.ORDER_KEYS
+        records[case] = {**folded.result(), "vars": reference["head"]["vars"], "ordered": ordered}
     wrong = deepcopy(records)
     wrong[case]["bag"] = "0" * 32
     try:
@@ -116,6 +117,22 @@ def replay(packet):
         pass
     else:
         raise AssertionError("Accepted a different reference digest at startup")
+    wrong = deepcopy(records)
+    wrong[case]["vars"] = ["wrong_projection"]
+    try:
+        adapter.bind_references(wrong, Fold)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Accepted a different reference projection at startup")
+    wrong = deepcopy(records)
+    wrong["m000_p04_q4"]["ordered"] = False
+    try:
+        adapter.bind_references(wrong, Fold)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Accepted a reference that disables frozen ordering")
     adapter.bind_references(records, Fold)
     for case, reference in adapter.references.items():
         assert adapter.check(case, reference, records[case])[0] == "pass"

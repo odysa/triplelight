@@ -14,6 +14,8 @@ tar -xzf docs/eval-plan/bi100m-policy-v1/registry.tar.gz -C "$bundle"
 cp bench/eval/bi_case_policy.py "$bundle/"
 ```
 
+For BI-10M, extract the [separate BI-10M packet](../../index-layout-watdiv-bi-laptop-v1/bi10m/packet.tar.gz), copy both `bi_case_policy.py` and `bi10m_case_policy.py` into its root, and select `bi10m_case_policy.py`. Each entry point declares its own dataset digest.
+
 The published replay binds the profile v4 query and reference files and checks the 360 saved answers from both historical sessions for each engine. It does not start a server or time queries.
 
 ```sh

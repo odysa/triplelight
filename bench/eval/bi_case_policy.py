@@ -102,7 +102,14 @@ class BICasePolicy:
             accumulator = fold(reference["head"]["vars"])
             for row in reference["results"]["bindings"]:
                 accumulator.add(row)
-            expected = accumulator.result()
+            result = accumulator.result()
+            expected = {key: result[key] for key in ("rows", "bag", "bag_norm", "seq")}
+            # Archived reference records predate vars. Scored runs require it
+            # in the driver; replay can still check the older folded records.
+            if "vars" in records[case]:
+                expected["vars"] = reference["head"]["vars"]
+            if self.queries[case]["template"] in self.qualify.ORDER_KEYS:
+                expected["ordered"] = True
             if any(records[case].get(key) != value for key, value in expected.items()):
                 raise ValueError(f"Reference digest differs from the frozen BI answer for {case}")
             digests[case] = expected
@@ -180,7 +187,8 @@ class BICasePolicy:
 
 
 NAME = "bsbm-bi-frozen-v1"
-BI_100M = ("bi100m", "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d")
+DATASET_SHA256 = "6e4ef939f05b15677802d17257096de9da32a452fe33dd40c07d0b0537ee430d"
+BI_100M = ("bi100m", DATASET_SHA256)
 REGISTRATIONS = {
     "734c77aedb9cdd72fa09b1b96d816230343f18a5366b3501067b073211275892": (
         "bi10m", "3a207c6725820036eec87d08dd414090d3548ac2839ca192414dad6e352f680e",
@@ -192,18 +200,17 @@ REGISTRY = Path(__file__).resolve().parent / "registry"
 FREEZE_PATH = REGISTRY / "policies/value-policy-freeze.json"
 FREEZE_SHA256 = hashlib.sha256(FREEZE_PATH.read_bytes()).hexdigest() if FREEZE_PATH.is_file() else None
 REGISTRATION = REGISTRATIONS.get(FREEZE_SHA256)
-DATASET_SHA256 = REGISTRATION[1] if REGISTRATION else []
 _adapter = None
 
 
-def start(context):
+def start(context, declared_dataset_sha256=DATASET_SHA256):
     """Bind the driver to one published BI workload before any requests are sent."""
     global _adapter
     _adapter = None
     if Path(context["bundle_dir"]).resolve() != REGISTRY.parent or not REGISTRATION:
         raise ValueError("The BI bundle must contain the adapter at its root and a registered policy")
     workload, dataset_sha256 = REGISTRATION
-    if context["dataset_sha256"] != [dataset_sha256]:
+    if dataset_sha256 != declared_dataset_sha256 or context["dataset_sha256"] != [dataset_sha256]:
         raise ValueError("The run dataset differs from the frozen BI policy")
     adapter = BICasePolicy(REGISTRY, workload, FREEZE_SHA256, dataset_sha256, context["case_queries"])
     adapter.bind_references(context["reference_records"], context["fold"])
@@ -219,7 +226,7 @@ def check(case_id, observed_answer, reference_record):
         "results": {"bindings": observed_answer["rows"]},
     }
     status, reason = _adapter.check(case_id, result, reference_record)
-    if status == "pass":
+    if status == "pass" and observed_answer["rows"]:
         number = _adapter.queries[case_id]["template"]
         if number in _adapter.qualify.ORDER_KEYS:
             reason = "Same typed answer and a sequence satisfying the frozen BI ORDER BY rules"
