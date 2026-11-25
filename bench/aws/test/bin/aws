@@ -1,0 +1,13 @@
+#!/bin/bash
+# Stub of the AWS CLI for lifecycle tests: logs each call to $STUB_LOG and answers from fixed data.
+echo "aws $*" >> "$STUB_LOG"
+case "$*" in
+  *describe-security-groups*) if [ -n "${STUB_SG:-}" ]; then echo "$STUB_SG"; else cat "$(dirname "$0")/../sg.json"; fi;;
+  *describe-instance-types*) echo x86_64;;
+  *ssm*) echo ami-123;;
+  *run-instances*) if [ -n "${STUB_SIGNAL_IN_LAUNCH:-}" ]; then kill -"$STUB_SIGNAL_IN_LAUNCH" $PPID; sleep 2; exit 130; fi; echo i-abc;;
+  *describe-instances*--filters*)  # the tag lookup: empty for the first $STUB_TAG_MISSES calls (eventual consistency)
+    n=$(grep -c -- '--filters' "$STUB_LOG"); [ "$n" -gt "${STUB_TAG_MISSES:-0}" ] && echo i-found || echo;;
+  *describe-instances*) echo 198.51.100.9;;
+  *terminate-instances*) [ -n "${STUB_SIGINT_IN_FINISH:-}" ] && kill -INT $PPID; echo ok;;
+esac

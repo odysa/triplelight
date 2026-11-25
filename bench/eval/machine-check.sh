@@ -124,7 +124,8 @@ snap() {
 # host-wide ticks (total, steal, busy = user+nice+system+irq+softirq): short-lived processes the per-process scan misses
 # still show up in busy
 host() { if [ "$OS" = linux ]; then awk '/^cpu /{printf "%d %d %d\n", $2+$3+$4+$5+$6+$7+$8+$9, $9, $2+$3+$4+$7+$8}' /proc/stat; else echo "0 0 0"; fi; }
-A=$(snap); read -r T0 S0 U0 < <(host); sleep "$IDLE_S"; B=$(snap); read -r T1 S1 U1 < <(host)
+# host totals are read inside the two per-process snapshots, so the snapshots' own work is outside the window
+A=$(snap); read -r T0 S0 U0 < <(host); sleep "$IDLE_S"; read -r T1 S1 U1 < <(host); B=$(snap)
 # a process started during the window counts from zero
 BUSY=$(printf '%s\n' "$A" "--" "$B" | awk -v w="$IDLE_S" '$1 == "--" { b = 1; next } !b { a[$1] = $2; next }
   { pct = ($2 - a[$1]) * 100 / w; if (pct > 2) printf "%s:%.0f%% ", $1, pct }')

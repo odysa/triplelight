@@ -53,15 +53,15 @@ awk -v b="$BOUND" -v m="$MAX_USD" 'BEGIN { exit !(b <= m) }' \
   || { echo "lifecycle: cost bound \$$BOUND ((price-per-hour + dedicated fee) x max-hours) exceeds --max-usd $MAX_USD; not launching" >&2; exit 4; }
 MAX_MIN=$(awk -v h="$MAX_H" 'BEGIN { printf "%d", h * 60 }')
 [ "$MAX_MIN" -ge 60 ] || { echo "lifecycle: --max-hours below 1 leaves no time to provision and copy back" >&2; exit 4; }
-RUN_MIN=$((MAX_MIN - 20))   # the plan's own limit, so results are copied back before the instance stops itself
 git -C "$ROOT" cat-file -e "$COMMIT^{commit}" 2>/dev/null || { echo "lifecycle: commit $COMMIT is not in $ROOT" >&2; exit 2; }
 COMMIT=$(git -C "$ROOT" rev-parse "$COMMIT")
 # a re-run must not overwrite the record of an earlier (possibly crashed) session
 [ ! -e "$OUT" ] || [ -z "$(ls -A "$OUT")" ] || { echo "lifecycle: $OUT is not empty; use a new --out" >&2; exit 2; }
 mkdir -p "$OUT"; LOG=$OUT/lifecycle.log; : > "$LOG"
 exec 3>&2   # the terminal: dry-run lines go here even from steps whose output is sent to the log
-log() { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG" >&2; }
-info() { echo "$1 $2" >> "$OUT/instance.txt"; }
+# never fatal: after a hangup the terminal is gone and writing to it fails, which must not stop finish()
+log() { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG" >&2 || true; }
+info() { echo "$1 $2" >> "$OUT/instance.txt" || true; }
 SESSION=$(uuidgen 2>/dev/null | tr 'A-Z' 'a-z' || python3 -c 'import uuid; print(uuid.uuid4())')
 info session "$SESSION"; info type "$TYPE"; info tenancy "$TENANCY"; info region "$REGION"; info commit "$COMMIT"
 info price_per_hour "$PRICE"; info dedicated_fee_per_hour "$FEE"; info max_hours "$MAX_H"; info cost_bound_usd "$BOUND"
@@ -100,20 +100,27 @@ fetch_back() {  # fetch_back <remote dir> <local dir>: copy one directory back w
 IID=; LAUNCHING=0
 finish() {
   local rc=$?
-  trap '' INT TERM HUP   # a second Ctrl-C must not skip the terminate below
+  set +e                 # nothing below may abort before the terminate
+  trap '' INT TERM HUP   # nor may a second Ctrl-C or a hangup
   if [ -z "$IID" ] && [ $LAUNCHING = 1 ] && [ $DRY = 0 ]; then  # interrupted while run-instances was in flight
-    IID=$(aws_ ec2 describe-instances --filters "Name=tag:session,Values=$SESSION" \
-      "Name=instance-state-name,Values=pending,running,stopping,stopped" --query 'Reservations[].Instances[].InstanceId' --output text || true)
-    [ -n "$IID" ] && log "found $IID by session tag after an interrupted launch"
+    # EC2 reads are eventually consistent: a just-launched instance can take a while to show up by tag
+    for _ in $(seq 1 12); do
+      IID=$(aws_ ec2 describe-instances --filters "Name=tag:session,Values=$SESSION" \
+        "Name=instance-state-name,Values=pending,running,stopping,stopped" --query 'Reservations[].Instances[].InstanceId' --output text 2>/dev/null)
+      [ -n "$IID" ] && [ "$IID" != None ] && break
+      IID=; sleep 5
+    done
   fi
   if [ -n "$IID" ]; then
-    if [ -n "$HOST" ]; then fetch_back /data/receipts "$OUT" || true; fetch_back /data/bench-out "$OUT" || true; fi
-    log "terminating $IID (exit $rc)"
+    if [ -n "$HOST" ]; then fetch_back /data/receipts "$OUT"; fetch_back /data/bench-out "$OUT"; fi
     # shellcheck disable=SC2086  # IID may list several ids after a lookup
-    aws_ ec2 terminate-instances --instance-ids $IID >/dev/null || log "TERMINATE FAILED for $IID: terminate it by hand"
+    aws_ ec2 terminate-instances --instance-ids $IID >/dev/null; local t=$?
+    log "terminate $IID (exit $rc): $([ $t = 0 ] && echo requested || echo "FAILED, terminate it by hand")"
     # shellcheck disable=SC2086
     [ $DRY = 1 ] || aws_ ec2 wait instance-terminated --instance-ids $IID || log "wait for termination failed for $IID: check it by hand"
     info terminated "$(date -u +%FT%TZ)"
+  elif [ $LAUNCHING = 1 ] && [ $DRY = 0 ]; then
+    log "launch was interrupted and no instance with tag session=$SESSION appeared within 60 s: check the console"
   fi
   log "done, exit $rc"
 }
@@ -160,6 +167,7 @@ IID=$(aws_ ec2 run-instances --client-token "$SESSION" --image-id "$AMI" --insta
   --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=triplelight-bench},{Key=session,Value=$SESSION},{Key=commit,Value=$COMMIT}]" \
   --query 'Instances[0].InstanceId' --output text)
 [ $DRY = 1 ] && IID=i-dryrun
+LAUNCH_EPOCH=$(date +%s)
 info instance_id "$IID"; info launched "$(date -u +%FT%TZ)"; log "launched $IID ($TYPE, $AMI)"
 aws_ ec2 wait instance-running --instance-ids "$IID"
 HOST=$(aws_ ec2 describe-instances --instance-ids "$IID" --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
@@ -189,6 +197,9 @@ fi
 # Qualification gates the run: a failed check stops here, and the receipts still come back.
 remote "\$SRC/bench/eval/machine-check.sh /data/receipts/machine-check $VM_ARG" >> "$LOG" 2>&1 \
   || { log "machine check failed: no run (receipt in $OUT/receipts/machine-check)"; exit 6; }
+# The instance stops itself MAX_MIN minutes after launch; the plan gets what is left minus 20 minutes for copy-back.
+RUN_MIN=$(( MAX_MIN - ($(date +%s) - LAUNCH_EPOCH) / 60 - 20 ))
+[ "$RUN_MIN" -gt 0 ] || { log "no time left for the run after provisioning (${RUN_MIN} min); raise --max-hours"; exit 8; }
 if [ $DRY = 1 ]; then log "dry run: the remote steps above were printed, not executed; the run would be: $RUN"
 else log "machine check passed; running (limit ${RUN_MIN} min): $RUN"; fi
 remote "mkdir -p /data/bench-out && cd \"\$SRC\" && BENCH_OUT=/data/bench-out timeout ${RUN_MIN}m bash -c $(printf %q "$RUN")" >> "$LOG" 2>&1 \
