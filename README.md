@@ -97,11 +97,7 @@ disabled. For local scripts you can pass `--allow-unauthenticated-updates` inste
 still refuses requests from browser pages. The token travels in plain HTTP, so on an untrusted network put the server behind a
 TLS-terminating proxy.
 
-On Linux each connection has idle timeouts: a client that sends nothing for 10 s while the server waits for its
-request, or takes nothing for 60 s of an answer, is disconnected (`TRIPLELIGHT_READ_IDLE_MS`,
-`TRIPLELIGHT_WRITE_IDLE_MS`). They bound each wait, not the transfer, so a slow but steady upload or download keeps
-going. macOS does not apply them to accepted connections, so there a client that withholds a request body can hold a
-worker until it disconnects. A query body declared over 16 MiB is refused with 413 before any of it is read.
+A query body declared over 16 MiB is refused with 413 before any of it is read.
 
 Query the server with any SPARQL client, for example:
 

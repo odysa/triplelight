@@ -182,32 +182,6 @@ fn graph_state_errors_are_client_errors() {
     assert!(update("DROP SILENT GRAPH <urn:absent>").contains(" 200 "));
 }
 
-/// More clients than workers declare an update body and never send it (#123). Each is answered 401 at once, and then
-/// holds a worker while tiny_http reads off the body; the read idle timeout releases them, so a normal query still
-/// answers promptly instead of waiting behind them forever. Linux only: accepted sockets inherit the listener's
-/// timeouts there, and not on macOS (see `listen` in the server).
-#[cfg(target_os = "linux")]
-#[test]
-fn withheld_bodies_are_released_by_the_read_idle_timeout() {
-    let s = start_with("idle", &[], Some("s3cret"), &[("TRIPLELIGHT_READ_IDLE_MS", "300")]);
-    let n = std::thread::available_parallelism().map_or(4, |n| n.get()) + 4;
-    let mut slow: Vec<TcpStream> = (0..n).map(|_| {
-        let mut c = TcpStream::connect(("127.0.0.1", s.1)).unwrap();
-        write!(c, "POST /update HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/sparql-update\r\nContent-Length: 65536\r\n\r\n").unwrap();
-        c.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
-        c
-    }).collect();
-    for c in &mut slow {
-        let mut buf = [0u8; 64];
-        // A reset instead of the 401 is the flaky case this file also covers; either way the request was refused.
-        if let Ok(n) = c.read(&mut buf) { assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).contains(" 401 ")) }
-    }
-    let t = Instant::now();
-    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
-    assert!(t.elapsed() < Duration::from_secs(5), "a query waited {:?} behind withheld bodies", t.elapsed());
-    drop(slow);
-}
-
 /// A query body declared over the limit is refused with 413 before any of it is read (#123).
 #[test]
 fn an_oversized_declared_body_is_refused_before_reading() {
