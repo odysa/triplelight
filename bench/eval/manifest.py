@@ -79,7 +79,7 @@ def check_receipt(receipt, now=None, current_boot=None):
 
 REQUIRED = {
     "git": ("commit", "dirty"), "build": ("profile", "rustc", "binary_sha256"),
-    "protocol": ("order", "runs", "timeout_s", "seed", "mode", "drain_rows", "expect_unsupported", "persisted_store"),
+    "protocol": ("order", "runs", "timeout_s", "seed", "mode", "drain_rows", "expect_unsupported", "persisted_store", "budget"),
     "machine": ("receipt_sha256", "receipt_passed_at", *MACHINE_FIELDS),
 }
 HEX = re.compile(r"^[0-9a-f]{64}$"); COMMIT = re.compile(r"^[0-9a-f]{40}$")
@@ -116,6 +116,9 @@ def verify(m, receipt=None, now=None, current_boot=None):
     eu = pr.get("expect_unsupported")
     need(isinstance(eu, dict) and all(isinstance(v, list) for v in eu.values()), "protocol.expect_unsupported is not a map from system to a list of case IDs")
     need(isinstance(pr.get("persisted_store"), bool), "protocol.persisted_store is not a boolean")
+    bg = pr.get("budget")
+    need(isinstance(bg, dict) and (bg == {} or (set(bg) == {"mem_gb", "cpus"} and is_int(bg.get("mem_gb"), 1) and is_int(bg.get("cpus"), 1))),
+         "protocol.budget is {} (no budget) or {mem_gb, cpus} positive integers")
     if pr.get("mode") == "cold":
         need(isinstance(pr.get("cold_hook"), str) and cold_hook_parts(pr.get("cold_hook", "")) is not None,
              "a cold run needs protocol.cold_hook to be `restart.sh --cold` (the reset that drops the page cache and fails when it cannot)")
@@ -152,7 +155,7 @@ def verify(m, receipt=None, now=None, current_boot=None):
     return p
 
 
-def run_bindings(m, *, queries_sha256, reference_sha256, system, url, clear_cache_url, runs, timeout_s, seed, drain_rows, mode, expect_unsupported, cold_hook="", policy=None):
+def run_bindings(m, *, queries_sha256, reference_sha256, system, url, clear_cache_url, runs, timeout_s, seed, drain_rows, mode, expect_unsupported, cold_hook="", policy=None, budget=None):
     """Problems where the run about to start differs from the one the manifest describes: the query set, the reference, the engine, the
     protocol, the endpoint and the cache-clear policy, and the mode and expected-unsupported policy must all be what was recorded."""
     p, pr = [], m.get("protocol", {})
@@ -168,6 +171,7 @@ def run_bindings(m, *, queries_sha256, reference_sha256, system, url, clear_cach
     same("drain threshold", drain_rows, pr.get("drain_rows")); same("mode", mode, pr.get("mode"))
     declared = pr.get("expect_unsupported", {})
     same("expected-unsupported cases for this system", sorted(expect_unsupported), sorted(declared.get(system, []) if isinstance(declared, dict) else []))
+    same("memory and CPU budget", budget if budget is not None else {}, pr.get("budget"))
     same("case policy", policy, m.get("policy"))        # a run with a policy needs a manifest that records the same one, and the reverse
     if mode == "cold":
         same("cold-start hook", cold_hook, pr.get("cold_hook"))
@@ -288,6 +292,7 @@ def cmd_write(a):
         "systems": systems,
         "protocol": {"plan_sha256": sha256_file(a.plan) if a.plan else "", "order": a.order, "runs": a.runs, "timeout_s": a.timeout,
                      "seed": a.seed, "drain_rows": a.drain_rows, "mode": a.mode, "persisted_store": not a.no_store,
+                     "budget": {"mem_gb": a.budget_mem, "cpus": a.budget_cpus} if a.budget_mem or a.budget_cpus else {},
                      **({"cold_hook": a.cold_hook, "cold_hook_sha256": cold_hook_digest(a.cold_hook)} if a.mode == "cold" else {}),
                      "expect_unsupported": expect},
         "machine": {"receipt_sha256": sha256_file(a.receipt), "receipt_passed_at": receipt.get("timestamp", ""),
@@ -297,6 +302,7 @@ def cmd_write(a):
     if a.case_policy:
         if not a.policy_bundle: sys.exit("--case-policy needs --policy-bundle")
         m["policy"] = policy_identity(a.case_policy, a.policy_bundle, query_file_digests(a.queries))
+    if bool(a.budget_mem) != bool(a.budget_cpus): sys.exit("give both --budget-mem and --budget-cpus, or neither")
     if not a.store and not a.no_store: sys.exit("give --store NAME:PATH for every persisted store the run reads, or --no-store if the systems keep no store")
     out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
     problems = verify(m, receipt)
@@ -339,7 +345,7 @@ def good_manifest(receipt=None):
         "datasets": [{"name": "lubm1", "bytes": 10, "sha256": "c" * 64, "sha256_verified": True}], "queries_sha256": "d" * 64, "reference_sha256": "e" * 64,
         "stores": [{"name": "lubm1", "tree_sha256": "1" * 64}],
         "systems": [{"name": "triplelight", "version": "x", "config_sha256": "f" * 64, "url": "http://127.0.0.1:7878/sparql", "clear_cache_url": ""}],
-        "protocol": {"order": "ABBA", "runs": 5, "timeout_s": 300, "seed": 0, "drain_rows": 200000, "mode": "warm", "expect_unsupported": {}, "persisted_store": True},
+        "protocol": {"order": "ABBA", "runs": 5, "timeout_s": 300, "seed": 0, "drain_rows": 200000, "mode": "warm", "expect_unsupported": {}, "persisted_store": True, "budget": {}},
         "machine": {"receipt_sha256": "0" * 64, "receipt_passed_at": r["timestamp"], **{f: r[f] for f in MACHINE_FIELDS}},
     }
 
@@ -397,6 +403,11 @@ def cmd_selftest(a):
                            ("--cold first, then more arguments", f"'{RESET_DIR / 'restart.sh'}' --cold x"), ("a restart.sh from another directory", "/tmp/restart.sh --cold"),
                            ("another script with the same name copied elsewhere", f"'{pathlib.Path(tempfile.gettempdir()) / 'restart.sh'}' --cold")):
         check(f"{label} is not the cold reset", [] if cold_hook_parts(command) is None else ["accepted"])
+    check("a manifest without a budget field is refused", verify(edit(lambda x: x["protocol"].pop("budget")), r, now, "boot-1"), "protocol.budget is missing")
+    check("a manifest with a budget of {mem_gb, cpus} passes", verify(edit(lambda x: x["protocol"].update(budget={"mem_gb": 12, "cpus": 8})), r, now, "boot-1"))
+    check("a budget with a zero or a missing field is refused", verify(edit(lambda x: x["protocol"].update(budget={"mem_gb": 0, "cpus": 8})), r, now, "boot-1"), "protocol.budget")
+    check("a run under a different budget than the manifest records is refused", run_bindings(edit(lambda x: x["protocol"].update(budget={"mem_gb": 12, "cpus": 8})), queries_sha256="d" * 64, reference_sha256="e" * 64, system="triplelight", url="http://127.0.0.1:7878/sparql", clear_cache_url="", runs=5, timeout_s=300, seed=0, drain_rows=200000, mode="warm", expect_unsupported=[], budget={"mem_gb": 4, "cpus": 8}), "budget")
+    check("a run with no budget against a manifest that records one is refused", run_bindings(edit(lambda x: x["protocol"].update(budget={"mem_gb": 12, "cpus": 8})), queries_sha256="d" * 64, reference_sha256="e" * 64, system="triplelight", url="http://127.0.0.1:7878/sparql", clear_cache_url="", runs=5, timeout_s=300, seed=0, drain_rows=200000, mode="warm", expect_unsupported=[]), "budget")
     pm = edit(lambda x: x.update(policy=pol))
     check("a run without the policy its manifest records is refused", run_bindings(pm, queries_sha256="d" * 64, reference_sha256="e" * 64, system="triplelight", url="http://127.0.0.1:7878/sparql", clear_cache_url="", runs=5, timeout_s=300, seed=0, drain_rows=200000, mode="warm", expect_unsupported=[], policy=None), "case policy")
     check("a run with a policy its manifest does not record is refused", run_bindings(m, queries_sha256="d" * 64, reference_sha256="e" * 64, system="triplelight", url="http://127.0.0.1:7878/sparql", clear_cache_url="", runs=5, timeout_s=300, seed=0, drain_rows=200000, mode="warm", expect_unsupported=[], policy=pol), "case policy")
@@ -444,6 +455,8 @@ def main():
     w.add_argument("--cold-hook", default="", help="for --mode cold: the reset command, which must be `bench/eval/restart.sh --cold`; its digest is recorded and checked at run time")
     w.add_argument("--case-policy", help="a case-policy module inside --policy-bundle; its identity (bundle digest, bound datasets, case-to-query map) is recorded and bound")
     w.add_argument("--policy-bundle", help="the directory holding the case policy, its imports and sidecars")
+    w.add_argument("--budget-mem", type=int, default=0, help="the memory budget in GB the session gives every engine (session.sh BUDGET --mem); bound to the run")
+    w.add_argument("--budget-cpus", type=int, default=0, help="the CPU budget (session.sh BUDGET --cpus); bound to the run")
     w.add_argument("--mode", choices=["warm", "cold"], default="warm"); w.add_argument("--expect-unsupported", action="append", default=[], help="SYSTEM=case,case: cases that system's configuration is known not to answer (repeat per system)")
     w.add_argument("--no-store", action="store_true", help="the systems in this run keep no persisted store (otherwise every store needs --store)")
     w.add_argument("--trust-supplied-digests", action="store_true", help="accept a dataset digest given as NAME:PATH:SHA256 without hashing the data; the manifest records it as unverified, so the run is not scored")
