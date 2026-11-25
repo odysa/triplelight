@@ -110,7 +110,7 @@ fn child_process() {
         // Writers commit concurrently until the parent kills the process; each acknowledged triple is printed.
         let out = std::sync::Mutex::new(());
         std::thread::scope(|scope| for writer in 0..8u64 { let (store, out) = (&store, &out); scope.spawn(move || {
-            for i in 0.. {
+            for i in 0..u64::MAX {
                 let k = writer * 1_000_000 + i;
                 store.commit_dataset(&[DatasetChange::Quad(GraphTarget::Default, Change::Insert, t(k))]).unwrap();
                 let _held = out.lock().unwrap();
