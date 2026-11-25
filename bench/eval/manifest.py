@@ -133,6 +133,13 @@ def verify(m, receipt=None, now=None, current_boot=None):
             if key == "datasets":
                 need(is_int(it.get("bytes"), 1), f"datasets[{it.get('name', '?')}].bytes is not positive")
                 need(it.get("sha256_verified") is True, f"datasets[{it.get('name', '?')}].sha256 was supplied, not verified against the data")
+    pol = m.get("policy")
+    if pol is not None:
+        need(isinstance(pol, dict) and all(isinstance(pol.get(k), str) and pol.get(k) for k in ("name", "module")), "policy.name or policy.module is missing")
+        need(isinstance(pol, dict) and all(isinstance(pol.get(k), str) and HEX.match(pol.get(k, "")) for k in ("bundle_sha256", "case_queries_sha256")), "policy digests are not sha256 digests")
+        need(isinstance(pol, dict) and isinstance(pol.get("dataset_sha256"), list) and pol["dataset_sha256"] and all(HEX.match(str(x)) for x in pol["dataset_sha256"]), "policy.dataset_sha256 is not a list of sha256 digests")
+        if isinstance(pol, dict) and isinstance(pol.get("dataset_sha256"), list):
+            need(sorted(pol["dataset_sha256"]) == sorted(d.get("sha256") for d in m.get("datasets", [])), "the case policy is bound to different dataset digests than this manifest's")
     if pr.get("persisted_store") is True:
         stores = m.get("stores")
         need(isinstance(stores, list) and stores and all(isinstance(x, dict) and HEX.match(str(x.get("tree_sha256", ""))) for x in stores),
@@ -145,7 +152,7 @@ def verify(m, receipt=None, now=None, current_boot=None):
     return p
 
 
-def run_bindings(m, *, queries_sha256, reference_sha256, system, url, clear_cache_url, runs, timeout_s, seed, drain_rows, mode, expect_unsupported, cold_hook=""):
+def run_bindings(m, *, queries_sha256, reference_sha256, system, url, clear_cache_url, runs, timeout_s, seed, drain_rows, mode, expect_unsupported, cold_hook="", policy=None):
     """Problems where the run about to start differs from the one the manifest describes: the query set, the reference, the engine, the
     protocol, the endpoint and the cache-clear policy, and the mode and expected-unsupported policy must all be what was recorded."""
     p, pr = [], m.get("protocol", {})
@@ -161,13 +168,32 @@ def run_bindings(m, *, queries_sha256, reference_sha256, system, url, clear_cach
     same("drain threshold", drain_rows, pr.get("drain_rows")); same("mode", mode, pr.get("mode"))
     declared = pr.get("expect_unsupported", {})
     same("expected-unsupported cases for this system", sorted(expect_unsupported), sorted(declared.get(system, []) if isinstance(declared, dict) else []))
+    same("case policy", policy, m.get("policy"))        # a run with a policy needs a manifest that records the same one, and the reverse
     if mode == "cold":
         same("cold-start hook", cold_hook, pr.get("cold_hook"))
         same("reset procedure digest (restart.sh and lib.sh as they are now)", cold_hook_digest(cold_hook), pr.get("cold_hook_sha256"))
     return p
 
 
-RESET_DIR = pathlib.Path(__file__).resolve().parent      # bench/eval of this checkout: the only place the reset procedure may come from
+HERE_DIR = pathlib.Path(__file__).resolve().parent
+RESET_DIR = HERE_DIR      # bench/eval of this checkout: the only place the reset procedure may come from
+
+
+def policy_identity(case_policy, bundle, case_queries):
+    """What a manifest binds for a run's case policy: its name, the module's path inside the bundle, the digest of the whole bundle (the module,
+    everything it imports and its sidecars), the dataset digests it is bound to, and the digest of the case-ID to query-file-digest map."""
+    import importlib.util
+    bundle, file = pathlib.Path(bundle).resolve(), pathlib.Path(case_policy).resolve()
+    if bundle not in file.parents: raise SystemExit("the case policy module must be inside its bundle: the bundle digest covers it and everything it imports")
+    spec = importlib.util.spec_from_file_location("case_policy_id", file); module = importlib.util.module_from_spec(spec)
+    sys.path.insert(0, str(bundle))
+    try: spec.loader.exec_module(module)
+    finally: sys.path.remove(str(bundle))
+    for attr in ("NAME", "DATASET_SHA256", "start", "check"):
+        if not hasattr(module, attr): raise SystemExit(f"the case policy lacks {attr}")
+    bound = module.DATASET_SHA256 if isinstance(module.DATASET_SHA256, (list, tuple)) else [module.DATASET_SHA256]
+    return {"name": module.NAME, "module": str(file.relative_to(bundle)), "bundle_sha256": sha256_tree(bundle), "dataset_sha256": sorted(bound),
+            "case_queries_sha256": hashlib.sha256(json.dumps(case_queries, sort_keys=True).encode()).hexdigest()}
 
 
 def cold_hook_parts(command):
@@ -248,6 +274,10 @@ def cmd_write(a):
                     **{f: receipt.get(f) for f in MACHINE_FIELDS}},
         "python": platform.python_version(),
     }
+    if a.case_policy:
+        if not a.policy_bundle: sys.exit("--case-policy needs --policy-bundle")
+        sys.path.insert(0, str(HERE_DIR)); import driver as drv
+        m["policy"] = policy_identity(a.case_policy, a.policy_bundle, {n: hashlib.sha256(q.encode()).hexdigest() for n, q in drv.load_queries(a.queries)})
     if not a.store and not a.no_store: sys.exit("give --store NAME:PATH for every persisted store the run reads, or --no-store if the systems keep no store")
     out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
     problems = verify(m, receipt)
@@ -335,6 +365,10 @@ def cmd_selftest(a):
     check("a store-less run needs no store digest", verify(edit(lambda x: (x.update(stores=[]), x["protocol"].update(persisted_store=False))), r, now, "boot-1"))
     check("a system without an endpoint url is refused", verify(edit(lambda x: x["systems"][0].pop("url")), r, now, "boot-1"), "url is missing")
     check("an unverified supplied dataset digest is refused", verify(edit(lambda x: x["datasets"][0].update(sha256_verified=False)), r, now, "boot-1"), "not verified")
+    pol = {"name": "p", "module": "policy.py", "bundle_sha256": "3" * 64, "dataset_sha256": ["c" * 64], "case_queries_sha256": "4" * 64}
+    check("a manifest with a well-formed policy bound to its dataset passes", verify(edit(lambda x: x.update(policy=pol)), r, now, "boot-1"))
+    check("a policy bound to other dataset digests than the manifest's is refused", verify(edit(lambda x: x.update(policy={**pol, "dataset_sha256": ["9" * 64]})), r, now, "boot-1"), "different dataset digests")
+    check("a policy with a non-digest bundle hash is refused", verify(edit(lambda x: x.update(policy={**pol, "bundle_sha256": "x"})), r, now, "boot-1"), "policy digests")
     cm = edit(lambda x: x["protocol"].update(mode="cold"))
     check("a cold manifest without a hook is refused", verify(cm, r, now, "boot-1"), "cold_hook")
     check("a cold manifest whose hook is `true` is refused", verify(edit(lambda x: x["protocol"].update(mode="cold", cold_hook="true", cold_hook_sha256="2" * 64)), r, now, "boot-1"), "restart.sh --cold")
@@ -344,6 +378,9 @@ def cmd_selftest(a):
                            ("--cold first, then more arguments", f"'{RESET_DIR / 'restart.sh'}' --cold x"), ("a restart.sh from another directory", "/tmp/restart.sh --cold"),
                            ("another script with the same name copied elsewhere", f"'{pathlib.Path(tempfile.gettempdir()) / 'restart.sh'}' --cold")):
         check(f"{label} is not the cold reset", [] if cold_hook_parts(command) is None else ["accepted"])
+    pm = edit(lambda x: x.update(policy=pol))
+    check("a run without the policy its manifest records is refused", run_bindings(pm, queries_sha256="d" * 64, reference_sha256="e" * 64, system="triplelight", url="http://127.0.0.1:7878/sparql", clear_cache_url="", runs=5, timeout_s=300, seed=0, drain_rows=200000, mode="warm", expect_unsupported=[], policy=None), "case policy")
+    check("a run with a policy its manifest does not record is refused", run_bindings(m, queries_sha256="d" * 64, reference_sha256="e" * 64, system="triplelight", url="http://127.0.0.1:7878/sparql", clear_cache_url="", runs=5, timeout_s=300, seed=0, drain_rows=200000, mode="warm", expect_unsupported=[], policy=pol), "case policy")
     bind = dict(queries_sha256="d" * 64, reference_sha256="e" * 64, system="triplelight", url="http://127.0.0.1:7878/sparql", clear_cache_url="", runs=5, timeout_s=300, seed=0, drain_rows=200000, mode="warm", expect_unsupported=[])
     check("a run that matches its manifest binds", run_bindings(m, **bind))
     for field, other, word in (("queries_sha256", "9" * 64, "query set"), ("reference_sha256", "9" * 64, "reference"), ("system", "virtuoso", "system"), ("url", "http://127.0.0.1:9999/sparql", "endpoint"), ("clear_cache_url", "http://127.0.0.1:1/clear", "cache-clear"), ("runs", 3, "runs"),
@@ -386,6 +423,8 @@ def main():
     w.add_argument("--system-url", action="append", default=[], help="NAME=URL: the endpoint the run queries for that system (bound: a different --url is not scored)")
     w.add_argument("--system-clear-cache", action="append", default=[], help="NAME=URL: the result-cache clear URL used before every request; omit for systems without one (bound the same way)")
     w.add_argument("--cold-hook", default="", help="for --mode cold: the reset command, which must be `bench/eval/restart.sh --cold`; its digest is recorded and checked at run time")
+    w.add_argument("--case-policy", help="a case-policy module inside --policy-bundle; its identity (bundle digest, bound datasets, case-to-query map) is recorded and bound")
+    w.add_argument("--policy-bundle", help="the directory holding the case policy, its imports and sidecars")
     w.add_argument("--mode", choices=["warm", "cold"], default="warm"); w.add_argument("--expect-unsupported", action="append", default=[], help="SYSTEM=case,case: cases that system's configuration is known not to answer (repeat per system)")
     w.add_argument("--no-store", action="store_true", help="the systems in this run keep no persisted store (otherwise every store needs --store)")
     w.add_argument("--trust-supplied-digests", action="store_true", help="accept a dataset digest given as NAME:PATH:SHA256 without hashing the data; the manifest records it as unverified, so the run is not scored")

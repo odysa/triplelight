@@ -16,7 +16,7 @@ last byte) and must match its byte count (docs/large-answer-timing-v1).
 One system at a time. Every response is hashed while it streams (rows are not kept), so a 7.9M-row answer needs bounded
 memory. Each query and system gets a record with a class: pass, value-compatible, mismatch, incomplete, timeout, error.
 Standard library only."""
-import argparse, codecs, datetime, hashlib, http.client, json, os, platform, random, re, statistics, subprocess, sys, time
+import argparse, codecs, datetime, hashlib, pathlib, http.client, json, os, platform, random, re, statistics, subprocess, sys, time
 import urllib.parse, urllib.request
 
 XSD = "http://www.w3.org/2001/XMLSchema#"
@@ -27,6 +27,8 @@ CAP = 1048576   # Virtuoso's HTTP endpoint stops here whatever ResultSetMaxRows 
 CHUNK = 1 << 20
 
 
+KEEP_ROWS = False      # set per request by one_run(keep=True): the case policy needs the typed answer
+KEEP_CAP = 100_000     # answers with more rows are never handed to a policy (they stay hash-compared)
 MIN_READ = 64 << 10      # stream_fold gathers chunks up to this size per read; the self-test sets 0 to exercise awkward chunk boundaries
 class Timeout(Exception): pass
 class Truncated(Exception): pass
@@ -50,7 +52,11 @@ class Fold:
     def __init__(self, vars_):
         self.vars, self.n, self.bag, self.bag_norm = vars_, 0, 0, 0
         self.seq = hashlib.sha1()
+        self.rows = [] if KEEP_ROWS else None      # the full typed answer, only for a case policy and only up to KEEP_CAP rows
     def add(self, row):
+        if self.rows is not None:
+            if len(self.rows) < KEEP_CAP: self.rows.append(row)
+            else: self.rows = None; self.too_big = True
         a = "\t".join(term(row.get(v), False) for v in self.vars)
         b = "\t".join(term(row.get(v), True) for v in self.vars)
         self.n += 1
@@ -58,7 +64,9 @@ class Fold:
         self.bag_norm = (self.bag_norm + int.from_bytes(hashlib.blake2b(b.encode(), digest_size=16).digest(), "big")) % (1 << 128)
         self.seq.update(a.encode() + b"\n")
     def result(self):
-        return {"rows": self.n, "bag": f"{self.bag:032x}", "bag_norm": f"{self.bag_norm:032x}", "seq": self.seq.hexdigest()}
+        r = {"rows": self.n, "bag": f"{self.bag:032x}", "bag_norm": f"{self.bag_norm:032x}", "seq": self.seq.hexdigest()}
+        if self.rows is not None: r["answer"] = {"vars": self.vars, "rows": self.rows}
+        return r
 
 
 def fold_boolean(value):
@@ -168,8 +176,16 @@ def drain(chunks, deadline):
     return {"bytes": count.stable(), "tail_ok": count.ends_closed()}
 
 
-def one_run(url, query, timeout, drain_only=False):
-    """One timed execution to the last byte. Returns (record dict, seconds). With `drain_only` the body is only counted (see `drain`)."""
+def one_run(url, query, timeout, drain_only=False, keep=False):
+    """One timed execution to the last byte. Returns (record dict, seconds). With `drain_only` the body is only counted (see `drain`);
+    with `keep` the record also carries the full typed answer (up to KEEP_CAP rows) for a case policy."""
+    global KEEP_ROWS
+    KEEP_ROWS = keep
+    try: return _one_run(url, query, timeout, drain_only)
+    finally: KEEP_ROWS = False
+
+
+def _one_run(url, query, timeout, drain_only=False):
     t0 = time.monotonic(); deadline = t0 + timeout
     try:
         status, chunks, conn = post(url, query, timeout)
@@ -308,6 +324,50 @@ def eligibility(records, expected_unsupported=()):
     return (not reasons), reasons
 
 
+POLICY_CLASSES = ("pass", "value-compatible", "mismatch")
+
+
+def load_policy(a, scored_manifest=None, reference=None):
+    """The case policy named by --case-policy (a Python module inside --policy-bundle), started with the run's verified context, or None.
+
+    The module provides NAME and DATASET_SHA256 (the dataset digest or digests it is bound to), `start(context)` (may raise to refuse the run)
+    and `check(case_id, observed_answer, reference_record) -> (class, reason)` with class "pass", "value-compatible" or "mismatch" and a
+    non-empty reason string. The driver calls it when the exact comparison failed (including an ordered answer whose rows match but whose
+    sequence does not) and, as a typed-projection check, for every empty answer, whose folded digest does not carry the projected variables. `observed_answer` is {"vars": [...], "rows": [{var: SPARQL-JSON binding}]}. `context` is {"case_queries": {case id: sha256 of the
+    query file}, "dataset_sha256": [...], "bundle_dir": path, "bundle_sha256": ..., "run_id": ..., "reference_records": {case id: the
+    driver's folded reference}, "fold": the Fold class (to verify folded references against frozen typed answers)}: the actual inputs of this run, for the
+    policy to verify against its frozen registry. A policy bound to other dataset digests than this run's refuses the run here."""
+    if not a.case_policy: return None
+    if not a.policy_bundle: sys.exit("--case-policy needs --policy-bundle (the directory holding the policy module, its imports and sidecars)")
+    import importlib.util, manifest as mf
+    bundle = pathlib.Path(a.policy_bundle).resolve(); file = pathlib.Path(a.case_policy).resolve()
+    if bundle not in file.parents: sys.exit("the case policy module must be inside its bundle: the bundle digest covers it and everything it imports")
+    spec = importlib.util.spec_from_file_location("case_policy", file); module = importlib.util.module_from_spec(spec)
+    sys.path.insert(0, str(bundle))
+    try: spec.loader.exec_module(module)
+    finally: sys.path.remove(str(bundle))
+    for attr in ("NAME", "DATASET_SHA256", "start", "check"):
+        if not hasattr(module, attr): sys.exit(f"the case policy lacks {attr}")
+    case_queries = {name: hashlib.sha256(q.encode()).hexdigest() for name, q in load_queries(a.queries)}
+    datasets = [d["sha256"] for d in (scored_manifest or {}).get("datasets", [])]
+    bound = module.DATASET_SHA256 if isinstance(module.DATASET_SHA256, (list, tuple)) else [module.DATASET_SHA256]
+    if scored_manifest is not None and (not datasets or set(bound) != set(datasets)):
+        sys.exit(f"the case policy {module.NAME!r} is bound to dataset digests {sorted(bound)}, not this run's {sorted(datasets)}: it refuses to score")
+    context = {"case_queries": case_queries, "dataset_sha256": datasets, "bundle_dir": str(bundle), "bundle_sha256": mf.sha256_tree(bundle),
+               "run_id": (scored_manifest or {}).get("run_id"), "reference_records": reference or {}, "fold": Fold}
+    try: module.start(context)
+    except Exception as e: sys.exit(f"the case policy {module.NAME!r} refuses to start: {e}")
+    return module, context
+
+
+def policy_identity(a):
+    """The identity a manifest must record for this run's case policy, or None when the run has none."""
+    if not a.case_policy: return None
+    import manifest as mf
+    if not a.policy_bundle: sys.exit("--case-policy needs --policy-bundle")
+    return mf.policy_identity(a.case_policy, a.policy_bundle, {name: hashlib.sha256(q.encode()).hexdigest() for name, q in load_queries(a.queries)})
+
+
 def check_manifest(a):
     """(scored, info): a run is scored only with a complete manifest and a fresh passing machine receipt (manifest.py). `--scored`
     refuses to start without them; otherwise the results file says `scored: false` and the report will not compare it."""
@@ -328,24 +388,45 @@ def check_manifest(a):
         # the manifest must describe this run: its query set, reference, engine, protocol, mode and expected-unsupported policy
         problems = mf.run_bindings(m, queries_sha256=mf.sha256_tree(a.queries), reference_sha256=mf.sha256_file(a.reference), system=a.system, url=a.url, clear_cache_url=a.clear_cache_url, runs=a.runs,
                                    timeout_s=a.timeout, seed=a.seed, drain_rows=a.drain_rows, mode=a.mode, cold_hook=a.cold_hook or "",
-                                   expect_unsupported=[x for x in re.split(r"[,\s]+", (a.expect_unsupported or "").strip()) if x])
+                                   expect_unsupported=[x for x in re.split(r"[,\s]+", (a.expect_unsupported or "").strip()) if x], policy=policy_identity(a))
     if not problems and a.mode == "cold" and a.plan_runner != m.get("run_id"):
         problems = [f"--plan-runner {a.plan_runner!r} is not this manifest's run ({m.get('run_id')!r})"]
     if problems:
         if a.scored: sys.exit("run is not scorable:\n  " + "\n  ".join(problems))
         return False, {"manifest": str(a.manifest), "scored_reason": problems}
+    a._manifest = m
     return True, {"manifest": str(a.manifest), "manifest_sha256": mf.sha256_file(a.manifest), "run_id": m.get("run_id")}
+
+
+def judge(policy, name, rec, r):
+    """(class, reason) from the case policy for one checked answer, or None when the policy is not consulted: only when the exact comparison
+    failed (rows, bag and, for an ordered query, sequence) or the answer is empty (the typed-projection check). A verdict the policy may not
+    give is a mismatch with that reason: `pass` only for an exact empty answer, never for an inexact one."""
+    if policy is None or rec.get("status") != "ok": return None
+    exact = rec["rows"] == r["rows"] and rec["bag"] == r["bag"] and (not r.get("ordered") or rec["seq"] == r["seq"])
+    if exact and rec["rows"] > 0: return None
+    answer = rec.get("answer")
+    if answer is None: return ("mismatch", f"the answer was not kept for the case policy (more than {KEEP_CAP} rows)")
+    try: cls, reason = policy[0].check(name, answer, r)
+    except Exception as e: return ("mismatch", f"the case policy failed on this answer: {type(e).__name__}: {e}"[:300])
+    if cls not in POLICY_CLASSES or not isinstance(reason, str) or not reason: return ("mismatch", "the case policy returned an invalid verdict")
+    if cls == "pass" and not exact: return ("mismatch", "the case policy returned pass for an inexact answer")
+    if cls == "value-compatible" and exact: return ("mismatch", "the case policy relaxed an exact answer")
+    return (cls, reason)
 
 
 def cmd_run(a):
     scored, scored_info = check_manifest(a)
     ref = json.load(open(a.reference))["queries"]
+    policy = load_policy(a, getattr(a, "_manifest", None) if scored else None, ref)
+    if a.case_policy and not scored: scored_info = {**scored_info, "scored_reason": scored_info.get("scored_reason", "a case policy needs a manifest that binds it")}
     records = {}
     rng = random.Random(a.seed)
     queries = load_queries(a.queries)
     for name, q in queries:
         if name not in ref: sys.exit(f"{name} has no reference answer")
         r = ref[name]; entry = {"mode": a.mode, "runs": []}
+        checked = None          # (record, (class, reason)) when the case policy judged the checked answer
         if a.mode == "cold":
             if not a.cold_hook: sys.exit("--mode cold needs --cold-hook")
             # one reset before every requested repeat: N cold samples per query. A reset that fails ends the query: it is not-run.
@@ -354,8 +435,11 @@ def cmd_run(a):
         elif not clear_engine_cache(a, entry):
             runs = 0
         else:
-            check, _ = one_run(a.url, q, a.timeout)       # warm-up; for a large answer it is also the one answer check
-            entry["warmup_class"] = classify(check, r)       # kept even when every timed run then passes: a warm-up timeout is a finding
+            check, _ = one_run(a.url, q, a.timeout, keep=policy is not None)       # warm-up; for a large answer it is also the one answer check
+            v = judge(policy, name, check, r)
+            checked = (check, v) if v else None
+            if checked: entry["warmup_class"] = checked[1][0]
+            else: entry["warmup_class"] = classify(check, r)       # kept even when every timed run then passes: a warm-up timeout is a finding
             restart_after_timeout(a, check, entry)
             runs = a.runs
             # Large answers: the timed runs only drain the body (time to the last byte); the rows were hashed once above, and a
@@ -374,13 +458,22 @@ def cmd_run(a):
             if not clear_engine_cache(a, entry): break
             t0 = time.time()   # wall-clock bounds of the run, so S1's cgroup samples can be joined per query (s1-report.py)
             drained = entry.get("timed_by") == "drain"
-            rec, secs = one_run(a.url, q, a.timeout, drain_only=drained)
+            first_cold = a.mode == "cold" and not entry["runs"]
+            rec, secs = one_run(a.url, q, a.timeout, drain_only=drained, keep=policy is not None and first_cold)
             t1 = time.time()
             restart_after_timeout(a, rec, entry)
+            if first_cold and policy is not None:
+                v = judge(policy, name, rec, r)
+                if v: checked = (rec, v)
             if drained and rec["status"] == "ok":
                 cls = entry["check_class"] if rec["bytes"] == drain_bytes and rec["tail_ok"] else "unstable"
                 rec = {**rec, **{k: check[k] for k in ("rows", "bag", "seq") if k in check}}
-            else: cls = classify(rec, r)
+            else:
+                cls = classify(rec, r)
+                if checked and rec.get("status") == "ok" and all(rec.get(k) == checked[0].get(k) for k in ("rows", "bag", "seq")):
+                    cls = checked[1][0]                      # the same answer the case policy judged: it keeps the policy's class
+                    entry.setdefault("policy_reasons", [])
+                    if checked[1][1] not in entry["policy_reasons"]: entry["policy_reasons"].append(checked[1][1])
             entry["runs"].append({"class": cls, "seconds": round(secs, 4), "t0": round(t0, 3), "t1": round(t1, 3), **{k: rec[k] for k in ("rows", "bag", "seq", "bytes") if k in rec},
                                   **({"detail": rec["detail"]} if "detail" in rec else {})})
         if entry.get("timed_by") == "drain" and not entry["runs"] and entry["check_class"] not in GOOD_CLASSES:
@@ -392,13 +485,14 @@ def cmd_run(a):
         ok_runs = [x["seconds"] for x in entry["runs"] if x["class"] in GOOD_CLASSES and x["seconds"] is not None]
         if ok_runs: entry["median_s"] = round(statistics.median(ok_runs), 4)
         if r.get("ordered") and entry["class"] in ("pass", "value-compatible"):
-            entry["order_matches_reference"] = all(x.get("seq") == r["seq"] for x in entry["runs"])
+            accepted = checked[0].get("seq") if checked and checked[1][0] in ("pass", "value-compatible") else None      # a sequence the case policy accepted, with its reason
+            entry["order_matches_reference"] = all(x.get("seq") == r["seq"] or (accepted is not None and x.get("seq") == accepted) for x in entry["runs"])
         records[name] = entry
         print(f"{name:<8} {entry['class']:<17} {entry.get('median_s', '-')}", flush=True)
     summary = {}
     for e in records.values(): summary[e["class"]] = summary.get(e["class"], 0) + 1
     eligible, reasons = eligibility(records, set(re.split(r"[,\s]+", a.expect_unsupported.strip())) if a.expect_unsupported else ())
-    json.dump({"system": a.system, "scored": scored and eligible, "eligible": eligible, "ineligible_reasons": reasons, **scored_info, "url": a.url, "mode": a.mode, "timeout_s": a.timeout, "runs_per_query": a.runs, "seed": a.seed,
+    json.dump({"system": a.system, "scored": scored and eligible, **({"case_policy": policy_identity(a)} if a.case_policy else {}), "eligible": eligible, "ineligible_reasons": reasons, **scored_info, "url": a.url, "mode": a.mode, "timeout_s": a.timeout, "runs_per_query": a.runs, "seed": a.seed,
                "git": git_sha(), "versions": versions(), "python": platform.python_version(), "platform": platform.platform(),
                "summary": summary, "queries": records}, open(a.out, "w"), indent=1)
     print("summary:", summary)
@@ -431,6 +525,7 @@ def _body_qtime(n, ms):
     return text[:-1] + f',"meta":{{"query-time-ms":{ms},"result-size-total":{n},"warnings":[]}}}}'
 
 
+BYCASE = {}      # case name -> the SPARQL JSON the fake server answers it with (the case-policy tests)
 _ONE_ROW_9 = '{"head":{"vars":["n"]},"results":{"bindings":[{"n":{"type":"literal","value":"9","datatype":"' + XSD + 'integer"}}]}}'
 
 
@@ -444,7 +539,7 @@ def serve_fake(behaviors):
             code = 500 if (self.path == "/clear-once" and n > 1) or self.path not in ("/clear-once", "/clear-ok") else 200
             self.send_response(code); self.end_headers(); self.wfile.write(b"x")
         def do_POST(self):
-            self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            self.body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
             kind, n = behaviors[self.path]
             if kind == "err": self.send_response(500); self.end_headers(); self.wfile.write(b"boom"); return
             if kind == "unsup": self.send_response(500); self.end_headers(); self.wfile.write(b'{"exception": "The query contains a predicate variable, but only the PSO and POS permutations were loaded. Rerun the server without the option."}'); return
@@ -455,6 +550,9 @@ def serve_fake(behaviors):
                 rows = ["1", "2"] if kind == "asc" else ["2", "1"]
                 self.wfile.write(('{"head":{"vars":["n"]},"results":{"bindings":[%s]}}' % ",".join('{"n":{"type":"literal","value":"%s","datatype":"%sinteger"}}' % (v, XSD) for v in rows)).encode()); return
             if kind == "raw": self.wfile.write(n.encode()); return
+            if kind == "bycase":      # the answer for the case named in the query text (`# case: NAME`), from BYCASE
+                query = urllib.parse.parse_qs(self.body.decode())["query"][0]
+                self.wfile.write(BYCASE[re.search(r"# case: (\S+)", query).group(1)].encode()); return
             if kind == "slowfirst":      # the first request outlasts the client's timeout, the rest answer at once
                 self.server.firsts = getattr(self.server, "firsts", 0) + 1
                 if self.server.firsts == 1: time.sleep(3)
@@ -475,6 +573,46 @@ def serve_fake(behaviors):
     srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv, srv.server_address[1]
+
+
+STUB_POLICY = """
+NAME = "stub-bi"
+DATASET_SHA256 = ["%s"]
+TYPED_REFERENCE = {
+    "q_interval": {"vars": ["v"], "rows": [[("float", "1.0")]]},
+    "q_lexical": {"vars": ["v"], "rows": [[("float", "1.0")]]},
+    "q_cutoff": {"vars": ["p"], "rows": [[("uri", "a")], [("uri", "b")], [("uri", "c")]], "ties": ["c", "d"], "open_slots": 1},
+    "q_order_ok": {"vars": ["v"], "rows": [[("integer", "1")], [("integer", "2")]], "ties": ["1", "2"]},
+    "q_order_bad": {"vars": ["v"], "rows": [[("integer", "1")], [("integer", "2")]]},
+    "q_empty": {"vars": ["x"], "rows": []},
+}
+started = {}
+
+def start(context):
+    if sorted(context["case_queries"]) != sorted(TYPED_REFERENCE): raise RuntimeError("the run's cases are not the policy's frozen cases")
+    started["context"] = context
+
+def _cells(answer):
+    return [[(b["type"] if b["type"] != "literal" else b["datatype"].rsplit("#", 1)[-1], b["value"]) for b in (row.get(v) for v in answer["vars"])] for row in answer["rows"]]
+
+def check(case_id, observed, reference_record):
+    ref, rows = TYPED_REFERENCE[case_id], _cells(observed)
+    if observed["vars"] != ref["vars"]: return "mismatch", "projected variables %%s differ from the frozen %%s" %% (observed["vars"], ref["vars"])
+    if case_id == "q_empty": return ("pass", "the typed projection matches") if not rows else ("mismatch", "rows where none are registered")
+    if case_id == "q_interval":
+        (kind, value), = rows[0] if len(rows) == 1 else [(None, "x")]
+        if kind != "float": return "mismatch", "not an xsd:float"
+        return ("value-compatible", "within the registered interval") if abs(float(value) - 1.0) <= 1e-3 else ("mismatch", "outside the registered interval")
+    if case_id == "q_lexical":
+        return ("value-compatible", "lexical form differs at an unchanged binary32 value") if len(rows) == 1 and rows[0][0][0] == "float" and float(rows[0][0][1]) == 1.0 else ("mismatch", "value changed")
+    if case_id == "q_cutoff":
+        kept = [r[0][1] for r in rows]
+        if len(kept) != 3 or len(set(kept)) != 3 or kept[:2] != ["a", "b"] or kept[2] not in ref["ties"]: return "mismatch", "not a valid cutoff selection"
+        return "value-compatible", "valid selection among the products tied at the cutoff"
+    if case_id == "q_order_ok": return ("value-compatible", "order differs only inside a registered tie") if sorted(rows) == sorted(ref["rows"]) else ("mismatch", "rows differ")
+    if case_id == "q_order_bad": return "mismatch", "the registered order is strict"
+    return "mismatch", "unknown case"
+"""
 
 
 def gate_tests(port, behaviors_raw):
@@ -617,6 +755,73 @@ def gate_tests(port, behaviors_raw):
         check("an unscored run with a stale receipt runs, but scored: false with the reason", rc == 0 and res and res["scored"] is False and res["eligible"] is True and bool(res.get("scored_reason")))
         rc, res, _ = run("nomanifest", "count9")
         check("a run without a manifest: scored: false", rc == 0 and res and res["scored"] is False)
+        # ---- the case policy: answers the exact comparison rejects, judged by a registered policy; every relaxation carries its reason
+        import manifest as mf2
+        float_ = lambda v: {"type": "literal", "value": v, "datatype": XSD + "float"}
+        int_ = lambda v: {"type": "literal", "value": v, "datatype": XSD + "integer"}
+        uri_ = lambda v: {"type": "uri", "value": v}
+        doc_ = lambda vars_, rows: json.dumps({"head": {"vars": vars_}, "results": {"bindings": [dict(zip(vars_, r)) for r in rows]}})
+        ref_answers = {"q_interval": doc_(["v"], [[float_("1.0")]]), "q_lexical": doc_(["v"], [[float_("1.0")]]), "q_cutoff": doc_(["p"], [[uri_("a")], [uri_("b")], [uri_("c")]]),
+                       "q_order_ok": doc_(["v"], [[int_("1")], [int_("2")]]), "q_order_bad": doc_(["v"], [[int_("1")], [int_("2")]]), "q_empty": doc_(["x"], [])}
+        pdir = tmp / "pq"; pdir.mkdir()
+        for c in ref_answers: (pdir / f"{c}.rq").write_text(f"# case: {c}\nSELECT * WHERE {{}}" + (" ORDER BY ?v" if c.startswith("q_order") else ""))
+        (tmp / "refpolicy.json").write_text(json.dumps({"queries": {c: {**fold_of([d]), "ordered": c.startswith("q_order")} for c, d in ref_answers.items()}}))
+        bundle = tmp / "bundle"; bundle.mkdir(); dataset_digest = "c" * 64
+        (bundle / "policy.py").write_text(STUB_POLICY % dataset_digest)
+        def served(**over):
+            BYCASE.clear(); BYCASE.update(ref_answers); BYCASE.update(over)
+        def prun(name, *extra, qd=None, ref="refpolicy.json", policy=True):
+            out = tmp / f"{name}.json"
+            cmd = [sys.executable, __file__, "run", "--system", name, "--url", f"http://127.0.0.1:{port}/bycase", "--queries", str(qd or pdir), "--reference", str(tmp / ref),
+                   "--out", str(out), "--runs", "2", "--timeout", "30", *(["--case-policy", str(bundle / "policy.py"), "--policy-bundle", str(bundle)] if policy else []), *extra]
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            return r.returncode, (json.load(open(out)) if out.exists() else None), r.stderr
+        behaviors_raw["/bycase"] = ("bycase", 0)
+        served(q_interval=doc_(["v"], [[float_("1.0004")]]), q_lexical=doc_(["v"], [[float_("1")]]), q_cutoff=doc_(["p"], [[uri_("a")], [uri_("b")], [uri_("d")]]),
+               q_order_ok=doc_(["v"], [[int_("2")], [int_("1")]]), q_order_bad=doc_(["v"], [[int_("2")], [int_("1")]]), q_empty=doc_(["y"], []))
+        rc, res, err = prun("policy1", "--lenient")
+        q = res["queries"] if res else {}
+        check("policy: a value inside the registered interval is value-compatible, with the policy's reason", q.get("q_interval", {}).get("class") == "value-compatible" and q["q_interval"].get("policy_reasons") == ["within the registered interval"])
+        check("policy: a lexical-only difference is value-compatible, with its reason", q.get("q_lexical", {}).get("class") == "value-compatible" and "lexical" in q["q_lexical"]["policy_reasons"][0])
+        check("policy: a valid cutoff selection among tied products is value-compatible", q.get("q_cutoff", {}).get("class") == "value-compatible" and "tied" in q["q_cutoff"]["policy_reasons"][0])
+        check("policy: an ordered answer with the right rows in a registered tie order is value-compatible and its sequence is accepted", q.get("q_order_ok", {}).get("class") == "value-compatible" and q["q_order_ok"].get("order_matches_reference") is True)
+        check("policy: an ordered answer reordered where the order is strict is a mismatch, ineligible", q.get("q_order_bad", {}).get("class") == "mismatch" and "median_s" not in q["q_order_bad"])
+        check("policy: an empty answer with a different projected variable is a mismatch even though the folded digests are equal", q.get("q_empty", {}).get("class") == "mismatch" and fold_of([ref_answers["q_empty"]])["bag"] == fold_of([doc_(["y"], [])])["bag"])
+        check("policy: the results carry the policy's identity", res and res.get("case_policy", {}).get("name") == "stub-bi" and len(res["case_policy"]["bundle_sha256"]) == 64)
+        check("policy: without --lenient the run with mismatches exits 3", prun("policy1b")[0] == 3)
+        served(q_interval=doc_(["v"], [[float_("1.5")]]), q_lexical=doc_(["v"], [[float_("1.5")]]), q_cutoff=doc_(["p"], [[uri_("a")], [uri_("b")], [uri_("z")]]), q_empty=doc_(["x"], []))
+        rc, res, _ = prun("policy2", "--lenient"); q = res["queries"]
+        check("policy: out-of-interval, a changed value and an invalid cutoff selection are mismatches; a matching empty answer passes",
+              all(q[c]["class"] == "mismatch" for c in ("q_interval", "q_lexical", "q_cutoff")) and q["q_empty"]["class"] == "pass")
+        served(q_interval=doc_(["v"], [[float_("1.0")]]), q_lexical=doc_(["v"], [[float_("1.0")]]), q_cutoff=ref_answers["q_cutoff"], q_order_ok=ref_answers["q_order_ok"], q_order_bad=ref_answers["q_order_bad"])
+        rc, res, _ = prun("policy3")
+        check("policy: exact answers stay pass and the policy is not consulted (only the empty answer is, and it passes): eligible, exit 0", rc == 0 and res and res["eligible"] and all(e["class"] == "pass" for e in res["queries"].values()) and not any(e.get("policy_reasons") for e in res["queries"].values() if e["class"] != "pass"))
+        # scored runs bind the policy: the manifest records its identity, the bundle digest covers every file, and a policy bound to other data refuses
+        qmap = {n: hashlib.sha256(qq.encode()).hexdigest() for n, qq in load_queries(pdir)}
+        pm_rec = mf2.good_receipt(datetime.datetime.now(datetime.timezone.utc), mf2.boot_id()); (mdir / "machine-check.json").write_text(json.dumps(pm_rec))
+        pm = mf2.good_manifest(pm_rec); pm["machine"]["receipt_sha256"] = mf2.sha256_file(mdir / "machine-check.json")
+        pm["queries_sha256"] = mf2.sha256_tree(pdir); pm["reference_sha256"] = mf2.sha256_file(tmp / "refpolicy.json"); pm["protocol"].update(runs=2, timeout_s=30, seed=0, drain_rows=200000)
+        pm["systems"] = [{"name": "pscored", "version": "t", "config_sha256": "1" * 64, "url": f"http://127.0.0.1:{port}/bycase", "clear_cache_url": ""}]
+        pm["datasets"][0]["sha256"] = dataset_digest
+        pm["policy"] = mf2.policy_identity(bundle / "policy.py", bundle, qmap)
+        (mdir / "manifest.json").write_text(json.dumps(pm))
+        manifest_args = ("--manifest", str(mdir / "manifest.json"), "--scored")
+        rc, res, err = prun("pscored", *manifest_args)
+        check("policy, scored: a run whose manifest records the policy is scored (exact answers)", rc == 0 and res and res["scored"] is True and res["case_policy"]["bundle_sha256"] == pm["policy"]["bundle_sha256"])
+        rc, res, err = prun("pscored-nopolicy", *manifest_args, policy=False)
+        check("policy, scored: a run without the policy that the manifest records is refused", rc != 0 and res is None and "case policy" in err)
+        pm2 = json.loads(json.dumps(pm)); pm2["policy"] = None; del pm2["policy"]; (mdir / "manifest.json").write_text(json.dumps(pm2))
+        rc, res, err = prun("pscored-unrecorded", *manifest_args)
+        check("policy, scored: a policy the manifest does not record is refused", rc != 0 and res is None and "case policy" in err)
+        (mdir / "manifest.json").write_text(json.dumps(pm))
+        (bundle / "sidecar.json").write_text("{}")
+        rc, res, err = prun("pscored-sidecar", *manifest_args)
+        check("policy, scored: a file added to the bundle after the manifest changes the bundle digest and is refused", rc != 0 and res is None and "case policy" in err)
+        (bundle / "sidecar.json").unlink()
+        pm3 = json.loads(json.dumps(pm)); pm3["datasets"][0]["sha256"] = "d" * 64; pm3["policy"]["dataset_sha256"] = ["d" * 64]; (mdir / "manifest.json").write_text(json.dumps(pm3))
+        rc, res, err = prun("pscored-otherdata", *manifest_args)
+        check("policy, scored: a policy bound to different dataset digests than the run's refuses to score", rc != 0 and res is None and ("bound to dataset digests" in err or "case policy" in err))
+        (mdir / "manifest.json").write_text(json.dumps(pm))
         # a timeout is ineligible
         rc, res, _ = run("slow", "slow", "--timeout", "1")
         check("a timeout: ineligible, exit 3", rc == 3 and res and res["queries"]["q1"]["class"] == "timeout")
@@ -697,6 +902,8 @@ def main():
     x.add_argument("--restart-hook", help="command that restarts the server; run after every timed-out query (warm mode)")
     x.add_argument("--runs", type=int, default=5); x.add_argument("--timeout", type=float, default=300); x.add_argument("--seed", type=int, default=0)
     x.add_argument("--manifest", help="run manifest (manifest.py write); a run without a complete one, or whose machine receipt is stale, failed or from another boot, is not scored")
+    x.add_argument("--case-policy", help="a Python module inside --policy-bundle that judges answers the exact comparison rejects (a registered, weaker comparison); see load_policy")
+    x.add_argument("--policy-bundle", help="the directory holding the case policy, everything it imports and its sidecars; the manifest binds the digest of the whole directory")
     x.add_argument("--plan-runner", help="set by bench/eval/plan.py: the manifest's run id; the only way a cold run can be scored")
     x.add_argument("--scored", action="store_true", help="refuse to run unless the manifest and the machine receipt qualify")
     x.add_argument("--expect-unsupported", help="comma-separated case IDs this system configuration is known not to answer (QLever's two-order index and a predicate variable); only these may come back `unsupported` in an eligible run")

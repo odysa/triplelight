@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One evaluation session: for each system, one at a time, load if needed, serve, run the driver warm (and cold), stop.
 #   session.sh <dataset> <queries-dir> <out-dir> <system>...        (the first system builds the reference answers if absent)
-# Environment: MANIFEST (a manifest.py write result; the driver records `scored`), SCORED=1 (refuse to run without a qualifying manifest and machine receipt),
+# Environment: CASE_POLICY and POLICY_BUNDLE (a case-policy module and the directory holding it; bound by the manifest), MANIFEST (a manifest.py write result; the driver records `scored`), SCORED=1 (refuse to run without a qualifying manifest and machine receipt),
 #              EXPECT_UNSUPPORTED_<SYSTEM> (case IDs that system's configuration is known not to answer), TOOLS (default bench/tools), BUDGET ("--mem GB --cpus N"), COLD=1 to also run cold mode, RUNS (timed runs, 5),
 #              TIMEOUT (seconds per query, 300). The machine lock is the caller's business (this script does not take it).
 set -eu
@@ -12,7 +12,7 @@ mkdir -p "$OUT"; . "$HERE/lib.sh"
 BUDGET=${BUDGET:-}; RUNS=${RUNS:-5}; TIMEOUT=${TIMEOUT:-300}
 # MODE=warm|cold runs exactly that mode (the plan runner sets it); unset keeps the old behavior: warm, and cold as well when COLD=1.
 MODE=${MODE:-}; case $MODE in ""|warm|cold) ;; *) echo "MODE must be warm or cold" >&2; exit 2;; esac
-DRIVER_ARGS=(${SEED:+--seed "$SEED"} ${DRAIN_ROWS:+--drain-rows "$DRAIN_ROWS"})
+DRIVER_ARGS=(${SEED:+--seed "$SEED"} ${DRAIN_ROWS:+--drain-rows "$DRAIN_ROWS"} ${CASE_POLICY:+--case-policy "$CASE_POLICY" --policy-bundle "$POLICY_BUNDLE"})
 trap 'for s in "$@"; do stop_system "$s" || true; done' EXIT
 # A failing system must not stop the others: every failure is recorded in $OUT/failures.txt and the session goes on.
 OK=()

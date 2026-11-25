@@ -17,6 +17,7 @@ Plan keys (all required unless marked optional):
   expect_unsupported (optional) {system: [case ids]},
   arms (optional) [{label, binary}]  and  sequence (optional, e.g. "ABBA"): TRIPLELIGHT_BIN per arm; default one arm "A", sequence "A".
   The run directory also gets report.md and report.json (report.py): scored results only, refused ones listed with their reasons.
+  case_policy (optional) {file, bundle}: a case-policy module and the directory that holds it (driver.py load_policy); the manifest binds the bundle's digest.
   fail_on_regression (optional, default false): with exactly two arms, abba.py --scored compares them per system and a counted slowdown fails the plan.
 """
 import argparse, hashlib, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time
@@ -24,7 +25,7 @@ import argparse, hashlib, json, os, pathlib, re, shutil, subprocess, sys, tempfi
 HERE = pathlib.Path(__file__).resolve().parent
 LOCK = pathlib.Path(os.environ.get("PLAN_LOCK", "/tmp/rdf-bench.lock"))      # PLAN_LOCK is for the self-test only: it must never touch the real queue
 KEYS = {"name", "dataset", "queries", "reference", "datasets", "stores", "no_store", "systems", "mode", "runs", "timeout", "seed", "drain_rows",
-        "expect_unsupported", "arms", "sequence", "fail_on_regression"}
+        "expect_unsupported", "arms", "sequence", "fail_on_regression", "case_policy"}
 REQUIRED = {"name", "dataset", "queries", "reference", "datasets", "systems", "mode", "runs", "timeout", "seed", "drain_rows"}
 
 
@@ -72,6 +73,11 @@ def load_plan(path):
         if not pathlib.Path(d["path"]).is_file(): raise PlanError(f"dataset {d['name']}: {d['path']} is not a file")
     for s in plan["systems"]:
         if not pathlib.Path(s["config"]).is_file(): raise PlanError(f"system {s['name']}: config {s['config']} is not a file")
+    cp = plan.get("case_policy")
+    if cp is not None:
+        if not isinstance(cp, dict) or set(cp) != {"file", "bundle"}: raise PlanError('case_policy is {"file": ..., "bundle": ...}')
+        if not pathlib.Path(cp["file"]).is_file() or not pathlib.Path(cp["bundle"]).is_dir(): raise PlanError("case_policy: file or bundle does not exist")
+        if pathlib.Path(cp["bundle"]).resolve() not in pathlib.Path(cp["file"]).resolve().parents: raise PlanError("case_policy: the module must be inside its bundle")
     for a in plan["arms"]:
         if a.get("binary") and not pathlib.Path(a["binary"]).is_file(): raise PlanError(f"arm {a['label']}: binary {a['binary']} is not a file")
     return plan
@@ -111,6 +117,7 @@ def manifest_command(plan, arm, receipt, out, reference=None, plan_file=None):
         if clear: cmd += ["--system-clear-cache", f"{s['name']}={clear}"]
     for system, cases in sorted(plan.get("expect_unsupported", {}).items()):
         if cases: cmd += ["--expect-unsupported", f"{system}={','.join(cases)}"]
+    if plan.get("case_policy"): cmd += ["--case-policy", plan["case_policy"]["file"], "--policy-bundle", plan["case_policy"]["bundle"]]
     if plan["mode"] == "cold": cmd += ["--cold-hook", f"'{HERE / 'restart.sh'}' --cold"]
     if os.environ.get("PLAN_TEST_ALLOW_UNQUALIFIED") == "1": cmd += ["--allow-unqualified"]
     return cmd
@@ -120,6 +127,7 @@ def session_env(plan, arm, manifest):
     env = dict(os.environ, MANIFEST=str(manifest), SCORED="1", MODE=plan["mode"], RUNS=str(plan["runs"]), TIMEOUT=str(plan["timeout"]),
                SEED=str(plan["seed"]), DRAIN_ROWS=str(plan["drain_rows"]), PLAN_RUNNER=json.loads(manifest.read_text())["run_id"] if manifest.exists() else "")
     if arm.get("binary"): env["TRIPLELIGHT_BIN"] = arm["binary"]
+    if plan.get("case_policy"): env["CASE_POLICY"], env["POLICY_BUNDLE"] = plan["case_policy"]["file"], plan["case_policy"]["bundle"]
     for system, cases in plan.get("expect_unsupported", {}).items():
         env["EXPECT_UNSUPPORTED_" + re.sub(r"-", "_", system).upper()] = ",".join(cases)
     return env
