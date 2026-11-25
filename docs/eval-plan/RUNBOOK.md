@@ -79,6 +79,24 @@ if a pair of byte counts differs or a request isn't HTTP 200. B8 (#205) times la
 hashed warm-up, so a system whose response carries timing or other variable metadata would be `unstable` on every
 large query. Record the counts in the session log.
 
+### Machine qualification and the AWS session (task #130 phase 6)
+
+- **`bench/eval/machine-check.sh <out-dir>`** runs before every scored session. It takes about 3 minutes and only
+  reads. It checks bare metal, governor `performance` on every core, turbo off, no swap, exclusive use (one login, no
+  containers, no process above 2% of a core over 60 s, steal time), spin-loop stability on the first and last core
+  (spread and cross-core gap at most 3%), and direct-I/O read throughput on the data disk. The receipt
+  `machine-check.json` carries `passed`, `timestamp` and `boot_id`. The driver rejects a receipt that failed, is
+  `--quick`, is older than 24 h, or comes from an earlier boot. On the laptop the macOS checks apply (idle, thermal,
+  power, spin-loop stability), and `--ignore <regex>` waives named desktop processes, which are still recorded.
+- **`bench/aws/lifecycle.sh`** runs on the operator's machine with the operator's own AWS profile. It launches,
+  provisions from a git bundle of the commit under test, runs the machine check (a failure stops the session), runs
+  the plan, copies `/data/receipts` and `/data/bench-out` back, and terminates the instance on every exit path. It
+  refuses to launch when `--price-per-hour × --max-hours` exceeds `--max-usd`, or when the instance is on shared
+  tenancy: use a `.metal` type, or pass `--dedicated`. The instance also schedules its own shutdown at `--max-hours`,
+  with shutdown behaviour `terminate`. No credential is copied to the instance. The security group must already allow
+  SSH from the operator's address only, and the subnet must assign public IPs. `--dry-run` prints every AWS and SSH
+  step without making it.
+
 ## 2. Datasets (about 6–8 h of wall time on day one, before any timed run)
 
 ```sh

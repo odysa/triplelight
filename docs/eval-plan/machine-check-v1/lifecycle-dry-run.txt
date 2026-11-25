@@ -1,0 +1,24 @@
+2026-11-25T11:10:56Z session 314f50da-8d8d-4c98-9c6f-8ec9a879e676: cost bound $25.68 over 6h, tenancy default
+DRY aws --region us-east-1 ec2 describe-security-groups --group-ids sg-EXAMPLE
+2026-11-25T11:10:56Z dry run: security group not checked
+DRY aws --region us-east-1 ec2 describe-instance-types --instance-types c7i.metal-24xl --query InstanceTypes[0].ProcessorInfo.SupportedArchitectures[0] --output text
+DRY aws --region us-east-1 ssm get-parameter --name /aws/service/debian/release/13/latest/amd64 --query Parameter.Value --output text
+DRY aws --region us-east-1 ec2 run-instances --client-token 314f50da-8d8d-4c98-9c6f-8ec9a879e676 --image-id ami-dryrun --instance-type c7i.metal-24xl --key-name KEY --security-group-ids sg-EXAMPLE --subnet-id subnet-EXAMPLE --placement Tenancy=default --instance-initiated-shutdown-behavior terminate --user-data #!/bin/sh
+shutdown -h +360 'benchmark max-hours reached' --block-device-mappings DeviceName=/dev/xvda,Ebs={VolumeSize=100,VolumeType=gp3,DeleteOnTermination=true} --tag-specifications ResourceType=instance,Tags=[{Key=Name,Value=triplelight-bench},{Key=session,Value=314f50da-8d8d-4c98-9c6f-8ec9a879e676},{Key=commit,Value=481523f7c3d690bf4a89ecd017b616631b9bbd20}] --query Instances[0].InstanceId --output text
+2026-11-25T11:10:56Z launched i-dryrun (c7i.metal-24xl, ami-dryrun)
+DRY aws --region us-east-1 ec2 wait instance-running --instance-ids i-dryrun
+DRY aws --region us-east-1 ec2 describe-instances --instance-ids i-dryrun --query Reservations[0].Instances[0].PublicIpAddress --output text
+2026-11-25T11:10:56Z host dry.invalid up
+DRY git bundle create <scratch>/lc6/triplelight-481523f7c3d690bf4a89ecd017b616631b9bbd20.bundle 481523f7c3d690bf4a89ecd017b616631b9bbd20
+DRY scp <scratch>/lc6/triplelight-481523f7c3d690bf4a89ecd017b616631b9bbd20.bundle -> <host>:/tmp/triplelight.bundle
+DRY scp <repo>/bench/eval/provision.sh -> <host>:/tmp/provision.sh
+DRY ssh admin@<host> sudo bash /tmp/provision.sh  --repo /tmp/triplelight.bundle --commit 481523f7c3d690bf4a89ecd017b616631b9bbd20
+DRY ssh admin@<host> sudo bash -c .\ /data/eval.env\ \&\&\ \$SRC/bench/eval/datasets.sh\ lubm1000\ 
+DRY ssh admin@<host> sudo bash -c .\ /data/eval.env\ \&\&\ \$SRC/bench/eval/machine-check.sh\ /data/receipts/machine-check\ 
+2026-11-25T11:10:56Z dry run: the remote steps above were printed, not executed; the run would be: echo plan
+DRY ssh admin@<host> sudo bash -c .\ /data/eval.env\ \&\&\ mkdir\ -p\ /data/bench-out\ \&\&\ cd\ \"\$SRC\"\ \&\&\ BENCH_OUT=/data/bench-out\ timeout\ 340m\ bash\ -c\ echo\\\ plan
+DRY copy <host>:/data/receipts -> <scratch>/lc6
+DRY copy <host>:/data/bench-out -> <scratch>/lc6
+2026-11-25T11:10:56Z terminating i-dryrun (exit 0)
+DRY aws --region us-east-1 ec2 terminate-instances --instance-ids i-dryrun
+2026-11-25T11:10:56Z done, exit 0
