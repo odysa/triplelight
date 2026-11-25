@@ -17,6 +17,9 @@ Plan keys (all required unless marked optional):
   expect_unsupported (optional) {system: [case ids]},
   arms (optional) [{label, binary}]  and  sequence (optional, e.g. "ABBA"): TRIPLELIGHT_BIN per arm; default one arm "A", sequence "A".
   The run directory also gets report.md and report.json (report.py): scored results only, refused ones listed with their reasons.
+  budget (optional) {mem_gb, cpus}: the memory and CPU budget every engine gets (session.sh BUDGET "--mem N --cpus M"). The runner sets it explicitly for every
+  session (an inherited BUDGET is never used), the manifest records it, and the driver refuses a scored run whose environment differs. Without it the
+  session runs with no budget, which a native TripleLight on Linux refuses to start under (it needs an explicit --mem).
   case_policy (optional) {file, bundle}: a case-policy module and the directory that holds it (driver.py load_policy); the manifest binds the bundle's digest.
   fail_on_regression (optional, default false): with exactly two arms, abba.py --scored compares them per system and a counted slowdown fails the plan.
 """
@@ -25,7 +28,7 @@ import argparse, hashlib, json, os, pathlib, re, shutil, subprocess, sys, tempfi
 HERE = pathlib.Path(__file__).resolve().parent
 LOCK = pathlib.Path(os.environ.get("PLAN_LOCK", "/tmp/rdf-bench.lock"))      # PLAN_LOCK is for the self-test only: it must never touch the real queue
 KEYS = {"name", "dataset", "queries", "reference", "datasets", "stores", "no_store", "systems", "mode", "runs", "timeout", "seed", "drain_rows",
-        "expect_unsupported", "arms", "sequence", "fail_on_regression", "case_policy"}
+        "expect_unsupported", "arms", "sequence", "fail_on_regression", "case_policy", "budget"}
 REQUIRED = {"name", "dataset", "queries", "reference", "datasets", "systems", "mode", "runs", "timeout", "seed", "drain_rows"}
 
 
@@ -73,6 +76,9 @@ def load_plan(path):
         if not pathlib.Path(d["path"]).is_file(): raise PlanError(f"dataset {d['name']}: {d['path']} is not a file")
     for s in plan["systems"]:
         if not pathlib.Path(s["config"]).is_file(): raise PlanError(f"system {s['name']}: config {s['config']} is not a file")
+    bg = plan.get("budget")
+    if bg is not None and (not isinstance(bg, dict) or set(bg) != {"mem_gb", "cpus"} or not all(isinstance(bg[k], int) and not isinstance(bg[k], bool) and bg[k] > 0 for k in bg)):
+        raise PlanError('budget is {"mem_gb": N, "cpus": M} with positive integers')
     cp = plan.get("case_policy")
     if cp is not None:
         if not isinstance(cp, dict) or set(cp) != {"file", "bundle"}: raise PlanError('case_policy is {"file": ..., "bundle": ...}')
@@ -117,6 +123,7 @@ def manifest_command(plan, arm, receipt, out, reference=None, plan_file=None):
         if clear: cmd += ["--system-clear-cache", f"{s['name']}={clear}"]
     for system, cases in sorted(plan.get("expect_unsupported", {}).items()):
         if cases: cmd += ["--expect-unsupported", f"{system}={','.join(cases)}"]
+    if plan.get("budget"): cmd += ["--budget-mem", str(plan["budget"]["mem_gb"]), "--budget-cpus", str(plan["budget"]["cpus"])]
     if plan.get("case_policy"): cmd += ["--case-policy", plan["case_policy"]["file"], "--policy-bundle", plan["case_policy"]["bundle"]]
     if plan["mode"] == "cold": cmd += ["--cold-hook", f"'{HERE / 'restart.sh'}' --cold"]
     if os.environ.get("PLAN_TEST_ALLOW_UNQUALIFIED") == "1": cmd += ["--allow-unqualified"]
@@ -126,6 +133,7 @@ def manifest_command(plan, arm, receipt, out, reference=None, plan_file=None):
 def session_env(plan, arm, manifest):
     env = dict(os.environ, MANIFEST=str(manifest), SCORED="1", MODE=plan["mode"], RUNS=str(plan["runs"]), TIMEOUT=str(plan["timeout"]),
                SEED=str(plan["seed"]), DRAIN_ROWS=str(plan["drain_rows"]), PLAN_RUNNER=json.loads(manifest.read_text())["run_id"] if manifest.exists() else "")
+    env["BUDGET"] = f"--mem {plan['budget']['mem_gb']} --cpus {plan['budget']['cpus']}" if plan.get("budget") else ""      # never inherited from the caller
     if arm.get("binary"): env["TRIPLELIGHT_BIN"] = arm["binary"]
     if plan.get("case_policy"): env["CASE_POLICY"], env["POLICY_BUNDLE"] = plan["case_policy"]["file"], plan["case_policy"]["bundle"]
     for system, cases in plan.get("expect_unsupported", {}).items():
@@ -254,6 +262,11 @@ def cmd_selftest(a):
         ab = load_plan(plan_file(arms=[{"label": "A", "binary": str(t / "bin")}, {"label": "B", "binary": str(t / "bin")}], sequence="ABBA"))
         check("an ABBA plan expands to four sessions", len(ab["sequence"]) == 4)
         env = session_env(ab, ab["arms"][1], t / "nomanifest.json")
+        os.environ["BUDGET"] = "--mem 99 --cpus 99"       # a caller's budget must never reach a session
+        check("session env: the plan's budget is explicit, and an inherited BUDGET is never used", session_env(ab, ab["arms"][0], t / "nomanifest.json")["BUDGET"] == "" and session_env(load_plan(plan_file(budget={"mem_gb": 12, "cpus": 8})), ab["arms"][0], t / "nomanifest.json")["BUDGET"] == "--mem 12 --cpus 8")
+        os.environ.pop("BUDGET")
+        refuses("a budget with a zero is refused", "budget is", budget={"mem_gb": 0, "cpus": 8})
+        refuses("half a budget is refused", "budget is", budget={"mem_gb": 8})
         check("session env: SCORED, the arm's binary", env["SCORED"] == "1" and env["TRIPLELIGHT_BIN"] == str(t / "bin"))
         pl = load_plan(plan_file(expect_unsupported={"qlever-two-order": ["q3", "q7"]}))
         check("expected-unsupported is scoped to its own system", session_env(pl, pl["arms"][0], t / "m.json")["EXPECT_UNSUPPORTED_QLEVER_TWO_ORDER"] == "q3,q7")
@@ -329,7 +342,7 @@ def cmd_selftest(a):
         wenv = dict(os.environ, PLAN_LOCK=str(t / "wlock"), MANIFEST_REPO_ROOT=str(repo), TOOLS=str(tools), TRIPLELIGHT_BIN=str(fake))
         for k in ("PLAN_SESSION_SCRIPT", "PLAN_TEST_ALLOW_UNQUALIFIED", "PLAN_SKIP_COMPARE"): wenv.pop(k, None)
         wire = lambda **kw: plan_file(dataset="wire", reference=str(t / "wref.json"), datasets=[{"name": "wire", "path": str(tools / "wire.nt")}],
-                                      stores=[{"name": "wire", "path": str(tools / "triplelight-wire")}], runs=2, drain_rows=200000, seed=5, **kw)
+                                      stores=[{"name": "wire", "path": str(tools / "triplelight-wire")}], runs=2, drain_rows=200000, seed=5, budget={"mem_gb": 2, "cpus": 2}, **kw)
         (tools / "triplelight-wire" / "f").write_text("s")
         runplan = lambda plan, out: subprocess.run([sys.executable, str(ev / "plan.py"), "run", str(plan), "--out", str(out), "--receipt", str(t / "rec.json")], capture_output=True, text=True, env=wenv)
         pf1 = wire(); h1 = hashlib.sha256(pf1.read_bytes()).hexdigest()          # plan.json is rewritten by later calls: hash it now
@@ -340,6 +353,7 @@ def cmd_selftest(a):
         rep = (t / "w1" / "report.md").read_text() if (t / "w1" / "report.md").exists() else ""
         check("real wiring, warm: the run directory gets a report with the scored timing row and no local path", "| q1 |" in rep and str(t) not in rep and (t / "w1" / "report.json").exists())
         check("real wiring, warm: the plan's seed and repeat count reach the driver", data.get("seed") == 5 and data.get("runs_per_query") == 2)
+        check("real wiring, warm: the session ran under the plan's budget (bound by the manifest, recorded in the results), not the caller's", data.get("budget") == {"mem_gb": 2, "cpus": 2} and data.get("scored") is True)
         check("real wiring, warm: the reference staged for the session is the plan's file", (t / "w1" / "session-1-A" / "reference.json").read_bytes() == (t / "wref.json").read_bytes())
         check("real wiring, warm: the endpoint is the private port, not the shared service port", f":{port}/" in data.get("url", "") and ":7979/" not in data.get("url", ""))
         r = runplan(wire(mode="cold"), t / "w2")

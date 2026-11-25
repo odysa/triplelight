@@ -426,6 +426,14 @@ def policy_identity(a):
     return mf.policy_identity(a.case_policy, a.policy_bundle, mf.query_file_digests(a.queries))
 
 
+def budget_from_env():
+    """The memory and CPU budget the session applies to every engine: session.sh passes its BUDGET ("--mem GB --cpus N") in the environment of
+    the driver. {} when none is set, which a manifest binds as well, so a run cannot claim a budget it did not have (or hide one it did)."""
+    text = os.environ.get("BUDGET", "")
+    mem, cpus = re.search(r"--mem\s+(\d+)\b", text), re.search(r"--cpus\s+(\d+)\b", text)
+    return {"mem_gb": int(mem.group(1)), "cpus": int(cpus.group(1))} if mem and cpus else {}
+
+
 def check_manifest(a):
     """(scored, info): a run is scored only with a complete manifest and a fresh passing machine receipt (manifest.py). `--scored`
     refuses to start without them; otherwise the results file says `scored: false` and the report will not compare it."""
@@ -449,7 +457,7 @@ def check_manifest(a):
         # the manifest must describe this run: its query set, reference, engine, protocol, mode and expected-unsupported policy
         problems = mf.run_bindings(m, queries_sha256=mf.sha256_tree(a.queries), reference_sha256=mf.sha256_file(a.reference), system=a.system, url=a.url, clear_cache_url=a.clear_cache_url, runs=a.runs,
                                    timeout_s=a.timeout, seed=a.seed, drain_rows=a.drain_rows, mode=a.mode, cold_hook=a.cold_hook or "",
-                                   expect_unsupported=[x for x in re.split(r"[,\s]+", (a.expect_unsupported or "").strip()) if x], policy=policy_identity(a))
+                                   expect_unsupported=[x for x in re.split(r"[,\s]+", (a.expect_unsupported or "").strip()) if x], policy=policy_identity(a), budget=budget_from_env())
     if not problems and a.mode == "cold" and a.plan_runner != m.get("run_id"):
         problems = [f"--plan-runner {a.plan_runner!r} is not this manifest's run ({m.get('run_id')!r})"]
     if problems:
@@ -560,7 +568,7 @@ def cmd_run(a):
     summary = {}
     for e in records.values(): summary[e["class"]] = summary.get(e["class"], 0) + 1
     eligible, reasons = eligibility(records, set(re.split(r"[,\s]+", a.expect_unsupported.strip())) if a.expect_unsupported else ())
-    json.dump({"system": a.system, "scored": scored and eligible, **({"case_policy": policy_identity(a)} if a.case_policy else {}), "eligible": eligible, "ineligible_reasons": reasons, **scored_info, "url": a.url, "mode": a.mode, "timeout_s": a.timeout, "runs_per_query": a.runs, "seed": a.seed,
+    json.dump({"system": a.system, "scored": scored and eligible, "budget": budget_from_env(), **({"case_policy": policy_identity(a)} if a.case_policy else {}), "eligible": eligible, "ineligible_reasons": reasons, **scored_info, "url": a.url, "mode": a.mode, "timeout_s": a.timeout, "runs_per_query": a.runs, "seed": a.seed,
                "git": git_sha(), "versions": versions(), "python": platform.python_version(), "platform": platform.platform(),
                "summary": summary, "queries": records}, open(a.out, "w"), indent=1)
     print("summary:", summary)
@@ -705,11 +713,11 @@ def gate_tests(port, behaviors_raw):
             doc = '{"head":{"vars":["n"]},"results":{"bindings":[{"n":{"type":"literal","value":"%s","datatype":"%sinteger"}}]}}' % (count, XSD)
             return {"queries": {"q1": {**fold_of([doc]), "ordered": False}}}
         (tmp / "ref9.json").write_text(json.dumps(reference(9)))
-        def run(name, path, *extra, ref="ref9.json", url=None):
+        def run(name, path, *extra, ref="ref9.json", url=None, env=None):
             out = tmp / f"{name}.json"
             cmd = [sys.executable, __file__, "run", "--system", name, "--url", url or f"http://127.0.0.1:{port}/{path}", "--queries", str(qdir),
                    "--reference", str(tmp / ref), "--out", str(out), "--runs", "2", "--timeout", "30", *extra]
-            r = subprocess.run(cmd, capture_output=True, text=True)
+            r = subprocess.run(cmd, capture_output=True, text=True, env={**os.environ, **(env or {})})
             return r.returncode, (json.load(open(out)) if out.exists() else None), r.stderr
         def check(label, good):
             nonlocal ok
@@ -789,7 +797,7 @@ def gate_tests(port, behaviors_raw):
         rec = mf.good_receipt(ndate, mf.boot_id()); good = mf.good_manifest(rec)
         good["queries_sha256"] = mf.sha256_tree(qdir); good["reference_sha256"] = mf.sha256_file(tmp / "ref9.json")
         good["protocol"].update(runs=2, timeout_s=30, seed=0, drain_rows=200000)
-        good["systems"] = [{"name": n, "version": "t", "config_sha256": "1" * 64, "url": f"http://127.0.0.1:{port}/count9", "clear_cache_url": ""} for n in ("scoredok", "scoredstale", "unscored", "swapped")]
+        good["systems"] = [{"name": n, "version": "t", "config_sha256": "1" * 64, "url": f"http://127.0.0.1:{port}/count9", "clear_cache_url": ""} for n in ("scoredok", "scoredstale", "unscored", "swapped", "budget-unrecorded", "budget-recorded", "budget-missing")]
         (mdir / "machine-check.json").write_text(json.dumps(rec)); good["machine"]["receipt_sha256"] = mf.sha256_file(mdir / "machine-check.json")
         (mdir / "manifest.json").write_text(json.dumps(good))
         rc, res, err = run("scoredok", "count9", "--manifest", str(mdir / "manifest.json"), "--scored")
@@ -821,6 +829,15 @@ def gate_tests(port, behaviors_raw):
         check("--scored --mode cold under the plan runner with the recorded reset: accepted, and a failing reset still times nothing", res is not None and res.get("manifest_sha256") and e.get("class") == "not-run" and rc == 3)
         rc, res, err = run("unscored", "count9", "--mode", "cold", "--cold-hook", "true", "--manifest", str(mdir / "manifest.json"))
         check("an unscored cold run with a manifest records why it is not scored", rc == 0 and res and res["scored"] is False and "plan runner" in str(res.get("scored_reason")))
+        (mdir / "manifest.json").write_text(json.dumps(good))
+        # the session's budget is bound: the environment's BUDGET must be what the manifest records
+        rc, res, err = run("budget-unrecorded", "count9", "--manifest", str(mdir / "manifest.json"), "--scored", env={"BUDGET": "--mem 4 --cpus 2"})
+        check("--scored under a budget the manifest does not record: refused", rc != 0 and res is None and "budget" in err)
+        withb = json.loads(json.dumps(good)); withb["protocol"]["budget"] = {"mem_gb": 4, "cpus": 2}; (mdir / "manifest.json").write_text(json.dumps(withb))
+        rc, res, err = run("budget-recorded", "count9", "--manifest", str(mdir / "manifest.json"), "--scored", env={"BUDGET": "--mem 4 --cpus 2"})
+        check("--scored under the budget the manifest records: accepted, and the results carry it", rc == 0 and res and res["scored"] is True and res["budget"] == {"mem_gb": 4, "cpus": 2})
+        rc, res, err = run("budget-missing", "count9", "--manifest", str(mdir / "manifest.json"), "--scored", env={"BUDGET": ""})
+        check("--scored with no budget in the environment against a manifest that records one: refused", rc != 0 and res is None and "budget" in err)
         (mdir / "manifest.json").write_text(json.dumps(good))
         rc, res, err = run("scoredno", "count9", "--scored")
         check("--scored without a manifest: refused, nothing written", rc != 0 and res is None)
