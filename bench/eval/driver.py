@@ -16,7 +16,7 @@ last byte) and must match its byte count (docs/large-answer-timing-v1).
 One system at a time. Every response is hashed while it streams (rows are not kept), so a 7.9M-row answer needs bounded
 memory. Each query and system gets a record with a class: pass, value-compatible, mismatch, incomplete, timeout, error.
 Standard library only."""
-import argparse, codecs, hashlib, http.client, json, os, platform, random, re, statistics, subprocess, sys, time
+import argparse, codecs, datetime, hashlib, http.client, json, os, platform, random, re, statistics, subprocess, sys, time
 import urllib.parse, urllib.request
 
 XSD = "http://www.w3.org/2001/XMLSchema#"
@@ -308,7 +308,33 @@ def eligibility(records, expected_unsupported=()):
     return (not reasons), reasons
 
 
+def check_manifest(a):
+    """(scored, info): a run is scored only with a complete manifest and a fresh passing machine receipt (manifest.py). `--scored`
+    refuses to start without them; otherwise the results file says `scored: false` and the report will not compare it."""
+    if not a.manifest:
+        if a.scored: sys.exit("--scored needs --manifest (see bench/eval/manifest.py write)")
+        return False, {"scored_reason": "no manifest"}
+    import manifest as mf
+    if a.mode == "cold":
+        # Only the plan runner (phase 3) can prove the reset ran between the queries: it invokes bench/eval/restart.sh --cold itself, with
+        # exact arguments and no user-supplied hook. A standalone driver run is never a scored cold run.
+        if a.scored: sys.exit("cold scoring needs the plan runner: --scored --mode cold is refused")
+        return False, {"manifest": str(a.manifest), "scored_reason": "cold runs are scored only by the plan runner"}
+    try: m, problems = mf.load_checked(a.manifest)
+    except Exception as e: m, problems = {}, [f"cannot read the manifest: {e}"]
+    if not problems:
+        # the manifest must describe this run: its query set, reference, engine, protocol, mode and expected-unsupported policy
+        problems = mf.run_bindings(m, queries_sha256=mf.sha256_tree(a.queries), reference_sha256=mf.sha256_file(a.reference), system=a.system, url=a.url, clear_cache_url=a.clear_cache_url, runs=a.runs,
+                                   timeout_s=a.timeout, seed=a.seed, drain_rows=a.drain_rows, mode=a.mode, cold_hook=a.cold_hook or "",
+                                   expect_unsupported=[x for x in re.split(r"[,\s]+", (a.expect_unsupported or "").strip()) if x])
+    if problems:
+        if a.scored: sys.exit("run is not scorable:\n  " + "\n  ".join(problems))
+        return False, {"manifest": str(a.manifest), "scored_reason": problems}
+    return True, {"manifest": str(a.manifest), "manifest_sha256": mf.sha256_file(a.manifest), "run_id": m.get("run_id")}
+
+
 def cmd_run(a):
+    scored, scored_info = check_manifest(a)
     ref = json.load(open(a.reference))["queries"]
     records = {}
     rng = random.Random(a.seed)
@@ -364,7 +390,7 @@ def cmd_run(a):
     summary = {}
     for e in records.values(): summary[e["class"]] = summary.get(e["class"], 0) + 1
     eligible, reasons = eligibility(records, set(re.split(r"[,\s]+", a.expect_unsupported.strip())) if a.expect_unsupported else ())
-    json.dump({"system": a.system, "eligible": eligible, "ineligible_reasons": reasons, "url": a.url, "mode": a.mode, "timeout_s": a.timeout, "runs_per_query": a.runs, "seed": a.seed,
+    json.dump({"system": a.system, "scored": scored and eligible, "eligible": eligible, "ineligible_reasons": reasons, **scored_info, "url": a.url, "mode": a.mode, "timeout_s": a.timeout, "runs_per_query": a.runs, "seed": a.seed,
                "git": git_sha(), "versions": versions(), "python": platform.python_version(), "platform": platform.platform(),
                "summary": summary, "queries": records}, open(a.out, "w"), indent=1)
     print("summary:", summary)
@@ -528,6 +554,50 @@ def gate_tests(port, behaviors_raw):
         check("an ordered query in the reference order: eligible, exit 0", rc == 0 and res and res["eligible"] and res["queries"]["q1"].get("order_matches_reference") is True)
         rc, res, _ = run("orderbad", "desc", ref="refordered.json")
         check("an ordered query in a different order: ineligible, exit 3", rc == 3 and res and res["eligible"] is False and res["queries"]["q1"].get("order_matches_reference") is False)
+        # scored runs: a manifest and a fresh passing machine receipt, or the run does not start
+        import manifest as mf
+        ndate = datetime.datetime.now(datetime.timezone.utc)
+        mdir = tmp / "m"; mdir.mkdir()
+        rec = mf.good_receipt(ndate, mf.boot_id()); good = mf.good_manifest(rec)
+        good["queries_sha256"] = mf.sha256_tree(qdir); good["reference_sha256"] = mf.sha256_file(tmp / "ref9.json")
+        good["protocol"].update(runs=2, timeout_s=30, seed=0, drain_rows=200000)
+        good["systems"] = [{"name": n, "version": "t", "config_sha256": "1" * 64, "url": f"http://127.0.0.1:{port}/count9", "clear_cache_url": ""} for n in ("scoredok", "scoredstale", "unscored", "swapped")]
+        (mdir / "machine-check.json").write_text(json.dumps(rec)); good["machine"]["receipt_sha256"] = mf.sha256_file(mdir / "machine-check.json")
+        (mdir / "manifest.json").write_text(json.dumps(good))
+        rc, res, err = run("scoredok", "count9", "--manifest", str(mdir / "manifest.json"), "--scored")
+        check("--scored with a complete manifest and fresh receipt: runs, scored: true", rc == 0 and res and res["scored"] is True and res.get("run_id") == "t")
+        # the manifest of one run must not be accepted for another: a different reference, an unlisted engine, a different repeat count
+        rc, res, err = run("swapped", "count9", "--manifest", str(mdir / "manifest.json"), "--scored", "--runs", "3")
+        check("--scored with a different repeat count than the manifest: refused", rc != 0 and res is None and "runs differs" in err)
+        rc, res, err = run("stranger", "count9", "--manifest", str(mdir / "manifest.json"), "--scored")
+        check("--scored for an engine the manifest does not list: refused", rc != 0 and res is None and "not listed" in err)
+        (tmp / "ref8.json").write_text(json.dumps(reference(8)))
+        rc, res, err = run("swapped", "count9", "--manifest", str(mdir / "manifest.json"), "--scored", ref="ref8.json")
+        check("--scored against a different reference: refused", rc != 0 and res is None and "reference digest" in err)
+        rc, res, err = run("swapped", "count9", "--manifest", str(mdir / "manifest.json"), "--scored", url=f"http://127.0.0.1:{port}/count8")
+        check("--scored against a different endpoint than the manifest's: refused", rc != 0 and res is None and "endpoint url" in err)
+        rc, res, err = run("unscored", "count9", "--manifest", str(mdir / "manifest.json"), "--scored", "--clear-cache-url", f"http://127.0.0.1:{port}/clear-ok")
+        check("--scored with a cache-clear url the manifest does not record: refused", rc != 0 and res is None and "clear url" in err)
+        # cold scoring: only this repository's reset procedure, bound by command and by the digest of restart.sh and lib.sh
+        hook = f"'{pathlib.Path(__file__).resolve().parent / 'restart.sh'}' --cold"
+        cold = json.loads(json.dumps(good)); cold["protocol"].update(mode="cold", cold_hook=hook, cold_hook_sha256=mf.cold_hook_digest(hook))
+        (mdir / "manifest.json").write_text(json.dumps(cold))
+        for label, h in (("`true`", "true"), ("the recorded reset itself", hook)):
+            rc, res, err = run("unscored", "count9", "--mode", "cold", "--cold-hook", h, "--manifest", str(mdir / "manifest.json"), "--scored")
+            check(f"--scored --mode cold with {label}: refused, the plan runner owns cold scoring", rc != 0 and res is None and "plan runner" in err)
+        rc, res, err = run("unscored", "count9", "--mode", "cold", "--cold-hook", "true", "--manifest", str(mdir / "manifest.json"))
+        check("an unscored cold run with a manifest records why it is not scored", rc == 0 and res and res["scored"] is False and "plan runner" in str(res.get("scored_reason")))
+        (mdir / "manifest.json").write_text(json.dumps(good))
+        rc, res, err = run("scoredno", "count9", "--scored")
+        check("--scored without a manifest: refused, nothing written", rc != 0 and res is None)
+        old = mf.good_receipt(ndate - datetime.timedelta(hours=30), mf.boot_id()); (mdir / "machine-check.json").write_text(json.dumps(old))
+        good["machine"]["receipt_sha256"] = mf.sha256_file(mdir / "machine-check.json"); (mdir / "manifest.json").write_text(json.dumps(good))
+        rc, res, err = run("scoredstale", "count9", "--manifest", str(mdir / "manifest.json"), "--scored")
+        check("--scored with a 30-hour-old receipt: refused, nothing written", rc != 0 and res is None and "old" in err)
+        rc, res, _ = run("unscored", "count9", "--manifest", str(mdir / "manifest.json"))
+        check("an unscored run with a stale receipt runs, but scored: false with the reason", rc == 0 and res and res["scored"] is False and res["eligible"] is True and bool(res.get("scored_reason")))
+        rc, res, _ = run("nomanifest", "count9")
+        check("a run without a manifest: scored: false", rc == 0 and res and res["scored"] is False)
         # a timeout is ineligible
         rc, res, _ = run("slow", "slow", "--timeout", "1")
         check("a timeout: ineligible, exit 3", rc == 3 and res and res["queries"]["q1"]["class"] == "timeout")
@@ -607,6 +677,8 @@ def main():
     x.add_argument("--clear-cache-url", help="GET before every request (warm-up and timed) to empty the server's result cache")
     x.add_argument("--restart-hook", help="command that restarts the server; run after every timed-out query (warm mode)")
     x.add_argument("--runs", type=int, default=5); x.add_argument("--timeout", type=float, default=300); x.add_argument("--seed", type=int, default=0)
+    x.add_argument("--manifest", help="run manifest (manifest.py write); a run without a complete one, or whose machine receipt is stale, failed or from another boot, is not scored")
+    x.add_argument("--scored", action="store_true", help="refuse to run unless the manifest and the machine receipt qualify")
     x.add_argument("--expect-unsupported", help="comma-separated case IDs this system configuration is known not to answer (QLever's two-order index and a predicate variable); only these may come back `unsupported` in an eligible run")
     x.add_argument("--lenient", action="store_true", help="exploration only: exit 0 even when the run is ineligible for a comparison. By default a wrong answer, a timeout, a failed hook or a failed cache clear exits with status 3; the results file (with `eligible: false` and the reasons) is written either way")
     x.set_defaults(f=cmd_run)
