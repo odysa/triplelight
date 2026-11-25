@@ -41,6 +41,7 @@ impl std::error::Error for DatabaseError {}
 /// invalid JSON, so it can't be taken for a complete answer (the same guarantee as the HTTP server's streamed body). Only a `Query` error that
 /// arrives before the first byte (a syntax error, a limit, a cancellation) leaves the writer untouched.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum QueryWriteError {
     /// The query failed or was refused, or a dictionary read failed while the answer was being written.
     Query(DatabaseError),
@@ -52,7 +53,11 @@ impl std::fmt::Display for QueryWriteError {
         match self { Self::Query(e) => e.fmt(f), Self::Output(e) => write!(f, "writing the answer failed: {e}") }
     }
 }
-impl std::error::Error for QueryWriteError {}
+impl std::error::Error for QueryWriteError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self { Self::Query(e) => Some(e), Self::Output(e) => Some(e) }
+    }
+}
 impl From<DatabaseError> for QueryWriteError { fn from(e: DatabaseError) -> Self { Self::Query(e) } }
 impl From<std::io::Error> for DatabaseError {
     fn from(e: std::io::Error) -> Self { if e.kind() == std::io::ErrorKind::WouldBlock { Self::Locked } else { Self::Storage(e) } }
