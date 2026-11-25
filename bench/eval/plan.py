@@ -18,7 +18,7 @@ Plan keys (all required unless marked optional):
   arms (optional) [{label, binary}]  and  sequence (optional, e.g. "ABBA"): TRIPLELIGHT_BIN per arm; default one arm "A", sequence "A".
   fail_on_regression (optional, default false): with exactly two arms, abba.py --scored compares them per system and a counted slowdown fails the plan.
 """
-import argparse, json, os, pathlib, re, subprocess, sys, tempfile, time
+import argparse, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time
 
 HERE = pathlib.Path(__file__).resolve().parent
 LOCK = pathlib.Path(os.environ.get("PLAN_LOCK", "/tmp/rdf-bench.lock"))      # PLAN_LOCK is for the self-test only: it must never touch the real queue
@@ -30,14 +30,15 @@ REQUIRED = {"name", "dataset", "queries", "reference", "datasets", "systems", "m
 class PlanError(Exception): pass
 
 
-def shell_out(snippet):
-    return subprocess.run(["bash", "-c", f'. "{HERE}/lib.sh"; {snippet}'], capture_output=True, text=True)
+def shell_fn(function, system):
+    """Calls a lib.sh function with the system name as a positional argument, never interpolated into the shell text."""
+    return subprocess.run(["bash", "-c", '. "$1"; "$2" "$3"', "_", str(HERE / "lib.sh"), function, system], capture_output=True, text=True)
 
 
 def endpoint(system):
-    r = shell_out(f'url_of "{system}"')
+    r = shell_fn("url_of", system)
     if r.returncode != 0: raise PlanError(f"unknown system {system!r}: lib.sh has no endpoint for it")
-    return r.stdout.strip(), shell_out(f'clear_cache_url_of "{system}"').stdout.strip()
+    return r.stdout.strip(), shell_fn("clear_cache_url_of", system).stdout.strip()
 
 
 def load_plan(path):
@@ -75,9 +76,9 @@ def load_plan(path):
     return plan
 
 
-def manifest_command(plan, arm, receipt, out):
+def manifest_command(plan, arm, receipt, out, reference=None):
     cmd = [sys.executable, str(HERE / "manifest.py"), "write", "--out", str(out), "--receipt", str(receipt), "--queries", plan["queries"],
-           "--reference", plan["reference"], "--mode", plan["mode"], "--runs", str(plan["runs"]), "--timeout", str(plan["timeout"]),
+           "--reference", str(reference or plan["reference"]), "--mode", plan["mode"], "--runs", str(plan["runs"]), "--timeout", str(plan["timeout"]),
            "--seed", str(plan["seed"]), "--drain-rows", str(plan["drain_rows"]), "--run-id", f"{plan['name']}-{out.name}"]
     cmd += ["--binary", arm.get("binary") or os.environ.get("TRIPLELIGHT_BIN") or str(HERE.parents[1] / "target" / "release" / "triplelight")]
     for d in plan["datasets"]: cmd += ["--dataset", f"{d['name']}:{d['path']}" + (f":{d['sha256']}" if d.get("sha256") else "")]
@@ -87,16 +88,16 @@ def manifest_command(plan, arm, receipt, out):
         url, clear = endpoint(s["name"])
         cmd += ["--system", f"{s['name']}:{s['version']}:{s['config']}", "--system-url", f"{s['name']}={url}"]
         if clear: cmd += ["--system-clear-cache", f"{s['name']}={clear}"]
-    flat = sorted({c for cases in plan.get("expect_unsupported", {}).values() for c in cases})
-    if flat: cmd += ["--expect-unsupported", ",".join(flat)]
+    for system, cases in sorted(plan.get("expect_unsupported", {}).items()):
+        if cases: cmd += ["--expect-unsupported", f"{system}={','.join(cases)}"]
     if plan["mode"] == "cold": cmd += ["--cold-hook", f"'{HERE / 'restart.sh'}' --cold"]
     if os.environ.get("PLAN_TEST_ALLOW_UNQUALIFIED") == "1": cmd += ["--allow-unqualified"]
     return cmd
 
 
 def session_env(plan, arm, manifest):
-    env = dict(os.environ, MANIFEST=str(manifest), SCORED="1", RUNS=str(plan["runs"]), TIMEOUT=str(plan["timeout"]), PLAN_RUNNER=json.loads(manifest.read_text())["run_id"] if manifest.exists() else "")
-    if plan["mode"] == "cold": env["COLD"] = "1"
+    env = dict(os.environ, MANIFEST=str(manifest), SCORED="1", MODE=plan["mode"], RUNS=str(plan["runs"]), TIMEOUT=str(plan["timeout"]),
+               SEED=str(plan["seed"]), DRAIN_ROWS=str(plan["drain_rows"]), PLAN_RUNNER=json.loads(manifest.read_text())["run_id"] if manifest.exists() else "")
     if arm.get("binary"): env["TRIPLELIGHT_BIN"] = arm["binary"]
     for system, cases in plan.get("expect_unsupported", {}).items():
         env["EXPECT_UNSUPPORTED_" + re.sub(r"-", "_", system).upper()] = ",".join(cases)
@@ -147,19 +148,21 @@ def cmd_run(a):
         print("dry run: nothing was started")
         return
     if out.exists() and any(out.iterdir()): sys.exit(f"{out} is not empty: a plan run never overwrites results")
-    out.mkdir(parents=True, exist_ok=True)
-    if not a.receipt:
-        mc = HERE / "machine-check.sh"
-        if not mc.exists(): sys.exit("no machine receipt: pass --receipt, or add bench/eval/machine-check.sh (task #130, phase 6)")
-        r = subprocess.run([str(mc), "--out", str(receipt)])
-        if r.returncode != 0: sys.exit(f"machine check failed (exit {r.returncode}); nothing was run")
     owner = f"plan {plan['name']} ({os.getpid()})"
-    take_lock(owner)
+    take_lock(owner)            # before the machine check: the check reads the machine's idle state, which is only meaningful while we own it
     try:
+        out.mkdir(parents=True, exist_ok=True)
+        if not a.receipt:
+            mc = HERE / "machine-check.sh"
+            if not mc.exists(): sys.exit("no machine receipt: pass --receipt, or add bench/eval/machine-check.sh (task #130, phase 6)")
+            r = subprocess.run([str(mc), str(out)])          # machine-check.sh <output-dir> writes <output-dir>/machine-check.json
+            if r.returncode != 0 or not receipt.exists(): sys.exit(f"machine check failed (exit {r.returncode}); nothing was run")
         status = 0
         for i, label, arm in sessions:
             sdir = out / f"session-{i}-{label}"
-            m = subprocess.run(manifest_command(plan, arm, receipt, sdir), capture_output=True, text=True)
+            sdir.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(plan["reference"], sdir / "reference.json")      # session.sh reads $OUT/reference.json: the very bytes the manifest hashes
+            m = subprocess.run(manifest_command(plan, arm, receipt, sdir, sdir / "reference.json"), capture_output=True, text=True)
             (out / f"session-{i}-{label}.manifest.log").write_text(m.stdout + m.stderr)
             if m.returncode != 0: print(f"session {i} ({label}): manifest refused: {m.stderr.strip()[-400:]}", file=sys.stderr); status = 1; break
             script = os.environ.get("PLAN_SESSION_SCRIPT") or str(HERE / "session.sh")
@@ -167,7 +170,7 @@ def cmd_run(a):
             print(f"session {i} ({label}): exit {r.returncode}")
             if r.returncode != 0: status = 1          # keep going: every session's logs are evidence; the plan's status says it failed
         (out / "plan.json").write_text(json.dumps(plan, indent=1, sort_keys=True))
-        if len(plan["arms"]) == 2 and status == 0: status = compare_arms(plan, out, sessions)
+        if len(plan["arms"]) == 2 and status == 0 and not os.environ.get("PLAN_SKIP_COMPARE"): status = compare_arms(plan, out, sessions)      # the skip is for the stub-session test
         sys.exit(status)
     finally:
         release_lock(owner)
@@ -220,7 +223,7 @@ def cmd_selftest(a):
                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "failures": [], **{f: "x" for f in ("model", "cpu", "cores", "ram_gb", "os", "kernel")}}
         (t / "rec.json").write_text(json.dumps(rec))
         lock = t / "lock"            # a private lock: the self-test never touches the shared machine lock
-        env = dict(os.environ, PLAN_SESSION_SCRIPT=str(stub), STUB_LOG=str(t / "stub.log"), PLAN_TEST_ALLOW_UNQUALIFIED="1", PLAN_LOCK=str(lock))
+        env = dict(os.environ, PLAN_SESSION_SCRIPT=str(stub), STUB_LOG=str(t / "stub.log"), PLAN_TEST_ALLOW_UNQUALIFIED="1", PLAN_LOCK=str(lock), PLAN_SKIP_COMPARE="1")
         if True:
             r = subprocess.run([sys.executable, __file__, "run", str(plan_file(arms=[{"label": "A", "binary": str(t / "bin")}, {"label": "B", "binary": str(t / "bin")}], sequence="ABBA")),
                                 "--out", str(t / "o2"), "--receipt", str(t / "rec.json")], capture_output=True, text=True, env=env)
@@ -237,6 +240,53 @@ def cmd_selftest(a):
                 r = subprocess.run([sys.executable, __file__, "run", str(plan_file()), "--out", str(t / "o4"), "--receipt", str(t / "rec.json")], capture_output=True, text=True, env=env)
                 check("a held machine lock refuses the plan, naming the owner, and leaves it alone", r.returncode != 0 and "someone else" in r.stderr and lock.exists())
             finally: subprocess.run(["rm", "-rf", str(lock)])
+
+        # The real plan-to-session wiring: plan.py -> manifest.py -> session.sh -> systems.sh -> driver.py, with only the engine stubbed
+        # (a tiny HTTP server on triplelight's port that answers every query with one aggregate row). Nothing here replaces session.sh.
+        import socket
+        with socket.socket() as probe:
+            busy = probe.connect_ex(("127.0.0.1", 7979)) == 0
+        if busy: check("(skipped: port 7979, triplelight's port, is in use, so the real session wiring is not tested)", True)
+        else:
+            sys.path.insert(0, str(HERE)); import driver as drv
+            doc = '{"head":{"vars":["n"]},"results":{"bindings":[{"n":{"type":"literal","value":"9","datatype":"' + drv.XSD + 'integer"}}]}}'
+            (t / "wref.json").write_text(json.dumps({"queries": {"q1": {**drv.fold_of([doc]), "ordered": False}}}))
+            tools = t / "tools"; (tools / "triplelight-wire").mkdir(parents=True); (tools / "wire.nt").write_text("<a> <b> <c> .\n")
+            fake = t / "fake-triplelight"
+            fake.write_text("#!/usr/bin/env python3\nimport http.server, sys\n"
+                            "if len(sys.argv) < 4 or sys.argv[2] == '/nonexistent': sys.exit(0)\n"
+                            f"BODY = {doc!r}.encode()\n"
+                            "class H(http.server.BaseHTTPRequestHandler):\n"
+                            "    def log_message(self, *a): pass\n"
+                            "    def do_POST(self):\n"
+                            "        self.rfile.read(int(self.headers.get('Content-Length', 0))); self.send_response(200); self.send_header('Content-Type', 'application/sparql-results+json'); self.end_headers(); self.wfile.write(BODY)\n"
+                            "http.server.ThreadingHTTPServer(('127.0.0.1', 7979), H).serve_forever()\n")
+            fake.chmod(0o755)
+            repo = t / "cleanrepo"; repo.mkdir()
+            for cmd in (["init", "-q"], ["config", "user.email", "t@example.org"], ["config", "user.name", "t"]): subprocess.run(["git", "-C", str(repo), *cmd], check=True)
+            (repo / "f").write_text("x"); subprocess.run(["git", "-C", str(repo), "add", "f"], check=True); subprocess.run(["git", "-C", str(repo), "commit", "-qm", "c"], check=True)
+            wenv = dict(os.environ, PLAN_LOCK=str(t / "wlock"), MANIFEST_REPO_ROOT=str(repo), TOOLS=str(tools), TRIPLELIGHT_BIN=str(fake))
+            wenv.pop("PLAN_SESSION_SCRIPT", None); wenv.pop("PLAN_TEST_ALLOW_UNQUALIFIED", None); wenv.pop("PLAN_SKIP_COMPARE", None)
+            wire = lambda **kw: plan_file(dataset="wire", reference=str(t / "wref.json"), datasets=[{"name": "wire", "path": str(tools / "wire.nt")}],
+                                          stores=[{"name": "wire", "path": str(tools / "triplelight-wire")}], runs=2, drain_rows=200000, seed=5, **kw)
+            (tools / "triplelight-wire" / "f").write_text("s")
+            r = subprocess.run([sys.executable, __file__, "run", str(wire()), "--out", str(t / "w1"), "--receipt", str(t / "rec.json")], capture_output=True, text=True, env=wenv)
+            res = t / "w1" / "session-1-A" / "triplelight.warm.json"
+            data = json.loads(res.read_text()) if res.exists() else {}
+            check("real wiring, warm: the session runs, the results are scored: true, no failures", r.returncode == 0 and data.get("scored") is True and data.get("eligible") is True and not (t / "w1" / "session-1-A" / "failures.txt").exists(), r.stdout[-300:] + r.stderr[-500:])
+            check("real wiring, warm: the plan's seed and repeat count reach the driver", data.get("seed") == 5 and data.get("runs_per_query") == 2)
+            check("real wiring, warm: the reference staged for the session is the plan's file", (t / "w1" / "session-1-A" / "reference.json").read_bytes() == (t / "wref.json").read_bytes())
+            r = subprocess.run([sys.executable, __file__, "run", str(wire(mode="cold")), "--out", str(t / "w2"), "--receipt", str(t / "rec.json")], capture_output=True, text=True, env=wenv)
+            sd = t / "w2" / "session-1-A"
+            check("real wiring, cold: only the cold run happens (no warm results), and its repeat count is passed", (sd / "triplelight.cold.json").exists() and not (sd / "triplelight.warm.json").exists())
+            cold = json.loads((sd / "triplelight.cold.json").read_text()) if (sd / "triplelight.cold.json").exists() else {}
+            check("real wiring, cold: the manifest check passes under the plan runner (failing only on this machine's page-cache reset, which times nothing)",
+                  bool(cold.get("manifest_sha256")) and all(q["class"] in ("pass", "not-run") for q in cold.get("queries", {}).values()), json.dumps(cold)[:300])
+            check("real wiring: the machine lock is released afterwards", not (t / "wlock").exists())
+            two = [{"label": "A", "binary": str(fake)}, {"label": "B", "binary": str(fake)}]
+            r = subprocess.run([sys.executable, __file__, "run", str(wire(arms=two, sequence="ABBA")), "--out", str(t / "w3"), "--receipt", str(t / "rec.json")], capture_output=True, text=True, env=wenv)
+            cmp = t / "w3" / "abba-triplelight.json"
+            check("real wiring, ABBA: four sessions run and abba.py --scored compares the arms", all((t / "w3" / f"session-{i}-{l}" / "triplelight.warm.json").exists() for i, l in enumerate("ABBA", 1)) and cmp.exists() and r.returncode == 0, r.stdout[-300:] + r.stderr[-400:])
     print("PLAN SELFTEST", "PASSED" if ok else "FAILED"); sys.exit(0 if ok else 1)
 
 

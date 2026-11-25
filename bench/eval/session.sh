@@ -10,6 +10,9 @@ HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../.." && pwd)
 export TOOLS=${TOOLS:-$ROOT/bench/tools} OUT HERE
 mkdir -p "$OUT"; . "$HERE/lib.sh"
 BUDGET=${BUDGET:-}; RUNS=${RUNS:-5}; TIMEOUT=${TIMEOUT:-300}
+# MODE=warm|cold runs exactly that mode (the plan runner sets it); unset keeps the old behavior: warm, and cold as well when COLD=1.
+MODE=${MODE:-}; case $MODE in ""|warm|cold) ;; *) echo "MODE must be warm or cold" >&2; exit 2;; esac
+DRIVER_ARGS=(${SEED:+--seed "$SEED"} ${DRAIN_ROWS:+--drain-rows "$DRAIN_ROWS"})
 trap 'for s in "$@"; do stop_system "$s" || true; done' EXIT
 # A failing system must not stop the others: every failure is recorded in $OUT/failures.txt and the session goes on.
 OK=()
@@ -39,12 +42,12 @@ for s in "${OK[@]}"; do
     python3 "$HERE/driver.py" reference --queries "$QDIR" --url "$(url_of "$s")" --out "$OUT/reference.json" --timeout "$TIMEOUT" > "$OUT/reference.log"
     echo "reference answers from $s" >> "$OUT/reference.log"
   fi
-  if ! SYSTEM=$s DATASET=$D BUDGET=$BUDGET python3 "$HERE/driver.py" run --system "$s" --url "$(url_of "$s")" ${CLEAR:+--clear-cache-url "$CLEAR"} ${EXPECT:+--expect-unsupported "$EXPECT"} ${MANIFEST:+--manifest "$MANIFEST"} ${SCORED:+--scored} --queries "$QDIR" --reference "$OUT/reference.json" \
+  if [ "$MODE" != cold ] && ! SYSTEM=$s DATASET=$D BUDGET=$BUDGET python3 "$HERE/driver.py" run --system "$s" --url "$(url_of "$s")" ${CLEAR:+--clear-cache-url "$CLEAR"} ${EXPECT:+--expect-unsupported "$EXPECT"} ${MANIFEST:+--manifest "$MANIFEST"} ${SCORED:+--scored} ${DRIVER_ARGS[@]+"${DRIVER_ARGS[@]}"} --queries "$QDIR" --reference "$OUT/reference.json" \
       --out "$OUT/$s.warm.json" --mode warm --runs "$RUNS" --timeout "$TIMEOUT" --restart-hook "$HERE/restart.sh" > "$OUT/$s.warm.log" 2>&1; then
     echo "$s: warm run failed (see $s.warm.log)" >> "$OUT/failures.txt"
   fi
-  if [ "${COLD:-0}" = 1 ]; then
-    if ! SYSTEM=$s DATASET=$D BUDGET=$BUDGET python3 "$HERE/driver.py" run --system "$s" --url "$(url_of "$s")" ${CLEAR:+--clear-cache-url "$CLEAR"} ${EXPECT:+--expect-unsupported "$EXPECT"} ${MANIFEST:+--manifest "$MANIFEST"} ${SCORED:+--scored} --queries "$QDIR" \
+  if [ "$MODE" = cold ] || { [ -z "$MODE" ] && [ "${COLD:-0}" = 1 ]; }; then
+    if ! SYSTEM=$s DATASET=$D BUDGET=$BUDGET python3 "$HERE/driver.py" run --system "$s" --url "$(url_of "$s")" ${CLEAR:+--clear-cache-url "$CLEAR"} ${EXPECT:+--expect-unsupported "$EXPECT"} ${MANIFEST:+--manifest "$MANIFEST"} ${SCORED:+--scored} ${DRIVER_ARGS[@]+"${DRIVER_ARGS[@]}"} --runs "$RUNS" --queries "$QDIR" \
       --reference "$OUT/reference.json" --out "$OUT/$s.cold.json" --mode cold --timeout "$TIMEOUT" --cold-hook "'$HERE/restart.sh' --cold" ${PLAN_RUNNER:+--plan-runner "$PLAN_RUNNER"} > "$OUT/$s.cold.log" 2>&1; then
       echo "$s: cold run failed (see $s.cold.log)" >> "$OUT/failures.txt"
     fi
