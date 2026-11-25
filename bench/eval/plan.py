@@ -11,7 +11,7 @@ timed unless every check passes; every session's logs and results are kept under
 
 Plan keys (all required unless marked optional):
   name, dataset (the name session.sh and systems.sh know), queries (directory of .rq files), reference (reference answers, driver.py reference),
-  datasets [{name, path, sha256?}], stores [{name, path}] or "no_store": true,
+  datasets [{name, path, sha256?}] (the one dataset the session loads), stores [{name, path}] (every persisted store it serves; "no_store" is refused),
   systems [{name, version, config}]  (the endpoint and cache-clear URL come from lib.sh, so the plan cannot disagree with session.sh),
   mode warm|cold, runs, timeout, seed, drain_rows,
   expect_unsupported (optional) {system: [case ids]},
@@ -57,7 +57,7 @@ def load_plan(path):
     if not plan["systems"] or not plan["datasets"]: raise PlanError("systems and datasets cannot be empty")
     for s in plan["systems"]:
         if not {"name", "version", "config"} <= set(s): raise PlanError(f"system {s!r} needs name, version and config")
-    if not plan.get("no_store") and not plan.get("stores"): raise PlanError('give "stores" (every persisted store the systems read) or "no_store": true')
+    if not plan.get("stores") and not plan.get("no_store"): raise PlanError('give "stores": every persisted store the systems serve')
     arms = plan.get("arms") or [{"label": "A", "binary": ""}]
     labels = [a["label"] for a in arms]
     if len(set(labels)) != len(labels) or not all(re.fullmatch(r"[A-Z]", l) for l in labels): raise PlanError("arm labels are distinct single capital letters")
@@ -89,7 +89,8 @@ def check_session_inputs(plan):
     if len(named) != 1 or os.path.realpath(named[0]["path"]) != want:
         raise PlanError(f"dataset {d!r}: the session loads {want}; the plan must list exactly that file under the dataset's name")
     if len(plan["datasets"]) != 1: raise PlanError("a session loads one dataset: list only the plan's dataset")
-    if not plan.get("no_store"):
+    if plan.get("no_store"): raise PlanError("no_store is refused: every engine this runner scores (triplelight --disk, qlever, virtuoso, jena, oxigraph, rdf4j, millenniumdb) serves a persisted store; list it under stores")
+    if True:
         expected = {os.path.realpath(t / f"{s['name']}-{d}") for s in plan["systems"]}
         listed = {os.path.realpath(x["path"]) for x in plan.get("stores", [])}
         if listed != expected: raise PlanError(f"stores: the session serves {sorted(expected)}; the plan lists {sorted(listed)}")
@@ -103,7 +104,6 @@ def manifest_command(plan, arm, receipt, out, reference=None, plan_file=None):
     cmd += ["--binary", arm.get("binary") or os.environ.get("TRIPLELIGHT_BIN") or str(HERE.parents[1] / "target" / "release" / "triplelight")]
     for d in plan["datasets"]: cmd += ["--dataset", f"{d['name']}:{d['path']}" + (f":{d['sha256']}" if d.get("sha256") else "")]
     for st in plan.get("stores", []): cmd += ["--store", f"{st['name']}:{st['path']}"]
-    if plan.get("no_store"): cmd += ["--no-store"]
     for s in plan["systems"]:
         url, clear = endpoint(s["name"])
         cmd += ["--system", f"{s['name']}:{s['version']}:{s['config']}", "--system-url", f"{s['name']}={url}"]
@@ -231,7 +231,10 @@ def cmd_selftest(a):
         refuses("a missing key is refused", "missing plan keys", runs=None)
         refuses("zero runs are refused", "at least 1", runs=0)
         refuses("a bad mode is refused", "warm or cold", mode="hot")
-        refuses("no stores and no no_store is refused", "no_store", stores=None)
+        refuses("no stores is refused", "stores", stores=None)
+        refuses_inputs_ns = lambda: check_session_inputs(load_plan(plan_file(no_store=True, stores=None)))
+        try: refuses_inputs_ns(); check("no_store is refused for persisted engines", False, "accepted")
+        except PlanError as e: check("no_store is refused for persisted engines", "persisted store" in str(e), str(e))
         refuses("a missing queries directory is refused", "does not exist", queries=str(t / "nope"))
         refuses("a missing dataset file is refused", "not a file", datasets=[{"name": "x", "path": str(t / "nope")}])
         refuses("an unbalanced ABBA is refused", "equally often", arms=[{"label": "A", "binary": str(t / "bin")}, {"label": "B", "binary": str(t / "bin")}], sequence="ABB")
@@ -285,7 +288,13 @@ def cmd_selftest(a):
             if name == "lib.sh":
                 text = text.replace("7979", str(port))
                 text, n = re.subn(r"(?ms)^drop_caches\(\) \{.*?^\}\n", 'drop_caches() { echo "page cache drop stubbed in the self-test"; }\n', text)
-                check("the copy's drop_caches is stubbed (it never touches the host's page cache)", n == 1 and "purge" not in text.split("drop_caches()")[1].split("\n")[0])
+                if n != 1 or "purge" in text.split("drop_caches()")[1].split("\n")[0]:
+                    print("plan     the copy's drop_caches could not be stubbed: refusing to run a self-test that could purge the host's page cache"); sys.exit(1)
+                check("the copy's drop_caches is stubbed (it never touches the host's page cache)", True)
+                # on Linux the native engine would run in the real `bench-triplelight.scope` under systemd-run; the copy never does
+                text, n2 = re.subn(r'if \[ "\$\(uname\)" = Linux \] && command -v systemd-run >/dev/null && ! is_docker_system "\$s"; then', "if false; then   # self-test copy: no systemd scope", text)
+                if n2 != 1: print("plan     the copy's systemd scope could not be disabled: refusing to run a self-test that could touch bench-triplelight.scope"); sys.exit(1)
+                check("the copy never starts a systemd scope (it cannot touch the real bench-triplelight.scope)", True)
             else: text = text.replace("7979", str(port))
             (ev / name).write_text(text)
         sys.path.insert(0, str(ev)); import driver as drv
