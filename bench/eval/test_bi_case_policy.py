@@ -13,6 +13,7 @@ import struct
 import sys
 
 from bi_case_policy import BICasePolicy
+from driver import Fold
 
 
 def sha256(path):
@@ -101,7 +102,25 @@ def replay(packet):
     answer = deepcopy(reference)
     answer["results"]["bindings"].append(answer["results"]["bindings"][0])
     assert adapter.check(case, answer, reference)[0] == "mismatch"
-    print("Three identity controls and eight answer/reference controls pass")
+    records = {}
+    for case, reference in adapter.references.items():
+        folded = Fold(reference["head"]["vars"])
+        for row in reference["results"]["bindings"]:
+            folded.add(row)
+        records[case] = folded.result()
+    wrong = deepcopy(records)
+    wrong[case]["bag"] = "0" * 32
+    try:
+        adapter.bind_references(wrong, Fold)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Accepted a different reference digest at startup")
+    adapter.bind_references(records, Fold)
+    for case, reference in adapter.references.items():
+        assert adapter.check(case, reference, records[case])[0] == "pass"
+    assert adapter.check(case, reference, {})[0] == "mismatch"
+    print("Three identity controls, eight answer/reference controls and 60 folded references pass")
 
 
 if __name__ == "__main__":
