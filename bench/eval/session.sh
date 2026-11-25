@@ -10,6 +10,8 @@ HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../.." && pwd)
 export TOOLS=${TOOLS:-$ROOT/bench/tools} OUT HERE
 mkdir -p "$OUT"; . "$HERE/lib.sh"
 BUDGET=${BUDGET:-}; RUNS=${RUNS:-5}; TIMEOUT=${TIMEOUT:-300}
+# A repeated, missing or malformed budget flag would be recorded one way and launched another: refuse it before anything is loaded or started.
+BUDGET=$BUDGET python3 "$HERE/driver.py" budget > /dev/null || { echo "session.sh: the BUDGET above is not usable" >&2; exit 2; }
 # MODE=warm|cold runs exactly that mode (the plan runner sets it); unset keeps the old behavior: warm, and cold as well when COLD=1.
 MODE=${MODE:-}; case $MODE in ""|warm|cold) ;; *) echo "MODE must be warm or cold" >&2; exit 2;; esac
 DRIVER_ARGS=(${SEED:+--seed "$SEED"} ${DRAIN_ROWS:+--drain-rows "$DRAIN_ROWS"} ${CASE_POLICY:+--case-policy "$CASE_POLICY" --policy-bundle "$POLICY_BUNDLE"})
