@@ -27,6 +27,7 @@ mod agg;
 mod bgp;
 mod join;
 mod limits;
+mod spill;
 use join::join_rows;
 mod views;
 use views::{dataset, Views};
@@ -951,8 +952,17 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     fn group_rows(&self, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], rows: Vec<Row>) -> Vec<Row> {
         let kidx: Vec<usize> = keys.iter().map(|v| self.var(v)).collect();
+        // Over the budget: group one key partition at a time from disk (#111). The input is dropped once written.
+        if let Some(spilled) = self.spill_for_group(&kidx, rows.len(), rows.iter().map(Vec::as_slice)) {
+            drop(rows);
+            return self.group_partitions(&spilled, &kidx, |part| self.group_in_memory(keys, aggs, &kidx, part));
+        }
+        self.group_in_memory(keys, aggs, &kidx, rows)
+    }
+
+    fn group_in_memory(&self, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], kidx: &[usize], rows: Vec<Row>) -> Vec<Row> {
         if !self.general_group
-            && let Some(out) = self.try_fast_group(&rows, &kidx, aggs) { return out; }
+            && let Some(out) = self.try_fast_group(&rows, kidx, aggs) { return out; }
         let mut groups: Vec<(Vec<TermId>, Vec<Row>)> = Vec::new();
         let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
         // The groups hold every row again, plus a key and a table entry per group.

@@ -86,7 +86,7 @@ fn limited<T: Send>(
     let budget = match memory_mb {
         None => None,
         Some(0) => return Err(pyo3::exceptions::PyValueError::new_err("memory_mb must be positive")),
-        Some(mb) => Some(MemoryBudget::new(mb.saturating_mul(1 << 20))),
+        Some(mb) => Some(MemoryBudget::spilling(mb.saturating_mul(1 << 20))),
     };
     let mut watching = false;
     if on_main_thread(py)? && let Some(flag) = ctrl_c::flag() {

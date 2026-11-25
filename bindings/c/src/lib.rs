@@ -400,7 +400,7 @@ pub unsafe extern "C" fn tl_query_with_limits(db: *const TlDb, sparql: *const c_
         if entailment == triplelight::exec::Entailment::Rdfs {
             d.load_extension("rdfs").map_err(extension_error)?;
         }
-        let budget = (memory_bytes > 0).then(|| triplelight::exec::MemoryBudget::new(memory_bytes));
+        let budget = (memory_bytes > 0).then(|| triplelight::exec::MemoryBudget::spilling(memory_bytes));
         let limits = triplelight::exec::QueryLimits { interrupt: interrupt.as_ref().map(|i| &i.0), memory: budget.as_ref() };
         let snap = d.read();
         let r = match snap.query_ids_with_limits(q, entailment, limits).map_err(db_error)? {

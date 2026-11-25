@@ -34,6 +34,14 @@ pub(crate) static SORT_NS: AtomicU64 = AtomicU64::new(0);
 pub(crate) static FILTER_NS: AtomicU64 = AtomicU64::new(0);
 pub(crate) static EXTEND_NS: AtomicU64 = AtomicU64::new(0);
 pub(crate) static JOIN_NS: AtomicU64 = AtomicU64::new(0);
+/// Bytes written to disk by spilling operators (#111); counted whether or not tracing is on, read by `take_spilled`.
+static SPILLED_BYTES: AtomicU64 = AtomicU64::new(0);
+
+/// Records `bytes` written by a spilling operator.
+pub(crate) fn spilled(bytes: u64) { SPILLED_BYTES.fetch_add(bytes, Relaxed); }
+
+/// Bytes spilled since the last call, then reset (the server's `spill_bytes=`).
+pub fn take_spilled() -> u64 { SPILLED_BYTES.swap(0, Relaxed) }
 
 thread_local! {
     static BGP_DEPTH: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };

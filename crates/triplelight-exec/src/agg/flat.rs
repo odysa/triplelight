@@ -52,6 +52,11 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         if let Some(operator) = filter_operator { operator.finish(rows_out); }
         // The same charge as the BGP's materialized rows (`Ctx::eval`).
         self.fits(rows_out as u64 * self.row_bytes());
+        // Over the budget: count one key partition at a time from disk (#111), as the general path would.
+        if let Some(spilled) = self.spill_for_group(&[key_col], rows_out, flat.chunks_exact(w)) {
+            drop(flat);
+            return Ok(phase::group(|| self.group_partitions(&spilled, &[key_col], |part| self.count_one_key(part.iter().map(Vec::as_slice), key_col, value_col, out_col))));
+        }
         Ok(phase::group(|| self.count_one_key(flat.chunks_exact(w), key_col, value_col, out_col)))
     }
 }

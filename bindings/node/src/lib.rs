@@ -84,7 +84,7 @@ impl Limits {
         Ok(Limits { interrupt: interrupt.map(|i| Arc::clone(&i.0)), memory_mb })
     }
     fn with<T>(&self, f: impl FnOnce(QueryLimits<'_>) -> T) -> T {
-        let budget = self.memory_mb.map(|mb| MemoryBudget::new(u64::from(mb) << 20));
+        let budget = self.memory_mb.map(|mb| MemoryBudget::spilling(u64::from(mb) << 20));
         f(QueryLimits { interrupt: self.interrupt.as_deref(), memory: budget.as_ref() })
     }
 }
