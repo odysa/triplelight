@@ -145,4 +145,37 @@ class DatabaseTest {
             assertEquals(TripleLightException.Kind.UNSUPPORTED, error.kind());
         }
     }
+
+    @Test
+    void queryLimitsCancelTimeoutAndBudget() throws Exception {
+        try (Database db = Database.inMemory()) {
+            StringBuilder data = new StringBuilder("INSERT DATA { ");
+            for (int i = 0; i < 2000; i++) data.append("<urn:s").append(i).append("> <urn:p> \"").append(i).append("\" . ");
+            db.update(data.append("}").toString());
+            String endless = "SELECT (COUNT(*) AS ?n) { ?a ?p ?b . ?c ?q ?d . ?e ?r ?f FILTER(?b != ?d && ?d != ?f) }";
+            String grouped = "SELECT ?a (COUNT(*) AS ?n) { ?a ?p ?b } GROUP BY ?a";
+            // Cancelled from another thread while it runs.
+            try (QueryInterrupt interrupt = QueryInterrupt.create()) {
+                ExecutorService pool = Executors.newSingleThreadExecutor();
+                Future<?> canceller = pool.submit(() -> { Thread.sleep(100); interrupt.cancel(); return null; });
+                long start = System.nanoTime();
+                TripleLightException e = assertThrows(TripleLightException.class, () -> db.query(endless, interrupt, 0));
+                assertEquals(TripleLightException.Kind.INTERRUPTED, e.kind());
+                assertTrue(System.nanoTime() - start < 10_000_000_000L);
+                canceller.get();
+                pool.shutdown();
+            }
+            // A deadline.
+            try (QueryInterrupt timeout = QueryInterrupt.create(java.time.Duration.ofMillis(50))) {
+                assertEquals(TripleLightException.Kind.INTERRUPTED, assertThrows(TripleLightException.class, () -> db.query(endless, timeout, 0)).kind());
+            }
+            // A memory budget, then the same query with room.
+            assertEquals(TripleLightException.Kind.RESOURCE_LIMIT, assertThrows(TripleLightException.class, () -> db.query(grouped, null, 1024)).kind());
+            assertEquals(2000, db.query(grouped, null, 1L << 30).rows().size());
+            QueryInterrupt closed = QueryInterrupt.create();
+            closed.close();
+            closed.cancel();
+            assertEquals(TripleLightException.Kind.CLOSED, assertThrows(TripleLightException.class, () -> db.query(grouped, closed, 0)).kind());
+        }
+    }
 }
