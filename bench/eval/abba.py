@@ -42,6 +42,7 @@ def session_value(entry):
     if any(not isinstance(x, (int, float)) or not math.isfinite(x) or x <= 0 for x in secs): return None, "unscorable duration"
     if any(not r.get("bag") or not isinstance(r.get("rows"), int) for r in runs): return None, "no answer digest"
     ordered = "order_matches_reference" in entry
+    if ordered and any(not r.get("seq") for r in runs): return None, "ordered query without a sequence digest"
     keys = {(r["bag"], r["rows"], r.get("seq") if ordered else None) for r in runs}
     if len(keys) != 1: return None, "unstable answer"
     return statistics.median(secs), keys.pop()
@@ -55,9 +56,9 @@ def session_id(path, s):
 
 def compare(a_sessions, b_sessions, threshold=0.03):
     refused = []
-    for arm, sessions in (("A", a_sessions), ("B", b_sessions)):
-        paths = [p for p, _ in sessions]; ids = [session_id(p, s) for p, s in sessions]
-        if len(set(paths)) != len(paths) or len(set(ids)) != len(ids): refused.append(f"arm {arm}: the same session is given more than once")
+    every = a_sessions + b_sessions   # a session may appear once in total, in one arm
+    paths = [p for p, _ in every]; ids = [session_id(p, s) for p, s in every]
+    if len(set(paths)) != len(paths) or len(set(ids)) != len(ids): refused.append("the same session is given more than once (within or across arms)")
     refused += [f"{p}: ineligible ({'; '.join(s.get('ineligible_reasons', [])) or 'no reason recorded'})"
                for p, s in a_sessions + b_sessions if not s.get("eligible", False)]
     names = sorted(set().union(*(s["queries"].keys() for _, s in a_sessions + b_sessions)))
@@ -134,6 +135,10 @@ def self_test():
     check("different answers between arms refuse", r["refused"] and r["rows"][0]["verdict"] == "answers differ")
     r = compare(arm(2, slow, bag=None), arm(2, fast, bag=None))
     check("missing answer digests are not comparable", r["refused"] and r["rows"][0]["verdict"] == "not comparable")
+    r = compare([("x", one)] + arm(2, {"q": [0.002]}), [("x", one)] + arm(2, {"q": [0.001]}))
+    check("the same session in both arms refuses", any("more than once" in x for x in r["refused"]))
+    r = compare(arm(2, slow, ordered=True), arm(2, fast, ordered=True))
+    check("an ordered query without sequence digests is not comparable", r["refused"] and r["rows"][0]["verdict"] == "not comparable")
     r = compare(arm(2, slow, seq="ab"), arm(2, fast, seq="ba"))
     check("an unordered query ignores row order", not r["refused"] and r["rows"][0]["verdict"] == "faster")
     r = compare(arm(2, slow, seq="ab", ordered=True), arm(2, fast, seq="ba", ordered=True))
