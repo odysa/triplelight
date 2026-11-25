@@ -502,6 +502,9 @@ pub struct Store {
     _directory_lock: File,
     #[cfg(test)]
     fail_at: Mutex<Option<String>>,
+    /// Waits in `flush_until` that ended on the safety timeout while a leader was still marked leading (tests).
+    #[cfg(test)]
+    timeout_wakes: std::sync::atomic::AtomicU64,
 }
 
 /// `records`: how many records `buf` holds; `leading`: a leader is flushing (`group_commit`).
@@ -576,6 +579,8 @@ impl Store {
             _directory_lock: directory_lock,
             #[cfg(test)]
             fail_at: Mutex::new(None),
+            #[cfg(test)]
+            timeout_wakes: std::sync::atomic::AtomicU64::new(0),
         })
     }
 
@@ -615,14 +620,19 @@ impl Store {
         Ok(Store {
             dir, format, generation: Mutex::new(generation), fences: Mutex::new(fences),
             current: RwLock::new(overlay.clone()),
-            pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0 }),
-            wal: Mutex::new(Wal { file: wal, durable: 0 }),
+            pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0, records: 0, leading: false }),
+            enqueued: std::sync::Condvar::new(),
+            wal: Mutex::new(Wal { file: wal, last_batch: 0, last_sync: std::time::Duration::ZERO }),
+            durable: std::sync::atomic::AtomicU64::new(0),
+            flushed: std::sync::Condvar::new(),
             writer: Mutex::new(()),
             poisoned: std::sync::atomic::AtomicBool::new(false),
             read_only: true,
             _directory_lock: directory_lock,
             #[cfg(test)]
             fail_at: Mutex::new(None),
+            #[cfg(test)]
+            timeout_wakes: std::sync::atomic::AtomicU64::new(0),
         })
     }
 

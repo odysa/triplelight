@@ -521,7 +521,7 @@ fn a_departed_writer_costs_one_capped_gather_at_most() {
 
 /// A follower whose record a finished batch did not cover (#105): when the leader steps down it wakes, finds its
 /// record not yet durable and nobody leading, and leads the next batch itself, at once rather than on the 20 ms
-/// safety timeout. Twenty rounds, median under 5 ms.
+/// safety timeout. Twenty rounds, and no wait may end on that timeout.
 #[test]
 fn a_follower_left_out_of_a_batch_leads_the_next() {
     let dir = scratch("left-out");
@@ -545,10 +545,44 @@ fn a_follower_left_out_of_a_batch_leads_the_next() {
         assert!(store.durable.load(std::sync::atomic::Ordering::SeqCst) > durable);
     }
     waits.sort();
-    assert!(waits[waits.len() / 2] < std::time::Duration::from_millis(5), "median wait {:?}: woken by the timeout, not the leader", waits[waits.len() / 2]);
+    // Woken by the stand-in stepping down, never by the safety timeout (a wait that times out while a leader is
+    // still marked leading counts in `timeout_wakes`), and promptly: the median includes the follower's own fsync.
+    assert_eq!(store.timeout_wakes.load(std::sync::atomic::Ordering::SeqCst), 0, "a follower slept to the safety timeout");
+    assert!(waits[waits.len() / 2] < std::time::Duration::from_millis(100), "median wait {:?}", waits[waits.len() / 2]);
     drop(store);
     let reopened = open(Format::NTriples, &dir).unwrap();
-    assert_eq!(state(&reopened.snapshot()).0.len(), 21);
+    // Record k inserts triple k and deletes triple k - 2, so the last two survive.
+    let (s20, s19) = (t(20), t(19));
+    assert_eq!(state(&reopened.snapshot()).0, [format!("{} {} {}", s19.subject, s19.predicate, s19.object), format!("{} {} {}", s20.subject, s20.predicate, s20.object)]);
+    drop(reopened);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A failed batch is never acknowledged by the next leader (#105): writer A's batch fails before its write, which
+/// poisons the store with A's record taken from `pending` but never written. A writer that becomes leader after that
+/// finds an empty buffer; it must refuse rather than publish `pending.seq`, which would acknowledge A's record.
+#[test]
+fn a_leader_after_a_failed_batch_acknowledges_nothing() {
+    let dir = scratch("failed-batch");
+    let store = std::sync::Arc::new(open(Format::NTriples, &dir).unwrap());
+    store.commit_dataset(&record(Kind::Default, 0)).unwrap();
+    let before = store.durable.load(std::sync::atomic::Ordering::SeqCst);
+    fault::arm("wal-before-write", Mode::NoSpace);
+    assert!(store.commit_dataset(&record(Kind::Default, 1)).is_err(), "writer A's failed batch");
+    fault::disarm();
+    // Writer B passed its poison check before A failed, then won the WAL lock: it leads with an empty buffer.
+    {
+        let mut w = store.wal.lock().unwrap();
+        assert!(store.lead_flush(&mut w).is_err(), "a leader after a failed batch must refuse");
+        store.end_leading(w);
+    }
+    assert_eq!(store.durable.load(std::sync::atomic::Ordering::SeqCst), before, "A's record was acknowledged");
+    // Another writer is refused too, and a reopened store has no trace of A's record.
+    let b = { let store = std::sync::Arc::clone(&store); std::thread::spawn(move || store.commit_dataset(&record(Kind::Default, 2))) };
+    assert!(b.join().unwrap().is_err());
+    drop(store);
+    let reopened = open(Format::NTriples, &dir).unwrap();
+    assert_eq!(state(&reopened.snapshot()).0.len(), 1, "only the first record survived");
     drop(reopened);
     let _ = std::fs::remove_dir_all(&dir);
 }

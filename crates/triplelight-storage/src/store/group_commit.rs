@@ -28,10 +28,17 @@ impl Store {
                     // the check and the wait cannot miss it. Without a leader the WAL lock is held by compaction,
                     // which flushes everything first; poll briefly then. The long timeout is only a safety net.
                     let p = self.pending.lock().unwrap();
-                    let wait = if p.leading { std::time::Duration::from_millis(20) } else { std::time::Duration::from_millis(1) };
-                    let _ = self.flushed.wait_timeout_while(p, wait, |p| {
-                        p.leading && self.durable.load(SeqCst) < seq && !self.poisoned.load(SeqCst)
-                    }).unwrap();
+                    if p.leading {
+                        let (_p, waited) = self.flushed.wait_timeout_while(p, std::time::Duration::from_millis(20), |p| {
+                            p.leading && self.durable.load(SeqCst) < seq && !self.poisoned.load(SeqCst)
+                        }).unwrap();
+                        #[cfg(test)]
+                        if waited.timed_out() { self.timeout_wakes.fetch_add(1, SeqCst); }
+                        #[cfg(not(test))]
+                        let _ = waited;
+                    } else {
+                        let _ = self.flushed.wait_timeout(p, std::time::Duration::from_millis(1)).unwrap();
+                    }
                 }
                 Err(std::sync::TryLockError::Poisoned(e)) => panic!("WAL lock poisoned: {e}"),
             }
@@ -39,7 +46,10 @@ impl Store {
     }
 
     /// The leader's flush: takes every pending record, writes and fsyncs them as one batch, then publishes them.
-    fn lead_flush(&self, w: &mut Wal) -> std::io::Result<()> {
+    pub(super) fn lead_flush(&self, w: &mut Wal) -> std::io::Result<()> {
+        // Under the WAL lock, so no leader can fail in between: after a failed write the pending records were taken
+        // but never written, and publishing `pending.seq` from an empty buffer would acknowledge them.
+        self.check_poisoned()?;
         let (buf, upto, overlay, records) = {
             let mut p = self.pending.lock().unwrap();
             p.leading = true;
