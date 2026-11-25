@@ -77,6 +77,57 @@ def fold_boolean(value):
     return f.result()
 
 
+def head_vars(text):
+    """The projected variables from the top-level `head` object of a SPARQL JSON document, or None when they cannot be read from `text` (the first
+    bytes of the body). Walks the top-level members, skipping any other member (metadata before the head, say) by bracket matching that is aware of
+    strings, so a `vars` list inside some other object is never mistaken for the head's. Shared by the folding and the draining paths."""
+    dec = json.JSONDecoder()
+    i, n = 0, len(text)
+    def skip_ws(i):
+        while i < n and text[i] in " \t\r\n": i += 1
+        return i
+    def skip_value(i):
+        """Index just past the JSON value starting at i, or None if it does not end inside `text`."""
+        i = skip_ws(i)
+        if i >= n: return None
+        if text[i] in "{[":
+            depth, in_str, esc = 0, False, False
+            while i < n:
+                c = text[i]
+                if in_str:
+                    if esc: esc = False
+                    elif c == "\\": esc = True
+                    elif c == '"': in_str = False
+                elif c == '"': in_str = True
+                elif c in "{[": depth += 1
+                elif c in "}]":
+                    depth -= 1
+                    if depth == 0: return i + 1
+                i += 1
+            return None
+        try: return dec.raw_decode(text, i)[1]
+        except ValueError: return None
+    i = skip_ws(i)
+    if i >= n or text[i] != "{": return None
+    i += 1
+    while True:
+        i = skip_ws(i)
+        if i >= n or text[i] == "}": return None
+        if text[i] == ",": i += 1; continue
+        try: key, i = dec.raw_decode(text, i)
+        except ValueError: return None
+        i = skip_ws(i)
+        if i >= n or text[i] != ":": return None
+        i = skip_ws(i + 1)
+        if key == "head":
+            try: value, _ = dec.raw_decode(text, i)
+            except ValueError: return None
+            v = value.get("vars") if isinstance(value, dict) else None
+            return v if isinstance(v, list) else None
+        i = skip_value(i)
+        if i is None: return None
+
+
 def stream_fold(chunks, deadline):
     """Fold a SPARQL JSON result read from `chunks` (an iterator of bytes) without keeping the rows.
     Raises Truncated if the document ends inside the bindings array, Timeout past `deadline`."""
@@ -111,14 +162,14 @@ def stream_fold(chunks, deadline):
         if not more():
             raise Truncated("document ended before the bindings array")
     head = buf[:m.start()]
-    vm = re.search(r'"vars"\s*:\s*(\[[^\]]*\])', head)
-    if not vm:
+    vm = head_vars(buf[:m.start()] + "}")      # everything before the bindings array, closed: the top-level `head` object lies in it
+    if vm is None:
         # results before head: read the whole document and fold it the plain way (small answers only)
         while more(): pass
         doc = json.loads(buf); f = Fold(doc["head"]["vars"])
         for row in doc["results"]["bindings"]: f.add(row)
         return f.result()
-    fold = Fold(json.loads(vm.group(1)))
+    fold = Fold(vm)
     pos = m.end()
     while True:
         while True:
@@ -177,8 +228,7 @@ def drain(chunks, deadline):
         if len(head) < HEAD_BYTES: head += c[: HEAD_BYTES - len(head)]
         count.add(c)
     # the projected variables come from the head (the first bytes): a drained repeat must have the projection of the hashed check run
-    m = re.search(rb'"vars"\s*:\s*(\[[^\]]*\])', head)
-    vars_ = json.loads(m.group(1).decode("utf-8", "replace")) if m else None
+    vars_ = head_vars(head.decode("utf-8", "replace"))
     return {"bytes": count.stable(), "tail_ok": count.ends_closed(), "vars": vars_}
 
 
@@ -927,6 +977,22 @@ def cmd_selftest(a):
     rec, _ = one_run(f"http://127.0.0.1:{port}/ask", "ASK {}", 5)
     good = rec["status"] == "ok" and rec["rows"] == 1 and rec["bag"] == fold_boolean(True)["bag"]
     print("ask      boolean answer", "ok" if good else "FAIL"); ok &= good
+    # the projected variables come from the top-level head object, never from a `vars` list elsewhere in the prefix
+    def check(label, good, detail=""):
+        nonlocal ok
+        print(f"{label:<80} {'ok' if good else 'FAIL ' + detail}"); ok &= bool(good)
+    hv = [("a normal head", '{"head":{"vars":["a","b"]},"results":{"bindings":[]}}', ["a", "b"]),
+          ("metadata with its own vars before the head", '{"meta":{"vars":["x"]},"head":{"vars":["y"]},"results":{"bindings":[]}}', ["y"]),
+          ("a metadata string that looks like a head", '{"meta":"}{ \\"vars\\": [\\"z\\"]","head":{"vars":["a"]}}', ["a"]),
+          ("a head after nested metadata", '{"meta":{"a":[{"vars":["q"]}],"b":"]}"},"head":{"link":[],"vars":["r"]}}', ["r"]),
+          ("a nested vars inside head is not head.vars", '{"head":{"x":{"vars":["no"]}},"results":{}}', None),
+          ("results before head has no readable head in the prefix", '{"results":{"bindings":[{"a":1}', None)]
+    for label, doc, want in hv:
+        check(f"head.vars: {label}", head_vars(doc) == want, str(head_vars(doc)))
+    dr = drain(iter([b'{"meta":{"vars":["x"]},"head":{"vars":["y"]},"results":{"bindings":[]}}']), time.monotonic() + 5)
+    check("a drained body reports the top-level head.vars, not the first vars in the prefix", dr["vars"] == ["y"] and dr["tail_ok"])
+    sf = stream_fold(iter([b'{"meta":{"vars":["x"]},"head":{"vars":["y"]},"results":{"bindings":[]}}']), time.monotonic() + 5)
+    check("the folded parser reports the same projection from the same document", sf["vars"] == ["y"])
     # streaming equals the plain parse on a 100k-row sample, with the document split at awkward chunk sizes
     global MIN_READ
     for rows, size in ((100_000, 1 << 20), (100_000, 4096), (2_000, 7), (2_000, 1)):
