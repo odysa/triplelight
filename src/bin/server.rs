@@ -243,6 +243,9 @@ fn answer<'a, S: triplelight::storage::Snapshot>(snap: &'a S, q: &str, opts: &Op
 /// `triplelight serve-store <dir> [port] [--init data.nt]`: persistent store. Queries at /sparql, updates at /update
 /// (SPARQL 1.1 protocol: `update=` form field or `application/sparql-update` body). An update is acknowledged only
 /// after its WAL record is fsynced.
+///
+/// `--read-only` serves an existing store without writing to it (shared lock, no recovery or cleanup; several such servers can share one store,
+/// and a writer is refused while they are up). A path that is not a store is an error, not a new empty store, and `--init` is refused.
 fn serve_store(args: &[String], auth: &UpdateAuth) {
     let init = args.iter().position(|a| a == "--init").map(|i| std::path::PathBuf::from(&args[i + 1]));
     let workers = std::thread::available_parallelism().map_or(4, |n| n.get());

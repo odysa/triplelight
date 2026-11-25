@@ -250,6 +250,7 @@ fn main() {
         _ => shell::run(&args[1..]),
         #[cfg(not(unix))]
         _ => eprintln!("usage: triplelight query <data> <sparql> [--entailment=simple|rdfs] | triplelight explain <data> <sparql> | triplelight validate <data> <shapes> | triplelight build-disk <source> <dir> | triplelight verify <dir> | triplelight text-index <store-directory>\n\
-            with --features server: triplelight serve <data.nt|.ttl> [port] | triplelight serve-store <dir> [port] [--init data.nt] [--read-only]"),
+            with --features server: triplelight serve <data.nt|.ttl> [port] | triplelight serve-store <dir> [port] [--init data.nt] [--read-only]\n\
+            --read-only serves an existing store without writing to it (several servers can share one store; a path that is not a store is an error)"),
     }
 }
