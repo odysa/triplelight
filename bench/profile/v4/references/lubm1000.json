@@ -17,7 +17,10 @@
    "bag_norm": "be7df1295b06d9c165f8f89ba06ffe4e",
    "seq": "8e5650ce3b6853e93e3788d1ae4ffe9ee9d7e851",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X"
+   ]
   },
   "q2": {
    "rows": 2528,
@@ -25,7 +28,12 @@
    "bag_norm": "54e3a19bb1c5e296014c88d1442f3748",
    "seq": "e8748ee8ba94c50395947068cc114c7aa6ef9928",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X",
+    "Y",
+    "Z"
+   ]
   },
   "q3": {
    "rows": 6,
@@ -33,7 +41,10 @@
    "bag_norm": "87256737421a6e4b8684142b9bbb79fa",
    "seq": "766a94d7a2b2e93ee894af8e1a4365d20fae63d4",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X"
+   ]
   },
   "q4": {
    "rows": 10,
@@ -41,7 +52,13 @@
    "bag_norm": "820bded06adb6ecce637d86e5612af5b",
    "seq": "c214bcddd77faed0cc606ba002be2f31a28f7f21",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X",
+    "Y1",
+    "Y2",
+    "Y3"
+   ]
   },
   "q5": {
    "rows": 532,
@@ -49,7 +66,10 @@
    "bag_norm": "87327d280465bb900fcdb02836ab5948",
    "seq": "69545442be33553c45395b43166c694c1c15c8de",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X"
+   ]
   },
   "q6": {
    "rows": 7924765,
@@ -57,7 +77,10 @@
    "bag_norm": "e85a87ce10fbcde6489312347a72a492",
    "seq": "99d071a3fecb78f6f226b30edc3d7444eefe3abb",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X"
+   ]
   },
   "q7": {
    "rows": 59,
@@ -65,7 +88,11 @@
    "bag_norm": "60bbc63a526fc2bd4223a73ca14f4e69",
    "seq": "1b2b2cd48a8c04a92ab2ee83f4a8052fcee2c8a8",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X",
+    "Y"
+   ]
   },
   "q8": {
    "rows": 5916,
@@ -73,7 +100,12 @@
    "bag_norm": "36e1e05d837065cc70403a8806ffe351",
    "seq": "4291639820158eb94aa4e84fbdf9ce1139e9c6c5",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X",
+    "Y",
+    "Z"
+   ]
   },
   "q9": {
    "rows": 44190,
@@ -81,7 +113,12 @@
    "bag_norm": "afb27f233093d81c9880e268ab28e8df",
    "seq": "0e2aa1e836fc2bcdc32a911374ea332c0b70bd77",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X",
+    "Y",
+    "Z"
+   ]
   },
   "q10": {
    "rows": 4,
@@ -89,7 +126,10 @@
    "bag_norm": "be7df1295b06d9c165f8f89ba06ffe4e",
    "seq": "8e5650ce3b6853e93e3788d1ae4ffe9ee9d7e851",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X"
+   ]
   },
   "q11": {
    "rows": 10,
@@ -97,7 +137,10 @@
    "bag_norm": "2cbe07243b8311e40cf93677a5f1290e",
    "seq": "1c4ad2e1acc4de63f7b0faedf9eccefceb525d38",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X"
+   ]
   },
   "q12": {
    "rows": 125,
@@ -105,7 +148,11 @@
    "bag_norm": "f036d862ba599d4121d83328de000815",
    "seq": "4ea0093f4974bf95dd0e13c39b9ad9fa14313d16",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X",
+    "Y"
+   ]
   },
   "q13": {
    "rows": 2604,
@@ -113,7 +160,10 @@
    "bag_norm": "aa015535fb9ca45775e5331ed70cf266",
    "seq": "d5aa8a746128a0fb6c2e1b69c697d07e7f281ca9",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X"
+   ]
   },
   "q14": {
    "rows": 7924765,
@@ -121,7 +171,10 @@
    "bag_norm": "e85a87ce10fbcde6489312347a72a492",
    "seq": "99d071a3fecb78f6f226b30edc3d7444eefe3abb",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "X"
+   ]
   }
  }
 }

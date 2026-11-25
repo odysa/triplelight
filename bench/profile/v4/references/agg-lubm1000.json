@@ -17,7 +17,10 @@
    "bag_norm": "ed6a3f9c097c0fbf5ddaa25a8bb451ea",
    "seq": "baf3af4d164e2db21ce6e5b0ecb95e084fc1f4ae",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q2": {
    "rows": 1,
@@ -25,7 +28,10 @@
    "bag_norm": "60c51affdababb88d301983627f3adcf",
    "seq": "abbd9fee6b5cb3c6b3aebea4a27fae5c3e9ffa4f",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q3": {
    "rows": 1,
@@ -33,7 +39,10 @@
    "bag_norm": "1f37172bb9c4504d773b69b0b3e134f5",
    "seq": "edde85ddce4c71809af33437a6ec1649b93a2a68",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q4": {
    "rows": 1,
@@ -41,7 +50,10 @@
    "bag_norm": "438148a493e5e2406026f533871cd8f6",
    "seq": "b61828c287b13d3e19155d23ce4745aac91e8633",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q5": {
    "rows": 1,
@@ -49,7 +61,10 @@
    "bag_norm": "a2a1f84dd904a3cb4186f18cc82e9181",
    "seq": "014cb22c797e6c1ffde1458ef08c82a2b93a76e8",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q6": {
    "rows": 1,
@@ -57,7 +72,10 @@
    "bag_norm": "f22487a4b06b2365b7c3d2d0e457dea9",
    "seq": "6317771565c0baf4ac9bdbec0d5dfcbb349c0d80",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q7": {
    "rows": 1,
@@ -65,7 +83,10 @@
    "bag_norm": "157e0d117cd75fd93be8c22fb0d7e13a",
    "seq": "4945c32b1af19af3eb152800cdb2fe36ab395da7",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q8": {
    "rows": 1,
@@ -73,7 +94,10 @@
    "bag_norm": "a28806af9f69dff38fed70486cd6d0c8",
    "seq": "c9d31fdc67ed331e07267bfefc334fa1979a7b53",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q9": {
    "rows": 1,
@@ -81,7 +105,10 @@
    "bag_norm": "fa43d1c58f7d7790465b74ec78a6d5f3",
    "seq": "458c0d44979f107d15e4058c1863d3840703bc81",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q10": {
    "rows": 1,
@@ -89,7 +116,10 @@
    "bag_norm": "ed6a3f9c097c0fbf5ddaa25a8bb451ea",
    "seq": "baf3af4d164e2db21ce6e5b0ecb95e084fc1f4ae",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q11": {
    "rows": 1,
@@ -97,7 +127,10 @@
    "bag_norm": "438148a493e5e2406026f533871cd8f6",
    "seq": "b61828c287b13d3e19155d23ce4745aac91e8633",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q12": {
    "rows": 1,
@@ -105,7 +138,10 @@
    "bag_norm": "1afe3157f7e78aade3d8c830c57ec29e",
    "seq": "7a64721f721e147bb700180d70e7c266810d5f87",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q13": {
    "rows": 1,
@@ -113,7 +149,10 @@
    "bag_norm": "34178ee0690f614022bb4f3a7b73848e",
    "seq": "7af0bb2e3c96355d166996940847f7dce70b1ad5",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_q14": {
    "rows": 1,
@@ -121,7 +160,10 @@
    "bag_norm": "f22487a4b06b2365b7c3d2d0e457dea9",
    "seq": "6317771565c0baf4ac9bdbec0d5dfcbb349c0d80",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q1": {
    "rows": 1,
@@ -129,7 +171,10 @@
    "bag_norm": "ed6a3f9c097c0fbf5ddaa25a8bb451ea",
    "seq": "baf3af4d164e2db21ce6e5b0ecb95e084fc1f4ae",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q2": {
    "rows": 1,
@@ -137,7 +182,10 @@
    "bag_norm": "60c51affdababb88d301983627f3adcf",
    "seq": "abbd9fee6b5cb3c6b3aebea4a27fae5c3e9ffa4f",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q3": {
    "rows": 1,
@@ -145,7 +193,10 @@
    "bag_norm": "1f37172bb9c4504d773b69b0b3e134f5",
    "seq": "edde85ddce4c71809af33437a6ec1649b93a2a68",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q4": {
    "rows": 1,
@@ -153,7 +204,10 @@
    "bag_norm": "438148a493e5e2406026f533871cd8f6",
    "seq": "b61828c287b13d3e19155d23ce4745aac91e8633",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q5": {
    "rows": 1,
@@ -161,7 +215,10 @@
    "bag_norm": "a2a1f84dd904a3cb4186f18cc82e9181",
    "seq": "014cb22c797e6c1ffde1458ef08c82a2b93a76e8",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q6": {
    "rows": 1,
@@ -169,7 +226,10 @@
    "bag_norm": "f22487a4b06b2365b7c3d2d0e457dea9",
    "seq": "6317771565c0baf4ac9bdbec0d5dfcbb349c0d80",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q7": {
    "rows": 1,
@@ -177,7 +237,10 @@
    "bag_norm": "2cdb49d38e6901f6dbb85e902de69a57",
    "seq": "1ddb886c39621414278199e5c6e3c8e292703c3d",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q8": {
    "rows": 1,
@@ -185,7 +248,10 @@
    "bag_norm": "a28806af9f69dff38fed70486cd6d0c8",
    "seq": "c9d31fdc67ed331e07267bfefc334fa1979a7b53",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q9": {
    "rows": 1,
@@ -193,7 +259,10 @@
    "bag_norm": "f40fe7f5a3d3844628f0344ed0a1dca0",
    "seq": "4c5324b0239f7b5ec49f76e5bd23403789560558",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q10": {
    "rows": 1,
@@ -201,7 +270,10 @@
    "bag_norm": "ed6a3f9c097c0fbf5ddaa25a8bb451ea",
    "seq": "baf3af4d164e2db21ce6e5b0ecb95e084fc1f4ae",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q11": {
    "rows": 1,
@@ -209,7 +281,10 @@
    "bag_norm": "438148a493e5e2406026f533871cd8f6",
    "seq": "b61828c287b13d3e19155d23ce4745aac91e8633",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q12": {
    "rows": 1,
@@ -217,7 +292,10 @@
    "bag_norm": "1afe3157f7e78aade3d8c830c57ec29e",
    "seq": "7a64721f721e147bb700180d70e7c266810d5f87",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q13": {
    "rows": 1,
@@ -225,7 +303,10 @@
    "bag_norm": "34178ee0690f614022bb4f3a7b73848e",
    "seq": "7af0bb2e3c96355d166996940847f7dce70b1ad5",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_q14": {
    "rows": 1,
@@ -233,7 +314,10 @@
    "bag_norm": "f22487a4b06b2365b7c3d2d0e457dea9",
    "seq": "6317771565c0baf4ac9bdbec0d5dfcbb349c0d80",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "group_advisors": {
    "rows": 599101,
@@ -241,7 +325,12 @@
    "bag_norm": "fdd6cdfc7c5d637ba0804640e267466e",
    "seq": "1db80a5a8784f735024f50b02e2a6219e61360f3",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "o",
+    "n",
+    "d"
+   ]
   },
   "group_type": {
    "rows": 15,
@@ -249,7 +338,11 @@
    "bag_norm": "ef5eebaa2dc3c1914477c34f05a9a389",
    "seq": "3825d01edaa00712a44fb32cf5667eb26e42484b",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "o",
+    "n"
+   ]
   }
  }
 }

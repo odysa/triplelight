@@ -22,7 +22,8 @@ never committed) and runs them in turn. Each plan directory gets `report.md` and
 | agg-watdiv100 | WatDiv-100M | 42 aggregates (`queries/agg-watdiv`) | Jena 6.2.0, frozen |
 
 The references are profile v3's, with local paths removed from their provenance field; the answer digests are
-unchanged. `configs/` records each engine's configuration as the manifest hashes it.
+unchanged. Each query record also carries `vars`, its projected variables in order (from the query's SELECT clause,
+parsed with rdflib 7.1.4), so the driver checks the projection as well as the rows. `configs/` records each engine's configuration as the manifest hashes it.
 
 `run.sh` fixes the session budget to `--mem 12 --cpus 8` for every engine (refusing a different caller `BUDGET`), and the
 config files the manifests hash say the same.
