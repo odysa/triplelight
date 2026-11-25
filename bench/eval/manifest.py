@@ -208,6 +208,8 @@ def policy_identity(case_policy, bundle, case_queries):
     the digest of the case-ID to query-file-digest map."""
     bundle, file = pathlib.Path(bundle).resolve(), pathlib.Path(case_policy).resolve()
     if bundle not in file.parents: raise SystemExit("the case policy module must be inside its bundle: the bundle digest covers it and everything it imports")
+    caches = sorted(str(x.relative_to(bundle)) for x in bundle.rglob("*") if "__pycache__" in x.parts or x.suffix in (".pyc", ".pyo"))
+    if caches: raise SystemExit(f"the policy bundle contains bytecode caches ({caches[:3]}): Python could load them, and the bundle digest does not cover code it never reads. Remove them")
     name, dataset = policy_declarations(file)
     bound = dataset if isinstance(dataset, (list, tuple)) else [dataset]
     return {"name": name, "module": str(file.relative_to(bundle)), "bundle_sha256": sha256_tree(bundle), "dataset_sha256": sorted(bound),

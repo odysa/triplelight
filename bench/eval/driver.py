@@ -27,6 +27,7 @@ CAP = 1048576   # Virtuoso's HTTP endpoint stops here whatever ResultSetMaxRows 
 CHUNK = 1 << 20
 
 
+HEAD_BYTES = 1 << 20    # how much of a drained body is kept to read its projected variables
 KEEP_ROWS = False      # set per request by one_run(keep=True): the case policy needs the typed answer
 KEEP_CAP = 100_000     # answers with more rows are never handed to a policy (they stay hash-compared)
 MIN_READ = 64 << 10      # stream_fold gathers chunks up to this size per read; the self-test sets 0 to exercise awkward chunk boundaries
@@ -170,10 +171,15 @@ def drain(chunks, deadline):
     like a complete SPARQL JSON document (the closing braces). Used for the timed runs of large answers, where hashing the rows in
     Python is slower than any engine (7.9M rows take about 20 s to fold) and would be what gets timed."""
     count = ByteCount()
+    head = b""
     for c in chunks:
         if time.monotonic() > deadline: raise Timeout()
+        if len(head) < HEAD_BYTES: head += c[: HEAD_BYTES - len(head)]
         count.add(c)
-    return {"bytes": count.stable(), "tail_ok": count.ends_closed()}
+    # the projected variables come from the head (the first bytes): a drained repeat must have the projection of the hashed check run
+    m = re.search(rb'"vars"\s*:\s*(\[[^\]]*\])', head)
+    vars_ = json.loads(m.group(1).decode("utf-8", "replace")) if m else None
+    return {"bytes": count.stable(), "tail_ok": count.ends_closed(), "vars": vars_}
 
 
 def one_run(url, query, timeout, drain_only=False, keep=False):
@@ -475,7 +481,7 @@ def cmd_run(a):
                 v = judge(policy, name, rec, r)
                 if v: checked = (rec, v)
             if drained and rec["status"] == "ok":
-                cls = entry["check_class"] if rec["bytes"] == drain_bytes and rec["tail_ok"] else "unstable"
+                cls = entry["check_class"] if rec["bytes"] == drain_bytes and rec["tail_ok"] and rec.get("vars") is not None and rec.get("vars") == check.get("vars") else "unstable"
                 rec = {**rec, **{k: check[k] for k in ("rows", "bag", "seq") if k in check}}
             else:
                 cls = classify(rec, r)
@@ -562,6 +568,9 @@ def serve_fake(behaviors):
                 rows = ["1", "2"] if kind == "asc" else ["2", "1"]
                 self.wfile.write(('{"head":{"vars":["n"]},"results":{"bindings":[%s]}}' % ",".join('{"n":{"type":"literal","value":"%s","datatype":"%sinteger"}}' % (v, XSD) for v in rows)).encode()); return
             if kind == "raw": self.wfile.write(n.encode()); return
+            if kind == "flipvar":      # a non-empty answer: the right projection on the first request, a same-length renamed one on every later request
+                self.server.flipv = getattr(self.server, "flipv", 0) + 1
+                self.wfile.write((BYCASE["q_one"] if self.server.flipv == 1 else BYCASE["q_one_renamed"]).encode()); return
             if kind == "flipempty":      # an empty answer with the right projection on the first request and a wrong one on every later request
                 self.server.flips = getattr(self.server, "flips", 0) + 1
                 self.wfile.write((BYCASE["q_empty"] if self.server.flips == 1 else BYCASE["q_empty_wrong"]).encode()); return
@@ -833,6 +842,20 @@ def gate_tests(port, behaviors_raw):
         (tmp / "refnovars.json").write_text(json.dumps(novars))
         rc, res, err = prun("novars-unscored", "--lenient", ref="refnovars.json", policy=False)
         check("a reference without projections still works unscored (the old comparison)", res is not None and res["scored"] is False)
+        # drained repeats keep the projection too: a renamed variable of the same byte length must not pass on its byte count
+        odir = tmp / "po"; odir.mkdir(); (odir / "q_one.rq").write_text("# case: q_one\nSELECT * WHERE {}")
+        BYCASE["q_one"] = doc_(["v"], [[int_("7")]]); BYCASE["q_one_renamed"] = doc_(["w"], [[int_("7")]]); behaviors_raw["/flipvar"] = ("flipvar", 0)
+        (tmp / "refone.json").write_text(json.dumps({"queries": {"q_one": {**fold_of([BYCASE["q_one"]]), "ordered": False}}}))
+        out = tmp / "flipvar.json"
+        r = subprocess.run([sys.executable, __file__, "run", "--system", "flipvar", "--url", f"http://127.0.0.1:{port}/flipvar", "--queries", str(odir), "--reference", str(tmp / "refone.json"), "--out", str(out), "--runs", "3",
+                            "--timeout", "30", "--drain-rows", "1"], capture_output=True, text=True)
+        fv = json.load(open(out))["queries"]["q_one"] if out.exists() else {}
+        check("a drained repeat with a renamed projected variable (same byte length) is not a pass, exit 3", r.returncode == 3 and fv.get("class") != "pass" and "median_s" not in fv)
+        (bundle / "__pycache__").mkdir(); (bundle / "__pycache__" / "policy.cpython-313.pyc").write_bytes(b"x")
+        try: mf2.policy_identity(bundle / "policy.py", bundle, {}); refused = False
+        except SystemExit as e: refused = "bytecode caches" in str(e)
+        check("policy: a bundle that contains bytecode caches is refused (Python could load them)", refused)
+        import shutil as _sh; _sh.rmtree(bundle / "__pycache__")
         # a case the policy judged is never timed by draining (only the bytes of a drained repeat are compared)
         served(q_interval=doc_(["v"], [[float_("1.0004")]]))
         rc, res, _ = prun("policydrain", "--lenient", "--drain-rows", "1")
