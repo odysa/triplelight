@@ -106,6 +106,18 @@ fn child_process() {
     let kind = if kind == "named" { Kind::Named } else { Kind::Default };
     if phase == "init" { fault::arm(point, Mode::Exit) }
     let store = open(format, Path::new(dir)).unwrap();
+    if phase == "group" {
+        // Writers commit concurrently until the parent kills the process; each acknowledged triple is printed.
+        let out = std::sync::Mutex::new(());
+        std::thread::scope(|scope| for writer in 0..8u64 { let (store, out) = (&store, &out); scope.spawn(move || {
+            for i in 0.. {
+                let k = writer * 1_000_000 + i;
+                store.commit_dataset(&[DatasetChange::Quad(GraphTarget::Default, Change::Insert, t(k))]).unwrap();
+                let _held = out.lock().unwrap();
+                println!("acked {k}");
+            }
+        }); });
+    }
     for k in 0..RECORDS {
         if phase == "commit" && k == CRASH_AT && point != "after-ack" { fault::arm(point, Mode::Exit) }
         store.commit_dataset(&record(kind, k)).unwrap();
@@ -458,4 +470,32 @@ fn copy_dir(from: &Path, to: &Path) {
         let target = to.join(path.file_name().unwrap());
         if path.is_dir() { copy_dir(&path, &target) } else { std::fs::copy(&path, &target).unwrap(); }
     }
+}
+
+/// Group commit under a kill (#105): eight writers commit concurrently, so batches carry several of them, and the
+/// process is SIGKILLed mid-stream. Every commit acknowledged before the kill is there after reopening.
+#[test]
+fn concurrent_commits_survive_a_kill_mid_group() {
+    use std::io::BufRead;
+    let dir = scratch("group-kill");
+    let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+        .args(["store::fault_tests::child_process", "--exact", "--nocapture", "--test-threads", "1"])
+        .env("TL_FAULT_CHILD", format!("ntriples default group none {}", dir.display()))
+        .stdout(std::process::Stdio::piped()).spawn().unwrap();
+    let mut acked = Vec::new();
+    let mut lines = std::io::BufReader::new(child.stdout.take().unwrap()).lines();
+    while let Some(Ok(line)) = lines.next() {
+        if let Some(k) = line.strip_prefix("acked ") { acked.push(k.parse::<u64>().unwrap()) }
+        if acked.len() >= 400 { break }
+    }
+    child.kill().unwrap();
+    child.wait().unwrap();
+    let store = open(Format::NTriples, &dir).unwrap();
+    let rows: std::collections::HashSet<String> = state(&store.snapshot()).0.into_iter().collect();
+    for k in &acked {
+        let tr = t(*k);
+        assert!(rows.contains(&format!("{} {} {}", tr.subject, tr.predicate, tr.object)), "acknowledged commit {k} lost");
+    }
+    drop(store);
+    let _ = std::fs::remove_dir_all(&dir);
 }
