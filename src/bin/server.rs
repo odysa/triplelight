@@ -252,7 +252,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
     };
     refresh(&stats, &store.snapshot());
     let port = args.get(3).filter(|a| !a.starts_with("--")).map(String::as_str).unwrap_or("7878");
-    let server = tiny_http::Server::http(format!("{}:{port}", bind_host())).expect("bind");
+    let server = listen(port);
     eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql and /update");
     let (server, store, stats, refresh) = (&server, &store, &stats, &refresh);
     std::thread::scope(|scope| for _ in 0..workers { scope.spawn(move || {
@@ -340,6 +340,26 @@ fn early_rejection(path: &str, status: u16) {
 /// The declared `Content-Length`, if any.
 fn declared_length(req: &tiny_http::Request) -> Option<u64> {
     req.headers().iter().find(|h| h.field.equiv("Content-Length")).and_then(|h| h.value.as_str().trim().parse().ok())
+}
+
+/// Idle timeouts on every connection (#123). tiny-http reads off an unread request body (one we rejected before
+/// reading it) inside the worker that answered, with no cap; the vendored tiny-http (`vendor/tiny_http`) sets these
+/// timeouts on each accepted connection, so a read that waits longer than the read timeout for a client's next bytes,
+/// or a write that waits longer than the write timeout for a client to take more of an answer, fails and closes the
+/// connection, which releases its worker. They bound each wait, not the whole transfer: a slow but steady upload or
+/// download keeps going. Defaults: 10 s and 60 s; `TRIPLELIGHT_READ_IDLE_MS` and `TRIPLELIGHT_WRITE_IDLE_MS`
+/// override them.
+fn idle_timeouts() -> (std::time::Duration, std::time::Duration) {
+    let ms = |name: &str, default: u64| std::time::Duration::from_millis(
+        std::env::var(name).ok().and_then(|v| v.parse().ok()).filter(|&v: &u64| v > 0).unwrap_or(default));
+    (ms("TRIPLELIGHT_READ_IDLE_MS", 10_000), ms("TRIPLELIGHT_WRITE_IDLE_MS", 60_000))
+}
+
+/// The server on `port`, its connections under `idle_timeouts`.
+fn listen(port: &str) -> tiny_http::Server {
+    let listener = std::net::TcpListener::bind(format!("{}:{port}", bind_host())).expect("bind");
+    let (read, write) = idle_timeouts();
+    tiny_http::Server::from_listener_with_timeouts(listener, None, Some(read), Some(write)).expect("serve")
 }
 
 /// Listen address host: 127.0.0.1 unless TRIPLELIGHT_HOST is set, e.g. 0.0.0.0 in a container.
@@ -447,7 +467,7 @@ fn serve_memory(args: &[String]) {
             let ablations = ablations(args);
             let timeout = query_timeout(args);
             let memory = query_memory(args);
-            let server = tiny_http::Server::http(format!("{}:{port}", bind_host())).expect("bind");
+            let server = listen(port);
             eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql");
             // One worker per core: queries run concurrently against the same immutable snapshot.
             let workers = std::thread::available_parallelism().map_or(4, |n| n.get());

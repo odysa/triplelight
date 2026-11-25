@@ -15,6 +15,8 @@ copies = {"python": "bindings/python/notices", "node": "bindings/node", "go": "b
 # The published crates carry the licence; the crates with derived code also carry the notices.
 crate_copies = {f"crates/triplelight-{c}": ("LICENSE",) for c in ("plan", "sparql", "storage")}
 crate_copies.update({f"crates/triplelight-{c}": FILES for c in ("core", "exec", "iri", "rdf", "rdfs", "shacl")})
+# The patched tiny-http copy (#123) carries its own MIT/Apache licences and the notices naming it.
+crate_copies["vendor/tiny_http"] = ("THIRD_PARTY_NOTICES.md",)
 for d, names in crate_copies.items():
     for n in names:
         f = root / d / n
