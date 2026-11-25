@@ -99,9 +99,24 @@ fn explicit_open_updates_refuse_browser_origins() {
 
 #[test]
 fn read_only_rejects_updates_but_answers_queries() {
-    let s = start("ro", &["--read-only"], None);
-    assert!(post(s.1, "/update", "application/sparql-update", "", None).contains(" 403 "));
-    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
+    // `--read-only` opens an existing store and creates nothing, so build the store first with a plain server, then stop that server.
+    let mut writer = start("ro", &[], None);
+    let _ = writer.0.kill();
+    let _ = writer.0.wait();
+    let port = { let l = TcpListener::bind("127.0.0.1:0").unwrap(); l.local_addr().unwrap().port() };
+    let mut reader = Command::new(env!("CARGO_BIN_EXE_triplelight"));
+    reader.arg("serve-store").arg(&writer.2).arg(port.to_string()).arg("--read-only").stdout(Stdio::null()).stderr(Stdio::null())
+        .env_remove("TRIPLELIGHT_UPDATE_TOKEN").env_remove("TRIPLELIGHT_HOST");
+    let mut reader = reader.spawn().unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while TcpStream::connect(("127.0.0.1", port)).is_err() {
+        assert!(Instant::now() < deadline, "read-only server did not start");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(post(port, "/update", "application/sparql-update", "", None).contains(" 403 "));
+    assert!(post(port, "/sparql", "application/sparql-query", ASK, None).contains("false"));
+    let _ = reader.kill();
+    let _ = reader.wait();
 }
 
 #[test]
