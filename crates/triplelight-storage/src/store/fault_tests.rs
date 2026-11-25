@@ -538,9 +538,8 @@ fn a_follower_left_out_of_a_batch_leads_the_next() {
         // The stand-in's batch ends without the writer's record: publish only what was durable, then step down.
         let durable = store.durable.load(std::sync::atomic::Ordering::SeqCst);
         store.publish_durable(durable, store.snapshot());
-        drop(w);
         let t = std::time::Instant::now();
-        store.end_leading();
+        store.end_leading(w);
         writer.join().unwrap().unwrap();
         waits.push(t.elapsed());
         assert!(store.durable.load(std::sync::atomic::Ordering::SeqCst) > durable);

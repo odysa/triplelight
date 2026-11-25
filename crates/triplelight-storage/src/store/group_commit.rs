@@ -18,10 +18,9 @@ impl Store {
             match self.wal.try_lock() {
                 Ok(mut w) => {
                     let flushed = self.lead_flush(&mut w);
-                    // Only once the WAL lock is free does the leader step down and wake the waiters: one whose record
-                    // the batch missed then finds nobody leading and leads the next batch at once.
-                    drop(w);
-                    self.end_leading();
+                    // The leader steps down as it frees the WAL lock and wakes the waiters: one whose record the
+                    // batch missed then finds nobody leading and leads the next batch at once.
+                    self.end_leading(w);
                     flushed?
                 }
                 Err(std::sync::TryLockError::WouldBlock) => {
@@ -91,9 +90,13 @@ impl Store {
         self.durable.store(upto, std::sync::atomic::Ordering::SeqCst);
     }
 
-    /// The leader, its WAL lock dropped, steps down and wakes every waiter.
-    pub(super) fn end_leading(&self) {
-        self.pending.lock().unwrap().leading = false;
+    /// The leader steps down: it frees the WAL lock while holding `pending`, so a successor that takes the WAL lock
+    /// in between cannot mark itself leading before this clears the flag, then wakes every waiter.
+    pub(super) fn end_leading(&self, wal: std::sync::MutexGuard<'_, Wal>) {
+        let mut p = self.pending.lock().unwrap();
+        drop(wal);
+        p.leading = false;
+        drop(p);
         self.flushed.notify_all();
     }
 }
