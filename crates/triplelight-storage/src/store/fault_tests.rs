@@ -586,3 +586,18 @@ fn a_leader_after_a_failed_batch_acknowledges_nothing() {
     drop(reopened);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A record an earlier fsync covered reports success even if a later batch then poisoned the store (#105): the
+/// poison speaks only for what was not yet durable.
+#[test]
+fn a_durable_record_succeeds_after_a_later_failure() {
+    let dir = scratch("durable-then-poison");
+    let store = open(Format::NTriples, &dir).unwrap();
+    store.commit_dataset(&record(Kind::Default, 0)).unwrap();
+    let durable = store.durable.load(std::sync::atomic::Ordering::SeqCst);
+    store.poisoned.store(true, std::sync::atomic::Ordering::SeqCst);
+    assert!(store.flush_until(durable).is_ok(), "an already durable record");
+    assert!(store.flush_until(durable + 1).is_err(), "a record past the poison");
+    drop(store);
+    let _ = std::fs::remove_dir_all(&dir);
+}
