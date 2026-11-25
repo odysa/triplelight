@@ -3,7 +3,8 @@
 # Writes the plans for this machine, then runs each through bench/eval/plan.py (which takes the machine lock,
 # requires a fresh machine-check receipt, scores every session and writes report.md per plan), then the scoreboard.
 set -euo pipefail
-# The session budget is part of the protocol (configs/*.txt describe it): every engine gets 12 GiB and 8 CPUs, as in v3.
+# The session budget is part of the protocol: every engine gets 12 GiB and 8 CPUs, as in v3. The plans carry it
+# (make-plans.py), plan.py sets BUDGET per session and the manifest binds it; this check only rejects a conflicting caller.
 PROFILE_BUDGET="--mem 12 --cpus 8"
 [ -z "${BUDGET:-}" ] || [ "$BUDGET" = "$PROFILE_BUDGET" ] || { echo "run.sh: BUDGET=$BUDGET differs from the profile's $PROFILE_BUDGET" >&2; exit 2; }
 export BUDGET=$PROFILE_BUDGET
