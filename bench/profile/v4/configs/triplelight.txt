@@ -1,3 +1,4 @@
 # TripleLight in profile v4: `systems.sh triplelight serve <dataset>` = serve-store <TOOLS>/triplelight-<dataset> --disk,
 # cache half of the session memory, statistics built in the background (the session waits for "statistics ready").
+# Budget: BUDGET="--mem 12 --cpus 8" (run.sh).
 memory_gb=12 cpus=8 cache=half-of-memory statistics=background-ready

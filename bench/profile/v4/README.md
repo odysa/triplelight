@@ -24,5 +24,12 @@ never committed) and runs them in turn. Each plan directory gets `report.md` and
 The references are profile v3's, with local paths removed from their provenance field; the answer digests are
 unchanged. `configs/` records each engine's configuration as the manifest hashes it.
 
+`run.sh` fixes the session budget to `--mem 12 --cpus 8` for every engine (refusing a different caller `BUDGET`), and the
+config files the manifests hash say the same.
+
+**Before the scored acceptance run** three pieces must be on main: the machine check (#296), the report (#305) and the
+frozen BSBM BI case policy (#130). Until the policy is in, BI answers inside the registered rounding, lexical and
+cutoff rules show as mismatches, and those sessions are unscored.
+
 Each system gets 3 server sessions (`--sessions`), so queries under 5 ms can pass the noise gate in
 `bench/eval/abba.py` when two profiles are compared.
