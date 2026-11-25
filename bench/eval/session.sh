@@ -45,7 +45,7 @@ for s in "${OK[@]}"; do
   fi
   if [ "${COLD:-0}" = 1 ]; then
     if ! SYSTEM=$s DATASET=$D BUDGET=$BUDGET python3 "$HERE/driver.py" run --system "$s" --url "$(url_of "$s")" ${CLEAR:+--clear-cache-url "$CLEAR"} ${EXPECT:+--expect-unsupported "$EXPECT"} ${MANIFEST:+--manifest "$MANIFEST"} ${SCORED:+--scored} --queries "$QDIR" \
-      --reference "$OUT/reference.json" --out "$OUT/$s.cold.json" --mode cold --timeout "$TIMEOUT" --cold-hook "'$HERE/restart.sh' --cold" > "$OUT/$s.cold.log" 2>&1; then
+      --reference "$OUT/reference.json" --out "$OUT/$s.cold.json" --mode cold --timeout "$TIMEOUT" --cold-hook "'$HERE/restart.sh' --cold" ${PLAN_RUNNER:+--plan-runner "$PLAN_RUNNER"} > "$OUT/$s.cold.log" 2>&1; then
       echo "$s: cold run failed (see $s.cold.log)" >> "$OUT/failures.txt"
     fi
   fi
