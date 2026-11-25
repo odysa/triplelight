@@ -66,7 +66,80 @@ def inconsistent(data, system, manifest):
 def ms(x): return f"{x * 1000:.2f}" if x < 1 else f"{x * 1000:.0f}"
 
 
+def run_mode(run):
+    try: return json.loads((pathlib.Path(run) / "plan.json").read_text()).get("run_mode", "scored")
+    except Exception: return "scored"
+
+
+ABBA_BANNER = "> **UNSCORED: harness acceptance, not for publication.**"
+
+
+def abba_lines(f, ab, force_unscored=False):
+    """The A/B section of a report from one abba-*.json. A comparison that says it is unscored (`run_mode: unscored`, written by an unscored plan)
+    gets the banner and marks every row with a dagger on its own, whatever else the run directory holds; so does any comparison in an unscored run."""
+    unscored = force_unscored or ab.get("run_mode") == "unscored"
+    rows = ab.get("rows") or []
+    head = [f"## A/B comparison: {f.stem[5:]}", ""] + ([ABBA_BANNER, ""] if unscored else [])
+    if ab.get("refused") or ab.get("comparable") is False:
+        # a refused comparison publishes its reasons only: its provisional rows, ratios and verdicts are not results
+        return head + ["Refused. No ratio or verdict is published for this comparison.", ""] + [f"- {x}" for x in ab.get("refused") or ["the comparator marked this comparison not comparable"]] + [""]
+    counts = {}
+    for r in rows: counts[r.get("verdict", "?")] = counts.get(r.get("verdict", "?"), 0) + 1
+    out = head + ["Verdicts: " + (", ".join(f"{k} {v}" for k, v in sorted(counts.items())) or "none") + f" over {len(rows)} queries; geometric mean B/A {ab.get('geomean_ratio')}.", ""]
+    counted = [r for r in rows if r.get("verdict") in ("faster", "slower")]
+    if counted:
+        mark = " †" if unscored else ""
+        out += ["| Query | A ms | B ms | B/A | spread | verdict |", "| --- | ---: | ---: | ---: | ---: | --- |"]
+        out += [f"| {r['query']}{mark} | {r['a_s'] * 1e3:.2f} | {r['b_s'] * 1e3:.2f} | {r['ratio']:.3f} | {r.get('spread', 0):.1%} | {r['verdict']} |" for r in counted]
+        out.append("")
+    return out
+
+
+def build_unscored(run):
+    """The report of a harness acceptance run: it also drives the hill-climbing round, so it shows medians and the spread across sessions, but every
+    timing table carries the banner and every row is marked with a dagger. It is not a result: the scoreboard and `abba.py --scored` refuse the run."""
+    results = load_results(run)
+    banner = "> **UNSCORED: harness acceptance, not for publication.**"
+    lines = [f"# Benchmark report: {pathlib.Path(run).name}", "", banner + " This run checks the harness and the protocol on a machine whose receipt may not qualify. Its timings are internal; the scoreboard refuses it.", ""]
+    table, relaxed = {}, {}
+    for sess, system, mode, data, _ in results:
+        for q, e in data.get("queries", {}).items():      # an unreadable results file has none: it is listed under Eligibility, with the loader's diagnostic
+            col = f"{system} ({data['_arm']})" if data.get("_arm") else system
+            table.setdefault((mode, q), {}).setdefault(col, []).append(e)
+            if e.get("class") == "value-compatible": relaxed.setdefault((col, mode, q), set()).update(e.get("policy_reasons") or ["narrower integer types normalized"])
+    for mode in sorted({k[0] for k in table}):
+        cols = sorted({c for (m, _), row in table.items() if m == mode for c in row})
+        lines += [f"## {mode}: median per session and spread across sessions, in milliseconds", "", banner, "", "| Query | " + " | ".join(cols) + " |", "| --- | " + " | ".join("---:" for _ in cols) + " |"]
+        for (m, q), row in sorted(table.items(), key=lambda kv: (kv[0][1].rstrip("0123456789"), int("".join(c for c in kv[0][1] if c.isdigit()) or 0))):
+            if m != mode: continue
+            cells = []
+            for c in cols:
+                es = row.get(c, [])
+                if not es: cells.append("-")
+                elif all(e.get("class") in GOOD and "median_s" in e for e in es):
+                    meds = [e["median_s"] for e in es]; mid = statistics.median(meds)
+                    spread = f"±{(max(meds) - min(meds)) / mid / 2:.1%}" if len(meds) > 1 and mid else "1 session"
+                    cells.append(f"{ms(mid)} ({spread})" + ("\\*" if any(e["class"] == "value-compatible" for e in es) else ""))
+                else: cells.append("/".join(sorted({e.get("class", "?") for e in es})))
+            lines.append(f"| {q} † | " + " | ".join(cells) + " |")
+        lines += ["", "† unscored: harness acceptance, not for publication. `\\*` marks a value-compatible answer.", ""]
+    if relaxed:
+        lines += ["## Relaxed comparisons (value-compatible, marked \\* above)", "", "The answer was accepted under a registered, weaker comparison than an exact match. Each reason is the policy's own.", ""]
+        for (col, mode, q), reasons in sorted(relaxed.items()): lines.append(f"- {col}, {mode}, {q}: " + "; ".join(sorted(reasons)))
+        lines.append("")
+    lines += ["## Eligibility", ""]
+    for sess, system, mode, data, problems in results:
+        if "queries" not in data: lines.append(f"- `{sess}/{system}.{mode}`: unreadable results, not part of this report ({'; '.join(problems)})"); continue
+        lines.append(f"- `{sess}/{system}.{mode}`: " + ("eligible" if data.get("eligible") else "ineligible: " + "; ".join(data.get("ineligible_reasons") or ["unknown"])))
+    for f in sorted(pathlib.Path(run).glob("abba-*.json")):
+        try: ab = json.loads(f.read_text())
+        except Exception: continue
+        lines += abba_lines(f, ab, force_unscored=True)
+    return "\n".join(lines) + "\n", {"meta": {"run_mode": "unscored"}, "scored": [], "refused": [(s_, sy, m, ["unscored: harness acceptance"]) for s_, sy, m, _, _ in results]}
+
+
 def build(run):
+    if run_mode(run) == "unscored": return build_unscored(run)
     results = load_results(run)
     scored = [r for r in results if not r[4]]
     refused = [r for r in results if r[4]]
@@ -118,19 +191,7 @@ def build(run):
     for f in sorted(pathlib.Path(run).glob("abba-*.json")):
         try: ab = json.loads(f.read_text())
         except Exception: continue
-        rows = ab.get("rows") or []
-        if ab.get("refused") or ab.get("comparable") is False:
-            # a refused comparison publishes its reasons only: its provisional rows, ratios and verdicts are not results
-            lines += [f"## A/B comparison: {f.stem[5:]}", "", "Refused. No ratio or verdict is published for this comparison.", ""] + [f"- {x}" for x in ab.get("refused") or ["the comparator marked this comparison not comparable"]] + [""]
-            continue
-        counts = {}
-        for r in rows: counts[r.get("verdict", "?")] = counts.get(r.get("verdict", "?"), 0) + 1
-        lines += [f"## A/B comparison: {f.stem[5:]}", "", "Verdicts: " + (", ".join(f"{k} {v}" for k, v in sorted(counts.items())) or "none") + f" over {len(rows)} queries; geometric mean B/A {ab.get('geomean_ratio')}.", ""]
-        counted = [r for r in rows if r.get("verdict") in ("faster", "slower")]
-        if counted:
-            lines += ["| Query | A ms | B ms | B/A | spread | verdict |", "| --- | ---: | ---: | ---: | ---: | --- |"]
-            lines += [f"| {r['query']} | {r['a_s'] * 1e3:.2f} | {r['b_s'] * 1e3:.2f} | {r['ratio']:.3f} | {r.get('spread', 0):.1%} | {r['verdict']} |" for r in counted]
-            lines.append("")
+        lines += abba_lines(f, ab)
     return "\n".join(lines) + "\n", {"meta": meta, "arms": {a: sorted(i) for a, i in arms.items()}, "scored": [(s, sy, m) for s, sy, m, _, _ in scored], "refused": [(s, sy, m, p) for s, sy, m, _, p in refused]}
 
 
@@ -138,7 +199,7 @@ def cmd_report(a):
     text, data = build(a.run)
     pathlib.Path(a.out).write_text(text) if a.out else print(text, end="")
     if a.json: pathlib.Path(a.json).write_text(json.dumps(data, indent=1, sort_keys=True) + "\n")
-    if data["refused"] and not data["scored"]: sys.exit(1)       # nothing in this run may be published
+    if data["refused"] and not data["scored"] and data["meta"].get("run_mode") != "unscored": sys.exit(1)       # nothing in this run may be published
 
 
 def board_rows(run):
@@ -154,6 +215,7 @@ def board_rows(run):
 
 
 def cmd_board(a):
+    if a.action == "add" and run_mode(a.run) == "unscored": sys.exit("the scoreboard refuses an unscored harness acceptance run")
     board = pathlib.Path(a.board)
     existing = [json.loads(l) for l in board.read_text().splitlines() if l.strip()] if board.exists() else []
     if a.action == "show":
@@ -233,6 +295,31 @@ def selftest(a):
         res(sd4, h4, "ontop", queries={"q1": {"class": "value-compatible", "median_s": 0.01, "policy_reasons": ["within the registered binary32 interval"]}, "q2": {"class": "value-compatible", "median_s": 0.02}})
         text4, _ = build(t.parent / "run4")
         check("a value-compatible answer is marked and its reason is listed (the policy's own, or the default)", "\\*" in text4 and "q1: within the registered binary32 interval" in text4 and "q2: narrower integer types normalized" in text4)
+        # an unscored harness run: times and spreads are shown (they drive the hill climbing), under a banner on every table, every row marked
+        tu = t.parent / "run5"
+        for i, ms_ in enumerate((0.100, 0.110), 1):
+            d = tu / f"session-{i}-A"; d.mkdir(parents=True); hh = manifest(d, "a", "1")
+            res(d, hh, "triplelight", scored=False, scored_reason="machine check did not pass", queries={"q1": {"class": "pass", "median_s": ms_}, "q2": {"class": "mismatch", "median_s": 0.001}})
+        (tu / "plan.json").write_text(json.dumps({"run_mode": "unscored"}))
+        textu, datau = build(tu)
+        check("an unscored report shows the median and the spread across sessions", "| q1 † | 105.00 (±4.8%) |" in textu, textu)
+        check("an unscored report carries the banner on its heading and on every timing table", textu.count("UNSCORED: harness acceptance, not for publication") >= 2 and "## warm: median per session" in textu)
+        check("an unscored report marks every row with a dagger and shows a mismatch as its class, never a time", "| q2 † | mismatch |" in textu and all(l.startswith("| q") and " † |" in l for l in textu.splitlines() if l.startswith("| q")))
+        # the comparison's own mode is honored even without a plan.json, and an unreadable session file does not crash an unscored report
+        (t3 / "abba-triplelight.json").write_text(json.dumps({"run_mode": "unscored", "geomean_ratio": 0.2, "refused": [], "rows": [{"query": "q1", "a_s": 0.1, "b_s": 0.02, "ratio": 0.2, "spread": 0.01, "verdict": "faster"}]}))
+        text3u, _ = build(t3)
+        check("an A/B comparison that says it is unscored carries the banner and daggers even in a scored run's report", "UNSCORED: harness acceptance, not for publication" in text3u.split("## A/B comparison")[1] and "| q1 † | 100.00 |" in text3u)
+        (tu / "session-1-A" / "broken.warm.json").write_text("{not json")
+        textb, _ = build(tu)
+        check("an unreadable session file in an unscored run is listed with the loader's diagnostic, not a crash", "broken.warm.?`: unreadable results" in textb and "| q1 † |" in textb)
+        (tu / "session-1-A" / "broken.warm.json").unlink()
+        d = tu / "session-1-A" / "triplelight.warm.json"; dd = json.loads(d.read_text()); dd["queries"]["q1"] = {"class": "value-compatible", "median_s": 0.1, "policy_reasons": ["within the registered binary32 interval"]}; d.write_text(json.dumps(dd))
+        textr, _ = build(tu)
+        check("an unscored report lists the reason of every value-compatible answer, as the scored report does", "triplelight (A), warm, q1: within the registered binary32 interval" in textr and "Relaxed comparisons" in textr)
+        class B: pass
+        bb = B(); bb.action = "add"; bb.run = str(tu); bb.board = str(t.parent / "board5.jsonl")
+        try: cmd_board(bb); check("the scoreboard refuses an unscored run", False)
+        except SystemExit as e: check("the scoreboard refuses an unscored run", "refuses an unscored" in str(e) and not (t.parent / "board5.jsonl").exists())
         for f in sd.glob("*.json"):
             if f.name != "manifest.json": f.unlink()
         res(sd, h, "wrong", eligible=False, ineligible_reasons=["x"])
