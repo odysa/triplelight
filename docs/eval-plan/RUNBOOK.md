@@ -81,21 +81,34 @@ large query. Record the counts in the session log.
 
 ### Machine qualification and the AWS session (task #130 phase 6)
 
-- **`bench/eval/machine-check.sh <out-dir>`** runs before every scored session. It takes about 3 minutes and only
-  reads. It checks bare metal, governor `performance` on every core, turbo off, no swap, exclusive use (one login, no
-  containers, no process above 2% of a core over 60 s, steal time), spin-loop stability on the first and last core
-  (spread and cross-core gap at most 3%), and direct-I/O read throughput on the data disk. The receipt
-  `machine-check.json` carries `passed`, `timestamp` and `boot_id`. The driver rejects a receipt that failed, is
-  `--quick`, is older than 24 h, or comes from an earlier boot. On the laptop the macOS checks apply (idle, thermal,
-  power, spin-loop stability), and `--ignore <regex>` waives named desktop processes, which are still recorded.
-- **`bench/aws/lifecycle.sh`** runs on the operator's machine with the operator's own AWS profile. It launches,
-  provisions from a git bundle of the commit under test, runs the machine check (a failure stops the session), runs
-  the plan, copies `/data/receipts` and `/data/bench-out` back, and terminates the instance on every exit path. It
-  refuses to launch when `--price-per-hour × --max-hours` exceeds `--max-usd`, or when the instance is on shared
-  tenancy: use a `.metal` type, or pass `--dedicated`. The instance also schedules its own shutdown at `--max-hours`,
-  with shutdown behaviour `terminate`. No credential is copied to the instance. The security group must already allow
-  SSH from the operator's address only, and the subnet must assign public IPs. `--dry-run` prints every AWS and SSH
-  step without making it.
+- **`bench/eval/machine-check.sh <out-dir>`** runs before every scored session and takes about 3 minutes. It tunes
+  nothing; its only write is a temporary file on the data disk. It checks:
+  - bare metal;
+  - governor `performance` on every core and turbo off, failing when sysfs can't show them unless
+    `--allow-no-cpufreq` is passed;
+  - THP as expected (`--thp`, default `madvise`) and no swap;
+  - exclusive use: one login; no containers or containerd shims; no process above 2% of a core over 60 s;
+    host-wide busy time at most 0.1 core; steal time at most 0.5%;
+  - spin-loop stability on the first and last core: spread and cross-core gap at most 3%;
+  - direct-I/O read and write throughput on the data disk.
+
+  The receipt `machine-check.json` carries `passed`, `timestamp` and `boot_id`, and it is deleted at the start of each
+  run. The driver rejects a receipt that failed, is `--quick`, is older than 24 h, or comes from an earlier boot. On
+  the laptop the macOS checks apply (idle, thermal, power, spin-loop stability), and `--ignore <regex>` waives named
+  desktop processes, which are still recorded.
+- **`bench/aws/lifecycle.sh`** runs on the operator's machine with the operator's own AWS profile.
+  - **Steps:** launch, provision from a git bundle of the commit under test, run the machine check (a failure stops
+    the session), run the plan under a limit 20 minutes shorter than `--max-hours`, and copy `/data/receipts` and
+    `/data/bench-out` back.
+  - **Termination:** the instance is terminated on every exit path. A second Ctrl-C can't skip that, and an
+    interrupted launch is found by its session tag; `--client-token` keeps a retried launch from starting a second
+    instance. The instance also schedules its own shutdown at `--max-hours`, with shutdown behaviour `terminate`.
+  - **Refusals:** a non-numeric or non-positive amount; `(price + dedicated fee) × hours` above `--max-usd`; shared
+    tenancy (use a `.metal` type, or `--dedicated`); a security group wider than tcp/22 from the caller's /32; and a
+    non-empty `--out`.
+  - **Access:** SSH runs with `-F /dev/null` and no agent forwarding, and no credential is copied to the instance. The
+    subnet must assign public IPs.
+  - **`--dry-run`** prints every AWS and SSH step without making it.
 
 ## 2. Datasets (about 6–8 h of wall time on day one, before any timed run)
 
