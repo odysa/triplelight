@@ -1,5 +1,7 @@
 [workspace]
 members = [".", "crates/*"]
+# A patched tiny-http for the server's connection timeouts (#123); see `vendor/tiny_http` and [patch.crates-io].
+exclude = ["vendor/tiny_http"]
 # The language bindings (bindings/*) build as separate packages with their own toolchains and lockfiles; each
 # declares its own empty [workspace].
 resolver = "3"
@@ -111,3 +113,8 @@ unicode-width = "0.2"
 # glibc malloc costs ~20-25% on Linux (BSBM/LUBM in the VM); on macOS the system allocator is as fast, so Linux only.
 [target.'cfg(target_os = "linux")'.dependencies]
 mimalloc = { version = "0.1", default-features = false }
+
+# tiny-http 0.12.0 with per-connection read/write timeouts and non-fatal accept errors (#123). The diff against
+# upstream is in the PR that added it; the MIT/Apache licence texts are in THIRD_PARTY_NOTICES.md.
+[patch.crates-io]
+tiny_http = { path = "vendor/tiny_http" }

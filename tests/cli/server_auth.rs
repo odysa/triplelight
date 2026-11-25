@@ -192,4 +192,36 @@ fn an_oversized_declared_body_is_refused_before_reading() {
     let mut buf = [0u8; 64];
     let n = c.read(&mut buf).expect("the 413 is sent without waiting for the body");
     assert!(String::from_utf8_lossy(&buf[..n]).contains(" 413 "));
+/// More clients than workers declare an update body and never send it (#123). Each is answered 401 at once, and then
+/// holds a worker while tiny-http reads off the body; the read idle timeout on each connection releases them, so a
+/// normal query still answers promptly instead of waiting behind them forever.
+#[test]
+fn withheld_bodies_are_released_by_the_read_idle_timeout() {
+    let s = start_with("idle", &[], Some("s3cret"), &[("TRIPLELIGHT_READ_IDLE_MS", "300")]);
+    let n = std::thread::available_parallelism().map_or(4, |n| n.get()) + 4;
+    let mut slow: Vec<TcpStream> = (0..n).map(|_| {
+        let mut c = TcpStream::connect(("127.0.0.1", s.1)).unwrap();
+        write!(c, "POST /update HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/sparql-update\r\nContent-Length: 65536\r\n\r\n").unwrap();
+        c.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+        c
+    }).collect();
+    for c in &mut slow {
+        let mut buf = [0u8; 64];
+        // A reset instead of the 401 is the flaky case this file also covers; either way the request was refused.
+        if let Ok(n) = c.read(&mut buf) { assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).contains(" 401 ")) }
+    }
+    let t = Instant::now();
+    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
+    assert!(t.elapsed() < Duration::from_secs(5), "a query waited {:?} behind withheld bodies", t.elapsed());
+    drop(slow);
+}
+
+/// A quiet spell longer than the read timeout does not stop the server accepting (#123): a timeout belongs to one
+/// connection, never to the listener.
+#[test]
+fn the_server_still_accepts_after_an_idle_period() {
+    let s = start_with("quiet", &[], Some("s3cret"), &[("TRIPLELIGHT_READ_IDLE_MS", "200")]);
+    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
+    std::thread::sleep(Duration::from_millis(1000));
+    assert!(post(s.1, "/sparql", "application/sparql-query", ASK, None).contains("false"));
 }
