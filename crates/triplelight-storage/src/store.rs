@@ -41,6 +41,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 
+mod group_commit;
 mod named;
 #[cfg(unix)]
 pub(crate) mod text_postings;
@@ -483,6 +484,12 @@ pub struct Store {
     current: RwLock<Arc<Overlay>>,
     /// Accepted change sets, possibly not yet durable (group commit).
     pending: Mutex<Pending>,
+    /// Signalled whenever a record joins `pending` (the adaptive gather in `lead_flush`).
+    enqueued: std::sync::Condvar,
+    /// The sequence number of the last durable record; set under `pending` by `publish`.
+    durable: std::sync::atomic::AtomicU64,
+    /// Signalled when a leader steps down, after `durable` grew or the store was poisoned (`flush_until` waits on it).
+    flushed: std::sync::Condvar,
     /// The open WAL; whoever holds it flushes all pending records with one fsync.
     wal: Mutex<Wal>,
     /// Serializes update requests (read-compute-enqueue), so each sees all earlier ones.
@@ -495,10 +502,15 @@ pub struct Store {
     _directory_lock: File,
     #[cfg(test)]
     fail_at: Mutex<Option<String>>,
+    /// Waits in `flush_until` that ended on the safety timeout while a leader was still marked leading (tests).
+    #[cfg(test)]
+    timeout_wakes: std::sync::atomic::AtomicU64,
 }
 
-struct Pending { latest: Arc<Overlay>, buf: String, seq: u64 }
-struct Wal { file: File, durable: u64 }
+/// `records`: how many records `buf` holds; `leading`: a leader is flushing (`group_commit`).
+struct Pending { latest: Arc<Overlay>, buf: String, seq: u64, records: usize, leading: bool }
+/// `last_batch`: records in the last batch written; `last_sync`: how long its write and fsync took.
+struct Wal { file: File, last_batch: usize, last_sync: std::time::Duration }
 
 impl Store {
     /// Opens `dir` with N-Triples bases, creating it from `initial` if it has no base yet; replays the WAL.
@@ -556,14 +568,19 @@ impl Store {
         Ok(Store {
             dir, format, generation: Mutex::new(generation), fences: Mutex::new(fences),
             current: RwLock::new(overlay.clone()),
-            pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0 }),
-            wal: Mutex::new(Wal { file: wal, durable: 0 }),
+            pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0, records: 0, leading: false }),
+            enqueued: std::sync::Condvar::new(),
+            wal: Mutex::new(Wal { file: wal, last_batch: 0, last_sync: std::time::Duration::ZERO }),
+            durable: std::sync::atomic::AtomicU64::new(0),
+            flushed: std::sync::Condvar::new(),
             writer: Mutex::new(()),
             poisoned: std::sync::atomic::AtomicBool::new(false),
             read_only: false,
             _directory_lock: directory_lock,
             #[cfg(test)]
             fail_at: Mutex::new(None),
+            #[cfg(test)]
+            timeout_wakes: std::sync::atomic::AtomicU64::new(0),
         })
     }
 
@@ -603,14 +620,19 @@ impl Store {
         Ok(Store {
             dir, format, generation: Mutex::new(generation), fences: Mutex::new(fences),
             current: RwLock::new(overlay.clone()),
-            pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0 }),
-            wal: Mutex::new(Wal { file: wal, durable: 0 }),
+            pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0, records: 0, leading: false }),
+            enqueued: std::sync::Condvar::new(),
+            wal: Mutex::new(Wal { file: wal, last_batch: 0, last_sync: std::time::Duration::ZERO }),
+            durable: std::sync::atomic::AtomicU64::new(0),
+            flushed: std::sync::Condvar::new(),
             writer: Mutex::new(()),
             poisoned: std::sync::atomic::AtomicBool::new(false),
             read_only: true,
             _directory_lock: directory_lock,
             #[cfg(test)]
             fail_at: Mutex::new(None),
+            #[cfg(test)]
+            timeout_wakes: std::sync::atomic::AtomicU64::new(0),
         })
     }
 
@@ -755,41 +777,9 @@ impl Store {
         push_record(&mut p.buf, &rec);
         p.latest = Arc::new(next);
         p.seq += 1;
+        p.records += 1;
+        self.enqueued.notify_all();
         Ok((p.seq, n))
-    }
-
-    /// Makes everything up to `seq` durable and visible. One caller writes and fsyncs all pending records; callers
-    /// whose records it covered return without another fsync.
-    fn flush_until(&self, seq: u64) -> std::io::Result<()> {
-        let mut w = self.wal.lock().unwrap();
-        if w.durable >= seq { return Ok(()) }
-        self.check_poisoned()?;
-        let (buf, upto, overlay) = {
-            let mut p = self.pending.lock().unwrap();
-            (std::mem::take(&mut p.buf), p.seq, p.latest.clone())
-        };
-        // Nothing to make durable (a batch must hold at least one record, `read_batch`).
-        if buf.is_empty() {
-            w.durable = upto;
-            *self.current.write().unwrap() = overlay;
-            return Ok(())
-        }
-        // Every record reaches the WAL after the batch fence (`append`), so the whole flush is one batch.
-        let batch = batch(&buf);
-        let written = fault::hit("wal-before-write")
-            .and_then(|_| w.file.write_all(&batch))
-            .and_then(|_| fault::hit("wal-after-write"))
-            .and_then(|_| w.file.sync_data())
-            .and_then(|_| fault::hit("wal-after-sync"));
-        if let Err(e) = written {
-            self.poisoned.store(true, std::sync::atomic::Ordering::SeqCst);
-            return Err(std::io::Error::new(e.kind(), format!(
-                "appending to {} failed: {e}; the update is not acknowledged and may or may not be durable, and the \
-                 store refuses writes until it is reopened", self.dir.join("wal.log").display())));
-        }
-        w.durable = upto;
-        *self.current.write().unwrap() = overlay;
-        Ok(())
     }
 
     /// Writes base and delta as a new base, switches to it atomically, and empties the WAL. Readers are not

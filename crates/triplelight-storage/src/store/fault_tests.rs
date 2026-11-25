@@ -106,6 +106,18 @@ fn child_process() {
     let kind = if kind == "named" { Kind::Named } else { Kind::Default };
     if phase == "init" { fault::arm(point, Mode::Exit) }
     let store = open(format, Path::new(dir)).unwrap();
+    if phase == "group" {
+        // Writers commit concurrently until the parent kills the process; each acknowledged triple is printed.
+        let out = std::sync::Mutex::new(());
+        std::thread::scope(|scope| for writer in 0..8u64 { let (store, out) = (&store, &out); scope.spawn(move || {
+            for i in 0..u64::MAX {
+                let k = writer * 1_000_000 + i;
+                store.commit_dataset(&[DatasetChange::Quad(GraphTarget::Default, Change::Insert, t(k))]).unwrap();
+                let _held = out.lock().unwrap();
+                println!("acked {k}");
+            }
+        }); });
+    }
     for k in 0..RECORDS {
         if phase == "commit" && k == CRASH_AT && point != "after-ack" { fault::arm(point, Mode::Exit) }
         store.commit_dataset(&record(kind, k)).unwrap();
@@ -458,4 +470,134 @@ fn copy_dir(from: &Path, to: &Path) {
         let target = to.join(path.file_name().unwrap());
         if path.is_dir() { copy_dir(&path, &target) } else { std::fs::copy(&path, &target).unwrap(); }
     }
+}
+
+/// Group commit under a kill (#105): eight writers commit concurrently, so batches carry several of them, and the
+/// process is SIGKILLed mid-stream. Every commit acknowledged before the kill is there after reopening.
+#[test]
+fn concurrent_commits_survive_a_kill_mid_group() {
+    use std::io::BufRead;
+    let dir = scratch("group-kill");
+    let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+        .args(["store::fault_tests::child_process", "--exact", "--nocapture", "--test-threads", "1"])
+        .env("TL_FAULT_CHILD", format!("ntriples default group none {}", dir.display()))
+        .stdout(std::process::Stdio::piped()).spawn().unwrap();
+    let mut acked = Vec::new();
+    let mut lines = std::io::BufReader::new(child.stdout.take().unwrap()).lines();
+    while let Some(Ok(line)) = lines.next() {
+        if let Some(k) = line.strip_prefix("acked ") { acked.push(k.parse::<u64>().unwrap()) }
+        if acked.len() >= 400 { break }
+    }
+    child.kill().unwrap();
+    child.wait().unwrap();
+    let store = open(Format::NTriples, &dir).unwrap();
+    let rows: std::collections::HashSet<String> = state(&store.snapshot()).0.into_iter().collect();
+    for k in &acked {
+        let tr = t(*k);
+        assert!(rows.contains(&format!("{} {} {}", tr.subject, tr.predicate, tr.object)), "acknowledged commit {k} lost");
+    }
+    drop(store);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A writer that leaves (#105): after a batch of four, a lone writer's leader waits for four records that never come,
+/// but only up to the gather's cap; its own batch of one then ends the waiting for every later commit.
+#[test]
+fn a_departed_writer_costs_one_capped_gather_at_most() {
+    let dir = scratch("departed");
+    let store = open(Format::NTriples, &dir).unwrap();
+    store.commit_dataset(&record(Kind::Default, 0)).unwrap();
+    {
+        let mut w = store.wal.lock().unwrap();
+        (w.last_batch, w.last_sync) = (4, std::time::Duration::from_secs(1));
+    }
+    let t = std::time::Instant::now();
+    store.commit_dataset(&record(Kind::Default, 1)).unwrap();
+    assert!(t.elapsed() < std::time::Duration::from_millis(500), "the gather waited {:?}", t.elapsed());
+    assert_eq!(store.wal.lock().unwrap().last_batch, 1, "a batch of one ends the gather");
+    drop(store);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A follower whose record a finished batch did not cover (#105): when the leader steps down it wakes, finds its
+/// record not yet durable and nobody leading, and leads the next batch itself, at once rather than on the 20 ms
+/// safety timeout. Twenty rounds, and no wait may end on that timeout.
+#[test]
+fn a_follower_left_out_of_a_batch_leads_the_next() {
+    let dir = scratch("left-out");
+    let store = std::sync::Arc::new(open(Format::NTriples, &dir).unwrap());
+    store.commit_dataset(&record(Kind::Default, 0)).unwrap();
+    let mut waits = Vec::new();
+    for k in 1..=20 {
+        // Stand in for a leader: hold the WAL lock, leading, while a writer enqueues and starts waiting.
+        let w = store.wal.lock().unwrap();
+        store.pending.lock().unwrap().leading = true;
+        let writer = { let store = std::sync::Arc::clone(&store); std::thread::spawn(move || store.commit_dataset(&record(Kind::Default, k))) };
+        while store.pending.lock().unwrap().records == 0 { std::thread::yield_now() }
+        std::thread::sleep(std::time::Duration::from_millis(2)); // the writer is waiting on `flushed` now
+        // The stand-in's batch ends without the writer's record: publish only what was durable, then step down.
+        let durable = store.durable.load(std::sync::atomic::Ordering::SeqCst);
+        store.publish_durable(durable, store.snapshot());
+        let t = std::time::Instant::now();
+        store.end_leading(w);
+        writer.join().unwrap().unwrap();
+        waits.push(t.elapsed());
+        assert!(store.durable.load(std::sync::atomic::Ordering::SeqCst) > durable);
+    }
+    waits.sort();
+    // Woken by the stand-in stepping down, never by the safety timeout (a wait that times out while a leader is
+    // still marked leading counts in `timeout_wakes`), and promptly: the median includes the follower's own fsync.
+    assert_eq!(store.timeout_wakes.load(std::sync::atomic::Ordering::SeqCst), 0, "a follower slept to the safety timeout");
+    assert!(waits[waits.len() / 2] < std::time::Duration::from_millis(100), "median wait {:?}", waits[waits.len() / 2]);
+    drop(store);
+    let reopened = open(Format::NTriples, &dir).unwrap();
+    // Record k inserts triple k and deletes triple k - 2, so the last two survive.
+    let (s20, s19) = (t(20), t(19));
+    assert_eq!(state(&reopened.snapshot()).0, [format!("{} {} {}", s19.subject, s19.predicate, s19.object), format!("{} {} {}", s20.subject, s20.predicate, s20.object)]);
+    drop(reopened);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A failed batch is never acknowledged by the next leader (#105): writer A's batch fails before its write, which
+/// poisons the store with A's record taken from `pending` but never written. A writer that becomes leader after that
+/// finds an empty buffer; it must refuse rather than publish `pending.seq`, which would acknowledge A's record.
+#[test]
+fn a_leader_after_a_failed_batch_acknowledges_nothing() {
+    let dir = scratch("failed-batch");
+    let store = std::sync::Arc::new(open(Format::NTriples, &dir).unwrap());
+    store.commit_dataset(&record(Kind::Default, 0)).unwrap();
+    let before = store.durable.load(std::sync::atomic::Ordering::SeqCst);
+    fault::arm("wal-before-write", Mode::NoSpace);
+    assert!(store.commit_dataset(&record(Kind::Default, 1)).is_err(), "writer A's failed batch");
+    fault::disarm();
+    // Writer B passed its poison check before A failed, then won the WAL lock: it leads with an empty buffer.
+    {
+        let mut w = store.wal.lock().unwrap();
+        assert!(store.lead_flush(&mut w).is_err(), "a leader after a failed batch must refuse");
+        store.end_leading(w);
+    }
+    assert_eq!(store.durable.load(std::sync::atomic::Ordering::SeqCst), before, "A's record was acknowledged");
+    // Another writer is refused too, and a reopened store has no trace of A's record.
+    let b = { let store = std::sync::Arc::clone(&store); std::thread::spawn(move || store.commit_dataset(&record(Kind::Default, 2))) };
+    assert!(b.join().unwrap().is_err());
+    drop(store);
+    let reopened = open(Format::NTriples, &dir).unwrap();
+    assert_eq!(state(&reopened.snapshot()).0.len(), 1, "only the first record survived");
+    drop(reopened);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A record an earlier fsync covered reports success even if a later batch then poisoned the store (#105): the
+/// poison speaks only for what was not yet durable.
+#[test]
+fn a_durable_record_succeeds_after_a_later_failure() {
+    let dir = scratch("durable-then-poison");
+    let store = open(Format::NTriples, &dir).unwrap();
+    store.commit_dataset(&record(Kind::Default, 0)).unwrap();
+    let durable = store.durable.load(std::sync::atomic::Ordering::SeqCst);
+    store.poisoned.store(true, std::sync::atomic::Ordering::SeqCst);
+    assert!(store.flush_until(durable).is_ok(), "an already durable record");
+    assert!(store.flush_until(durable + 1).is_err(), "a record past the poison");
+    drop(store);
+    let _ = std::fs::remove_dir_all(&dir);
 }
