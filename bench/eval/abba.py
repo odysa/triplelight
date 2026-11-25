@@ -17,7 +17,8 @@ session (`driver.py --out`), with the noise gate the team agreed in #105 and #13
 
 With --scored (what the plan runner and the scoreboard use): every results file must say `scored: true`, its manifest
 must exist with the recorded digest, and both arms must share the workload: the same query set, reference, datasets,
-stores, protocol and machine (model, CPU, kernel). The arms may differ only in what is being compared (commit, build).
+stores, protocol, machine (model, CPU, kernel) and engine configuration (name, configuration digest, memory budget,
+indexes, cache-clear policy). Within an arm every session is one commit and build; the arms may differ there.
 
 Exit status: 0 comparable, 1 with --fail-on-regression and at least one counted slowdown, 2 refused.
 Usage: abba.py --a A1.json A2.json ... --b B1.json B2.json ... [--threshold 0.03] [--json out.json]
@@ -97,6 +98,8 @@ def compare(a_sessions, b_sessions, threshold=0.03):
 
 SHARED = ("queries_sha256", "reference_sha256", "datasets", "stores", "protocol")
 MACHINE = ("model", "cpu", "kernel")
+# The engine's configuration must match across arms; its version may not (the candidate is a different build).
+ENGINE = ("name", "config_sha256", "memory_budget", "indexes", "clear_cache_url")
 
 
 def scored_problems(a_sessions, b_sessions):
@@ -114,12 +117,23 @@ def scored_problems(a_sessions, b_sessions):
             problems.append(f"{p}: manifest {mpath} does not match the recorded digest"); continue
         m = json.loads(raw)
         machine = m.get("machine", {})
-        workloads.append((p, {k: m.get(k) for k in SHARED}, {k: machine.get(k) for k in MACHINE}))
-    for p, w, mach in workloads[1:]:
-        p0, w0, mach0 = workloads[0]
+        engine = next((e for e in m.get("systems", []) if e.get("name") == s.get("system")), None)
+        if engine is None:
+            problems.append(f"{p}: engine {s.get('system')!r} is not listed in its manifest"); continue
+        engine = {k: engine.get(k) for k in ENGINE}
+        build = (m.get("git", {}).get("commit"), json.dumps(m.get("build"), sort_keys=True))
+        workloads.append((p, {k: m.get(k) for k in SHARED}, {k: machine.get(k) for k in MACHINE}, engine, build))
+    for p, w, mach, engine, _ in workloads[1:]:
+        p0, w0, mach0, engine0, _ = workloads[0]
         for k in SHARED:
             if w[k] != w0[k]: problems.append(f"{p}: {k} differs from {p0}")
         if mach != mach0: problems.append(f"{p}: machine differs from {p0}")
+        if engine != engine0: problems.append(f"{p}: engine configuration differs from {p0}")
+    # Within an arm every session is the same commit and build; the arms themselves may differ there.
+    arm_of = {p: "A" for p, _ in a_sessions} | {p: "B" for p, _ in b_sessions}
+    for arm in ("A", "B"):
+        builds = {b for p, *_, b in workloads if arm_of[p] == arm}
+        if len(builds) > 1: problems.append(f"arm {arm}: sessions come from different commits or builds")
     return problems
 
 
@@ -186,11 +200,12 @@ def self_test():
     with tempfile.TemporaryDirectory() as d:
         def manifest(name, **over):
             m = {"queries_sha256": "q", "reference_sha256": "r", "datasets": [], "stores": [], "protocol": {"runs": 3},
-                 "machine": {"model": "m", "cpu": "c", "kernel": "k"}, **over}
+                 "machine": {"model": "m", "cpu": "c", "kernel": "k"}, "git": {"commit": "c1"}, "build": {"binary_sha256": "b1"},
+                 "systems": [{"name": "triplelight", "version": "0.1", "config_sha256": "cfg", "clear_cache_url": ""}], **over}
             path = os.path.join(d, name); open(path, "w").write(json.dumps(m))
             return path, hashlib.sha256(open(path, "rb").read()).hexdigest()
         def scored(times, mpath, digest, flag=True):
-            s = session(times); s.update(scored=flag, manifest=mpath, manifest_sha256=digest); return s
+            s = session(times); s.update(scored=flag, manifest=mpath, manifest_sha256=digest, system="triplelight"); return s
         ma, da = manifest("a.json"); mb, db = manifest("b.json")
         A = [(f"sa{i}", scored(slow, ma, da)) for i in range(2)]; B = [(f"sb{i}", scored(fast, mb, db)) for i in range(2)]
         check("--scored: two arms on one workload compare", not scored_problems(A, B))
@@ -200,6 +215,13 @@ def self_test():
         check("--scored: a manifest edited after the run refuses", any("digest" in x for x in scored_problems(A, [(f"sd{i}", scored(fast, mb, "0" * 64)) for i in range(2)])))
         md, dd = manifest("d.json", machine={"model": "other", "cpu": "c", "kernel": "k"})
         check("--scored: a different machine refuses", any("machine differs" in x for x in scored_problems(A, [(f"se{i}", scored(fast, md, dd)) for i in range(2)])))
+        mb2, db2 = manifest("b2.json", git={"commit": "c2"}, build={"binary_sha256": "b2"})
+        check("--scored: the candidate arm on another commit than the baseline compares", not scored_problems(A, [(f"sf{i}", scored(fast, mb2, db2)) for i in range(2)]))
+        check("--scored: one arm mixing two builds refuses", any("different commits or builds" in x for x in scored_problems(A, [("sg0", scored(fast, mb, db)), ("sg1", scored(fast, mb2, db2))])))
+        me, de = manifest("e.json", systems=[{"name": "triplelight", "version": "0.1", "config_sha256": "other", "clear_cache_url": ""}])
+        check("--scored: a different engine configuration refuses", any("engine configuration" in x for x in scored_problems(A, [(f"sh{i}", scored(fast, me, de)) for i in range(2)])))
+        mf_, df_ = manifest("f.json", systems=[{"name": "triplelight", "version": "0.1", "config_sha256": "cfg", "clear_cache_url": "http://x/clear"}])
+        check("--scored: a different cache-clear policy refuses", any("engine configuration" in x for x in scored_problems(A, [(f"si{i}", scored(fast, mf_, df_)) for i in range(2)])))
     return 0 if ok else 1
 
 
