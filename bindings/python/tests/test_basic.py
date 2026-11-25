@@ -179,6 +179,23 @@ def test_query_timeout_and_memory_budget():
         db.query(GROUPED, memory_mb=0)
 
 
+def test_spill_lets_a_group_by_over_the_budget_finish(tmp_path, monkeypatch):
+    # 10,000 groups of 4 rows: grouping in memory does not fit 3 MB; spilling by key partition does (#111)
+    data = tmp_path / "d.nt"
+    data.write_text("".join(f'<http://ex/s{i // 4}> <http://ex/p> "v{i}" .\n' for i in range(40_000)))
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setenv("TRIPLELIGHT_SCRATCH_DIR", str(scratch))
+    db = triplelight.Database.in_memory()
+    db.load(data)
+    q = "SELECT ?s (GROUP_CONCAT(?o) AS ?all) WHERE { ?s <http://ex/p> ?o } GROUP BY ?s"
+    with pytest.raises(triplelight.ResourceLimitError):
+        db.query(q, memory_mb=3)
+    assert len(db.query(q, memory_mb=3, spill=True)) == 10_000
+    assert len(db.query(q)) == 10_000
+    assert list(scratch.iterdir()) == [], "no spill files are left behind"
+
+
 def test_keyboard_interrupt_cancels_a_running_query():
     db = _big()
     # A real SIGINT, as Ctrl-C sends: the chained action cancels the query, and Python still raises.

@@ -147,6 +147,9 @@ void tl_interrupt_free(tl_interrupt *interrupt);
  * deadline, and memory_bytes (0: unlimited) bounds the working memory, TL_ERR_RESOURCE_LIMIT past it. Neither leaves
  * a partial result. */
 int32_t tl_query_with_limits(const tl_db *db, const char *sparql, size_t len, int32_t entailment, const tl_interrupt *interrupt, uint64_t memory_bytes, tl_result **out, tl_error **err);
+/* tl_query_with_limits where a GROUP BY whose input does not fit memory_bytes spills it to TRIPLELIGHT_SCRATCH_DIR (else
+ * the system temporary directory) and finishes instead of failing. Spill files are removed when the query ends. */
+int32_t tl_query_spilling(const tl_db *db, const char *sparql, size_t len, int32_t entailment, const tl_interrupt *interrupt, uint64_t memory_bytes, tl_result **out, tl_error **err);
 /* SHACL Core validation of a data document against a shapes document, each TL_FORMAT_TURTLE or TL_FORMAT_NTRIPLES.
  * On success *conforms is 1 or 0 and *report is the report graph (TL_RESULT_TRIPLES; free it with tl_result_free).
  * Data that violates the shapes is a success with *conforms 0. A document that does not parse is TL_ERR_SYNTAX, shapes

@@ -46,7 +46,8 @@ function wrapError(e) {
 }
 
 // The native limit arguments of a query's options (#110): `timeoutMs` and `signal` share one interrupt, which an
-// aborted signal cancels; `memoryMb` is a working-memory budget. A signal aborted already cancels at once.
+// aborted signal cancels; `memoryMb` is a working-memory budget, and `spill` lets a GROUP BY over it spill to disk.
+// A signal aborted already cancels at once.
 function limits(options) {
   let interrupt = null;
   if (options.timeoutMs != null || options.signal != null) {
@@ -57,7 +58,7 @@ function limits(options) {
       else signal.addEventListener("abort", () => interrupt.cancel(), { once: true });
     }
   }
-  return [options.entailment ?? null, interrupt, options.memoryMb ?? null];
+  return [options.entailment ?? null, interrupt, options.memoryMb ?? null, options.spill ?? null];
 }
 const sync = (f) => { try { return f(); } catch (e) { throw wrapError(e); } };
 const async_ = (f) => { try { return f().catch((e) => { throw wrapError(e); }); } catch (e) { return Promise.reject(wrapError(e)); } };

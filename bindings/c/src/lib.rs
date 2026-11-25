@@ -391,6 +391,19 @@ pub unsafe extern "C" fn tl_interrupt_free(interrupt: *mut TlInterrupt) {
 /// Either error leaves no partial result, and the database serves the next query as usual.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tl_query_with_limits(db: *const TlDb, sparql: *const c_char, len: usize, entailment: i32, interrupt: *const TlInterrupt, memory_bytes: u64, out: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
+    unsafe { query_limited(db, sparql, len, entailment, interrupt, memory_bytes, false, out, err) }
+}
+
+/// `tl_query_with_limits` where a GROUP BY whose input does not fit `memory_bytes` spills it to disk, to
+/// `TRIPLELIGHT_SCRATCH_DIR` (else the system temporary directory), and finishes instead of failing (#111). Spill
+/// files are removed when the query ends, also on an error or a cancel.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tl_query_spilling(db: *const TlDb, sparql: *const c_char, len: usize, entailment: i32, interrupt: *const TlInterrupt, memory_bytes: u64, out: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
+    unsafe { query_limited(db, sparql, len, entailment, interrupt, memory_bytes, true, out, err) }
+}
+
+#[allow(clippy::too_many_arguments)]
+unsafe fn query_limited(db: *const TlDb, sparql: *const c_char, len: usize, entailment: i32, interrupt: *const TlInterrupt, memory_bytes: u64, spill: bool, out: *mut *mut TlResult, err: *mut *mut TlError) -> i32 {
     unsafe { guard(err, || {
         if out.is_null() { return Err(invalid("null output pointer")) }
         let entailment = match entailment {
@@ -402,7 +415,7 @@ pub unsafe extern "C" fn tl_query_with_limits(db: *const TlDb, sparql: *const c_
         if entailment == triplelight::exec::Entailment::Rdfs {
             d.load_extension("rdfs").map_err(extension_error)?;
         }
-        let budget = (memory_bytes > 0).then(|| triplelight::exec::MemoryBudget::new(memory_bytes));
+        let budget = (memory_bytes > 0).then(|| if spill { triplelight::exec::MemoryBudget::spilling(memory_bytes) } else { triplelight::exec::MemoryBudget::new(memory_bytes) });
         let limits = triplelight::exec::QueryLimits { interrupt: interrupt.as_ref().map(|i| &i.0), memory: budget.as_ref() };
         let snap = d.read();
         let r = match snap.query_ids_with_limits(q, entailment, limits).map_err(db_error)? {
@@ -767,6 +780,25 @@ mod tests {
         let missing = "/nonexistent/missing.nt";
         assert_eq!(tl_load(db, missing.as_ptr() as _, missing.len(), std::ptr::null_mut(), &mut e), TL_ERR_STORAGE);
         tl_error_free(e);
+        tl_close(db);
+    } }
+
+    /// `tl_query_spilling` finishes a GROUP BY that `tl_query_with_limits` refuses under the same budget (#111): 10,000
+    /// groups of 4 rows do not fit 3 MB in memory, but one key partition at a time does.
+    #[test]
+    fn spilling_lets_a_group_by_over_the_budget_finish() { unsafe {
+        let mut db = std::ptr::null_mut();
+        assert_eq!(tl_open_in_memory(&mut db, std::ptr::null_mut()), TL_OK);
+        let data: String = (0..40_000).map(|i| format!("<urn:s{}> <urn:p> \"v{i}\" . ", i / 4)).collect();
+        let up = format!("INSERT DATA {{ {data} }}");
+        assert_eq!(tl_update(db, up.as_ptr() as _, up.len(), std::ptr::null_mut(), std::ptr::null_mut()), TL_OK);
+        let q = "SELECT ?s (GROUP_CONCAT(?o) AS ?all) WHERE { ?s <urn:p> ?o } GROUP BY ?s";
+        let mut r: *mut TlResult = std::ptr::null_mut();
+        assert_eq!(tl_query_with_limits(db, q.as_ptr() as _, q.len(), TL_ENTAILMENT_SIMPLE, std::ptr::null(), 3 << 20, &mut r, std::ptr::null_mut()), TL_ERR_RESOURCE_LIMIT);
+        assert!(r.is_null());
+        assert_eq!(tl_query_spilling(db, q.as_ptr() as _, q.len(), TL_ENTAILMENT_SIMPLE, std::ptr::null(), 3 << 20, &mut r, std::ptr::null_mut()), TL_OK);
+        assert!(!r.is_null());
+        tl_result_free(r);
         tl_close(db);
     } }
 
