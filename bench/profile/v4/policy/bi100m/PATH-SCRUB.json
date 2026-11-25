@@ -1,0 +1,46 @@
+{
+  "archive_sha256": "9e709ac2a7e3c7beb9b39159102fdab2940ebbefe3bb1d837a4931abbff685c3",
+  "changed_files": {
+    "policies/numeric/count-verification.json": {
+      "original": "90fb28e3221d769bccdea0553776a45b35946324fcf1438181184d1d9571af38",
+      "scrubbed": "214372e6b5dd4559bcfdc487cb36b4b49f77f868b3d8bb44d162f546d9cfa5e1"
+    },
+    "policies/numeric/freeze.json": {
+      "original": "63e127b60ac8de510a172748108639f0834e17bc3772e1d16ce226404aa58cca",
+      "scrubbed": "e626845c3da84846874f0e02a7bcf5cb822bcefe65eb0122b5578cfe42e60099"
+    },
+    "policies/numeric/input-identity.json": {
+      "original": "8c96e544a4148ffd481c124203be9d6671a483cc9e939d60ecb3af5a69778cde",
+      "scrubbed": "bb093f78835a690d824e1e46d05d66f8b11173d05b28626b9ee1991ce6aae238"
+    },
+    "policies/numeric/plan.json": {
+      "original": "293e7f3826befc2d308795db72be47e33c23ef5df0e0d3975c77a7ce58d4183c",
+      "scrubbed": "fd0c6edf931ee82d0b63707c9008538e486d602a99f8e4f0b5e6050e9dcf61a0"
+    },
+    "policies/numeric/provenance/jena-runtime.json": {
+      "original": "39f7bb008d4f3fdab6da93f15799282fcb4528e683eb9f9ed15aee7a7f47457c",
+      "scrubbed": "dad3ac30e37b51326a608c45894ea3dbb5f586371ce6c8052d293db4d2285b43"
+    },
+    "policies/numeric/provenance/jena-supervisor-source.py": {
+      "original": "3636cdfbca44b5f3301c87ccc8c72685d207488b295ff5e2122cffa3117330ca",
+      "scrubbed": "07063fb8da80bf23cc41cf756a2add738c669577e66b2a7ef86c07c6e96bb835"
+    },
+    "policies/numeric/validator-tests.json": {
+      "original": "06570fa9582d4b95029eabb1b0f1351cea8b62c0e4ce89b702379debce81bed0",
+      "scrubbed": "98fb8fbded73b2930ec01d52992cfcd7d3a9e87d0ea3c92cc40b7ca5b16f3ba2"
+    },
+    "policies/value-policy-freeze.json": {
+      "original": "7b3f640bbab516db80ceba87549b9670802a93c5ff77181bdda66c0855fc3dfb",
+      "scrubbed": "0fe0651540f3435e3f76b476dd89fc9921761669fd34fa48dc1a88f34cb882d8"
+    },
+    "workloads/bi100m/manifest.json": {
+      "original": "a6d27c91ec733626fa0d132f642d5a348c62cbfc00b423809bf82074cb1a35ef",
+      "scrubbed": "59dffdbb22b701088defe95b3fd6776990efaf3d3456ad6159739b30b78c4acb"
+    }
+  },
+  "files": 265,
+  "schema": "bi100m-policy-provenance-redaction-v1",
+  "unchanged_files": 256,
+  "unchanged_numeric_group_files": 28,
+  "unchanged_typed_reference_files": 68
+}
