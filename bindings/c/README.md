@@ -20,3 +20,12 @@ Design:
 one nullable struct column `{kind, value, datatype, language}` per variable (a null struct is an unbound cell),
 batches of at most 8192 rows. The stream is independent of the database handle. See `include/triplelight.h` for
 the full contract.
+
+## Scalar functions
+
+`tl_register_function` registers a synchronous scalar callback under an absolute IRI. The callback reads borrowed
+arguments from the same term table and UTF-8 arena used by query results. It can call `tl_scalar_set_term` to return an
+owned RDF term, or return a nonzero status to signal a SPARQL expression error.
+
+The caller retains the context if registration fails. If it succeeds, the release callback runs after the last snapshot
+or registry reference is dropped. Host callbacks must support concurrent calls and must not reenter the database.

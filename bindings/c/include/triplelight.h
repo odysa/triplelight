@@ -164,6 +164,33 @@ int32_t tl_load_extension(const tl_db *db, const char *name, size_t len, tl_erro
 /* Returns name, compiled_in and loaded columns. Release the result with tl_result_free. */
 int32_t tl_list_extensions(const tl_db *db, tl_result **out, tl_error **err);
 
+/* Borrowed scalar arguments, in call order. Cells are 1-based indices into terms; nested triple terms and string
+ * offsets use the same layout as tl_result_view. All pointers are valid only during the callback. */
+typedef struct tl_scalar_args {
+    size_t len;
+    const uint32_t *cells;
+    size_t n_terms;
+    const tl_term *terms;
+    size_t n_bytes;
+    const uint8_t *bytes;
+} tl_scalar_args;
+typedef struct tl_scalar_output tl_scalar_output;
+typedef int32_t (*tl_scalar_callback)(void *context, const tl_scalar_args *args, tl_scalar_output *output);
+typedef void (*tl_scalar_release)(void *context);
+
+/* Copy one serialized RDF term into the callback output. Use N-Triples term syntax; RDF 1.2 triple terms and
+ * directional literals require the rdf-12 build. A failed call clears the slot. Return TL_OK from the callback
+ * with a populated slot to yield the term; any other outcome is a SPARQL expression error. */
+int32_t tl_scalar_set_term(tl_scalar_output *output, const char *term, size_t len);
+
+/* Register an absolute IRI on future snapshots. Use SIZE_MAX for any arity and 0 or 1 for pure.
+ * On success the library owns the context and calls release once, if given, after the last registry or snapshot
+ * reference. On failure the caller retains ownership and release is not called. Callbacks may run concurrently,
+ * including before registration returns, and release may run on any thread. Neither callback may unwind through C,
+ * and a scalar callback must not reenter or mutate the database evaluating it. */
+int32_t tl_register_function(const tl_db *db, const char *iri, size_t len, size_t arity, int32_t pure,
+                             tl_scalar_callback callback, void *context, tl_scalar_release release, tl_error **err);
+
 /* SELECT solutions as an Arrow C Stream written into caller-allocated *out.
  * - out must be non-null (checked before the query runs); on failure *out is left untouched.
  * - Schema: one nullable struct column per projected variable, fields kind (utf8: "iri" | "bnode" | "literal"),
