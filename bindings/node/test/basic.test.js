@@ -185,6 +185,7 @@ test("extension availability, autoload and load", () => {
   } finally {
     db.close();
   }
+});
 
 test("query limits: AbortSignal, timeoutMs and memoryMb", async () => {
   const db = tl.Database.inMemory();
