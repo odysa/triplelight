@@ -453,6 +453,24 @@ fn lock_directory_shared(file: &File) -> std::io::Result<()> {
 /// Emptied at every open, which holds the directory lock.
 pub(crate) const SCRATCH_DIR: &str = "scratch";
 
+/// Canonical roots of the stores this process holds open read-only. A read-only store writes nothing under its root, not even the `scratch/`
+/// directory large derived-order regroups spill into (`derived_order::spill_dir` skips these roots), so it works on a read-only mount.
+static READ_ONLY_ROOTS: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+
+pub(crate) fn is_read_only_root(root: &Path) -> bool {
+    let canonical = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+    READ_ONLY_ROOTS.lock().unwrap().contains(&canonical)
+}
+
+impl Drop for Store {
+    fn drop(&mut self) {
+        if !self.read_only { return }
+        let canonical = std::fs::canonicalize(&self.dir).unwrap_or_else(|_| self.dir.clone());
+        let mut roots = READ_ONLY_ROOTS.lock().unwrap();
+        if let Some(i) = roots.iter().position(|r| *r == canonical) { roots.remove(i); }
+    }
+}
+
 /// A persistent store: base file + WAL in a directory.
 pub struct Store {
     dir: PathBuf,
@@ -550,7 +568,8 @@ impl Store {
     }
 
     /// Opens an existing store for reading only: a shared lock on the directory (many readers, or one writer), and nothing
-    /// is written, truncated or deleted. The WAL is replayed up to its last complete record; a torn tail is ignored and left
+    /// is written, truncated or deleted under the store root, not even a spill directory: large regroups spill to
+    /// `TRIPLELIGHT_SCRATCH_DIR`, else the system temporary directory, so a read-only mount works. The WAL is replayed up to its last complete record; a torn tail is ignored and left
     /// in place, and a `base-N` that `CURRENT` does not name (a compaction in flight or abandoned) is left alone. Every write
     /// and `compact` fail with `PermissionDenied`. A store that does not exist is an error, never created.
     pub fn open_read_only(dir: impl AsRef<Path>, workers: usize) -> std::io::Result<Self> {
@@ -563,7 +582,9 @@ impl Store {
             return Err(std::io::Error::new(std::io::ErrorKind::NotFound, format!("{} is not a store (no CURRENT)", dir.display())));
         }
         // Read-only: never create the lock file either. A store that was never opened for writing has none; refuse it.
-        let directory_lock = OpenOptions::new().read(true).open(dir.join("LOCK"))?;
+        let directory_lock = OpenOptions::new().read(true).open(dir.join("LOCK")).map_err(|e| if e.kind() == std::io::ErrorKind::NotFound {
+            std::io::Error::new(e.kind(), format!("{} has no LOCK file: a writer must open this store once before readers can (a read-only open never creates files)", dir.display()))
+        } else { e })?;
         lock_directory_shared(&directory_lock)?;
         // `parse_current` reads the fences (batch checksums, RDF 1.2, datasets) and refuses a store this build cannot read, as a writer's open does.
         let (generation, fences) = parse_current(&std::fs::read_to_string(dir.join("CURRENT"))?)?
@@ -578,6 +599,7 @@ impl Store {
         // A placeholder: no write path reaches it (`check_poisoned` refuses first).
         let wal = File::open(&wal_path).or_else(|_| File::open(dir.join("CURRENT")))?;
         let overlay = Arc::new(overlay);
+        READ_ONLY_ROOTS.lock().unwrap().push(std::fs::canonicalize(&dir).unwrap_or_else(|_| dir.clone()));      // registered only once the open succeeded: the Store's Drop removes it
         Ok(Store {
             dir, format, generation: Mutex::new(generation), fences: Mutex::new(fences),
             current: RwLock::new(overlay.clone()),
@@ -1999,6 +2021,60 @@ mod read_only_tests {
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidData, "{err}");
         assert_eq!(std::fs::read(&wal_path).unwrap(), bytes, "the damaged log is left exactly as it was");
         assert_eq!(std::fs::read(dir.0.join("CURRENT")).unwrap(), current_before);
+    }
+
+    #[test]
+    fn a_truncated_batch_is_ignored_and_the_file_is_unchanged() {
+        // The crash shape #282 actually produces: a `B <len> <hash>` header followed by fewer than `len` bytes.
+        let dir = Dir::new("truncbatch");
+        let store = Store::open(&dir.0, None, 1).unwrap();
+        store.commit(&[(Change::Insert, t("a", "1"))]).unwrap();
+        store.commit(&[(Change::Insert, t("b", "2"))]).unwrap();
+        drop(store);
+        let wal_path = dir.0.join("wal.log");
+        let mut bytes = std::fs::read(&wal_path).unwrap();
+        let last = bytes.windows(3).rposition(|w| w == b"\nB ").expect("a batch header") + 1;
+        let tail = bytes[last..].to_vec();
+        bytes.extend_from_slice(&tail[..tail.len() / 2]);       // half of a third batch
+        std::fs::write(&wal_path, &bytes).unwrap();
+        let reader = Store::open_read_only(&dir.0, 1).unwrap();
+        assert_eq!(rows(&reader), 2, "the two complete batches are visible; the truncated one is not");
+        drop(reader);
+        assert_eq!(std::fs::read(&wal_path).unwrap(), bytes, "the torn tail is still there");
+        // A writer cuts it off, as before.
+        let writer = Store::open(&dir.0, None, 1).unwrap();
+        assert_eq!(rows(&writer), 2);
+        assert!(std::fs::read(&wal_path).unwrap().len() < bytes.len());
+    }
+
+    #[test]
+    fn a_store_without_a_lock_file_says_so() {
+        let dir = Dir::new("nolock");
+        Store::open(&dir.0, None, 1).unwrap().commit(&[(Change::Insert, t("a", "1"))]).unwrap();
+        std::fs::remove_file(dir.0.join("LOCK")).unwrap();
+        let err = Store::open_read_only(&dir.0, 1).err().unwrap();
+        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+        assert!(err.to_string().contains("no LOCK file") && err.to_string().contains(&dir.0.display().to_string()), "{err}");
+        assert!(!dir.0.join("LOCK").exists(), "a read-only open never creates the lock file");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_read_only_store_spills_outside_its_root_even_when_a_writer_left_scratch_behind() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = Dir::new("spill");
+        Store::open(&dir.0, None, 1).unwrap().commit(&[(Change::Insert, t("a", "1"))]).unwrap();
+        std::fs::create_dir(dir.0.join(SCRATCH_DIR)).unwrap();      // what an earlier writer's regroup leaves behind
+        let set = |mode| for p in [dir.0.join(SCRATCH_DIR), dir.0.clone()] { std::fs::set_permissions(&p, std::fs::Permissions::from_mode(mode)).unwrap() };
+        set(0o555);
+        let reader = Store::open_read_only(&dir.0, 1).unwrap();
+        let spill = crate::derived_order::spill_dir_for_test(&dir.0.join("base-0"));
+        set(0o755);
+        assert!(!spill.starts_with(&dir.0), "a read-only store must not spill under its root, got {}", spill.display());
+        assert!(spill.is_dir() || !spill.exists(), "the spill location is a directory the process can use (the system temp directory or TRIPLELIGHT_SCRATCH_DIR)");
+        drop(reader);
+        // Once the reader is gone, the same base spills into the store's own scratch directory again.
+        assert!(crate::derived_order::spill_dir_for_test(&dir.0.join("base-0")).starts_with(&dir.0));
     }
 
     #[test]
