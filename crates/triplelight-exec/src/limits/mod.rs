@@ -61,9 +61,10 @@ impl MemoryBudget {
     /// A budget whose blocking operators spill to `TRIPLELIGHT_SCRATCH_DIR`, else the system temporary directory, instead
     /// of failing when their input does not fit (#111). The servers use this one; embedded callers opt in with
     /// `with_scratch_dir`.
-    pub fn spilling(limit_bytes: u64) -> Self {
-        let dir = std::env::var_os("TRIPLELIGHT_SCRATCH_DIR").map(std::path::PathBuf::from).unwrap_or_else(std::env::temp_dir);
-        Self::new(limit_bytes).with_scratch_dir(dir)
+    pub fn spilling(limit_bytes: u64) -> Self { Self::new(limit_bytes).with_scratch_dir(Self::default_scratch_dir()) }
+    /// Where `spilling` budgets write: `TRIPLELIGHT_SCRATCH_DIR`, else the system temporary directory.
+    pub fn default_scratch_dir() -> std::path::PathBuf {
+        std::env::var_os("TRIPLELIGHT_SCRATCH_DIR").map(std::path::PathBuf::from).unwrap_or_else(std::env::temp_dir)
     }
     /// Where a spilling operator may write its runs (none: it cannot spill).
     pub fn with_scratch_dir(mut self, dir: impl Into<std::path::PathBuf>) -> Self { self.scratch_dir = Some(dir.into()); self }

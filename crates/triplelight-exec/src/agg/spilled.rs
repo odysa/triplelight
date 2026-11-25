@@ -60,19 +60,28 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let mut key: Vec<TermId> = Vec::with_capacity(kidx.len());
         for p in 0..spilled.count() {
             self.check();
-            // One partition's rows are about to be in memory: refuse up front if they cannot be.
-            self.fits(spilled.rows(p) * self.row_bytes());
+            // One partition's rows (and their input positions) are about to be in memory: held while they are read and
+            // their groups' first positions found, which ends the query up front if they cannot be. `group` then
+            // charges what it builds itself, as on the in-memory path, where the input is checked but not held.
+            let n = spilled.rows(p);
+            let mut part = self.reserve(n * (self.row_bytes() + 8));
             let (seqs, rows) = spilled.read(p).unwrap_or_else(|e| storage_failure(e));
             if rows.is_empty() { continue }
             // Each group's first input position, in first-seen order (the order `group` emits them in).
             let mut seen: HashSet<Vec<TermId>> = HashSet::new();
             let mut firsts: Vec<u64> = Vec::new();
+            let key_bytes = 8 * kidx.len() as u64 + 48;
             for (s, r) in seqs.iter().zip(&rows) {
                 key.clear();
                 key.extend(kidx.iter().map(|&i| r[i]));
-                if !seen.contains(key.as_slice()) { seen.insert(key.clone()); firsts.push(*s) }
+                if !seen.contains(key.as_slice()) {
+                    seen.insert(key.clone());
+                    firsts.push(*s);
+                    if firsts.len().is_multiple_of(4096) { Self::resize(&mut part, n * (self.row_bytes() + 8) + firsts.len() as u64 * (key_bytes + 8)) }
+                }
             }
             drop((seen, seqs));
+            Self::resize(&mut part, firsts.len() as u64 * 8);
             let groups = group(rows);
             assert_eq!(groups.len(), firsts.len(), "a grouping emits one row per group");
             out.extend(firsts.into_iter().zip(groups));

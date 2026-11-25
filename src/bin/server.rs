@@ -56,7 +56,16 @@ fn query_timeout(args: &[String]) -> Option<std::time::Duration> {
 fn query_memory(args: &[String]) -> Option<u64> {
     let v = args.iter().find_map(|a| a.strip_prefix("--query-memory-mb="))?;
     match v.parse::<u64>() {
-        Ok(n) if n > 0 => Some(n << 20),
+        Ok(n) if n > 0 => {
+            // Spill directories left by a server that was killed mid-query (#111): nobody holds their locks any more.
+            let scratch = MemoryBudget::default_scratch_dir();
+            match triplelight::exec::sweep_stale_spills(&scratch) {
+                Ok(0) => {}
+                Ok(n) => eprintln!("removed {n} stale spill directories from {}", scratch.display()),
+                Err(e) => eprintln!("could not sweep stale spill directories in {}: {e}", scratch.display()),
+            }
+            Some(n << 20)
+        }
         _ => { eprintln!("--query-memory-mb must be a positive integer, not {v:?}"); std::process::exit(2) }
     }
 }
