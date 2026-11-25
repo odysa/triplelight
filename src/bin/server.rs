@@ -212,11 +212,12 @@ fn answer<'a, S: triplelight::storage::Snapshot>(snap: &'a S, q: &str, opts: &Op
         let end = Instant::now();
         let [parse, bgp, group, count, sort, filter, extend, join] = triplelight::exec::phase::take();
         let ranges = triplelight::exec::phase::take_ranges();
+        let [index_read, dict_read] = triplelight::storage::disk_index::take_read_share();
         let exec_us = exec_done.get().map_or(0, |e| (e - t0).as_micros());
         let output_us = exec_done.get().map_or(0, |e| (end - e).as_micros());
         let (rows, cols) = shape.get();
         let head: String = q.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
-        eprintln!("phase_trace total_us={} parse_us={parse} bgp_us={bgp} group_us={group} count_us={count} sort_us={sort} filter_us={filter} extend_us={extend} join_us={join} exec_us={exec_us} output_us={output_us} rows={rows} cols={cols} range_pushdown={ranges} query={head:?}", (end - t0).as_micros());
+        eprintln!("phase_trace total_us={} parse_us={parse} bgp_us={bgp} group_us={group} count_us={count} sort_us={sort} index_read_us={index_read} dict_read_us={dict_read} filter_us={filter} extend_us={extend} join_us={join} exec_us={exec_us} output_us={output_us} rows={rows} cols={cols} range_pushdown={ranges} query={head:?}", (end - t0).as_micros());
     }
     if let Some(t) = derived {
         let head: String = q.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();

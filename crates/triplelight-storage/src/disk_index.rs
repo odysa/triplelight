@@ -57,6 +57,26 @@ pub(super) fn trace_dictionary(slot: usize, metric: usize, value: u64) {
 pub const TRACE_SLOTS: usize = 9;
 /// The trace slot shared by the quad orders.
 pub const QUAD_TRACE_SLOT: usize = 8;
+/// Storage-read share for the phase trace (`TRIPLELIGHT_TRACE_PHASES`): time spent reading, checksumming, decoding
+/// and validating blocks on a cache miss, [index blocks, dictionary blocks]. Cache hits are not counted. Process-wide
+/// and summed over threads, so a parallel scan can exceed wall time; logging only, no answer depends on it.
+static READ_NS: [AtomicU64; 2] = [const { AtomicU64::new(0) }; 2];
+pub(crate) const READ_INDEX: usize = 0;
+pub(crate) const READ_DICTIONARY: usize = 1;
+fn read_share_enabled() -> bool {
+    static ON: OnceLock<bool> = OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("TRIPLELIGHT_TRACE_PHASES").is_some())
+}
+/// Times one block read into `READ_NS[kind]` when the phase trace is on.
+pub(crate) fn timed_read<T>(kind: usize, f: impl FnOnce() -> T) -> T {
+    if !read_share_enabled() { return f() }
+    let t = std::time::Instant::now();
+    let out = f();
+    READ_NS[kind].fetch_add(t.elapsed().as_nanos() as u64, Ordering::Relaxed);
+    out
+}
+/// Block-read totals in microseconds since the last call, then reset: `[index, dictionary]`.
+pub fn take_read_share() -> [u64; 2] { READ_NS.each_ref().map(|c| c.swap(0, Ordering::Relaxed) / 1000) }
 pub fn cache_trace_snapshot() -> [[u64; 5]; TRACE_SLOTS] {
     std::array::from_fn(|i| {
         [
@@ -560,6 +580,9 @@ where
     }
     /// Reads, checksums, decodes and validates one block from the file (no caching).
     fn read_block(&self, id: u64) -> io::Result<Vec<[TermId; N]>> {
+        timed_read(READ_INDEX, || self.read_block_untimed(id))
+    }
+    fn read_block_untimed(&self, id: u64) -> io::Result<Vec<[TermId; N]>> {
         let start = id
             .checked_mul(BLOCK_ROWS)
             .ok_or_else(|| invalid("block overflow"))?;

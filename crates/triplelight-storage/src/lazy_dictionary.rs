@@ -474,6 +474,9 @@ impl LazyIndex {
     }
     /// Reads one verified block without admitting it to the query cache.
     fn read_block(&self, index: usize, trace_slot: Option<usize>) -> io::Result<(Vec<(TermId, Term)>, usize)> {
+        super::disk_index::timed_read(super::disk_index::READ_DICTIONARY, || self.read_block_untimed(index, trace_slot))
+    }
+    fn read_block_untimed(&self, index: usize, trace_slot: Option<usize>) -> io::Result<(Vec<(TermId, Term)>, usize)> {
         let meta = self
             .entries
             .get(index)
