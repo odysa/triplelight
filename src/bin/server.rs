@@ -257,7 +257,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
         if init.is_some() { eprintln!("--read-only cannot be combined with --init: a read-only server creates nothing"); std::process::exit(2) }
         let opened = if disk { triplelight::store::Store::open_read_only_with(&args[2], Box::new(triplelight::storage::DiskBase { workers })) }
                      else { triplelight::store::Store::open_read_only(&args[2], workers) };
-        opened.unwrap_or_else(|e| { eprintln!("cannot open {} read-only: {e}", args[2]); std::process::exit(1) })
+        Ok(opened.unwrap_or_else(|e| { eprintln!("cannot open {} read-only: {e}", args[2]); std::process::exit(1) }))
     } else if disk {
         triplelight::store::Store::open_with(&args[2], init.as_deref(), Box::new(triplelight::storage::DiskBase { workers }))
     } else {
