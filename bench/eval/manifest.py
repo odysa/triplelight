@@ -113,7 +113,8 @@ def verify(m, receipt=None, now=None, current_boot=None):
     need(is_int(pr.get("seed"), -(1 << 62)), "protocol.seed is not an integer")
     need(is_int(pr.get("drain_rows"), 0), "protocol.drain_rows is not a non-negative integer")
     need(pr.get("mode") in ("warm", "cold"), "protocol.mode is not warm or cold")
-    need(isinstance(pr.get("expect_unsupported"), list), "protocol.expect_unsupported is not a list")
+    eu = pr.get("expect_unsupported")
+    need(isinstance(eu, dict) and all(isinstance(v, list) for v in eu.values()), "protocol.expect_unsupported is not a map from system to a list of case IDs")
     need(isinstance(pr.get("persisted_store"), bool), "protocol.persisted_store is not a boolean")
     if pr.get("mode") == "cold":
         need(isinstance(pr.get("cold_hook"), str) and cold_hook_parts(pr.get("cold_hook", "")) is not None,
@@ -158,7 +159,8 @@ def run_bindings(m, *, queries_sha256, reference_sha256, system, url, clear_cach
         same("result-cache clear url", clear_cache_url or "", listed[system].get("clear_cache_url"))
     same("runs", runs, pr.get("runs")); same("timeout", timeout_s, pr.get("timeout_s")); same("seed", seed, pr.get("seed"))
     same("drain threshold", drain_rows, pr.get("drain_rows")); same("mode", mode, pr.get("mode"))
-    same("expected-unsupported cases", sorted(expect_unsupported), sorted(pr.get("expect_unsupported", [])))
+    declared = pr.get("expect_unsupported", {})
+    same("expected-unsupported cases for this system", sorted(expect_unsupported), sorted(declared.get(system, []) if isinstance(declared, dict) else []))
     if mode == "cold":
         same("cold-start hook", cold_hook, pr.get("cold_hook"))
         same("reset procedure digest (restart.sh and lib.sh as they are now)", cold_hook_digest(cold_hook), pr.get("cold_hook_sha256"))
@@ -201,7 +203,12 @@ def cmd_write(a):
     receipt = json.load(open(a.receipt))
     problems = check_receipt(receipt)
     if problems and not a.allow_unqualified: sys.exit("machine receipt does not qualify a scored run:\n  " + "\n  ".join(problems))
-    root = pathlib.Path(__file__).resolve().parents[2]
+    root = pathlib.Path(os.environ.get("MANIFEST_REPO_ROOT") or pathlib.Path(__file__).resolve().parents[2])      # the override is for the self-tests
+    expect = {}
+    for spec in a.expect_unsupported:
+        system, _, cases = spec.partition("=")
+        if not system or not _: sys.exit(f"--expect-unsupported must look like SYSTEM=case,case, got {spec!r}")
+        expect[system] = sorted(x for x in re.split(r"[,\s]+", cases.strip()) if x)
     git = lambda *args: run_text(["git", *args], cwd=root)
     datasets = []
     for spec in a.dataset:
@@ -236,7 +243,7 @@ def cmd_write(a):
         "protocol": {"plan_sha256": sha256_file(a.plan) if a.plan else "", "order": a.order, "runs": a.runs, "timeout_s": a.timeout,
                      "seed": a.seed, "drain_rows": a.drain_rows, "mode": a.mode, "persisted_store": not a.no_store,
                      **({"cold_hook": a.cold_hook, "cold_hook_sha256": cold_hook_digest(a.cold_hook)} if a.mode == "cold" else {}),
-                     "expect_unsupported": sorted(x for x in re.split(r"[,\s]+", a.expect_unsupported.strip()) if x)},
+                     "expect_unsupported": expect},
         "machine": {"receipt_sha256": sha256_file(a.receipt), "receipt_passed_at": receipt.get("timestamp", ""),
                     **{f: receipt.get(f) for f in MACHINE_FIELDS}},
         "python": platform.python_version(),
@@ -283,7 +290,7 @@ def good_manifest(receipt=None):
         "datasets": [{"name": "lubm1", "bytes": 10, "sha256": "c" * 64, "sha256_verified": True}], "queries_sha256": "d" * 64, "reference_sha256": "e" * 64,
         "stores": [{"name": "lubm1", "tree_sha256": "1" * 64}],
         "systems": [{"name": "triplelight", "version": "x", "config_sha256": "f" * 64, "url": "http://127.0.0.1:7878/sparql", "clear_cache_url": ""}],
-        "protocol": {"order": "ABBA", "runs": 5, "timeout_s": 300, "seed": 0, "drain_rows": 200000, "mode": "warm", "expect_unsupported": [], "persisted_store": True},
+        "protocol": {"order": "ABBA", "runs": 5, "timeout_s": 300, "seed": 0, "drain_rows": 200000, "mode": "warm", "expect_unsupported": {}, "persisted_store": True},
         "machine": {"receipt_sha256": "0" * 64, "receipt_passed_at": r["timestamp"], **{f: r[f] for f in MACHINE_FIELDS}},
     }
 
@@ -379,7 +386,7 @@ def main():
     w.add_argument("--system-url", action="append", default=[], help="NAME=URL: the endpoint the run queries for that system (bound: a different --url is not scored)")
     w.add_argument("--system-clear-cache", action="append", default=[], help="NAME=URL: the result-cache clear URL used before every request; omit for systems without one (bound the same way)")
     w.add_argument("--cold-hook", default="", help="for --mode cold: the reset command, which must be `bench/eval/restart.sh --cold`; its digest is recorded and checked at run time")
-    w.add_argument("--mode", choices=["warm", "cold"], default="warm"); w.add_argument("--expect-unsupported", default="")
+    w.add_argument("--mode", choices=["warm", "cold"], default="warm"); w.add_argument("--expect-unsupported", action="append", default=[], help="SYSTEM=case,case: cases that system's configuration is known not to answer (repeat per system)")
     w.add_argument("--no-store", action="store_true", help="the systems in this run keep no persisted store (otherwise every store needs --store)")
     w.add_argument("--trust-supplied-digests", action="store_true", help="accept a dataset digest given as NAME:PATH:SHA256 without hashing the data; the manifest records it as unverified, so the run is not scored")
     w.add_argument("--allow-unqualified", action="store_true", help="write the manifest even when the machine receipt or a field fails; the run is then not scored (exploration)")

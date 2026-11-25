@@ -10,6 +10,7 @@ step() { n=$1; shift; echo "== $n"; ( "$@" ) > "$OUT/$n.log" 2>&1 && echo "$n ex
 step selftest python3 "$HERE/driver.py" selftest
 step manifest python3 "$HERE/manifest.py" selftest
 step abba-selftest python3 "$HERE/abba.py" --self-test
+step plan python3 "$HERE/plan.py" selftest
 step drop-caches bash "$HERE/test-drop-caches.sh"
 step session-status bash "$HERE/test-session-status.sh"
 [ -n "${SKIP_SELFTEST_BIG:-}" ] || step selftest-big /usr/bin/time -l python3 "$HERE/driver.py" selftest-big --rows 5000000

@@ -316,10 +316,12 @@ def check_manifest(a):
         return False, {"scored_reason": "no manifest"}
     import manifest as mf
     if a.mode == "cold":
-        # Only the plan runner (phase 3) can prove the reset ran between the queries: it invokes bench/eval/restart.sh --cold itself, with
-        # exact arguments and no user-supplied hook. A standalone driver run is never a scored cold run.
-        if a.scored: sys.exit("cold scoring needs the plan runner: --scored --mode cold is refused")
-        return False, {"manifest": str(a.manifest), "scored_reason": "cold runs are scored only by the plan runner"}
+        # A cold run is scored only under the plan runner, which invokes this repository's `restart.sh --cold` itself: the hook must be exactly
+        # the one the manifest records (the parser accepts only that script with that one argument) and the digest of restart.sh and lib.sh
+        # must be unchanged. `--plan-runner RUN_ID` must name the manifest's run, so a hand-made command line cannot claim it by accident.
+        if not a.plan_runner: 
+            if a.scored: sys.exit("cold scoring needs the plan runner: --scored --mode cold is refused outside bench/eval/plan.py")
+            return False, {"manifest": str(a.manifest), "scored_reason": "cold runs are scored only by the plan runner"}
     try: m, problems = mf.load_checked(a.manifest)
     except Exception as e: m, problems = {}, [f"cannot read the manifest: {e}"]
     if not problems:
@@ -327,6 +329,8 @@ def check_manifest(a):
         problems = mf.run_bindings(m, queries_sha256=mf.sha256_tree(a.queries), reference_sha256=mf.sha256_file(a.reference), system=a.system, url=a.url, clear_cache_url=a.clear_cache_url, runs=a.runs,
                                    timeout_s=a.timeout, seed=a.seed, drain_rows=a.drain_rows, mode=a.mode, cold_hook=a.cold_hook or "",
                                    expect_unsupported=[x for x in re.split(r"[,\s]+", (a.expect_unsupported or "").strip()) if x])
+    if not problems and a.mode == "cold" and a.plan_runner != m.get("run_id"):
+        problems = [f"--plan-runner {a.plan_runner!r} is not this manifest's run ({m.get('run_id')!r})"]
     if problems:
         if a.scored: sys.exit("run is not scorable:\n  " + "\n  ".join(problems))
         return False, {"manifest": str(a.manifest), "scored_reason": problems}
@@ -344,9 +348,9 @@ def cmd_run(a):
         r = ref[name]; entry = {"mode": a.mode, "runs": []}
         if a.mode == "cold":
             if not a.cold_hook: sys.exit("--mode cold needs --cold-hook")
-            ok, note = run_hook(a.cold_hook, a.url)
-            entry["cold_hook_ok"], entry["cold_hook_note"] = ok, note
-            runs = 1 if ok else 0          # a cold start that did not happen is not timed as one
+            # one reset before every requested repeat: N cold samples per query. A reset that fails ends the query: it is not-run.
+            entry["cold_hook_ok"] = True
+            runs = a.runs
         elif not clear_engine_cache(a, entry):
             runs = 0
         else:
@@ -363,6 +367,10 @@ def cmd_run(a):
                 if check_cls not in ("pass", "value-compatible"): runs = 0      # a wrong or incomplete answer is never timed
                 else: drain_bytes = check["bytes"]
         for _ in range(runs):
+            if a.mode == "cold":
+                ok, note = run_hook(a.cold_hook, a.url)
+                entry["cold_hook_note"] = note
+                if not ok: entry["cold_hook_ok"] = False; entry["runs"] = []; break      # no timed sample of this query survives a failed reset
             if not clear_engine_cache(a, entry): break
             t0 = time.time()   # wall-clock bounds of the run, so S1's cgroup samples can be joined per query (s1-report.py)
             drained = entry.get("timed_by") == "drain"
@@ -525,7 +533,12 @@ def gate_tests(port, behaviors_raw):
         e = res["queries"]["q1"] if res else {}
         check("a failed hook with the server gone returns within 20 s with its output", time.time() - t0 < 20 and rc == 3 and "reset refused" in e.get("cold_hook_note", ""))
         rc, res, _ = run("coldok", "count9", "--mode", "cold", "--cold-hook", "true")
-        check("a working cold hook: timed once, eligible, exit 0", rc == 0 and res and res["queries"]["q1"]["class"] == "pass" and len(res["queries"]["q1"]["runs"]) == 1)
+        check("a working cold hook: one reset and one timed sample per requested repeat (2), eligible, exit 0", rc == 0 and res and res["queries"]["q1"]["class"] == "pass" and len(res["queries"]["q1"]["runs"]) == 2)
+        counter = tmp / "resets"
+        flaky = f'n=$(cat "{counter}" 2>/dev/null || echo 0); echo $((n+1)) > "{counter}"; [ "$n" -lt 1 ]'       # the first reset works, the second fails
+        rc, res, _ = run("coldmid", "count9", "--mode", "cold", "--cold-hook", flaky)
+        e = res["queries"]["q1"] if res else {}
+        check("a reset that fails before the second repeat: the query is not-run, no timing survives, exit 3", rc == 3 and e.get("class") == "not-run" and not e.get("runs") and "median_s" not in e and e.get("cold_hook_ok") is False)
         # a failing cache clear: not timed, recorded, the results file still written
         rc, res, _ = run("clearfail", "count9", "--clear-cache-url", "http://127.0.0.1:9/none")
         e = res["queries"]["q1"] if res else {}
@@ -585,6 +598,12 @@ def gate_tests(port, behaviors_raw):
         for label, h in (("`true`", "true"), ("the recorded reset itself", hook)):
             rc, res, err = run("unscored", "count9", "--mode", "cold", "--cold-hook", h, "--manifest", str(mdir / "manifest.json"), "--scored")
             check(f"--scored --mode cold with {label}: refused, the plan runner owns cold scoring", rc != 0 and res is None and "plan runner" in err)
+        rc, res, err = run("unscored", "count9", "--mode", "cold", "--cold-hook", hook, "--manifest", str(mdir / "manifest.json"), "--scored", "--plan-runner", "someone-elses-run")
+        check("--scored --mode cold under a plan-runner id that is not the manifest's: refused", rc != 0 and res is None and "not this manifest's run" in err)
+        # the right id with the recorded reset passes the manifest check; restart.sh then fails here (no SYSTEM), so nothing is timed
+        rc, res, err = run("unscored", "count9", "--mode", "cold", "--cold-hook", hook, "--manifest", str(mdir / "manifest.json"), "--scored", "--plan-runner", "t")
+        e = res["queries"]["q1"] if res else {}
+        check("--scored --mode cold under the plan runner with the recorded reset: accepted, and a failing reset still times nothing", res is not None and res.get("manifest_sha256") and e.get("class") == "not-run" and rc == 3)
         rc, res, err = run("unscored", "count9", "--mode", "cold", "--cold-hook", "true", "--manifest", str(mdir / "manifest.json"))
         check("an unscored cold run with a manifest records why it is not scored", rc == 0 and res and res["scored"] is False and "plan runner" in str(res.get("scored_reason")))
         (mdir / "manifest.json").write_text(json.dumps(good))
@@ -678,6 +697,7 @@ def main():
     x.add_argument("--restart-hook", help="command that restarts the server; run after every timed-out query (warm mode)")
     x.add_argument("--runs", type=int, default=5); x.add_argument("--timeout", type=float, default=300); x.add_argument("--seed", type=int, default=0)
     x.add_argument("--manifest", help="run manifest (manifest.py write); a run without a complete one, or whose machine receipt is stale, failed or from another boot, is not scored")
+    x.add_argument("--plan-runner", help="set by bench/eval/plan.py: the manifest's run id; the only way a cold run can be scored")
     x.add_argument("--scored", action="store_true", help="refuse to run unless the manifest and the machine receipt qualify")
     x.add_argument("--expect-unsupported", help="comma-separated case IDs this system configuration is known not to answer (QLever's two-order index and a predicate variable); only these may come back `unsupported` in an eligible run")
     x.add_argument("--lenient", action="store_true", help="exploration only: exit 0 even when the run is ineligible for a comparison. By default a wrong answer, a timeout, a failed hook or a failed cache clear exits with status 3; the results file (with `eligible: false` and the reasons) is written either way")
