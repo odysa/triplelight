@@ -9,7 +9,10 @@
    "bag_norm": "fd34b93e6ca865c1b45e7ec01475aceb",
    "seq": "917a8c9b7a8bba76d7ef56448ee21a014900c96d",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_C2": {
    "rows": 1,
@@ -17,7 +20,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_C3": {
    "rows": 1,
@@ -25,7 +31,10 @@
    "bag_norm": "53fef73c723dbb132885b1efabd24b86",
    "seq": "d13e98bb7dcb607677f39c8b0ec97d6645e75152",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_F1": {
    "rows": 1,
@@ -33,7 +42,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_F2": {
    "rows": 1,
@@ -41,7 +53,10 @@
    "bag_norm": "fafef46545ec4a7cb4d7ed3a2cb72602",
    "seq": "3af242133330a3b692ef4177ce83d978c157889f",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_F3": {
    "rows": 1,
@@ -49,7 +64,10 @@
    "bag_norm": "5eedeb4d042f71a1b59c27a2992ef074",
    "seq": "d17088d36fc011fd8852a75d88235d0b9ee06b45",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_F4": {
    "rows": 1,
@@ -57,7 +75,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_F5": {
    "rows": 1,
@@ -65,7 +86,10 @@
    "bag_norm": "f0c195811771ad1818460410d22e2edb",
    "seq": "773ec2989c25f8cbc26b7dd7cc6a4a22c228676c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_L1": {
    "rows": 1,
@@ -73,7 +97,10 @@
    "bag_norm": "3068bf9dc48c6b3742dc2dfc9e253765",
    "seq": "57a67da3c03bfa6afdd4ee77a46ab018b618c5e3",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_L2": {
    "rows": 1,
@@ -81,7 +108,10 @@
    "bag_norm": "d30c89f45a8005c8ac082508b3a8524b",
    "seq": "5b6c6c536ea71145d345e2bebe6ec16672065feb",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_L3": {
    "rows": 1,
@@ -89,7 +119,10 @@
    "bag_norm": "995431429f0b408bb55a2f78f948db51",
    "seq": "8f49f256677f319c56aefe0c95cbeaf03007d5cc",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_L4": {
    "rows": 1,
@@ -97,7 +130,10 @@
    "bag_norm": "c8cd2a9ebfd1517a734988820b2a6981",
    "seq": "102268c5e9b56d547f0fb9562d5c0f935556b354",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_L5": {
    "rows": 1,
@@ -105,7 +141,10 @@
    "bag_norm": "5fee20d54cc8f569545bba136d4fd2e1",
    "seq": "d4cad8aee950036c05e1d305df1eeaddc5966a0a",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_S1": {
    "rows": 1,
@@ -113,7 +152,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_S2": {
    "rows": 1,
@@ -121,7 +163,10 @@
    "bag_norm": "59fe2042aecc4b69727fe7ad82e18300",
    "seq": "08eddc19c9e745c048ac9ab0f8a6650bbce37ebf",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_S3": {
    "rows": 1,
@@ -129,7 +174,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_S4": {
    "rows": 1,
@@ -137,7 +185,10 @@
    "bag_norm": "a0dea1e88d9150d11166f262b2d9f7f7",
    "seq": "d06b939ae73ccc84d7f7fc522b9fe412e7edf227",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_S5": {
    "rows": 1,
@@ -145,7 +196,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_S6": {
    "rows": 1,
@@ -153,7 +207,10 @@
    "bag_norm": "dbc79c2ede525176d42bdd2176268b9a",
    "seq": "356f22f7e0a21f603cc81725987774a019568470",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "all_S7": {
    "rows": 1,
@@ -161,7 +218,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_C1": {
    "rows": 1,
@@ -169,7 +229,10 @@
    "bag_norm": "2aa7b694f5e31535c734d55815e66bda",
    "seq": "eea3f03e5c8e5258b82f8a838df16e4e521c9db6",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_C2": {
    "rows": 1,
@@ -177,7 +240,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_C3": {
    "rows": 1,
@@ -185,7 +251,10 @@
    "bag_norm": "d6817729ba1ec45529365300f4b7b0fd",
    "seq": "8c0e9318179a1715581ad166d7cab37c2e3ace07",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_F1": {
    "rows": 1,
@@ -193,7 +262,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_F2": {
    "rows": 1,
@@ -201,7 +273,10 @@
    "bag_norm": "fafef46545ec4a7cb4d7ed3a2cb72602",
    "seq": "3af242133330a3b692ef4177ce83d978c157889f",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_F3": {
    "rows": 1,
@@ -209,7 +284,10 @@
    "bag_norm": "438148a493e5e2406026f533871cd8f6",
    "seq": "801dd2750db1ff024326e2d24a61218212ea15b8",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_F4": {
    "rows": 1,
@@ -217,7 +295,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_F5": {
    "rows": 1,
@@ -225,7 +306,10 @@
    "bag_norm": "f0c195811771ad1818460410d22e2edb",
    "seq": "773ec2989c25f8cbc26b7dd7cc6a4a22c228676c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_L1": {
    "rows": 1,
@@ -233,7 +317,10 @@
    "bag_norm": "a0dea1e88d9150d11166f262b2d9f7f7",
    "seq": "d06b939ae73ccc84d7f7fc522b9fe412e7edf227",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_L2": {
    "rows": 1,
@@ -241,7 +328,10 @@
    "bag_norm": "a0dea1e88d9150d11166f262b2d9f7f7",
    "seq": "d06b939ae73ccc84d7f7fc522b9fe412e7edf227",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_L3": {
    "rows": 1,
@@ -249,7 +339,10 @@
    "bag_norm": "00136d1b915e015bec1841e6c92ddd14",
    "seq": "debf056d1d918d700f71c806a1a839247d215eda",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_L4": {
    "rows": 1,
@@ -257,7 +350,10 @@
    "bag_norm": "c8cd2a9ebfd1517a734988820b2a6981",
    "seq": "102268c5e9b56d547f0fb9562d5c0f935556b354",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_L5": {
    "rows": 1,
@@ -265,7 +361,10 @@
    "bag_norm": "5fee20d54cc8f569545bba136d4fd2e1",
    "seq": "d4cad8aee950036c05e1d305df1eeaddc5966a0a",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_S1": {
    "rows": 1,
@@ -273,7 +372,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_S2": {
    "rows": 1,
@@ -281,7 +383,10 @@
    "bag_norm": "59fe2042aecc4b69727fe7ad82e18300",
    "seq": "08eddc19c9e745c048ac9ab0f8a6650bbce37ebf",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_S3": {
    "rows": 1,
@@ -289,7 +394,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_S4": {
    "rows": 1,
@@ -297,7 +405,10 @@
    "bag_norm": "a0dea1e88d9150d11166f262b2d9f7f7",
    "seq": "d06b939ae73ccc84d7f7fc522b9fe412e7edf227",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_S5": {
    "rows": 1,
@@ -305,7 +416,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_S6": {
    "rows": 1,
@@ -313,7 +427,10 @@
    "bag_norm": "dbc79c2ede525176d42bdd2176268b9a",
    "seq": "356f22f7e0a21f603cc81725987774a019568470",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "distinct_S7": {
    "rows": 1,
@@ -321,7 +438,10 @@
    "bag_norm": "c2a13043b7f895f1d9fa69ecdff9da61",
    "seq": "91452b7833c7da62a1fa78d4e08c1081fe0c154c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "count_result"
+   ]
   },
   "group_age": {
    "rows": 9,
@@ -329,7 +449,12 @@
    "bag_norm": "dbf121e5cf116727cf9cae9303b3de34",
    "seq": "e356494d8731f5d81c5caf91cffe0656b2eb3ce3",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "o",
+    "n",
+    "d"
+   ]
   },
   "group_gender": {
    "rows": 2,
@@ -337,7 +462,11 @@
    "bag_norm": "02ace95499233186dcd3929bc2c67a6b",
    "seq": "1ed904d9f3ffa5526ab37a6b053df8bdc7aa6107",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "o",
+    "n"
+   ]
   }
  }
 }

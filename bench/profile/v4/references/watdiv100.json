@@ -17,7 +17,13 @@
    "bag_norm": "74af7bfd4517f34c5979b3bb547b99ea",
    "seq": "4bd1d58128d07589d6c68a6ebcc1ac5aa674b06f",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v4",
+    "v6",
+    "v7"
+   ]
   },
   "C2": {
    "rows": 0,
@@ -25,7 +31,13 @@
    "bag_norm": "00000000000000000000000000000000",
    "seq": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v3",
+    "v4",
+    "v8"
+   ]
   },
   "C3": {
    "rows": 429276,
@@ -33,7 +45,10 @@
    "bag_norm": "9b6bcf2459a820270b6f443ae72c7ff5",
    "seq": "1b3fbe43f5daa52df95adb58ffca01217ecd17dc",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0"
+   ]
   },
   "F1": {
    "rows": 0,
@@ -41,7 +56,14 @@
    "bag_norm": "00000000000000000000000000000000",
    "seq": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v2",
+    "v3",
+    "v4",
+    "v5"
+   ]
   },
   "F2": {
    "rows": 13,
@@ -49,7 +71,16 @@
    "bag_norm": "b1dec655d5a45d8fdfd485b39c89c6e6",
    "seq": "36096656331622cb964d5823a84ef9eed8bcb723",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v1",
+    "v2",
+    "v4",
+    "v5",
+    "v6",
+    "v7"
+   ]
   },
   "F3": {
    "rows": 85,
@@ -57,7 +88,15 @@
    "bag_norm": "aec7e92d5b0a6e98a65a6d2d259a9e26",
    "seq": "e4d3bd2255f6ddd6c92c84645feae914b6979d94",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v1",
+    "v2",
+    "v4",
+    "v5",
+    "v6"
+   ]
   },
   "F4": {
    "rows": 0,
@@ -65,7 +104,17 @@
    "bag_norm": "00000000000000000000000000000000",
    "seq": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v1",
+    "v2",
+    "v4",
+    "v5",
+    "v6",
+    "v7",
+    "v8"
+   ]
   },
   "F5": {
    "rows": 25,
@@ -73,7 +122,15 @@
    "bag_norm": "9754f630e02528182a525dc926f99ae7",
    "seq": "0b17e2e95534d9f78bc69c60c2ed0b71255ad710",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v1",
+    "v3",
+    "v4",
+    "v5",
+    "v6"
+   ]
   },
   "L1": {
    "rows": 2,
@@ -81,7 +138,12 @@
    "bag_norm": "bc6409fc6c9298363b566b999b68e4ba",
    "seq": "33dfca74aa37d76af2bb2c81500480f48fa8bbed",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v2",
+    "v3"
+   ]
   },
   "L2": {
    "rows": 229,
@@ -89,7 +151,11 @@
    "bag_norm": "c063a9a752fe7514855759dca6ea85e7",
    "seq": "3a93e8cd52daae84252981041dadf92d91f308f0",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v1",
+    "v2"
+   ]
   },
   "L3": {
    "rows": 19,
@@ -97,7 +163,11 @@
    "bag_norm": "56ef76180e3a45a4d0d5ae20df6a1914",
    "seq": "f33c54a077dcea42b75117fb9aa1bc2483d4f119",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v1"
+   ]
   },
   "L4": {
    "rows": 68,
@@ -105,7 +175,11 @@
    "bag_norm": "19406015ff6c61d36d36636bb0e61b66",
    "seq": "20c43f7e7e5e8be7bac16cd14f26327fdf725881",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v2"
+   ]
   },
   "L5": {
    "rows": 254,
@@ -113,7 +187,12 @@
    "bag_norm": "5517e7e630084aca4cc0de0f16732e35",
    "seq": "ee2cd2505d9038c73f46ee194f17b47aea0ccb0b",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v1",
+    "v3"
+   ]
   },
   "S1": {
    "rows": 0,
@@ -121,7 +200,18 @@
    "bag_norm": "00000000000000000000000000000000",
    "seq": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v1",
+    "v3",
+    "v4",
+    "v5",
+    "v6",
+    "v7",
+    "v8",
+    "v9"
+   ]
   },
   "S2": {
    "rows": 16,
@@ -129,7 +219,12 @@
    "bag_norm": "191cf037c11781580b7185d082cbc5a7",
    "seq": "8e18f6777984063608462ff797ac2ef1c8a3a40c",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v1",
+    "v3"
+   ]
   },
   "S3": {
    "rows": 0,
@@ -137,7 +232,13 @@
    "bag_norm": "00000000000000000000000000000000",
    "seq": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v2",
+    "v3",
+    "v4"
+   ]
   },
   "S4": {
    "rows": 1,
@@ -145,7 +246,12 @@
    "bag_norm": "8f5ae2e0077feb2680c7be2f00373393",
    "seq": "8a16edbf7d67bbfcb8effe660f88b5f5ab274586",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v2",
+    "v3"
+   ]
   },
   "S5": {
    "rows": 0,
@@ -153,7 +259,12 @@
    "bag_norm": "00000000000000000000000000000000",
    "seq": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v2",
+    "v3"
+   ]
   },
   "S6": {
    "rows": 15,
@@ -161,7 +272,12 @@
    "bag_norm": "a78d468ec12e09885c92eade22101fc0",
    "seq": "6656d2f2504b158d2917129259f6efcf2991600a",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v1",
+    "v2"
+   ]
   },
   "S7": {
    "rows": 0,
@@ -169,7 +285,12 @@
    "bag_norm": "00000000000000000000000000000000",
    "seq": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "v0",
+    "v1",
+    "v2"
+   ]
   }
  }
 }

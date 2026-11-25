@@ -17,7 +17,11 @@
    "bag_norm": "dcbd0caabd24a477671082b0f3b7e720",
    "seq": "394390c0e2cbbdd553a8efac8f25e6e13103f526",
    "status": "ok",
-   "ordered": true
+   "ordered": true,
+   "vars": [
+    "product",
+    "label"
+   ]
   },
   "q002": {
    "rows": 13,
@@ -25,7 +29,21 @@
    "bag_norm": "46b233eb5212252bc87d716faf12fcae",
    "seq": "bec3155a7234633e343ff97b8e581475c161ec12",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "label",
+    "comment",
+    "producer",
+    "productFeature",
+    "propertyTextual1",
+    "propertyTextual2",
+    "propertyTextual3",
+    "propertyNumeric1",
+    "propertyNumeric2",
+    "propertyTextual4",
+    "propertyTextual5",
+    "propertyNumeric4"
+   ]
   },
   "q003": {
    "rows": 22,
@@ -33,7 +51,21 @@
    "bag_norm": "ce978c19dff7dea09e204f651aef3864",
    "seq": "955871ff012ebe3f9c0ff0d5dc071919da911180",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "label",
+    "comment",
+    "producer",
+    "productFeature",
+    "propertyTextual1",
+    "propertyTextual2",
+    "propertyTextual3",
+    "propertyNumeric1",
+    "propertyNumeric2",
+    "propertyTextual4",
+    "propertyTextual5",
+    "propertyNumeric4"
+   ]
   },
   "q004": {
    "rows": 5,
@@ -41,7 +73,11 @@
    "bag_norm": "2c7171d735cc94d882918068daf07de6",
    "seq": "f8781d3f5a0a3aea42c9c3ff4df2c06607c90491",
    "status": "ok",
-   "ordered": true
+   "ordered": true,
+   "vars": [
+    "product",
+    "label"
+   ]
   },
   "q005": {
    "rows": 13,
@@ -49,7 +85,21 @@
    "bag_norm": "a1030c0abd4a6f5b9b8a45c7cf88b0ac",
    "seq": "8d2a83400b46c3d93be60c5d685d3a38c678652d",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "label",
+    "comment",
+    "producer",
+    "productFeature",
+    "propertyTextual1",
+    "propertyTextual2",
+    "propertyTextual3",
+    "propertyNumeric1",
+    "propertyNumeric2",
+    "propertyTextual4",
+    "propertyTextual5",
+    "propertyNumeric4"
+   ]
   },
   "q006": {
    "rows": 20,
@@ -57,7 +107,21 @@
    "bag_norm": "56b85081f2b907dbb5917a948ee2f46d",
    "seq": "4a6fe8b9d545c9ac48233160960e14b73328ed7e",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "label",
+    "comment",
+    "producer",
+    "productFeature",
+    "propertyTextual1",
+    "propertyTextual2",
+    "propertyTextual3",
+    "propertyNumeric1",
+    "propertyNumeric2",
+    "propertyTextual4",
+    "propertyTextual5",
+    "propertyNumeric4"
+   ]
   },
   "q007": {
    "rows": 10,
@@ -65,7 +129,12 @@
    "bag_norm": "e9cbe6ae1a98b1e4c9895d06588926a7",
    "seq": "bd051b216692f548cb9aa4e9bf7f35347ca5a5a9",
    "status": "ok",
-   "ordered": true
+   "ordered": true,
+   "vars": [
+    "product",
+    "label",
+    "propertyTextual"
+   ]
   },
   "q008": {
    "rows": 17,
@@ -73,7 +142,21 @@
    "bag_norm": "2889072f8d8801be81c1c06022428683",
    "seq": "3636d2a4b34cca130fa07525fd9ed145d679b6f4",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "label",
+    "comment",
+    "producer",
+    "productFeature",
+    "propertyTextual1",
+    "propertyTextual2",
+    "propertyTextual3",
+    "propertyNumeric1",
+    "propertyNumeric2",
+    "propertyTextual4",
+    "propertyTextual5",
+    "propertyNumeric4"
+   ]
   },
   "q009": {
    "rows": 28,
@@ -81,7 +164,21 @@
    "bag_norm": "3e6fa87768e3dd0029e0dee585bf8d60",
    "seq": "a742f53c040d083bee620326cdc17af498a82531",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "label",
+    "comment",
+    "producer",
+    "productFeature",
+    "propertyTextual1",
+    "propertyTextual2",
+    "propertyTextual3",
+    "propertyNumeric1",
+    "propertyNumeric2",
+    "propertyTextual4",
+    "propertyTextual5",
+    "propertyNumeric4"
+   ]
   },
   "q010": {
    "rows": 5,
@@ -89,7 +186,11 @@
    "bag_norm": "e6f084ba19e4ff587abbff67aaa3ffe6",
    "seq": "aa2dbf9d56f4263d7283cebc5d55b8af78f3ac98",
    "status": "ok",
-   "ordered": true
+   "ordered": true,
+   "vars": [
+    "product",
+    "productLabel"
+   ]
   },
   "q011": {
    "rows": 11,
@@ -97,7 +198,20 @@
    "bag_norm": "d9aaedcf6d623c1c4a7f4d2167d1e9fe",
    "seq": "53797ca80b6e218ec19b1150243fc7a7973dda54",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "productLabel",
+    "offer",
+    "price",
+    "vendor",
+    "vendorTitle",
+    "review",
+    "revTitle",
+    "reviewer",
+    "revName",
+    "rating1",
+    "rating2"
+   ]
   },
   "q012": {
    "rows": 11,
@@ -105,7 +219,20 @@
    "bag_norm": "3e9522425d2657d9f99b4a64d7105a00",
    "seq": "d618f4512fc6b7a426070003b5a50b3aab3875e6",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "productLabel",
+    "offer",
+    "price",
+    "vendor",
+    "vendorTitle",
+    "review",
+    "revTitle",
+    "reviewer",
+    "revName",
+    "rating1",
+    "rating2"
+   ]
   },
   "q013": {
    "rows": 5,
@@ -113,7 +240,11 @@
    "bag_norm": "c6302c3c2a19c6e5e1481fbcea28d889",
    "seq": "9a56041a01bf2ca306c144123a02f2d38fd9adad",
    "status": "ok",
-   "ordered": true
+   "ordered": true,
+   "vars": [
+    "product",
+    "productLabel"
+   ]
   },
   "q014": {
    "rows": 9,
@@ -121,7 +252,20 @@
    "bag_norm": "6c4a35debc52d0932239f223dafc38f2",
    "seq": "134eb06edb08b425240020d8e7b8d64aee05e769",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "productLabel",
+    "offer",
+    "price",
+    "vendor",
+    "vendorTitle",
+    "review",
+    "revTitle",
+    "reviewer",
+    "revName",
+    "rating1",
+    "rating2"
+   ]
   },
   "q015": {
    "rows": 4,
@@ -129,7 +273,20 @@
    "bag_norm": "f6df066f677114d08d1b3831d999fc72",
    "seq": "9ec55fb35b330a403905cafc6e38b527c1c85d40",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "productLabel",
+    "offer",
+    "price",
+    "vendor",
+    "vendorTitle",
+    "review",
+    "revTitle",
+    "reviewer",
+    "revName",
+    "rating1",
+    "rating2"
+   ]
   },
   "q016": {
    "rows": 1,
@@ -137,7 +294,18 @@
    "bag_norm": "f4e2c07d1c074849be62cbef5e45e9cf",
    "seq": "8d99e8b577eb722d7e8928f5c9f8cdd3c4e91ac2",
    "status": "ok",
-   "ordered": true
+   "ordered": true,
+   "vars": [
+    "title",
+    "text",
+    "reviewDate",
+    "reviewer",
+    "reviewerName",
+    "rating1",
+    "rating2",
+    "rating3",
+    "rating4"
+   ]
   },
   "q019": {
    "rows": 7,
@@ -145,7 +313,18 @@
    "bag_norm": "4d8e0866c94265de22966f0e9aa6e59c",
    "seq": "318830e6cb1c73279eff6af8e6b410169f4ce6ad",
    "status": "ok",
-   "ordered": true
+   "ordered": true,
+   "vars": [
+    "title",
+    "text",
+    "reviewDate",
+    "reviewer",
+    "reviewerName",
+    "rating1",
+    "rating2",
+    "rating3",
+    "rating4"
+   ]
   },
   "q022": {
    "rows": 1,
@@ -153,7 +332,11 @@
    "bag_norm": "c7168a6d9a70c6ecd8c9e00450b5fe95",
    "seq": "f71738d6ac6a2673209575b6bd5752a531d7f59b",
    "status": "ok",
-   "ordered": true
+   "ordered": true,
+   "vars": [
+    "offer",
+    "price"
+   ]
   },
   "q023": {
    "rows": 5,
@@ -161,7 +344,11 @@
    "bag_norm": "a127ddfd3150c8779f26c2161be5a072",
    "seq": "f70db51c02b71dbb5a57f1d7bef29c18b9eb92ef",
    "status": "ok",
-   "ordered": true
+   "ordered": true,
+   "vars": [
+    "offer",
+    "price"
+   ]
   },
   "q024": {
    "rows": 10,
@@ -169,7 +356,12 @@
    "bag_norm": "df44f2e0d31df5d357a51c1c99d2b668",
    "seq": "d83c97f74a69c4103d99b3d8f73bbb3e40c39c83",
    "status": "ok",
-   "ordered": false
+   "ordered": false,
+   "vars": [
+    "property",
+    "hasValue",
+    "isValueOf"
+   ]
   }
  }
 }
