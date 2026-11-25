@@ -9,6 +9,7 @@ from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
+import struct
 import sys
 
 from bi_case_policy import BICasePolicy
@@ -77,12 +78,30 @@ def replay(packet):
         assert adapter.check(case, answer, reference)[0] == "mismatch"
     assert adapter.check(case, reference, {})[0] == "mismatch"
 
+    case = "m000_p12_q8"
+    reference = adapter.references[case]
+    answer = deepcopy(reference)
+    cell = answer["results"]["bindings"][0]["cheapExpensiveRatio"]
+    original = struct.unpack(">I", struct.pack(">f", float(cell["value"])))[0]
+    for steps, wanted in ((4, "value-compatible"), (5, "mismatch")):
+        value = struct.unpack(">f", struct.pack(">I", original + steps))[0]
+        cell["value"] = repr(value)
+        assert adapter.check(case, answer, reference)[0] == wanted
+
+    case = "m000_p00_q1"
+    reference = adapter.references[case]
+    answer = deepcopy(reference)
+    cell = answer["results"]["bindings"][0]["reviewCount"]
+    cell["value"] = "+" + cell["value"]
+    status, reason = adapter.check(case, answer, reference)
+    assert status == "value-compatible" and "COUNT" in reason
+
     case = "m001_p11_q7"
     reference = adapter.references[case]
     answer = deepcopy(reference)
     answer["results"]["bindings"].append(answer["results"]["bindings"][0])
     assert adapter.check(case, answer, reference)[0] == "mismatch"
-    print("Three identity and five answer/reference negative controls pass")
+    print("Three identity controls and eight answer/reference controls pass")
 
 
 if __name__ == "__main__":
