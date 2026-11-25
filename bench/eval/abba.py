@@ -15,11 +15,15 @@ session (`driver.py --out`), with the noise gate the team agreed in #105 and #13
   driver marks with `order_matches_reference`). A missing digest or row count is not comparable.
 - A duration that is zero, negative or not finite is not scorable.
 
+With --scored (what the plan runner and the scoreboard use): every results file must say `scored: true`, its manifest
+must exist with the recorded digest, and both arms must share the workload: the same query set, reference, datasets,
+stores, protocol and machine (model, CPU, kernel). The arms may differ only in what is being compared (commit, build).
+
 Exit status: 0 comparable, 1 with --fail-on-regression and at least one counted slowdown, 2 refused.
 Usage: abba.py --a A1.json A2.json ... --b B1.json B2.json ... [--threshold 0.03] [--json out.json]
        abba.py --self-test
 """
-import argparse, json, math, statistics, sys
+import argparse, hashlib, json, math, statistics, sys
 
 GOOD = {"pass", "value-compatible"}
 FAST_S = 0.005
@@ -91,6 +95,34 @@ def compare(a_sessions, b_sessions, threshold=0.03):
     return {"refused": refused, "geomean_ratio": geomean, "rows": rows}
 
 
+SHARED = ("queries_sha256", "reference_sha256", "datasets", "stores", "protocol")
+MACHINE = ("model", "cpu", "kernel")
+
+
+def scored_problems(a_sessions, b_sessions):
+    """Why these sessions cannot be compared on the scoreboard (empty when they can)."""
+    problems, workloads = [], []
+    for p, s in a_sessions + b_sessions:
+        if s.get("scored") is not True:
+            problems.append(f"{p}: not scored ({s.get('scored_reason') or 'no manifest'})"); continue
+        mpath = s.get("manifest")
+        try:
+            raw = open(mpath, "rb").read()
+        except (OSError, TypeError):
+            problems.append(f"{p}: manifest {mpath!r} not found"); continue
+        if hashlib.sha256(raw).hexdigest() != s.get("manifest_sha256"):
+            problems.append(f"{p}: manifest {mpath} does not match the recorded digest"); continue
+        m = json.loads(raw)
+        machine = m.get("machine", {})
+        workloads.append((p, {k: m.get(k) for k in SHARED}, {k: machine.get(k) for k in MACHINE}))
+    for p, w, mach in workloads[1:]:
+        p0, w0, mach0 = workloads[0]
+        for k in SHARED:
+            if w[k] != w0[k]: problems.append(f"{p}: {k} differs from {p0}")
+        if mach != mach0: problems.append(f"{p}: machine differs from {p0}")
+    return problems
+
+
 def render(result):
     out = [f"{'query':<24} {'A ms':>9} {'B ms':>9} {'B/A':>7} {'spread':>7}  verdict"]
     for r in result["rows"]:
@@ -150,6 +182,24 @@ def self_test():
     check("an ineligible session refuses the comparison", any("ineligible" in x for x in r["refused"]))
     r = compare(arm(2, slow), arm(2, fast, cls="timeout"))
     check("a timed-out query is not comparable and refuses", r["refused"] and r["rows"][0]["verdict"] == "not comparable")
+    import os, tempfile
+    with tempfile.TemporaryDirectory() as d:
+        def manifest(name, **over):
+            m = {"queries_sha256": "q", "reference_sha256": "r", "datasets": [], "stores": [], "protocol": {"runs": 3},
+                 "machine": {"model": "m", "cpu": "c", "kernel": "k"}, **over}
+            path = os.path.join(d, name); open(path, "w").write(json.dumps(m))
+            return path, hashlib.sha256(open(path, "rb").read()).hexdigest()
+        def scored(times, mpath, digest, flag=True):
+            s = session(times); s.update(scored=flag, manifest=mpath, manifest_sha256=digest); return s
+        ma, da = manifest("a.json"); mb, db = manifest("b.json")
+        A = [(f"sa{i}", scored(slow, ma, da)) for i in range(2)]; B = [(f"sb{i}", scored(fast, mb, db)) for i in range(2)]
+        check("--scored: two arms on one workload compare", not scored_problems(A, B))
+        mc, dc = manifest("c.json", protocol={"runs": 5})
+        check("--scored: a different protocol refuses", any("protocol differs" in x for x in scored_problems(A, [(f"sc{i}", scored(fast, mc, dc)) for i in range(2)])))
+        check("--scored: an unscored session refuses", any("not scored" in x for x in scored_problems(A, [(f"su{i}", scored(fast, mb, db, flag=False)) for i in range(2)])))
+        check("--scored: a manifest edited after the run refuses", any("digest" in x for x in scored_problems(A, [(f"sd{i}", scored(fast, mb, "0" * 64)) for i in range(2)])))
+        md, dd = manifest("d.json", machine={"model": "other", "cpu": "c", "kernel": "k"})
+        check("--scored: a different machine refuses", any("machine differs" in x for x in scored_problems(A, [(f"se{i}", scored(fast, md, dd)) for i in range(2)])))
     return 0 if ok else 1
 
 
@@ -159,10 +209,13 @@ def main():
     ap.add_argument("--threshold", type=float, default=0.03)
     ap.add_argument("--json"); ap.add_argument("--fail-on-regression", action="store_true")
     ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--scored", action="store_true", help="scoreboard mode: scored sessions sharing one workload only")
     a = ap.parse_args()
     if a.self_test: sys.exit(self_test())
     if not a.a or not a.b: ap.error("--a and --b are required")
-    result = compare(load(a.a), load(a.b), a.threshold)
+    a_s, b_s = load(a.a), load(a.b)
+    result = compare(a_s, b_s, a.threshold)
+    if a.scored: result["refused"] = scored_problems(a_s, b_s) + result["refused"]
     print(render(result))
     if a.json:
         with open(a.json, "w") as f: json.dump(result, f, indent=1, allow_nan=False)
