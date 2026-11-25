@@ -14,14 +14,16 @@ impl Store {
         use std::sync::atomic::Ordering::SeqCst;
         loop {
             if self.durable.load(SeqCst) >= seq { return Ok(()) }
-            self.check_poisoned()?;
+            // A record an earlier fsync covered is durable even if a later batch then poisoned the store: re-check
+            // before reporting the poison, as the WAL lock used to make this check one with it.
+            if let Err(e) = self.check_poisoned() { return self.unless_durable(seq, e) }
             match self.wal.try_lock() {
                 Ok(mut w) => {
                     let flushed = self.lead_flush(&mut w);
                     // The leader steps down as it frees the WAL lock and wakes the waiters: one whose record the
                     // batch missed then finds nobody leading and leads the next batch at once.
                     self.end_leading(w);
-                    flushed?
+                    if let Err(e) = flushed { return self.unless_durable(seq, e) }
                 }
                 Err(std::sync::TryLockError::WouldBlock) => {
                     // A leader is flushing: wait for it to step down, which `end_leading` signals under `pending`, so
@@ -92,12 +94,20 @@ impl Store {
         Ok(())
     }
 
-    /// Makes `overlay` (everything up to `upto`) visible, then durable for `flush_until`. Its waiters wake when the
-    /// leader steps down (`end_leading`).
+    /// Makes `overlay` (everything up to `upto`) visible, then durable for `flush_until`, and wakes its waiters.
     pub(super) fn publish_durable(&self, upto: u64, overlay: Arc<Overlay>) {
         *self.current.write().unwrap() = overlay;
-        let _p = self.pending.lock().unwrap();
+        let p = self.pending.lock().unwrap();
         self.durable.store(upto, std::sync::atomic::Ordering::SeqCst);
+        drop(p);
+        // Wake the writers this batch covered now, at the fsync's end: they return and can join the next batch.
+        // A waiter it did not cover still sees `leading` and waits for the step-down.
+        self.flushed.notify_all();
+    }
+
+    /// `Ok` if `seq` is durable after all, `Err(e)` otherwise.
+    fn unless_durable(&self, seq: u64, e: std::io::Error) -> std::io::Result<()> {
+        if self.durable.load(std::sync::atomic::Ordering::SeqCst) >= seq { Ok(()) } else { Err(e) }
     }
 
     /// The leader steps down: it frees the WAL lock while holding `pending`, so a successor that takes the WAL lock
