@@ -9,6 +9,10 @@ a wrong answer, timeout or failed reset makes a session unscored instead of slow
 TOOLS=<dir with the datasets and stores> bench/profile/v4/run.sh <empty output dir>
 ```
 
+On a machine that cannot pass the machine check (this laptop: other jobs and containers), run
+`bench/profile/v4/run.sh --unscored <dir>`: the same plans and checks as harness acceptance, reports marked
+"UNSCORED", never on the scoreboard. Scored profiles come from a qualifying host.
+
 `run.sh` writes one plan per suite for this machine (`make-plans.py`; plans hold absolute paths, so they are generated,
 never committed) and runs them in turn. Each plan directory gets `report.md` and `report.json`.
 

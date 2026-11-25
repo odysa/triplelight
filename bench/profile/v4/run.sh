@@ -1,5 +1,7 @@
 #!/bin/bash
-# Profile v4 from one command: bench/profile/v4/run.sh OUT_DIR [make-plans.py options]
+# Profile v4 from one command: bench/profile/v4/run.sh [--unscored] OUT_DIR [make-plans.py options]
+# --unscored: harness acceptance on a machine that cannot qualify (the laptop): plan.py --unscored, reports banner-marked,
+# never on the scoreboard. Scored runs need a qualifying host.
 # Writes the plans for this machine, then runs each through bench/eval/plan.py (which takes the machine lock,
 # requires a fresh machine-check receipt, scores every session and writes report.md per plan), then the scoreboard.
 set -euo pipefail
@@ -9,13 +11,14 @@ PROFILE_BUDGET="--mem 12 --cpus 8"
 [ -z "${BUDGET:-}" ] || [ "$BUDGET" = "$PROFILE_BUDGET" ] || { echo "run.sh: BUDGET=$BUDGET differs from the profile's $PROFILE_BUDGET" >&2; exit 2; }
 export BUDGET=$PROFILE_BUDGET
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../../.." && pwd)
-OUT=${1:?usage: run.sh OUT_DIR [make-plans options]}; shift
+MODE=(); if [ "${1:-}" = --unscored ]; then MODE=(--unscored); shift; fi
+OUT=${1:?usage: run.sh [--unscored] OUT_DIR [make-plans options]}; shift
 [ ! -e "$OUT" ] || [ -z "$(ls -A "$OUT")" ] || { echo "run.sh: $OUT is not empty" >&2; exit 2; }
 mkdir -p "$OUT/plans"
 python3 "$HERE/make-plans.py" "$OUT/plans" "$@"
 rc=0
 for p in "$OUT"/plans/*.json; do
   s=$(basename "$p" .json)
-  python3 "$ROOT/bench/eval/plan.py" run "$p" --out "$OUT/$s" || { echo "plan $s failed (rc $?)" | tee -a "$OUT/failures.txt"; rc=1; }
+  python3 "$ROOT/bench/eval/plan.py" run "$p" --out "$OUT/$s" ${MODE[@]+"${MODE[@]}"} || { echo "plan $s failed (rc $?)" | tee -a "$OUT/failures.txt"; rc=1; }
 done
 exit $rc
