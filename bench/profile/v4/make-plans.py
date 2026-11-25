@@ -47,7 +47,7 @@ def main():
     ap.add_argument("--systems", default="triplelight,qlever,virtuoso"); ap.add_argument("--runs", type=int, default=3)
     ap.add_argument("--sessions", type=int, default=3, help="server starts per system (the noise gate needs 3 for queries under 5 ms)")
     a = ap.parse_args()
-    tools = pathlib.Path(os.environ.get("TOOLS") or ROOT / "bench" / "tools")
+    tools = pathlib.Path(os.environ.get("TOOLS") or ROOT / "bench" / "tools").resolve()
     out = pathlib.Path(a.out).resolve(); out.mkdir(parents=True, exist_ok=True)
     systems = a.systems.split(",")
     for line in (HERE / "suites.tsv").read_text().splitlines():
