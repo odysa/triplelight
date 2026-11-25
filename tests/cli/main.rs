@@ -10,6 +10,8 @@ mod shacl_cli;
 mod server_auth;
 #[cfg(all(unix, feature = "server"))]
 mod server_stream;
+#[cfg(all(unix, feature = "server"))]
+mod server_readonly;
 
 #[cfg(not(feature = "shacl"))]
 #[test]

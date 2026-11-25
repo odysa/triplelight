@@ -250,7 +250,15 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
     let timeout = query_timeout(args);
     let memory = query_memory(args);
     let t = Instant::now();
-    let store = if args.iter().any(|a| a == "--disk") {
+    let disk = args.iter().any(|a| a == "--disk");
+    let store = if args.iter().any(|a| a == "--read-only") {
+        // `--read-only` serves the store without writing to it: a shared lock (any number of readers, no writer), no recovery, no truncation,
+        // no cleanup. Several processes can serve one store this way, each with its own cache.
+        if init.is_some() { eprintln!("--read-only cannot be combined with --init: a read-only server creates nothing"); std::process::exit(2) }
+        let opened = if disk { triplelight::store::Store::open_read_only_with(&args[2], Box::new(triplelight::storage::DiskBase { workers })) }
+                     else { triplelight::store::Store::open_read_only(&args[2], workers) };
+        opened.unwrap_or_else(|e| { eprintln!("cannot open {} read-only: {e}", args[2]); std::process::exit(1) })
+    } else if disk {
         triplelight::store::Store::open_with(&args[2], init.as_deref(), Box::new(triplelight::storage::DiskBase { workers }))
     } else {
         triplelight::store::Store::open(&args[2], init.as_deref(), workers)
@@ -393,7 +401,7 @@ const MAX_QUERY_BYTES: u64 = 16 << 20;
 /// - `TRIPLELIGHT_UPDATE_TOKEN` set: requests must send `Authorization: Bearer <token>` (401 otherwise).
 /// - `--allow-unauthenticated-updates`: anyone who can reach the port, except requests carrying an `Origin` header
 ///   (a browser page posting a cross-origin form to localhost). Refused on a non-loopback address.
-/// - otherwise, including `--read-only`: nobody (403). Loopback alone is not an authentication boundary: any web
+/// - otherwise, including `--read-only` (which also opens the store read-only, under a shared lock): nobody (403). Loopback alone is not an authentication boundary: any web
 ///   page in a local browser can POST to 127.0.0.1, so open updates are never the default.
 pub(crate) enum UpdateAuth { ReadOnly, Token(String), Open }
 
