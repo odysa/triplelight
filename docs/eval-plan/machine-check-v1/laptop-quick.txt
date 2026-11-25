@@ -1,0 +1,36 @@
+started 2026-11-25T11:10:31Z
+quick 1
+os darwin
+kernel 27.0.0
+arch arm64
+boot_id 1793153653
+model MacBookPro18,4
+cpu "Apple M1 Max"
+cores 10
+perf_cores 8
+ram_gb 64
+cpu_speed_limit n/a
+power_source "AC Power"
+low_power_mode 0
+running_containers 4
+containerd_shims 0
+FAIL containers: 4 containers are running
+idle_ignore "none"
+busy_process "15590:5% TGOnDeviceInferenceProviderService"
+busy_process "29517:2% codex"
+busy_process "35252:3% claude"
+busy_process "38600:3% sysmond"
+busy_process "39475:2% claude"
+busy_process "39910:400% OrbStack Helper"
+busy_process "450:10% fseventsd"
+busy_process "475:6% mds"
+busy_process "518:10% WindowServer"
+busy_process "59292:5% claude"
+busy_process "660:3% searchpartyd"
+busy_process "82684:3% raft-computer"
+FAIL idle: processes above 2% of a core over 10s: 15590:5% 29517:2% 35252:3% 38600:3% 39475:2% 39910:400% 450:10% 475:6% 518:10% 59292:5% 660:3% 82684:3% 
+loadavg "7.40 7.45 5.92"
+spin median_s=0.229601,spread=0.0243
+disk "not measured on macOS (no direct I/O)"
+timestamp 2026-11-25T11:10:43Z
+verdict fail

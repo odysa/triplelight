@@ -1,0 +1,39 @@
+started 2026-11-25T11:10:43Z
+quick 1
+os linux
+kernel 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty
+arch aarch64
+boot_id 0f95b871-c0c0-46b3-b4a6-3adab14b5066
+model "unknown"
+cpu "-"
+cores 10
+threads_per_core 1
+numa_nodes 
+ram_gb 15
+virtualization none
+clocksource arch_sys_counter
+thp madvise
+governors "performance:10 "
+FAIL turbo: no intel_pstate or cpufreq boost control in sysfs (--allow-no-cpufreq to waive)
+swap_kb 17462804
+FAIL swap: swap is configured (17462804 kB)
+logins ""
+running_containers 0
+containerd_shims 0
+idle_ignore "none"
+busy_process "10:100% sh"
+FAIL idle: processes above 2% of a core over 10s: 10:100% 
+loadavg "1.72, 0.44, 0.14"
+steal_pct 0.000
+host_busy_cores 5.039
+FAIL idle: the host used 5.039 cores over 10s while idle (limit 0.1)
+spin_core0 median_s=0.246647,spread=0.0089
+spin_core9 median_s=0.236280,spread=0.0264
+spin_cross_core 0.0439
+FAIL frequency: cores 0 and 9 differ by more than 3% (0.0439)
+data_fs "overlay overlay"
+data_free_gb 81
+disk_write "1.5 GB/s"
+disk_read "8.9 GB/s"
+timestamp 2026-11-25T11:10:56Z
+verdict fail

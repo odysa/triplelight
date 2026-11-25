@@ -1,0 +1,5 @@
+#!/bin/bash
+# Stub of ssh: logs the remote command; the machine check fails when $STUB_MC_FAIL is set.
+echo "ssh ${*: -1}" >> "$STUB_LOG"
+case "${*: -1}" in *machine-check*) [ -n "${STUB_MC_FAIL:-}" ] && exit 3;; esac
+exit 0

@@ -1,0 +1,3 @@
+#!/bin/bash
+# Stub of scp.
+echo "scp $*" >> "$STUB_LOG"
