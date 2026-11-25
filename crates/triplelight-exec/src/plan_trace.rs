@@ -178,6 +178,17 @@ pub fn explain_dataset_with_provider<S: Snapshot>(
     report(|| query_dataset_with_provider(snapshot, dataset, text, &Options { raw_ids: true, ..*options }, provider))
 }
 
+#[doc(hidden)]
+pub fn explain_dataset_with_extensions<S: Snapshot>(
+    snapshot: &S,
+    dataset: &dyn DatasetView,
+    text: &str,
+    options: &Options<'_>,
+    extensions: crate::udf::QueryExtensions<'_>,
+) -> Result<String, QueryError> {
+    report(|| crate::query_with_extensions(snapshot, Some(dataset), text, &Options { raw_ids: true, ..*options }, extensions))
+}
+
 fn report(run: impl FnOnce() -> Result<QueryResult, QueryError>) -> Result<String, QueryError> {
     let (result, lines, truncated) = capture_bounded(TRACE_LIMIT, run);
     drop(result?);

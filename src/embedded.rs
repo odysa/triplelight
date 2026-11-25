@@ -6,8 +6,8 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 use crate::opt::stats::Stats;
-use crate::extension::{Extension, ExtensionError, ExtensionInfo, ExtensionRegistry, Registry, Validation};
-use crate::exec::{self, QueryError, QueryResult};
+use crate::extension::{Extension, ExtensionError, ExtensionInfo, ExtensionRegistry, FunctionOptions, Registry, ScalarFunction, Validation};
+use crate::exec::{self, QueryError, QueryResult, udf::QueryExtensions};
 use crate::rdf::{NamedNode, Triple};
 use crate::store::{Change, Overlay, Store};
 use crate::storage::{Dictionary, DiskBase, MemorySnapshot, Snapshot};
@@ -249,6 +249,16 @@ impl Database {
     /// Registers the capabilities of an application-supplied Rust extension.
     pub fn register_extension(&self, extension: &dyn Extension) -> Result<(), ExtensionError> {
         self.extensions.register(extension)
+    }
+
+    /// Registers an RDF scalar callback under an absolute IRI for future read snapshots.
+    pub fn register_function(
+        &self,
+        iri: &str,
+        options: FunctionOptions,
+        callback: impl ScalarFunction,
+    ) -> Result<(), ExtensionError> {
+        self.extensions.register_function(iri, options, callback)
     }
 
     /// Lists compiled-in official extensions and registrations visible to this database.
@@ -539,10 +549,8 @@ impl ReadSnapshot {
     fn run_with(&self, sparql: &str, raw_ids: bool, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<QueryResult, DatabaseError> {
         let stats = self.applicable_stats();
         let opts = exec::Options { stats: stats.as_deref(), raw_ids, entailment, interrupt: limits.interrupt, memory_budget: limits.memory, ..Default::default() };
-        if entailment == exec::Entailment::Rdfs {
-            return Ok(exec::query_dataset_with_provider(&*self.snapshot, &*self.snapshot, sparql, &opts, self.entailment_provider("rdfs")?)?);
-        }
-        Ok(exec::query_dataset_with(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
+        let provider = (entailment == exec::Entailment::Rdfs).then(|| self.entailment_provider("rdfs")).transpose()?;
+        Ok(exec::query_with_extensions(&*self.snapshot, Some(&*self.snapshot), sparql, &opts, self.query_extensions(provider))?)
     }
 
     /// Lists the official extensions and registrations visible when this read view was created.
@@ -560,7 +568,7 @@ impl ReadSnapshot {
         let provider = self.entailment_provider(name)?;
         let stats = self.applicable_stats();
         let opts = exec::Options { stats: stats.as_deref(), interrupt: limits.interrupt, memory_budget: limits.memory, ..Default::default() };
-        Ok(exec::query_dataset_with_provider(&*self.snapshot, &*self.snapshot, sparql, &opts, provider)?)
+        Ok(exec::query_with_extensions(&*self.snapshot, Some(&*self.snapshot), sparql, &opts, self.query_extensions(Some(provider)))?)
     }
 
     fn entailment_provider(&self, name: &str) -> Result<&dyn crate::extension::EntailmentProvider, DatabaseError> {
@@ -580,10 +588,11 @@ impl ReadSnapshot {
     pub fn explain(&self, sparql: &str, entailment: exec::Entailment) -> Result<String, DatabaseError> {
         let stats = self.applicable_stats();
         let opts = exec::Options { stats: stats.as_deref(), entailment, ..Default::default() };
-        if entailment == exec::Entailment::Rdfs {
-            return Ok(exec::plan_trace::explain_dataset_with_provider(&*self.snapshot, &*self.snapshot, sparql, &opts, self.entailment_provider("rdfs")?)?);
-        }
-        Ok(exec::plan_trace::explain_dataset(&*self.snapshot, &*self.snapshot, sparql, &opts)?)
+        let provider = (entailment == exec::Entailment::Rdfs).then(|| self.entailment_provider("rdfs")).transpose()?;
+        Ok(exec::plan_trace::explain_dataset_with_extensions(&*self.snapshot, &*self.snapshot, sparql, &opts, self.query_extensions(provider))?)
+    }
+    fn query_extensions<'a>(&'a self, provider: Option<&'a dyn crate::extension::EntailmentProvider>) -> QueryExtensions<'a> {
+        QueryExtensions { entailment: provider, functions: Some(self.extensions.as_ref()), ..Default::default() }
     }
     fn applicable_stats(&self) -> Option<Arc<Stats>> {
         self.stats.read().unwrap().as_ref().filter(|(base, st)| statistics_cover(base.base_id(), st, &self.snapshot)).map(|(_, st)| Arc::clone(st))
