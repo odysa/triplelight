@@ -7,7 +7,12 @@ use crate::QueryErrorKind;
 /// and a hit ends the query with `QueryErrorKind::Cancelled` or `Timeout`, never with a partial answer. A check is a
 /// relaxed atomic load plus, with a deadline, a clock read.
 #[derive(Debug, Default)]
-pub struct Interrupt { cancelled: std::sync::atomic::AtomicBool, deadline: Option<std::time::Instant> }
+pub struct Interrupt {
+    cancelled: std::sync::atomic::AtomicBool,
+    deadline: Option<std::time::Instant>,
+    /// A flag set from outside, for example by a signal handler, that also cancels (`with_flag`).
+    flag: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+}
 
 impl Interrupt {
     /// Never times out; stops only when cancelled.
@@ -16,9 +21,15 @@ impl Interrupt {
     pub fn with_deadline(deadline: std::time::Instant) -> Self { Interrupt { deadline: Some(deadline), ..Self::default() } }
     /// Stops `timeout` from now (or when cancelled before).
     pub fn with_timeout(timeout: std::time::Duration) -> Self { Self::with_deadline(std::time::Instant::now() + timeout) }
+    /// Also cancelled once `flag` is set. Setting a flag is async-signal-safe, so a signal handler can stop a query
+    /// this way (the Python binding's Ctrl-C).
+    pub fn with_flag(mut self, flag: std::sync::Arc<std::sync::atomic::AtomicBool>) -> Self { self.flag = Some(flag); self }
     /// Asks the query to stop at its next check; callable from any thread, any number of times.
     pub fn cancel(&self) { self.cancelled.store(true, std::sync::atomic::Ordering::Relaxed) }
-    pub fn is_cancelled(&self) -> bool { self.cancelled.load(std::sync::atomic::Ordering::Relaxed) }
+    pub fn is_cancelled(&self) -> bool {
+        use std::sync::atomic::Ordering::Relaxed;
+        self.cancelled.load(Relaxed) || self.flag.as_ref().is_some_and(|f| f.load(Relaxed))
+    }
     /// Unwinds the query if it was cancelled or is past its deadline (caught by `catching_storage`).
     pub(crate) fn check(&self) {
         // `resume_unwind`, not `panic!`: a stop is not a bug, so the panic hook (which prints) does not run.
