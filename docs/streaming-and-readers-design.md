@@ -25,9 +25,9 @@ row cannot leave before the last join level has produced its rows. What can chan
    reads it as a `Read` for `tiny_http::Response::new(...)`; the bound is the back-pressure, so a slow client holds at most two windows.
    The first window is produced before the status line is sent, so the common errors (a dictionary read failure on the first rows) still
    answer 500.
-3. *Failure after the first byte.* The status is already sent. The stream is ended without the terminating chunk and without the closing
-   `]}}`, so the client sees a truncated chunked body (a client or the benchmark driver reports it as incomplete, as it does for
-   Virtuoso's row cap), never a complete-looking wrong answer. The server logs the error.
+3. *Failure after the first byte.* The status is already sent. The closing `]}}` is never written, so the body is invalid JSON; the chunked framing
+   still ends normally (tiny_http writes the final `0` chunk even when the body reader returns an error). The client sees a body that does not parse,
+   never a complete-looking wrong answer; a client or the benchmark driver reports it as incomplete, as it does for Virtuoso's row cap. The server logs the error.
 4. *Formats.* JSON first (it is the only id-based path); CSV and TSV and CONSTRUCT keep the buffered path until measured. HTTP/1.0 clients
    and `HEAD` keep the buffered `Content-Length` response.
 5. *Embedded API.* `Database::query_to_writer(sparql, format, &mut impl Write)` (and `ReadSnapshot::...`) for callers that want bounded
