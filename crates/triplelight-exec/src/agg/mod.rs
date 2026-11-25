@@ -8,6 +8,7 @@
 //! Anything else (expressions other than a plain variable, GROUP_CONCAT, custom aggregates) uses the general path.
 mod count;
 mod flat;
+mod spilled;
 use super::{expr, Ctx, Row, UNBOUND};
 use crate::model::TermId;
 use crate::storage::Snapshot;

@@ -49,7 +49,10 @@ fn query_timeout(args: &[String]) -> Option<std::time::Duration> {
 }
 
 /// `--query-memory-mb=<n>`: each query request gets a working-memory budget of that size and fails with HTTP 503 instead
-/// of growing past it (#110). None: unbounded.
+/// of growing past it (#110). None: unbounded. Under a budget, a GROUP BY whose input does not fit spills it to
+/// `TRIPLELIGHT_SCRATCH_DIR` (else the system temporary directory) instead of failing (#111); `spill_bytes=` on the
+/// `TRIPLELIGHT_TRACE_PHASES` line shows how much it wrote. Point the variable at a local disk with room for the largest
+/// intermediate result: a tmpfs is charged to memory.
 fn query_memory(args: &[String]) -> Option<u64> {
     let v = args.iter().find_map(|a| a.strip_prefix("--query-memory-mb="))?;
     match v.parse::<u64>() {
@@ -142,7 +145,7 @@ fn explain<S: triplelight::storage::Snapshot>(req: &mut tiny_http::Request, snap
     }
     if query.len() as u64 > MAX_QUERY_BYTES { return reply("query too large".to_string(), 413); }
     let interrupt = timeout.map(Interrupt::with_timeout);
-    let budget = memory.map(MemoryBudget::new);
+    let budget = memory.map(MemoryBudget::spilling);
     let opts = Options { entailment, interrupt: interrupt.as_ref(), memory_budget: budget.as_ref(), ..opts };
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| triplelight::exec::plan_trace::explain(snap, &query, &opts))) {
         Ok(Ok(report)) => reply(report, 200),
@@ -214,11 +217,12 @@ fn answer<'a, S: triplelight::storage::Snapshot>(snap: &'a S, q: &str, opts: &Op
         let [parse, bgp, group, count, sort, filter, extend, join] = triplelight::exec::phase::take();
         let ranges = triplelight::exec::phase::take_ranges();
         let [index_read, dict_read] = triplelight::storage::disk_index::take_read_share();
+        let spilled = triplelight::exec::phase::take_spilled();
         let exec_us = exec_done.get().map_or(0, |e| (e - t0).as_micros());
         let output_us = exec_done.get().map_or(0, |e| (end - e).as_micros());
         let (rows, cols) = shape.get();
         let head: String = q.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
-        eprintln!("phase_trace total_us={} parse_us={parse} bgp_us={bgp} group_us={group} count_us={count} sort_us={sort} index_read_us={index_read} dict_read_us={dict_read} filter_us={filter} extend_us={extend} join_us={join} exec_us={exec_us} output_us={output_us} rows={rows} cols={cols} range_pushdown={ranges} query={head:?}", (end - t0).as_micros());
+        eprintln!("phase_trace total_us={} parse_us={parse} bgp_us={bgp} group_us={group} count_us={count} sort_us={sort} index_read_us={index_read} dict_read_us={dict_read} filter_us={filter} extend_us={extend} join_us={join} spill_bytes={spilled} exec_us={exec_us} output_us={output_us} rows={rows} cols={cols} range_pushdown={ranges} query={head:?}", (end - t0).as_micros());
     }
     if let Some(t) = derived {
         let head: String = q.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
@@ -319,7 +323,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
                         let st = st.filter(|(base, st)| triplelight::embedded::statistics_cover(*base, st, &snap));
                         let fmt = accept_of(&req);
                         let interrupt = timeout.map(Interrupt::with_timeout);
-                        let budget = memory.map(MemoryBudget::new);
+                        let budget = memory.map(MemoryBudget::spilling);
                         let opts = Options { stats: st.as_ref().map(|(_, s)| &**s), raw_ids: fmt == Format::Json, entailment, interrupt: interrupt.as_ref(), memory_budget: budget.as_ref(), ..ablations };
                         match answer(&*snap, &q, &opts, fmt) { Reply::Whole(r) => r, Reply::Stream(r) => { let _ = req.respond(r); continue } }
                     }
@@ -505,7 +509,7 @@ fn serve_memory(args: &[String]) {
                     (_, Err(e)) => tiny_http::Response::from_string(e).with_status_code(400),
                     (Some(q), Ok(entailment)) => {
                         let interrupt = timeout.map(Interrupt::with_timeout);
-                        let budget = memory.map(MemoryBudget::new);
+                        let budget = memory.map(MemoryBudget::spilling);
                         let opts = Options { stats: st.as_deref(), raw_ids: fmt == Format::Json, entailment, interrupt: interrupt.as_ref(), memory_budget: budget.as_ref(), ..ablations };
                         match answer(snap, &q, &opts, fmt) { Reply::Whole(r) => r, Reply::Stream(r) => { let _ = req.respond(r); continue } }
                     }

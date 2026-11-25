@@ -1169,6 +1169,70 @@ fn memory_budget_stops_queries_that_do_not_fit_and_releases_everything() {
 }
 
 
+/// #111: GROUP BY spilled to disk one key partition at a time gives the in-memory answer, rows and their order, on every
+/// grouping path (flat single-key COUNT, the fast aggregates, the general path), and leaves no run files behind.
+#[test]
+fn spilled_group_by_matches_the_in_memory_answer_and_cleans_up() {
+    use triplelight::exec::{phase, query_with, MemoryBudget, Options};
+    let mut nt = String::new();
+    for i in 0..3000u32 {
+        nt.push_str(&format!("<http://ex/s{i}> <http://ex/p> \"{}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n", (i * 7919) % 211));
+        nt.push_str(&format!("<http://ex/s{i}> <http://ex/q> <http://ex/k{}> .\n", (i * 31) % 53));
+    }
+    let snap = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
+    let scratch = std::env::temp_dir().join(format!("tl-spill-group-{}", std::process::id()));
+    std::fs::create_dir_all(&scratch).unwrap();
+    let queries = [
+        // flat single-key COUNT(*) and COUNT(?v), first-seen group order
+        "SELECT ?k (COUNT(*) AS ?n) WHERE { ?s <http://ex/q> ?k } GROUP BY ?k",
+        "SELECT ?k (COUNT(?v) AS ?n) WHERE { ?s <http://ex/q> ?k . ?s <http://ex/p> ?v } GROUP BY ?k",
+        // fast aggregates, two keys
+        "SELECT ?k ?v (SUM(?v) AS ?t) (MIN(?s) AS ?lo) (MAX(?s) AS ?hi) (AVG(?v) AS ?m) WHERE { ?s <http://ex/q> ?k . ?s <http://ex/p> ?v } GROUP BY ?k ?v",
+        "SELECT ?k (COUNT(DISTINCT ?v) AS ?d) (SAMPLE(?v) AS ?x) WHERE { ?s <http://ex/q> ?k . ?s <http://ex/p> ?v } GROUP BY ?k",
+        // the general path: an expression aggregate, GROUP_CONCAT, HAVING, and an ORDER BY on top
+        "SELECT ?k (SUM(?v * 2) AS ?t) WHERE { ?s <http://ex/q> ?k . ?s <http://ex/p> ?v } GROUP BY ?k HAVING (SUM(?v) > 10)",
+        "SELECT ?v (GROUP_CONCAT(STR(?k); SEPARATOR=\",\") AS ?ks) WHERE { ?s <http://ex/q> ?k . ?s <http://ex/p> ?v } GROUP BY ?v",
+        "SELECT ?k (COUNT(*) AS ?n) WHERE { ?s <http://ex/q> ?k } GROUP BY ?k ORDER BY DESC(?n) ?k",
+    ];
+    phase::take_spilled();
+    for q in queries {
+        let want = format!("{:?}", query_with(&snap, q, &Options::default()).unwrap());
+        for general_group in [false, true] {
+            let budget = MemoryBudget::new(64 << 20).with_scratch_dir(&scratch).with_spill_rows(100);
+            let got = query_with(&snap, q, &Options { memory_budget: Some(&budget), general_group, ..Options::default() }).unwrap();
+            assert_eq!(format!("{got:?}"), want, "{q} (general_group {general_group})");
+            assert_eq!(budget.used(), 0);
+        }
+    }
+    assert!(phase::take_spilled() > 0, "the forced threshold made the groups spill");
+    assert_eq!(std::fs::read_dir(&scratch).unwrap().count(), 0, "every run directory is removed");
+    std::fs::remove_dir_all(&scratch).unwrap();
+}
+
+/// #111: with a scratch directory, a GROUP BY whose groups would not fit next to its input finishes by spilling; the
+/// same budget without one ends with `ResourceLimit`, as before.
+#[test]
+fn a_group_by_over_the_budget_spills_instead_of_failing() {
+    use triplelight::exec::{query_with, MemoryBudget, Options, QueryErrorKind};
+    let mut nt = String::new();
+    for i in 0..40_000u32 { nt.push_str(&format!("<http://ex/s{}> <http://ex/p> \"v{i}\" .\n", i / 4)) }
+    let snap = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
+    // 10,000 groups of 4 rows on the general path: the groups hold every row again, which does not fit next to the
+    // input; one partition's rows and groups, plus the grouped answer so far, do.
+    let q = "SELECT ?s (GROUP_CONCAT(?o) AS ?all) WHERE { ?s <http://ex/p> ?o } GROUP BY ?s";
+    let opts = |b| Options { memory_budget: Some(b), general_group: true, ..Options::default() };
+    let budget = 3 << 20;
+    let tight = MemoryBudget::new(budget);
+    assert_eq!(query_with(&snap, q, &opts(&tight)).unwrap_err().kind, QueryErrorKind::ResourceLimit);
+    let scratch = std::env::temp_dir().join(format!("tl-spill-limit-{}", std::process::id()));
+    let spilling = MemoryBudget::new(budget).with_scratch_dir(&scratch);
+    let got = query_with(&snap, q, &opts(&spilling)).unwrap();
+    assert_eq!(format!("{got:?}"), format!("{:?}", query_with(&snap, q, &Options { general_group: true, ..Options::default() }).unwrap()));
+    assert_eq!(spilling.used(), 0);
+    assert_eq!(std::fs::read_dir(&scratch).unwrap().count(), 0);
+    std::fs::remove_dir_all(&scratch).unwrap();
+}
+
 #[test]
 fn count_one_key_charges_its_group_table() {
     use triplelight::exec::{query_with, MemoryBudget, Options, QueryErrorKind};
