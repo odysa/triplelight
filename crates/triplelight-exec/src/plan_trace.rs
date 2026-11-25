@@ -1,5 +1,6 @@
-//! Per-BGP runtime tracing and request-scoped explanations. Trace hooks record observations independently of
-//! query planning. Ordinary queries only check the process flag and the thread-local capture slot unless tracing is on.
+//! Per-BGP runtime tracing and request-scoped explanations. EXPLAIN adds the observed algebra-operator tree, inclusive
+//! row counts/timings and request-local phase totals. Trace hooks record observations independently of query planning.
+//! Ordinary queries only check the process flag and thread-local capture slots unless tracing is on.
 //! One stderr line per BGP evaluation, prefixed `plan_trace ` (greppable next to `phase_trace`):
 //! `plan_trace strategy=planner patterns=3 in=1 out=42 us=310 ranges=0 order=2,0,1 | #2[?p type ProductType] access=probe
 //! est=120.0 in=1 out=120 us=40 | ...` (one line). Per step: the pattern (index and compact text, IRIs cut to their local
@@ -9,12 +10,15 @@
 //! `empty` (no input rows or an absent constant), and the count shortcut (`count-leapfrog`, `count-binary-planner`,
 //! `count-binary-greedy`, `count-single`, `count-empty`; no steps). A pushed-down range shows as `ranges=N` and
 //! `access=range` on its step.
-use crate::sparql::{NamedNodePattern, TermPattern, TriplePattern};
+use crate::sparql::{GraphPattern, NamedNodePattern, TermPattern, TriplePattern};
 use crate::storage::{DatasetView, Snapshot};
 use crate::{Options, QueryError, QueryResult, query_dataset_with, query_dataset_with_provider, query_with};
 use crate::storage::EntailmentProvider;
 use std::cell::RefCell;
+use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::fmt::Write as _;
+use std::hash::{Hash, Hasher};
 use std::sync::OnceLock;
 use std::time::Instant;
 
@@ -35,6 +39,20 @@ struct Capture {
     lines: Vec<String>,
     remaining: usize,
     truncated: bool,
+    operators: Vec<OperatorNode>,
+    operator_roots: Vec<usize>,
+    operator_stack: Vec<Option<usize>>,
+    operator_nodes: HashMap<(Option<usize>, usize, u64), usize>,
+    operator_truncated: bool,
+}
+
+struct OperatorNode {
+    label: String,
+    calls: usize,
+    bindings_in: usize,
+    rows_out: usize,
+    us: u128,
+    children: Vec<usize>,
 }
 
 struct CaptureScope(Option<Capture>);
@@ -48,19 +66,24 @@ impl Drop for CaptureScope {
 /// Runs `f` with this thread's trace lines collected instead of printed, for tests.
 #[doc(hidden)]
 pub fn capture<T>(f: impl FnOnce() -> T) -> (T, Vec<String>) {
-    let (out, lines, _) = capture_bounded(usize::MAX, f);
+    let (out, lines, _, _, _, _) = capture_bounded(usize::MAX, f);
     (out, lines)
 }
 
-fn capture_bounded<T>(limit: usize, f: impl FnOnce() -> T) -> (T, Vec<String>, bool) {
+fn capture_bounded<T>(limit: usize, f: impl FnOnce() -> T) -> (T, Vec<String>, bool, Vec<OperatorNode>, Vec<usize>, bool) {
     let _scope = CaptureScope(CAPTURE.with(|slot| slot.borrow_mut().replace(Capture {
         lines: Vec::new(),
         remaining: limit,
         truncated: false,
+        operators: Vec::new(),
+        operator_roots: Vec::new(),
+        operator_stack: Vec::new(),
+        operator_nodes: HashMap::new(),
+        operator_truncated: false,
     })));
     let out = f();
     let capture = CAPTURE.with(|slot| slot.borrow_mut().take().expect("active trace capture"));
-    (out, capture.lines, capture.truncated)
+    (out, capture.lines, capture.truncated, capture.operators, capture.operator_roots, capture.operator_truncated)
 }
 
 fn emit(line: String) {
@@ -79,6 +102,92 @@ fn emit(line: String) {
 }
 
 struct Step { pattern: Option<usize>, access: &'static str, rows_in: usize, rows_out: usize, kept: usize, us: u128 }
+
+pub(crate) struct OperatorGuard { index: Option<usize>, started: Option<Instant>, active: bool }
+
+impl OperatorGuard {
+    pub(crate) fn finish(mut self, rows_out: usize) { self.close(Some(rows_out)); }
+    fn close(&mut self, rows_out: Option<usize>) {
+        if !std::mem::take(&mut self.active) { return }
+        CAPTURE.with(|slot| {
+            let mut slot = slot.borrow_mut();
+            let Some(capture) = slot.as_mut() else { return };
+            let popped = capture.operator_stack.pop().flatten();
+            let Some(index) = self.index.take() else { return };
+            if popped != Some(index) { capture.operator_stack.clear(); }
+            let node = &mut capture.operators[index];
+            node.us += self.started.take().expect("active operator timer").elapsed().as_micros();
+            if let Some(rows_out) = rows_out { node.rows_out += rows_out; }
+        });
+    }
+}
+
+impl Drop for OperatorGuard { fn drop(&mut self) { self.close(None); } }
+
+/// Begins one observed algebra operator. The guard is inert outside an EXPLAIN capture.
+pub(crate) fn operator(pattern: &GraphPattern, rows_in: usize) -> OperatorGuard {
+    const OPERATOR_LIMIT: usize = 1024;
+    let (active, index) = CAPTURE.with(|slot| {
+        let mut slot = slot.borrow_mut();
+        let Some(capture) = slot.as_mut() else { return (false, None) };
+        if capture.operator_stack.last() == Some(&None) {
+            capture.operator_stack.push(None);
+            return (true, None)
+        }
+        let parent = capture.operator_stack.last().copied().flatten();
+        let address = pattern as *const GraphPattern as usize;
+        let mut hasher = DefaultHasher::new();
+        pattern.hash(&mut hasher);
+        let identity = (parent, address, hasher.finish());
+        if let Some(&index) = capture.operator_nodes.get(&identity) {
+            let node = &mut capture.operators[index];
+            node.calls += 1;
+            node.bindings_in += rows_in;
+            capture.operator_stack.push(Some(index));
+            return (true, Some(index))
+        }
+        if capture.operators.len() == OPERATOR_LIMIT {
+            capture.operator_truncated = true;
+            capture.operator_stack.push(None);
+            return (true, None)
+        }
+        let index = capture.operators.len();
+        capture.operators.push(OperatorNode {
+            label: operator_label(pattern), calls: 1, bindings_in: rows_in, rows_out: 0, us: 0,
+            children: Vec::new(),
+        });
+        match parent {
+            Some(parent) => capture.operators[parent].children.push(index),
+            None => capture.operator_roots.push(index),
+        }
+        capture.operator_nodes.insert(identity, index);
+        capture.operator_stack.push(Some(index));
+        (true, Some(index))
+    });
+    OperatorGuard { index, started: index.map(|_| Instant::now()), active }
+}
+
+fn operator_label(pattern: &GraphPattern) -> String {
+    match pattern {
+        GraphPattern::Bgp { patterns } => format!("BGP patterns={}", patterns.len()),
+        GraphPattern::Join { .. } => "Join".into(),
+        GraphPattern::LeftJoin { expression, .. } => format!("LeftJoin condition={}", expression.is_some()),
+        GraphPattern::Filter { .. } => "Filter".into(),
+        GraphPattern::Union { .. } => "Union".into(),
+        GraphPattern::Extend { variable, .. } => format!("Extend ?{}", variable.as_str()),
+        GraphPattern::Minus { .. } => "Minus".into(),
+        GraphPattern::Values { variables, bindings } => format!("Values variables={} rows={}", variables.len(), bindings.len()),
+        GraphPattern::OrderBy { expression, .. } => format!("OrderBy keys={}", expression.len()),
+        GraphPattern::Project { variables, .. } => format!("Project variables={}", variables.len()),
+        GraphPattern::Distinct { .. } => "Distinct".into(),
+        GraphPattern::Reduced { .. } => "Reduced".into(),
+        GraphPattern::Slice { start, length, .. } => format!("Slice offset={start} limit={}", length.map_or_else(|| "none".into(), |n| n.to_string())),
+        GraphPattern::Group { variables, aggregates, .. } => format!("Group keys={} aggregates={}", variables.len(), aggregates.len()),
+        GraphPattern::Graph { .. } => "Graph".into(),
+        GraphPattern::Path { .. } => "Path".into(),
+        GraphPattern::Service { .. } => "Service".into(),
+    }
+}
 
 /// One BGP evaluation's trace; built only when `enabled()`.
 pub(crate) struct Trace {
@@ -190,9 +299,15 @@ pub fn explain_dataset_with_extensions<S: Snapshot>(
 }
 
 fn report(run: impl FnOnce() -> Result<QueryResult, QueryError>) -> Result<String, QueryError> {
-    let (result, lines, truncated) = capture_bounded(TRACE_LIMIT, run);
+    let ((result, lines, truncated, operators, roots, operator_truncated), phases) = crate::phase::capture(|| capture_bounded(TRACE_LIMIT, run));
     drop(result?);
-    let mut report = String::from("Observed basic graph pattern plan\n");
+    let mut report = String::from("Observed operator tree\n");
+    if operators.is_empty() { report.push_str("(empty)\n"); }
+    let render_truncated = render_operators(&mut report, &operators, &roots);
+    if operator_truncated || render_truncated { report.push_str("Operator tree truncated.\n"); }
+    let [parse, bgp, group, count, sort, filter, extend, join] = phases;
+    let _ = writeln!(report, "Phase timings (microseconds; nested work may overlap)\nparse_us={parse} bgp_us={bgp} group_us={group} count_us={count} sort_us={sort} filter_us={filter} extend_us={extend} join_us={join}");
+    report.push_str("Observed basic graph pattern plan\n");
     if lines.is_empty() && !truncated { report.push_str("No basic graph pattern was traced.\n"); }
     for line in lines {
         report.push_str(&line);
@@ -200,4 +315,39 @@ fn report(run: impl FnOnce() -> Result<QueryResult, QueryError>) -> Result<Strin
     }
     if truncated { report.push_str("Plan trace truncated.\n"); }
     Ok(report)
+}
+
+fn render_operators(report: &mut String, operators: &[OperatorNode], roots: &[usize]) -> bool {
+    let tree_start = report.len();
+    let mut pending: Vec<(usize, usize)> = roots.iter().rev().map(|&index| (index, 0)).collect();
+    while let Some((index, depth)) = pending.pop() {
+        let node = &operators[index];
+        let line = format!("{}- {} calls={} bindings_in={} rows_out={} us={}\n", "  ".repeat(depth), node.label, node.calls, node.bindings_in, node.rows_out, node.us);
+        if report.len() + line.len() - tree_start > TRACE_LIMIT { return true }
+        report.push_str(&line);
+        pending.extend(node.children.iter().rev().map(|&child| (child, depth + 1)));
+    }
+    false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{OperatorNode, render_operators};
+
+    fn node(label: &str, children: Vec<usize>) -> OperatorNode {
+        OperatorNode { label: label.into(), calls: 1, bindings_in: 1, rows_out: 1, us: 1, children }
+    }
+
+    #[test]
+    fn operator_rendering_follows_links_when_a_folded_parent_discovers_a_late_child() {
+        // Discovery order is parent, first child, another root, then a child found by a later parent invocation.
+        let operators = vec![node("parent", vec![1, 3]), node("early child", vec![]), node("other root", vec![]), node("late child", vec![])];
+        let mut report = String::new();
+        assert!(!render_operators(&mut report, &operators, &[0, 2]));
+        let parent = report.find("- parent").unwrap();
+        let early = report.find("  - early child").unwrap();
+        let late = report.find("  - late child").unwrap();
+        let other = report.find("- other root").unwrap();
+        assert!(parent < early && early < late && late < other, "{report}");
+    }
 }

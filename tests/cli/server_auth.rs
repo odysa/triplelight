@@ -75,6 +75,15 @@ fn explain_returns_an_observed_plan_and_refuses_updates() {
 }
 
 #[test]
+fn explain_honors_the_server_memory_budget() {
+    let server = start("explain-memory", &["--query-memory-mb=1"], None);
+    let values = (0..40_000).map(|n| n.to_string()).collect::<Vec<_>>().join(" ");
+    let query = format!("SELECT ?x WHERE {{ VALUES ?x {{ {values} }} }}");
+    let report = post(server.1, "/explain", "application/sparql-query", &query, None);
+    assert!(report.contains(" 503 ") && report.contains("memory"), "{report}");
+}
+
+#[test]
 fn explicit_open_updates_refuse_browser_origins() {
     let s = start("open", &["--allow-unauthenticated-updates"], None);
     // A cross-origin HTML form POST from a web page carries an Origin header.

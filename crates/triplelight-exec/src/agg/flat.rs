@@ -2,7 +2,7 @@
 //! `{ ?review bsbm:reviewFor ?product . ?review dc:date ?date FILTER(...) } GROUP BY ?product` with `COUNT(?review)`.
 //! The general route turns every solution into its own `Row` (one allocation each) only for `count_one_key` to read it
 //! once; here the rows are read in place, in the same order, so the groups, their order and their counts are the same.
-use super::super::{conjuncts, phase, triple_term_free, Ctx, Row};
+use super::super::{conjuncts, phase, plan_trace, triple_term_free, Ctx, Row};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression, GraphPattern};
 use crate::storage::Snapshot;
 use triplelight_rdf::Variable;
@@ -42,12 +42,16 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         };
         let (key_col, out_col, w) = (self.var(key), self.var(out), self.vars.len());
         self.check();
+        // The flat COUNT route bypasses `eval` for both the Filter and BGP, so record those observed children here.
+        let filter_operator = filter.map(|_| plan_trace::operator(inner, input.len()));
+        let bgp_pattern = match inner { GraphPattern::Filter { inner, .. } => inner.as_ref(), _ => inner };
+        let bgp_operator = plan_trace::operator(bgp_pattern, input.len());
         let flat = self.eval_bgp_filtered_flat(patterns, input, &early);
+        let rows_out = flat.len() / w;
+        bgp_operator.finish(rows_out);
+        if let Some(operator) = filter_operator { operator.finish(rows_out); }
         // The same charge as the BGP's materialized rows (`Ctx::eval`).
-        self.fits((flat.len() / w) as u64 * self.row_bytes());
-        let started = phase::enabled().then(std::time::Instant::now);
-        let out = self.count_one_key(flat.chunks_exact(w), key_col, value_col, out_col);
-        if let Some(t) = started { phase::GROUP_NS.fetch_add(t.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed); }
-        Ok(out)
+        self.fits(rows_out as u64 * self.row_bytes());
+        Ok(phase::group(|| self.count_one_key(flat.chunks_exact(w), key_col, value_col, out_col)))
     }
 }
