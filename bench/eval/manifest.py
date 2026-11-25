@@ -270,8 +270,14 @@ def cmd_write(a):
         supplied_unchecked = bool(sha and sha[0]) and a.trust_supplied_digests
         datasets.append({"name": name, "bytes": os.path.getsize(path), "sha256": sha[0] if supplied_unchecked else actual, "sha256_verified": not supplied_unchecked})
     systems = []
-    for spec in a.system:
-        name, version, config = split(spec, 3, "--system")
+    # --system NAME:VERSION:CONFIG for direct callers, as before (VERSION may not hold a colon there); --system-json
+    # {"name", "version", "config"} for the plan runner, whose versions are Docker image pins (`image@sha256:…`)
+    specs = [tuple(split(spec, 3, "--system")) for spec in a.system]
+    for spec in a.system_json:
+        try: d = json.loads(spec); specs.append((d["name"], d["version"], d["config"]))
+        except (ValueError, KeyError, TypeError): sys.exit(f"--system-json must be an object with name, version and config, got {spec!r}")
+        if not all(isinstance(x, str) and x for x in specs[-1]): sys.exit(f"--system-json needs non-empty string name, version and config, got {spec!r}")
+    for name, version, config in specs:
         urls, clears = dict(x.split("=", 1) for x in a.system_url), dict(x.split("=", 1) for x in a.system_clear_cache)
         if name not in urls: sys.exit(f"system {name}: give --system-url {name}=URL, the endpoint the run will query")
         systems.append({"name": name, "version": version, "config_sha256": sha256_file(config), "url": urls[name], "clear_cache_url": clears.get(name, ""),
@@ -418,23 +424,28 @@ def cmd_selftest(a):
         check(f"a different {word} than the manifest's is refused", run_bindings(m, **{**bind, field: other}), "")
     check("macOS boot time keeps only the seconds", [] if boottime_seconds("{ sec = 1700000000, usec = 123456 } Tue Nov 14 22:13:20 2023") == "1700000000" else ["wrong"])
     # write then verify, end to end, in a temporary directory
+    PIN = "registry.example:5000/engine@sha256:" + "ab" * 32
     with tempfile.TemporaryDirectory() as t:
         t = pathlib.Path(t)
         (t / "bin").write_bytes(b"binary"); (t / "q").mkdir(); (t / "q" / "q1.rq").write_text("SELECT * WHERE {}")
-        (t / "ref.json").write_text("{}"); (t / "data.nt").write_text("<a> <b> <c> .\n"); (t / "cfg").write_text("memory=1")
+        (t / "ref.json").write_text("{}"); (t / "data.nt").write_text("<a> <b> <c> .\n"); (t / "cfg").write_text("memory=1"); (t / "cfg:alt").write_text("memory=2"); (t / "alt").write_text("decoy")
         (t / "store").mkdir(); (t / "store" / "f").write_text("x")
         rec = good_receipt(datetime.datetime.now(datetime.timezone.utc), boot_id()); (t / "rec.json").write_text(json.dumps(rec))
         base = [sys.executable, __file__, "write", "--out", str(t / "out"), "--receipt", str(t / "rec.json"), "--binary", str(t / "bin"), "--queries", str(t / "q"),
-                "--reference", str(t / "ref.json"), "--dataset", f"tiny:{t / 'data.nt'}", "--store", f"tiny:{t / 'store'}", "--system", f"ts:1.0:{t / 'cfg'}", "--system-url", "ts=http://127.0.0.1:1/sparql"]
+                "--reference", str(t / "ref.json"), "--dataset", f"tiny:{t / 'data.nt'}", "--store", f"tiny:{t / 'store'}", "--system-json", json.dumps({"name": "ts", "version": PIN, "config": str(t / "cfg:alt")}), "--system-url", "ts=http://127.0.0.1:1/sparql"]
         bad = subprocess.run(base[:-1] + [f"ts:1.0:{t / 'cfg'}", "--dataset", f"x:{t / 'data.nt'}:{'0' * 64}"], capture_output=True, text=True)
         print(f"manifest {'a supplied dataset digest that does not match the data is refused':<64} {'ok' if bad.returncode != 0 and 'does not match' in bad.stderr else 'FAIL'}"); ok &= bad.returncode != 0 and "does not match" in bad.stderr
         gone = subprocess.run([x if x != str(t / 'q') else str(t / 'nope') for x in base], capture_output=True, text=True)
         print(f"manifest {'a missing query directory is refused, not digested as empty':<64} {'ok' if gone.returncode != 0 and 'cannot digest' in gone.stderr else 'FAIL'}"); ok &= gone.returncode != 0 and "cannot digest" in gone.stderr
         w = subprocess.run(base, capture_output=True, text=True)
+        print(f"manifest {'--system-json with colons in version and config path is accepted':<64} {'ok' if 'cannot digest' not in w.stderr else 'FAIL ' + w.stderr[-300:]}"); ok &= "cannot digest" not in w.stderr
         wrote = w.returncode == 0 or "git.dirty" in w.stderr      # a checkout with local edits is refused by design; the write path is still exercised
         print(f"manifest {'write runs end to end (or is refused only for a dirty tree)':<64} {'ok' if wrote else 'FAIL ' + w.stderr[-300:]}"); ok &= wrote
         if w.returncode == 0:
             v = subprocess.run([sys.executable, __file__, "verify", str(t / "out" / "manifest.json")], capture_output=True, text=True)
+            sysrec = json.loads((t / "out" / "manifest.json").read_text())["systems"][0]
+            pinned = sysrec["version"] == PIN and sysrec["config_sha256"] == sha256_file(t / "cfg:alt")
+            print(f"manifest {'a colon in version and config path: both recorded whole':<64} {'ok' if pinned else 'FAIL'}"); ok &= pinned
             print(f"manifest {'verify accepts what write produced':<64} {'ok' if v.returncode == 0 else 'FAIL ' + v.stderr[-300:]}"); ok &= v.returncode == 0
             mm = json.loads((t / "out" / "manifest.json").read_text()); mm["build"]["binary_sha256"] = ""; (t / "out" / "manifest.json").write_text(json.dumps(mm))
             v = subprocess.run([sys.executable, __file__, "verify", str(t / "out" / "manifest.json")], capture_output=True, text=True)
@@ -446,7 +457,7 @@ def main():
     p = argparse.ArgumentParser(); sub = p.add_subparsers(dest="cmd", required=True)
     w = sub.add_parser("write"); w.add_argument("--out", required=True); w.add_argument("--receipt", required=True); w.add_argument("--binary", required=True)
     w.add_argument("--queries", required=True); w.add_argument("--reference", required=True)
-    w.add_argument("--dataset", action="append", default=[]); w.add_argument("--store", action="append", default=[]); w.add_argument("--system", action="append", default=[])
+    w.add_argument("--dataset", action="append", default=[]); w.add_argument("--store", action="append", default=[]); w.add_argument("--system", action="append", default=[]); w.add_argument("--system-json", action="append", default=[])
     w.add_argument("--plan"); w.add_argument("--run-id"); w.add_argument("--profile", default="release"); w.add_argument("--cargo-features", default="")
     w.add_argument("--order", default="ABBA"); w.add_argument("--runs", type=int, default=5); w.add_argument("--timeout", type=float, default=300)
     w.add_argument("--seed", type=int, default=0); w.add_argument("--drain-rows", type=int, default=200000); w.add_argument("--memory-budget", default="")

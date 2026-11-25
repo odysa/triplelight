@@ -119,7 +119,7 @@ def manifest_command(plan, arm, receipt, out, reference=None, plan_file=None, un
     for st in plan.get("stores", []): cmd += ["--store", f"{st['name']}:{st['path']}"]
     for s in plan["systems"]:
         url, clear = endpoint(s["name"])
-        cmd += ["--system", f"{s['name']}:{s['version']}:{s['config']}", "--system-url", f"{s['name']}={url}"]
+        cmd += ["--system-json", json.dumps({"name": s["name"], "version": s["version"], "config": s["config"]}), "--system-url", f"{s['name']}={url}"]
         if clear: cmd += ["--system-clear-cache", f"{s['name']}={clear}"]
     for system, cases in sorted(plan.get("expect_unsupported", {}).items()):
         if cases: cmd += ["--expect-unsupported", f"{system}={','.join(cases)}"]
