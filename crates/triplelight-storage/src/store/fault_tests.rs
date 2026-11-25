@@ -519,28 +519,37 @@ fn a_departed_writer_costs_one_capped_gather_at_most() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// A follower whose record a finished batch did not cover (#105): it wakes, finds its record not yet durable and
-/// nobody leading, and leads the next batch itself instead of waiting.
+/// A follower whose record a finished batch did not cover (#105): when the leader steps down it wakes, finds its
+/// record not yet durable and nobody leading, and leads the next batch itself, at once rather than on the 20 ms
+/// safety timeout. Twenty rounds, median under 5 ms.
 #[test]
 fn a_follower_left_out_of_a_batch_leads_the_next() {
     let dir = scratch("left-out");
     let store = std::sync::Arc::new(open(Format::NTriples, &dir).unwrap());
     store.commit_dataset(&record(Kind::Default, 0)).unwrap();
-    // Stand in for a leader: hold the WAL lock while a writer enqueues and starts waiting.
-    let w = store.wal.lock().unwrap();
-    let writer = { let store = std::sync::Arc::clone(&store); std::thread::spawn(move || store.commit_dataset(&record(Kind::Default, 1))) };
-    while store.pending.lock().unwrap().records == 0 { std::thread::yield_now() }
-    // The stand-in's batch ends without the writer's record: publish only what was durable before, then let go.
-    let durable = store.durable.load(std::sync::atomic::Ordering::SeqCst);
-    store.publish_durable(durable, store.snapshot());
-    drop(w);
-    let t = std::time::Instant::now();
-    writer.join().unwrap().unwrap();
-    assert!(t.elapsed() < std::time::Duration::from_secs(1), "the follower waited {:?}", t.elapsed());
-    assert!(store.durable.load(std::sync::atomic::Ordering::SeqCst) > durable);
+    let mut waits = Vec::new();
+    for k in 1..=20 {
+        // Stand in for a leader: hold the WAL lock, leading, while a writer enqueues and starts waiting.
+        let w = store.wal.lock().unwrap();
+        store.pending.lock().unwrap().leading = true;
+        let writer = { let store = std::sync::Arc::clone(&store); std::thread::spawn(move || store.commit_dataset(&record(Kind::Default, k))) };
+        while store.pending.lock().unwrap().records == 0 { std::thread::yield_now() }
+        std::thread::sleep(std::time::Duration::from_millis(2)); // the writer is waiting on `flushed` now
+        // The stand-in's batch ends without the writer's record: publish only what was durable, then step down.
+        let durable = store.durable.load(std::sync::atomic::Ordering::SeqCst);
+        store.publish_durable(durable, store.snapshot());
+        drop(w);
+        let t = std::time::Instant::now();
+        store.end_leading();
+        writer.join().unwrap().unwrap();
+        waits.push(t.elapsed());
+        assert!(store.durable.load(std::sync::atomic::Ordering::SeqCst) > durable);
+    }
+    waits.sort();
+    assert!(waits[waits.len() / 2] < std::time::Duration::from_millis(5), "median wait {:?}: woken by the timeout, not the leader", waits[waits.len() / 2]);
     drop(store);
     let reopened = open(Format::NTriples, &dir).unwrap();
-    assert_eq!(state(&reopened.snapshot()).0.len(), 2);
+    assert_eq!(state(&reopened.snapshot()).0.len(), 21);
     drop(reopened);
     let _ = std::fs::remove_dir_all(&dir);
 }

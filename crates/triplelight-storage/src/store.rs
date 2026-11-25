@@ -488,7 +488,7 @@ pub struct Store {
     enqueued: std::sync::Condvar,
     /// The sequence number of the last durable record; set under `pending` by `publish`.
     durable: std::sync::atomic::AtomicU64,
-    /// Signalled under `pending` whenever `durable` grows or the store is poisoned (`flush_until` waits on it).
+    /// Signalled when a leader steps down, after `durable` grew or the store was poisoned (`flush_until` waits on it).
     flushed: std::sync::Condvar,
     /// The open WAL; whoever holds it flushes all pending records with one fsync.
     wal: Mutex<Wal>,
@@ -504,8 +504,8 @@ pub struct Store {
     fail_at: Mutex<Option<String>>,
 }
 
-/// `records`: how many records `buf` holds.
-struct Pending { latest: Arc<Overlay>, buf: String, seq: u64, records: usize }
+/// `records`: how many records `buf` holds; `leading`: a leader is flushing (`group_commit`).
+struct Pending { latest: Arc<Overlay>, buf: String, seq: u64, records: usize, leading: bool }
 /// `last_batch`: records in the last batch written; `last_sync`: how long its write and fsync took.
 struct Wal { file: File, last_batch: usize, last_sync: std::time::Duration }
 
@@ -565,7 +565,7 @@ impl Store {
         Ok(Store {
             dir, format, generation: Mutex::new(generation), fences: Mutex::new(fences),
             current: RwLock::new(overlay.clone()),
-            pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0, records: 0 }),
+            pending: Mutex::new(Pending { latest: overlay, buf: String::new(), seq: 0, records: 0, leading: false }),
             enqueued: std::sync::Condvar::new(),
             wal: Mutex::new(Wal { file: wal, last_batch: 0, last_sync: std::time::Duration::ZERO }),
             durable: std::sync::atomic::AtomicU64::new(0),

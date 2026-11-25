@@ -16,14 +16,22 @@ impl Store {
             if self.durable.load(SeqCst) >= seq { return Ok(()) }
             self.check_poisoned()?;
             match self.wal.try_lock() {
-                Ok(mut w) => self.lead_flush(&mut w)?,
+                Ok(mut w) => {
+                    let flushed = self.lead_flush(&mut w);
+                    // Only once the WAL lock is free does the leader step down and wake the waiters: one whose record
+                    // the batch missed then finds nobody leading and leads the next batch at once.
+                    drop(w);
+                    self.end_leading();
+                    flushed?
+                }
                 Err(std::sync::TryLockError::WouldBlock) => {
-                    // A leader is flushing; it notifies `flushed` under `pending` after publishing, so this check
-                    // and wait cannot miss it. The timeout is only a safety net (compaction holds the WAL lock
-                    // without being a leader).
+                    // A leader is flushing: wait for it to step down, which `end_leading` signals under `pending`, so
+                    // the check and the wait cannot miss it. Without a leader the WAL lock is held by compaction,
+                    // which flushes everything first; poll briefly then. The long timeout is only a safety net.
                     let p = self.pending.lock().unwrap();
-                    let _ = self.flushed.wait_timeout_while(p, std::time::Duration::from_millis(20), |_| {
-                        self.durable.load(SeqCst) < seq && !self.poisoned.load(SeqCst)
+                    let wait = if p.leading { std::time::Duration::from_millis(20) } else { std::time::Duration::from_millis(1) };
+                    let _ = self.flushed.wait_timeout_while(p, wait, |p| {
+                        p.leading && self.durable.load(SeqCst) < seq && !self.poisoned.load(SeqCst)
                     }).unwrap();
                 }
                 Err(std::sync::TryLockError::Poisoned(e)) => panic!("WAL lock poisoned: {e}"),
@@ -35,6 +43,7 @@ impl Store {
     fn lead_flush(&self, w: &mut Wal) -> std::io::Result<()> {
         let (buf, upto, overlay, records) = {
             let mut p = self.pending.lock().unwrap();
+            p.leading = true;
             // Adaptive gather: after a batch of several commits, writers are committing concurrently, and those it
             // acknowledged are about to enqueue again. Waiting for as many records as that batch held (never longer
             // than a tenth of its fsync) lets one fsync carry them all. After a batch of one, as with a lone writer,
@@ -63,10 +72,8 @@ impl Store {
             .and_then(|_| w.file.sync_data())
             .and_then(|_| fault::hit("wal-after-sync"));
         if let Err(e) = written {
+            // `end_leading` wakes the waiters; they see the poison and fail too.
             self.poisoned.store(true, std::sync::atomic::Ordering::SeqCst);
-            // Wake the waiters: they see the poison and fail too.
-            drop(self.pending.lock().unwrap());
-            self.flushed.notify_all();
             return Err(std::io::Error::new(e.kind(), format!(
                 "appending to {} failed: {e}; the update is not acknowledged and may or may not be durable, and the \
                  store refuses writes until it is reopened", self.dir.join("wal.log").display())));
@@ -76,13 +83,17 @@ impl Store {
         Ok(())
     }
 
-    /// Makes `overlay` (everything up to `upto`) visible, then durable for `flush_until`, and wakes its waiters.
+    /// Makes `overlay` (everything up to `upto`) visible, then durable for `flush_until`. Its waiters wake when the
+    /// leader steps down (`end_leading`).
     pub(super) fn publish_durable(&self, upto: u64, overlay: Arc<Overlay>) {
         *self.current.write().unwrap() = overlay;
-        let p = self.pending.lock().unwrap();
+        let _p = self.pending.lock().unwrap();
         self.durable.store(upto, std::sync::atomic::Ordering::SeqCst);
-        drop(p);
-        self.flushed.notify_all();
     }
 
+    /// The leader, its WAL lock dropped, steps down and wakes every waiter.
+    pub(super) fn end_leading(&self) {
+        self.pending.lock().unwrap().leading = false;
+        self.flushed.notify_all();
+    }
 }
