@@ -29,10 +29,13 @@ POLICIES = {"bi100": "bi100m"}
 
 
 def stage_policy(name, where):
-    """Stages the verified bundle with policy/<name>/replay.py --stage (which refuses a bad archive) and returns the plan's
-    case_policy. An existing staged directory is left as it is; replay.py checks it."""
-    if not where.exists():
-        subprocess.run([sys.executable, "-B", str(HERE / "policy" / name / "replay.py"), "--stage", str(where)], check=True)
+    """Stages the verified bundle into a new directory with policy/<name>/replay.py --stage (which refuses a bad archive)
+    and returns the plan's case_policy, with resolved paths. A directory that already exists is refused rather than
+    trusted: the bundle a scored plan names must be the one this command just verified."""
+    where = where.resolve()
+    if where.exists(): raise SystemExit(f"make-plans: {where} already exists; stage the policy into a new output directory")
+    subprocess.run([sys.executable, "-B", str(HERE / "policy" / name / "replay.py"), "--repo", str(ROOT), "--stage", str(where)],
+                   check=True, cwd=ROOT)
     module = where / "bi_case_policy.py"
     if not module.is_file(): raise SystemExit(f"make-plans: staged policy {where} has no bi_case_policy.py")
     return {"file": str(module), "bundle": str(where)}
@@ -45,7 +48,7 @@ def main():
     ap.add_argument("--sessions", type=int, default=3, help="server starts per system (the noise gate needs 3 for queries under 5 ms)")
     a = ap.parse_args()
     tools = pathlib.Path(os.environ.get("TOOLS") or ROOT / "bench" / "tools")
-    out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
+    out = pathlib.Path(a.out).resolve(); out.mkdir(parents=True, exist_ok=True)
     systems = a.systems.split(",")
     for line in (HERE / "suites.tsv").read_text().splitlines():
         if line.startswith("#") or not line.strip(): continue
