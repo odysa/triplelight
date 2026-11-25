@@ -166,12 +166,10 @@ pub fn serialize_ids<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D)
 /// Like `serialize_ids`; `store_has_rdf12` is the snapshot's `has_rdf12_terms()`. When it is true, or a computed term is a
 /// 1.2 term, the head announces `"version":"1.2"`. A store without 1.2 terms keeps byte-identical 1.1 output.
 pub fn serialize_ids_v<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D, store_has_rdf12: bool) -> Result<String, crate::storage::StorageError> {
+    let mut stream = IdsJsonStream::new(sol, store_has_rdf12);
     let mut out = String::new();
-    match write_ids_json(sol, dict, store_has_rdf12, |s| { out.push_str(s); Ok::<(), std::convert::Infallible>(()) }) {
-        Ok(()) => Ok(out),
-        Err(EmitError::Chunk(e)) => Err(e),
-        Err(EmitError::Sink(never)) => match never {},
-    }
+    while let Some(piece) = stream.next_piece(dict)? { out.push_str(&piece) }
+    Ok(out)
 }
 
 /// Why `serialize_ids_to` stopped. After the first bytes are written the output is incomplete: callers must not treat it as an answer.
@@ -187,51 +185,93 @@ impl std::error::Error for WriteIdsError {}
 /// The bytes of `serialize_ids_v`, written to `w` window by window instead of built as one `String`. Peak memory is one window of
 /// rows; the first bytes leave before the later windows are serialized. On error the output so far is a truncated body.
 pub fn serialize_ids_to<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D, store_has_rdf12: bool, w: &mut dyn std::io::Write) -> Result<(), WriteIdsError> {
-    write_ids_json(sol, dict, store_has_rdf12, |s| w.write_all(s.as_bytes())).map_err(|e| match e {
-        EmitError::Chunk(e) => WriteIdsError::Storage(e),
-        EmitError::Sink(e) => WriteIdsError::Io(e),
-    })
+    let mut stream = IdsJsonStream::new(sol, store_has_rdf12);
+    while let Some(piece) = stream.next_piece(dict).map_err(WriteIdsError::Storage)? {
+        w.write_all(piece.as_bytes()).map_err(WriteIdsError::Io)?;
+    }
+    Ok(())
 }
 
-fn write_ids_json<D: Dictionary + Sync + ?Sized, K>(sol: &IdSolutions, dict: &D, store_has_rdf12: bool,
-                                                    mut sink: impl FnMut(&str) -> Result<(), K>) -> Result<(), EmitError<crate::storage::StorageError, K>> {
-    let mut head = String::new();
-    // 1.2 version announcement from the store-level flag (no peeking at stored terms) or from computed terms (scratch).
-    let version12 = store_has_rdf12 || sol.scratch.values().any(is_rdf12);
-    let writer = SolutionsWriter::start(&sol.vars, version12, &mut head);
-    sink(&head).map_err(EmitError::Sink)?;
-    let w = sol.width();
-    if w > 0 {
-        emit_chunks(&sol.ids, w * 4096, |chunk| -> Result<String, crate::storage::StorageError> {
-            // Decode every distinct stored ID of this chunk with one batched dictionary call (one cache access per
-            // dictionary block on disk), then assemble rows in their original order. Callbacks may arrive in any
-            // order; an error discards the whole chunk.
-            let mut distinct: Vec<TermId> = chunk.iter().copied().filter(|id| *id != UNBOUND && !sol.scratch.contains_key(id)).collect();
-            distinct.sort_unstable();
-            distinct.dedup();
-            // Fragments go into one arena string (no allocation per term); `span[i]` locates term i.
-            let mut arena = String::with_capacity(distinct.len() * 64);
-            let mut span: Vec<(u32, u32)> = vec![(0, 0); distinct.len()];
-            dict.with_terms(&distinct, &mut |i, t| {
-                let start = arena.len();
-                term_ref_json(t, &mut arena);
-                span[i] = (start as u32, arena.len() as u32);
-            })?;
-            let mut out = String::with_capacity(chunk.len() / w * 96);
-            for row in chunk.chunks_exact(w) {
-                writer.row(row.iter().map(|&id| (id != UNBOUND).then_some(id)), &mut out, |id, out| {
-                    match sol.scratch.get(&id) {
-                        Some(t) => term_json(t, out),
-                        None => { let (a, b) = span[distinct.binary_search(&id).expect("decoded above")]; out.push_str(&arena[a as usize..b as usize]) }
-                    }
-                });
-            }
-            Ok(out)
-        }, &mut sink)?;
-    } else {
-        sink(&vec!["{}"; sol.rows].join(",")).map_err(EmitError::Sink)?;
+/// SPARQL JSON for id solutions, pulled one piece at a time: the head, then one parallel window of rows per call, then the
+/// closing braces. `S` is `&IdSolutions` or an owned `IdSolutions`, so a response body can own its rows and be read lazily
+/// (peak memory is one window, and the first piece is available before the later rows are decoded). The pieces concatenate to
+/// exactly `serialize_ids_v`. After an `Err` the stream is unusable: the output so far is a truncated body.
+pub struct IdsJsonStream<S> {
+    sol: S,
+    writer: SolutionsWriter,
+    head: Option<String>,
+    next_item: usize,
+    first_rows: bool,
+    finished: bool,
+}
+
+impl<S: std::borrow::Borrow<IdSolutions>> IdsJsonStream<S> {
+    pub fn new(sol: S, store_has_rdf12: bool) -> Self {
+        let rows: &IdSolutions = sol.borrow();
+        // 1.2 version announcement from the store-level flag (no peeking at stored terms) or from computed terms (scratch).
+        let version12 = store_has_rdf12 || rows.scratch.values().any(is_rdf12);
+        let mut head = String::new();
+        let writer = SolutionsWriter::start(&rows.vars, version12, &mut head);
+        Self { sol, writer, head: Some(head), next_item: 0, first_rows: true, finished: false }
     }
-    sink("]}}").map_err(EmitError::Sink)
+
+    /// The next piece of the body, or `None` once the closing braces have been returned.
+    pub fn next_piece<D: Dictionary + Sync + ?Sized>(&mut self, dict: &D) -> Result<Option<String>, crate::storage::StorageError> {
+        use rayon::prelude::*;
+        if let Some(head) = self.head.take() { return Ok(Some(head)) }
+        if self.finished { return Ok(None) }
+        let sol: &IdSolutions = self.sol.borrow();
+        let w = sol.width();
+        if w == 0 {
+            self.finished = true;
+            return Ok(Some(format!("{}]}}}}", vec!["{}"; sol.rows].join(","))));
+        }
+        if self.next_item >= sol.ids.len() {
+            self.finished = true;
+            return Ok(Some("]}}".to_string()));
+        }
+        let chunk = w * 4096;
+        let window = chunk * rayon::current_num_threads().max(1) * 4;
+        let end = (self.next_item + window).min(sol.ids.len());
+        let writer = &self.writer;
+        let strings: Vec<String> = sol.ids[self.next_item..end].par_chunks(chunk)
+            .map(|c| rows_json(sol, writer, dict, c, w)).collect::<Result<_, _>>()?;
+        let mut piece = String::with_capacity(strings.iter().map(String::len).sum());
+        for s in &strings {
+            piece.push_str(if self.first_rows { s.strip_prefix(',').unwrap_or(s) } else { s });
+            self.first_rows = false;
+        }
+        self.next_item = end;
+        Ok(Some(piece))
+    }
+}
+
+/// The JSON rows of one chunk of ids (each row starts with a comma).
+fn rows_json<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, writer: &SolutionsWriter, dict: &D, chunk: &[TermId], w: usize) -> Result<String, crate::storage::StorageError> {
+    // Decode every distinct stored ID of this chunk with one batched dictionary call (one cache access per
+    // dictionary block on disk), then assemble rows in their original order. Callbacks may arrive in any
+    // order; an error discards the whole chunk.
+    let mut distinct: Vec<TermId> = chunk.iter().copied().filter(|id| *id != UNBOUND && !sol.scratch.contains_key(id)).collect();
+    distinct.sort_unstable();
+    distinct.dedup();
+    // Fragments go into one arena string (no allocation per term); `span[i]` locates term i.
+    let mut arena = String::with_capacity(distinct.len() * 64);
+    let mut span: Vec<(u32, u32)> = vec![(0, 0); distinct.len()];
+    dict.with_terms(&distinct, &mut |i, t| {
+        let start = arena.len();
+        term_ref_json(t, &mut arena);
+        span[i] = (start as u32, arena.len() as u32);
+    })?;
+    let mut out = String::with_capacity(chunk.len() / w * 96);
+    for row in chunk.chunks_exact(w) {
+        writer.row(row.iter().map(|&id| (id != UNBOUND).then_some(id)), &mut out, |id, out| {
+            match sol.scratch.get(&id) {
+                Some(t) => term_json(t, out),
+                None => { let (a, b) = span[distinct.binary_search(&id).expect("decoded above")]; out.push_str(&arena[a as usize..b as usize]) }
+            }
+        });
+    }
+    Ok(out)
 }
 
 // ---- SPARQL 1.2 Query Results CSV and TSV (task #104; draft of 2026-11-16, fixtures in tests/fixtures/rdf12-results) ----
