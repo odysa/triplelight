@@ -261,12 +261,15 @@ pub(super) fn spill_on_this_thread(rows: Option<usize>, dir: Option<std::path::P
 /// Where a group spills, given the base directory: the store's `scratch/` directory beside its bases (on the store's
 /// device and inside the tree S3 samples; bases themselves stay immutable), created on demand and emptied by
 /// `Store::open`. A base opened on its own (no store around it), or a store whose root is read-only, falls back to
-/// `TRIPLELIGHT_SCRATCH_DIR`, then to the system temporary directory (often a tmpfs, whose pages a cgroup charges as
+/// `TRIPLELIGHT_SCRATCH_DIR` (always for a store opened read-only, which never writes under its root), then to the system temporary directory (often a tmpfs, whose pages a cgroup charges as
 /// memory, so it is the last resort), logged once. The query never fails for lack of a place to spill.
+#[cfg(test)]
+pub(crate) fn spill_dir_for_test(base: &std::path::Path) -> std::path::PathBuf { spill_dir(base) }
+
 fn spill_dir(base: &std::path::Path) -> std::path::PathBuf {
     #[cfg(test)]
     if let Some(d) = SPILL_DIR_ON_THIS_THREAD.with(|c| c.borrow().clone()) { return d }
-    if let Some(root) = base.parent().filter(|r| r.join("CURRENT").is_file()) {
+    if let Some(root) = base.parent().filter(|r| r.join("CURRENT").is_file() && !crate::store::is_read_only_root(r)) {
         let scratch = root.join(crate::store::SCRATCH_DIR);
         if std::fs::create_dir_all(&scratch).is_ok() { return scratch }
     }
