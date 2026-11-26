@@ -581,6 +581,8 @@ impl DiskSnapshot {
         })
     }
     pub(crate) fn manifest_identity(&self) -> [u8; 32] { self.manifest_sha }
+    /// The base's directory (where sidecar files such as the wide tables' `tables.v1` live).
+    pub(crate) fn base_dir(&self) -> &Path { &self.dir }
 
     /// Visits stored literals in ID order without populating the query dictionary cache.
     pub(crate) fn visit_unified_literals(&self, visit: &mut dyn FnMut(TermId, &triplelight_rdf::Literal) -> io::Result<()>) -> io::Result<()> {

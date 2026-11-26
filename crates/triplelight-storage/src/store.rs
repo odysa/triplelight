@@ -262,6 +262,11 @@ impl Snapshot for Overlay {
         merged_seek(&*self.base, &self.delta.adds[slot(perm)], &self.delta.dels[slot(perm)], perm, prefix, target)
     }
 
+    /// Tables describe the base alone: with any change on top of it they would answer stale rows, so none are shown.
+    fn wide_tables(&self) -> Option<&dyn triplelight_core::wide::TableCatalog> {
+        if self.delta.is_empty() { self.base.wide_tables() } else { None }
+    }
+
     fn probe(&self, perm: Perm) -> Box<dyn triplelight_core::storage::Probe + '_> {
         // With no changes in this order, `count` and `seek` are the base's own answers.
         if self.delta.adds[slot(perm)].is_empty() && self.delta.dels[slot(perm)].is_empty() { return self.base.probe(perm) }
