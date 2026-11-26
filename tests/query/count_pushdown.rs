@@ -342,3 +342,38 @@ fn distinct_counts_preserve_literal_lexical_and_datatype_identity() {
         4
     );
 }
+/// A star of `?x p o` lists only is counted as the size of the lists' intersection (`count_star`, scan the smallest
+/// and seek the rest): three lists of different sizes, in memory and on disk, small enough to stay on one thread and
+/// large enough to split across workers, against a plain set intersection; an empty list gives zero.
+#[test]
+fn a_star_of_center_lists_counts_their_intersection() {
+    use std::collections::BTreeSet;
+    for subjects in [3_000u64, 100_000] {
+        let (a, b, c) = (|x: u64| x % 2 == 0, |x: u64| x % 3 == 0, |x: u64| x % 5 != 1);
+        let mut nt = String::new();
+        for x in 0..subjects {
+            if a(x) { nt.push_str(&format!("<urn:s{x}> <urn:a> <urn:A> .\n")) }
+            if b(x) { nt.push_str(&format!("<urn:s{x}> <urn:b> <urn:B> .\n")) }
+            if c(x) { nt.push_str(&format!("<urn:s{x}> <urn:c> <urn:C> .\n")) }
+        }
+        nt.push_str("<urn:E> <urn:b> <urn:B> .\n"); // urn:E exists, but nothing has `urn:a urn:E`
+        let memory = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
+        let dir = std::env::temp_dir().join(format!("triplelight-star-lists-{subjects}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        triplelight::storage::write_disk_snapshot(&dir, &memory).unwrap();
+        let disk = triplelight::storage::DiskSnapshot::open(&dir).unwrap();
+        let set = |f: &dyn Fn(u64) -> bool| (0..subjects).filter(|&x| f(x)).collect::<BTreeSet<u64>>();
+        let want = set(&a).intersection(&set(&b)).filter(|&&x| c(x)).count() as u64;
+        let q = "SELECT (COUNT(*) AS ?n) WHERE { ?x <urn:c> <urn:C> . ?x <urn:a> <urn:A> . ?x <urn:b> <urn:B> }";
+        let distinct = "SELECT (COUNT(DISTINCT ?x) AS ?n) WHERE { ?x <urn:a> <urn:A> . ?x <urn:c> <urn:C> . ?x <urn:b> <urn:B> }";
+        let empty = "SELECT (COUNT(*) AS ?n) WHERE { ?x <urn:a> <urn:E> . ?x <urn:b> <urn:B> }";
+        fn check<S: Snapshot>(snap: &S, name: &str, queries: [(&str, u64); 3]) {
+            for (q, want) in queries { assert_eq!(scalar(snap, q), want, "{name}: {q}") }
+        }
+        let queries = [(q, want), (distinct, want), (empty, 0)];
+        check(&memory, &format!("memory {subjects}"), queries);
+        check(&disk, &format!("disk {subjects}"), queries);
+        drop(disk);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+}

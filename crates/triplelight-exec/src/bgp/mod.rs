@@ -87,6 +87,10 @@ const PROBE_ROWS: u64 = 20;
 /// (`Bgp::extend_merge`), and the rows per such morsel.
 const MERGE_MIN_ROWS: usize = 4096;
 const MERGE_MORSEL: usize = 8192;
+/// `intersect_count`: values of the smallest list per window, split across workers from this many on.
+const PAR_LIST: usize = 32_768;
+/// `intersect_count`: values per worker task.
+const PAR_LIST_CHUNK: usize = 4096;
 
 pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
     pub snap: &'a S,
@@ -636,6 +640,12 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         let (lists, probes): (Vec<usize>, Vec<usize>) = (0..plans.len()).partition(|&i| prefixes[i].2 == 2);
         // The most selective pattern leads the intersection too, leaves or not (it is then also probed for its count).
         let lists = if lists.contains(&0) { lists } else { std::iter::once(0).chain(lists).collect() };
+        // Only lists (`?c p o` patterns): the answer is the intersection's size, and `lists[0]` is the smallest by its
+        // exact count (the plans are in count order).
+        if probes.is_empty() {
+            let n = self.intersect_count(&lists.iter().map(|&i| (prefixes[i].0, prefixes[i].1)).collect::<Vec<_>>());
+            return (n, n);
+        }
         let probes: Vec<_> = probes.into_iter().map(|i| prefixes[i]).collect();
         let lists: Vec<_> = lists.into_iter().map(|i| plans[i]).collect();
         // Candidates ascend, so every pattern's seeks and counts move forward through its index: each pattern gets a
@@ -664,6 +674,38 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         };
         let add = |a: (u64, u64), b: (u64, u64)| (checked_count(a.0, b.0), a.1 + b.1);
         if candidates.len() >= 64 { candidates.par_chunks(256).map(part).reduce(|| (0, 0), add) } else { part(&candidates) }
+    }
+
+    /// How many values every sorted center list `(perm, [constant, constant, _])` holds, the first being the smallest.
+    /// The first list is read by a scan, so it costs no searches, and each value is sought in the other lists through
+    /// a cursor (its targets ascend). From `PAR_LIST` values on, a window is split across rayon workers, each with its
+    /// own cursors; below that one thread does it, since the fork would cost more than a sub-millisecond count.
+    fn intersect_count(&self, lists: &[(Perm, [TermId; 3])]) -> u64 {
+        let ((perm, first), rest) = (lists[0], &lists[1..]);
+        let count = |values: &[TermId]| -> u64 {
+            let mut seekers: Vec<_> = rest.iter().map(|&(perm, _)| self.snap.probe(perm)).collect();
+            let mut n = 0;
+            'next: for &c in values {
+                for (seeker, (_, prefix)) in seekers.iter_mut().zip(rest) {
+                    if seeker.seek(&prefix[..2], c).unwrap_or_else(|e| storage_failure(e)) != Some(c) { continue 'next }
+                }
+                n += 1;
+            }
+            n
+        };
+        let mut window: Vec<TermId> = Vec::new();
+        let flush = |window: &mut Vec<TermId>| -> u64 {
+            self.check();
+            let n = if window.len() >= PAR_LIST { window.par_chunks(PAR_LIST_CHUNK).map(count).sum() } else { count(window) };
+            window.clear();
+            n
+        };
+        let mut total = 0;
+        for batch in self.snap.scan(perm, &first[..2]) {
+            window.extend_from_slice(&batch.unwrap_or_else(|e| storage_failure(e)).cols[2]);
+            if window.len() >= PAR_LIST { total += flush(&mut window) }
+        }
+        total + flush(&mut window)
     }
 
     fn lf_count_depth(&self, plans: &[(Perm, [Slot; 3])], order: &[usize], depth: usize, row: &mut Vec<TermId>) -> u64 {
