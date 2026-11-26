@@ -235,7 +235,10 @@ fn numeric_range_keeps_delta_integer_beside_inline_string() {
 
     let query = "SELECT ?s ?v WHERE { ?s <urn:value> ?v . FILTER(?v >= 190 && ?v < 300) }";
     let unpushed = bag(query_with(&overlay, query, &Options { range_pushdown: false, ..Options::default() }).unwrap());
-    let (pushed, trace) = triplelight::exec::plan_trace::capture(|| query_with(&overlay, query, &Options::default()).unwrap());
+    let (default_result, default_trace) = triplelight::exec::plan_trace::capture(|| query_with(&overlay, query, &Options::default()).unwrap());
+    assert_eq!(bag(default_result), unpushed);
+    assert!(!default_trace.iter().any(|line| line.contains("ranges=1")), "{default_trace:?}");
+    let (pushed, trace) = triplelight::exec::plan_trace::capture(|| query_with(&overlay, query, &Options { numeric_range_pushdown: true, ..Options::default() }).unwrap());
     assert_eq!(unpushed.len(), 11);
     assert_eq!(bag(pushed), unpushed);
     assert!(trace.iter().any(|line| line.contains("ranges=1")), "{trace:?}");

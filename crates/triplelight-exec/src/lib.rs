@@ -156,6 +156,10 @@ pub struct Options<'a> {
     /// tie). The filter still runs, so turning it off gives the same answers; it exists for ablations
     /// (`--ablate=range`) and differential checks.
     pub range_pushdown: bool,
+    /// Permit integer and decimal FILTER bounds to become ID ranges on the ordinary triple-index path.
+    /// Off by default until independent index-path timing validation passes. This does not gate numeric
+    /// intervals in explicitly selected wide tables; those remain controlled by `range_pushdown`.
+    pub numeric_range_pushdown: bool,
     /// Let the cost-based planner use the statistics' characteristic pairs (`Stats::set_char_pairs`) to estimate
     /// subject-to-object joins between stars. Plans only; off (`--ablate=charpairs`) gives the pre-pairs plans.
     pub char_pairs: bool,
@@ -182,7 +186,7 @@ pub struct Options<'a> {
     /// The working-memory budget of this query (`MemoryBudget`); `None` is unbounded.
     pub memory_budget: Option<&'a MemoryBudget>,
 }
-impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, force_wide_tables: false, auto_wide_tables: false, csr_paths: true, entailment: Entailment::Simple, interrupt: None, memory_budget: None } } }
+impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, numeric_range_pushdown: false, char_pairs: true, sorted_probe: true, force_wide_tables: false, auto_wide_tables: false, csr_paths: true, entailment: Entailment::Simple, interrupt: None, memory_budget: None } } }
 
 /// The entailment regime of a query's graph matching.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -448,6 +452,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     count_pushdown: bool,
     /// `Options::range_pushdown`.
     range_pushdown: bool,
+    /// `Options::numeric_range_pushdown`.
+    numeric_range_pushdown: bool,
     /// `Options::char_pairs`.
     char_pairs: bool,
     /// `Options::sorted_probe`.
@@ -533,6 +539,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             general_group: opts.general_group,
             count_pushdown: opts.count_pushdown,
             range_pushdown: opts.range_pushdown,
+            numeric_range_pushdown: opts.numeric_range_pushdown,
             char_pairs: opts.char_pairs,
             sorted_probe: opts.sorted_probe,
             force_wide_tables: opts.force_wide_tables,

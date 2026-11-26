@@ -43,6 +43,8 @@
 //! are cached; each later bound uses binary search. This refuses float/double predicates and nonmonotone integer
 //! spellings (e.g. "9", "10"). Other datatypes inside a table interval are false positives removed by the residual
 //! FILTER. A numeric bound never assumes that N-Triples lexical order is numeric value order.
+//! The ordinary triple-index path requires `Options::numeric_range_pushdown` for numeric bounds; it is off by
+//! default. Explicitly selected wide tables may still use numeric intervals when `range_pushdown` is on.
 //!
 //! A range is pushed only if it holds at most `MAX_FRACTION` of the predicate's triples (exact per-object counts
 //! against `count(POS, [p])`); a denser one leaves the BGP's plan exactly as without the pushdown. Each decision is
@@ -100,10 +102,10 @@ fn canonical_date(v: &str) -> bool {
 }
 
 /// The constant's datatype if `l` is a supported literal in canonical form.
-fn ordered_constant(l: &Literal) -> Option<&'static str> {
+fn ordered_constant(l: &Literal, allow_numeric: bool) -> Option<&'static str> {
     let dt = xsd::DATE.as_str();
     if l.datatype().as_str() == dt && canonical(dt, l.value()) { return Some(dt) }
-    expr::range_decimal(l.as_ref()).map(|_| NUMERIC_MARKER)
+    allow_numeric.then(|| expr::range_decimal(l.as_ref())).flatten().map(|_| NUMERIC_MARKER)
 }
 
 /// Adds to `out` the BGPs of `p` (by the address of their pattern list) whose solution order cannot change the
@@ -256,7 +258,7 @@ struct Bound {
 impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     /// `(column, bound)` if `e` is a comparison of a variable with an order-preserving constant. Negations,
     /// disjunctions and anything else are not bounds (they stay ordinary filters).
-    fn range_bound(&self, e: &Expression) -> Option<(usize, Bound)> {
+    fn range_bound(&self, e: &Expression, allow_numeric: bool) -> Option<(usize, Bound)> {
         let (side, v, l) = match e {
             Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b) => {
                 let (var_left, v, l) = match (a.as_ref(), b.as_ref()) {
@@ -276,7 +278,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             }
             _ => return None,
         };
-        let datatype = ordered_constant(l)?;
+        let datatype = ordered_constant(l, allow_numeric)?;
         let col = *self.vars.get(v.as_str())?;
         let numeric = (datatype == NUMERIC_MARKER).then(|| expr::range_decimal(l.as_ref())).flatten();
         Some((col, Bound { side, datatype, text: triplelight_rdf::Term::from(l.clone()).to_string(), numeric }))
@@ -294,7 +296,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         if !self.range_reorderable.contains(&(patterns.as_ptr() as usize)) { return out }
         let mut bounds: HashMap<usize, Vec<Bound>> = HashMap::new();
         for (e, _) in filters {
-            if let Some((col, b)) = self.range_bound(e) { bounds.entry(col).or_default().push(b) }
+            if let Some((col, b)) = self.range_bound(e, self.numeric_range_pushdown) { bounds.entry(col).or_default().push(b) }
         }
         if bounds.is_empty() { return out }
         for pat in pats {
@@ -322,7 +324,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         if !self.range_pushdown || filters.is_empty() || self.data.get().is_some() { return out }
         let mut bounds: HashMap<usize, Vec<Bound>> = HashMap::new();
         for (e, _) in filters {
-            if let Some((col, b)) = self.range_bound(e) { bounds.entry(col).or_default().push(b) }
+            if let Some((col, b)) = self.range_bound(e, true) { bounds.entry(col).or_default().push(b) }
         }
         for (i, &(p, object)) in columns.iter().enumerate() {
             let Slot::Var(slot) = object else { continue };
