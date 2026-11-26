@@ -335,9 +335,11 @@ thread_local! {
     /// Test-only: runs inside `clear_cache` between emptying the shards and bumping the epoch.
     static CLEAR_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce(&dyn std::any::Any)>>> = const { std::cell::RefCell::new(None) };
 }
-/// Where the previous search of one index landed: a block id (`usize::MAX` for none) and, once read, its rows.
-struct Hint<const N: usize> { block: usize, rows: Option<(usize, Arc<Vec<[TermId; N]>>)> }
-impl<const N: usize> Default for Hint<N> { fn default() -> Self { Hint { block: usize::MAX, rows: None } } }
+/// Where the previous search of one index landed: a block id (`usize::MAX` for none) and, for a cursor (`keep`), its
+/// rows. A one-off search keeps only the id: holding the rows would cost two more atomic updates of a hot block's
+/// shared count per search, which contend across threads (suspected in #349's slower parallel leapfrog on LUBM q9).
+struct Hint<const N: usize> { block: usize, keep: bool, rows: Option<(usize, Arc<Vec<[TermId; N]>>)> }
+impl<const N: usize> Default for Hint<N> { fn default() -> Self { Hint { block: usize::MAX, keep: false, rows: None } } }
 /// `DiskIndex::cursor`: `range` and `seek_value` that resume from the previous call's block.
 pub struct Cursor<'a, const N: usize> { index: &'a DiskIndex<N>, hint: Hint<N> }
 impl<const N: usize> Cursor<'_, N>
@@ -675,7 +677,8 @@ where
             Some((id, rows)) if *id == block => Arc::clone(rows),
             _ => self.block(block as u64)?,
         };
-        *hint = Hint { block, rows: Some((block, Arc::clone(&rows))) };
+        hint.block = block;
+        if hint.keep { hint.rows = Some((block, Arc::clone(&rows))) }
         Ok(Some((block, rows)))
     }
     pub fn range(&self, prefix: &[TermId]) -> io::Result<std::ops::Range<u64>> { self.range_from(&mut Hint::default(), prefix) }
@@ -693,7 +696,7 @@ where
     }
     /// Counts and seeks that resume from the previous probe's block (`Probe`): about one block step per probe when
     /// the probe keys ascend, and never worse than `range` / `seek_value` otherwise.
-    pub fn cursor(&self) -> Cursor<'_, N> { Cursor { index: self, hint: Hint::default() } }
+    pub fn cursor(&self) -> Cursor<'_, N> { Cursor { index: self, hint: Hint { keep: true, ..Hint::default() } } }
     /// Copies at most one decoded block from the given position.
     pub fn block_slice(&self, start: u64, end: u64) -> io::Result<Vec<[TermId; N]>> {
         if start >= end || end > self.rows {
