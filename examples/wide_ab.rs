@@ -5,6 +5,8 @@
 //! answer is compared as a bag across arms; a difference stops the harness.
 //!
 //!   cargo run --release --example wide_ab -- STORE_DIR ROUNDS QUERY.rq...
+//!
+//! `TL_WIDE_MIN_FILL=0.4` lowers the builder's fill threshold; `ROUNDS=0` with no queries only builds and reports.
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 use std::time::Instant;
@@ -35,13 +37,16 @@ fn main() {
     let disk = DiskSnapshot::open(store).expect("open store");
     let open_ms = t.elapsed().as_secs_f64() * 1e3;
     let t = Instant::now();
-    let snap = WithTables::build(disk, BuildOptions::default()).expect("build tables");
+    // TL_WIDE_MIN_FILL overrides the builder's fill threshold (default 0.6), for irregular data such as WatDiv
+    let mut opts = BuildOptions::default();
+    if let Ok(v) = std::env::var("TL_WIDE_MIN_FILL") { opts.min_fill = v.parse().expect("TL_WIDE_MIN_FILL"); }
+    let snap = WithTables::build(disk, opts).expect("build tables");
     let build_ms = t.elapsed().as_secs_f64() * 1e3;
     let t = Instant::now();
     let stats = Stats::from_snapshot(&snap).expect("stats");
     let stats_ms = t.elapsed().as_secs_f64() * 1e3;
-    println!("open_ms={open_ms:.0} build_ms={build_ms:.0} stats_ms={stats_ms:.0} tables={} table_bytes={} table_triples={} view_triples={}",
-        snap.table_count(), snap.table_bytes(), snap.table_triples(), snap.view_triples());
+    println!("min_fill={:.2} open_ms={open_ms:.0} build_ms={build_ms:.0} stats_ms={stats_ms:.0} tables={} table_bytes={} table_triples={} view_triples={}",
+        opts.min_fill, snap.table_count(), snap.table_bytes(), snap.table_triples(), snap.view_triples());
     let arm_opts = |wide: bool| Options { stats: Some(&stats), force_wide_tables: wide, ..Options::default() };
     // ROUNDS = 0: profiling mode, the table arm only, 40 runs per query, no comparison
     if rounds == 0 {
