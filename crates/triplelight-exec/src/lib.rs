@@ -25,6 +25,7 @@ pub use expr::builtin_iri;
 pub mod plan_trace;
 mod agg;
 mod bgp;
+mod bgp_eval;
 mod join;
 mod limits;
 use join::join_rows;
@@ -33,6 +34,7 @@ use views::{dataset, Views};
 mod path;
 mod pattern;
 mod range;
+#[allow(dead_code)] mod table_plan; // automatic selection awaits calibrated residual costs
 mod expr;
 mod support;
 #[cfg(feature = "rdf-12")]
@@ -1127,53 +1129,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             NamedNodePattern::NamedNode(n) => Slot::Const(self.lookup(&n.clone().into())),
         };
         [self.slot_of(&t.subject), p, self.slot_of(&t.object)]
-    }
-
-    /// `eval_bgp_slots` for a query with at least one variable, as one flat buffer of rows (`vars.len()` IDs each),
-    /// so a consumer that reads the rows once (`agg::flat`) skips building a `Row` per solution.
-    fn eval_bgp_flat(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<TermId> {
-        let pats: Vec<[Slot; 3]> = patterns.iter().map(|t| self.slots(t)).collect();
-        let mut tr = plan_trace::enabled().then(|| plan_trace::Trace::new(patterns, rows.len()));
-        // A constant absent from the dictionary can never match.
-        if rows.is_empty() || pats.iter().any(|p| p.iter().any(|s| matches!(s, Slot::Const(None)))) {
-            if let Some(tr) = tr { tr.finish("empty", 0) }
-            return Vec::new();
-        }
-        let w = self.vars.len();
-        let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
-        let ranges = self.object_ranges(patterns, &pats, filters, &rows[0]);
-        let flat: Vec<TermId> = rows.concat();
-        // Numeric literals often flow through multiple range predicates in the same BGP. Keep decoded
-        // values for the whole BGP instead of resolving and parsing them again for every predicate.
-        let mut numeric_filter_memo: HashMap<TermId, Option<expr::Num>> = HashMap::new();
-        if let Some(tr) = tr.as_mut() { tr.note("ranges", ranges.len()); tr.note("filters", filters.len()) }
-        let (out, strategy) = on_data!(self, |g| {
-            let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges), sorted_probe: self.sorted_probe, interrupt: self.interrupt, budget: self.budget };
-            if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(pattern::no_repeated_var) && pattern::cyclic(&pats) {
-                let given = self.variable_order(&pats);
-                let t = tr.as_mut().map(|tr| {
-                    tr.note("var_order", given.as_deref().map_or_else(|| "default".to_string(), |o| plan_trace::var_names(o, &self.vars)));
-                    std::time::Instant::now()
-                });
-                let mut out = bgp.leapfrog(&pats, &flat, given);
-                let joined = out.len() / w;
-                if !filters.is_empty() { let all: HashSet<usize> = (0..w).collect(); self.apply_filters(&mut out, w, filters, &all, &mut vec![false; filters.len()], &mut numeric_filter_memo) }
-                if let (Some(tr), Some(t)) = (tr.as_mut(), t) { tr.step(None, "leapfrog", 1, joined, out.len() / w, t) }
-                (out, "leapfrog")
-            } else {
-                let mut applied = vec![false; filters.len()];
-                let mut post = |rows: &mut Vec<TermId>, bound: &HashSet<usize>| self.apply_filters(rows, w, filters, bound, &mut applied, &mut numeric_filter_memo);
-                match self.planned_order_est(&pats, &rows, &ranges, tr.is_some()) {
-                    Some((order, est)) => {
-                        if let Some(tr) = tr.as_mut() { tr.planned(&order, est) }
-                        (bgp.eval_order(&pats, &order, flat, &mut post, tr.as_mut()), "planner")
-                    }
-                    None => (bgp.eval_greedy(&pats, flat, &mut post, tr.as_mut()), "greedy"),
-                }
-            }
-        });
-        if let Some(tr) = tr { tr.finish(strategy, out.len() / w) }
-        out
     }
 
     /// `(?a, ?b)` if `c` is `?a = ?b` / `sameTerm(?a, ?b)` over two distinct variables of the BGP, each of which occurs
