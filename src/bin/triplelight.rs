@@ -26,6 +26,7 @@ impl Snapshot for Backend {
     fn first_keys(&self, p: Perm) -> Result<Vec<TermId>, StorageError> { each!(self, s => s.first_keys(p)) }
     fn count(&self, p: Perm, prefix: &[TermId]) -> Result<u64, StorageError> { each!(self, s => s.count(p, prefix)) }
     fn seek(&self, p: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> { each!(self, s => s.seek(p, prefix, target)) }
+    fn probe(&self, p: Perm) -> Box<dyn triplelight::storage::Probe + '_> { each!(self, s => s.probe(p)) }
     fn matching_rows(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> { each!(self, s => s.matching_rows(p, prefix)) }
     fn matching_tail(&self, p: Perm, prefix: &[TermId]) -> Option<&[[TermId; 2]]> { each!(self, s => s.matching_tail(p, prefix)) }
     fn object_memo(&self) -> Option<&triplelight::storage::ObjectMemo> { each!(self, s => s.object_memo()) }

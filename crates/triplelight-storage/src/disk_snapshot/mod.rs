@@ -722,6 +722,23 @@ impl Snapshot for DiskSnapshot {
     fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
         super::derived_order::seek(self, perm, prefix, target)
     }
+    /// A kept order resumes each search from the previous probe's block; a derived order answers as `count` / `seek`.
+    fn probe(&self, perm: Perm) -> Box<dyn triplelight_core::storage::Probe + '_> {
+        match self.kept(perm) {
+            Some(index) => Box::new(index.cursor()),
+            None => Box::new(Derived(self, perm)),
+        }
+    }
+}
+/// `DiskSnapshot::probe` on an order that is not kept.
+struct Derived<'a>(&'a DiskSnapshot, Perm);
+impl triplelight_core::storage::Probe for Derived<'_> {
+    fn count(&mut self, prefix: &[TermId]) -> Result<u64, StorageError> { self.0.count(self.1, prefix) }
+    fn seek(&mut self, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> { self.0.seek(self.1, prefix, target) }
+}
+impl triplelight_core::storage::Probe for super::disk_index::Cursor<'_, 3> {
+    fn count(&mut self, prefix: &[TermId]) -> Result<u64, StorageError> { super::disk_index::Cursor::count(self, prefix) }
+    fn seek(&mut self, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> { self.seek_value(prefix, target) }
 }
 impl super::derived_order::KeptOrders for DiskSnapshot {
     fn scratch_dir(&self) -> &std::path::Path { &self.dir }

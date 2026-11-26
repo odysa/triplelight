@@ -566,14 +566,23 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         let lists = if lists.contains(&0) { lists } else { std::iter::once(0).chain(lists).collect() };
         let probes: Vec<_> = probes.into_iter().map(|i| prefixes[i]).collect();
         let lists: Vec<_> = lists.into_iter().map(|i| plans[i]).collect();
-        let candidates = self.intersect(&lists, center, &vec![UNBOUND; self.w]);
+        // Candidates ascend, so every pattern's seeks and counts move forward through its index: each pattern gets a
+        // probe (`Snapshot::probe`) that resumes from where its previous search landed.
+        let mut candidates = Vec::new();
+        {
+            let mut seekers: Vec<_> = lists.iter().map(|&(perm, _)| self.snap.probe(perm)).collect();
+            self.leap_with(&lists, center, &vec![UNBOUND; self.w], |i, _, prefix, x| {
+                seekers[i].seek(prefix, x).unwrap_or_else(|e| storage_failure(e))
+            }, |x| candidates.push(x));
+        }
         let part = |values: &[TermId]| {
             let (mut sum, mut centers) = (0, 0);
+            let mut counters: Vec<_> = probes.iter().map(|&(perm, _, _)| self.snap.probe(perm)).collect();
             'next: for &c in values {
                 let mut product = 1;
-                for &(perm, mut prefix, k) in &probes {
+                for (j, &(_, mut prefix, k)) in probes.iter().enumerate() {
                     prefix[k] = c;
-                    let n = self.count(perm, &prefix[..=k]);
+                    let n = counters[j].count(&prefix[..=k]).unwrap_or_else(|e| storage_failure(e));
                     if n == 0 { continue 'next }
                     product = checked_count_product(product, n);
                 }
@@ -617,7 +626,13 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         out
     }
 
-    fn leap(&self, plans: &[(Perm, [Slot; 3])], v: usize, row: &[TermId], mut emit: impl FnMut(TermId)) {
+    fn leap(&self, plans: &[(Perm, [Slot; 3])], v: usize, row: &[TermId], emit: impl FnMut(TermId)) {
+        self.leap_with(plans, v, row, |_, perm, prefix, x| self.seek(perm, prefix, x), emit)
+    }
+
+    /// `leap`, seeking through `seek(i, perm, prefix, target)`, where `i` numbers the plans that contain `v` in order;
+    /// each one's seek targets ascend.
+    fn leap_with(&self, plans: &[(Perm, [Slot; 3])], v: usize, row: &[TermId], mut seek: impl FnMut(usize, Perm, &[TermId], TermId) -> Option<TermId>, mut emit: impl FnMut(TermId)) {
         let mut its: Vec<(Perm, [TermId; 3], usize)> = Vec::with_capacity(plans.len());
         for (perm, key) in plans {
             let Some(k) = key.iter().position(|s| matches!(s, Slot::Var(x) if *x == v)) else { continue };
@@ -632,7 +647,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             let (mut agreed, mut i) = (0, 0);
             while agreed < its.len() {
                 let (perm, prefix, k) = &its[i];
-                let Some(y) = self.seek(*perm, &prefix[..*k], x) else { break 'outer };
+                let Some(y) = seek(i, *perm, &prefix[..*k], x) else { break 'outer };
                 if y == x { agreed += 1 } else { x = y; agreed = 1 }
                 i = (i + 1) % its.len();
             }
