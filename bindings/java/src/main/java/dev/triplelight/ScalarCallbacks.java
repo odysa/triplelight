@@ -15,7 +15,6 @@ import static java.lang.foreign.ValueLayout.*;
 
 /** Native scalar upcalls share two stubs. Each registration owns a unique native context address. */
 final class ScalarCallbacks {
-    private static final int EXPRESSION_ERROR = 6; // TL_ERR_INTERNAL at the callback boundary
     private record Registration(Arena arena, Database.ScalarFunction function) {}
     private static final ConcurrentHashMap<Long, Registration> REGISTRATIONS = new ConcurrentHashMap<>();
     private static final MemorySegment INVOKE;
@@ -56,6 +55,7 @@ final class ScalarCallbacks {
             Database.check(result, err);
         } finally {
             if (!adopted) {
+                // The C header guarantees that failed registration keeps ownership with the caller.
                 REGISTRATIONS.remove(address);
                 shared.close();
             }
@@ -64,22 +64,22 @@ final class ScalarCallbacks {
 
     private static int invoke(MemorySegment context, MemorySegment args, MemorySegment destination) {
         try (Arena caller = Arena.ofConfined()) {
-            // tl_scalar_args: size_t len, cells pointer, size_t n_terms, terms pointer, size_t n_bytes, bytes pointer.
-            MemorySegment view = args.reinterpret(48);
-            int count = Math.toIntExact(view.get(JAVA_LONG, 0));
-            int nTerms = Math.toIntExact(view.get(JAVA_LONG, 16));
-            long nBytes = view.get(JAVA_LONG, 32);
-            byte[] bytes = nBytes == 0 ? new byte[0] : view.get(ADDRESS, 40).reinterpret(nBytes).toArray(JAVA_BYTE);
-            Term[] terms = Database.decodeTerms(view.get(ADDRESS, 24), nTerms, bytes);
+            MemorySegment view = args.reinterpret(Native.SCALAR_ARGS.byteSize());
+            int count = Math.toIntExact(view.get(JAVA_LONG, Native.ARGS_LEN));
+            int nTerms = Math.toIntExact(view.get(JAVA_LONG, Native.ARGS_N_TERMS));
+            long nBytes = view.get(JAVA_LONG, Native.ARGS_N_BYTES);
+            byte[] bytes = nBytes == 0 ? new byte[0]
+                    : view.get(ADDRESS, Native.ARGS_BYTES).reinterpret(nBytes).toArray(JAVA_BYTE);
+            Term[] terms = Database.decodeTerms(view.get(ADDRESS, Native.ARGS_TERMS), nTerms, bytes);
             Term[] arguments = new Term[count];
             if (count != 0) {
-                MemorySegment cells = view.get(ADDRESS, 8).reinterpret((long) count * Integer.BYTES);
+                MemorySegment cells = view.get(ADDRESS, Native.ARGS_CELLS).reinterpret((long) count * Integer.BYTES);
                 for (int i = 0; i < count; i++) {
                     arguments[i] = terms[cells.getAtIndex(JAVA_INT, i) - 1];
                 }
             }
             Term result = REGISTRATIONS.get(context.address()).function().apply(arguments);
-            if (result == null) return EXPRESSION_ERROR;
+            if (result == null) return Native.TL_ERR_INTERNAL;
             StringBuilder term = new StringBuilder();
             appendTerm(term, result, 0);
             byte[] returned = utf8(term);
@@ -87,7 +87,7 @@ final class ScalarCallbacks {
                     (long) returned.length);
         } catch (Throwable error) {
             // Java exceptions must never escape a native upcall.
-            return EXPRESSION_ERROR;
+            return Native.TL_ERR_INTERNAL;
         }
     }
 

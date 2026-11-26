@@ -12,6 +12,7 @@ final class Native {
 
     static final int ABI_VERSION = 1;
     static final int UPDATE_KIND = 0, LOAD_KIND = 1;
+    static final int TL_ERR_INTERNAL = 6;
 
     static final StructLayout STR = MemoryLayout.structLayout(JAVA_LONG.withName("off"), JAVA_LONG.withName("len"));
     static final StructLayout TERM = MemoryLayout.structLayout(
@@ -23,6 +24,17 @@ final class Native {
             JAVA_LONG.withName("n_rows"), ADDRESS.withName("cells"),
             JAVA_LONG.withName("n_terms"), ADDRESS.withName("terms"),
             JAVA_LONG.withName("n_bytes"), ADDRESS.withName("bytes"));
+    static final StructLayout SCALAR_ARGS = MemoryLayout.structLayout(
+            JAVA_LONG.withName("len"), ADDRESS.withName("cells"),
+            JAVA_LONG.withName("n_terms"), ADDRESS.withName("terms"),
+            JAVA_LONG.withName("n_bytes"), ADDRESS.withName("bytes"));
+
+    static final long ARGS_LEN = SCALAR_ARGS.byteOffset(MemoryLayout.PathElement.groupElement("len"));
+    static final long ARGS_CELLS = SCALAR_ARGS.byteOffset(MemoryLayout.PathElement.groupElement("cells"));
+    static final long ARGS_N_TERMS = SCALAR_ARGS.byteOffset(MemoryLayout.PathElement.groupElement("n_terms"));
+    static final long ARGS_TERMS = SCALAR_ARGS.byteOffset(MemoryLayout.PathElement.groupElement("terms"));
+    static final long ARGS_N_BYTES = SCALAR_ARGS.byteOffset(MemoryLayout.PathElement.groupElement("n_bytes"));
+    static final long ARGS_BYTES = SCALAR_ARGS.byteOffset(MemoryLayout.PathElement.groupElement("bytes"));
 
     static final long VIEW_KIND = VIEW.byteOffset(MemoryLayout.PathElement.groupElement("kind"));
     static final long VIEW_BOOLEAN = VIEW.byteOffset(MemoryLayout.PathElement.groupElement("boolean"));
