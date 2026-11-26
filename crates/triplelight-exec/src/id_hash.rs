@@ -22,12 +22,39 @@ mod tests {
     use super::*;
     use std::hash::BuildHasher;
 
-    #[test]
-    fn neighbouring_ids_spread_over_the_top_bits() {
-        let build = foldhash::fast::RandomState::default();
-        let tops: std::collections::HashSet<u64> = (0..4096u64).map(|i| build.hash_one(TermId((3 << 60) | i)) >> 57).collect();
-        assert_eq!(tops.len(), 128, "hashbrown's 7 control bits take every value");
+    /// Distinct values of hashbrown's 7-bit control byte (the hash's top bits) and of its bucket index (the low
+    /// bits, for a table of 4,096 buckets) over 4,096 neighbouring IDs, under one fixed per-hasher seed.
+    fn spread(seed: u64) -> (usize, usize) {
+        let build = foldhash::fast::FixedState::with_seed(seed);
+        let (mut top, mut low) = ([false; 128], vec![false; 4096]);
+        for i in 0..4096u64 {
+            let h = build.hash_one(TermId((3 << 60) | i));
+            top[(h >> 57) as usize] = true;
+            low[(h & 4095) as usize] = true;
+        }
+        (top.iter().filter(|b| **b).count(), low.iter().filter(|b| **b).count())
     }
+
+    /// foldhash's fast variant hashes one integer with a single folded multiply whose multiplier comes from the
+    /// process-wide shared seed, and for about 1% of shared seeds the top bits of neighbouring integers collapse (#105:
+    /// CI runs reached 54 and 97 of 128 control-byte values). A test on the process's random seed therefore flakes.
+    /// This one is deterministic: the fixed shared seed and 256 fixed per-hasher seeds, against bounds measured on
+    /// them (worst case 2,669 of 4,096 buckets, about what random placement gives, and all 128 control values).
+    /// Whether the maps should switch to a variant without the bad seed class is measured separately.
+    #[test]
+    fn neighbouring_ids_spread_under_fixed_seeds() {
+        let (mut worst_top, mut worst_low) = (128, 4096);
+        for seed in 0..256 {
+            let (top, low) = spread(seed);
+            worst_top = worst_top.min(top);
+            worst_low = worst_low.min(low);
+        }
+        assert!(worst_low >= MIN_BUCKETS, "bucket index: {worst_low} of 4096 buckets used, worst of 256 seeds");
+        assert!(worst_top >= MIN_CONTROL, "control byte: {worst_top} of 128 values, worst of 256 seeds");
+    }
+    /// Measured worst cases over these 256 fixed seeds, less a margin.
+    const MIN_BUCKETS: usize = 2_400;
+    const MIN_CONTROL: usize = 120;
 
     #[test]
     fn two_maps_hash_differently() {
