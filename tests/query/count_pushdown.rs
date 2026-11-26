@@ -349,7 +349,7 @@ fn distinct_counts_preserve_literal_lexical_and_datatype_identity() {
 fn a_star_of_center_lists_counts_their_intersection() {
     use std::collections::BTreeSet;
     for subjects in [3_000u64, 100_000] {
-        let (a, b, c) = (|x: u64| x % 2 == 0, |x: u64| x % 3 == 0, |x: u64| x % 5 != 1);
+        let (a, b, c) = (|x: u64| x.is_multiple_of(2), |x: u64| x.is_multiple_of(3), |x: u64| x % 5 != 1);
         let mut nt = String::new();
         for x in 0..subjects {
             if a(x) { nt.push_str(&format!("<urn:s{x}> <urn:a> <urn:A> .\n")) }
