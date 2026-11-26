@@ -60,6 +60,32 @@ fn custom_calls_use_one_state_per_group_and_the_captured_registry() {
 }
 
 #[test]
+fn exists_reexecutes_a_custom_aggregate_for_duplicate_outer_rows() {
+    let db = Database::in_memory();
+    let calls = Arc::new(AtomicUsize::new(0));
+    let next = Arc::clone(&calls);
+    db.register_aggregate_function(IRI, move || -> Option<Box<dyn AggregateState>> {
+        Some(Box::new(Count(next.fetch_add(1, Ordering::Relaxed) as i64)))
+    })
+    .unwrap();
+    let query = r#"
+        SELECT (COUNT(*) AS ?matched) WHERE {
+            VALUES ?outer { 1 1 }
+            FILTER EXISTS {
+                SELECT (COUNT(*) AS ?rows) WHERE { VALUES ?x { 1 } }
+                HAVING (<urn:test:bound>(?x) = 1)
+            }
+        }
+    "#;
+    let expected = "SELECT (1 AS ?matched) WHERE {}";
+    assert_eq!(
+        db.query_json(query).unwrap(),
+        db.query_json(expected).unwrap()
+    );
+    assert_eq!(calls.load(Ordering::Relaxed), 2);
+}
+
+#[test]
 fn known_aggregates_are_unary_and_do_not_nest() {
     let db = Database::in_memory();
     db.register_aggregate_function(IRI, count).unwrap();
