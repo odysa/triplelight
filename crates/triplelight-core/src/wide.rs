@@ -85,7 +85,10 @@ pub trait TableCatalog: Send + Sync {
     /// Whether `subject` is stored in `table` (constant time).
     fn member(&self, table: TableId, subject: TermId) -> bool;
     /// Whether every subject of the view that has `predicate` is in some table (exact, counted at build time). When
-    /// it holds for any fixed predicate of a star, the star's residual over the indexes is empty and can be skipped.
+    /// it holds for any fixed predicate of a star, the star's residual over the indexes is empty and can be skipped,
+    /// provided both of these hold (they do for `WideTables`): a table has a column for every predicate any of its
+    /// subjects has (so a subject matching the star sits in a table that `tables_with(star)` returns), and the plan
+    /// scans every table `tables_with(star)` returns. A catalog that drops columns must return `false` here.
     fn covers_all_subjects(&self, _predicate: TermId) -> bool { false }
     /// Rows of `table` for `predicates` (each must be a column; repeats allowed), subjects ascending. `ranges[i]`, if
     /// given, keeps only values `v` of `predicates[i]` with `lo <= v < hi` (by ID) before expansion; the caller is
