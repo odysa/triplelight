@@ -49,6 +49,9 @@ impl Column {
     fn bytes(&self) -> u64 { self.values.bytes() + self.offsets.as_ref().map_or(0, PackedIds::bytes) }
 }
 
+// The dense scan's `lo / BLOCK` names the packing block of a scan block only because the two sizes are equal.
+const _: () = assert!(TABLE_BATCH_ROWS == BLOCK);
+
 /// A column while the tables fill.
 struct Filling { offsets: Vec<u64>, values: Vec<u64> }
 
@@ -346,7 +349,7 @@ impl Scan<'_> {
     fn next_dense_batch(&mut self) -> Option<Result<TableBatch, StorageError>> {
         let n = self.table.subjects.len();
         let k = self.columns.len();
-        let mut out = TableBatch { subjects: Vec::with_capacity(TABLE_BATCH_ROWS), values: vec![Vec::with_capacity(TABLE_BATCH_ROWS); k] };
+        let mut out = TableBatch { subjects: Vec::with_capacity(TABLE_BATCH_ROWS), values: (0..k).map(|_| Vec::with_capacity(TABLE_BATCH_ROWS)).collect() };
         // Fill the batch from successive blocks: a selective range keeps a few rows per block, and many tiny batches
         // cost more downstream than the scan itself. A block that does not fit is carried to the next call.
         while out.len() < TABLE_BATCH_ROWS {
