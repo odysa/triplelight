@@ -6,7 +6,10 @@ use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use triplelight::embedded::{Database, DatabaseError, ReadSnapshot};
 use triplelight::exec::{Entailment, Interrupt, MemoryBudget, QueryLimits, QueryResult};
+use triplelight::extension::FunctionOptions;
 use std::sync::Arc;
+
+mod scalar;
 
 create_exception!(_triplelight, TripleLightError, PyException);
 create_exception!(_triplelight, SyntaxError, TripleLightError);
@@ -119,11 +122,23 @@ fn on_main_thread(py: Python<'_>) -> PyResult<bool> {
 fn set_cancel_on_ctrl_c(enabled: bool) { ctrl_c::set_enabled(enabled) }
 
 /// Python classes from `triplelight/__init__.py`, looked up once per call.
-struct Classes<'py> { iri: Bound<'py, PyAny>, bnode: Bound<'py, PyAny>, literal: Bound<'py, PyAny>, triple: Bound<'py, PyAny> }
+struct Classes<'py> {
+    iri: Bound<'py, PyAny>,
+    bnode: Bound<'py, PyAny>,
+    literal: Bound<'py, PyAny>,
+    #[cfg(feature = "rdf-12")]
+    triple: Bound<'py, PyAny>,
+}
 impl<'py> Classes<'py> {
     fn get(py: Python<'py>) -> PyResult<Self> {
         let m = py.import("triplelight")?;
-        Ok(Classes { iri: m.getattr("IRI")?, bnode: m.getattr("BNode")?, literal: m.getattr("Literal")?, triple: m.getattr("Triple")? })
+        Ok(Classes {
+            iri: m.getattr("IRI")?,
+            bnode: m.getattr("BNode")?,
+            literal: m.getattr("Literal")?,
+            #[cfg(feature = "rdf-12")]
+            triple: m.getattr("Triple")?,
+        })
     }
 }
 const XSD_STRING: &str = "http://www.w3.org/2001/XMLSchema#string";
@@ -235,6 +250,24 @@ impl PyDatabase {
     }
     fn load_extension(&self, name: &str) -> PyResult<()> {
         self.db.load_extension(name).map_err(|error| UnsupportedError::new_err(error.to_string()))
+    }
+    #[pyo3(signature = (iri, callback, *, arity=None, pure=false))]
+    fn register_function(
+        &self,
+        iri: &str,
+        callback: Bound<'_, PyAny>,
+        arity: Option<usize>,
+        pure: bool,
+    ) -> PyResult<()> {
+        if !callback.is_callable() {
+            return Err(pyo3::exceptions::PyTypeError::new_err("callback must be callable"));
+        }
+        let callback = callback.unbind();
+        self.db
+            .register_function(iri, FunctionOptions { arity, pure }, move |args: &[Term]| {
+                scalar::call(&callback, args)
+            })
+            .map_err(|error| pyo3::exceptions::PyValueError::new_err(error.to_string()))
     }
     fn list_extensions(&self) -> Vec<(String, bool, bool)> {
         self.db.list_extensions().into_iter().map(|entry| (entry.name, entry.compiled_in, entry.loaded)).collect()
