@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterator, Optional
+from typing import Callable, Iterator, Optional
 
 from . import _triplelight
 from ._triplelight import set_cancel_on_ctrl_c
@@ -165,6 +165,17 @@ class Database:
     def load_extension(self, name: str) -> None:
         """Load an official extension for this database."""
         self._db.load_extension(name)
+
+    def register_function(self, iri: str, callback: Callable[..., object], *,
+                          arity: Optional[int] = None, pure: bool = False) -> None:
+        """Register a synchronous scalar callback under an absolute IRI for future queries and snapshots.
+
+        The callback receives positional arguments in the same RDF types as query rows and returns one RDF term.
+        Use ``Literal`` for integer values outside the signed 64-bit range. ``None``, an invalid return value,
+        or a Python exception becomes a SPARQL expression error. ``arity`` optionally fixes the argument count.
+        Set ``pure=True`` only for a side-effect-free callback whose result depends solely on its arguments.
+        """
+        self._db.register_function(iri, callback, arity=arity, pure=pure)
 
     def list_extensions(self) -> list[ExtensionInfo]:
         """Return build availability and load state."""

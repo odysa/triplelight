@@ -41,4 +41,22 @@ for row in db.query("SELECT ?who ?age WHERE { ?who <urn:age> ?age } ORDER BY ?ag
 - Errors are `TripleLightError` subclasses: `SyntaxError`, `UnsupportedError`, `StorageError`, `LockedError`,
   `GraphStateError`, `QueryTimeout`, `QueryCancelled` and `ResourceLimitError`.
 
+## Scalar SPARQL callbacks
+
+```python
+db.register_function("urn:example:inc", lambda value: value + 1, arity=1, pure=True)
+result = db.query("SELECT (<urn:example:inc>(41) AS ?value) WHERE {}")
+assert result.rows[0]["value"] == 42
+```
+
+Callbacks receive positional arguments in the same RDF types as query results and return one value in those types.
+Use `Literal` for integers outside the signed 64-bit range and for typed or language-tagged lexical forms. Returning
+`None` or an invalid term, raising a Python exception, or calling a function with the wrong arity produces a SPARQL
+expression error. `pure=True` allows the engine to reuse a result within a query for the same stored argument IDs.
+
+Registration applies to queries on the database and snapshots created afterward. The registry retains the callback
+as long as those handles need it. Callbacks run synchronously with the GIL and may run on the query's calling thread
+or an executor thread. Keep them brief. They must neither mutate nor reenter the evaluating database. Avoid a strong
+reference from the callback to its database or a snapshot of that registry, which would create a reference cycle.
+
 Test: `pytest -q tests` in this directory, after `maturin develop`.
