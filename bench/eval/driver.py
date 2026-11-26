@@ -418,37 +418,42 @@ def versions():
 def cmd_reference(a):
     ref = {}
     for name, q in load_queries(a.queries):
-        rec, secs = one_run(a.url, q, a.timeout)
+        ordered = "ORDER BY" in q.upper()
+        keys, limit, why = order_spec(q) if ordered else (None, None, None)
+        rec, secs = one_run(a.url, q, a.timeout, keys=keys)        # one fetch: a second could differ by a valid reorder among ties
         if rec["status"] != "ok": sys.exit(f"reference run of {name} failed: {rec}")
-        rec["ordered"] = "ORDER BY" in q.upper()
-        if rec["ordered"]: rec = reference_order(a, q, rec)
+        rec["ordered"] = ordered
+        if ordered: rec = reference_order(a, q, rec, keys, limit, why)
         ref[name] = rec
         print(f"{name}: {rec['rows']} rows" + (f", strict order: {rec['order_strict_reason']}" if "order_strict_reason" in rec else ""), flush=True)
     json.dump({"reference_url": a.url, "git": git_sha(), "versions": versions(), "queries": ref}, open(a.out, "w"), indent=1)
 
 
-def reference_order(a, q, rec):
-    """For an ordered query: refold the reference answer with its tie groups, and when a LIMIT cuts through a tie group, freeze the oracle
-    of every row tied at that boundary key (the same query, unlimited, filtered to that key). Where that cannot be done the record says
-    why in `order_strict_reason`, and the query keeps the strict check (the reference's exact sequence)."""
-    keys, limit, why = order_spec(q)
+TIE_FIELDS = ("tie_groups", "boundary_rows", "boundary_rows_norm", "boundary_key")
+
+
+def reference_order(a, q, rec, keys, limit, why):
+    """For an ordered reference answer folded with its candidate sort keys (`order_spec`): keep its tie groups, and when a LIMIT cuts
+    through a tie group, freeze the oracle of every row tied at that boundary key (the same query, unlimited, filtered to that key).
+    Where that cannot be done the record says why in `order_strict_reason`, and the query keeps the strict check (the exact sequence)."""
+    fold = {k: rec.pop(k) for k in TIE_FIELDS if k in rec}
     if keys and not set(keys) <= set(rec.get("vars") or ()): keys, why = None, "an ORDER BY key is not a projected variable"
     head = q[:q.find("{")]          # the SELECT clause: a key computed there (`(expr AS ?k)`) is invisible to a FILTER in the WHERE clause
     if keys and any(re.search(r"\bAS\s+[?$]" + k + r"\b", head, re.I) for k in keys): keys, why = None, "an ORDER BY key is computed in the SELECT clause"
     if not keys: return {**rec, "order_strict_reason": why}
-    got, _ = one_run(a.url, q, a.timeout, keys=keys)
-    if got.get("status") != "ok" or any(got.get(k) != rec[k] for k in ("rows", "bag", "seq")): sys.exit(f"the reference answer changed between two runs: {got.get('status')}")
-    if "tie_groups" not in got: return {**rec, "order_strict_reason": f"more than {GROUP_CAP} tie groups"}
-    out = {**rec, "order_keys": keys, "tie_groups": got["tie_groups"]}
+    if "tie_groups" not in fold: return {**rec, "order_strict_reason": f"more than {GROUP_CAP} tie groups"}
+    out = {**rec, "order_keys": keys, "tie_groups": fold["tie_groups"]}
     if limit is None or rec["rows"] < limit: return out          # nothing was cut off: every tie group must hold the reference's rows
-    if "boundary_rows" not in got: return {**rec, "order_strict_reason": f"the boundary tie group has more than {GROUP_CAP} distinct rows"}
-    bq = boundary_query(q, got["boundary_key"])
+    if "boundary_rows" not in fold: return {**rec, "order_strict_reason": f"the boundary tie group has more than {GROUP_CAP} distinct rows"}
+    bq = boundary_query(q, fold["boundary_key"])
     if bq is None: return {**rec, "order_strict_reason": "the boundary ORDER BY key is a blank node, which a query cannot pin"}
     orc, _ = one_run(a.url, bq, a.timeout, keys=keys)
     if orc.get("status") != "ok": sys.exit(f"the boundary oracle query failed: {orc}")
-    oracle = orc.get("boundary_rows")
-    if oracle is None or len(orc.get("tie_groups") or ()) != 1: return {**rec, "order_strict_reason": "the boundary oracle is not a single tie group within the cap"}
-    if any(oracle.get(h, 0) < n for h, n in got["boundary_rows"].items()): sys.exit("the boundary oracle does not contain the reference's own boundary rows")
+    if "tie_groups" in orc and "boundary_rows" not in orc and orc["tie_groups"]:
+        return {**rec, "order_strict_reason": f"the boundary oracle has more than {GROUP_CAP} distinct rows"}
+    oracle, groups = orc.get("boundary_rows") or {}, orc.get("tie_groups")
+    if groups is not None and len(groups) > 1: sys.exit("the boundary oracle holds rows with other sort keys: the key filter did not pin them")
+    if any(oracle.get(h, 0) < n for h, n in fold["boundary_rows"].items()): sys.exit("the boundary oracle does not contain the reference's own boundary rows")
     return {**out, "limit": limit, "boundary_oracle": oracle, "boundary_oracle_norm": orc["boundary_rows_norm"], "boundary_oracle_rows": orc["rows"]}
 
 
@@ -995,6 +1000,8 @@ def gate_tests(port, behaviors_raw):
         hq = json.load(open(tmp / "refhid.json"))["queries"]["q1"] if (tmp / "refhid.json").exists() else {}
         check("an ORDER BY key that is not projected: strict order check, reason recorded", "not a projected variable" in hq.get("order_strict_reason", "") and "tie_groups" not in hq)
         # an oracle query that does not pin the boundary key (the fake answers it empty) stops the reference run
+        r = subprocess.run([sys.executable, __file__, "reference", "--url", f"http://127.0.0.1:{port}/ties-interior", "--queries", str(tdir), "--out", str(tmp / "refint.json")], capture_output=True, text=True)
+        check("a reference engine that orders ties differently: one fetch, oracle frozen, no abort", r.returncode == 0 and json.load(open(tmp / "refint.json"))["queries"]["q1"].get("boundary_oracle_rows") == 3)
         r = subprocess.run([sys.executable, __file__, "reference", "--url", f"http://127.0.0.1:{port}/ties-refbad", "--queries", str(tdir), "--out", str(tmp / "refbad.json")], capture_output=True, text=True)
         check("a boundary oracle without the reference's own boundary rows stops the reference run", r.returncode != 0 and "oracle" in r.stderr and not (tmp / "refbad.json").exists())
         check("order_spec: DESC(?d) LIMIT 4", order_spec(TIE_QUERY) == (["d"], 4, None))
