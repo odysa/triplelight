@@ -204,6 +204,44 @@ fn numeric_interval_uses_value_order_only_when_ids_prove_it() {
 }
 
 #[test]
+fn numeric_range_keeps_delta_integer_beside_inline_string() {
+    use std::sync::Arc;
+    use triplelight::model::{id_tag, Change, DatasetChange, GraphTarget};
+    use triplelight::store::Overlay;
+    use triplelight::storage::Dictionary;
+    use triplelight_rdf::{Literal, NamedNode, Triple};
+
+    let mut data = String::new();
+    for n in 100..200 {
+        data.push_str(&format!(
+            "<urn:s{n}> <urn:value> \"{n}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n"
+        ));
+    }
+    data.push_str("<urn:inline> <urn:value> \"250\" .\n");
+    let base = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let inline = Literal::new_simple_literal("250");
+    assert_eq!(base.lookup(&inline.clone().into()).unwrap().unwrap().0 >> 60, id_tag::INLINE);
+
+    let delta_integer = Literal::new_typed_literal("250", triplelight_rdf::vocab::xsd::INTEGER);
+    let added = Triple::new(
+        NamedNode::new("urn:delta").unwrap(),
+        NamedNode::new("urn:value").unwrap(),
+        delta_integer.clone(),
+    );
+    let overlay = Overlay::from_base(Arc::new(base))
+        .with_dataset_changes(&[DatasetChange::Quad(GraphTarget::Default, Change::Insert, added)])
+        .unwrap().0;
+    assert_eq!(overlay.lookup(&delta_integer.into()).unwrap().unwrap().0 >> 60, id_tag::DELTA);
+
+    let query = "SELECT ?s ?v WHERE { ?s <urn:value> ?v . FILTER(?v >= 190 && ?v < 300) }";
+    let unpushed = bag(query_with(&overlay, query, &Options { range_pushdown: false, ..Options::default() }).unwrap());
+    let (pushed, trace) = triplelight::exec::plan_trace::capture(|| query_with(&overlay, query, &Options::default()).unwrap());
+    assert_eq!(unpushed.len(), 11);
+    assert_eq!(bag(pushed), unpushed);
+    assert!(trace.iter().any(|line| line.contains("ranges=1")), "{trace:?}");
+}
+
+#[test]
 fn constant_objects_and_embedded_stars_preserve_bags() {
     const MIXED: &str = r#"
 <urn:a> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:T> .
