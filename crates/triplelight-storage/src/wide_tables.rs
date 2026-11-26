@@ -360,3 +360,43 @@ mod tests {
         assert!(WideTables::build(&snap, None, BuildOptions::default()).unwrap().is_empty());
     }
 }
+
+/// A view with wide tables attached: every read goes to `inner`, and `wide_tables` returns `tables`. The tables must
+/// have been built from `inner` itself (same contents), which is the caller's promise; this is how embedded use and
+/// the A/B harness get tables before the disk format carries them.
+pub struct WithTables<S> { pub inner: S, pub tables: WideTables }
+
+impl<S: Snapshot> WithTables<S> {
+    /// Builds the tables of `inner` (two SPO scans) and attaches them.
+    pub fn build(inner: S, options: BuildOptions) -> Result<Self, StorageError> {
+        let rdf_type = inner.lookup(&triplelight_rdf::Term::from(
+            triplelight_rdf::NamedNode::new("http://www.w3.org/1999/02/22-rdf-syntax-ns#type").expect("valid IRI")))?;
+        let tables = WideTables::build(&inner, rdf_type, options)?;
+        Ok(WithTables { inner, tables })
+    }
+}
+
+impl<S: Snapshot> crate::Dictionary for WithTables<S> {
+    fn lookup(&self, term: &triplelight_rdf::Term) -> Result<Option<TermId>, StorageError> { self.inner.lookup(term) }
+    fn resolve(&self, id: TermId) -> Result<triplelight_rdf::Term, StorageError> { self.inner.resolve(id) }
+    fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.inner.with_term(id, f) }
+    fn with_terms(&self, ids: &[TermId], f: &mut dyn FnMut(usize, triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.inner.with_terms(ids, f) }
+    fn literal_text_bound(&self, text: &str, strict: bool) -> Result<Option<TermId>, StorageError> { self.inner.literal_text_bound(text, strict) }
+    #[cfg(feature = "rdf-12")]
+    fn triple_term_parts(&self, id: TermId) -> Result<Option<[TermId; 3]>, StorageError> { self.inner.triple_term_parts(id) }
+}
+
+impl<S: Snapshot> Snapshot for WithTables<S> {
+    fn scan<'a>(&'a self, perm: Perm, prefix: &[TermId]) -> Box<dyn Iterator<Item = Result<triplelight_core::model::TripleBatch, StorageError>> + 'a> { self.inner.scan(perm, prefix) }
+    fn scan_for_stats(&self) -> Box<dyn Iterator<Item = Result<triplelight_core::model::TripleBatch, StorageError>> + '_> { self.inner.scan_for_stats() }
+    fn first_keys(&self, perm: Perm) -> Result<Vec<TermId>, StorageError> { self.inner.first_keys(perm) }
+    fn scan_from<'a>(&'a self, perm: Perm, prefix: &[TermId], from: TermId) -> Box<dyn Iterator<Item = Result<triplelight_core::model::TripleBatch, StorageError>> + 'a> { self.inner.scan_from(perm, prefix, from) }
+    fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> { self.inner.count(perm, prefix) }
+    fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> { self.inner.seek(perm, prefix, target) }
+    fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> { self.inner.matching_rows(perm, prefix) }
+    fn matching_tail(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 2]]> { self.inner.matching_tail(perm, prefix) }
+    fn has_rdf12_terms(&self) -> bool { self.inner.has_rdf12_terms() }
+    fn text_candidates(&self, tokens: &[&str], limit: usize) -> Option<triplelight_core::storage::TextCandidates> { self.inner.text_candidates(tokens, limit) }
+    fn object_memo(&self) -> Option<&triplelight_core::storage::ObjectMemo> { self.inner.object_memo() }
+    fn wide_tables(&self) -> Option<&dyn TableCatalog> { Some(&self.tables) }
+}
