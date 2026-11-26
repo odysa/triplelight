@@ -123,6 +123,13 @@ mod tests {
     /// Measured worst case over these 256 fixed seeds, less a margin.
     const MIN_BUCKETS: usize = 2_400;
 
+    /// `SharedSeed::from_u64(165)` puts 4,096 neighbouring IDs on 41 of 128 control values, and `from_u64(237)` on
+    /// 50 (found by scanning seeds 0..20,000). The startup check must turn both away.
+    #[test]
+    fn the_startup_check_rejects_a_clustering_shared_seed() {
+        for bad in [165, 237] { assert!(!spreads(&SharedSeed::from_u64(bad)), "shared seed {bad} was accepted"); }
+    }
+
     #[test]
     fn the_process_shared_seed_spreads_neighbouring_ids() {
         assert!(control_values(&IdState::default().build_hasher()) >= MIN_CONTROL);
