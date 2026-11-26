@@ -25,6 +25,7 @@ pub use expr::builtin_iri;
 pub mod plan_trace;
 mod agg;
 mod bgp;
+mod id_hash;
 mod join;
 mod limits;
 use join::join_rows;
@@ -1145,7 +1146,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let flat: Vec<TermId> = rows.concat();
         // Numeric literals often flow through multiple range predicates in the same BGP. Keep decoded
         // values for the whole BGP instead of resolving and parsing them again for every predicate.
-        let mut numeric_filter_memo: HashMap<TermId, Option<expr::Num>> = HashMap::new();
+        let mut numeric_filter_memo: id_hash::IdMap<Option<expr::Num>> = id_hash::IdMap::default();
         if let Some(tr) = tr.as_mut() { tr.note("ranges", ranges.len()); tr.note("filters", filters.len()) }
         let (out, strategy) = on_data!(self, |g| {
             let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges), sorted_probe: self.sorted_probe, interrupt: self.interrupt, budget: self.budget };
@@ -1213,7 +1214,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
     }
 
     /// Applies each not-yet-applied filter whose variables are all bound, keeping rows whose filter is true.
-    fn apply_filters(&self, rows: &mut Vec<TermId>, w: usize, filters: &[(&Expression, Vec<usize>)], bound: &HashSet<usize>, applied: &mut [bool], numeric_memo: &mut HashMap<TermId, Option<expr::Num>>) {
+    fn apply_filters(&self, rows: &mut Vec<TermId>, w: usize, filters: &[(&Expression, Vec<usize>)], bound: &HashSet<usize>, applied: &mut [bool], numeric_memo: &mut id_hash::IdMap<Option<expr::Num>>) {
         phase::filter(|| for (k, (e, vs)) in filters.iter().enumerate() {
             if applied[k] || !vs.iter().all(|v| bound.contains(v)) { continue }
             applied[k] = true;
@@ -1243,7 +1244,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             // A filter over one variable (and no EXISTS) depends only on that column's term: memoize its result per
             // term ID, so e.g. a date range over many reviews decodes each distinct date once.
             let single = match vs.as_slice() { [c] if !impure(e) => Some(*c), _ => None };
-            let mut by_id: HashMap<TermId, bool> = HashMap::new();
+            let mut by_id: id_hash::IdMap<bool> = id_hash::IdMap::default();
             for (n, r) in rows.chunks_exact(w).enumerate() {
                 if n.is_multiple_of(4096) { self.check() }
                 let keep = match fast.as_ref().map(|f| f.eval(r, &mut val)) {
