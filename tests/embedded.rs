@@ -1,5 +1,5 @@
 #![cfg(unix)]
-use triplelight::embedded::{Database, DatabaseError, DatabaseOptions};
+use triplelight::embedded::{Database, DatabaseError, DatabaseOptions, QueryWriteError};
 use triplelight::exec::QueryResult;
 use std::path::PathBuf;
 
@@ -359,3 +359,82 @@ fn closing_during_a_scan_releases_the_directory_and_writes_nothing_late() {
     std::fs::remove_dir_all(&dir).unwrap();
 }
 
+
+/// A writer that holds what it was given and refuses everything after `limit` bytes.
+struct Limited { bytes: Vec<u8>, limit: usize }
+impl std::io::Write for Limited {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if self.bytes.len() + buf.len() > self.limit { return Err(std::io::Error::new(std::io::ErrorKind::BrokenPipe, "reader went away")) }
+        self.bytes.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+}
+
+fn big_database(name: &str, rows: usize) -> (Database, PathBuf) {
+    let file = temp(name).with_extension("nt");      // one file per test: tests run in parallel in one process
+    std::fs::write(&file, (0..rows).map(|i| format!("<urn:s{i}> <urn:p> \"v{i}\" .\n")).collect::<String>()).unwrap();
+    let db = Database::in_memory();
+    db.load(&file).unwrap();
+    (db, file)
+}
+
+#[test]
+fn query_json_to_writer_writes_exactly_the_bytes_of_query_json() {
+    let (db, file) = big_database("writer-data-1", 300_000);      // several serialization windows on any machine
+    for q in ["SELECT ?s ?o WHERE { ?s <urn:p> ?o }", "SELECT ?s WHERE { ?s <urn:p> \"v7\" }", "SELECT ?s WHERE { ?s <urn:absent> ?o }", "ASK { <urn:s1> <urn:p> ?o }", "SELECT (COUNT(*) AS ?n) WHERE { ?s <urn:p> ?o }"] {
+        let mut out = Vec::new();
+        db.query_json_to_writer(q, &mut out).unwrap();
+        assert_eq!(String::from_utf8(out).unwrap(), db.query_json(q).unwrap(), "{q}");
+        // the same through a pinned snapshot
+        let mut out = Vec::new();
+        db.read().query_json_to_writer(q, &mut out).unwrap();
+        assert_eq!(String::from_utf8(out).unwrap(), db.read().query_json(q).unwrap(), "{q} (snapshot)");
+    }
+    let _ = std::fs::remove_file(file);
+}
+
+#[test]
+fn a_writer_that_fails_partway_leaves_an_invalid_prefix_and_an_output_error() {
+    let (db, file) = big_database("writer-data-2", 300_000);
+    let q = "SELECT ?s ?o WHERE { ?s <urn:p> ?o }";
+    let whole = db.query_json(q).unwrap();
+    let mut out = Limited { bytes: Vec::new(), limit: 1 << 20 };
+    match db.query_json_to_writer(q, &mut out) {
+        Err(QueryWriteError::Output(e)) => assert_eq!(e.kind(), std::io::ErrorKind::BrokenPipe),
+        other => panic!("expected an output error, got {other:?}"),
+    }
+    assert!(!out.bytes.is_empty() && out.bytes.len() <= 1 << 20, "some of the answer was written before the writer failed");
+    assert!(whole.as_bytes().starts_with(&out.bytes), "what was written is a prefix of the answer");
+    assert!(!out.bytes.windows(3).any(|w| w == b"]}}"), "the closing braces were never written: the body is not valid JSON");
+    let _ = std::fs::remove_file(file);
+}
+
+#[test]
+fn errors_before_the_first_byte_leave_the_writer_untouched() {
+    let db = Database::in_memory();
+    for (q, want_unsupported) in [("SELECT ?s WHERE {", false), ("CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }", true)] {
+        let mut out = Vec::new();
+        match db.query_json_to_writer(q, &mut out) {
+            Err(QueryWriteError::Query(DatabaseError::Syntax(_))) if !want_unsupported => {}
+            Err(QueryWriteError::Query(DatabaseError::Unsupported(_))) if want_unsupported => {}
+            other => panic!("{q}: {other:?}"),
+        }
+        assert!(out.is_empty(), "{q}: nothing is written when the query fails first");
+    }
+}
+
+#[test]
+fn query_json_to_writer_honors_limits_before_writing() {
+    let (db, file) = big_database("writer-data-3", 2_000);
+    let interrupt = triplelight::exec::Interrupt::new();
+    interrupt.cancel();
+    let mut out = Vec::new();
+    let limits = triplelight::exec::QueryLimits { interrupt: Some(&interrupt), memory: None };
+    match db.query_json_to_writer_with_limits("SELECT ?s ?o WHERE { ?s <urn:p> ?o }", triplelight::exec::Entailment::Simple, limits, &mut out) {
+        Err(QueryWriteError::Query(DatabaseError::Interrupted { .. })) => {}
+        other => panic!("expected an interrupted query, got {other:?}"),
+    }
+    assert!(out.is_empty());
+    let _ = std::fs::remove_file(file);
+}

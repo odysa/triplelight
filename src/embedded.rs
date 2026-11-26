@@ -33,6 +33,32 @@ impl std::fmt::Display for DatabaseError {
     }
 }
 impl std::error::Error for DatabaseError {}
+
+/// Why `query_json_to_writer` stopped. A separate type, not a new `DatabaseError` variant: the writer's own failure is not a storage failure, and a
+/// new variant would break every exhaustive match on `DatabaseError`.
+///
+/// Either way the writer may already hold part of the answer: the head and any number of row windows, but never the closing `]}}`. A partial body is
+/// invalid JSON, so it can't be taken for a complete answer (the same guarantee as the HTTP server's streamed body). Only a `Query` error that
+/// arrives before the first byte (a syntax error, a limit, a cancellation) leaves the writer untouched.
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum QueryWriteError {
+    /// The query failed or was refused, or a dictionary read failed while the answer was being written.
+    Query(DatabaseError),
+    /// The writer returned an I/O error.
+    Output(std::io::Error),
+}
+impl std::fmt::Display for QueryWriteError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self { Self::Query(e) => e.fmt(f), Self::Output(e) => write!(f, "writing the answer failed: {e}") }
+    }
+}
+impl std::error::Error for QueryWriteError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self { Self::Query(e) => Some(e), Self::Output(e) => Some(e) }
+    }
+}
+impl From<DatabaseError> for QueryWriteError { fn from(e: DatabaseError) -> Self { Self::Query(e) } }
 impl From<std::io::Error> for DatabaseError {
     fn from(e: std::io::Error) -> Self { if e.kind() == std::io::ErrorKind::WouldBlock { Self::Locked } else { Self::Storage(e) } }
 }
@@ -239,6 +265,19 @@ impl Database {
     /// `query_json` under explicit limits (see `ReadSnapshot::query_with_limits`).
     pub fn query_json_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>) -> Result<String, DatabaseError> {
         self.read_for(entailment)?.query_json_with_limits(sparql, entailment, limits)
+    }
+
+    /// `query_json`, written to `out` window by window instead of built as one `String`: the first bytes are written before the later rows are
+    /// serialized, and peak memory is the id rows plus one window rather than the whole body. The bytes are exactly those of `query_json`.
+    ///
+    /// On `QueryWriteError::Output`, or a `Query` error after output began, `out` holds a prefix of the answer that never reaches the closing
+    /// `]}}`: invalid JSON, never a complete-looking wrong answer. Do not use what was written.
+    pub fn query_json_to_writer(&self, sparql: &str, out: &mut dyn std::io::Write) -> Result<(), QueryWriteError> {
+        self.read().query_json_to_writer(sparql, out)
+    }
+    /// `query_json_to_writer` under explicit limits and an entailment regime (see `query_json_with_limits`).
+    pub fn query_json_to_writer_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>, out: &mut dyn std::io::Write) -> Result<(), QueryWriteError> {
+        self.read_for(entailment)?.query_json_to_writer_with_limits(sparql, entailment, limits, out)
     }
 
     /// Loads a linked official extension for this database. Loading the same extension again succeeds.
@@ -625,6 +664,23 @@ impl ReadSnapshot {
     /// Serializes SELECT IDs returned by this snapshot with batched dictionary access.
     pub fn serialize_ids(&self, ids: &exec::IdSolutions) -> Result<String, DatabaseError> {
         Ok(exec::results::serialize_ids_v(ids, &*self.snapshot, crate::storage::Snapshot::has_rdf12_terms(&*self.snapshot))?)
+    }
+    /// Writes SELECT or ASK as SPARQL Results JSON to `out`, window by window (see `Database::query_json_to_writer`).
+    pub fn query_json_to_writer(&self, sparql: &str, out: &mut dyn std::io::Write) -> Result<(), QueryWriteError> {
+        self.query_json_to_writer_with_limits(sparql, exec::Entailment::Simple, exec::QueryLimits::default(), out)
+    }
+    /// `query_json_to_writer` under explicit limits and an entailment regime. The query runs to completion before the first byte is written, so a
+    /// syntax error, an unsupported query, a cancellation, a deadline or a memory limit leaves `out` untouched.
+    pub fn query_json_to_writer_with_limits(&self, sparql: &str, entailment: exec::Entailment, limits: exec::QueryLimits<'_>, out: &mut dyn std::io::Write) -> Result<(), QueryWriteError> {
+        let result = self.run_with(sparql, true, entailment, limits)?;
+        match &result {
+            QueryResult::Ids(ids) => exec::results::serialize_ids_to(ids, &*self.snapshot, crate::storage::Snapshot::has_rdf12_terms(&*self.snapshot), out).map_err(|e| match e {
+                exec::results::WriteIdsError::Storage(e) => QueryWriteError::Query(DatabaseError::from(e)),
+                exec::results::WriteIdsError::Io(e) => QueryWriteError::Output(e),
+            }),
+            QueryResult::Boolean(_) | QueryResult::Solutions { .. } => out.write_all(exec::results::serialize(&result).1.as_bytes()).map_err(QueryWriteError::Output),
+            QueryResult::Graph(_) => Err(DatabaseError::Unsupported("query_json supports SELECT and ASK only".into()).into()),
+        }
     }
     /// Serializes SELECT or ASK as SPARQL Results JSON; graph results are not JSON results.
     pub fn query_json(&self, sparql: &str) -> Result<String, DatabaseError> { self.query_json_with_entailment(sparql, exec::Entailment::Simple) }
