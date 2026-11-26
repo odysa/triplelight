@@ -96,9 +96,7 @@ fn spilled_custom_aggregates_evaluate_each_group_once() {
     db.register_aggregate_function(
         "urn:example:count",
         move || -> Option<Box<dyn AggregateState>> {
-            if std::fs::read_dir(&partition_dir).ok()?.next().is_none() {
-                return None;
-            }
+            std::fs::read_dir(&partition_dir).ok()?.next()?.ok()?;
             started.fetch_add(1, Ordering::Relaxed);
             Some(Box::new(Count::default()))
         },
