@@ -432,7 +432,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// Under `Entailment::Rdfs`, the entailed view of each named graph of `named` (`eval_graph` reads through it).
     entailed_named: HashMap<TermId, &'a dyn Snapshot>,
     views: &'a Views<'a>,
-    vars: HashMap<String, usize>,
+    vars: id_hash::VarColumns,
     scratch: RefCell<(HashMap<Term, TermId>, Vec<Term>)>,
     stats: Option<(&'a Stats, &'a dyn Snapshot)>,
     wcoj: bool,
@@ -515,7 +515,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             views,
             interrupt: opts.interrupt,
             budget: opts.memory_budget,
-            vars: HashMap::new(),
+            vars: id_hash::VarColumns::default(),
             scratch: RefCell::new(views.seeded_scratch()),
             stats: opts.stats.map(|stats| (stats, snap as &dyn Snapshot)),
             wcoj: opts.wcoj,

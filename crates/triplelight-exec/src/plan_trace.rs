@@ -256,7 +256,7 @@ fn pattern_text(t: &TriplePattern) -> String {
 }
 
 /// `?a,?b` for a leapfrog variable order over row slots, naming each slot from `vars`.
-pub(crate) fn var_names(order: &[usize], vars: &std::collections::HashMap<String, usize>) -> String {
+pub(crate) fn var_names(order: &[usize], vars: &crate::id_hash::VarColumns) -> String {
     order.iter().map(|&i| match vars.iter().find(|&(_, &j)| j == i) {
         Some((n, _)) if n.starts_with("_:") => n.clone(),
         Some((n, _)) => format!("?{n}"),

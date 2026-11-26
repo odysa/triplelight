@@ -685,7 +685,7 @@ pub(super) enum NumExpr { Var(usize), Const(Num), Op(char, Box<NumExpr>, Box<Num
 type Fast<T> = Result<T, ()>;
 
 impl NumExpr {
-    fn compile(e: &Expression, vars: &std::collections::HashMap<String, usize>) -> Option<NumExpr> {
+    fn compile(e: &Expression, vars: &crate::id_hash::VarColumns) -> Option<NumExpr> {
         Some(match e {
             Expression::Variable(v) => NumExpr::Var(*vars.get(v.as_str())?),
             Expression::Literal(l) => NumExpr::Const(num(&l.clone().into())?),
@@ -701,7 +701,7 @@ impl NumExpr {
     }
     /// An expression evaluated on numbers (`eval`), for BIND / SELECT expressions and HAVING: arithmetic over variables
     /// and constants, and `xsd:float` casts. `None` when any part is not of that form.
-    pub(super) fn compile_value(e: &Expression, vars: &std::collections::HashMap<String, usize>) -> Option<NumExpr> { Self::compile(e, vars) }
+    pub(super) fn compile_value(e: &Expression, vars: &crate::id_hash::VarColumns) -> Option<NumExpr> { Self::compile(e, vars) }
     /// `Ok(None)`: SPARQL error (integer overflow), as in `arith`.
     fn eval(&self, r: &[crate::model::TermId], val: &mut dyn FnMut(crate::model::TermId) -> Option<Num>) -> Fast<Option<Num>> {
         match self {
@@ -719,7 +719,7 @@ impl NumExpr {
 }
 
 impl NumFilter {
-    pub(super) fn compile(e: &Expression, vars: &std::collections::HashMap<String, usize>) -> Option<NumFilter> {
+    pub(super) fn compile(e: &Expression, vars: &crate::id_hash::VarColumns) -> Option<NumFilter> {
         let cmp = |a: &Expression, b: &Expression, o: Ordering, eq: bool| Some(NumFilter::Cmp(o, eq, NumExpr::compile(a, vars)?, NumExpr::compile(b, vars)?));
         match e {
             Expression::Less(a, b) => cmp(a, b, Ordering::Less, false),

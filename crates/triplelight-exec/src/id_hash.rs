@@ -13,6 +13,8 @@ pub(crate) type FastMap<K, V> = HashMap<K, V, foldhash::fast::RandomState>;
 pub(crate) type FastSet<K> = HashSet<K, foldhash::fast::RandomState>;
 /// A map keyed by term ID, hashed with seeded foldhash.
 pub(crate) type IdMap<V> = FastMap<TermId, V>;
+/// A query's variables by name, to their row column: looked up per row by expression evaluation (`Ctx::var_value`).
+pub(crate) type VarColumns = FastMap<String, usize>;
 
 /// An empty [`FastSet`] with room for `n` entries.
 pub(crate) fn fast_set<K>(n: usize) -> FastSet<K> { FastSet::with_capacity_and_hasher(n, Default::default()) }
