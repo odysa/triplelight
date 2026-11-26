@@ -2,7 +2,7 @@
 mod spilled;
 use crate::{Row, UNBOUND};
 use crate::model::TermId;
-use std::collections::HashMap;
+use crate::id_hash::FastMap;
 
 /// Compatible-mapping join of two row sets (used to merge subquery results back into the outer rows). Columns bound in
 /// every row on both sides are a sound hash key: two compatible mappings must agree there. The remaining columns are
@@ -15,7 +15,7 @@ pub(crate) fn join_rows(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
         if let [column] = key.as_slice() {
             return join_one_bound_column(&left, &right, *column);
         }
-        let mut table: HashMap<Vec<TermId>, Vec<usize>> = HashMap::new();
+        let mut table: FastMap<Vec<TermId>, Vec<usize>> = FastMap::default();
         for (j, b) in right.iter().enumerate() { table.entry(key.iter().map(|&i| b[i]).collect()).or_default().push(j) }
         let mut out = Vec::new();
         let mut k: Vec<TermId> = Vec::with_capacity(key.len());
@@ -41,7 +41,7 @@ pub(crate) fn join_key(left: &[Row], right: &[Row]) -> Vec<usize> {
 
 fn join_one_bound_column(left: &[Row], right: &[Row], column: usize) -> Vec<Row> {
     const END: usize = usize::MAX;
-    let mut first = HashMap::new();
+    let mut first = FastMap::default();
     let mut next = vec![END; right.len()];
     // Build in reverse so each key's chain follows the original right-row order.
     for (i, row) in right.iter().enumerate().rev() {
@@ -82,7 +82,7 @@ mod join_rows_bench {
         let width = left[0].len();
         let key: Vec<usize> = (0..width).filter(|&i| left.iter().all(|r| r[i] != UNBOUND) && right.iter().all(|r| r[i] != UNBOUND)).collect();
         if !key.is_empty() && left.len().saturating_mul(right.len()) > 64 {
-            let mut table: HashMap<Vec<TermId>, Vec<usize>> = HashMap::new();
+            let mut table: FastMap<Vec<TermId>, Vec<usize>> = FastMap::default();
             for (j, b) in right.iter().enumerate() { table.entry(key.iter().map(|&i| b[i]).collect()).or_default().push(j) }
             let mut out = Vec::new();
             let mut k: Vec<TermId> = Vec::with_capacity(key.len());

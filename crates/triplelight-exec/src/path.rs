@@ -44,7 +44,7 @@ use crate::model::{Perm, TermId};
 use crate::storage::Snapshot;
 use crate::sparql::PropertyPathExpression as Ppe;
 use crate::sparql::TermPattern;
-use std::collections::{HashMap, HashSet};
+use crate::id_hash::{FastMap, FastSet};
 use std::sync::Arc;
 
 /// A path with its IRIs resolved to IDs (`None` = not in the store, so that link never matches).
@@ -99,7 +99,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             }
             P::Alt(a, b) => { self.step(a, rev, x, out); self.step(b, rev, x, out) }
             P::Neg(ns) => {
-                let excluded: HashSet<TermId> = ns.iter().flatten().copied().collect();
+                let excluded: FastSet<TermId> = ns.iter().flatten().copied().collect();
                 if rev { self.scan_each(Perm::Osp, &[x], |_, s, pr| if !excluded.contains(&pr) { out.push(s) }) }
                 else { self.scan_each(Perm::Spo, &[x], |_, pr, o| if !excluded.contains(&pr) { out.push(o) }) }
             }
@@ -116,7 +116,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         {
             return self.csr.borrow_mut().closure(&c, x, zero);
         }
-        let mut seen = HashSet::new();
+        let mut seen = FastSet::default();
         let mut order = Vec::new();
         if zero { seen.insert(x); order.push(x); }
         let mut next = Vec::new();
@@ -150,7 +150,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             P::Seq(a, b) => {
                 let mut first = Vec::new();
                 self.all_pairs(a, &mut first);
-                let mut memo: HashMap<TermId, Vec<TermId>> = HashMap::new();
+                let mut memo: FastMap<TermId, Vec<TermId>> = FastMap::default();
                 for (x, y) in first {
                     let ends = memo.entry(y).or_insert_with(|| { let mut v = Vec::new(); self.step(b, false, y, &mut v); v });
                     out.extend(ends.iter().map(|&z| (x, z)));
@@ -158,7 +158,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             }
             P::Alt(a, b) => { self.all_pairs(a, out); self.all_pairs(b, out) }
             P::Neg(ns) => {
-                let excluded: HashSet<TermId> = ns.iter().flatten().copied().collect();
+                let excluded: FastSet<TermId> = ns.iter().flatten().copied().collect();
                 self.scan_each(Perm::Spo, &[], |s, pr, o| if !excluded.contains(&pr) { out.push((s, o)) })
             }
             P::Plus(q) => {
@@ -270,7 +270,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let p = self.resolve_path(path);
         let mut out = Vec::new();
         // Rows that bind the endpoints the same way share one traversal.
-        let mut memo: HashMap<(Option<TermId>, Option<TermId>), Vec<(TermId, TermId)>> = HashMap::new();
+        let mut memo: FastMap<(Option<TermId>, Option<TermId>), Vec<(TermId, TermId)>> = FastMap::default();
         for (n, row) in input.into_iter().enumerate() {
             if n.is_multiple_of(4096) { self.check() }
             let s = self.endpoint(subject, &row);
@@ -353,7 +353,7 @@ enum CsrSlot {
 pub(crate) struct CsrCache {
     enabled: bool,
     limits: CsrLimits,
-    slots: HashMap<CsrKey, CsrSlot>,
+    slots: FastMap<CsrKey, CsrSlot>,
     /// Estimated bytes of the adjacencies built so far, against `limits.budget_bytes`.
     bytes: u64,
     seen: Vec<u64>,
@@ -361,7 +361,7 @@ pub(crate) struct CsrCache {
 impl CsrCache {
     /// `enabled = false` (`--ablate=csrpaths`): `lookup` always answers `None`, so every closure seeks.
     pub(crate) fn new(enabled: bool, limits: CsrLimits) -> Self {
-        CsrCache { enabled, limits, slots: HashMap::new(), bytes: 0, seen: Vec::new() }
+        CsrCache { enabled, limits, slots: FastMap::default(), bytes: 0, seen: Vec::new() }
     }
 
     /// The adjacency for `key`, or `None` to keep the seeks: disabled, over a cap, or (`eager = false`) the seeks
@@ -519,7 +519,7 @@ fn prefix_sum(v: &mut [u32]) {
 }
 
 fn dedup_keep_order(v: &mut Vec<TermId>) {
-    let mut seen = HashSet::new();
+    let mut seen = FastSet::default();
     v.retain(|x| seen.insert(*x));
 }
 

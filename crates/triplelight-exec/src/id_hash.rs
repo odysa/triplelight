@@ -1,13 +1,21 @@
-//! A hasher for maps keyed by one `TermId`. Filter memos look a term up once per row (millions of rows on a large
-//! scan), and the standard SipHash costs more than the work the memo saves. foldhash is a few cycles per key and, like
-//! SipHash, is seeded at random per map: some IDs carry client bytes (the in-memory store inlines short strings into
-//! the ID), so a fixed function would let a client choose colliding keys.
-use std::collections::HashMap;
+//! Hash maps and sets for the executor's per-row paths: filter memos, group keys, DISTINCT, join tables. They are
+//! probed once per row (millions of rows on a large scan), and the standard SipHash costs more than the work a probe
+//! saves. foldhash is a few cycles per key and, like SipHash, is seeded at random per map: some IDs carry client bytes
+//! (the in-memory store inlines short strings into the ID), and a per-map seed stops collisions computed in advance
+//! against a fixed function. foldhash is not a cryptographic hash, so it promises nothing more than that.
+use std::collections::{HashMap, HashSet};
 
 use crate::model::TermId;
 
+/// A `HashMap` hashed with seeded foldhash.
+pub(crate) type FastMap<K, V> = HashMap<K, V, foldhash::fast::RandomState>;
+/// A `HashSet` hashed with seeded foldhash.
+pub(crate) type FastSet<K> = HashSet<K, foldhash::fast::RandomState>;
 /// A map keyed by term ID, hashed with seeded foldhash.
-pub(crate) type IdMap<V> = HashMap<TermId, V, foldhash::fast::RandomState>;
+pub(crate) type IdMap<V> = FastMap<TermId, V>;
+
+/// An empty [`FastSet`] with room for `n` entries.
+pub(crate) fn fast_set<K>(n: usize) -> FastSet<K> { FastSet::with_capacity_and_hasher(n, Default::default()) }
 
 #[cfg(test)]
 mod tests {

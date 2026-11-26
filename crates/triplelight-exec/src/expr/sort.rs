@@ -12,7 +12,7 @@ use crate::sparql::{Expression, OrderExpression};
 use crate::storage::Snapshot;
 use crate::{storage_failure, Ctx, Row, UNBOUND};
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use crate::id_hash::FastMap;
 use triplelight_rdf::Term;
 
 /// Each ORDER BY key: its expression, and the column holding it when it is a variable (or the alias computed below).
@@ -45,7 +45,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             return self.sort_spilled(&keys_by_column, &desc, rows);
         }
         // Column keys decode once per distinct ID. Other expressions are evaluated per row.
-        let mut memo: HashMap<TermId, Option<Term>> = HashMap::new();
+        let mut memo: FastMap<TermId, Option<Term>> = FastMap::default();
         let mut computed = 0usize;
         let mut key_of = |r: &Row, (e, column): KeyColumn<'_>| -> Option<Term> {
             computed += 1;
