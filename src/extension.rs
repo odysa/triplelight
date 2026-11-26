@@ -184,6 +184,12 @@ impl ExtensionRegistry {
         Arc::clone(&self.0.read().unwrap())
     }
 
+    /// Captures the scalar registrations for a binding that owns its own dataset.
+    #[doc(hidden)]
+    pub fn function_snapshot(&self) -> Arc<dyn FunctionLookup + Send + Sync> {
+        self.snapshot()
+    }
+
     /// Loads a linked official extension by name.
     pub fn load(&self, name: &str) -> Result<(), ExtensionError> {
         if self.0.read().unwrap().extensions.contains_key(name) {
