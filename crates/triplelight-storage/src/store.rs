@@ -259,6 +259,18 @@ impl Snapshot for Overlay {
     fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
         merged_seek(&*self.base, &self.delta.adds[slot(perm)], &self.delta.dels[slot(perm)], perm, prefix, target)
     }
+
+    fn probe(&self, perm: Perm) -> Box<dyn triplelight_core::storage::Probe + '_> {
+        // With no changes in this order, `count` and `seek` are the base's own answers.
+        if self.delta.adds[slot(perm)].is_empty() && self.delta.dels[slot(perm)].is_empty() { return self.base.probe(perm) }
+        Box::new(OverlayProbe(self, perm))
+    }
+}
+/// `Overlay::probe` with changes in the order: each probe merges them, as `count` / `seek` do.
+struct OverlayProbe<'a>(&'a Overlay, Perm);
+impl triplelight_core::storage::Probe for OverlayProbe<'_> {
+    fn count(&mut self, prefix: &[TermId]) -> Result<u64, StorageError> { self.0.count(self.1, prefix) }
+    fn seek(&mut self, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> { self.0.seek(self.1, prefix, target) }
 }
 
 /// `base` with the sorted rows `adds` added and `dels` removed (one order; `adds` absent from `base`, `dels` present

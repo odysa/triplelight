@@ -74,6 +74,22 @@ pub fn scan_from_by_scan<'a>(snap: &'a (impl Snapshot + ?Sized), perm: Perm, pre
     }))
 }
 
+/// Repeated `count` and `seek` probes on one order (`Snapshot::probe`). Every answer equals what `Snapshot::count` /
+/// `Snapshot::seek` would return for the same arguments, whatever their order; a backend may remember where the
+/// previous probe landed and search forward from there, so a caller whose probe keys ascend (a star join walking
+/// sorted candidates) pays about a merge step per probe instead of a full index search.
+pub trait Probe {
+    fn count(&mut self, prefix: &[TermId]) -> Result<u64, StorageError>;
+    fn seek(&mut self, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError>;
+}
+
+/// `Snapshot::probe` by the snapshot's own stateless `count` and `seek`.
+struct Stateless<'a, S: ?Sized>(&'a S, Perm);
+impl<S: Snapshot + ?Sized> Probe for Stateless<'_, S> {
+    fn count(&mut self, prefix: &[TermId]) -> Result<u64, StorageError> { self.0.count(self.1, prefix) }
+    fn seek(&mut self, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> { self.0.seek(self.1, prefix, target) }
+}
+
 /// A consistent read view (snapshot) of the store.
 pub trait Snapshot: Dictionary + Send + Sync {
     /// Sorted scan of `perm` where the first `prefix.len()` key components (0..=3) equal `prefix`.
@@ -109,6 +125,10 @@ pub trait Snapshot: Dictionary + Send + Sync {
         prefix: &[TermId],
         target: TermId,
     ) -> Result<Option<TermId>, StorageError>;
+    /// Probes on `perm` for a caller that issues many of them, mostly in ascending key order (see `Probe`). The
+    /// default answers each by `count` / `seek`; a backend whose search can resume from the previous position should
+    /// override it, and a wrapper that forwards `count` and `seek` unchanged to an inner view should forward this too.
+    fn probe(&self, perm: Perm) -> Box<dyn Probe + '_> { Box::new(Stateless(self, perm)) }
     /// Zero-copy view of the rows `scan` would yield (key order of `perm`), for stores that keep the permutation as one
     /// in-memory sorted array. Lets an index nested-loop join probe without allocating a batch per input row.
     fn matching_rows(&self, _perm: Perm, _prefix: &[TermId]) -> Option<&[[TermId; 3]]> { None }

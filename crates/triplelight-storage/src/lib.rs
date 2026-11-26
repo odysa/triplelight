@@ -2,7 +2,7 @@
 //! overlay, compaction) in `store`.
 // Paths used throughout this crate (`crate::model`, `crate::storage::Snapshot`, ...).
 pub(crate) use triplelight_core::model;
-pub use triplelight_core::storage::{Dictionary, Snapshot, StorageError};
+pub use triplelight_core::storage::{Dictionary, Probe, Snapshot, StorageError};
 pub(crate) mod storage { pub use crate::*; }
 #[cfg(test)]
 pub(crate) use triplelight_exec as exec;
