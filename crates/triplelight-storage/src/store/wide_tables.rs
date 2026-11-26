@@ -548,6 +548,7 @@ impl WithTables<crate::DiskSnapshot> {
     /// identity), these build options and this `rdf:type` ID, else built and written there (temp file, fsync,
     /// rename, directory fsync). Only a failure to read the base itself is an error.
     pub fn open(inner: crate::DiskSnapshot, options: BuildOptions) -> Result<(Self, TablesSource), StorageError> {
+        use crate::Dictionary;
         let rdf_type = inner.lookup(&triplelight_rdf::Term::from(
             triplelight_rdf::NamedNode::new("http://www.w3.org/1999/02/22-rdf-syntax-ns#type").expect("valid IRI")))?;
         let (dir, base) = (inner.base_dir().to_path_buf(), inner.manifest_identity());
