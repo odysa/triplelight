@@ -21,7 +21,80 @@
    "vars": [
     "product",
     "label"
-   ]
+   ],
+   "order_keys": [
+    "label"
+   ],
+   "tie_groups": [
+    [
+     "6d0a3c0412f92ac3",
+     1,
+     "21b570e6b5beb34af27e4bbf15349c07",
+     "21b570e6b5beb34af27e4bbf15349c07"
+    ],
+    [
+     "61a63fc437be704d",
+     1,
+     "3a3bc0a84ee33310d2b1159ac788663c",
+     "3a3bc0a84ee33310d2b1159ac788663c"
+    ],
+    [
+     "5dbb280ab2039f4c",
+     1,
+     "08e9891665204615b9c38c0c2e0e9b64",
+     "08e9891665204615b9c38c0c2e0e9b64"
+    ],
+    [
+     "73e70a0321b03c15",
+     1,
+     "3b4f4d31785dd7c16cce3e3ff4d34013",
+     "3b4f4d31785dd7c16cce3e3ff4d34013"
+    ],
+    [
+     "a8dfeafaceee8bb2",
+     1,
+     "5b3a7354ac9ec9ebb84bbc9540ef678e",
+     "5b3a7354ac9ec9ebb84bbc9540ef678e"
+    ],
+    [
+     "096a1130d8ef7eb1",
+     1,
+     "03101396d624461e4840294d10b1fe59",
+     "03101396d624461e4840294d10b1fe59"
+    ],
+    [
+     "ab941bea8f665574",
+     1,
+     "3ba504e4e2d817b29dd3681fc1257e48",
+     "3ba504e4e2d817b29dd3681fc1257e48"
+    ],
+    [
+     "7507749b5b9a7253",
+     1,
+     "06fc284f4f6e9f167db9d6b88e278865",
+     "06fc284f4f6e9f167db9d6b88e278865"
+    ],
+    [
+     "c525668dc2abd9ec",
+     1,
+     "5d88944ea23d5d8404d646c69292b2a1",
+     "5d88944ea23d5d8404d646c69292b2a1"
+    ],
+    [
+     "1ec4e9c8edfd2dcd",
+     1,
+     "3e1ebc6583bd7bed5a5feb89c097ea31",
+     "3e1ebc6583bd7bed5a5feb89c097ea31"
+    ]
+   ],
+   "limit": 10,
+   "boundary_oracle": {
+    "3e1ebc6583bd7bed5a5feb89c097ea31": 1
+   },
+   "boundary_oracle_norm": {
+    "3e1ebc6583bd7bed5a5feb89c097ea31": 1
+   },
+   "boundary_oracle_rows": 1
   },
   "q002": {
    "rows": 13,
@@ -77,6 +150,41 @@
    "vars": [
     "product",
     "label"
+   ],
+   "order_keys": [
+    "label"
+   ],
+   "tie_groups": [
+    [
+     "a25f1ec4bca3d01d",
+     1,
+     "0b55425352782c9f35d5aab74965856b",
+     "0b55425352782c9f35d5aab74965856b"
+    ],
+    [
+     "70260d1d7c45bd8c",
+     1,
+     "a7f83ba37d78c34364b45c4a2cf16e53",
+     "a7f83ba37d78c34364b45c4a2cf16e53"
+    ],
+    [
+     "04f9a958c7b39f7f",
+     1,
+     "4128ed6359373e5b365ade92822d7795",
+     "4128ed6359373e5b365ade92822d7795"
+    ],
+    [
+     "67285c48c31895f3",
+     1,
+     "07a130158267fea241280b9128312c1c",
+     "07a130158267fea241280b9128312c1c"
+    ],
+    [
+     "888fe244c89a0aad",
+     1,
+     "3059d6678a3c67f870848f43ba3ae677",
+     "3059d6678a3c67f870848f43ba3ae677"
+    ]
    ]
   },
   "q005": {
@@ -134,7 +242,8 @@
     "product",
     "label",
     "propertyTextual"
-   ]
+   ],
+   "order_strict_reason": "the query has an OFFSET, so its first rows may also be cut from a tie group"
   },
   "q008": {
    "rows": 17,
@@ -190,7 +299,50 @@
    "vars": [
     "product",
     "productLabel"
-   ]
+   ],
+   "order_keys": [
+    "productLabel"
+   ],
+   "tie_groups": [
+    [
+     "31e4b1bd96becc2e",
+     1,
+     "790b3df7366bc5b04d7fd7d09dcf28cb",
+     "790b3df7366bc5b04d7fd7d09dcf28cb"
+    ],
+    [
+     "5b05e3d6b6ff20bd",
+     1,
+     "116e1cd04b7a78949bc1990f47561cb8",
+     "116e1cd04b7a78949bc1990f47561cb8"
+    ],
+    [
+     "93373acbd706cd20",
+     1,
+     "a76db5ec3edc44882167689a66a08cfd",
+     "a76db5ec3edc44882167689a66a08cfd"
+    ],
+    [
+     "db1cc0517ce7585f",
+     1,
+     "98431ad4942956256a15d35db18c7f32",
+     "98431ad4942956256a15d35db18c7f32"
+    ],
+    [
+     "dc80dacf9ed731d0",
+     1,
+     "1cc65931c4f9266605fd528fad51ae34",
+     "1cc65931c4f9266605fd528fad51ae34"
+    ]
+   ],
+   "limit": 5,
+   "boundary_oracle": {
+    "1cc65931c4f9266605fd528fad51ae34": 1
+   },
+   "boundary_oracle_norm": {
+    "1cc65931c4f9266605fd528fad51ae34": 1
+   },
+   "boundary_oracle_rows": 1
   },
   "q011": {
    "rows": 11,
@@ -244,7 +396,50 @@
    "vars": [
     "product",
     "productLabel"
-   ]
+   ],
+   "order_keys": [
+    "productLabel"
+   ],
+   "tie_groups": [
+    [
+     "ecfb86af6f25e0ec",
+     1,
+     "2e0edb180ffc561bbda797367db00e75",
+     "2e0edb180ffc561bbda797367db00e75"
+    ],
+    [
+     "57137cb5652ae5ed",
+     1,
+     "4bc14ce3bce9521434255f949974e396",
+     "4bc14ce3bce9521434255f949974e396"
+    ],
+    [
+     "03d1dca0ca7a7e6a",
+     1,
+     "d9b194437d9fefa35bfb7171527d5228",
+     "d9b194437d9fefa35bfb7171527d5228"
+    ],
+    [
+     "1886670061cc3675",
+     1,
+     "dc236b77edde4c962bee5bfc37665a82",
+     "dc236b77edde4c962bee5bfc37665a82"
+    ],
+    [
+     "a06467d355c44194",
+     1,
+     "968b0484f1b5e27c67915b84492039d4",
+     "968b0484f1b5e27c67915b84492039d4"
+    ]
+   ],
+   "limit": 5,
+   "boundary_oracle": {
+    "968b0484f1b5e27c67915b84492039d4": 1
+   },
+   "boundary_oracle_norm": {
+    "968b0484f1b5e27c67915b84492039d4": 1
+   },
+   "boundary_oracle_rows": 1
   },
   "q014": {
    "rows": 9,
@@ -305,6 +500,17 @@
     "rating2",
     "rating3",
     "rating4"
+   ],
+   "order_keys": [
+    "reviewDate"
+   ],
+   "tie_groups": [
+    [
+     "cc762ca71ef936fb",
+     1,
+     "f4e2c07d1c074849be62cbef5e45e9cf",
+     "f4e2c07d1c074849be62cbef5e45e9cf"
+    ]
    ]
   },
   "q019": {
@@ -324,6 +530,47 @@
     "rating2",
     "rating3",
     "rating4"
+   ],
+   "order_keys": [
+    "reviewDate"
+   ],
+   "tie_groups": [
+    [
+     "f7868f607ff68035",
+     2,
+     "c1cd31cdc85fd2827f8a6976704206ce",
+     "c1cd31cdc85fd2827f8a6976704206ce"
+    ],
+    [
+     "fd4181363689d2f2",
+     1,
+     "d5d28d52efd319ac97a43e5db4646ac2",
+     "d5d28d52efd319ac97a43e5db4646ac2"
+    ],
+    [
+     "cab404920f543fce",
+     1,
+     "30d7433a7c542912bb4fc20c65db9210",
+     "30d7433a7c542912bb4fc20c65db9210"
+    ],
+    [
+     "dab85ef96a5bf717",
+     1,
+     "9c4b5bc2ce16bad5b93101e67879e69a",
+     "9c4b5bc2ce16bad5b93101e67879e69a"
+    ],
+    [
+     "41786667b339e90f",
+     1,
+     "f695580b4c2e756908c858c23f8136ac",
+     "f695580b4c2e756908c858c23f8136ac"
+    ],
+    [
+     "a2da75145b96948b",
+     1,
+     "f236523d7a76205d8e1eaa855829c4b6",
+     "f236523d7a76205d8e1eaa855829c4b6"
+    ]
    ]
   },
   "q022": {
@@ -336,7 +583,8 @@
    "vars": [
     "offer",
     "price"
-   ]
+   ],
+   "order_strict_reason": "the ORDER BY key 'xsd:double(str(?price))' is not a plain variable"
   },
   "q023": {
    "rows": 5,
@@ -348,7 +596,8 @@
    "vars": [
     "offer",
     "price"
-   ]
+   ],
+   "order_strict_reason": "the ORDER BY key 'xsd:double(str(?price))' is not a plain variable"
   },
   "q024": {
    "rows": 10,
@@ -363,5 +612,6 @@
     "isValueOf"
    ]
   }
- }
+ },
+ "tie_fields": "added by bench/eval/driver.py reference (#338) against the same Jena TDB2 store; answer digests unchanged"
 }
