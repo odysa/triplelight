@@ -8,14 +8,13 @@ pub(crate) mod storage { pub use crate::*; }
 pub(crate) use triplelight_exec as exec;
 
 pub mod store;
+pub use store::wide_tables;
 
 #[cfg(all(test, feature = "rdf-12"))]
 mod rdf12_tests;
 
 mod memory;
 pub use memory::MemorySnapshot;
-
-pub mod wide_tables;
 
 #[cfg(unix)]
 pub mod disk_index;

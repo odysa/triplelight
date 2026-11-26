@@ -11,7 +11,8 @@
 //! value combination, in ascending order of the values; a subject missing any requested predicate yields none.
 //! This is exactly what the BGP over the indexes produces for that subject, so the two can be compared as bags.
 use crate::model::TermId;
-use crate::storage::StorageError;
+/// Same type as `crate::storage::StorageError`, named directly so this module does not depend on `storage`.
+type StorageError = std::io::Error;
 
 /// A table of one catalog.
 pub type TableId = u32;
