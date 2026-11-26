@@ -6,11 +6,21 @@ use triplelight_rdf::TermRef;
 use triplelight_rdf::{Term, Variable};
 use std::fmt::Write;
 
-/// A JSON string. Only `"`, `\` and the C0 controls need escaping, and each is one ASCII byte (never part of a
-/// multi-byte UTF-8 sequence), so the clean runs between them are copied whole: an IRI usually has none and is one
-/// copy (#105: pushing char by char was most of the formatting time on 8M-row answers).
+/// True if `b` must be escaped in a JSON string: `"`, `\` or a C0 control. Each is one ASCII byte, never part of a
+/// multi-byte UTF-8 sequence.
+#[inline(always)]
+fn needs_escape(b: u8) -> bool { (b < 0x20) | (b == b'"') | (b == b'\\') }
+
+/// A JSON string. Most values (IRIs above all) contain no byte that needs escaping: a branchless fold over the bytes,
+/// which the compiler vectorizes, finds that, and the string is copied in one piece. Otherwise the clean runs between
+/// escaped bytes are copied whole (#105: per-byte work here was the largest part of formatting 8M-row answers).
 fn esc(s: &str, out: &mut String) {
     out.push('"');
+    if !s.as_bytes().iter().fold(false, |any, &b| any | needs_escape(b)) {
+        out.push_str(s);
+        out.push('"');
+        return;
+    }
     let mut start = 0;
     for (i, &b) in s.as_bytes().iter().enumerate() {
         let quoted = match b {
