@@ -57,6 +57,31 @@ pub(super) fn recognize_stars(patterns: &[[Slot; 3]], all_unbound: bool) -> Vec<
     stars
 }
 
+/// The first, opt-in cost rule for complete, reorderable two-pattern stars with a canonical
+/// object interval. A table visits every subject, while an index can start from
+/// a selective object range. The seven frozen BI cases motivate a provisional
+/// 4% guard; it must be checked against the actual table metadata. Embedded and
+/// longer stars, fixed objects and residuals await their own calibration.
+pub(super) fn select_auto(
+    catalog: &dyn TableCatalog,
+    star: &Star,
+    tables: &[TableId],
+    index_start_rows: u64,
+    intervals: &[Option<(TermId, TermId)>],
+) -> bool {
+    if tables.is_empty() || star.pattern_indices.len() != 2
+        || !star.columns.iter().all(|(_, object)| matches!(object, Slot::Var(_))) {
+        return false;
+    }
+    if !star.predicates.iter().any(|&p| catalog.covers_all_subjects(p)) {
+        return false;
+    }
+    if !intervals.iter().any(Option::is_some) || index_start_rows == 0 { return false }
+    let subjects = tables.iter().fold(0u64, |n, &table| n.saturating_add(catalog.meta(table).subjects));
+    if subjects == 0 { return false }
+    (index_start_rows as f64) >= 0.04 * subjects as f64
+}
+
 /// A residual estimate must include the indexed BGP over subjects not assigned
 /// to the selected tables. Passing `None` forces the ordinary index plan.
 #[derive(Clone, Copy, Debug)]
@@ -216,6 +241,7 @@ mod tests {
     struct Mock {
         ids: Vec<TableId>,
         metas: HashMap<TableId, TableMeta>,
+        covered: bool,
     }
 
     struct EmptyScan;
@@ -239,6 +265,7 @@ mod tests {
         fn member(&self, _: TableId, _: TermId) -> bool {
             false
         }
+        fn covers_all_subjects(&self, _: TermId) -> bool { self.covered }
         fn scan<'a>(
             &'a self,
             _: TableId,
@@ -284,6 +311,7 @@ mod tests {
         let mock = Mock {
             ids: vec![1, 2],
             metas: HashMap::from([(1, one_table.clone()), (2, one_table)]),
+            covered: false,
         };
         let residual = Some(ResidualStats {
             indexed_ns: 100.0,
@@ -300,5 +328,26 @@ mod tests {
         });
         assert!(choose(&mock, &spec, 10_000.0, expensive_residual, calibration()).is_none());
         assert!(choose(&mock, &spec, 10_000.0, None, calibration()).is_none());
+    }
+
+    #[test]
+    fn auto_choice_uses_range_work_and_requires_complete_coverage() {
+        let star = recognize_stars(&star(), true).remove(0);
+        let mut mock = Mock {
+            ids: vec![1],
+            metas: HashMap::from([(1, TableMeta { subjects: 2_850_000, subject_bytes: 0, columns: Vec::new() })]),
+            covered: true,
+        };
+        let intervals = [None, Some((TermId(100), TermId(200)))];
+        assert!(!select_auto(&mock, &star, &[1], 75_963, &intervals));
+        assert!(select_auto(&mock, &star, &[1], 168_210, &intervals));
+        assert!(select_auto(&mock, &star, &[1], 2_850_000, &intervals));
+        assert!(!select_auto(&mock, &star, &[1], 2_850_000, &[None, None]));
+        mock.covered = false;
+        assert!(!select_auto(&mock, &star, &[1], 168_210, &intervals));
+        let mut fixed = star.clone();
+        fixed.columns[0].1 = Slot::Const(Some(TermId(50)));
+        mock.covered = true;
+        assert!(!select_auto(&mock, &fixed, &[1], 168_210, &intervals));
     }
 }
