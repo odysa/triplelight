@@ -116,9 +116,7 @@ pub(super) fn reorderable_bgps(p: &GraphPattern, free: bool, nodes: &dyn Fn(&Nam
         GraphPattern::Slice { inner, .. } => {
             // Which rows a slice keeps depends on their order unless an ORDER BY under it (through projection and
             // duplicate removal) orders them without ties: the executor breaks ties by input order.
-            let mut below = &**inner;
-            while let GraphPattern::Project { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } = below { below = inner.as_ref() }
-            reorderable_bgps(inner, free && tie_free(below, nodes), nodes, out)
+            reorderable_bgps(inner, free && tie_free(slice_input(inner), nodes), nodes, out)
         }
         GraphPattern::Group { inner, aggregates, .. } => {
             let counts_only = aggregates.iter().all(|(_, a)| matches!(a,
@@ -126,6 +124,13 @@ pub(super) fn reorderable_bgps(p: &GraphPattern, free: bool, nodes: &dyn Fn(&Nam
             reorderable_bgps(inner, free && counts_only, nodes, out)
         }
     }
+}
+
+pub(super) fn slice_input(mut p: &GraphPattern) -> &GraphPattern {
+    while let GraphPattern::Project { inner, .. } | GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } = p {
+        p = inner;
+    }
+    p
 }
 
 /// Whether every object of predicate `p` in `snap` (the merged view, so delta inserts count) is a stored IRI: POS

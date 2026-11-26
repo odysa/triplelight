@@ -143,7 +143,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 }
                 bgp.eval_order(patterns, &order, input, &mut post, trace.as_deref_mut().filter(|_| whole_bgp))
             }
-            None => bgp.eval_greedy(patterns, input, &mut post, trace.filter(|_| whole_bgp)),
+            None => bgp.eval_greedy(patterns, &[], input, &mut post, trace.filter(|_| whole_bgp)),
         };
         self.fits((out.len().saturating_add(residual.len()) as u64).saturating_mul(8));
         out.extend(residual);
@@ -223,7 +223,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                     };
                     // The remaining patterns extend the table-produced rows
                     // through the ordinary indexes, preserving their joins.
-                    out = bgp.eval_greedy(&remaining, out, &mut post, None);
+                    out = bgp.eval_greedy(&remaining, &[], out, &mut post, None);
                 }
                 (out, "wide-forced")
             } else if self.wcoj
@@ -282,10 +282,14 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                             "planner",
                         )
                     }
-                    None => (
-                        bgp.eval_greedy(&pats, flat, &mut post, tr.as_mut()),
-                        "greedy",
-                    ),
+                    None => {
+                        let leaves = self.projected_bgp.as_ref()
+                            .filter(|p| unbound_start && !filters.is_empty() && p.matches(patterns))
+                            .map_or_else(Vec::new, |p| {
+                                p.leaves(&pats, |name| self.vars.get(name).copied())
+                            });
+                        (bgp.eval_greedy(&pats, &leaves, flat, &mut post, tr.as_mut()), "greedy")
+                    }
                 }
             }
         });
