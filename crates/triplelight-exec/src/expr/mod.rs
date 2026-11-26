@@ -1,5 +1,6 @@
 //! SPARQL expression evaluation over resolved terms. `None` is the SPARQL "error" value.
 pub(super) mod extend;
+mod filter;
 pub(crate) mod order;
 pub(crate) mod text;
 #[doc(hidden)]
