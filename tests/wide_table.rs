@@ -125,6 +125,11 @@ fn date_interval_filters_table_values_before_expansion() {
         !trace.iter().any(|line| line.contains("access=probe")),
         "covered subjects need no index residual: {trace:?}"
     );
+    let (auto_result, auto_trace) = triplelight::exec::plan_trace::capture(|| {
+        query_with(&wide, query, &Options { auto_wide_tables: true, ..Options::default() }).unwrap()
+    });
+    assert_eq!(bag(auto_result), expected);
+    assert!(auto_trace.iter().any(|line| line.contains("strategy=wide-auto")), "{auto_trace:?}");
     let without_range = Options {
         force_wide_tables: true,
         range_pushdown: false,
@@ -177,5 +182,10 @@ fn constant_objects_and_embedded_stars_preserve_bags() {
         });
         assert_eq!(bag(result), expected, "{query}");
         assert!(trace.iter().any(|line| line.contains("strategy=wide-forced")), "{query}: {trace:?}");
+        let (auto_result, auto_trace) = triplelight::exec::plan_trace::capture(|| {
+            query_with(&wide, query, &Options { auto_wide_tables: true, ..Options::default() }).unwrap()
+        });
+        assert_eq!(bag(auto_result), expected, "{query}");
+        assert!(!auto_trace.iter().any(|line| line.contains("strategy=wide-auto")), "{query}: {auto_trace:?}");
     }
 }
