@@ -79,6 +79,31 @@ fn known_aggregates_are_unary_and_do_not_nest() {
     ));
 }
 
+#[test]
+fn a_custom_aggregate_in_update_rejects_the_whole_request() {
+    let db = Database::in_memory();
+    db.register_aggregate_function(IRI, count).unwrap();
+    for call in ["<urn:test:bound>(?x)", "<urn:test:bound>(DISTINCT ?x)"] {
+        let update = format!(
+            "INSERT DATA {{ <urn:before> <urn:p> 1 }}; \
+             INSERT {{ <urn:after> <urn:p> ?n }} WHERE {{ \
+                 SELECT ({call} AS ?n) WHERE {{ VALUES ?x {{ 1 }} }} \
+             }}"
+        );
+        assert!(
+            matches!(db.update(&update), Err(DatabaseError::Unsupported(_))),
+            "{call}"
+        );
+        assert!(
+            matches!(
+                db.query("ASK { ?s <urn:p> ?o }").unwrap(),
+                QueryResult::Boolean(false)
+            ),
+            "{call}"
+        );
+    }
+}
+
 struct Collision;
 
 impl Extension for Collision {
