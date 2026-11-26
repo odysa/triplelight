@@ -581,8 +581,14 @@ impl DiskSnapshot {
         })
     }
     pub(crate) fn manifest_identity(&self) -> [u8; 32] { self.manifest_sha }
-    /// The base's directory (where sidecar files such as the wide tables' `tables.v1` live).
-    pub(crate) fn base_dir(&self) -> &Path { &self.dir }
+    /// This base with its wide tables (#140), kept beside it as `tables.v1` and bound to its manifest identity: read
+    /// when that file matches, else built and, when `persist`, written (`WithTables::open_persisted`). A store opened
+    /// read-only passes `persist` false and never writes to the base directory.
+    pub fn with_tables(self, options: crate::wide_tables::BuildOptions, persist: bool)
+        -> io::Result<(crate::wide_tables::WithTables<DiskSnapshot>, crate::wide_tables::TablesSource)> {
+        let (dir, base) = (self.dir.clone(), self.manifest_sha);
+        crate::wide_tables::WithTables::open_persisted(self, &dir, base, options, persist)
+    }
 
     /// Visits stored literals in ID order without populating the query dictionary cache.
     pub(crate) fn visit_unified_literals(&self, visit: &mut dyn FnMut(TermId, &triplelight_rdf::Literal) -> io::Result<()>) -> io::Result<()> {
@@ -1778,6 +1784,29 @@ mod tests {
         fs::write(path, bytes).unwrap();
         assert!(DiskSnapshot::open(&dir).is_err());
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// A disk base keeps its wide tables beside it: the first `with_tables` builds and writes `tables.v1`, the next
+    /// reads it, and a read-only one writes nothing.
+    #[test]
+    fn a_disk_base_keeps_its_wide_tables_beside_it() {
+        use crate::wide_tables::{BuildOptions, Rebuild, TablesSource};
+        let dir = std::env::temp_dir().join(format!("rdf-base-tables-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let ty = "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>";
+        let nt: String = (0..50).map(|i| format!("<urn:s{i}> {ty} <urn:T> .\n<urn:s{i}> <urn:p> <urn:o{}> .\n", i % 5)).collect();
+        write_disk_snapshot(&dir, &MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap()).unwrap();
+        let options = BuildOptions { min_fill: 0.5, min_share: 0.0 };
+        let (_, source) = DiskSnapshot::open(&dir).unwrap().with_tables(options, false).unwrap();
+        assert_eq!(source, TablesSource::BuiltUnsaved { reason: Rebuild::Missing });
+        assert!(!dir.join(crate::wide_tables::TABLE_FILE).exists(), "read-only: nothing written");
+        let (built, source) = DiskSnapshot::open(&dir).unwrap().with_tables(options, true).unwrap();
+        assert_eq!(source, TablesSource::Built { reason: Rebuild::Missing });
+        assert!(built.table_count() > 0);
+        let (loaded, source) = DiskSnapshot::open(&dir).unwrap().with_tables(options, true).unwrap();
+        assert_eq!(source, TablesSource::Loaded);
+        assert_eq!((loaded.table_count(), loaded.table_triples()), (built.table_count(), built.table_triples()));
+        fs::remove_dir_all(&dir).unwrap();
     }
 }
 
