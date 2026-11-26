@@ -428,6 +428,8 @@ impl<S: Snapshot> Snapshot for WithTables<S> {
     fn first_keys(&self, perm: Perm) -> Result<Vec<TermId>, StorageError> { self.inner.first_keys(perm) }
     fn scan_from<'a>(&'a self, perm: Perm, prefix: &[TermId], from: TermId) -> Box<dyn Iterator<Item = Result<triplelight_core::model::TripleBatch, StorageError>> + 'a> { self.inner.scan_from(perm, prefix, from) }
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> { self.inner.count(perm, prefix) }
+    // forward the cursor too: the default would wrap `self` statelessly and lose `inner`'s cursor (#349)
+    fn probe(&self, perm: Perm) -> Box<dyn triplelight_core::storage::Probe + '_> { self.inner.probe(perm) }
     fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> { self.inner.seek(perm, prefix, target) }
     fn matching_rows(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 3]]> { self.inner.matching_rows(perm, prefix) }
     fn matching_tail(&self, perm: Perm, prefix: &[TermId]) -> Option<&[[TermId; 2]]> { self.inner.matching_tail(perm, prefix) }
