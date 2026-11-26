@@ -309,6 +309,13 @@ impl Database {
             .map_err(|error| Error::new(Status::InvalidArg, error.to_string()))
     }
 
+    /// Registers a synchronous unary aggregate factory for future queries and snapshots.
+    #[napi]
+    pub fn register_aggregate_function(&self, env: Env, iri: String, factory: JsFunction) -> Result<()> {
+        self.db()?.register_aggregate_function(&iri, scalar::AggregateFactory::new(&env, factory)?)
+            .map_err(|error| Error::new(Status::InvalidArg, error.to_string()))
+    }
+
     /// Loads an official extension for this database.
     #[napi]
     pub fn load_extension(&self, name: String) -> Result<()> {

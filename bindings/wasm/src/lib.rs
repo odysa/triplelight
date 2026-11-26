@@ -13,6 +13,7 @@ use triplelight::storage::MemorySnapshot;
 use triplelight::store::{Change, Overlay};
 use wasm_bindgen::prelude::*;
 
+mod aggregate;
 mod rdfjs;
 mod scalar;
 
@@ -188,6 +189,13 @@ impl Database {
         pure: Option<bool>,
     ) -> Result<(), JsValue> {
         scalar::register(&self.extensions, iri, callback, arity, pure)
+            .map_err(|message| error("RegistrationError", &message))
+    }
+
+    /// Registers a synchronous unary aggregate whose factory returns an object with step and finish methods.
+    #[wasm_bindgen(js_name = registerAggregateFunction)]
+    pub fn register_aggregate_function(&self, iri: &str, factory: js_sys::Function) -> Result<(), JsValue> {
+        aggregate::register(&self.extensions, iri, factory)
             .map_err(|message| error("RegistrationError", &message))
     }
 

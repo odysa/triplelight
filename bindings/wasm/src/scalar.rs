@@ -19,11 +19,29 @@ thread_local! {
 
 // The executor requires Send + Sync. Only the ID crosses that interface. The
 // JavaScript handle stays on its owning agent, including during final release.
-struct Callback(u64);
+pub(super) struct Callback(u64);
+
+impl Callback {
+    pub(super) fn new(function: Function) -> Result<Self, String> {
+        let id = NEXT_CALLBACK
+            .with(|next| {
+                let id = next.get().checked_add(1)?;
+                next.set(id);
+                Some(id)
+            })
+            .ok_or("callback IDs exhausted")?;
+        CALLBACKS.with(|callbacks| callbacks.borrow_mut().insert(id, function));
+        Ok(Self(id))
+    }
+
+    pub(super) fn function(&self) -> Option<Function> {
+        CALLBACKS.with(|callbacks| callbacks.borrow().get(&self.0).cloned())
+    }
+}
 
 impl ScalarFunction for Callback {
     fn call(&self, args: &[Term]) -> Option<Term> {
-        let function = CALLBACKS.with(|callbacks| callbacks.borrow().get(&self.0).cloned())?;
+        let function = self.function()?;
         // A host callback can invoke JavaScript that drops other registrations.
         // Release the table borrow before invoking any host code.
         let args = args
@@ -31,12 +49,16 @@ impl ScalarFunction for Callback {
             .map(|arg| JsValue::from(term(arg)))
             .collect::<Array>();
         let result = Reflect::apply(&function, &JsValue::UNDEFINED, &args).ok()?;
-        let term = parse_term(&result);
-        if term.is_none() && result.is_object() {
-            let _ = handle_invalid_promise(&result);
-        }
-        term
+        callback_term(&result)
     }
+}
+
+pub(super) fn callback_term(result: &JsValue) -> Option<Term> {
+    let term = parse_term(result);
+    if term.is_none() && result.is_object() {
+        let _ = handle_invalid_promise(result);
+    }
+    term
 }
 
 impl Drop for Callback {
@@ -48,7 +70,7 @@ impl Drop for Callback {
 
 // A synchronous callback may accidentally return a Promise. Use the native
 // method so ordinary objects and thenables cannot invoke their own "then".
-fn handle_invalid_promise(value: &JsValue) -> Option<()> {
+pub(super) fn handle_invalid_promise(value: &JsValue) -> Option<()> {
     let constructor = Reflect::get(&js_sys::global(), &"Promise".into()).ok()?;
     let prototype = Reflect::get(&constructor, &"prototype".into()).ok()?;
     let then = Reflect::get(&prototype, &"then".into())
@@ -75,19 +97,11 @@ pub(super) fn register(
     if arity.is_some_and(|n| !(0.0..=f64::from(u32::MAX)).contains(&n) || n.fract() != 0.0) {
         return Err("scalar arity must be a non-negative integer".into());
     }
-    let id = NEXT_CALLBACK
-        .with(|next| {
-            let id = next.get().checked_add(1)?;
-            next.set(id);
-            Some(id)
-        })
-        .ok_or("scalar callback IDs exhausted")?;
-    CALLBACKS.with(|callbacks| callbacks.borrow_mut().insert(id, function));
     let options = FunctionOptions {
         arity: arity.map(|n| n as usize),
         pure: pure.unwrap_or(false),
     };
     registry
-        .register_function(iri, options, Callback(id))
+        .register_function(iri, options, Callback::new(function)?)
         .map_err(|err| err.to_string())
 }

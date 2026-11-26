@@ -6,13 +6,28 @@ const { isPromise } = require("node:util").types;
 const promiseThen = Promise.prototype.then;
 const ignoreRejection = () => {};
 
+function synchronousResult(value) {
+  if (!isPromise(value)) return value;
+  Reflect.apply(promiseThen, value, [undefined, ignoreRejection]);
+  return null;
+}
+
 function scalarCallback(callback) {
   if (typeof callback !== "function") throw new TypeError("scalar callback must be a function");
-  return (...args) => {
-    const value = callback(...args);
-    if (!isPromise(value)) return value;
-    Reflect.apply(promiseThen, value, [undefined, ignoreRejection]);
-    return null;
+  return (...args) => synchronousResult(callback(...args));
+}
+
+function aggregateFactory(factory) {
+  if (typeof factory !== "function") throw new TypeError("aggregate factory must be a function");
+  return () => {
+    const state = synchronousResult(factory());
+    if (state === null || typeof state !== "object") return null;
+    const { step, finish } = state;
+    if (typeof step !== "function" || typeof finish !== "function") return null;
+    return {
+      step: (term) => synchronousResult(Reflect.apply(step, state, [term])),
+      finish: () => synchronousResult(Reflect.apply(finish, state, [])),
+    };
   };
 }
 
@@ -103,6 +118,9 @@ class Database {
   loadExtension(name) { return sync(() => this._raw.loadExtension(name)); }
   registerFunction(iri, callback, arity, pure) {
     return sync(() => this._raw.registerFunction(iri, scalarCallback(callback), arity, pure));
+  }
+  registerAggregateFunction(iri, factory) {
+    return sync(() => this._raw.registerAggregateFunction(iri, aggregateFactory(factory)));
   }
   listExtensions() { return sync(() => this._raw.listExtensions()); }
   statsReady() { return sync(() => this._raw.statsReady()); }

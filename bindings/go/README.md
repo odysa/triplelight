@@ -31,6 +31,18 @@ one of them or construct a new term. A nil result, error, panic, or invalid term
 Callbacks can run concurrently and must avoid reentering or mutating the database that called them.
 Triple terms and directional literals require a native library built with `rdf-12`.
 
+## Unary SPARQL aggregates
+
+`DB.RegisterAggregateFunction(iri, factory)` registers a unary aggregate for later queries.
+Use `<urn:app:aggregate>(?o)` or `<urn:app:aggregate>(DISTINCT ?o)` in an aggregate expression.
+The factory returns a fresh `AggregateState` for every group and aggregate occurrence.
+`Step` receives one Go-owned RDF term per bound argument. The engine skips unbound arguments and
+expression errors. DISTINCT compares RDF term identity. `Finish` returns the result, including for an
+empty implicit group.
+
+A callback error or panic leaves the group result unbound. Factory calls can overlap across queries.
+Callbacks must avoid reentering or mutating the database that called them.
+
 ## Arrow output
 
 `DB.QueryArrow(sparql, unsafe.Pointer(&stream))` fills a caller-owned `struct ArrowArrayStream`, for example

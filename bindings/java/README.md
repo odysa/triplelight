@@ -32,6 +32,15 @@ has no side effects and its result depends solely on the arguments. Calls can ru
 brief and avoid calls back into the evaluating database. The registry keeps each callback alive until native code
 releases the registration. This API requires a C library with scalar callback support.
 
+## Unary SPARQL aggregates
+
+`db.registerAggregateFunction(iri, factory)` registers a synchronous unary aggregate for future queries.
+The factory returns a fresh `Database.AggregateState` per group and aggregate occurrence. Its `step` method
+receives one Java-owned bound RDF term. The engine skips unbound arguments and expression errors. DISTINCT
+compares RDF term identity. `finish` returns the group's result, including for an empty implicit group.
+A null result or callback exception leaves the aggregate result unbound. Factory calls can overlap across
+queries. Callbacks must avoid reentering or mutating the database that invoked them.
+
 ## Arrow output
 
 `Database.queryArrow(sparql, streamAddress)` fills a caller-owned `struct ArrowArrayStream`, for example

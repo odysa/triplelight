@@ -19,7 +19,7 @@ pub(super) fn call(callback: &Py<PyAny>, args: &[Term]) -> Option<Term> {
     })
 }
 
-fn from_py(classes: &Classes<'_>, value: &Bound<'_, PyAny>, depth: usize) -> Option<Term> {
+pub(super) fn from_py(classes: &Classes<'_>, value: &Bound<'_, PyAny>, depth: usize) -> Option<Term> {
     if value.is_instance(&classes.iri).ok()? {
         return Some(NamedNode::new(value.extract::<String>().ok()?).ok()?.into());
     }

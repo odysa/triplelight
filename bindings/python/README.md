@@ -59,4 +59,14 @@ as long as those handles need it. Callbacks run synchronously with the GIL and m
 or an executor thread. Keep them brief. They must neither mutate nor reenter the evaluating database. Avoid a strong
 reference from the callback to its database or a snapshot of that registry, which would create a reference cycle.
 
+## Unary SPARQL aggregates
+
+`db.register_aggregate_function("urn:example:aggregate", factory)` registers a synchronous aggregate
+for future queries and snapshots. Use `<urn:example:aggregate>(?o)` or `<urn:example:aggregate>(DISTINCT ?o)`.
+The factory returns a fresh object per group and aggregate occurrence. Its `step(value)` method receives one
+bound RDF value and returns `None`. The engine skips unbound arguments and expression errors, and DISTINCT
+compares RDF term identity. Its `finish()` method returns the result, including for an empty implicit group.
+An exception or an invalid callback result leaves that group's aggregate unbound. The GIL, reentry and callback
+lifetime rules are the same as for scalar callbacks.
+
 Test: `pytest -q tests` in this directory, after `maturin develop`.
