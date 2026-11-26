@@ -413,6 +413,13 @@ impl SharedBlockBudget {
     pub(crate) fn new(capacity: u64) -> Arc<Self> {
         Arc::new(SharedBlockBudget { capacity, used: AtomicU64::new(0), members: Default::default(), hand: AtomicUsize::new(0) })
     }
+    /// Counts `bytes` in (positive) or out.
+    fn charge(&self, bytes: i64) {
+        if bytes >= 0 { self.used.fetch_add(bytes as u64, Ordering::Relaxed); } else { self.used.fetch_sub(bytes.unsigned_abs(), Ordering::Relaxed); }
+    }
+    /// Bytes charged now.
+    #[cfg(test)]
+    fn used(&self) -> u64 { self.used.load(Ordering::Relaxed) }
     fn register(&self, member: std::sync::Weak<dyn ClockMember>) {
         self.members.lock().unwrap_or_else(|p| p.into_inner()).push(member);
     }
@@ -434,6 +441,7 @@ impl SharedBlockBudget {
 }
 /// Shards per index cache.
 const CACHE_SHARDS: usize = 16;
+fn poisoned() -> io::Error { io::Error::other("index cache lock poisoned") }
 
 /// One index file's block cache: shards of decoded blocks under CLOCK, alone (at most `shard_capacity` blocks per
 /// shard) or in a base's `SharedBlockBudget` (`shared`: the budget and this file's floor in bytes).
@@ -465,10 +473,55 @@ impl<const N: usize> BlockCache<N> {
             let bytes = n.unsigned_abs() * Self::BLOCK_BYTES;
             if n >= 0 { RESIDENT[i].fetch_add(bytes, Ordering::Relaxed); } else { RESIDENT[i].fetch_sub(bytes, Ordering::Relaxed); }
         }
-        if let Some((budget, _)) = &self.shared {
-            let bytes = n.unsigned_abs() * Self::BLOCK_BYTES;
-            if n >= 0 { budget.used.fetch_add(bytes, Ordering::Relaxed); } else { budget.used.fetch_sub(bytes, Ordering::Relaxed); }
+        if let Some((budget, _)) = &self.shared { budget.charge(n * Self::BLOCK_BYTES as i64) }
+    }
+    fn shard(&self, id: u64) -> &RwLock<CacheShard<N>> { &self.shards[(id as usize) % self.shards.len()] }
+    /// Whether block `id` is cached (tests).
+    #[cfg(test)]
+    fn holds(&self, id: u64) -> bool { self.shard(id).read().unwrap().entries.contains_key(&id) }
+    /// A hit (shared read lock only, so concurrent readers of hot blocks don't serialize), or the shard's
+    /// generation for the miss's later `insert`.
+    fn lookup(&self, id: u64) -> io::Result<Result<Arc<Vec<[TermId; N]>>, u64>> {
+        let cache = self.shard(id).read().map_err(|_| poisoned())?;
+        if let Some((value, referenced)) = cache.entries.get(&id) {
+            if cache_trace_enabled() && let Some(i) = self.trace_slot { HITS[i].fetch_add(1, Ordering::Relaxed); }
+            referenced.store(true, Ordering::Relaxed);
+            return Ok(Ok(Arc::clone(value)));
         }
+        if cache_trace_enabled() && let Some(i) = self.trace_slot { MISSES[i].fetch_add(1, Ordering::Relaxed); }
+        Ok(Err(cache.generation))
+    }
+    /// Caches a block read on a miss that saw `generation`: in a shared budget room is made first, before this
+    /// shard is locked, so the global hand can take from it too; alone, a full shard (`capacity` blocks) evicts its
+    /// own cold blocks. A block another miss inserted meanwhile wins; a clear since `generation` leaves it uncached.
+    fn insert(&self, id: u64, rows: Arc<Vec<[TermId; N]>>, generation: u64, capacity: usize) -> io::Result<Arc<Vec<[TermId; N]>>> {
+        if let Some((budget, _)) = &self.shared { budget.make_room(Self::BLOCK_BYTES) }
+        let mut cache = self.shard(id).write().map_err(|_| poisoned())?;
+        if let Some((value, referenced)) = cache.entries.get(&id) {
+            referenced.store(true, Ordering::Relaxed);
+            return Ok(Arc::clone(value));
+        }
+        if cache.generation != generation { return Ok(rows) }
+        if self.shared.is_none() {
+            while cache.entries.len() >= capacity {
+                if self.step_locked(&mut cache).is_none() { break }
+            }
+        }
+        cache.entries.insert(id, (Arc::clone(&rows), AtomicBool::new(true)));
+        cache.clock.push_back(id);
+        self.charge(1);
+        Ok(rows)
+    }
+    /// Empties every shard and bumps its generation, returning the blocks' bytes to the budget.
+    fn clear(&self) -> io::Result<()> {
+        for shard in &self.shards {
+            let mut cache = shard.write().map_err(|_| poisoned())?;
+            self.charge(-(cache.entries.len() as i64));
+            cache.entries.clear();
+            cache.clock.clear();
+            cache.generation += 1;
+        }
+        Ok(())
     }
     /// One CLOCK step on `cache` (its write lock held): `Some(true)` evicted, `Some(false)` a second chance.
     fn step_locked(&self, cache: &mut CacheShard<N>) -> Option<bool> {
@@ -630,15 +683,7 @@ where
         self.identity
     }
     pub fn clear_cache(&self) -> io::Result<()> {
-        for shard in &self.cache.shards {
-            let mut cache = shard
-                .write()
-                .map_err(|_| io::Error::other("index cache lock poisoned"))?;
-            self.cache.charge(-(cache.entries.len() as i64));
-            cache.entries.clear();
-            cache.clock.clear();
-            cache.generation += 1;
-        }
+        self.cache.clear()?;
         #[cfg(test)]
         if let Some(hook) = CLEAR_HOOK.with(|h| h.borrow_mut().take()) { hook(self as &dyn std::any::Any) }
         // Then invalidate every thread's memo entries (they are keyed by epoch). Order matters under concurrent
@@ -675,49 +720,13 @@ where
         Ok(rows)
     }
     fn block_shared(&self, id: u64) -> io::Result<Arc<Vec<[TermId; N]>>> {
-        let shard = &self.cache.shards[(id as usize) % self.cache.shards.len()];
-        let poisoned = || io::Error::other("index cache lock poisoned");
-        // Hit: shared read lock only, so concurrent readers of hot blocks don't serialize.
-        let generation = {
-            let cache = shard.read().map_err(|_| poisoned())?;
-            if let Some((value, referenced)) = cache.entries.get(&id) {
-                if cache_trace_enabled() && let Some(i) = self.trace_slot {
-                    HITS[i].fetch_add(1, Ordering::Relaxed);
-                }
-                referenced.store(true, Ordering::Relaxed);
-                return Ok(Arc::clone(value));
-            }
-            cache.generation
-        };
-        if cache_trace_enabled() && let Some(i) = self.trace_slot {
-            MISSES[i].fetch_add(1, Ordering::Relaxed);
-        }
+        let generation = match self.cache.lookup(id)? { Ok(rows) => return Ok(rows), Err(generation) => generation };
         // Miss: read, verify and decode without holding the lock. Concurrent misses on one block may each read and
         // decode it (first insert wins), so decoded blocks can transiently exceed the nominal cache budget.
         let r = Arc::new(self.read_block(id)?);
         #[cfg(test)]
         if let Some(hook) = MISS_HOOK.with(|h| h.borrow_mut().take()) { hook(self as &dyn std::any::Any) }
-        // In a shared budget, room is made before this shard is locked, so the global hand can take from it too.
-        if let Some((budget, _)) = &self.cache.shared { budget.make_room(BlockCache::<N>::BLOCK_BYTES) }
-        let mut cache = shard.write().map_err(|_| poisoned())?;
-        if let Some((value, referenced)) = cache.entries.get(&id) {
-            referenced.store(true, Ordering::Relaxed);
-            return Ok(Arc::clone(value));
-        }
-        if cache.generation != generation {
-            // A clear_cache ran while we read: don't repopulate the cleared cache with a pre-clear read.
-            return Ok(r);
-        }
-        // Alone, a full shard evicts its own cold blocks; in a shared budget the global hand already made room.
-        if self.cache.shared.is_none() {
-            while cache.entries.len() >= self.shard_capacity {
-                if self.cache.step_locked(&mut cache).is_none() { break }
-            }
-        }
-        cache.entries.insert(id, (Arc::clone(&r), AtomicBool::new(true)));
-        cache.clock.push_back(id);
-        self.cache.charge(1);
-        Ok(r)
+        self.cache.insert(id, r, generation, self.shard_capacity)
     }
     /// Reads, checksums, decodes and validates one block from the file (no caching).
     fn read_block(&self, id: u64) -> io::Result<Vec<[TermId; N]>> {
@@ -1094,7 +1103,7 @@ mod tests {
         std::fs::write(&path, &bytes).unwrap();
         let index = DiskIndex::<3>::open(&path).unwrap();
         assert_eq!(index.block_slice_uncached(256, 512).unwrap(), rows[256..512]);
-        assert!(index.cache.iter().all(|shard| shard.read().unwrap().entries.is_empty()));
+        assert_eq!(index.cache.used(), 0);
         let mut bad = bytes;
         bad[index.blocks[1].offset as usize + 3] ^= 0xff;
         std::fs::write(&path, bad).unwrap();
@@ -1129,7 +1138,7 @@ mod tests {
         assert!(h + d <= 20 + 1, "the budget holds: {h} + {d}");
         // clearing a file returns its bytes to the budget
         hot.clear_cache().unwrap();
-        assert_eq!(budget.used.load(Ordering::Relaxed), idle.cache.used());
+        assert_eq!(budget.used(), idle.cache.used());
         std::fs::remove_dir_all(&dir).unwrap();
     }
     #[test]
@@ -1185,12 +1194,10 @@ mod tests {
         let index = DiskIndex::<3>::open(&path).unwrap();
         MISS_HOOK.with(|h| *h.borrow_mut() = Some(Box::new(|ix: &dyn std::any::Any| ix.downcast_ref::<DiskIndex>().unwrap().clear_cache().unwrap())));
         assert!(index.block_shared(1).is_ok());
-        let shard = index.cache.shards[1 % index.cache.shards.len()].read().unwrap();
-        assert!(!shard.entries.contains_key(&1), "pre-clear read must not repopulate the cleared shard");
-        drop(shard);
+        assert!(!index.cache.holds(1), "pre-clear read must not repopulate the cleared shard");
         // Without a concurrent clear, a miss is cached as usual.
         assert!(index.block_shared(2).is_ok());
-        assert!(index.cache.shards[2 % index.cache.shards.len()].read().unwrap().entries.contains_key(&2));
+        assert!(index.cache.holds(2));
         std::fs::remove_file(path).unwrap();
     }
     /// `RDFIDX03` files (no rotated columns) stay readable, and `RDFIDX04` stores mixed-tag columns in less space.
