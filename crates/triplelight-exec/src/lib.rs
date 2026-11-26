@@ -166,6 +166,9 @@ pub struct Options<'a> {
     /// Force eligible star BGPs through the optional wide-table catalog. Diagnostic only;
     /// the default uses the triple indexes until cost calibration is complete.
     pub force_wide_tables: bool,
+    /// Use the calibrated table choice for eligible BGPs. Experimental and off by default
+    /// until held-out query and memory checks pass. Force takes precedence.
+    pub auto_wide_tables: bool,
     /// CSR adjacency for `p+` / `p*` / `^p+` / `^p*` over one predicate (`path.rs`): the predicate's edges are read
     /// once per query and active graph into a compressed sparse row array and the closures run over it (all-pairs
     /// closures in parallel) instead of one index seek per visited node. Above a size cap it keeps the seeks.
@@ -179,7 +182,7 @@ pub struct Options<'a> {
     /// The working-memory budget of this query (`MemoryBudget`); `None` is unbounded.
     pub memory_budget: Option<&'a MemoryBudget>,
 }
-impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, force_wide_tables: false, csr_paths: true, entailment: Entailment::Simple, interrupt: None, memory_budget: None } } }
+impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, force_wide_tables: false, auto_wide_tables: false, csr_paths: true, entailment: Entailment::Simple, interrupt: None, memory_budget: None } } }
 
 /// The entailment regime of a query's graph matching.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -451,6 +454,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     sorted_probe: bool,
     /// `Options::force_wide_tables`.
     force_wide_tables: bool,
+    /// `Options::auto_wide_tables`.
+    auto_wide_tables: bool,
     /// CSR adjacencies of single-predicate closures for this query and their policy, including `Options::csr_paths`
     /// (`path.rs`).
     csr: RefCell<path::CsrCache>,
@@ -531,6 +536,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             char_pairs: opts.char_pairs,
             sorted_probe: opts.sorted_probe,
             force_wide_tables: opts.force_wide_tables,
+            auto_wide_tables: opts.auto_wide_tables,
             csr: RefCell::new(path::CsrCache::new(opts.csr_paths, csr_limits)),
             range_checks: RefCell::new(HashMap::new()),
             range_reorderable,

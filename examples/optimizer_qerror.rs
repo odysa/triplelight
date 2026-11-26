@@ -208,7 +208,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         range_pushdown: true,
                         char_pairs: true,
                         sorted_probe: true,
-                        force_wide_tables: false,
+                        force_wide_tables: false, auto_wide_tables: false,
                         csr_paths: true,
                         entailment: Default::default(),
                         interrupt: None,
