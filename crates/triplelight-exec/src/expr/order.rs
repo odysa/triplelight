@@ -2,6 +2,20 @@
 use std::cmp::Ordering;
 use triplelight_rdf::Term;
 
+/// A key and its number when it is a numeric literal, decoded once (`num`, as `order_cmp` decodes it), so that sorting
+/// many numeric keys does not parse both lexical forms on every comparison.
+type Key = (Option<super::Num>, Option<Term>);
+
+fn key_of(t: Option<Term>) -> Key { (t.as_ref().and_then(super::num), t) }
+
+/// `order_cmp` on two keys. Two numbers take `num_cmp` first, which is what `order_cmp` computes for them through
+/// `compare`; anything else, and two numbers that `num_cmp` cannot order (NaN), take `order_cmp` itself. So the result
+/// is `order_cmp`'s in every case, numerically equal keys of different types or forms included.
+fn key_cmp(a: &Key, b: &Key) -> Ordering {
+    if let (Some(x), Some(y)) = (a.0, b.0) && let Some(o) = super::num_cmp(x, y) { return o }
+    super::order_cmp(a.1.as_ref(), b.1.as_ref())
+}
+
 /// The indices of `n` rows in the order of their keys (`desc[k]`: key `k` descends), only the first `limit` if given.
 /// `key(i, k)` is row `i`'s `k`-th key. Ties keep input order, so the result is that of a stable sort.
 ///
@@ -11,23 +25,23 @@ use triplelight_rdf::Term;
 pub(crate) fn order(n: usize, desc: &[bool], limit: Option<usize>, mut key: impl FnMut(usize, usize) -> Option<Term>) -> Vec<usize> {
     let dir = |k: usize, c: Ordering| if desc[k] { c.reverse() } else { c };
     let mut idx: Vec<usize> = (0..n).collect();
-    let mut keys: Vec<Vec<Option<Term>>> = vec![Vec::new(); n];
+    let mut keys: Vec<Vec<Key>> = vec![Vec::new(); n];
     match limit {
         Some(top) if top > 0 && top < n && desc.len() > 1 => {
-            let first: Vec<Option<Term>> = (0..n).map(|i| key(i, 0)).collect();
-            let first_cmp = |a: &Option<Term>, b: &Option<Term>| dir(0, super::order_cmp(a.as_ref(), b.as_ref()));
+            let first: Vec<Key> = (0..n).map(|i| key_of(key(i, 0))).collect();
+            let first_cmp = |a: &Key, b: &Key| dir(0, key_cmp(a, b));
             let mut by_first = idx.clone();
             by_first.select_nth_unstable_by(top - 1, |a, b| first_cmp(&first[*a], &first[*b]));
             let bound = first[by_first[top - 1]].clone();
             idx.retain(|&i| first_cmp(&first[i], &bound).is_le());
             for (i, f) in first.into_iter().enumerate() { if idx.binary_search(&i).is_ok() { keys[i].push(f) } }
-            for &i in &idx { for k in 1..desc.len() { let v = key(i, k); keys[i].push(v) } }
+            for &i in &idx { for k in 1..desc.len() { let v = key_of(key(i, k)); keys[i].push(v) } }
         }
-        _ => for (i, row_keys) in keys.iter_mut().enumerate() { *row_keys = (0..desc.len()).map(|k| key(i, k)).collect() },
+        _ => for (i, row_keys) in keys.iter_mut().enumerate() { *row_keys = (0..desc.len()).map(|k| key_of(key(i, k))).collect() },
     }
     let cmp = |a: &usize, b: &usize| -> Ordering {
         for k in 0..desc.len() {
-            let c = dir(k, super::order_cmp(keys[*a][k].as_ref(), keys[*b][k].as_ref()));
+            let c = dir(k, key_cmp(&keys[*a][k], &keys[*b][k]));
             if c.is_ne() { return c }
         }
         a.cmp(b) // ties keep input order (as a stable sort would)
@@ -43,4 +57,110 @@ pub(crate) fn order(n: usize, desc: &[bool], limit: Option<usize>, mut key: impl
         _ => idx.sort_unstable_by(cmp),
     }
     idx
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use triplelight_rdf::{Literal, NamedNode};
+
+    /// `order` as it was before keys carried their number: `order_cmp` on every comparison.
+    #[allow(clippy::type_complexity)]
+fn order_reference(n: usize, desc: &[bool], limit: Option<usize>, mut key: impl FnMut(usize, usize) -> Option<Term>) -> Vec<usize> {
+        let dir = |k: usize, c: Ordering| if desc[k] { c.reverse() } else { c };
+        let mut idx: Vec<usize> = (0..n).collect();
+        let mut keys: Vec<Vec<Option<Term>>> = vec![Vec::new(); n];
+        match limit {
+            Some(top) if top > 0 && top < n && desc.len() > 1 => {
+                let first: Vec<Option<Term>> = (0..n).map(|i| key(i, 0)).collect();
+                let first_cmp = |a: &Option<Term>, b: &Option<Term>| dir(0, super::super::order_cmp(a.as_ref(), b.as_ref()));
+                let mut by_first = idx.clone();
+                by_first.select_nth_unstable_by(top - 1, |a, b| first_cmp(&first[*a], &first[*b]));
+                let bound = first[by_first[top - 1]].clone();
+                idx.retain(|&i| first_cmp(&first[i], &bound).is_le());
+                for (i, f) in first.into_iter().enumerate() { if idx.binary_search(&i).is_ok() { keys[i].push(f) } }
+                for &i in &idx { for k in 1..desc.len() { let v = key(i, k); keys[i].push(v) } }
+            }
+            _ => for (i, row_keys) in keys.iter_mut().enumerate() { *row_keys = (0..desc.len()).map(|k| key(i, k)).collect() },
+        }
+        let cmp = |a: &usize, b: &usize| -> Ordering {
+            for k in 0..desc.len() {
+                let c = dir(k, super::super::order_cmp(keys[*a][k].as_ref(), keys[*b][k].as_ref()));
+                if c.is_ne() { return c }
+            }
+            a.cmp(b) // ties keep input order (as a stable sort would)
+        };
+        match limit {
+            Some(top) if top < idx.len() => {
+                // Stable top-k: the comparator is a total order (index tie-break), so the `top` smallest equal the
+                // first `top` of a full stable sort.
+                if top > 0 { idx.select_nth_unstable_by(top - 1, cmp); }
+                idx.truncate(top);
+                idx.sort_unstable_by(cmp);
+            }
+            _ => idx.sort_unstable_by(cmp),
+        }
+        idx
+    }
+
+    /// A small xorshift, so the differential cases are the same on every run.
+    struct Rng(u64);
+    impl Rng { fn next(&mut self) -> u64 { self.0 ^= self.0 << 13; self.0 ^= self.0 >> 7; self.0 ^= self.0 << 17; self.0 } }
+
+    fn typed(v: &str, t: &str) -> Option<Term> {
+        Some(Literal::new_typed_literal(v, NamedNode::new_unchecked(format!("http://www.w3.org/2001/XMLSchema#{t}"))).into())
+    }
+
+    /// Numbers of every type (mixed ints and floats around 2^24, where promotion is not transitive), signed zeros,
+    /// NaN and infinities, invalid lexical forms, strings, IRIs and unbound: the cached comparator must order every mix
+    /// exactly as `order_cmp` alone, with and without LIMIT, on one key and on two.
+    #[test]
+    fn cached_numbers_order_exactly_as_order_cmp() {
+        let pool: Vec<Option<Term>> = vec![
+            typed("16777216", "integer"), typed("16777217", "integer"), typed("16777216", "float"), typed("16777217.0", "double"),
+            typed("1", "integer"), typed("1.0", "decimal"), typed("1.0", "float"), typed("1", "float"), typed("1E0", "double"),
+            typed("-0", "float"), typed("0", "float"), typed("-0.0", "double"), typed("0", "integer"),
+            typed("NaN", "float"), typed("NaN", "double"), typed("INF", "float"), typed("-INF", "double"),
+            typed("0.1", "float"), typed("0.1", "double"), typed("0.30000001", "float"), typed("0.3", "float"),
+            typed("abc", "integer"), typed("1.2.3", "decimal"), typed(" 2", "integer"), typed("2 ", "float"),
+            Some(Literal::new_simple_literal("7").into()), Some(NamedNode::new_unchecked("urn:x").into()), None,
+        ];
+        let mut rng = Rng(0x5eed_0bad_cafe_0001);
+        let mut panicked = 0;
+        for trial in 0..400 {
+            let n = 1 + (rng.next() % 60) as usize;
+            let narrow = trial % 3 == 0; // every value from a few, so ties reach the second key and input order
+            let pick = |rng: &mut Rng| pool[(rng.next() % if narrow { 6 } else { pool.len() as u64 }) as usize].clone();
+            let rows: Vec<[Option<Term>; 2]> = (0..n).map(|_| [pick(&mut rng), pick(&mut rng)]).collect();
+            for keys in [1usize, 2] {
+                let desc: Vec<bool> = (0..keys).map(|k| (trial + k) % 2 == 0).collect();
+                for limit in [None, Some(1), Some(3), Some(n / 2), Some(n + 1)] {
+                    // Some mixes are not a total order under `order_cmp` (the 2^24 promotion, NaN against numbers), and
+                    // the standard sorts may panic on those: then both versions must panic, otherwise agree exactly.
+                    let run = |f: fn(usize, &[bool], Option<usize>, &dyn Fn(usize, usize) -> Option<Term>) -> Vec<usize>| {
+                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(n, &desc, limit, &|i, k| rows[i][k].clone())))
+                    };
+                    let new = run(|n, d, l, key| order(n, d, l, key));
+                    let old = run(|n, d, l, key| order_reference(n, d, l, key));
+                    match (new, old) {
+                        (Ok(a), Ok(b)) => assert_eq!(a, b, "trial {trial}, keys {keys}, limit {limit:?}"),
+                        (Err(_), Err(_)) => panicked += 1,
+                        (a, b) => panic!("trial {trial}, keys {keys}, limit {limit:?}: new {:?}, old {:?}", a.is_ok(), b.is_ok()),
+                    }
+                }
+            }
+        }
+        eprintln!("{panicked} sorts panicked in both versions (order_cmp is not a total order on those keys)");
+    }
+
+    /// The comparator itself, on every pair of the pool: exactly `order_cmp`.
+    #[test]
+    fn key_cmp_is_order_cmp_on_every_pair() {
+        let pool = [typed("16777216", "integer"), typed("16777217", "integer"), typed("16777216", "float"), typed("-0", "float"),
+            typed("0", "double"), typed("NaN", "float"), typed("INF", "double"), typed("1.0", "decimal"), typed("1", "integer"),
+            typed("x", "float"), Some(Literal::new_simple_literal("1").into()), Some(NamedNode::new_unchecked("urn:a").into()), None];
+        for a in &pool { for b in &pool {
+            assert_eq!(key_cmp(&key_of(a.clone()), &key_of(b.clone())), super::super::order_cmp(a.as_ref(), b.as_ref()), "{a:?} {b:?}");
+        } }
+    }
 }
