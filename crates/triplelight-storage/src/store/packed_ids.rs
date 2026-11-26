@@ -96,6 +96,42 @@ impl PackedIds {
         }));
     }
 
+    /// Appends the encoding to `out` (little-endian): the length, the block count, the four arrays as they are held
+    /// (`base`, `width`, `start`), the word count and the words. `read` reverses it without decoding anything.
+    pub fn write(&self, out: &mut Vec<u8>) {
+        out.extend_from_slice(&(self.len as u64).to_le_bytes());
+        out.extend_from_slice(&(self.base.len() as u64).to_le_bytes());
+        for b in &self.base { out.extend_from_slice(&b.to_le_bytes()) }
+        out.extend_from_slice(&self.width);
+        for s in &self.start { out.extend_from_slice(&s.to_le_bytes()) }
+        out.extend_from_slice(&(self.words.len() as u64).to_le_bytes());
+        for w in &self.words { out.extend_from_slice(&w.to_le_bytes()) }
+    }
+
+    /// Reads one `write` encoding from the front of `input` and advances it. Refuses an encoding whose arrays do not
+    /// fit together (block count against length, widths over 64, a block's codes running past the words), so a
+    /// file that passed its checksum but came from a faulty writer cannot make `get` or a scan read out of bounds.
+    pub fn read(input: &mut &[u8]) -> std::io::Result<PackedIds> {
+        let bad = |what: &str| std::io::Error::new(std::io::ErrorKind::InvalidData, format!("packed column: {what}"));
+        let len = usize::try_from(take_u64(input)?).map_err(|_| bad("length"))?;
+        let blocks = usize::try_from(take_u64(input)?).map_err(|_| bad("block count"))?;
+        if blocks != len.div_ceil(BLOCK) { return Err(bad("block count does not match the length")) }
+        let base = (0..blocks).map(|_| take_u64(input)).collect::<std::io::Result<Vec<u64>>>()?;
+        let width = take(input, blocks)?.to_vec();
+        let start = (0..blocks).map(|_| take(input, 4).map(|b| u32::from_le_bytes(b.try_into().unwrap()))).collect::<std::io::Result<Vec<u32>>>()?;
+        let words_len = usize::try_from(take_u64(input)?).map_err(|_| bad("word count"))?;
+        if words_len > input.len() / 8 { return Err(bad("word count past the end")) }
+        let words = (0..words_len).map(|_| take_u64(input)).collect::<std::io::Result<Vec<u64>>>()?;
+        for b in 0..blocks {
+            let w = width[b] as usize;
+            if w > 64 { return Err(bad("width over 64")) }
+            let n = (len - b * BLOCK).min(BLOCK);
+            let need = (n * w).div_ceil(64);
+            if start[b] as usize + need > words.len() || (b > 0 && start[b] < start[b - 1]) { return Err(bad("block runs past its words")) }
+        }
+        Ok(PackedIds { len, base, width, start, words })
+    }
+
     /// Keeps in `sel` (positions relative to block `blk`'s first value, ascending) those whose value is in
     /// `lo..hi`. The block's base and width settle blocks wholly inside or outside without decoding.
     pub fn select_in_range(&self, blk: usize, lo: u64, hi: u64, scratch: &mut Vec<u64>, sel: &mut Vec<u32>) {
@@ -111,6 +147,17 @@ impl PackedIds {
         sel.retain(|&r| { let v = scratch[r as usize]; v >= lo && v < hi });
     }
 }
+
+/// The first `n` bytes of `input`, advancing it.
+pub(super) fn take<'a>(input: &mut &'a [u8], n: usize) -> std::io::Result<&'a [u8]> {
+    if input.len() < n { return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "table file ends early")) }
+    let (head, rest) = input.split_at(n);
+    *input = rest;
+    Ok(head)
+}
+
+/// A little-endian `u64` from the front of `input`, advancing it.
+pub(super) fn take_u64(input: &mut &[u8]) -> std::io::Result<u64> { take(input, 8).map(|b| u64::from_le_bytes(b.try_into().unwrap())) }
 
 #[cfg(test)]
 mod tests {
@@ -132,6 +179,13 @@ mod tests {
             let p = PackedIds::from_slice(v);
             assert_eq!(p.len(), v.len());
             for (i, &e) in v.iter().enumerate() { assert_eq!(p.get(i), e) }
+            let mut bytes = Vec::new();
+            p.write(&mut bytes);
+            let mut input = bytes.as_slice();
+            let q = PackedIds::read(&mut input).unwrap();
+            assert!(input.is_empty(), "read consumes exactly its encoding");
+            for (i, &e) in v.iter().enumerate() { assert_eq!(q.get(i), e) }
+            if !bytes.is_empty() { assert!(PackedIds::read(&mut &bytes[..bytes.len() - 1]).is_err(), "a truncated encoding is refused") }
             let (mut d, mut blk) = (Vec::new(), Vec::new());
             for b in 0..v.len().div_ceil(BLOCK) { p.decode_block(b, &mut blk); d.extend_from_slice(&blk) }
             assert_eq!(&d, v);

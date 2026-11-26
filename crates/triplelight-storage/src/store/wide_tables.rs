@@ -12,9 +12,14 @@ use std::collections::{BTreeMap, HashMap};
 use triplelight_core::model::{Perm, TermId};
 use triplelight_core::wide::{ColumnMeta, ScanCounters, TableBatch, TableCatalog, TableId, TableMeta, TableScan, TABLE_BATCH_ROWS};
 
-use super::packed_ids::{PackedIds, BLOCK};
+use super::packed_ids::{take, take_u64, PackedIds, BLOCK};
 
 use crate::{Snapshot, StorageError};
+use sha2::{Digest, Sha256};
+
+/// The table file's name inside a disk base's directory, and its first bytes.
+pub const TABLE_FILE: &str = "tables.v1";
+const TABLE_FILE_MAGIC: &[u8; 8] = b"RDFTBL01";
 
 /// Which groups become tables.
 #[derive(Debug, Clone, Copy)]
@@ -194,6 +199,115 @@ impl WideTables {
         for t in &tables { for c in &t.meta.columns { *in_tables.entry(c.predicate).or_default() += c.non_null } }
         let covered = in_tables.into_iter().filter(|(p, n)| subjects_with.get(p) == Some(n)).map(|(p, _)| p).collect();
         Ok(WideTables { tables, by_predicate, triples: total, covered })
+    }
+
+    /// The file form (`tables.v1`), little-endian: magic, the base's manifest SHA-256, the build options and the
+    /// `rdf:type` ID they were built with, the view's triple count, the covered predicates, then per table its meta,
+    /// membership bitset and packed subjects, and per column its predicate, offsets (unless dense) and values. A
+    /// SHA-256 of everything before it ends the file. The packed arrays are stored as they are held, so reading is
+    /// a copy, not a rebuild.
+    fn encode(&self, base: [u8; 32], options: BuildOptions, rdf_type: Option<TermId>) -> Vec<u8> {
+        let mut out = Vec::new();
+        let u = |out: &mut Vec<u8>, v: u64| out.extend_from_slice(&v.to_le_bytes());
+        out.extend_from_slice(TABLE_FILE_MAGIC);
+        out.extend_from_slice(&base);
+        u(&mut out, options.min_fill.to_bits());
+        u(&mut out, options.min_share.to_bits());
+        u(&mut out, rdf_type.map_or(0, |t| t.0));
+        u(&mut out, self.triples);
+        let mut covered: Vec<TermId> = self.covered.iter().copied().collect();
+        covered.sort();
+        u(&mut out, covered.len() as u64);
+        for p in covered { u(&mut out, p.0) }
+        u(&mut out, self.tables.len() as u64);
+        for t in &self.tables {
+            u(&mut out, t.meta.subjects);
+            u(&mut out, t.meta.subject_bytes);
+            u(&mut out, t.meta.columns.len() as u64);
+            for c in &t.meta.columns { for v in [c.predicate.0, c.non_null, c.values, c.bytes] { u(&mut out, v) } }
+            u(&mut out, t.first);
+            match &t.bits {
+                None => out.push(0),
+                Some(bits) => { out.push(1); u(&mut out, bits.len() as u64); for w in bits { u(&mut out, *w) } }
+            }
+            t.subjects.write(&mut out);
+            for c in &t.columns {
+                u(&mut out, c.predicate.0);
+                match &c.offsets { None => out.push(0), Some(o) => { out.push(1); o.write(&mut out) } }
+                c.values.write(&mut out);
+            }
+        }
+        let sum = Sha256::digest(&out);
+        out.extend_from_slice(&sum);
+        out
+    }
+
+    /// Reads `encode`'s form. `Ok(None)` when the file is for another base, other build options or another
+    /// `rdf:type` ID (the tables must be rebuilt); an error when it is damaged.
+    fn decode(bytes: &[u8], base: [u8; 32], options: BuildOptions, rdf_type: Option<TermId>) -> std::io::Result<Option<WideTables>> {
+        let bad = |what: &str| std::io::Error::new(std::io::ErrorKind::InvalidData, format!("table file: {what}"));
+        if bytes.len() < TABLE_FILE_MAGIC.len() + 32 + 32 || &bytes[..TABLE_FILE_MAGIC.len()] != TABLE_FILE_MAGIC { return Err(bad("not a table file")) }
+        let (body, sum) = bytes.split_at(bytes.len() - 32);
+        if Sha256::digest(body).as_slice() != sum { return Err(bad("checksum mismatch")) }
+        let mut input = &body[TABLE_FILE_MAGIC.len()..];
+        if take(&mut input, 32)? != base { return Ok(None) }
+        let (fill, share, ty) = (take_u64(&mut input)?, take_u64(&mut input)?, take_u64(&mut input)?);
+        if fill != options.min_fill.to_bits() || share != options.min_share.to_bits() || ty != rdf_type.map_or(0, |t| t.0) { return Ok(None) }
+        let triples = take_u64(&mut input)?;
+        let count = |input: &mut &[u8], each: usize| -> std::io::Result<usize> {
+            let n = usize::try_from(take_u64(input)?).map_err(|_| bad("count"))?;
+            if n.saturating_mul(each) > input.len() { return Err(bad("count past the end")) }
+            Ok(n)
+        };
+        let n = count(&mut input, 8)?;
+        let covered = (0..n).map(|_| take_u64(&mut input).map(TermId)).collect::<std::io::Result<_>>()?;
+        let mut tables = Vec::new();
+        for _ in 0..count(&mut input, 8)? {
+            let (subjects, subject_bytes) = (take_u64(&mut input)?, take_u64(&mut input)?);
+            let mut columns = Vec::new();
+            for _ in 0..count(&mut input, 32)? {
+                let [predicate, non_null, values, bytes] = [(); 4].map(|_| take_u64(&mut input));
+                columns.push(ColumnMeta { predicate: TermId(predicate?), non_null: non_null?, values: values?, bytes: bytes? });
+            }
+            let meta = TableMeta { subjects, columns, subject_bytes };
+            let first = take_u64(&mut input)?;
+            let bits = match take(&mut input, 1)?[0] {
+                0 => None,
+                1 => { let n = count(&mut input, 8)?; Some((0..n).map(|_| take_u64(&mut input)).collect::<std::io::Result<Vec<u64>>>()?) }
+                _ => return Err(bad("membership flag")),
+            };
+            let packed = PackedIds::read(&mut input)?;
+            // `member` and `partition_point` need ascending subjects.
+            if packed.len() as u64 != subjects || (1..packed.len()).any(|i| packed.get(i - 1) >= packed.get(i)) { return Err(bad("subjects")) }
+            // The membership bitset, when present, has exactly the subjects' bits set.
+            if let Some(bits) = &bits {
+                let set: u64 = bits.iter().map(|w| u64::from(w.count_ones())).sum();
+                let each = (0..packed.len()).all(|i| packed.get(i).checked_sub(first).is_some_and(|k| bits.get((k / 64) as usize).is_some_and(|w| w >> (k % 64) & 1 == 1)));
+                if set != subjects || !each { return Err(bad("membership bitset")) }
+            }
+            let mut cols = Vec::with_capacity(meta.columns.len());
+            for m in &meta.columns {
+                let predicate = TermId(take_u64(&mut input)?);
+                let offsets = match take(&mut input, 1)?[0] { 0 => None, 1 => Some(PackedIds::read(&mut input)?), _ => return Err(bad("offsets flag")) };
+                let values = PackedIds::read(&mut input)?;
+                // A column's spans must stay inside its values: offsets are one per subject plus one, and a dense
+                // column has one value per subject.
+                let fits = match &offsets {
+                    None => values.len() == packed.len(),
+                    Some(o) => o.len() == packed.len() + 1 && o.get(0) == 0 && o.get(o.len() - 1) as usize == values.len()
+                        && (1..o.len()).all(|i| o.get(i - 1) <= o.get(i)),
+                };
+                if predicate != m.predicate || !fits || values.len() as u64 != m.values { return Err(bad("column shape")) }
+                cols.push(Column { predicate, offsets, values });
+            }
+            tables.push(Table { meta, subjects: packed, columns: cols, first, bits });
+        }
+        if !input.is_empty() { return Err(bad("trailing bytes")) }
+        let mut by_predicate: HashMap<TermId, Vec<TableId>> = HashMap::new();
+        for (t, table) in tables.iter().enumerate() {
+            for c in &table.columns { by_predicate.entry(c.predicate).or_default().push(t as TableId) }
+        }
+        Ok(Some(WideTables { tables, by_predicate, triples, covered }))
     }
 
     /// Number of tables.
@@ -412,6 +526,77 @@ impl<S: Snapshot> WithTables<S> {
     }
 }
 
+/// How `WithTables::open` got its tables.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TablesSource {
+    /// Read from the base's `tables.v1`.
+    Loaded,
+    /// Built (why: `reason`), then written to `tables.v1` for the next open.
+    Built { reason: Rebuild },
+    /// Built (why: `reason`), but `tables.v1` could not be written (a read-only base): they live for this open only.
+    BuiltUnsaved { reason: Rebuild },
+}
+
+/// Why `WithTables::open` built the tables instead of reading them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Rebuild {
+    /// No `tables.v1` beside the base.
+    Missing,
+    /// A `tables.v1` for another base, other build options or another `rdf:type` ID.
+    Stale,
+    /// A `tables.v1` that failed its checksum or shape checks. The tables are derived from the base (every triple
+    /// is still in its indexes), so damage here costs a rebuild, never the open; callers should log it.
+    Damaged,
+}
+
+impl<S: Snapshot> WithTables<S> {
+    /// `inner` with its tables, kept in `dir/tables.v1`: read from that file when it was written for `base` (an
+    /// identity of `inner`'s contents, such as a disk base's manifest SHA-256), these build options and this
+    /// `rdf:type` ID, else built and, when `persist`, written there (temp file, fsync, rename, directory fsync). With
+    /// `persist` false (a read-only store, which promises never to write to its directory) nothing is written and
+    /// built tables are `BuiltUnsaved`. Only a failure to read `inner` itself is an error. `DiskSnapshot::with_tables`
+    /// is the disk base's entry point.
+    pub fn open_persisted(inner: S, dir: &std::path::Path, base: [u8; 32], options: BuildOptions, persist: bool) -> Result<(Self, TablesSource), StorageError> {
+        let rdf_type = inner.lookup(&triplelight_rdf::Term::from(
+            triplelight_rdf::NamedNode::new("http://www.w3.org/1999/02/22-rdf-syntax-ns#type").expect("valid IRI")))?;
+        let reason = match std::fs::read(dir.join(TABLE_FILE)) {
+            Ok(bytes) => match WideTables::decode(&bytes, base, options, rdf_type) {
+                Ok(Some(tables)) => return Ok((WithTables { inner, tables }, TablesSource::Loaded)),
+                Ok(None) => Rebuild::Stale,
+                Err(_) => Rebuild::Damaged,
+            },
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Rebuild::Missing,
+            Err(_) => Rebuild::Damaged,
+        };
+        let tables = WideTables::build(&inner, rdf_type, options)?;
+        if !persist { return Ok((WithTables { inner, tables }, TablesSource::BuiltUnsaved { reason })) }
+        let source = match write_atomically(dir, &tables.encode(base, options, rdf_type)) {
+            Ok(()) => TablesSource::Built { reason },
+            Err(_) => TablesSource::BuiltUnsaved { reason },
+        };
+        Ok((WithTables { inner, tables }, source))
+    }
+}
+
+/// Writes `bytes` as `dir/tables.v1`: a temporary file, fsynced, renamed over it, then the directory fsynced.
+fn write_atomically(dir: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    // A crash between create and rename leaves a temporary file: remove any before writing a new one.
+    for entry in std::fs::read_dir(dir)?.flatten() {
+        if entry.file_name().to_string_lossy().starts_with(&format!(".{TABLE_FILE}.tmp-")) { let _ = std::fs::remove_file(entry.path()); }
+    }
+    let tmp = dir.join(format!(".{TABLE_FILE}.tmp-{}", std::process::id()));
+    let written = (|| {
+        let mut f = std::fs::File::create(&tmp)?;
+        f.write_all(bytes)?;
+        f.sync_all()?;
+        std::fs::rename(&tmp, dir.join(TABLE_FILE))?;
+        std::fs::File::open(dir)?.sync_all()
+    })();
+    if written.is_err() { let _ = std::fs::remove_file(&tmp); }
+    written
+}
+
 impl<S: Snapshot> crate::Dictionary for WithTables<S> {
     fn lookup(&self, term: &triplelight_rdf::Term) -> Result<Option<TermId>, StorageError> { self.inner.lookup(term) }
     fn resolve(&self, id: TermId) -> Result<triplelight_rdf::Term, StorageError> { self.inner.resolve(id) }
@@ -449,7 +634,9 @@ mod tests {
     fn iri(s: &str) -> NamedNode { NamedNode::new(format!("urn:{s}")).unwrap() }
     const TYPE: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 
-    fn data() -> MemorySnapshot {
+    fn data() -> MemorySnapshot { data_with(Vec::new()) }
+
+    fn data_with(extra: Vec<Triple>) -> MemorySnapshot {
         let ty = NamedNode::new(TYPE).unwrap();
         let mut t = Vec::new();
         // 40 reviews: product + date, review 0 has two products (multi-valued), review 1 has no date
@@ -472,6 +659,7 @@ mod tests {
             t.push(Triple::new(u.clone(), iri("reviewFor"), iri("product1")));
             t.push(Triple::new(u.clone(), iri("date"), Literal::new_simple_literal("2008-03-01")));
         }
+        t.extend(extra);
         MemorySnapshot::from_triples(t)
     }
 
@@ -643,4 +831,112 @@ mod tests {
         assert!(!(0..wide.len() as TableId).any(|t| wide.member(t, loose)));
         assert!(WideTables::build(&snap, None, BuildOptions::default()).unwrap().is_empty());
     }
+
+    /// Every table's meta, membership and full scan (all columns, rows, order, counters), for comparing two catalogs.
+    fn catalog_view(w: &WideTables, subjects: &[TermId]) -> Vec<String> {
+        let mut out = vec![format!("{} {} {:?}", w.len(), w.triples, { let mut c: Vec<_> = w.covered.iter().collect(); c.sort(); c })];
+        for t in 0..w.len() as TableId {
+            let meta = w.meta(t).clone();
+            out.push(format!("{meta:?} {:?}", subjects.iter().map(|&s| w.member(t, s)).collect::<Vec<_>>()));
+            let preds: Vec<TermId> = meta.columns.iter().map(|c| c.predicate).collect();
+            let mut scan = w.scan(t, &preds, &[]);
+            while let Some(b) = scan.next_batch() { let b = b.unwrap(); out.push(format!("{:?} {:?}", b.subjects, b.values)) }
+            out.push(format!("{:?}", scan.counters()));
+        }
+        out
+    }
+
+    /// A fresh, empty directory for one test's `tables.v1`.
+    fn table_dir(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("tl-tables-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+    const BASE: [u8; 32] = [7; 32];
+
+    /// The first open builds the tables and writes `tables.v1`; the next reads them back identical (meta, membership,
+    /// every scan with its counters); a damaged file costs a rebuild, never the open.
+    #[test]
+    fn persisted_tables_read_back_identical_and_damage_only_rebuilds() {
+        let dir = table_dir("roundtrip");
+        let options = BuildOptions { min_fill: 0.6, min_share: 0.0 };
+        let (built, source) = WithTables::open_persisted(data(), &dir, BASE, options, true).unwrap();
+        assert_eq!(source, TablesSource::Built { reason: Rebuild::Missing });
+        assert!(built.table_count() > 0);
+        let subjects: Vec<TermId> = built.first_keys(Perm::Spo).unwrap();
+        let want = catalog_view(&built.tables, &subjects);
+        let (loaded, source) = WithTables::open_persisted(data(), &dir, BASE, options, true).unwrap();
+        assert_eq!(source, TablesSource::Loaded);
+        assert_eq!(catalog_view(&loaded.tables, &subjects), want);
+        // other build options: rebuilt (and rewritten), not loaded
+        let (_, source) = WithTables::open_persisted(data(), &dir, BASE, BuildOptions { min_fill: 0.5, min_share: 0.0 }, true).unwrap();
+        assert_eq!(source, TablesSource::Built { reason: Rebuild::Stale });
+        let (_, source) = WithTables::open_persisted(data(), &dir, BASE, options, true).unwrap();
+        assert_eq!(source, TablesSource::Built { reason: Rebuild::Stale }, "the file now holds the 0.5 tables");
+        let bytes = std::fs::read(dir.join(TABLE_FILE)).unwrap();
+        // A flipped byte anywhere: the open still succeeds, the tables are rebuilt and identical, and the indexes
+        // answer as before.
+        let triples = loaded.count(Perm::Spo, &[]).unwrap();
+        for at in [0, 9, 40, bytes.len() / 2, bytes.len() - 1] {
+            let mut bad = bytes.clone();
+            bad[at] ^= 0x10;
+            std::fs::write(dir.join(TABLE_FILE), &bad).unwrap();
+            let (again, source) = WithTables::open_persisted(data(), &dir, BASE, options, true).unwrap();
+            assert_eq!(source, TablesSource::Built { reason: Rebuild::Damaged }, "flipped byte {at}");
+            assert_eq!(catalog_view(&again.tables, &subjects), want, "flipped byte {at}");
+            assert_eq!(again.count(Perm::Spo, &[]).unwrap(), triples);
+        }
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// A read-only open (`persist` false) builds the tables but writes nothing into the base directory, not even a
+    /// temporary file; a stale temporary file from a crashed writer is removed by the next writable open.
+    #[test]
+    fn a_read_only_open_writes_nothing_and_a_writable_one_clears_crash_leftovers() {
+        let dir = table_dir("readonly");
+        let options = BuildOptions { min_fill: 0.6, min_share: 0.0 };
+        let listing = |d: &std::path::Path| { let mut v: Vec<_> = std::fs::read_dir(d).unwrap().map(|e| e.unwrap().file_name()).collect(); v.sort(); v };
+        let before = listing(&dir);
+        let (tables, source) = WithTables::open_persisted(data(), &dir, BASE, options, false).unwrap();
+        assert_eq!(source, TablesSource::BuiltUnsaved { reason: Rebuild::Missing });
+        assert!(tables.table_count() > 0);
+        assert_eq!(listing(&dir), before, "a read-only open created no file");
+        std::fs::write(dir.join(format!(".{TABLE_FILE}.tmp-999999")), b"partial").unwrap();
+        let (_, source) = WithTables::open_persisted(data(), &dir, BASE, options, true).unwrap();
+        assert_eq!(source, TablesSource::Built { reason: Rebuild::Missing });
+        let mut want = before.clone();
+        want.push(TABLE_FILE.into());
+        want.sort();
+        assert_eq!(listing(&dir), want, "the leftover is gone and only tables.v1 was added");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// A table file written for another base (another content identity) is never used: the tables are rebuilt.
+    #[test]
+    fn a_table_file_from_another_base_is_rebuilt_not_loaded() {
+        let options = BuildOptions { min_fill: 0.6, min_share: 0.0 };
+        let dir = table_dir("foreign");
+        WithTables::open_persisted(data(), &dir, BASE, options, true).unwrap();
+        let (_, source) = WithTables::open_persisted(data(), &dir, [8; 32], options, true).unwrap();
+        assert_eq!(source, TablesSource::Built { reason: Rebuild::Stale });
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Tables describe the base alone: an overlay with no change shows them, and after one insert it shows none, so
+    /// the index path answers and sees the new triple.
+    #[test]
+    fn an_overlay_with_changes_shows_no_tables() {
+        let dir = table_dir("delta");
+        let (with, _) = WithTables::open_persisted(data(), &dir, BASE, BuildOptions { min_fill: 0.6, min_share: 0.0 }, true).unwrap();
+        let base = crate::store::Overlay::from_base(std::sync::Arc::new(with));
+        assert!(base.wide_tables().is_some());
+        let before = base.count(Perm::Spo, &[]).unwrap();
+        let (changed, n) = base.with_changes(&[(triplelight_core::model::Change::Insert, Triple::new(iri("review999"), iri("date"), Literal::new_simple_literal("2009-01-01")))]).unwrap();
+        assert_eq!(n, 1);
+        assert!(changed.wide_tables().is_none(), "stale tables must not answer");
+        assert_eq!(changed.count(Perm::Spo, &[]).unwrap(), before + 1);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
 }
