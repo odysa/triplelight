@@ -18,8 +18,10 @@ use triplelight_rdf::Term;
 /// Each ORDER BY key: its expression, and the column holding it when it is a variable (or the alias computed below).
 type KeyColumn<'e> = (&'e Expression, Option<usize>);
 
-/// Bytes of one decoded sort key, as charged.
-const KEY_BYTES: u64 = 48;
+/// Bytes of one sort key, as charged: a decoded term (about 48 bytes) and the number `order` caches beside it. Every
+/// in-memory sort and every spilled run sorts through `order`, so the spill decision, the run size and both reservations
+/// use it (the k-way merge holds bare terms, so its heads are charged slightly high).
+const KEY_BYTES: u64 = 48 + std::mem::size_of::<Option<super::Num>>() as u64;
 /// The most runs merged at once (one open file each).
 const MAX_RUNS: usize = spill::MAX_PARTITIONS;
 
@@ -56,7 +58,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 None => self.value(e, r),
             }
         };
-        // Sort keys: one decoded term (about 48 bytes) per row and key, at most.
+        // Sort keys: one decoded term and its cached number per row and key, at most.
         let _keys = self.reserve(keys);
         let idx = order(rows.len(), &desc, limit, |i, k| key_of(&rows[i], keys_by_column[k]));
         let mut rows: Vec<Option<Row>> = rows.into_iter().map(Some).collect();
