@@ -142,6 +142,45 @@ public final class Database implements AutoCloseable {
         }
     }
 
+    /** One synchronous accumulator per group and aggregate occurrence. */
+    public interface AggregateState {
+        /** Accept a bound RDF term. Unbound arguments and expression errors are skipped. */
+        void step(Term value) throws Exception;
+
+        /** Return the result, including for an empty implicit group, or null to leave it unbound. */
+        Term finish() throws Exception;
+    }
+
+    /** Creates independent group state. Factory calls can overlap across queries. */
+    @FunctionalInterface
+    public interface AggregateFactory {
+        AggregateState create() throws Exception;
+    }
+
+    /**
+     * Register a unary aggregate for subsequent queries. A callback exception leaves its group result unbound.
+     * Callbacks must neither reenter nor mutate the evaluating database.
+     */
+    public void registerAggregateFunction(String iri, AggregateFactory factory) {
+        Objects.requireNonNull(iri, "iri");
+        Objects.requireNonNull(factory, "factory");
+        lock.readLock().lock();
+        try {
+            MemorySegment h = live();
+            if (Native.REGISTER_AGGREGATE_FUNCTION == null || Native.SCALAR_SET_TERM == null) {
+                throw new TripleLightException(TripleLightException.Kind.UNSUPPORTED,
+                        "native library lacks aggregate callbacks");
+            }
+            AggregateCallbacks.register(h, iri, factory);
+        } catch (TripleLightException error) {
+            throw error;
+        } catch (Throwable error) {
+            throw internal(error);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     /** Loads a linked official extension for this database. */
     public void loadExtension(String name) {
         lock.readLock().lock();

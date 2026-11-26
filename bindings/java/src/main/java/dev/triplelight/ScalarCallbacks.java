@@ -63,31 +63,41 @@ final class ScalarCallbacks {
     }
 
     private static int invoke(MemorySegment context, MemorySegment args, MemorySegment destination) {
-        try (Arena caller = Arena.ofConfined()) {
-            MemorySegment view = args.reinterpret(Native.SCALAR_ARGS.byteSize());
-            int count = Math.toIntExact(view.get(JAVA_LONG, Native.ARGS_LEN));
-            int nTerms = Math.toIntExact(view.get(JAVA_LONG, Native.ARGS_N_TERMS));
-            long nBytes = view.get(JAVA_LONG, Native.ARGS_N_BYTES);
-            byte[] bytes = nBytes == 0 ? new byte[0]
-                    : view.get(ADDRESS, Native.ARGS_BYTES).reinterpret(nBytes).toArray(JAVA_BYTE);
-            Term[] terms = Database.decodeTerms(view.get(ADDRESS, Native.ARGS_TERMS), nTerms, bytes);
-            Term[] arguments = new Term[count];
-            if (count != 0) {
-                MemorySegment cells = view.get(ADDRESS, Native.ARGS_CELLS).reinterpret((long) count * Integer.BYTES);
-                for (int i = 0; i < count; i++) {
-                    arguments[i] = terms[cells.getAtIndex(JAVA_INT, i) - 1];
-                }
+        try {
+            Term result = REGISTRATIONS.get(context.address()).function().apply(decodeArgs(args));
+            return writeTerm(destination, result);
+        } catch (Throwable error) {
+            // Java exceptions must never escape a native upcall.
+            return Native.TL_ERR_INTERNAL;
+        }
+    }
+
+    static Term[] decodeArgs(MemorySegment args) {
+        MemorySegment view = args.reinterpret(Native.SCALAR_ARGS.byteSize());
+        int count = Math.toIntExact(view.get(JAVA_LONG, Native.ARGS_LEN));
+        int nTerms = Math.toIntExact(view.get(JAVA_LONG, Native.ARGS_N_TERMS));
+        long nBytes = view.get(JAVA_LONG, Native.ARGS_N_BYTES);
+        byte[] bytes = nBytes == 0 ? new byte[0]
+                : view.get(ADDRESS, Native.ARGS_BYTES).reinterpret(nBytes).toArray(JAVA_BYTE);
+        Term[] terms = Database.decodeTerms(view.get(ADDRESS, Native.ARGS_TERMS), nTerms, bytes);
+        Term[] arguments = new Term[count];
+        if (count != 0) {
+            MemorySegment cells = view.get(ADDRESS, Native.ARGS_CELLS).reinterpret((long) count * Integer.BYTES);
+            for (int i = 0; i < count; i++) {
+                arguments[i] = terms[cells.getAtIndex(JAVA_INT, i) - 1];
             }
-            Term result = REGISTRATIONS.get(context.address()).function().apply(arguments);
-            if (result == null) return Native.TL_ERR_INTERNAL;
+        }
+        return arguments;
+    }
+
+    static int writeTerm(MemorySegment destination, Term result) throws Throwable {
+        if (result == null) return Native.TL_ERR_INTERNAL;
+        try (Arena caller = Arena.ofConfined()) {
             StringBuilder term = new StringBuilder();
             appendTerm(term, result, 0);
             byte[] returned = utf8(term);
             return (int) Native.SCALAR_SET_TERM.invokeExact(destination, caller.allocateFrom(JAVA_BYTE, returned),
                     (long) returned.length);
-        } catch (Throwable error) {
-            // Java exceptions must never escape a native upcall.
-            return Native.TL_ERR_INTERNAL;
         }
     }
 
@@ -100,7 +110,7 @@ final class ScalarCallbacks {
         }
     }
 
-    private static byte[] utf8(CharSequence text) throws java.nio.charset.CharacterCodingException {
+    static byte[] utf8(CharSequence text) throws java.nio.charset.CharacterCodingException {
         ByteBuffer encoded = StandardCharsets.UTF_8.newEncoder().encode(CharBuffer.wrap(text));
         byte[] bytes = new byte[encoded.remaining()];
         encoded.get(bytes);
