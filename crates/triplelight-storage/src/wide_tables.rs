@@ -28,7 +28,7 @@ impl Default for BuildOptions {
 struct Column {
     predicate: TermId,
     /// `offsets[i]..offsets[i + 1]` are subject `i`'s values.
-    offsets: Vec<u32>,
+    offsets: Vec<u64>,
     values: Vec<TermId>,
 }
 
@@ -37,9 +37,10 @@ struct Table {
     subjects: Vec<TermId>,
     /// Sorted by predicate.
     columns: Vec<Column>,
-    /// Bit `id - first` is set for every subject; `first` is the smallest subject.
+    /// Bit `id - first` is set for every subject (`first` = the smallest), when the subjects' ID span is dense
+    /// enough (at most 64 bits per subject); otherwise `member` binary-searches `subjects`.
     first: u64,
-    bits: Vec<u64>,
+    bits: Option<Vec<u64>>,
 }
 
 impl Table {
@@ -118,7 +119,7 @@ impl WideTables {
             subjects: Vec::new(),
             columns: preds.iter().map(|&p| Column { predicate: p, offsets: vec![0], values: Vec::new() }).collect(),
             first: 0,
-            bits: Vec::new(),
+            bits: None,
         }).collect();
         // Pass 2: fill them.
         if !tables.is_empty() {
@@ -131,7 +132,7 @@ impl WideTables {
                 for col in &mut table.columns {
                     while j < s.rows.len() && s.rows[j].0 < col.predicate { j += 1 }
                     while j < s.rows.len() && s.rows[j].0 == col.predicate { col.values.push(s.rows[j].1); j += 1 }
-                    col.offsets.push(col.values.len() as u32);
+                    col.offsets.push(col.values.len() as u64);
                 }
             })?;
         }
@@ -139,17 +140,23 @@ impl WideTables {
         for (t, table) in tables.iter_mut().enumerate() {
             let (first, last) = (table.subjects.first().map_or(0, |s| s.0), table.subjects.last().map_or(0, |s| s.0));
             table.first = first;
-            table.bits = vec![0u64; ((last - first) / 64 + 1) as usize];
-            for s in &table.subjects { let k = s.0 - first; table.bits[(k / 64) as usize] |= 1 << (k % 64) }
+            // IDs carry a kind tag in their top bits, so a table mixing IRIs and blank nodes spans ~2^60: only
+            // allocate the bitset when it costs at most one word per subject (64 bits), else binary-search.
+            let words = (last - first) / 64 + 1;
+            if words <= (table.subjects.len() as u64).max(1024) {
+                let mut bits = vec![0u64; words as usize];
+                for s in &table.subjects { let k = s.0 - first; bits[(k / 64) as usize] |= 1 << (k % 64) }
+                table.bits = Some(bits);
+            }
             table.meta = TableMeta {
                 subjects: table.subjects.len() as u64,
                 columns: table.columns.iter().map(|c| ColumnMeta {
                     predicate: c.predicate,
                     non_null: c.offsets.windows(2).filter(|w| w[1] > w[0]).count() as u64,
                     values: c.values.len() as u64,
-                    bytes: (c.offsets.len() * 4 + c.values.len() * 8) as u64,
+                    bytes: (c.offsets.len() * 8 + c.values.len() * 8) as u64,
                 }).collect(),
-                subject_bytes: (table.subjects.len() * 8 + table.bits.len() * 8) as u64,
+                subject_bytes: (table.subjects.len() * 8 + table.bits.as_ref().map_or(0, Vec::len) * 8) as u64,
             };
             for c in &table.columns { by_predicate.entry(c.predicate).or_default().push(t as TableId) }
         }
@@ -178,15 +185,20 @@ impl TableCatalog for WideTables {
 
     fn member(&self, table: TableId, subject: TermId) -> bool {
         let t = &self.tables[table as usize];
-        let Some(k) = subject.0.checked_sub(t.first) else { return false };
-        t.bits.get((k / 64) as usize).is_some_and(|w| w >> (k % 64) & 1 == 1)
+        match &t.bits {
+            Some(bits) => {
+                let Some(k) = subject.0.checked_sub(t.first) else { return false };
+                bits.get((k / 64) as usize).is_some_and(|w| w >> (k % 64) & 1 == 1)
+            }
+            None => t.subjects.binary_search(&subject).is_ok(),
+        }
     }
 
     fn scan<'a>(&'a self, table: TableId, predicates: &[TermId], ranges: &[Option<(TermId, TermId)>]) -> Box<dyn TableScan + 'a> {
         let t = &self.tables[table as usize];
         let columns = predicates.iter().map(|&p| t.column(p).expect("scan of a predicate that is not a column")).collect();
         let ranges = (0..predicates.len()).map(|i| ranges.get(i).copied().flatten()).collect();
-        Box::new(Scan { table: t, columns, ranges, next: 0, counters: ScanCounters::default(), picked: vec![Vec::new(); predicates.len()] })
+        Box::new(Scan { table: t, columns, ranges, next: 0, counters: ScanCounters::default(), picked: vec![Vec::new(); predicates.len()], pending: None })
     }
 }
 
@@ -198,46 +210,68 @@ struct Scan<'a> {
     counters: ScanCounters,
     /// This subject's values per requested column, after the ranges.
     picked: Vec<Vec<TermId>>,
+    /// A subject whose combinations did not fit the last batch: its index and the next combination (an odometer
+    /// over `picked`, the last column varying fastest). A subject's rows may therefore span batches, so a huge
+    /// product never makes one huge batch.
+    pending: Option<(usize, Vec<usize>)>,
+}
+
+impl Scan<'_> {
+    /// Loads subject `i`'s values into `picked`; whether it has at least one combination.
+    fn load(&mut self, i: usize) -> bool {
+        self.counters.subjects_scanned += 1;
+        self.counters.bytes_read += 8;
+        for (c, col) in self.columns.iter().enumerate() {
+            let vals = &col.values[col.offsets[i] as usize..col.offsets[i + 1] as usize];
+            self.counters.values_read += vals.len() as u64;
+            self.counters.bytes_read += 8 + 8 * vals.len() as u64;
+            let picked = &mut self.picked[c];
+            picked.clear();
+            match self.ranges[c] {
+                Some((lo, hi)) => picked.extend(vals.iter().copied().filter(|v| *v >= lo && *v < hi)),
+                None => picked.extend_from_slice(vals),
+            }
+            if picked.is_empty() { return false }
+        }
+        true
+    }
 }
 
 impl TableScan for Scan<'_> {
     fn next_batch(&mut self) -> Option<Result<TableBatch, StorageError>> {
         let n = self.table.subjects.len();
-        if self.next >= n { return None }
+        if self.pending.is_none() && self.next >= n { return None }
         let mut out = TableBatch { subjects: Vec::new(), values: vec![Vec::new(); self.columns.len()] };
-        while self.next < n && out.len() < TABLE_BATCH_ROWS {
-            let i = self.next;
-            self.next += 1;
-            self.counters.subjects_scanned += 1;
-            self.counters.bytes_read += 8;
-            let mut rows = 1usize;
-            for (c, col) in self.columns.iter().enumerate() {
-                let vals = &col.values[col.offsets[i] as usize..col.offsets[i + 1] as usize];
-                self.counters.values_read += vals.len() as u64;
-                self.counters.bytes_read += 4 + 8 * vals.len() as u64;
-                let picked = &mut self.picked[c];
-                picked.clear();
-                match self.ranges[c] {
-                    Some((lo, hi)) => picked.extend(vals.iter().copied().filter(|v| *v >= lo && *v < hi)),
-                    None => picked.extend_from_slice(vals),
+        while out.len() < TABLE_BATCH_ROWS {
+            let (i, mut idx) = match self.pending.take() {
+                Some(p) => p,
+                None => {
+                    if self.next >= n { break }
+                    let i = self.next;
+                    self.next += 1;
+                    if !self.load(i) { continue }
+                    (i, vec![0usize; self.columns.len()])
                 }
-                rows = rows.saturating_mul(picked.len());
-                if rows == 0 { break }
-            }
-            if rows == 0 { continue }
-            // every combination, the last column varying fastest (ascending values per column)
-            let mut idx = vec![0usize; self.columns.len()];
-            for _ in 0..rows {
-                out.subjects.push(self.table.subjects[i]);
+            };
+            let subject = self.table.subjects[i];
+            loop {
+                out.subjects.push(subject);
                 for (c, &k) in idx.iter().enumerate() { out.values[c].push(self.picked[c][k]) }
-                for c in (0..idx.len()).rev() {
+                self.counters.rows_emitted += 1;
+                // advance the odometer; done when it wraps
+                let mut c = idx.len();
+                let wrapped = loop {
+                    if c == 0 { break true }
+                    c -= 1;
                     idx[c] += 1;
-                    if idx[c] < self.picked[c].len() { break }
+                    if idx[c] < self.picked[c].len() { break false }
                     idx[c] = 0;
-                }
+                };
+                if wrapped { break }
+                if out.len() >= TABLE_BATCH_ROWS { self.pending = Some((i, idx)); break }
             }
-            self.counters.rows_emitted += rows as u64;
         }
+        if out.is_empty() { return None }
         Some(Ok(out))
     }
 
@@ -347,6 +381,28 @@ mod tests {
         let mut n = 0;
         while let Some(b) = scan.next_batch() { n += b.unwrap().len() }
         assert_eq!(n, 0);
+    }
+
+    #[test]
+    fn a_large_product_spans_batches_without_losing_rows() {
+        let ty = NamedNode::new(TYPE).unwrap();
+        let mut t = vec![Triple::new(iri("x"), ty.clone(), iri("T"))];
+        for i in 0..40 { t.push(Triple::new(iri("x"), iri("a"), iri(&format!("a{i}")))) }
+        for i in 0..40 { t.push(Triple::new(iri("x"), iri("b"), iri(&format!("b{i}")))) }
+        let snap = MemorySnapshot::from_triples(t);
+        let wide = WithTables::build(snap, BuildOptions { min_fill: 0.0, min_share: 0.0 }).unwrap();
+        let (a, b) = (wide.lookup(&iri("a").into()).unwrap().unwrap(), wide.lookup(&iri("b").into()).unwrap().unwrap());
+        let tbl = wide.tables.tables_with(&[a, b])[0];
+        let mut scan = wide.tables.scan(tbl, &[a, b], &[None, None]);
+        let (mut rows, mut batches, mut seen) = (0, 0, std::collections::HashSet::new());
+        while let Some(batch) = scan.next_batch() {
+            let batch = batch.unwrap();
+            assert!(batch.len() <= TABLE_BATCH_ROWS);
+            for r in 0..batch.len() { assert!(seen.insert((batch.values[0][r], batch.values[1][r]))) }
+            rows += batch.len(); batches += 1;
+        }
+        assert_eq!((rows, batches), (1600, 2), "40 x 40 combinations, each once, over two batches");
+        assert!(wide.wide_tables().is_some());
     }
 
     #[test]
