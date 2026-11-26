@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 use crate::opt::stats::Stats;
-use crate::extension::{Extension, ExtensionError, ExtensionInfo, ExtensionRegistry, FunctionOptions, Registry, ScalarFunction, Validation};
+use crate::extension::{AggregateFunction, Extension, ExtensionError, ExtensionInfo, ExtensionRegistry, FunctionOptions, Registry, ScalarFunction, Validation};
 use crate::exec::{self, QueryError, QueryResult, udf::QueryExtensions};
 use crate::rdf::{NamedNode, Triple};
 use crate::store::{Change, Overlay, Store};
@@ -259,6 +259,15 @@ impl Database {
         callback: impl ScalarFunction,
     ) -> Result<(), ExtensionError> {
         self.extensions.register_function(iri, options, callback)
+    }
+
+    /// Registers a unary aggregate factory under an absolute IRI for future read snapshots.
+    pub fn register_aggregate_function(
+        &self,
+        iri: &str,
+        factory: impl AggregateFunction,
+    ) -> Result<(), ExtensionError> {
+        self.extensions.register_aggregate_function(iri, factory)
     }
 
     /// Lists compiled-in official extensions and registrations visible to this database.
