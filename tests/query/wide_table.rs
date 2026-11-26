@@ -145,6 +145,65 @@ fn date_interval_filters_table_values_before_expansion() {
 }
 
 #[test]
+fn numeric_interval_uses_value_order_only_when_ids_prove_it() {
+    const YEARS: &str = r#"
+<urn:a> <urn:year> "1900"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:a> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:a> <urn:part> <urn:x> .
+<urn:b> <urn:year> "1911"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:b> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:b> <urn:part> <urn:y> .
+<urn:c> <urn:year> "1912"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:c> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:c> <urn:part> <urn:z> .
+"#;
+    const NONMONOTONE: &str = r#"
+<urn:a> <urn:year> "9"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:a> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:a> <urn:part> <urn:x> .
+<urn:b> <urn:year> "10"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:b> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:b> <urn:part> <urn:y> .
+<urn:c> <urn:year> "11"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:c> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:c> <urn:part> <urn:z> .
+"#;
+    const DECIMAL: &str = r#"
+<urn:a> <urn:year> "1909"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:a> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:a> <urn:part> <urn:x> .
+<urn:b> <urn:year> "1910.5"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+<urn:b> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:b> <urn:part> <urn:y> .
+<urn:c> <urn:year> "1911"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:c> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:c> <urn:part> <urn:z> .
+"#;
+    for (data, query, interval) in [
+        (YEARS, "SELECT ?s ?part WHERE { ?s <urn:year> ?year . ?s <urn:part> ?part . FILTER(?year >= 1911 && ?year < 1912) }", true),
+        (NONMONOTONE, "SELECT ?s ?part WHERE { ?s <urn:year> ?year . ?s <urn:part> ?part . FILTER(?year >= 10 && ?year < 11) }", false),
+        (DECIMAL, "SELECT ?s ?part WHERE { ?s <urn:year> ?year . ?s <urn:part> ?part . FILTER(?year >= 1910.5 && ?year < 1911.0) }", true),
+    ] {
+        let memory = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+        let dir = std::env::temp_dir().join(format!("triplelight-wide-numeric-{}-{interval}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        write_disk_snapshot(&dir, &memory).unwrap();
+        let plain = DiskSnapshot::open(&dir).unwrap();
+        let wide = WithTables::build(DiskSnapshot::open(&dir).unwrap(), BuildOptions { min_fill: 0.0, min_share: 0.0 }).unwrap();
+        let expected = bag(query_with(&plain, query, &Options::default()).unwrap());
+        assert_eq!(expected.len(), 1);
+        let (result, trace) = triplelight::exec::plan_trace::capture(|| {
+            query_with(&wide, query, &Options { force_wide_tables: true, ..Options::default() }).unwrap()
+        });
+        assert_eq!(bag(result), expected);
+        assert!(trace.iter().any(|line| line.contains(if interval { "table_ranges=1" } else { "table_ranges=0" })), "{trace:?}");
+        drop(wide);
+        drop(plain);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+}
+
+#[test]
 fn constant_objects_and_embedded_stars_preserve_bags() {
     const MIXED: &str = r#"
 <urn:a> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:T> .
