@@ -233,7 +233,7 @@ impl TableCatalog for WideTables {
         let t = &self.tables[table as usize];
         let columns = predicates.iter().map(|&p| t.column(p).expect("scan of a predicate that is not a column")).collect();
         let ranges = (0..predicates.len()).map(|i| ranges.get(i).copied().flatten()).collect();
-        Box::new(Scan { table: t, columns, ranges, next: 0, counters: ScanCounters::default(), picked: vec![Vec::new(); predicates.len()], pending: None, scratch: Vec::with_capacity(BLOCK) })
+        Box::new(Scan { table: t, columns, ranges, next: 0, counters: ScanCounters::default(), picked: vec![Vec::new(); predicates.len()], pending: None, scratch: Vec::with_capacity(BLOCK), carry: None })
     }
 }
 
@@ -251,6 +251,8 @@ struct Scan<'a> {
     pending: Option<(usize, Vec<usize>)>,
     /// A decoded block, reused across batches.
     scratch: Vec<u64>,
+    /// Dense scans: a filtered block whose rows did not all fit the last batch (block, remaining positions).
+    carry: Option<(usize, Vec<u32>)>,
 }
 
 impl Scan<'_> {
@@ -278,9 +280,9 @@ impl Scan<'_> {
 impl TableScan for Scan<'_> {
     fn next_batch(&mut self) -> Option<Result<TableBatch, StorageError>> {
         let n = self.table.subjects.len();
+        if self.pending.is_none() && self.columns.iter().all(|c| c.dense()) { return self.next_dense_batch() }
         if self.pending.is_none() && self.next >= n { return None }
         let k = self.columns.len();
-        if self.pending.is_none() && self.columns.iter().all(|c| c.dense()) { return self.next_dense_batch() }
         let mut out = TableBatch { subjects: Vec::with_capacity(TABLE_BATCH_ROWS), values: (0..k).map(|_| Vec::with_capacity(TABLE_BATCH_ROWS)).collect() };
         'subjects: while out.len() < TABLE_BATCH_ROWS {
             let (i, mut idx) = match self.pending.take() {
@@ -344,36 +346,45 @@ impl Scan<'_> {
     fn next_dense_batch(&mut self) -> Option<Result<TableBatch, StorageError>> {
         let n = self.table.subjects.len();
         let k = self.columns.len();
-        let mut sel: Vec<u32> = Vec::with_capacity(TABLE_BATCH_ROWS);
-        while self.next < n {
-            let (lo, hi) = (self.next, (self.next + TABLE_BATCH_ROWS).min(n));
-            self.next = hi;
-            self.counters.subjects_scanned += (hi - lo) as u64;
-            self.counters.bytes_read += (hi - lo) as u64 * (8 + 16 * k as u64);
-            sel.clear();
-            sel.extend(0..(hi - lo) as u32);
-            // batches start at multiples of TABLE_BATCH_ROWS, which is the packing block, so batch = block
-            let blk = lo / BLOCK;
-            for (c, col) in self.columns.iter().enumerate() {
-                let Some((a, b)) = self.ranges[c] else { continue };
-                col.values.select_in_range(blk, a.0, b.0, &mut self.scratch, &mut sel);
-                if sel.is_empty() { break }
-            }
-            // gather from decoded blocks: one sequential decode per column beats a random `get` per row
-            self.counters.values_read += (hi - lo) as u64 * k as u64;
-            if sel.is_empty() { continue }
-            let scratch = &mut self.scratch;
-            let mut gather = |p: &PackedIds| -> Vec<TermId> {
-                p.decode_block(blk, scratch);
-                sel.iter().map(|&r| TermId(scratch[r as usize])).collect()
+        let mut out = TableBatch { subjects: Vec::with_capacity(TABLE_BATCH_ROWS), values: vec![Vec::with_capacity(TABLE_BATCH_ROWS); k] };
+        // Fill the batch from successive blocks: a selective range keeps a few rows per block, and many tiny batches
+        // cost more downstream than the scan itself. A block that does not fit is carried to the next call.
+        while out.len() < TABLE_BATCH_ROWS {
+            let (blk, sel) = match self.carry.take() {
+                Some(c) => c,
+                None => {
+                    if self.next >= n { break }
+                    let (lo, hi) = (self.next, (self.next + TABLE_BATCH_ROWS).min(n));
+                    self.next = hi;
+                    self.counters.subjects_scanned += (hi - lo) as u64;
+                    self.counters.values_read += (hi - lo) as u64 * k as u64;
+                    self.counters.bytes_read += (hi - lo) as u64 * (8 + 16 * k as u64);
+                    let mut sel: Vec<u32> = (0..(hi - lo) as u32).collect();
+                    // scan blocks start at multiples of TABLE_BATCH_ROWS, which is the packing block
+                    let blk = lo / BLOCK;
+                    for (c, col) in self.columns.iter().enumerate() {
+                        let Some((a, b)) = self.ranges[c] else { continue };
+                        col.values.select_in_range(blk, a.0, b.0, &mut self.scratch, &mut sel);
+                        if sel.is_empty() { break }
+                    }
+                    if sel.is_empty() { continue }
+                    (blk, sel)
+                }
             };
-            let subjects = gather(&self.table.subjects);
-            let values = self.columns.iter().map(|col| gather(&col.values)).collect();
-            let out = TableBatch { subjects, values };
-            self.counters.rows_emitted += out.len() as u64;
-            return Some(Ok(out));
+            let take = sel.len().min(TABLE_BATCH_ROWS - out.len());
+            // gather from decoded blocks: one sequential decode per column beats a random `get` per row
+            let scratch = &mut self.scratch;
+            let mut gather = |p: &PackedIds, into: &mut Vec<TermId>| {
+                p.decode_block(blk, scratch);
+                into.extend(sel[..take].iter().map(|&r| TermId(scratch[r as usize])));
+            };
+            gather(&self.table.subjects, &mut out.subjects);
+            for (col, into) in self.columns.iter().zip(out.values.iter_mut()) { gather(&col.values, into) }
+            if take < sel.len() { self.carry = Some((blk, sel[take..].to_vec())) }
         }
-        None
+        if out.is_empty() { return None }
+        self.counters.rows_emitted += out.len() as u64;
+        Some(Ok(out))
     }
 }
 
@@ -579,6 +590,19 @@ mod tests {
             assert_eq!((c.subjects_scanned, c.values_read, c.rows_emitted), (n, if is_dense { 2 * n } else { c.values_read }, got.len() as u64));
             if is_dense { assert!(wide.meta(t).columns.iter().map(|c| c.bytes).sum::<u64>() < 2 * n * 8, "packed, no offsets") }
         }
+        // unfiltered, a dense scan fills every batch (blocks carried across batches) and loses no row
+        let t = tables[dense.iter().position(|d| *d).unwrap()];
+        let mut scan = wide.scan(t, &[p1, p2], &[None, None]);
+        let mut sizes = Vec::new();
+        let mut subjects = Vec::new();
+        while let Some(b) = scan.next_batch() { let b = b.unwrap(); sizes.push(b.len()); subjects.extend(b.subjects) }
+        assert_eq!(sizes, vec![1024, 1024, 452]);
+        assert!(subjects.windows(2).all(|w| w[0] < w[1]) && subjects.len() == 2500);
+        // a selective range still yields full batches when enough rows qualify: ~1/3 of 2500 rows in one batch
+        let mut scan = wide.scan(t, &[p1, p2], &[None, Some((lo, hi))]);
+        let mut batches = 0;
+        while let Some(b) = scan.next_batch() { assert!(!b.unwrap().is_empty()); batches += 1 }
+        assert_eq!(batches, 1);
     }
 
     #[test]
