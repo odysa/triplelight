@@ -84,6 +84,9 @@ pub trait TableCatalog: Send + Sync {
     fn meta(&self, table: TableId) -> &TableMeta;
     /// Whether `subject` is stored in `table` (constant time).
     fn member(&self, table: TableId, subject: TermId) -> bool;
+    /// Whether every subject of the view that has `predicate` is in some table (exact, counted at build time). When
+    /// it holds for any fixed predicate of a star, the star's residual over the indexes is empty and can be skipped.
+    fn covers_all_subjects(&self, _predicate: TermId) -> bool { false }
     /// Rows of `table` for `predicates` (each must be a column; repeats allowed), subjects ascending. `ranges[i]`, if
     /// given, keeps only values `v` of `predicates[i]` with `lo <= v < hi` (by ID) before expansion; the caller is
     /// responsible for the ranges being exact for its filter.

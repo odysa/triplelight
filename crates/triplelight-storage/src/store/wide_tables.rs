@@ -55,6 +55,8 @@ pub struct WideTables {
     /// predicate -> tables having it as a column, ascending.
     by_predicate: HashMap<TermId, Vec<TableId>>,
     triples: u64,
+    /// Predicates every one of whose subjects is in a table.
+    covered: std::collections::HashSet<TermId>,
 }
 
 /// One subject's predicate-object pairs from an SPO scan, in (p, o) order.
@@ -89,10 +91,14 @@ struct Group { subjects: u64, triples: u64, per_predicate: BTreeMap<TermId, u64>
 impl WideTables {
     /// Builds the tables of `snap`. `rdf_type` is the view's ID for `rdf:type` (`None`: no tables).
     pub fn build(snap: &dyn Snapshot, rdf_type: Option<TermId>, options: BuildOptions) -> Result<WideTables, StorageError> {
-        let Some(rdf_type) = rdf_type else { return Ok(WideTables { tables: Vec::new(), by_predicate: HashMap::new(), triples: 0 }) };
+        let Some(rdf_type) = rdf_type else { return Ok(WideTables { tables: Vec::new(), by_predicate: HashMap::new(), triples: 0, covered: Default::default() }) };
         // Pass 1: group statistics.
         let mut groups: HashMap<Vec<TermId>, Group> = HashMap::new();
+        // subjects per predicate over the whole view, for the exact coverage test
+        let mut subjects_with: HashMap<TermId, u64> = HashMap::new();
         let total = for_each_subject(snap, |s| {
+            let mut last = None;
+            for &(p, _) in &s.rows { if last != Some(p) { *subjects_with.entry(p).or_default() += 1; last = Some(p) } }
             let key = type_key(&s.rows, rdf_type);
             if key.is_empty() { return }
             let g = groups.entry(key).or_default();
@@ -160,7 +166,10 @@ impl WideTables {
             };
             for c in &table.columns { by_predicate.entry(c.predicate).or_default().push(t as TableId) }
         }
-        Ok(WideTables { tables, by_predicate, triples: total })
+        let mut in_tables: HashMap<TermId, u64> = HashMap::new();
+        for t in &tables { for c in &t.meta.columns { *in_tables.entry(c.predicate).or_default() += c.non_null } }
+        let covered = in_tables.into_iter().filter(|(p, n)| subjects_with.get(p) == Some(n)).map(|(p, _)| p).collect();
+        Ok(WideTables { tables, by_predicate, triples: total, covered })
     }
 
     /// Number of tables.
@@ -182,6 +191,8 @@ impl TableCatalog for WideTables {
     }
 
     fn meta(&self, table: TableId) -> &TableMeta { &self.tables[table as usize].meta }
+
+    fn covers_all_subjects(&self, predicate: TermId) -> bool { self.covered.contains(&predicate) }
 
     fn member(&self, table: TableId, subject: TermId) -> bool {
         let t = &self.tables[table as usize];
@@ -378,6 +389,9 @@ mod tests {
         let ty = snap.lookup(&Term::from(NamedNode::new(TYPE).unwrap())).unwrap();
         let wide = WideTables::build(&snap, ty, BuildOptions { min_fill: 0.6, min_share: 0.0 }).unwrap();
         assert_eq!(wide.len(), 2, "Review and Offer");
+        // the untyped `loose` subjects have reviewFor and date but no table, so neither predicate is covered
+        let (rf, dt) = (snap.lookup(&iri("reviewFor").into()).unwrap().unwrap(), snap.lookup(&iri("date").into()).unwrap().unwrap());
+        assert!(!wide.covers_all_subjects(rf) && !wide.covers_all_subjects(dt));
         let p1 = snap.lookup(&iri("reviewFor").into()).unwrap().unwrap();
         let p2 = snap.lookup(&iri("date").into()).unwrap().unwrap();
         let tables = wide.tables_with(&[p1, p2]);
@@ -442,6 +456,7 @@ mod tests {
             rows += batch.len(); batches += 1;
         }
         assert_eq!((rows, batches), (1600, 2), "40 x 40 combinations, each once, over two batches");
+        assert!(wide.tables.covers_all_subjects(a) && wide.tables.covers_all_subjects(b), "x is the only subject with a and b, and it is in a table");
         assert!(wide.wide_tables().is_some());
     }
 
