@@ -27,9 +27,18 @@ impl Default for BuildOptions {
 
 struct Column {
     predicate: TermId,
-    /// `offsets[i]..offsets[i + 1]` are subject `i`'s values.
+    /// `offsets[i]..offsets[i + 1]` are subject `i`'s values; empty when the column is dense (`values[i]` is
+    /// subject `i`'s only value, for every subject).
     offsets: Vec<u64>,
     values: Vec<TermId>,
+}
+
+impl Column {
+    fn dense(&self) -> bool { self.offsets.is_empty() }
+    /// Subject `i`'s values as an index range into `values`.
+    fn span(&self, i: usize) -> (usize, usize) {
+        if self.dense() { (i, i + 1) } else { (self.offsets[i] as usize, self.offsets[i + 1] as usize) }
+    }
 }
 
 struct Table {
@@ -142,6 +151,14 @@ impl WideTables {
                 }
             })?;
         }
+        // A column in which every subject has exactly one value needs no offsets: drop them (8 bytes per subject).
+        for table in &mut tables {
+            for col in &mut table.columns {
+                if col.values.len() == table.subjects.len() && col.offsets.windows(2).all(|w| w[1] - w[0] == 1) {
+                    col.offsets = Vec::new();
+                }
+            }
+        }
         let mut by_predicate: HashMap<TermId, Vec<TableId>> = HashMap::new();
         for (t, table) in tables.iter_mut().enumerate() {
             let (first, last) = (table.subjects.first().map_or(0, |s| s.0), table.subjects.last().map_or(0, |s| s.0));
@@ -158,7 +175,7 @@ impl WideTables {
                 subjects: table.subjects.len() as u64,
                 columns: table.columns.iter().map(|c| ColumnMeta {
                     predicate: c.predicate,
-                    non_null: c.offsets.windows(2).filter(|w| w[1] > w[0]).count() as u64,
+                    non_null: if c.dense() { c.values.len() as u64 } else { c.offsets.windows(2).filter(|w| w[1] > w[0]).count() as u64 },
                     values: c.values.len() as u64,
                     bytes: (c.offsets.len() * 8 + c.values.len() * 8) as u64,
                 }).collect(),
@@ -233,7 +250,8 @@ impl Scan<'_> {
         self.counters.subjects_scanned += 1;
         self.counters.bytes_read += 8;
         for (c, col) in self.columns.iter().enumerate() {
-            let vals = &col.values[col.offsets[i] as usize..col.offsets[i + 1] as usize];
+            let (a, b) = col.span(i);
+            let vals = &col.values[a..b];
             self.counters.values_read += vals.len() as u64;
             self.counters.bytes_read += 8 + 8 * vals.len() as u64;
             let picked = &mut self.picked[c];
@@ -253,6 +271,7 @@ impl TableScan for Scan<'_> {
         let n = self.table.subjects.len();
         if self.pending.is_none() && self.next >= n { return None }
         let k = self.columns.len();
+        if self.pending.is_none() && self.columns.iter().all(|c| c.dense()) { return self.next_dense_batch() }
         let mut out = TableBatch { subjects: Vec::with_capacity(TABLE_BATCH_ROWS), values: (0..k).map(|_| Vec::with_capacity(TABLE_BATCH_ROWS)).collect() };
         'subjects: while out.len() < TABLE_BATCH_ROWS {
             let (i, mut idx) = match self.pending.take() {
@@ -263,12 +282,12 @@ impl TableScan for Scan<'_> {
                     self.next += 1;
                     // Fast path: every requested column has exactly one value for this subject (most cells in a
                     // well-filled table), so the subject yields at most one row and nothing is copied twice.
-                    if self.columns.iter().all(|col| col.offsets[i + 1] - col.offsets[i] == 1) {
+                    if self.columns.iter().all(|col| { let (a, b) = col.span(i); b - a == 1 }) {
                         self.counters.subjects_scanned += 1;
                         self.counters.values_read += k as u64;
                         self.counters.bytes_read += 8 + 16 * k as u64;
                         for (c, col) in self.columns.iter().enumerate() {
-                            let v = col.values[col.offsets[i] as usize];
+                            let v = col.values[col.span(i).0];
                             if let Some((lo, hi)) = self.ranges[c] && !(v >= lo && v < hi) {
                                 // undo the values pushed for this subject's earlier columns
                                 for done in &mut out.values[..c] { done.pop(); }
@@ -307,6 +326,39 @@ impl TableScan for Scan<'_> {
     }
 
     fn counters(&self) -> ScanCounters { self.counters }
+}
+
+impl Scan<'_> {
+    /// Every requested column is dense: subject `i`'s row is `values[c][i]`, so a batch is a block of subjects
+    /// filtered column by column (ranged columns first, into a selection vector) and then gathered. Same rows,
+    /// order and counters as the per-subject path.
+    fn next_dense_batch(&mut self) -> Option<Result<TableBatch, StorageError>> {
+        let n = self.table.subjects.len();
+        let k = self.columns.len();
+        let mut sel: Vec<u32> = Vec::with_capacity(TABLE_BATCH_ROWS);
+        while self.next < n {
+            let (lo, hi) = (self.next, (self.next + TABLE_BATCH_ROWS).min(n));
+            self.next = hi;
+            self.counters.subjects_scanned += (hi - lo) as u64;
+            self.counters.bytes_read += (hi - lo) as u64 * (8 + 16 * k as u64);
+            sel.clear();
+            sel.extend(0..(hi - lo) as u32);
+            for (c, col) in self.columns.iter().enumerate() {
+                let Some((a, b)) = self.ranges[c] else { continue };
+                let vals = &col.values[lo..hi];
+                sel.retain(|&r| { let v = vals[r as usize]; v >= a && v < b });
+            }
+            self.counters.values_read += (hi - lo) as u64 * k as u64;
+            if sel.is_empty() { continue }
+            let out = TableBatch {
+                subjects: sel.iter().map(|&r| self.table.subjects[lo + r as usize]).collect(),
+                values: self.columns.iter().map(|col| sel.iter().map(|&r| col.values[lo + r as usize]).collect()).collect(),
+            };
+            self.counters.rows_emitted += out.len() as u64;
+            return Some(Ok(out));
+        }
+        None
+    }
 }
 
 /// A view with wide tables attached: every read goes to `inner`, and `wide_tables` returns `tables`. The tables must
@@ -461,6 +513,56 @@ mod tests {
         let mut n = 0;
         while let Some(b) = scan.next_batch() { n += b.unwrap().len() }
         assert_eq!(n, 0);
+    }
+
+    #[test]
+    fn dense_columns_drop_offsets_and_scan_by_blocks_with_the_same_rows_and_counters() {
+        // 2500 single-valued reviews (three blocks) plus one with two products, in a second type so that the
+        // first table is dense and the second is not
+        let ty = NamedNode::new(TYPE).unwrap();
+        let mut t = Vec::new();
+        for i in 0..2500 {
+            let r = iri(&format!("r{i:05}"));
+            t.push(Triple::new(r.clone(), ty.clone(), iri("Dense")));
+            t.push(Triple::new(r.clone(), iri("reviewFor"), iri(&format!("product{}", i % 13))));
+            t.push(Triple::new(r.clone(), iri("date"), Literal::new_simple_literal(format!("2008-{:02}-01", i % 12 + 1))));
+        }
+        t.push(Triple::new(iri("m"), ty.clone(), iri("Multi")));
+        t.push(Triple::new(iri("m"), iri("reviewFor"), iri("product1")));
+        t.push(Triple::new(iri("m"), iri("reviewFor"), iri("product2")));
+        t.push(Triple::new(iri("m"), iri("date"), Literal::new_simple_literal("2008-05-01")));
+        let snap = MemorySnapshot::from_triples(t);
+        let tyid = snap.lookup(&Term::from(ty)).unwrap();
+        let wide = WideTables::build(&snap, tyid, BuildOptions { min_fill: 0.0, min_share: 0.0 }).unwrap();
+        let (p1, p2) = (snap.lookup(&iri("reviewFor").into()).unwrap().unwrap(), snap.lookup(&iri("date").into()).unwrap().unwrap());
+        let tables = wide.tables_with(&[p1, p2]);
+        assert_eq!(tables.len(), 2);
+        let dense: Vec<bool> = tables.iter().map(|&t| wide.tables[t as usize].columns.iter().all(Column::dense)).collect();
+        assert_eq!(dense.iter().filter(|d| **d).count(), 1, "one dense table, one with a multi-valued column");
+        // a date range by ID: the IDs of the March..June literals
+        let mut dates: Vec<TermId> = (3..=6).map(|m| snap.lookup(&Literal::new_simple_literal(format!("2008-{m:02}-01")).into()).unwrap().unwrap()).collect();
+        dates.sort();
+        let (lo, hi) = (dates[0], TermId(dates[3].0 + 1));
+        let keep = |d: TermId| d >= lo && d < hi;
+        for (&t, &is_dense) in tables.iter().zip(&dense) {
+            let mut got = Vec::new();
+            let mut scan = wide.scan(t, &[p1, p2], &[None, Some((lo, hi))]);
+            while let Some(b) = scan.next_batch() {
+                let b = b.unwrap();
+                assert!(b.len() <= TABLE_BATCH_ROWS);
+                for r in 0..b.len() { got.push([b.subjects[r], b.values[0][r], b.values[1][r]]) }
+            }
+            assert!(got.windows(2).all(|w| w[0][0] <= w[1][0]), "subjects ascending");
+            let mut want: Vec<[TermId; 3]> = star_by_indexes(&snap, p1, p2, |s| wide.member(t, s)).into_iter().filter(|r| keep(r[2])).collect();
+            want.sort();
+            let mut sorted = got.clone();
+            sorted.sort();
+            assert_eq!(sorted, want, "dense={is_dense}");
+            let c = scan.counters();
+            let n = wide.meta(t).subjects;
+            assert_eq!((c.subjects_scanned, c.values_read, c.rows_emitted), (n, if is_dense { 2 * n } else { c.values_read }, got.len() as u64));
+            if is_dense { assert_eq!(wide.meta(t).columns.iter().map(|c| c.bytes).sum::<u64>(), 2 * n * 8, "no offsets") }
+        }
     }
 
     #[test]
