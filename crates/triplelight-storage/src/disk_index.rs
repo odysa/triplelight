@@ -335,6 +335,27 @@ thread_local! {
     /// Test-only: runs inside `clear_cache` between emptying the shards and bumping the epoch.
     static CLEAR_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce(&dyn std::any::Any)>>> = const { std::cell::RefCell::new(None) };
 }
+/// Where the previous search of one index landed: a block id (`usize::MAX` for none) and, once read, its rows.
+struct Hint<const N: usize> { block: usize, rows: Option<(usize, Arc<Vec<[TermId; N]>>)> }
+impl<const N: usize> Default for Hint<N> { fn default() -> Self { Hint { block: usize::MAX, rows: None } } }
+/// `DiskIndex::cursor`: `range` and `seek_value` that resume from the previous call's block.
+pub struct Cursor<'a, const N: usize> { index: &'a DiskIndex<N>, hint: Hint<N> }
+impl<const N: usize> Cursor<'_, N>
+where
+    Width<N>: SupportedWidth<N>,
+{
+    pub fn count(&mut self, prefix: &[TermId]) -> io::Result<u64> { self.index.range_from(&mut self.hint, prefix).map(|r| r.end - r.start) }
+    pub fn seek_value(&mut self, prefix: &[TermId], target: TermId) -> io::Result<Option<TermId>> { self.index.seek_value_from(&mut self.hint, prefix, target) }
+}
+/// Block-directory searches by kind (`TRIPLELIGHT_TRACE_BLOCK_CACHE`): the hinted block was the answer, a galloping
+/// search forward from it, a binary search of the whole directory. Process-wide; logging only.
+static PROBE_SEARCHES: [AtomicU64; 3] = [const { AtomicU64::new(0) }; 3];
+const PROBE_SAME_BLOCK: usize = 0;
+const PROBE_GALLOP: usize = 1;
+const PROBE_FULL: usize = 2;
+fn probe_trace(kind: usize) { if cache_trace_enabled() { PROBE_SEARCHES[kind].fetch_add(1, Ordering::Relaxed); } }
+/// Directory searches since the last call, then reset: `[same block, gallop, full]`.
+pub fn take_probe_trace() -> [u64; 3] { PROBE_SEARCHES.each_ref().map(|c| c.swap(0, Ordering::Relaxed)) }
 /// Unique per opened index, so a thread's block memo can never confuse two indexes (no address reuse).
 static NEXT_INSTANCE: AtomicU64 = AtomicU64::new(1);
 /// An immutable sorted index of `N`-ID rows (3 for triples, 4 for graph-first quads).
@@ -622,18 +643,43 @@ where
         }
         Ok(self.block(i / BLOCK_ROWS)?[(i % BLOCK_ROWS) as usize])
     }
-    fn bound(&self, key: [TermId; N], upper: bool) -> io::Result<u64> {
-        let block = self
-            .blocks
-            .partition_point(|m| m.last < key || (upper && m.last == key));
-        if block == self.blocks.len() {
-            return Ok(self.rows);
-        }
-        let rows = self.block(block as u64)?;
+    fn bound(&self, key: [TermId; N], upper: bool) -> io::Result<u64> { self.bound_from(&mut Hint::default(), key, upper) }
+    /// The first row `>= key` (`> key` when `upper`), as a position; `hint` is where the previous search landed.
+    fn bound_from(&self, hint: &mut Hint<N>, key: [TermId; N], upper: bool) -> io::Result<u64> {
+        let Some((block, rows)) = self.block_for(hint, |m| m < &key || (upper && m == &key))? else { return Ok(self.rows) };
         let offset = rows.partition_point(|r| *r < key || (upper && *r == key));
         Ok(block as u64 * BLOCK_ROWS + offset as u64)
     }
-    pub fn range(&self, prefix: &[TermId]) -> io::Result<std::ops::Range<u64>> {
+    /// The first block whose last row fails `before` (the block directory is partitioned by it), with its rows, or
+    /// `None` past the end. Starts from `hint`: the hinted block itself when it is the answer, else a galloping search
+    /// forward from it when the answer is ahead, else a binary search of the whole directory. Updates `hint`.
+    fn block_for(&self, hint: &mut Hint<N>, before: impl Fn(&[TermId; N]) -> bool) -> io::Result<Option<(usize, Arc<Vec<[TermId; N]>>)>> {
+        let (blocks, b) = (&self.blocks, hint.block);
+        let past = |i: usize| before(&blocks[i].last);
+        let block = if b < blocks.len() && !past(b) && (b == 0 || past(b - 1)) {
+            probe_trace(PROBE_SAME_BLOCK);
+            b
+        } else if b < blocks.len() && past(b) {
+            // Every block below `lo` is before the key; widen the step until a block that is not.
+            probe_trace(PROBE_GALLOP);
+            let (mut lo, mut hi, mut step) = (b + 1, b + 1, 1);
+            while hi < blocks.len() && past(hi) { lo = hi + 1; hi = lo + step; step *= 2; }
+            let end = hi.min(blocks.len());
+            lo + blocks[lo..end].partition_point(|m| before(&m.last))
+        } else {
+            probe_trace(PROBE_FULL);
+            blocks.partition_point(|m| before(&m.last))
+        };
+        if block == blocks.len() { return Ok(None) }
+        let rows = match &hint.rows {
+            Some((id, rows)) if *id == block => Arc::clone(rows),
+            _ => self.block(block as u64)?,
+        };
+        *hint = Hint { block, rows: Some((block, Arc::clone(&rows))) };
+        Ok(Some((block, rows)))
+    }
+    pub fn range(&self, prefix: &[TermId]) -> io::Result<std::ops::Range<u64>> { self.range_from(&mut Hint::default(), prefix) }
+    fn range_from(&self, hint: &mut Hint<N>, prefix: &[TermId]) -> io::Result<std::ops::Range<u64>> {
         if prefix.len() > N {
             return Err(io::Error::new(
                 ErrorKind::InvalidInput,
@@ -643,8 +689,11 @@ where
         let (mut low, mut high) = ([TermId(0); N], [TermId(u64::MAX); N]);
         low[..prefix.len()].copy_from_slice(prefix);
         high[..prefix.len()].copy_from_slice(prefix);
-        Ok(self.bound(low, false)?..self.bound(high, true)?)
+        Ok(self.bound_from(hint, low, false)?..self.bound_from(hint, high, true)?)
     }
+    /// Counts and seeks that resume from the previous probe's block (`Probe`): about one block step per probe when
+    /// the probe keys ascend, and never worse than `range` / `seek_value` otherwise.
+    pub fn cursor(&self) -> Cursor<'_, N> { Cursor { index: self, hint: Hint::default() } }
     /// Copies at most one decoded block from the given position.
     pub fn block_slice(&self, start: u64, end: u64) -> io::Result<Vec<[TermId; N]>> {
         if start >= end || end > self.rows {
@@ -665,17 +714,16 @@ where
     }
 
     pub fn seek_value(&self, prefix: &[TermId], target: TermId) -> io::Result<Option<TermId>> {
+        self.seek_value_from(&mut Hint::default(), prefix, target)
+    }
+    fn seek_value_from(&self, hint: &mut Hint<N>, prefix: &[TermId], target: TermId) -> io::Result<Option<TermId>> {
         if prefix.len() >= N {
             return Ok(None);
         }
         let mut key = [TermId(0); N];
         key[..prefix.len()].copy_from_slice(prefix);
         key[prefix.len()] = target;
-        let id = self.blocks.partition_point(|m| m.last < key);
-        if id == self.blocks.len() {
-            return Ok(None);
-        }
-        let rows = self.block(id as u64)?;
+        let Some((_, rows)) = self.block_for(hint, |m| m < &key)? else { return Ok(None) };
         let offset = rows.partition_point(|r| *r < key);
         let Some(row) = rows.get(offset) else {
             return Ok(None);
@@ -1018,6 +1066,45 @@ mod tests {
             let r = index.range(&[rows[700][0]]).unwrap(); assert_eq!(r.end - r.start, 6, "{name}");
             std::fs::remove_file(&path).unwrap();
         }
+    }
+    /// A cursor answers every count and seek exactly as the stateless `range` / `seek_value` do, for probe sequences
+    /// that mostly ascend (landing in the same block, galloping ahead across many blocks) and sometimes jump back.
+    #[test]
+    fn a_cursor_answers_like_the_stateless_searches() {
+        let path = std::env::temp_dir().join(format!("rdf-index-cursor-{}", std::process::id()));
+        // Three predicates, subjects with 0-4 objects each: groups straddle block boundaries.
+        let mut rows: Vec<[TermId; 3]> = Vec::new();
+        for p in 1..=3u64 {
+            for s in 1..=900u64 {
+                for o in 0..(s * p) % 5 { rows.push([TermId(p), TermId(s * 2), TermId(o + 1)]) }
+            }
+        }
+        assert!(rows.len() > 20 * BLOCK_ROWS as usize, "spans many blocks: {}", rows.len());
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::<3>::open(&path).unwrap();
+        let mut cursor = index.cursor();
+        let mut state = 0x9e37_79b9_7f4a_7c15u64;
+        let mut next = |m: u64| { state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407); (state >> 33) % m };
+        let (mut p, mut s) = (1u64, 0u64);
+        for _ in 0..20_000 {
+            match next(100) {
+                0 => { p = 1 + next(3); s = next(1900) }      // jump anywhere, often backwards
+                1..=4 => s += 50 + next(400),                    // far ahead: gallops over several blocks
+                _ => s += next(4),                               // the next few subjects: usually the same block
+            }
+            if s > 1900 { p = p % 3 + 1; s = next(10) }
+            let (pid, sid) = (TermId(p), TermId(s));
+            for prefix in [vec![pid], vec![pid, sid], vec![pid, sid, TermId(1 + next(4))]] {
+                let want = index.range(&prefix).unwrap();
+                assert_eq!(cursor.count(&prefix).unwrap(), want.end - want.start, "count {prefix:?}");
+            }
+            assert_eq!(cursor.seek_value(&[pid], sid).unwrap(), index.seek_value(&[pid], sid).unwrap(), "seek {p} {s}");
+            let target = TermId(next(6));
+            assert_eq!(cursor.seek_value(&[pid, sid], target).unwrap(), index.seek_value(&[pid, sid], target).unwrap(), "seek {p} {s} {target:?}");
+        }
+        std::fs::remove_file(&path).unwrap();
     }
     /// A graph-first quad index answers `range`, `seek_value`, `get` and block reads like a sorted row model, across
     /// block boundaries, and each width refuses the other's files.

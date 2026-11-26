@@ -168,7 +168,7 @@ fn explain<S: triplelight::storage::Snapshot>(req: &mut tiny_http::Request, snap
 /// One SPARQL query against a snapshot, as an HTTP response. Errors: 400 (bad query), 501 (unsupported), 500 (storage);
 /// never an empty result in place of a failure.
 fn answer<'a, S: triplelight::storage::Snapshot>(snap: &'a S, q: &str, opts: &Options<'_>, fmt: Format) -> Reply<'a> {
-    let before = triplelight::storage::disk_index::cache_trace_enabled().then(triplelight::storage::disk_index::cache_trace_snapshot);
+    let before = triplelight::storage::disk_index::cache_trace_enabled().then(|| { triplelight::storage::disk_index::take_probe_trace(); triplelight::storage::disk_index::cache_trace_snapshot() });
     let phases = triplelight::exec::phase::enabled().then(|| { triplelight::exec::phase::take(); triplelight::exec::phase::take_ranges(); Instant::now() });
     let exec_done = std::cell::Cell::new(None::<Instant>);
     let shape = std::cell::Cell::new((0usize, 0usize));
@@ -222,6 +222,8 @@ fn answer<'a, S: triplelight::storage::Snapshot>(snap: &'a S, q: &str, opts: &Op
             let d: Vec<u64> = (0..5).map(|j|after[i][j].saturating_sub(before[i][j])).collect();
             eprintln!("block_cache {name} hits={} misses={} pread_calls={} pread_bytes={} evictions={}",d[0],d[1],d[2],d[3],d[4]);
         }
+        let [same, gallop, full] = triplelight::storage::disk_index::take_probe_trace();
+        eprintln!("probe_trace same_block={same} gallop={gallop} full={full}");
     }
     if let Some(t0) = phases {
         let end = Instant::now();
