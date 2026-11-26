@@ -425,6 +425,8 @@ def reference_order(a, q, rec):
     why in `order_strict_reason`, and the query keeps the strict check (the reference's exact sequence)."""
     keys, limit, why = order_spec(q)
     if keys and not set(keys) <= set(rec.get("vars") or ()): keys, why = None, "an ORDER BY key is not a projected variable"
+    head = q[:q.find("{")]          # the SELECT clause: a key computed there (`(expr AS ?k)`) is invisible to a FILTER in the WHERE clause
+    if keys and any(re.search(r"\bAS\s+[?$]" + k + r"\b", head, re.I) for k in keys): keys, why = None, "an ORDER BY key is computed in the SELECT clause"
     if not keys: return {**rec, "order_strict_reason": why}
     got, _ = one_run(a.url, q, a.timeout, keys=keys)
     if got.get("status") != "ok" or any(got.get(k) != rec[k] for k in ("rows", "bag", "seq")): sys.exit(f"the reference answer changed between two runs: {got.get('status')}")
