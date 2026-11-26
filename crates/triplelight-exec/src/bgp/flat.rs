@@ -27,7 +27,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             .collect();
         let predicates: Vec<TermId> = star.columns.iter().map(|(p, _)| *p).collect();
         let table_ranges = self.table_intervals(&star.columns, filters);
-        let mut numeric_memo: HashMap<TermId, Option<expr::Num>> = HashMap::new();
+        let mut numeric_memo: crate::id_hash::IdMap<Option<expr::Num>> = crate::id_hash::IdMap::default();
         let mut out = Vec::new();
         let started = trace.as_ref().map(|_| Instant::now());
         let mut scanned = 0u64;
@@ -168,7 +168,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let flat: Vec<TermId> = rows.concat();
         // Numeric literals often flow through multiple range predicates in the same BGP. Keep decoded
         // values for the whole BGP instead of resolving and parsing them again for every predicate.
-        let mut numeric_filter_memo: HashMap<TermId, Option<expr::Num>> = HashMap::new();
+        let mut numeric_filter_memo: crate::id_hash::IdMap<Option<expr::Num>> = crate::id_hash::IdMap::default();
         if let Some(tr) = tr.as_mut() {
             tr.note("ranges", ranges.len());
             tr.note("filters", filters.len())

@@ -1233,6 +1233,87 @@ fn a_group_by_over_the_budget_spills_instead_of_failing() {
     std::fs::remove_dir_all(&scratch).unwrap();
 }
 
+/// #111: a hash join spilled to disk one key partition at a time gives `join_rows`'s answer and order (probe rows in
+/// input order, each one's matches in build order), for a subquery joined back and for a group joined on its own.
+#[test]
+fn spilled_join_matches_the_in_memory_answer_and_cleans_up() {
+    use triplelight::exec::{query_with, MemoryBudget, Options};
+    let mut nt = String::new();
+    for i in 0..2000u32 {
+        nt.push_str(&format!("<http://ex/s{i}> <http://ex/p> \"{}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n", (i * 7919) % 211));
+        nt.push_str(&format!("<http://ex/s{}> <http://ex/q> <http://ex/k{}> .\n", i % 700, (i * 31) % 53));
+    }
+    let snap = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
+    let scratch = std::env::temp_dir().join(format!("tl-spill-join-{}", std::process::id()));
+    std::fs::create_dir_all(&scratch).unwrap();
+    let queries = [
+        // a subquery joined back into the outer rows (Project): one key
+        "SELECT * WHERE { ?s <http://ex/p> ?o . { SELECT ?s ?k WHERE { ?s <http://ex/q> ?k } } }",
+        // two keys
+        "SELECT * WHERE { ?s <http://ex/q> ?k . { SELECT ?s ?k (COUNT(*) AS ?n) WHERE { ?s <http://ex/q> ?k } GROUP BY ?s ?k } }",
+        // a group that reads an outer variable in a FILTER is evaluated on its own, then joined
+        "SELECT * WHERE { ?s <http://ex/p> ?o . { ?s <http://ex/q> ?k FILTER(?o > 100) } }",
+    ];
+    for q in queries {
+        let want = format!("{:?}", query_with(&snap, q, &Options::default()).unwrap());
+        let budget = MemoryBudget::new(64 << 20).with_scratch_dir(&scratch).with_spill_rows(50);
+        let got = query_with(&snap, q, &Options { memory_budget: Some(&budget), ..Options::default() }).unwrap();
+        assert_eq!(format!("{got:?}"), want, "{q}");
+        assert_eq!(budget.used(), 0);
+    }
+    // The forced threshold really takes the spilled path: with a scratch path that is a file, the spill fails.
+    let file = scratch.join("not-a-dir");
+    std::fs::write(&file, b"x").unwrap();
+    let unusable = MemoryBudget::new(64 << 20).with_scratch_dir(&file).with_spill_rows(50);
+    assert!(query_with(&snap, queries[0], &Options { memory_budget: Some(&unusable), ..Options::default() }).is_err());
+    std::fs::remove_file(&file).unwrap();
+    assert_eq!(std::fs::read_dir(&scratch).unwrap().count(), 0, "every run directory is removed");
+    std::fs::remove_dir_all(&scratch).unwrap();
+}
+
+/// #111: ORDER BY sorted externally (sorted runs merged from disk) gives the in-memory order, ties in input order
+/// included, for variable keys, descending keys, expression keys and unbound values; a LIMIT never spills.
+#[test]
+fn spilled_order_by_matches_the_in_memory_order_and_cleans_up() {
+    use triplelight::exec::{query_with, MemoryBudget, Options};
+    let mut nt = String::new();
+    for i in 0..3000u32 {
+        nt.push_str(&format!("<http://ex/s{i}> <http://ex/p> \"{}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n", (i * 7919) % 211));
+        if i % 3 != 0 { nt.push_str(&format!("<http://ex/s{i}> <http://ex/q> \"name{}\" .\n", (i * 31) % 53)) }
+    }
+    let snap = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
+    let scratch = std::env::temp_dir().join(format!("tl-spill-sort-{}", std::process::id()));
+    std::fs::create_dir_all(&scratch).unwrap();
+    let queries = [
+        // ties on ?v keep input order
+        "SELECT ?s ?v WHERE { ?s <http://ex/p> ?v } ORDER BY ?v",
+        "SELECT ?s ?v WHERE { ?s <http://ex/p> ?v } ORDER BY DESC(?v)",
+        // two keys, one unbound for a third of the rows
+        "SELECT ?s ?v ?n WHERE { ?s <http://ex/p> ?v OPTIONAL { ?s <http://ex/q> ?n } } ORDER BY ?n DESC(?v)",
+        // an expression key
+        "SELECT ?s ?v WHERE { ?s <http://ex/p> ?v } ORDER BY (?v * -1) ?s",
+    ];
+    for q in queries {
+        let want = format!("{:?}", query_with(&snap, q, &Options::default()).unwrap());
+        let budget = MemoryBudget::new(64 << 20).with_scratch_dir(&scratch).with_spill_rows(100);
+        let got = query_with(&snap, q, &Options { memory_budget: Some(&budget), ..Options::default() }).unwrap();
+        assert_eq!(format!("{got:?}"), want, "{q}");
+        assert_eq!(budget.used(), 0);
+    }
+    // The forced threshold takes the spilled path: with a scratch path that is a file, the sort fails...
+    let file = scratch.join("not-a-dir");
+    std::fs::write(&file, b"x").unwrap();
+    let unusable = MemoryBudget::new(64 << 20).with_scratch_dir(&file).with_spill_rows(100);
+    assert!(query_with(&snap, queries[0], &Options { memory_budget: Some(&unusable), ..Options::default() }).is_err());
+    // ...but a LIMIT (top-k) never spills.
+    let top = "SELECT ?s ?v WHERE { ?s <http://ex/p> ?v } ORDER BY ?v LIMIT 10";
+    assert_eq!(format!("{:?}", query_with(&snap, top, &Options { memory_budget: Some(&unusable), ..Options::default() }).unwrap()),
+               format!("{:?}", query_with(&snap, top, &Options::default()).unwrap()));
+    std::fs::remove_file(&file).unwrap();
+    assert_eq!(std::fs::read_dir(&scratch).unwrap().count(), 0, "every run directory is removed");
+    std::fs::remove_dir_all(&scratch).unwrap();
+}
+
 #[test]
 fn count_one_key_charges_its_group_table() {
     use triplelight::exec::{query_with, MemoryBudget, Options, QueryErrorKind};

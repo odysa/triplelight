@@ -2,6 +2,19 @@
 // TripleLight for Node.js: an embedded RDF database with SPARQL 1.1. The native addon does the work on worker threads;
 // this file turns its errors into typed exceptions.
 const native = loadNative();
+const { isPromise } = require("node:util").types;
+const promiseThen = Promise.prototype.then;
+const ignoreRejection = () => {};
+
+function scalarCallback(callback) {
+  if (typeof callback !== "function") throw new TypeError("scalar callback must be a function");
+  return (...args) => {
+    const value = callback(...args);
+    if (!isPromise(value)) return value;
+    Reflect.apply(promiseThen, value, [undefined, ignoreRejection]);
+    return null;
+  };
+}
 
 // The published package carries one prebuilt addon per platform under prebuilds/<platform>-<arch>/. A local build
 // (`npm run build`) puts the addon at ./triplelight.node, which is used when there is no prebuild (development).
@@ -88,6 +101,9 @@ class Database {
   load(path) { return async_(() => this._raw.load(String(path))); }
   compact() { return async_(() => this._raw.compact()).then(() => undefined); }
   loadExtension(name) { return sync(() => this._raw.loadExtension(name)); }
+  registerFunction(iri, callback, arity, pure) {
+    return sync(() => this._raw.registerFunction(iri, scalarCallback(callback), arity, pure));
+  }
   listExtensions() { return sync(() => this._raw.listExtensions()); }
   statsReady() { return sync(() => this._raw.statsReady()); }
   read() { return new Snapshot(sync(() => this._raw.read())); }

@@ -194,6 +194,8 @@ def test_spill_lets_a_group_by_over_the_budget_finish(tmp_path, monkeypatch):
     assert len(db.query(q, memory_mb=3, spill=True)) == 10_000
     assert len(db.query(q)) == 10_000
     assert list(scratch.iterdir()) == [], "no spill files are left behind"
+    with pytest.raises(ValueError):
+        db.query(q, spill=True)
 
 
 def test_keyboard_interrupt_cancels_a_running_query():

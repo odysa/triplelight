@@ -200,6 +200,7 @@ test("spill lets a GROUP BY over memoryMb finish (#111)", async () => {
     await assert.rejects(db.query(q, { memoryMb: 3 }), tl.ResourceLimitError);
     assert.strictEqual((await db.query(q, { memoryMb: 3, spill: true })).bindings.length, 10000);
     assert.deepStrictEqual(fs.readdirSync(scratch), [], "no spill files are left behind");
+    assert.throws(() => db.querySync(q, { spill: true }), /spill needs memoryMb/);
   } finally {
     db.close();
     if (before === undefined) delete process.env.TRIPLELIGHT_SCRATCH_DIR; else process.env.TRIPLELIGHT_SCRATCH_DIR = before;

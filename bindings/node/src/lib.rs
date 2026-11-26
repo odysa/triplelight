@@ -5,11 +5,17 @@
 use std::sync::Arc;
 
 use napi::bindgen_prelude::*;
-use napi::{Env, JsObject, Task};
+use napi::{Env, JsFunction, JsObject, Task};
 use napi_derive::napi;
-use triplelight::rdf::{Literal, Term};
+use triplelight::extension::FunctionOptions;
 use triplelight::embedded::{Database as Db, DatabaseError, DatabaseOptions, ReadSnapshot};
 use triplelight::exec::{Entailment, MemoryBudget, QueryLimits, QueryResult};
+
+mod rdfjs;
+mod scalar;
+
+use rdfjs::{named, term};
+use scalar::QueryThread;
 
 /// Errors cross into JS as `Error` objects whose message starts with the error kind; `index.js` turns them into
 /// `TripleLightError` subclasses with a `kind` property.
@@ -81,6 +87,7 @@ pub struct Limits { interrupt: Option<Arc<triplelight::exec::Interrupt>>, memory
 impl Limits {
     fn new(interrupt: Option<&Interrupt>, memory_mb: Option<u32>, spill: Option<bool>) -> Result<Self> {
         if memory_mb == Some(0) { return Err(Error::new(Status::InvalidArg, "memoryMb must be positive".to_string())) }
+        if spill == Some(true) && memory_mb.is_none() { return Err(Error::new(Status::InvalidArg, "spill needs memoryMb: spilling applies only under a memory budget".to_string())) }
         Ok(Limits { interrupt: interrupt.map(|i| Arc::clone(&i.0)), memory_mb, spill: spill.unwrap_or(false) })
     }
     fn with<T>(&self, f: impl FnOnce(QueryLimits<'_>) -> T) -> T {
@@ -91,61 +98,6 @@ impl Limits {
 }
 
 // ---------- term and result conversion ----------
-
-fn named(env: &Env, iri: &str) -> Result<JsObject> {
-    let mut o = env.create_object()?;
-    o.set_named_property("termType", env.create_string("NamedNode")?)?;
-    o.set_named_property("value", env.create_string(iri)?)?;
-    Ok(o)
-}
-
-fn literal(env: &Env, l: &Literal) -> Result<JsObject> {
-    let mut o = env.create_object()?;
-    o.set_named_property("termType", env.create_string("Literal")?)?;
-    o.set_named_property("value", env.create_string(l.value())?)?;
-    o.set_named_property("language", env.create_string(l.language().unwrap_or(""))?)?;
-    o.set_named_property("datatype", named(env, l.datatype().as_str())?)?;
-    // RDF 1.2 base direction: "ltr" or "rtl"
-    // set only when present, so a build with the feature on keeps the exact 1.1 shape for every other literal
-    #[cfg(feature = "rdf-12")]
-    if let Some(dir) = l.direction() {
-        let dir = match dir { triplelight::rdf::BaseDirection::Ltr => "ltr", triplelight::rdf::BaseDirection::Rtl => "rtl" };
-        o.set_named_property("direction", env.create_string(dir)?)?;
-    }
-    Ok(o)
-}
-
-fn term(env: &Env, t: &Term) -> Result<JsObject> {
-    match t {
-        Term::NamedNode(n) => named(env, n.as_str()),
-        Term::BlankNode(b) => {
-            let mut o = env.create_object()?;
-            o.set_named_property("termType", env.create_string("BlankNode")?)?;
-            o.set_named_property("value", env.create_string(b.as_str())?)?;
-            Ok(o)
-        }
-        Term::Literal(l) => literal(env, l),
-        // RDF 1.2 triple term: an RDF/JS Quad term in the default graph, parts converted recursively
-        #[cfg(feature = "rdf-12")]
-        Term::Triple(t) => {
-            let mut o = env.create_object()?;
-            o.set_named_property("termType", env.create_string("Quad")?)?;
-            o.set_named_property("value", env.create_string("")?)?;
-            let subject: Term = t.subject.clone().into();
-            let predicate: Term = t.predicate.clone().into();
-            o.set_named_property("subject", term(env, &subject)?)?;
-            o.set_named_property("predicate", term(env, &predicate)?)?;
-            o.set_named_property("object", term(env, &t.object)?)?;
-            let mut g = env.create_object()?;
-            g.set_named_property("termType", env.create_string("DefaultGraph")?)?;
-            g.set_named_property("value", env.create_string("")?)?;
-            o.set_named_property("graph", g)?;
-            Ok(o)
-        }
-        #[allow(unreachable_patterns)]
-        _ => Err(Error::new(Status::GenericFailure, "UnsupportedError: unsupported term kind".to_string())),
-    }
-}
 
 /// An object without a prototype, so a SPARQL variable named `__proto__` (or `constructor`, ...) is stored as an own
 /// property instead of reaching `Object.prototype`.
@@ -236,7 +188,7 @@ pub struct QueryTask { src: Source, sparql: String, entailment: Entailment, limi
 impl Task for QueryTask {
     type Output = QueryResult;
     type JsValue = JsObject;
-    fn compute(&mut self) -> Result<Self::Output> { self.src.query(&self.sparql, self.entailment, &self.limits).map_err(err) }
+    fn compute(&mut self) -> Result<Self::Output> { QueryThread::Worker(self.limits.interrupt.clone()).run(|| self.src.query(&self.sparql, self.entailment, &self.limits).map_err(err)) }
     fn resolve(&mut self, env: Env, out: Self::Output) -> Result<Self::JsValue> { convert(&env, out) }
 }
 
@@ -244,7 +196,7 @@ pub struct JsonTask { src: Source, sparql: String, entailment: Entailment, limit
 impl Task for JsonTask {
     type Output = String;
     type JsValue = String;
-    fn compute(&mut self) -> Result<Self::Output> { self.src.query_json(&self.sparql, self.entailment, &self.limits).map_err(err) }
+    fn compute(&mut self) -> Result<Self::Output> { QueryThread::Worker(self.limits.interrupt.clone()).run(|| self.src.query_json(&self.sparql, self.entailment, &self.limits).map_err(err)) }
     fn resolve(&mut self, _: Env, out: Self::Output) -> Result<Self::JsValue> { Ok(out) }
 }
 
@@ -312,7 +264,9 @@ impl Database {
     #[napi(ts_return_type = "QueryResult")]
     pub fn query_sync(&self, env: Env, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>, spill: Option<bool>) -> Result<JsObject> {
         let limits = Limits::new(interrupt, memory_mb, spill)?;
-        let r = Source::Db(self.db()?).query(&sparql, self::entailment(entailment)?, &limits).map_err(err)?;
+        let r = QueryThread::javascript(&env).run(|| {
+            Source::Db(self.db()?).query(&sparql, self::entailment(entailment)?, &limits).map_err(err)
+        })?;
         convert(&env, r)
     }
     /// SPARQL 1.1 Query Results JSON as a string: the fastest path for large results.
@@ -337,6 +291,24 @@ impl Database {
     pub fn compact(&self) -> Result<AsyncTask<WriteTask>> {
         Ok(AsyncTask::new(WriteTask { db: self.db()?, op: Write::Compact }))
     }
+    /// Registers a synchronous JavaScript callback for this database's future queries and snapshots.
+    #[napi]
+    pub fn register_function(
+        &self,
+        env: Env,
+        iri: String,
+        callback: JsFunction,
+        arity: Option<f64>,
+        pure: Option<bool>,
+    ) -> Result<()> {
+        if arity.is_some_and(|n| !(0.0..=f64::from(u32::MAX)).contains(&n) || n.fract() != 0.0) {
+            return Err(Error::new(Status::InvalidArg, "scalar arity must be a non-negative integer".to_owned()));
+        }
+        let options = FunctionOptions { arity: arity.map(|n| n as usize), pure: pure.unwrap_or(false) };
+        self.db()?.register_function(&iri, options, scalar::Callback::new(&env, callback)?)
+            .map_err(|error| Error::new(Status::InvalidArg, error.to_string()))
+    }
+
     /// Loads an official extension for this database.
     #[napi]
     pub fn load_extension(&self, name: String) -> Result<()> {
@@ -380,7 +352,9 @@ impl Snapshot {
     #[napi(ts_return_type = "QueryResult")]
     pub fn query_sync(&self, env: Env, sparql: String, entailment: Option<String>, interrupt: Option<&Interrupt>, memory_mb: Option<u32>, spill: Option<bool>) -> Result<JsObject> {
         let limits = Limits::new(interrupt, memory_mb, spill)?;
-        let r = self.source().query(&sparql, self::entailment(entailment)?, &limits).map_err(err)?;
+        let r = QueryThread::javascript(&env).run(|| {
+            self.source().query(&sparql, self::entailment(entailment)?, &limits).map_err(err)
+        })?;
         convert(&env, r)
     }
     #[napi(ts_return_type = "Promise<string>")]

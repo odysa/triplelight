@@ -103,16 +103,30 @@ fn read_only_rejects_updates_but_answers_queries() {
     let mut writer = start("ro", &[], None);
     let _ = writer.0.kill();
     let _ = writer.0.wait();
-    let port = { let l = TcpListener::bind("127.0.0.1:0").unwrap(); l.local_addr().unwrap().port() };
-    let mut reader = Command::new(env!("CARGO_BIN_EXE_triplelight"));
-    reader.arg("serve-store").arg(&writer.2).arg(port.to_string()).arg("--read-only").stdout(Stdio::null()).stderr(Stdio::null())
-        .env_remove("TRIPLELIGHT_UPDATE_TOKEN").env_remove("TRIPLELIGHT_HOST");
-    let mut reader = reader.spawn().unwrap();
-    let deadline = Instant::now() + Duration::from_secs(10);
-    while TcpStream::connect(("127.0.0.1", port)).is_err() {
-        assert!(Instant::now() < deadline, "read-only server did not start");
-        std::thread::sleep(Duration::from_millis(20));
-    }
+    // A free port is picked and released before the server binds it, and other test modules (the stream and read-only ones) pick ports in parallel,
+    // so another test can take it in between. A server that exits at once (it says why on stderr) is retried on a fresh port, a few times.
+    let (port, mut reader) = (0..4).find_map(|attempt| {
+        let port = { let l = TcpListener::bind("127.0.0.1:0").unwrap(); l.local_addr().unwrap().port() };
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_triplelight"));
+        cmd.arg("serve-store").arg(&writer.2).arg(port.to_string()).arg("--read-only").stdout(Stdio::null()).stderr(Stdio::piped())
+            .env_remove("TRIPLELIGHT_UPDATE_TOKEN").env_remove("TRIPLELIGHT_HOST");
+        let mut child = cmd.spawn().unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            // not just "something accepts on the port": the child must still be running, or the connection could be another test's server
+            let exited = child.try_wait().unwrap();
+            if exited.is_none() && TcpStream::connect(("127.0.0.1", port)).is_ok() && child.try_wait().unwrap().is_none() { return Some((port, child)) }
+            if exited.is_some() || Instant::now() >= deadline {
+                let _ = child.kill();
+                let _ = child.wait();
+                let mut why = String::new();
+                let _ = child.stderr.take().unwrap().read_to_string(&mut why);
+                assert!(attempt < 3, "read-only server did not start after {} attempts (exited: {exited:?}): {why}", attempt + 1);
+                return None;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }).unwrap();
     assert!(post(port, "/update", "application/sparql-update", "", None).contains(" 403 "));
     assert!(post(port, "/sparql", "application/sparql-query", ASK, None).contains("false"));
     let _ = reader.kill();

@@ -32,11 +32,16 @@ impl Interrupt {
         use std::sync::atomic::Ordering::Relaxed;
         self.cancelled.load(Relaxed) || self.flag.as_ref().is_some_and(|f| f.load(Relaxed))
     }
+    /// Returns the current interruption reason without unwinding across a host binding.
+    #[doc(hidden)]
+    pub fn stop_reason(&self) -> Option<QueryErrorKind> {
+        if self.is_cancelled() { return Some(QueryErrorKind::Cancelled) }
+        self.deadline.is_some_and(|d| std::time::Instant::now() >= d).then_some(QueryErrorKind::Timeout)
+    }
     /// Unwinds the query if it was cancelled or is past its deadline (caught by `catching_storage`).
     pub(crate) fn check(&self) {
         // `resume_unwind`, not `panic!`: a stop is not a bug, so the panic hook (which prints) does not run.
-        if self.is_cancelled() { std::panic::resume_unwind(Box::new(Interrupted(QueryErrorKind::Cancelled))) }
-        if self.deadline.is_some_and(|d| std::time::Instant::now() >= d) { std::panic::resume_unwind(Box::new(Interrupted(QueryErrorKind::Timeout))) }
+        if let Some(reason) = self.stop_reason() { std::panic::resume_unwind(Box::new(Interrupted(reason))) }
     }
 }
 
@@ -73,7 +78,15 @@ impl MemoryBudget {
     /// the in-memory one on the same data.
     #[doc(hidden)]
     pub fn with_spill_rows(mut self, rows: usize) -> Self { self.spill_rows = Some(rows); self }
-    pub(crate) fn spill_rows(&self) -> Option<usize> { self.spill_rows }
+    /// Whether a blocking input of `rows` rows must spill whatever it needs (`with_spill_rows`, with a scratch directory).
+    pub(crate) fn forces_spill(&self, rows: usize) -> bool { self.scratch_dir.is_some() && self.spill_rows.is_some_and(|n| rows > n) }
+    /// Where a blocking input of `rows` rows whose working set needs `bytes` should spill, if it should: when the budget
+    /// has a scratch directory and either the input is forced to spill or `bytes` do not fit what is free. The one spill
+    /// decision every spilling operator asks.
+    pub(crate) fn spill_dir_for(&self, rows: usize, bytes: u64) -> Option<&std::path::Path> {
+        let dir = self.scratch_dir.as_deref()?;
+        (self.forces_spill(rows) || bytes > self.available()).then_some(dir)
+    }
     pub fn limit(&self) -> u64 { self.limit }
     pub fn used(&self) -> u64 { self.used.load(std::sync::atomic::Ordering::Relaxed) }
     pub fn available(&self) -> u64 { self.limit.saturating_sub(self.used()) }

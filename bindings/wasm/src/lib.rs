@@ -5,12 +5,18 @@
 use std::sync::Arc;
 
 use js_sys::{Array, Object, Promise, Reflect};
-use triplelight::rdf::{Format, Literal, QuadFormat, ReadError, Term, Triple};
+use triplelight::rdf::{Format, QuadFormat, ReadError, Term, Triple};
 use triplelight::exec::{self, QueryErrorKind, QueryResult};
+use triplelight::exec::udf::{FunctionLookup, QueryExtensions};
 use triplelight::extension::ExtensionRegistry;
 use triplelight::storage::MemorySnapshot;
 use triplelight::store::{Change, Overlay};
 use wasm_bindgen::prelude::*;
+
+mod rdfjs;
+mod scalar;
+
+use rdfjs::{named, set, term};
 
 /// A JS `Error` whose `name` and `kind` say what went wrong: `SyntaxError`, `UnsupportedError`, `StorageError`,
 /// `GraphStateError` (an update names a graph in the wrong state) or `ShapesError` (SHACL rejects a shapes graph).
@@ -32,34 +38,6 @@ fn query_error(e: exec::QueryError) -> JsValue {
         QueryErrorKind::ResourceLimit => "ResourceLimitError",
     };
     error(kind, &e.message)
-}
-
-fn set(o: &Object, k: &str, v: impl Into<JsValue>) { let _ = Reflect::set(o, &k.into(), &v.into()); }
-
-fn named(iri: &str) -> Object {
-    let o = Object::new();
-    set(&o, "termType", "NamedNode");
-    set(&o, "value", iri);
-    o
-}
-
-fn literal(l: &Literal) -> Object {
-    let o = Object::new();
-    set(&o, "termType", "Literal");
-    set(&o, "value", l.value());
-    set(&o, "language", l.language().unwrap_or(""));
-    set(&o, "datatype", named(l.datatype().as_str()));
-    o
-}
-
-fn term(t: &Term) -> Object {
-    match t {
-        Term::NamedNode(n) => named(n.as_str()),
-        Term::BlankNode(b) => { let o = Object::new(); set(&o, "termType", "BlankNode"); set(&o, "value", b.as_str()); o }
-        Term::Literal(l) => literal(l),
-        #[allow(unreachable_patterns)]
-        _ => Object::new(),
-    }
 }
 
 /// Same shape as the Node binding: `{type: "bindings" | "boolean" | "triples", ...}`.
@@ -153,13 +131,14 @@ fn fresh_blank_nodes(triples: Vec<Triple>) -> Vec<Triple> {
 }
 
 /// Runs a query over the whole dataset: the default graph plus the named graphs (`GRAPH`, `FROM`, `FROM NAMED`).
-fn run(cur: &Overlay, sparql: &str, options: Option<Object>, extensions: Option<&ExtensionRegistry>) -> Result<QueryResult, JsValue> {
+fn run(cur: &Overlay, sparql: &str, options: Option<Object>, registry: Option<&ExtensionRegistry>, functions: &dyn FunctionLookup) -> Result<QueryResult, JsValue> {
     let entailment = entailment(options)?;
-    if entailment == exec::Entailment::Rdfs && let Some(extensions) = extensions {
+    if entailment == exec::Entailment::Rdfs && let Some(extensions) = registry {
         extensions.load("rdfs").map_err(|e| error("UnsupportedError", &e.to_string()))?;
     }
     let opts = exec::Options { entailment, ..Default::default() };
-    exec::query_dataset_with(cur, cur, sparql, &opts).map_err(query_error)
+    let extensions = QueryExtensions { functions: Some(functions), ..Default::default() };
+    exec::query_with_extensions(cur, Some(cur), sparql, &opts, extensions).map_err(query_error)
 }
 
 /// The `entailment` query option (#108): "simple" (the default) or "rdfs", which matches the default graph's RDFS
@@ -196,6 +175,20 @@ impl Database {
     #[wasm_bindgen(js_name = loadExtension)]
     pub fn load_extension(&self, name: &str) -> Result<(), JsValue> {
         self.extensions.load(name).map_err(|e| error("UnsupportedError", &e.to_string()))
+    }
+
+    /// Registers a synchronous SPARQL scalar callback for this database and future snapshots.
+    /// The function receives RDF/JS terms and returns an RDF/JS term or null.
+    #[wasm_bindgen(js_name = registerFunction)]
+    pub fn register_function(
+        &self,
+        iri: &str,
+        callback: js_sys::Function,
+        arity: Option<f64>,
+        pure: Option<bool>,
+    ) -> Result<(), JsValue> {
+        scalar::register(&self.extensions, iri, callback, arity, pure)
+            .map_err(|message| error("RegistrationError", &message))
     }
 
     #[wasm_bindgen(js_name = listExtensions)]
@@ -264,7 +257,7 @@ impl Database {
     /// Runs a SPARQL SELECT / ASK / CONSTRUCT / DESCRIBE query.
     #[wasm_bindgen(js_name = querySync)]
     pub fn query_sync(&self, sparql: &str, options: Option<Object>) -> Result<JsValue, JsValue> {
-        convert(run(&self.cur, sparql, options, Some(&self.extensions))?)
+        convert(run(&self.cur, sparql, options, Some(&self.extensions), &*self.extensions.function_snapshot())?)
     }
 
     pub fn query(&self, sparql: &str, options: Option<Object>) -> Promise { settle(self.query_sync(sparql, options)) }
@@ -272,14 +265,16 @@ impl Database {
     /// SPARQL 1.1 Query Results JSON for SELECT and ASK, as a string.
     #[wasm_bindgen(js_name = queryJsonSync)]
     pub fn query_json_sync(&self, sparql: &str, options: Option<Object>) -> Result<String, JsValue> {
-        results_json(run(&self.cur, sparql, options, Some(&self.extensions))?)
+        results_json(run(&self.cur, sparql, options, Some(&self.extensions), &*self.extensions.function_snapshot())?)
     }
 
     #[wasm_bindgen(js_name = queryJson)]
     pub fn query_json(&self, sparql: &str, options: Option<Object>) -> Promise { settle(self.query_json_sync(sparql, options).map(JsValue::from)) }
 
     /// A consistent view for several queries; later updates do not change it.
-    pub fn read(&self) -> Snapshot { Snapshot { cur: Arc::clone(&self.cur) } }
+    pub fn read(&self) -> Snapshot {
+        Snapshot { cur: Arc::clone(&self.cur), functions: self.extensions.function_snapshot() }
+    }
 
     /// Number of triples in the default graph (named graphs are not counted).
     #[wasm_bindgen(getter)]
@@ -303,17 +298,20 @@ fn base_len(base: &MemorySnapshot) -> usize {
 
 /// An immutable view of the database, unaffected by later updates.
 #[wasm_bindgen]
-pub struct Snapshot { cur: Arc<Overlay> }
+pub struct Snapshot {
+    cur: Arc<Overlay>,
+    functions: Arc<dyn FunctionLookup + Send + Sync>,
+}
 
 #[wasm_bindgen]
 impl Snapshot {
     #[wasm_bindgen(js_name = querySync)]
     pub fn query_sync(&self, sparql: &str, options: Option<Object>) -> Result<JsValue, JsValue> {
-        convert(run(&self.cur, sparql, options, None)?)
+        convert(run(&self.cur, sparql, options, None, &*self.functions)?)
     }
     pub fn query(&self, sparql: &str, options: Option<Object>) -> Promise { settle(self.query_sync(sparql, options)) }
     #[wasm_bindgen(js_name = queryJson)]
     pub fn query_json(&self, sparql: &str, options: Option<Object>) -> Promise {
-        settle(run(&self.cur, sparql, options, None).and_then(results_json).map(JsValue::from))
+        settle(run(&self.cur, sparql, options, None, &*self.functions).and_then(results_json).map(JsValue::from))
     }
 }
