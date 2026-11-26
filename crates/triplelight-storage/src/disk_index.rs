@@ -643,7 +643,6 @@ where
         }
         Ok(self.block(i / BLOCK_ROWS)?[(i % BLOCK_ROWS) as usize])
     }
-    fn bound(&self, key: [TermId; N], upper: bool) -> io::Result<u64> { self.bound_from(&mut Hint::default(), key, upper) }
     /// The first row `>= key` (`> key` when `upper`), as a position; `hint` is where the previous search landed.
     fn bound_from(&self, hint: &mut Hint<N>, key: [TermId; N], upper: bool) -> io::Result<u64> {
         let Some((block, rows)) = self.block_for(hint, |m| m < &key || (upper && m == &key))? else { return Ok(self.rows) };

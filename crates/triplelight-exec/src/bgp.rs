@@ -5,7 +5,7 @@ use super::plan_trace::Trace;
 use super::pattern::{vars_of, Slot};
 use super::range::{ObjRange, Ranges};
 use crate::model::{Perm, TermId, TripleBatch};
-use crate::storage::{Probe, Snapshot};
+use crate::storage::Snapshot;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 
