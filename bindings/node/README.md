@@ -30,3 +30,22 @@ Build from source (Rust 1.100, Node 18+, Linux or macOS): `npm run build`, then 
 Types are in `index.d.ts`. Errors are `TripleLightError` subclasses: `SyntaxError`, `UnsupportedError`,
 `StorageError`, `LockedError` (the directory is open in another process) and `GraphStateError` (an update names a
 graph in the wrong state, such as `CREATE` of an existing graph).
+
+Register a synchronous JavaScript scalar function before running the query.
+
+```js
+db.registerFunction("urn:echo", (term) => term, 1, true);
+const result = await db.query('SELECT (<urn:echo>("hello"@en) AS ?value) WHERE {}');
+```
+
+Each callback receives positional RDF/JS terms. Return an RDF/JS term or
+`null`. A thrown exception or invalid return becomes a SPARQL expression error.
+Arity is optional. Mark the function pure only if its result depends solely on
+its arguments. Snapshots capture the registrations visible at `read()`.
+
+Both query forms invoke callbacks on the database's JavaScript thread.
+Async queries wait on their worker thread for the callback value. Callbacks
+must return promptly and must avoid mutating or reentering the database being
+queried. Cancellation skips queued calls and takes effect cooperatively for
+callbacks already running. Use `close()` when the database is finished,
+especially when a callback captures the database handle.

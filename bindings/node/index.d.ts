@@ -65,6 +65,8 @@ export class Database {
   /** True once background optimizer statistics are built (queries work before that, with simpler plans). */
   statsReady(): boolean;
   loadExtension(name: string): void;
+  /** Registers a synchronous callback under an absolute IRI for future queries and snapshots. */
+  registerFunction(iri: string, callback: (...args: Term[]) => Term | null, arity?: number, pure?: boolean): void;
   listExtensions(): ExtensionInfo[];
   /** A consistent view for several queries; later updates do not change it. */
   read(): Snapshot;
