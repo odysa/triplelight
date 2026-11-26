@@ -25,7 +25,6 @@ pub use expr::builtin_iri;
 pub mod plan_trace;
 mod agg;
 mod bgp;
-mod bgp_eval;
 mod join;
 mod limits;
 use join::join_rows;
@@ -34,7 +33,6 @@ use views::{dataset, Views};
 mod path;
 mod pattern;
 mod range;
-#[allow(dead_code)] mod table_plan; // automatic selection awaits calibrated residual costs
 mod expr;
 mod support;
 #[cfg(feature = "rdf-12")]

@@ -1,5 +1,7 @@
 //! Basic-graph-pattern evaluation over flat row buffers (`w` IDs per row, no per-row allocation), parallelized
 //! morsel-style: large inputs are split into chunks that rayon workers extend independently.
+mod flat;
+#[allow(dead_code)] mod table_plan; // automatic selection awaits calibrated residual costs
 use super::{storage_failure, UNBOUND};
 use super::plan_trace::Trace;
 use super::pattern::{vars_of, Slot};

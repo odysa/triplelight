@@ -5,17 +5,9 @@
 //! Automatic selection waits for calibrated residual and scan costs. The
 //! physical path is available through an explicit diagnostic switch.
 
-use crate::bgp::Bgp;
-use crate::expr;
 use crate::model::TermId;
 use crate::pattern::Slot;
-use crate::plan_trace::Trace;
-use crate::range::Ranges;
-use crate::sparql::Expression;
-use crate::storage::Snapshot;
-use crate::{Ctx, UNBOUND, storage_failure};
-use std::collections::{HashMap, HashSet};
-use std::time::Instant;
+use std::collections::HashSet;
 use triplelight_core::wide::{TableCatalog, TableId};
 
 #[derive(Clone, Debug)]
@@ -63,135 +55,6 @@ pub(super) fn recognize_star(patterns: &[[Slot; 3]], all_unbound: bool) -> Optio
         columns,
         predicates,
     })
-}
-
-/// The first, explicitly forced physical path. It unions every matching table
-/// with the ordinary BGP restricted to subjects absent from those tables.
-/// The residual's first join step still scans an index; after that step its
-/// subject filter prevents another expensive join on already covered rows.
-pub(super) fn evaluate<S: Snapshot + ?Sized, G: Snapshot + ?Sized>(
-    ctx: &Ctx<'_, S>,
-    snap: &G,
-    catalog: &dyn TableCatalog,
-    star: &Star,
-    tables: &[TableId],
-    patterns: &[[Slot; 3]],
-    input: Vec<TermId>,
-    filters: &[(&Expression, Vec<usize>)],
-    ranges: &Ranges,
-    mut trace: Option<&mut Trace>,
-) -> Vec<TermId> {
-    let width = ctx.vars.len();
-    let bound: HashSet<usize> = std::iter::once(star.subject_slot)
-        .chain(star.columns.iter().map(|(_, slot)| *slot))
-        .collect();
-    let predicates: Vec<TermId> = star.columns.iter().map(|(p, _)| *p).collect();
-    // Range pushdown into the table scan comes after its ID intervals have the
-    // same conservative coverage proof as the current index range path.
-    let no_ranges = vec![None; predicates.len()];
-    let mut numeric_memo: HashMap<TermId, Option<expr::Num>> = HashMap::new();
-    let mut out = Vec::new();
-    let started = trace.as_ref().map(|_| Instant::now());
-    let mut scanned = 0u64;
-    let mut emitted = 0u64;
-    let mut bytes = 0u64;
-    for &table in tables {
-        let mut scan = catalog.scan(table, &predicates, &no_ranges);
-        while let Some(batch) = scan.next_batch() {
-            ctx.check();
-            let batch = batch.unwrap_or_else(|error| storage_failure(error));
-            ctx.fits(
-                (out.len().saturating_add(batch.len().saturating_mul(width)) as u64)
-                    .saturating_mul(8),
-            );
-            let mut flat = Vec::with_capacity(batch.len().saturating_mul(width));
-            for row in 0..batch.len() {
-                let mut cells = vec![UNBOUND; width];
-                cells[star.subject_slot] = batch.subjects[row];
-                for (column, &(_, slot)) in star.columns.iter().enumerate() {
-                    cells[slot] = batch.values[column][row];
-                }
-                flat.extend_from_slice(&cells);
-            }
-            ctx.fits((out.len().saturating_add(flat.len()) as u64).saturating_mul(8));
-            ctx.apply_filters(
-                &mut flat,
-                width,
-                filters,
-                &bound,
-                &mut vec![false; filters.len()],
-                &mut numeric_memo,
-            );
-            out.extend(flat);
-        }
-        let counters = scan.counters();
-        scanned += counters.subjects_scanned;
-        emitted += counters.rows_emitted;
-        bytes += counters.bytes_read;
-    }
-    if let (Some(trace), Some(started)) = (trace.as_deref_mut(), started) {
-        trace.note("tables", tables.len());
-        trace.note("table_subjects", scanned);
-        trace.note("table_bytes", bytes);
-        trace.step(
-            None,
-            "wide",
-            1,
-            emitted as usize,
-            out.len() / width,
-            started,
-        );
-    }
-
-    // The table partition is subject-disjoint. Keep the index BGP's ordinary
-    // access order, but prune covered subjects as soon as the first pattern
-    // binds them so the following patterns do not redo their joins.
-    let bgp = Bgp {
-        snap,
-        w: width,
-        ranges: (!ranges.is_empty()).then_some(ranges),
-        sorted_probe: ctx.sorted_probe,
-        interrupt: ctx.interrupt,
-        budget: ctx.budget,
-    };
-    let mut applied = vec![false; filters.len()];
-    let mut pruned = false;
-    let mut post = |rows: &mut Vec<TermId>, available: &HashSet<usize>| {
-        if !pruned && available.contains(&star.subject_slot) {
-            let mut kept = Vec::with_capacity(rows.len());
-            for row in rows.chunks_exact(width) {
-                if !tables
-                    .iter()
-                    .any(|&table| catalog.member(table, row[star.subject_slot]))
-                {
-                    kept.extend_from_slice(row);
-                }
-            }
-            *rows = kept;
-            pruned = true;
-        }
-        ctx.apply_filters(
-            rows,
-            width,
-            filters,
-            available,
-            &mut applied,
-            &mut numeric_memo,
-        );
-    };
-    let initial = vec![vec![UNBOUND; width]];
-    let residual = match ctx.planned_order_est(patterns, &initial, ranges, trace.is_some()) {
-        Some((order, estimates)) => {
-            if let Some(trace) = trace.as_deref_mut() {
-                trace.planned(&order, estimates);
-            }
-            bgp.eval_order(patterns, &order, input, &mut post, trace.as_deref_mut())
-        }
-        None => bgp.eval_greedy(patterns, input, &mut post, trace.as_deref_mut()),
-    };
-    ctx.fits((out.len().saturating_add(residual.len()) as u64).saturating_mul(8));
-    out.extend(residual);
-    out
 }
 
 /// A residual estimate must include the indexed BGP over subjects not assigned

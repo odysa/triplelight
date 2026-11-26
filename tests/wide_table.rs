@@ -44,7 +44,16 @@ fn forced_table_union_and_residual_equal_plain_bgp_as_bags() {
     let expected = bag(query_with(&plain, query, &Options::default()).unwrap());
     // SAFETY: this file is one test binary with one test; no concurrent queries.
     unsafe { std::env::set_var("TRIPLELIGHT_FORCE_WIDE", "1") };
-    let got = bag(query_with(&wide, query, &Options::default()).unwrap());
+    let (result, trace) = triplelight::exec::plan_trace::capture(|| {
+        query_with(&wide, query, &Options::default()).unwrap()
+    });
+    assert!(
+        trace
+            .iter()
+            .any(|line| line.contains("strategy=wide-forced")),
+        "{trace:?}"
+    );
+    let got = bag(result);
     assert_eq!(got, expected);
     assert_eq!(
         got.len(),
