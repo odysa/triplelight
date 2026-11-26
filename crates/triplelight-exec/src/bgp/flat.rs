@@ -26,9 +26,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             .chain(star.columns.iter().map(|(_, slot)| *slot))
             .collect();
         let predicates: Vec<TermId> = star.columns.iter().map(|(p, _)| *p).collect();
-        // Range pushdown into the table scan comes after its ID intervals have the
-        // same conservative coverage proof as the current index range path.
-        let no_ranges = vec![None; predicates.len()];
+        let table_ranges = self.table_intervals(&star.columns, filters);
         let mut numeric_memo: HashMap<TermId, Option<expr::Num>> = HashMap::new();
         let mut out = Vec::new();
         let started = trace.as_ref().map(|_| Instant::now());
@@ -36,7 +34,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         let mut emitted = 0u64;
         let mut bytes = 0u64;
         for &table in tables {
-            let mut scan = catalog.scan(table, &predicates, &no_ranges);
+            let mut scan = catalog.scan(table, &predicates, &table_ranges);
             while let Some(batch) = scan.next_batch() {
                 self.check();
                 let batch = batch.unwrap_or_else(|error| storage_failure(error));
@@ -46,12 +44,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 );
                 let mut flat = Vec::with_capacity(batch.len().saturating_mul(width));
                 for row in 0..batch.len() {
-                    let mut cells = vec![UNBOUND; width];
-                    cells[star.subject_slot] = batch.subjects[row];
+                    let base = flat.len();
+                    flat.resize(base + width, UNBOUND);
+                    flat[base + star.subject_slot] = batch.subjects[row];
                     for (column, &(_, slot)) in star.columns.iter().enumerate() {
-                        cells[slot] = batch.values[column][row];
+                        flat[base + slot] = batch.values[column][row];
                     }
-                    flat.extend_from_slice(&cells);
                 }
                 self.fits((out.len().saturating_add(flat.len()) as u64).saturating_mul(8));
                 self.apply_filters(
@@ -71,6 +69,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }
         if let (Some(trace), Some(started)) = (trace.as_deref_mut(), started) {
             trace.note("tables", tables.len());
+            trace.note("table_ranges", table_ranges.iter().filter(|r| r.is_some()).count());
             trace.note("table_subjects", scanned);
             trace.note("table_bytes", bytes);
             trace.step(
@@ -81,6 +80,14 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 out.len() / width,
                 started,
             );
+        }
+
+        // Every selected type-group table contains every predicate observed for
+        // its subjects, and `tables` includes every table with the full star
+        // schema. If every subject with one star predicate is in some table,
+        // every matching subject is in a selected table; no residual can match.
+        if predicates.iter().any(|&p| catalog.covers_all_subjects(p)) {
+            return out;
         }
 
         // The table partition is subject-disjoint. Keep the index BGP's ordinary

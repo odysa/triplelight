@@ -39,6 +39,8 @@
 //! A range is pushed only if it holds at most `MAX_FRACTION` of the predicate's triples (exact per-object counts
 //! against `count(POS, [p])`); a denser one leaves the BGP's plan exactly as without the pushdown. Each decision is
 //! logged on the server's `phase_trace` line (`range_pushdown=on:0.031,...`) under `TRIPLELIGHT_TRACE_PHASES`.
+//! A wide-table scan instead applies the same canonical-literal bounds before row expansion, even for dense
+//! ranges. It uses a single ID interval only when the predicate has no unordered overlay objects.
 //!
 //! A pushed range changes the join order and the order of the BGP's rows, never their multiset. It is therefore
 //! applied only to BGPs whose solution order cannot reach the answers (`reorderable_bgps`, computed once per query):
@@ -286,18 +288,30 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         out
     }
 
-    fn object_range(&self, p: TermId, bounds: &[Bound]) -> Option<ObjRange> {
-        let datatype = bounds[0].datatype;
-        // Bounds of different datatypes cannot all hold; leave such a conjunction to the filter.
-        if bounds.iter().any(|b| b.datatype != datatype) { return None }
-        // The text bounds first: a store that cannot promise them (`None`) skips the object enumeration below.
-        let (mut lo, mut hi) = (FIRST_LITERAL, END_LITERAL);
-        for b in bounds {
-            let strict = match b.side { Side::Lower { strict } => strict, Side::Upper { inclusive } => inclusive };
-            let id = self.snap.literal_text_bound(&b.text, strict).unwrap_or_else(|e| storage_failure(e))?;
-            match b.side { Side::Lower { .. } => lo = lo.max(id), Side::Upper { .. } => hi = hi.min(id) }
+    /// Conservative ID intervals for a wide-table star, in its column order. Unlike the index path, a dense
+    /// interval is useful here: the scan already visits each subject and can reject values before row expansion.
+    /// A single interval cannot also include unordered overlay IDs, so any such object leaves that column unbounded.
+    pub(super) fn table_intervals(&self, columns: &[(TermId, usize)], filters: &[(&Expression, Vec<usize>)]) -> Vec<Option<(TermId, TermId)>> {
+        let mut out = vec![None; columns.len()];
+        if !self.range_pushdown || filters.is_empty() || self.data.get().is_some() { return out }
+        let mut bounds: HashMap<usize, Vec<Bound>> = HashMap::new();
+        for (e, _) in filters {
+            if let Some((col, b)) = self.range_bound(e) { bounds.entry(col).or_default().push(b) }
         }
-        let literals = self.ordered_literal_objects(p, datatype)?;
+        for (i, &(p, slot)) in columns.iter().enumerate() {
+            let Some(bs) = bounds.get(&slot) else { continue };
+            let Some((lo, hi, _)) = self.literal_interval(p, bs) else { continue };
+            // Delta, scratch and inline terms do not follow the base literal text order. The table scanner has
+            // one interval per column, so it cannot include them in a separate unrestricted pass.
+            if self.snap.seek(Perm::Pos, &[p], FIRST_UNORDERED).unwrap_or_else(|e| storage_failure(e)).is_none() {
+                out[i] = Some((lo, hi));
+            }
+        }
+        out
+    }
+
+    fn object_range(&self, p: TermId, bounds: &[Bound]) -> Option<ObjRange> {
+        let (lo, hi, literals) = self.literal_interval(p, bounds)?;
         let mut objects: Vec<TermId> = if lo < hi {
             let a = literals.partition_point(|&x| x < lo);
             let b = literals.partition_point(|&x| x < hi);
@@ -318,6 +332,21 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let pushed = rows <= limit;
         super::phase::range_decision(pushed, frac);
         pushed.then_some(ObjRange { objects, rows })
+    }
+
+    fn literal_interval(&self, p: TermId, bounds: &[Bound]) -> Option<(TermId, TermId, Arc<[TermId]>)> {
+        let datatype = bounds[0].datatype;
+        // Bounds of different datatypes cannot all hold; leave such a conjunction to the filter.
+        if bounds.iter().any(|b| b.datatype != datatype) { return None }
+        // The text bounds first: a store that cannot promise them (`None`) skips the object enumeration below.
+        let (mut lo, mut hi) = (FIRST_LITERAL, END_LITERAL);
+        for b in bounds {
+            let strict = match b.side { Side::Lower { strict } => strict, Side::Upper { inclusive } => inclusive };
+            let id = self.snap.literal_text_bound(&b.text, strict).unwrap_or_else(|e| storage_failure(e))?;
+            match b.side { Side::Lower { .. } => lo = lo.max(id), Side::Upper { .. } => hi = hi.min(id) }
+        }
+        let literals = self.ordered_literal_objects(p, datatype)?;
+        Some((lo, hi, literals))
     }
 
     /// Appends the distinct objects of `p` in `[from, to)` (`to = None`: no upper end), ascending, found by index
