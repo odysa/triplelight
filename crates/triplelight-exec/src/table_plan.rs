@@ -2,11 +2,12 @@
 //!
 //! The first physical implementation accepts only a complete, all-unbound star.
 //! A rejected shape is evaluated by the existing triple-index BGP executor.
-//! The catalog adapter will be added when the storage-side table API lands.
+//! The physical BGP adapter will be added when the storage-side scan lands.
 
 use crate::model::TermId;
 use crate::pattern::Slot;
 use std::collections::HashSet;
+use triplelight_core::wide::{TableCatalog, TableId};
 
 #[derive(Clone, Debug)]
 pub(super) struct Star {
@@ -55,37 +56,12 @@ pub(super) fn recognize_star(patterns: &[[Slot; 3]], all_unbound: bool) -> Optio
     })
 }
 
-/// The storage catalog's physical facts needed to compare access paths.
-/// Counts describe the same pinned base generation as the table scan.
-#[derive(Clone, Copy, Debug)]
-pub(super) struct ColumnStats {
-    pub predicate: TermId,
-    pub non_null_subjects: u64,
-    pub values: u64,
-    pub compressed_bytes: u64,
-}
-
-#[derive(Clone, Debug)]
-pub(super) struct TableStats {
-    pub subjects: u64,
-    pub subject_bytes: u64,
-    pub columns: Vec<ColumnStats>,
-}
-
 /// A residual estimate must include the indexed BGP over subjects not assigned
 /// to the selected tables. Passing `None` forces the ordinary index plan.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct ResidualStats {
     pub indexed_ns: f64,
     pub membership_probes: u64,
-}
-
-pub(super) trait PlanningCatalog {
-    type TableId: Copy + Eq;
-
-    fn tables_with(&self, predicates: &[TermId]) -> Vec<Self::TableId>;
-    fn meta(&self, table: Self::TableId) -> Option<TableStats>;
-    fn residual(&self, tables: &[Self::TableId], star: &Star) -> Option<ResidualStats>;
 }
 
 /// Coefficients are measured on the target machine and kept out of query text.
@@ -119,8 +95,8 @@ impl CostCalibration {
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct TableChoice<Id> {
-    pub tables: Vec<Id>,
+pub(super) struct TableChoice {
+    pub tables: Vec<TableId>,
     pub estimated_table_ns: f64,
     pub estimated_index_ns: f64,
     pub estimated_rows: f64,
@@ -128,12 +104,13 @@ pub(super) struct TableChoice<Id> {
 
 /// Compares the *complete* table+residual path with the already chosen index
 /// path. It never treats a table's matching schema as a completeness proof.
-pub(super) fn choose<C: PlanningCatalog>(
-    catalog: &C,
+pub(super) fn choose(
+    catalog: &dyn TableCatalog,
     star: &Star,
     index_ns: f64,
+    residual: Option<ResidualStats>,
     calibration: CostCalibration,
-) -> Option<TableChoice<C::TableId>> {
+) -> Option<TableChoice> {
     if !calibration.valid() || !index_ns.is_finite() || index_ns <= 0.0 {
         return None;
     }
@@ -146,7 +123,7 @@ pub(super) fn choose<C: PlanningCatalog>(
     {
         return None;
     }
-    let residual = catalog.residual(&tables, star)?;
+    let residual = residual?;
     if !residual.indexed_ns.is_finite() || residual.indexed_ns < 0.0 {
         return None;
     }
@@ -154,7 +131,7 @@ pub(super) fn choose<C: PlanningCatalog>(
         residual.indexed_ns + residual.membership_probes as f64 * calibration.membership_probe_ns;
     let mut rows = 0.0;
     for table in &tables {
-        let meta = catalog.meta(*table)?;
+        let meta = catalog.meta(*table);
         if meta.subjects == 0 {
             continue;
         }
@@ -164,12 +141,11 @@ pub(super) fn choose<C: PlanningCatalog>(
         // Incorrect correlation changes plan choice only; the scan is exact.
         let mut table_rows = meta.subjects as f64;
         for predicate in &star.predicates {
-            let column = meta.columns.iter().find(|c| c.predicate == *predicate)?;
-            if column.non_null_subjects > meta.subjects || column.values < column.non_null_subjects
-            {
+            let column = meta.column(*predicate)?;
+            if column.non_null > meta.subjects || column.values < column.non_null {
                 return None;
             }
-            bytes += column.compressed_bytes as f64;
+            bytes += column.bytes as f64;
             values += column.values as f64;
             table_rows *= column.values as f64 / meta.subjects as f64;
         }
@@ -194,6 +170,8 @@ pub(super) fn choose<C: PlanningCatalog>(
 mod tests {
     use super::*;
     use std::collections::HashMap;
+    use triplelight_core::storage::StorageError;
+    use triplelight_core::wide::{ColumnMeta, ScanCounters, TableBatch, TableMeta, TableScan};
 
     fn star() -> [[Slot; 3]; 2] {
         [
@@ -229,21 +207,38 @@ mod tests {
     }
 
     struct Mock {
-        ids: Vec<u8>,
-        metas: HashMap<u8, TableStats>,
-        residual: Option<ResidualStats>,
+        ids: Vec<TableId>,
+        metas: HashMap<TableId, TableMeta>,
     }
 
-    impl PlanningCatalog for Mock {
-        type TableId = u8;
-        fn tables_with(&self, _: &[TermId]) -> Vec<u8> {
+    struct EmptyScan;
+
+    impl TableScan for EmptyScan {
+        fn next_batch(&mut self) -> Option<Result<TableBatch, StorageError>> {
+            None
+        }
+        fn counters(&self) -> ScanCounters {
+            ScanCounters::default()
+        }
+    }
+
+    impl TableCatalog for Mock {
+        fn tables_with(&self, _: &[TermId]) -> Vec<TableId> {
             self.ids.clone()
         }
-        fn meta(&self, table: u8) -> Option<TableStats> {
-            self.metas.get(&table).cloned()
+        fn meta(&self, table: TableId) -> &TableMeta {
+            &self.metas[&table]
         }
-        fn residual(&self, _: &[u8], _: &Star) -> Option<ResidualStats> {
-            self.residual
+        fn member(&self, _: TableId, _: TermId) -> bool {
+            false
+        }
+        fn scan<'a>(
+            &'a self,
+            _: TableId,
+            _: &[TermId],
+            _: &[Option<(TermId, TermId)>],
+        ) -> Box<dyn TableScan + 'a> {
+            Box::new(EmptyScan)
         }
     }
 
@@ -261,49 +256,42 @@ mod tests {
     #[test]
     fn costing_includes_all_tables_and_the_residual() {
         let spec = recognize_star(&star(), true).unwrap();
-        let one_table = TableStats {
+        let one_table = TableMeta {
             subjects: 100,
             subject_bytes: 800,
             columns: vec![
-                ColumnStats {
+                ColumnMeta {
                     predicate: TermId(10),
-                    non_null_subjects: 100,
+                    non_null: 100,
                     values: 200,
-                    compressed_bytes: 800,
+                    bytes: 800,
                 },
-                ColumnStats {
+                ColumnMeta {
                     predicate: TermId(20),
-                    non_null_subjects: 100,
+                    non_null: 100,
                     values: 100,
-                    compressed_bytes: 800,
+                    bytes: 800,
                 },
             ],
         };
         let mock = Mock {
             ids: vec![1, 2],
             metas: HashMap::from([(1, one_table.clone()), (2, one_table)]),
-            residual: Some(ResidualStats {
-                indexed_ns: 100.0,
-                membership_probes: 50,
-            }),
         };
-        let choice = choose(&mock, &spec, 10_000.0, calibration()).unwrap();
+        let residual = Some(ResidualStats {
+            indexed_ns: 100.0,
+            membership_probes: 50,
+        });
+        let choice = choose(&mock, &spec, 10_000.0, residual, calibration()).unwrap();
         assert_eq!(choice.tables, vec![1, 2]);
         assert_eq!(choice.estimated_rows, 400.0);
         // Each table: 300 bytes/ns + 200 subject + 300 values + 200 output.
         assert_eq!(choice.estimated_table_ns, 2_000.0 + 100.0 + 50.0);
-        let expensive_residual = Mock {
-            residual: Some(ResidualStats {
-                indexed_ns: 5_000.0,
-                membership_probes: 50,
-            }),
-            ..mock
-        };
-        assert!(choose(&expensive_residual, &spec, 10_000.0, calibration()).is_none());
-        let unknown_residual = Mock {
-            residual: None,
-            ..expensive_residual
-        };
-        assert!(choose(&unknown_residual, &spec, 10_000.0, calibration()).is_none());
+        let expensive_residual = Some(ResidualStats {
+            indexed_ns: 5_000.0,
+            membership_probes: 50,
+        });
+        assert!(choose(&mock, &spec, 10_000.0, expensive_residual, calibration()).is_none());
+        assert!(choose(&mock, &spec, 10_000.0, None, calibration()).is_none());
     }
 }
