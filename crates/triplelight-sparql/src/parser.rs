@@ -55,7 +55,17 @@ type R<T> = Result<T, ParseError>;
 
 /// Parses a SPARQL 1.1 query. `base_iri` resolves relative IRIs when the query has no `BASE`.
 pub fn parse_query(text: &str, base_iri: Option<&str>) -> R<Query> {
-    let mut p = Parser::new(text, base_iri)?;
+    parse_query_with_aggregates(text, base_iri, None)
+}
+
+/// Parses a query with an optional lookup for registered unary aggregate IRIs.
+#[doc(hidden)]
+pub fn parse_query_with_aggregates(
+    text: &str,
+    base_iri: Option<&str>,
+    is_aggregate: Option<&dyn Fn(&str) -> bool>,
+) -> R<Query> {
+    let mut p = Parser::new(text, base_iri, is_aggregate)?;
     p.prologue()?;
     let q = p.query()?;
     p.expect_eof()?;
@@ -66,7 +76,7 @@ pub fn parse_query(text: &str, base_iri: Option<&str>) -> R<Query> {
 
 /// Parses a SPARQL 1.1 update request.
 pub fn parse_update(text: &str, base_iri: Option<&str>) -> R<Update> {
-    let mut p = Parser::new(text, base_iri)?;
+    let mut p = Parser::new(text, base_iri, None)?;
     let mut operations = Vec::new();
     loop {
         p.prologue()?;
@@ -117,6 +127,7 @@ struct Parser<'a> {
     /// Aggregates collected while parsing SELECT / HAVING / ORDER BY expressions; `None` where aggregates are invalid.
     aggregates: Option<Vec<(Variable, AggregateExpression)>>,
     in_aggregate: bool,
+    is_custom_aggregate: Option<&'a dyn Fn(&str) -> bool>,
     /// Current nesting depth (see `MAX_NESTING`).
     depth: usize,
     /// Operators built so far (see `MAX_OPERATORS`).
@@ -127,7 +138,7 @@ fn xsd(local: &str) -> NamedNode { NamedNode::new_unchecked(format!("{XSD}{local
 fn rdf(local: &str) -> NamedNode { NamedNode::new_unchecked(format!("{RDF}{local}")) }
 
 impl<'a> Parser<'a> {
-    fn new(src: &'a str, base: Option<&str>) -> R<Self> {
+    fn new(src: &'a str, base: Option<&str>, is_custom_aggregate: Option<&'a dyn Fn(&str) -> bool>) -> R<Self> {
         let toks = tokenize(src).map_err(|e| Self::error_at(src, e.pos, e.message))?;
         use std::hash::{BuildHasher, Hasher};
         let mut h = std::collections::hash_map::RandomState::new().build_hasher();
@@ -139,7 +150,7 @@ impl<'a> Parser<'a> {
         };
         Ok(Parser {
             src, toks, i: 0, base: base.map(str::to_string), base_parsed, prefixes: HashMap::new(), salt, counter: 0,
-            bnode_block: HashMap::new(), block: 0, data_bnodes: HashSet::new(), template: false, last_group_filtered: false, depth: 0, operators: 0, aggregates: None, in_aggregate: false,
+            bnode_block: HashMap::new(), block: 0, data_bnodes: HashSet::new(), template: false, last_group_filtered: false, depth: 0, operators: 0, aggregates: None, in_aggregate: false, is_custom_aggregate,
         })
     }
 
@@ -1193,14 +1204,22 @@ impl<'a> Parser<'a> {
         Ok(v)
     }
 
-    /// `iri(args)`: an extension function, or a custom aggregate when written with DISTINCT in an aggregate context.
+    /// A registered unary aggregate shares IRI call syntax with scalar functions.
     fn function_call(&mut self, iri: NamedNode) -> R<Expression> {
-        if matches!(self.peek(), Tok::Nil) { self.next(); return Ok(Expression::FunctionCall(Function::Custom(iri), vec![])) }
+        let aggregate = self.is_custom_aggregate.is_some_and(|lookup| lookup(iri.as_str()));
+        if matches!(self.peek(), Tok::Nil) {
+            if aggregate { return self.err("custom aggregates take exactly one expression") }
+            self.next();
+            return Ok(Expression::FunctionCall(Function::Custom(iri), vec![]))
+        }
         self.expect_punct("(")?;
-        if self.eat_kw("DISTINCT") {
-            let e = self.expression()?;
+        let distinct = self.eat_kw("DISTINCT");
+        if aggregate || distinct {
+            let expr = self.inside_aggregate(Self::expression)?;
             self.expect_punct(")")?;
-            return self.register_aggregate(AggregateExpression::FunctionCall { name: AggregateFunction::Custom(iri), expr: e, distinct: true });
+            return self.register_aggregate(AggregateExpression::FunctionCall {
+                name: AggregateFunction::Custom(iri), expr, distinct,
+            });
         }
         let mut args = vec![self.expression()?];
         while self.eat_punct(",") { args.push(self.expression()?) }
@@ -1215,34 +1234,38 @@ impl<'a> Parser<'a> {
         Ok(Expression::Variable(v))
     }
 
-    fn aggregate(&mut self, name: &str) -> R<Expression> {
+    fn inside_aggregate<T>(&mut self, parse: impl FnOnce(&mut Self) -> R<T>) -> R<T> {
         if self.in_aggregate { return self.err("aggregates cannot be nested") }
         if self.aggregates.is_none() { return self.err("aggregates are only allowed in SELECT, HAVING and ORDER BY") }
-        self.expect_punct("(")?;
-        let distinct = self.eat_kw("DISTINCT");
         self.in_aggregate = true;
         let saved = self.aggregates.take();
-        let result = (|| -> R<AggregateExpression> {
-            if name == "COUNT" && self.eat_punct("*") { return Ok(AggregateExpression::CountSolutions { distinct }) }
-            let expr = self.expression()?;
+        let result = parse(self);
+        self.aggregates = saved;
+        self.in_aggregate = false;
+        result
+    }
+
+    fn aggregate(&mut self, name: &str) -> R<Expression> {
+        self.expect_punct("(")?;
+        let distinct = self.eat_kw("DISTINCT");
+        let a = self.inside_aggregate(|parser| -> R<AggregateExpression> {
+            if name == "COUNT" && parser.eat_punct("*") { return Ok(AggregateExpression::CountSolutions { distinct }) }
+            let expr = parser.expression()?;
             let func = match name {
                 "COUNT" => AggregateFunction::Count, "SUM" => AggregateFunction::Sum, "AVG" => AggregateFunction::Avg,
                 "MIN" => AggregateFunction::Min, "MAX" => AggregateFunction::Max, "SAMPLE" => AggregateFunction::Sample,
                 _ => {
                     let mut separator = None;
-                    if self.eat_punct(";") {
-                        self.expect_kw("SEPARATOR")?;
-                        self.expect_punct("=")?;
-                        match self.next() { Tok::Str(s) => separator = Some(s), _ => return self.err("expected a string SEPARATOR") }
+                    if parser.eat_punct(";") {
+                        parser.expect_kw("SEPARATOR")?;
+                        parser.expect_punct("=")?;
+                        match parser.next() { Tok::Str(s) => separator = Some(s), _ => return parser.err("expected a string SEPARATOR") }
                     }
                     AggregateFunction::GroupConcat { separator }
                 }
             };
             Ok(AggregateExpression::FunctionCall { name: func, expr, distinct })
-        })();
-        self.aggregates = saved;
-        self.in_aggregate = false;
-        let a = result?;
+        })?;
         self.expect_punct(")")?;
         self.register_aggregate(a)
     }

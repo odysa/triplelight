@@ -9,7 +9,7 @@ use crate::limits::spill;
 use crate::model::TermId;
 use crate::storage::Snapshot;
 use crate::{storage_failure, Ctx, Row};
-use std::collections::HashMap;
+use crate::id_hash::FastMap;
 
 impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     /// `join_rows(left, right)` charging the build table, or spilling both sides by key partition when the build side
@@ -50,7 +50,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             // The partition pair and the build table are held while they are joined.
             let _part = self.reserve(l.rows(p) * (self.row_bytes() + 8) + r.rows(p) * (self.row_bytes() + 8 + 32));
             let (rseqs, rrows): (Vec<u64>, Vec<Row>) = r.read(p, 1 << 16).unwrap_or_else(|e| storage_failure(e)).map(|x| x.unwrap_or_else(|e| storage_failure(e))).unzip();
-            let mut table: HashMap<Vec<TermId>, Vec<usize>> = HashMap::new();
+            let mut table: FastMap<Vec<TermId>, Vec<usize>> = FastMap::default();
             for (j, b) in rrows.iter().enumerate() { table.entry(key.iter().map(|&i| b[i]).collect()).or_default().push(j) }
             let (lseqs, lrows): (Vec<u64>, Vec<Row>) = l.read(p, 1 << 16).unwrap_or_else(|e| storage_failure(e)).map(|x| x.unwrap_or_else(|e| storage_failure(e))).unzip();
             for (n, (ls, a)) in lseqs.iter().zip(&lrows).enumerate() {

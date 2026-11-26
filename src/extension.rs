@@ -1,7 +1,7 @@
 //! Registration of linked TripleLight extensions.
 use crate::exec::builtin_iri;
-use crate::exec::udf::{FunctionLookup, RegisteredFunction};
-pub use crate::exec::udf::{FunctionOptions, ScalarFunction};
+use crate::exec::udf::{FunctionLookup, RegisteredAggregate, RegisteredFunction};
+pub use crate::exec::udf::{AggregateFunction, AggregateState, FunctionOptions, ScalarFunction};
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 use triplelight_core::rdf::{NamedNode, Triple};
@@ -65,7 +65,7 @@ impl Extension for OwlRlEquivalence {
 pub struct Registrar {
     entailment: Option<Arc<dyn EntailmentProvider>>,
     validator: Option<Arc<dyn Validator>>,
-    functions: BTreeMap<String, RegisteredFunction>,
+    functions: BTreeMap<String, Registration>,
 }
 
 impl Registrar {
@@ -76,7 +76,25 @@ impl Registrar {
         options: FunctionOptions,
         callback: impl ScalarFunction,
     ) -> Result<(), ExtensionError> {
-        insert_function(&mut self.functions, iri, options, callback)
+        self.add_function(iri, Registration::Scalar(RegisteredFunction::new(options, callback)))
+    }
+
+    /// Stages a unary aggregate factory. Validation and publication are shared with scalar functions.
+    pub fn aggregate_function(
+        &mut self,
+        iri: &str,
+        factory: impl AggregateFunction,
+    ) -> Result<(), ExtensionError> {
+        self.add_function(iri, Registration::Aggregate(RegisteredAggregate::new(factory)))
+    }
+
+    fn add_function(&mut self, iri: &str, registration: Registration) -> Result<(), ExtensionError> {
+        let iri = function_iri(iri)?;
+        if self.functions.contains_key(&iri) {
+            return Err(duplicate_function(&iri));
+        }
+        self.functions.insert(iri, registration);
+        Ok(())
     }
 
     pub fn entailment(
@@ -119,12 +137,28 @@ const OFFICIAL: [(&str, bool); 2] = [
 #[derive(Clone, Default)]
 pub(crate) struct Registry {
     extensions: BTreeMap<String, Registrar>,
-    functions: BTreeMap<String, RegisteredFunction>,
+    functions: BTreeMap<String, Registration>,
+}
+
+#[derive(Clone)]
+enum Registration {
+    Scalar(RegisteredFunction),
+    Aggregate(RegisteredAggregate),
 }
 
 impl FunctionLookup for Registry {
     fn scalar(&self, iri: &str) -> Option<&RegisteredFunction> {
-        self.functions.get(iri)
+        match self.functions.get(iri)? {
+            Registration::Scalar(function) => Some(function),
+            Registration::Aggregate(_) => None,
+        }
+    }
+
+    fn aggregate(&self, iri: &str) -> Option<&RegisteredAggregate> {
+        match self.functions.get(iri)? {
+            Registration::Aggregate(function) => Some(function),
+            Registration::Scalar(_) => None,
+        }
     }
 }
 
@@ -228,13 +262,25 @@ impl ExtensionRegistry {
         options: FunctionOptions,
         callback: impl ScalarFunction,
     ) -> Result<(), ExtensionError> {
+        self.publish_function(iri, Registration::Scalar(RegisteredFunction::new(options, callback)))
+    }
+
+    /// Registers a unary SPARQL aggregate for future read snapshots.
+    pub fn register_aggregate_function(
+        &self,
+        iri: &str,
+        factory: impl AggregateFunction,
+    ) -> Result<(), ExtensionError> {
+        self.publish_function(iri, Registration::Aggregate(RegisteredAggregate::new(factory)))
+    }
+
+    fn publish_function(&self, iri: &str, registration: Registration) -> Result<(), ExtensionError> {
         let iri = function_iri(iri)?;
-        let function = RegisteredFunction::new(options, callback);
         let mut registry = self.0.write().unwrap();
         if registry.functions.contains_key(&iri) {
             return Err(duplicate_function(&iri));
         }
-        Arc::make_mut(&mut registry).functions.insert(iri, function);
+        Arc::make_mut(&mut registry).functions.insert(iri, registration);
         Ok(())
     }
 
@@ -297,20 +343,6 @@ fn function_iri(iri: &str) -> Result<String, ExtensionError> {
 
 fn duplicate_function(iri: &str) -> ExtensionError {
     ExtensionError::InvalidRegistration(format!("function <{iri}> is already registered"))
-}
-
-fn insert_function(
-    functions: &mut BTreeMap<String, RegisteredFunction>,
-    iri: &str,
-    options: FunctionOptions,
-    callback: impl ScalarFunction,
-) -> Result<(), ExtensionError> {
-    let iri = function_iri(iri)?;
-    if functions.contains_key(&iri) {
-        return Err(duplicate_function(&iri));
-    }
-    functions.insert(iri, RegisteredFunction::new(options, callback));
-    Ok(())
 }
 
 fn is_official(name: &str) -> bool {

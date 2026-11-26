@@ -281,6 +281,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
     refresh(&stats, &store.snapshot());
     let port = args.get(3).filter(|a| !a.starts_with("--")).map(String::as_str).unwrap_or("7878");
     let server = listen(port);
+    // tests/cli/server_auth.rs (`spawn_server`) waits for this line, printed once the port is bound: keep its prefix.
     eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql and /update");
     let (server, store, stats, refresh) = (&server, &store, &stats, &refresh);
     std::thread::scope(|scope| for _ in 0..workers { scope.spawn(move || {

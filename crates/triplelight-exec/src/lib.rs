@@ -44,7 +44,7 @@ pub mod results;
 use crate::model::{Perm, TermId};
 use crate::storage::{DatasetView, Snapshot};
 use crate::opt::stats::Stats;
-use triplelight_rdf::{BlankNode, Literal, Term, Variable};
+use triplelight_rdf::{BlankNode, Term, Variable};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression, Function, GraphPattern, OrderExpression};
 use crate::sparql::{GroundTerm, NamedNodePattern, TermPattern, TriplePattern};
 use crate::sparql::Query;
@@ -215,7 +215,9 @@ fn catching_storage<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, Q
 }
 
 fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opts: &Options<'_>, extensions: udf::QueryExtensions<'_>) -> Result<QueryResult, QueryError> {
-    let q = phase::parse(|| crate::sparql::parse_query(text, None)).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
+    let is_aggregate = |iri: &str| extensions.functions.and_then(|f| f.aggregate(iri)).is_some();
+    let lookup = extensions.functions.map(|_| &is_aggregate as &dyn Fn(&str) -> bool);
+    let q = phase::parse(|| crate::sparql::parse_query_with_aggregates(text, None, lookup)).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
     run_query(snap, dataset, &q, opts, extensions)
 }
 
@@ -469,12 +471,12 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// variables, so rows that differ elsewhere (e.g. many offers of one product) share one evaluation.
     /// Keys use a slot id, not the pattern's address: rewrites evaluate temporary patterns whose addresses are
     /// reused, so a slot is only reused when the pattern at that address is structurally the same.
-    exists_memo: RefCell<HashMap<(usize, usize, Vec<TermId>), bool>>,
+    exists_memo: RefCell<id_hash::FastMap<(usize, usize, Vec<TermId>), bool>>,
     exists_vars: RefCell<HashMap<usize, (GraphPattern, usize, Option<Vec<usize>>)>>,
     memo_slots: std::cell::Cell<usize>,
     /// Aggregate argument values memoized per expression and per ID of its single variable: the same term (e.g.
     /// one offer's price) recurs in many groups, and evaluating it means a dictionary decode each time.
-    agg_arg_memo: RefCell<HashMap<(usize, TermId), Option<Term>>>,
+    agg_arg_memo: RefCell<id_hash::FastMap<(usize, TermId), Option<Term>>>,
     agg_arg_slots: RefCell<HashMap<usize, (Expression, usize)>>,
     functions: Option<&'a dyn udf::FunctionLookup>,
     function_memo: Option<RefCell<udf::Memo<'a>>>,
@@ -533,9 +535,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             order_limit: std::cell::Cell::new(None),
             base: base.clone(),
             now,
-            exists_memo: RefCell::new(HashMap::new()),
+            exists_memo: RefCell::new(id_hash::FastMap::default()),
             exists_vars: RefCell::new(HashMap::new()),
-            agg_arg_memo: RefCell::new(HashMap::new()),
+            agg_arg_memo: RefCell::new(id_hash::FastMap::default()),
             agg_arg_slots: RefCell::new(HashMap::new()),
             functions: extensions.functions,
             function_memo: (!extensions.disable_function_memo && extensions.functions.is_some()).then(RefCell::default),
@@ -758,7 +760,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         // Numeric comparisons (a HAVING over aggregate results, #121) on numbers, each distinct ID decoded once; a row
         // the numeric path cannot evaluate takes `ebv`.
         let fast = expr::NumFilter::compile(expr, &self.vars);
-        let mut nums: HashMap<TermId, Option<expr::Num>> = HashMap::new();
+        let mut nums: id_hash::IdMap<Option<expr::Num>> = id_hash::IdMap::default();
         let mut val = |id: TermId| *nums.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
         phase::filter(|| rows.into_iter().filter(|r| match fast.as_ref().map(|f| f.eval(r, &mut val)) {
             Some(Ok(b)) => b == Some(true),
@@ -789,9 +791,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         // the result is a number, and only distinct results become terms (`intern_num`). A row the numeric path cannot
         // evaluate (a non-numeric input) takes the general evaluator, so the values are those of `value` either way.
         let fast = expr::NumExpr::compile_value(expression, &self.vars);
-        let mut nums: HashMap<TermId, Option<expr::Num>> = HashMap::new();
+        let mut nums: id_hash::IdMap<Option<expr::Num>> = id_hash::IdMap::default();
         let mut val = |id: TermId| *nums.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
-        let mut results: HashMap<expr::NumKey, TermId> = HashMap::new();
+        let mut results: id_hash::FastMap<expr::NumKey, TermId> = id_hash::FastMap::default();
         let rows = self.eval(inner, input);
         phase::extend(|| rows.into_iter().filter_map(|mut r| {
             let id = match fast.as_ref().map(|f| f.value(&r, &mut val)) {
@@ -947,7 +949,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     fn group_general(&self, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], kidx: &[usize], rows: Vec<Row>) -> Vec<Row> {
         let mut groups: Vec<(Vec<TermId>, Vec<Row>)> = Vec::new();
-        let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
+        let mut pos: id_hash::FastMap<Vec<TermId>, usize> = id_hash::FastMap::default();
         // The groups hold every row again, plus a key and a table entry per group.
         let mut held = self.reserve(rows.len() as u64 * self.row_bytes());
         for (n, r) in rows.into_iter().enumerate() {
@@ -971,68 +973,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             }
             out
         }).collect()
-    }
-
-    fn aggregate(&self, agg: &AggregateExpression, rows: &[Row]) -> Option<Term> {
-        match agg {
-            AggregateExpression::CountSolutions { distinct } => {
-                let n = if *distinct { rows.iter().collect::<HashSet<_>>().len() } else { rows.len() };
-                Some(Literal::from(n as i64).into())
-            }
-            AggregateExpression::FunctionCall { name, expr, distinct } => {
-                // SPARQL 1.1 §18.5: the expression is evaluated per solution; an error (including an unbound
-                // variable) makes SUM/AVG/MIN/MAX/GROUP_CONCAT an error (unbound result). COUNT counts the non-error
-                // values; SAMPLE returns a non-error value. (Matches Jena.)
-                // Expressions are deterministic (NOW/RAND/UUID/BNODE are unsupported); EXISTS reads other variables.
-                let single = match expr_vars(expr).as_slice() { [v] if !impure(expr) => self.vars.get(v).copied(), _ => None };
-                let evaluated: Vec<Option<Term>> = match single {
-                    Some(vi) => {
-                        let e: &Expression = expr;
-                        let addr = e as *const Expression as usize;
-                        let eid = {
-                            let mut m = self.agg_arg_slots.borrow_mut();
-                            match m.get(&addr) {
-                                Some((q, slot)) if q == e => *slot,
-                                _ => { let slot = self.memo_slots.get(); self.memo_slots.set(slot + 1); m.insert(addr, (e.clone(), slot)); slot }
-                            }
-                        };
-                        rows.iter().map(|r| {
-                            let key = (eid, r[vi]);
-                            if let Some(v) = self.agg_arg_memo.borrow().get(&key) { return v.clone() }
-                            let v = self.value(expr, r);
-                            let mut m = self.agg_arg_memo.borrow_mut();
-                            if m.len() < MEMO_CAP { m.insert(key, v.clone()); }
-                            v
-                        }).collect()
-                    }
-                    None => rows.iter().map(|r| self.value(expr, r)).collect(),
-                };
-                let has_error = evaluated.iter().any(Option::is_none);
-                let mut vals: Vec<Term> = evaluated.into_iter().flatten().collect();
-                if *distinct { let mut s = HashSet::new(); vals.retain(|v| s.insert(v.clone())); }
-                let strict = !matches!(name, AggregateFunction::Count | AggregateFunction::Sample);
-                if strict && has_error { return None }
-                match name {
-                    AggregateFunction::Count => Some(Literal::from(vals.len() as i64).into()),
-                    // Same accumulation as the ID-level fast path (`expr::num_add`): float sums round once.
-                    AggregateFunction::Sum => vals.iter().try_fold(expr::Num::Int(0), |a, b| expr::num_add(a, expr::term_num(b)?)).map(|n| n.term()),
-                    AggregateFunction::Avg => {
-                        if vals.is_empty() { return Some(Literal::from(0i64).into()) }
-                        let s = vals.iter().try_fold(expr::Num::Int(0), |a, b| expr::num_add(a, expr::term_num(b)?))?;
-                        expr::num_div_count(s, vals.len() as i64).map(|n| n.term())
-                    }
-                    AggregateFunction::Min => vals.into_iter().min_by(|a, b| expr::order_cmp(Some(a), Some(b))),
-                    AggregateFunction::Max => vals.into_iter().max_by(|a, b| expr::order_cmp(Some(a), Some(b))),
-                    AggregateFunction::Sample => vals.into_iter().next(),
-                    AggregateFunction::GroupConcat { separator } => {
-                        let sep = separator.as_deref().unwrap_or(" ");
-                        let s: Vec<String> = vals.iter().filter_map(expr::string_value).collect();
-                        Some(Literal::new_simple_literal(s.join(sep)).into())
-                    }
-                    AggregateFunction::Custom(_) => None,
-                }
-            }
-        }
     }
 
     // ---------- basic graph patterns ----------
@@ -1270,12 +1210,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         // Every row must bind exactly the same P variables (so one key layout describes all of them).
         if rows.iter().any(|r| idx.iter().any(|&i| (r[i] != UNBOUND) != key.contains(&i))) { return None }
         let mut reps: Vec<Row> = Vec::new();
-        let mut seen: HashSet<Vec<TermId>> = HashSet::new();
+        let mut seen: id_hash::FastSet<Vec<TermId>> = id_hash::FastSet::default();
         for r in rows {
             let k: Vec<TermId> = key.iter().map(|&i| r[i]).collect();
             if seen.insert(k) { let mut x = self.empty_row(); for &i in &key { x[i] = r[i] } reps.push(x) }
         }
-        let hits: HashSet<Vec<TermId>> = self.eval(p, reps).iter().map(|r| key.iter().map(|&i| r[i]).collect()).collect();
+        let hits: id_hash::FastSet<Vec<TermId>> = self.eval(p, reps).iter().map(|r| key.iter().map(|&i| r[i]).collect()).collect();
         Some(rows.iter().filter(|r| hits.contains(&key.iter().map(|&i| r[i]).collect::<Vec<_>>()) != neg).cloned().collect())
     }
 
@@ -1410,7 +1350,7 @@ fn memo_safe(p: &GraphPattern) -> bool {
         | GraphPattern::Project { inner, .. } => memo_safe(inner),
         GraphPattern::Group { inner, aggregates, .. } => memo_safe(inner) && aggregates.iter().all(|(_, aggregate)| match aggregate {
             AggregateExpression::CountSolutions { .. } => true,
-            AggregateExpression::FunctionCall { expr, .. } => !impure(expr),
+            AggregateExpression::FunctionCall { name, expr, .. } => !matches!(name, AggregateFunction::Custom(_)) && !impure(expr),
         }),
     }
 }

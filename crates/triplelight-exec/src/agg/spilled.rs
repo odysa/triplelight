@@ -12,7 +12,7 @@ use super::super::{storage_failure, Ctx, Row};
 use crate::limits::{spill, OverBudgetStop};
 use crate::model::TermId;
 use crate::storage::Snapshot;
-use std::collections::HashSet;
+use crate::id_hash::FastSet;
 
 impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     /// For the general path, which holds its input once more in the groups: spill when twice the input does not fit.
@@ -63,7 +63,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 .map(|r| r.unwrap_or_else(|e| storage_failure(e))).unzip();
             if rows.is_empty() { continue }
             // Each group's first input position, in first-seen order (the order `group` emits them in).
-            let mut seen: HashSet<Vec<TermId>> = HashSet::new();
+            let mut seen: FastSet<Vec<TermId>> = FastSet::default();
             let mut firsts: Vec<u64> = Vec::new();
             let key_bytes = 8 * kidx.len() as u64 + 48;
             for (s, r) in seqs.iter().zip(&rows) {
