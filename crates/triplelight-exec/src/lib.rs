@@ -97,11 +97,12 @@ impl IdSolutions {
 #[derive(Debug)]
 pub struct QueryError { pub kind: QueryErrorKind, pub message: String }
 
-/// What failed: the caller's query (HTTP 400), a feature we don't implement (501), or the store itself (500).
+/// What failed during query parsing, evaluation or execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QueryErrorKind {
     Syntax,
     Unsupported,
+    /// The query failed while reading storage or encountered an internal evaluation error (HTTP 500).
     Storage,
     /// An update names a graph in the wrong state: `CREATE` of an existing graph, or `DROP`, `CLEAR`, `ADD`, `MOVE`
     /// or `COPY` of an absent one, without `SILENT`. The request is at fault, not the store.
@@ -193,8 +194,8 @@ pub fn query_with<S: Snapshot>(snap: &S, text: &str, opts: &Options<'_>) -> Resu
     query_with_extensions(snap, None, text, opts, udf::QueryExtensions::default())
 }
 
-/// Storage reads inside evaluation unwind with `StorageFailure`; turn that into a `Storage` error.
-fn catching_storage<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, QueryError> {
+/// Translate unwind-based stops to query errors after evaluation state has been dropped.
+fn catching_query_failure<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, QueryError> {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
         Ok(r) => r,
         Err(p) => match p.downcast::<StorageFailure>() {
@@ -204,7 +205,7 @@ fn catching_storage<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, Q
                 Err(p) => match p.downcast::<OverBudgetStop>() {
                     Ok(o) => Err(QueryError::new(QueryErrorKind::ResourceLimit, format!(
                         "query needs more memory than its budget: {} more bytes requested, {} available", o.0.requested, o.0.available))),
-                    Err(p) => std::panic::resume_unwind(p),
+                    Err(_) => Err(QueryError::new(QueryErrorKind::Storage, "internal query evaluation error")),
                 },
             },
         },
@@ -251,7 +252,7 @@ pub fn query_with_extensions<S: Snapshot>(
     opts: &Options<'_>,
     extensions: udf::QueryExtensions<'_>,
 ) -> Result<QueryResult, QueryError> {
-    catching_storage(|| run(snap, dataset, text, opts, extensions))
+    catching_query_failure(|| run(snap, dataset, text, opts, extensions))
 }
 
 fn run_query<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, q: &Query, opts: &Options<'_>, extensions: udf::QueryExtensions<'_>) -> Result<QueryResult, QueryError> {
@@ -1547,7 +1548,7 @@ pub fn update_changes<S: Snapshot>(snap: &S, text: &str) -> Result<Vec<(crate::s
                 if delete.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph))
                     || insert.iter().any(|d| !matches!(d.graph_name, GraphNamePattern::DefaultGraph)) { return Err(unsupported("named graphs")) }
                 let q = Query::Select { dataset: None, pattern: (**pattern).clone(), base_iri: None };
-                let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, None, &q, &Options::default(), udf::QueryExtensions::default()))? else { unreachable!() };
+                let QueryResult::Solutions { vars, rows } = catching_query_failure(|| run_query(snap, None, &q, &Options::default(), udf::QueryExtensions::default()))? else { unreachable!() };
                 let col: HashMap<&str, usize> = vars.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
                 for (n, row) in rows.iter().enumerate() {
                     let var = |v: &Variable| col.get(v.as_str()).and_then(|&i| row[i].clone());
@@ -1637,7 +1638,7 @@ pub fn operation_changes<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, op: &
                 _ => (**pattern).clone(),
             };
             let q = Query::Select { dataset: using.clone(), pattern, base_iri: None };
-            let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, Some(dataset), &q, &Options::default(), udf::QueryExtensions::default()))? else { unreachable!() };
+            let QueryResult::Solutions { vars, rows } = catching_query_failure(|| run_query(snap, Some(dataset), &q, &Options::default(), udf::QueryExtensions::default()))? else { unreachable!() };
             let col: HashMap<&str, usize> = vars.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
             let default_target = || with.as_ref().map_or(GraphTarget::Default, |g| GraphTarget::Named(g.clone()));
             for (n, row) in rows.iter().enumerate() {
@@ -1738,7 +1739,7 @@ fn graph_triples<S: Snapshot>(snap: &S, dataset: &dyn DatasetView, g: &crate::sp
         GraphName::NamedNode(n) => GraphPattern::Graph { name: NamedNodePattern::NamedNode(n.clone()), inner: Box::new(bgp) },
     };
     let q = Query::Select { dataset: None, pattern, base_iri: None };
-    let QueryResult::Solutions { vars, rows } = catching_storage(|| run_query(snap, Some(dataset), &q, &Options::default(), udf::QueryExtensions::default()))? else { unreachable!() };
+    let QueryResult::Solutions { vars, rows } = catching_query_failure(|| run_query(snap, Some(dataset), &q, &Options::default(), udf::QueryExtensions::default()))? else { unreachable!() };
     let col = |name: &str| vars.iter().position(|x| x.as_str() == name).expect("projected variable");
     let (s, p, o) = (col("s"), col("p"), col("o"));
     Ok(rows.into_iter().filter_map(|r| match (r[s].clone(), r[p].clone(), r[o].clone()) {

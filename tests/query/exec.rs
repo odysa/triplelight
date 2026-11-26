@@ -45,6 +45,24 @@ fn filter_optional_order_limit() {
 }
 
 #[test]
+fn mixed_numeric_order_matches_the_top_k_prefix() {
+    let q = r#"
+        PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+        SELECT ?name WHERE { VALUES (?name ?value) {
+            ("fourth" "2.25"^^xsd:float) ("third" 2) ("second" 1.5)
+            ("fifth" "INF"^^xsd:double) ("first" "1.5"^^xsd:double)
+        } } ORDER BY ?value ?name
+    "#;
+    let ordered = |q: &str| {
+        let QueryResult::Solutions { rows, .. } = query(&store(), q).unwrap() else { panic!("expected solutions") };
+        rows.into_iter().map(|row| row[0].as_ref().unwrap().to_string()).collect::<Vec<_>>()
+    };
+    let full = ordered(q);
+    assert_eq!(full, ["\"first\"", "\"second\"", "\"third\"", "\"fourth\"", "\"fifth\""]);
+    assert_eq!(ordered(&format!("{q} LIMIT 3")), full[..3]);
+}
+
+#[test]
 fn union_distinct_group_ask() {
     assert_eq!(rows("SELECT DISTINCT ?x WHERE { { ?x <http://ex/knows> ?y } UNION { ?y <http://ex/knows> ?x } }").len(), 3);
     let g = rows("SELECT ?x (COUNT(?y) AS ?n) WHERE { ?x <http://ex/knows> ?y } GROUP BY ?x");
@@ -93,9 +111,12 @@ fn errors_carry_their_kind() {
 fn dictionary_errors_are_storage_errors() {
     use triplelight::model::{Perm, TermId, TripleBatch};
     use triplelight::storage::{Dictionary, Snapshot, StorageError};
-    struct BadDict(MemorySnapshot);
+    struct BadDict(MemorySnapshot, bool);
     impl Dictionary for BadDict {
-        fn lookup(&self, _: &triplelight_rdf::Term) -> Result<Option<TermId>, StorageError> { Err(StorageError::other("planted dictionary failure")) }
+        fn lookup(&self, _: &triplelight_rdf::Term) -> Result<Option<TermId>, StorageError> {
+            assert!(!self.1, "planted dictionary panic");
+            Err(StorageError::other("planted dictionary failure"))
+        }
         fn resolve(&self, id: TermId) -> Result<triplelight_rdf::Term, StorageError> { self.0.resolve(id) }
         fn with_term(&self, id: TermId, f: &mut dyn FnMut(triplelight_rdf::TermRef<'_>)) -> Result<(), StorageError> { self.0.with_term(id, f) }
     }
@@ -104,8 +125,13 @@ fn dictionary_errors_are_storage_errors() {
         fn count(&self, p: Perm, pre: &[TermId]) -> Result<u64, StorageError> { self.0.count(p, pre) }
         fn seek(&self, p: Perm, pre: &[TermId], t: TermId) -> Result<Option<TermId>, StorageError> { self.0.seek(p, pre, t) }
     }
-    let e = query(&BadDict(store()), "SELECT ?x WHERE { ?x <http://ex/knows> <http://ex/bob> }").unwrap_err();
+    let q = "SELECT ?x WHERE { ?x <http://ex/knows> <http://ex/bob> }";
+    let e = query(&BadDict(store(), false), q).unwrap_err();
     assert_eq!(e.kind, triplelight::exec::QueryErrorKind::Storage);
+    assert!(e.message.contains("planted dictionary failure"));
+    let internal = query(&BadDict(store(), true), q).unwrap_err();
+    assert_eq!(internal.kind, triplelight::exec::QueryErrorKind::Storage);
+    assert_eq!(internal.message, "internal query evaluation error");
 }
 
 /// Filters pushed into a BGP give the same answers as filtering afterwards (OPTIONAL blocks pushdown).
