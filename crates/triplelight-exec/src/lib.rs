@@ -163,6 +163,9 @@ pub struct Options<'a> {
     /// them in key order and restores the input order afterwards. Answers are identical; off
     /// (`--ablate=sortprobe`) probes in input order.
     pub sorted_probe: bool,
+    /// Force eligible star BGPs through the optional wide-table catalog. Diagnostic only;
+    /// the default uses the triple indexes until cost calibration is complete.
+    pub force_wide_tables: bool,
     /// CSR adjacency for `p+` / `p*` / `^p+` / `^p*` over one predicate (`path.rs`): the predicate's edges are read
     /// once per query and active graph into a compressed sparse row array and the closures run over it (all-pairs
     /// closures in parallel) instead of one index seek per visited node. Above a size cap it keeps the seeks.
@@ -176,7 +179,7 @@ pub struct Options<'a> {
     /// The working-memory budget of this query (`MemoryBudget`); `None` is unbounded.
     pub memory_budget: Option<&'a MemoryBudget>,
 }
-impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Entailment::Simple, interrupt: None, memory_budget: None } } }
+impl Default for Options<'_> { fn default() -> Self { Options { stats: None, wcoj: true, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, force_wide_tables: false, csr_paths: true, entailment: Entailment::Simple, interrupt: None, memory_budget: None } } }
 
 /// The entailment regime of a query's graph matching.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -446,6 +449,8 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     char_pairs: bool,
     /// `Options::sorted_probe`.
     sorted_probe: bool,
+    /// `Options::force_wide_tables`.
+    force_wide_tables: bool,
     /// CSR adjacencies of single-predicate closures for this query and their policy, including `Options::csr_paths`
     /// (`path.rs`).
     csr: RefCell<path::CsrCache>,
@@ -524,6 +529,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             range_pushdown: opts.range_pushdown,
             char_pairs: opts.char_pairs,
             sorted_probe: opts.sorted_probe,
+            force_wide_tables: opts.force_wide_tables,
             csr: RefCell::new(path::CsrCache::new(opts.csr_paths, csr_limits)),
             range_checks: RefCell::new(HashMap::new()),
             range_reorderable,
@@ -1032,53 +1038,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             NamedNodePattern::NamedNode(n) => Slot::Const(self.lookup(&n.clone().into())),
         };
         [self.slot_of(&t.subject), p, self.slot_of(&t.object)]
-    }
-
-    /// `eval_bgp_slots` for a query with at least one variable, as one flat buffer of rows (`vars.len()` IDs each),
-    /// so a consumer that reads the rows once (`agg::flat`) skips building a `Row` per solution.
-    fn eval_bgp_flat(&self, patterns: &[TriplePattern], rows: Vec<Row>, filters: &[(&Expression, Vec<usize>)]) -> Vec<TermId> {
-        let pats: Vec<[Slot; 3]> = patterns.iter().map(|t| self.slots(t)).collect();
-        let mut tr = plan_trace::enabled().then(|| plan_trace::Trace::new(patterns, rows.len()));
-        // A constant absent from the dictionary can never match.
-        if rows.is_empty() || pats.iter().any(|p| p.iter().any(|s| matches!(s, Slot::Const(None)))) {
-            if let Some(tr) = tr { tr.finish("empty", 0) }
-            return Vec::new();
-        }
-        let w = self.vars.len();
-        let unbound_start = rows.len() == 1 && rows[0].iter().all(|&x| x == UNBOUND);
-        let ranges = self.object_ranges(patterns, &pats, filters, &rows[0]);
-        let flat: Vec<TermId> = rows.concat();
-        // Numeric literals often flow through multiple range predicates in the same BGP. Keep decoded
-        // values for the whole BGP instead of resolving and parsing them again for every predicate.
-        let mut numeric_filter_memo: id_hash::IdMap<Option<expr::Num>> = id_hash::IdMap::default();
-        if let Some(tr) = tr.as_mut() { tr.note("ranges", ranges.len()); tr.note("filters", filters.len()) }
-        let (out, strategy) = on_data!(self, |g| {
-            let bgp = bgp::Bgp { snap: g, w, ranges: (!ranges.is_empty()).then_some(&ranges), sorted_probe: self.sorted_probe, interrupt: self.interrupt, budget: self.budget };
-            if self.wcoj && unbound_start && pats.len() >= 3 && pats.iter().all(pattern::no_repeated_var) && pattern::cyclic(&pats) {
-                let given = self.variable_order(&pats);
-                let t = tr.as_mut().map(|tr| {
-                    tr.note("var_order", given.as_deref().map_or_else(|| "default".to_string(), |o| plan_trace::var_names(o, &self.vars)));
-                    std::time::Instant::now()
-                });
-                let mut out = bgp.leapfrog(&pats, &flat, given);
-                let joined = out.len() / w;
-                if !filters.is_empty() { let all: HashSet<usize> = (0..w).collect(); self.apply_filters(&mut out, w, filters, &all, &mut vec![false; filters.len()], &mut numeric_filter_memo) }
-                if let (Some(tr), Some(t)) = (tr.as_mut(), t) { tr.step(None, "leapfrog", 1, joined, out.len() / w, t) }
-                (out, "leapfrog")
-            } else {
-                let mut applied = vec![false; filters.len()];
-                let mut post = |rows: &mut Vec<TermId>, bound: &HashSet<usize>| self.apply_filters(rows, w, filters, bound, &mut applied, &mut numeric_filter_memo);
-                match self.planned_order_est(&pats, &rows, &ranges, tr.is_some()) {
-                    Some((order, est)) => {
-                        if let Some(tr) = tr.as_mut() { tr.planned(&order, est) }
-                        (bgp.eval_order(&pats, &order, flat, &mut post, tr.as_mut()), "planner")
-                    }
-                    None => (bgp.eval_greedy(&pats, flat, &mut post, tr.as_mut()), "greedy"),
-                }
-            }
-        });
-        if let Some(tr) = tr { tr.finish(strategy, out.len() / w) }
-        out
     }
 
     /// `(?a, ?b)` if `c` is `?a = ?b` / `sameTerm(?a, ?b)` over two distinct variables of the BGP, each of which occurs

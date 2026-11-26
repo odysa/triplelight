@@ -8,6 +8,7 @@ pub(crate) mod storage { pub use crate::*; }
 pub(crate) use triplelight_exec as exec;
 
 pub mod store;
+pub use store::wide_tables;
 
 #[cfg(all(test, feature = "rdf-12"))]
 mod rdf12_tests;
