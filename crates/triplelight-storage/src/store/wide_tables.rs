@@ -525,30 +525,45 @@ impl<S: Snapshot> WithTables<S> {
 pub enum TablesSource {
     /// Read from the base's `tables.v1`.
     Loaded,
-    /// Built, then written to `tables.v1` for the next open.
-    Built,
-    /// Built, but `tables.v1` could not be written (a read-only base): they live for this open only.
-    BuiltUnsaved,
+    /// Built (why: `reason`), then written to `tables.v1` for the next open.
+    Built { reason: Rebuild },
+    /// Built (why: `reason`), but `tables.v1` could not be written (a read-only base): they live for this open only.
+    BuiltUnsaved { reason: Rebuild },
+}
+
+/// Why `WithTables::open` built the tables instead of reading them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Rebuild {
+    /// No `tables.v1` beside the base.
+    Missing,
+    /// A `tables.v1` for another base, other build options or another `rdf:type` ID.
+    Stale,
+    /// A `tables.v1` that failed its checksum or shape checks. The tables are derived from the base (every triple
+    /// is still in its indexes), so damage here costs a rebuild, never the open; callers should log it.
+    Damaged,
 }
 
 impl WithTables<crate::DiskSnapshot> {
     /// A disk base with its tables: read from its `tables.v1` when that file was written for this base (its manifest
     /// identity), these build options and this `rdf:type` ID, else built and written there (temp file, fsync,
-    /// rename, directory fsync). A damaged file is an error, not a silent rebuild, as a damaged index is.
+    /// rename, directory fsync). Only a failure to read the base itself is an error.
     pub fn open(inner: crate::DiskSnapshot, options: BuildOptions) -> Result<(Self, TablesSource), StorageError> {
         let rdf_type = inner.lookup(&triplelight_rdf::Term::from(
             triplelight_rdf::NamedNode::new("http://www.w3.org/1999/02/22-rdf-syntax-ns#type").expect("valid IRI")))?;
         let (dir, base) = (inner.base_dir().to_path_buf(), inner.manifest_identity());
-        let path = dir.join(TABLE_FILE);
-        match std::fs::read(&path) {
-            Ok(bytes) => if let Some(tables) = WideTables::decode(&bytes, base, options, rdf_type)? { return Ok((WithTables { inner, tables }, TablesSource::Loaded)) },
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-            Err(e) => return Err(e),
-        }
+        let reason = match std::fs::read(dir.join(TABLE_FILE)) {
+            Ok(bytes) => match WideTables::decode(&bytes, base, options, rdf_type) {
+                Ok(Some(tables)) => return Ok((WithTables { inner, tables }, TablesSource::Loaded)),
+                Ok(None) => Rebuild::Stale,
+                Err(_) => Rebuild::Damaged,
+            },
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Rebuild::Missing,
+            Err(_) => Rebuild::Damaged,
+        };
         let tables = WideTables::build(&inner, rdf_type, options)?;
         let source = match write_atomically(&dir, &tables.encode(base, options, rdf_type)) {
-            Ok(()) => TablesSource::Built,
-            Err(_) => TablesSource::BuiltUnsaved,
+            Ok(()) => TablesSource::Built { reason },
+            Err(_) => TablesSource::BuiltUnsaved { reason },
         };
         Ok((WithTables { inner, tables }, source))
     }
@@ -826,14 +841,14 @@ mod tests {
     }
 
     /// The first open builds the tables and writes `tables.v1`; the next reads them back identical (meta, membership,
-    /// every scan with its counters); one flipped byte anywhere is refused as damage.
+    /// every scan with its counters); a damaged file costs a rebuild, never the open.
     #[test]
-    fn tables_written_beside_a_disk_base_read_back_identical_and_damage_is_refused() {
+    fn tables_written_beside_a_disk_base_read_back_identical_and_damage_only_rebuilds() {
         let snap = data();
         let dir = disk_base("roundtrip", &snap);
         let options = BuildOptions { min_fill: 0.6, min_share: 0.0 };
         let (built, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options).unwrap();
-        assert_eq!(source, TablesSource::Built);
+        assert_eq!(source, TablesSource::Built { reason: Rebuild::Missing });
         assert!(built.table_count() > 0);
         let subjects: Vec<TermId> = built.first_keys(Perm::Spo).unwrap();
         let want = catalog_view(&built.tables, &subjects);
@@ -842,15 +857,21 @@ mod tests {
         assert_eq!(catalog_view(&loaded.tables, &subjects), want);
         // other build options: rebuilt (and rewritten), not loaded
         let (_, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), BuildOptions { min_fill: 0.5, min_share: 0.0 }).unwrap();
-        assert_eq!(source, TablesSource::Built);
+        assert_eq!(source, TablesSource::Built { reason: Rebuild::Stale });
         let (_, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options).unwrap();
-        assert_eq!(source, TablesSource::Built, "the file now holds the 0.5 tables");
+        assert_eq!(source, TablesSource::Built { reason: Rebuild::Stale }, "the file now holds the 0.5 tables");
         let bytes = std::fs::read(dir.join(TABLE_FILE)).unwrap();
+        // A flipped byte anywhere: the open still succeeds, the tables are rebuilt and identical, and the indexes
+        // answer as before.
+        let triples = loaded.count(Perm::Spo, &[]).unwrap();
         for at in [0, 9, 40, bytes.len() / 2, bytes.len() - 1] {
             let mut bad = bytes.clone();
             bad[at] ^= 0x10;
             std::fs::write(dir.join(TABLE_FILE), &bad).unwrap();
-            assert!(WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options).is_err(), "flipped byte {at}");
+            let (again, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options).unwrap();
+            assert_eq!(source, TablesSource::Built { reason: Rebuild::Damaged }, "flipped byte {at}");
+            assert_eq!(catalog_view(&again.tables, &subjects), want, "flipped byte {at}");
+            assert_eq!(again.count(Perm::Spo, &[]).unwrap(), triples);
         }
         std::fs::remove_dir_all(&dir).unwrap();
     }
@@ -866,7 +887,7 @@ mod tests {
         WithTables::open(crate::DiskSnapshot::open(&a).unwrap(), options).unwrap();
         std::fs::copy(a.join(TABLE_FILE), b.join(TABLE_FILE)).unwrap();
         let (_, source) = WithTables::open(crate::DiskSnapshot::open(&b).unwrap(), options).unwrap();
-        assert_eq!(source, TablesSource::Built);
+        assert_eq!(source, TablesSource::Built { reason: Rebuild::Stale });
         for d in [a, b] { std::fs::remove_dir_all(d).unwrap() }
     }
 
