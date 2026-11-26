@@ -13,6 +13,10 @@ last byte) and must match its byte count (docs/large-answer-timing-v1).
   driver.py run --system NAME --url URL --queries DIR --reference ref.json --out out.json [--mode warm|cold]
   driver.py selftest                                             classifier and streaming checks on fake endpoints
 
+Ordered queries with tied sort keys (`tie_order`): the reference records the answer's groups of equal ORDER BY keys and, when a LIMIT
+cuts through a group, a frozen oracle of every row tied at that key. A run may reorder rows inside a group and, at the cutoff, return
+other rows from the oracle (value-compatible); an ORDER BY key that is not a projected variable keeps the strict order check.
+
 One system at a time. Every response is hashed while it streams (rows are not kept), so a 7.9M-row answer needs bounded
 memory. Each query and system gets a record with a class: pass, value-compatible, mismatch, incomplete, timeout, error.
 Standard library only."""
@@ -30,6 +34,8 @@ CHUNK = 1 << 20
 HEAD_BYTES = 1 << 20    # how much of a drained body is kept to read its projected variables
 KEEP_ROWS = False      # set per request by one_run(keep=True): the case policy needs the typed answer
 KEEP_CAP = 100_000     # answers with more rows are never handed to a policy (they stay hash-compared)
+ORDER_KEYS = None      # set per request by one_run(keys=[...]): the ORDER BY variables whose tie groups the fold records
+GROUP_CAP = 100_000    # an ordered answer with more tie groups (or a boundary group with more rows) keeps only the strict order check
 MIN_READ = 64 << 10      # stream_fold gathers chunks up to this size per read; the self-test sets 0 to exercise awkward chunk boundaries
 class Timeout(Exception): pass
 class Truncated(Exception): pass
@@ -54,6 +60,11 @@ class Fold:
         self.vars, self.n, self.bag, self.bag_norm = vars_, 0, 0, 0
         self.seq = hashlib.sha1()
         self.rows = [] if KEEP_ROWS else None      # the full typed answer, only for a case policy and only up to KEEP_CAP rows
+        # with ORDER_KEYS: the answer cut into runs of rows with equal sort keys (tie groups), each [key digest, rows, bag], and the row
+        # digests of the last group with multiplicity (the group a LIMIT may cut through), so `tie_order` can accept any order inside a tie
+        self.keys = ORDER_KEYS
+        self.groups = [] if ORDER_KEYS else None
+        self.last = {}; self.last_key = None
     def add(self, row):
         if self.rows is not None:
             if len(self.rows) < KEEP_CAP: self.rows.append(row)
@@ -64,9 +75,25 @@ class Fold:
         self.bag = (self.bag + int.from_bytes(hashlib.blake2b(a.encode(), digest_size=16).digest(), "big")) % (1 << 128)
         self.bag_norm = (self.bag_norm + int.from_bytes(hashlib.blake2b(b.encode(), digest_size=16).digest(), "big")) % (1 << 128)
         self.seq.update(a.encode() + b"\n")
+        if self.groups is not None: self.group(row, a)
+    def group(self, row, a):
+        k = "\t".join(term(row.get(v), False) for v in self.keys)
+        kh = hashlib.blake2b(k.encode(), digest_size=8).hexdigest()
+        if not self.groups or self.groups[-1][0] != kh:
+            if len(self.groups) >= GROUP_CAP: self.groups = None; return
+            self.groups.append([kh, 0, 0]); self.last = {}; self.last_key = {v: row.get(v) for v in self.keys}
+        g = self.groups[-1]
+        h = hashlib.blake2b(a.encode(), digest_size=16).digest()
+        g[1] += 1; g[2] = (g[2] + int.from_bytes(h, "big")) % (1 << 128)
+        if self.last is not None:
+            if len(self.last) >= GROUP_CAP: self.last = None
+            else: self.last[h.hex()] = self.last.get(h.hex(), 0) + 1
     def result(self):
         r = {"rows": self.n, "bag": f"{self.bag:032x}", "bag_norm": f"{self.bag_norm:032x}", "seq": self.seq.hexdigest(), "vars": list(self.vars)}
         if self.rows is not None: r["answer"] = {"vars": self.vars, "rows": self.rows}
+        if self.groups is not None:
+            r["tie_groups"] = [[k, n, f"{b:032x}"] for k, n, b in self.groups]
+            if self.last is not None and self.groups: r["boundary_rows"] = self.last; r["boundary_key"] = self.last_key
         return r
 
 
@@ -232,13 +259,14 @@ def drain(chunks, deadline):
     return {"bytes": count.stable(), "tail_ok": count.ends_closed(), "vars": vars_}
 
 
-def one_run(url, query, timeout, drain_only=False, keep=False):
+def one_run(url, query, timeout, drain_only=False, keep=False, keys=None):
     """One timed execution to the last byte. Returns (record dict, seconds). With `drain_only` the body is only counted (see `drain`);
-    with `keep` the record also carries the full typed answer (up to KEEP_CAP rows) for a case policy."""
-    global KEEP_ROWS
-    KEEP_ROWS = keep
+    with `keep` the record also carries the full typed answer (up to KEEP_CAP rows) for a case policy; with `keys` (ORDER BY variables)
+    it carries the answer's tie groups (see `Fold`)."""
+    global KEEP_ROWS, ORDER_KEYS
+    KEEP_ROWS, ORDER_KEYS = keep, keys
     try: return _one_run(url, query, timeout, drain_only)
-    finally: KEEP_ROWS = False
+    finally: KEEP_ROWS, ORDER_KEYS = False, None
 
 
 def _one_run(url, query, timeout, drain_only=False):
@@ -277,8 +305,76 @@ def _one_run(url, query, timeout, drain_only=False):
 UNSUPPORTED_QLEVER_TWO_ORDER = "contains a predicate variable, but only the PSO and POS permutations were loaded"
 
 
+def order_spec(query):
+    """(keys, limit, None) for a query whose top-level tail is `ORDER BY` plain variables (optionally ASC(..)/DESC(..)) and an optional
+    LIMIT, or (None, None, reason) for anything else (an expression key, OFFSET, a clause the check cannot see through): those keep the
+    strict order check."""
+    tail = query[query.rfind("}") + 1:]
+    if re.search(r"\bOFFSET\b", tail, re.I): return None, None, "the query has an OFFSET, so its first rows may also be cut from a tie group"
+    m = re.fullmatch(r"\s*ORDER\s+BY\s+(.*?)\s*(?:LIMIT\s+(\d+))?\s*", tail, re.I | re.S)
+    if not m: return None, None, "the ORDER BY is not followed only by an optional LIMIT"
+    keys = []
+    for t in re.sub(r"\s*\)", ")", re.sub(r"\(\s*", "(", m.group(1))).split():
+        k = re.fullmatch(r"(?:(?:ASC|DESC)\()?[?$](\w+)\)?", t, re.I)
+        if not k or t.count("(") != t.count(")"): return None, None, f"the ORDER BY key {t!r} is not a plain variable"
+        keys.append(k.group(1))
+    return (keys, int(m.group(2)) if m.group(2) else None, None) if keys else (None, None, "the ORDER BY has no key")
+
+
+def sparql_term(b):
+    """A bound value as a SPARQL term for `sameTerm`, or None when it cannot be written (a blank node)."""
+    kind = b["type"]
+    if kind == "uri": return f"<{b['value']}>"
+    if kind not in ("literal", "typed-literal"): return None
+    lit = json.dumps(b["value"], ensure_ascii=False)
+    if "xml:lang" in b: return f"{lit}@{b['xml:lang']}"
+    return f"{lit}^^<{b['datatype']}>" if b.get("datatype") else lit
+
+
+def boundary_query(query, key):
+    """The query without its ORDER BY and LIMIT, filtered to the rows whose sort keys equal `key` ({var: binding or None}): its answer is
+    every row tied at the boundary, the oracle a LIMIT cut may choose from. None when a key cannot be pinned."""
+    conds = []
+    for v, b in key.items():
+        if b is None: conds.append(f"!BOUND(?{v})"); continue
+        t = sparql_term(b)
+        if t is None: return None
+        conds.append(f"sameTerm(?{v}, {t})")
+    i = query.rfind("}")
+    return query[:i] + "\n  FILTER(" + " && ".join(conds) + ")\n}"
+
+
+def tie_order(rec, ref):
+    """Why an ordered answer whose sequence differs from the reference's is still a correct order, or None. "order": the same rows, and
+    rows were reordered only inside groups of equal sort keys. "boundary": additionally, the last group (the one a LIMIT cut through)
+    holds other tied rows, every one of them (with multiplicity) from the frozen oracle of all rows tied at that key. Every group before
+    it must hold exactly the reference's rows; the sequence of sort keys and the size of every group must be the reference's."""
+    g, rg = rec.get("tie_groups"), ref.get("tie_groups")
+    if not g or not rg or rec.get("rows") != ref.get("rows") or len(g) != len(rg): return None
+    if any(a[0] != b[0] or a[1] != b[1] for a, b in zip(g, rg)): return None
+    if any(a[2] != b[2] for a, b in zip(g[:-1], rg[:-1])): return None
+    if g[-1][2] == rg[-1][2]: return "order"
+    oracle, rows = ref.get("boundary_oracle"), rec.get("boundary_rows")
+    if oracle is None or rows is None: return None
+    return "boundary" if all(oracle.get(h, 0) >= n for h, n in rows.items()) else None
+
+
+TIE_REASONS = {"order": "rows reordered only among equal ORDER BY keys",
+               "boundary": "the rows at the LIMIT cutoff are other rows tied at the same ORDER BY key, all from the frozen boundary oracle"}
+
+
 def classify(rec, ref):
-    """pass | value-compatible | mismatch | incomplete | timeout | error, for one run record against the reference."""
+    """pass | value-compatible | mismatch | incomplete | timeout | error, for one run record against the reference. An ordered answer
+    whose order is valid by `tie_order` is marked `tie_order` on the record (and a cutoff choice among tied rows is value-compatible)."""
+    cls = _classify(rec, ref)
+    if ref.get("ordered") and rec.get("status") == "ok" and cls in ("pass", "mismatch") and rec.get("seq") != ref.get("seq"):
+        if "vars" in ref and rec.get("vars") != ref["vars"]: return cls
+        why = tie_order(rec, ref)
+        if why: rec["tie_order"] = why; return "value-compatible" if why == "boundary" else cls
+    return cls
+
+
+def _classify(rec, ref):
     s = rec["status"]
     if s == "timeout": return "timeout"
     if s == "error": return "unsupported" if UNSUPPORTED_QLEVER_TWO_ORDER in rec.get("detail", "") else "error"
@@ -316,9 +412,34 @@ def cmd_reference(a):
     for name, q in load_queries(a.queries):
         rec, secs = one_run(a.url, q, a.timeout)
         if rec["status"] != "ok": sys.exit(f"reference run of {name} failed: {rec}")
-        rec["ordered"] = "ORDER BY" in q.upper(); ref[name] = rec
-        print(f"{name}: {rec['rows']} rows", flush=True)
+        rec["ordered"] = "ORDER BY" in q.upper()
+        if rec["ordered"]: rec = reference_order(a, q, rec)
+        ref[name] = rec
+        print(f"{name}: {rec['rows']} rows" + (f", strict order: {rec['order_strict_reason']}" if "order_strict_reason" in rec else ""), flush=True)
     json.dump({"reference_url": a.url, "git": git_sha(), "versions": versions(), "queries": ref}, open(a.out, "w"), indent=1)
+
+
+def reference_order(a, q, rec):
+    """For an ordered query: refold the reference answer with its tie groups, and when a LIMIT cuts through a tie group, freeze the oracle
+    of every row tied at that boundary key (the same query, unlimited, filtered to that key). Where that cannot be done the record says
+    why in `order_strict_reason`, and the query keeps the strict check (the reference's exact sequence)."""
+    keys, limit, why = order_spec(q)
+    if keys and not set(keys) <= set(rec.get("vars") or ()): keys, why = None, "an ORDER BY key is not a projected variable"
+    if not keys: return {**rec, "order_strict_reason": why}
+    got, _ = one_run(a.url, q, a.timeout, keys=keys)
+    if got.get("status") != "ok" or any(got.get(k) != rec[k] for k in ("rows", "bag", "seq")): sys.exit(f"the reference answer changed between two runs: {got.get('status')}")
+    if "tie_groups" not in got: return {**rec, "order_strict_reason": f"more than {GROUP_CAP} tie groups"}
+    out = {**rec, "order_keys": keys, "tie_groups": got["tie_groups"]}
+    if limit is None or rec["rows"] < limit: return out          # nothing was cut off: every tie group must hold the reference's rows
+    if "boundary_rows" not in got: return {**rec, "order_strict_reason": f"the boundary tie group has more than {GROUP_CAP} distinct rows"}
+    bq = boundary_query(q, got["boundary_key"])
+    if bq is None: return {**rec, "order_strict_reason": "the boundary ORDER BY key is a blank node, which a query cannot pin"}
+    orc, _ = one_run(a.url, bq, a.timeout, keys=keys)
+    if orc.get("status") != "ok": sys.exit(f"the boundary oracle query failed: {orc}")
+    oracle = orc.get("boundary_rows")
+    if oracle is None or len(orc.get("tie_groups") or ()) != 1: return {**rec, "order_strict_reason": "the boundary oracle is not a single tie group within the cap"}
+    if any(oracle.get(h, 0) < n for h, n in got["boundary_rows"].items()): sys.exit("the boundary oracle does not contain the reference's own boundary rows")
+    return {**out, "limit": limit, "boundary_oracle": oracle, "boundary_oracle_rows": orc["rows"]}
 
 
 def run_hook(hook, url):
@@ -378,7 +499,9 @@ def eligibility(records, expected_unsupported=()):
         warm = e.get("warmup_class")
         if warm is not None and not acceptable(name, warm) and warm != e["class"]:
             reasons.append(f"{name}: warm-up {warm}")
-        if e.get("order_matches_reference") is False: reasons.append(f"{name}: ordered query returned a different row order than the reference")
+        if e.get("order_matches_reference") is False:
+            strict = f" (strict order check: {e['order_strict_reason']})" if "order_strict_reason" in e else ""
+            reasons.append(f"{name}: ordered query returned a different row order than the reference{strict}")
     return (not reasons), reasons
 
 
@@ -516,6 +639,7 @@ def cmd_run(a):
     for name, q in queries:
         if name not in ref: sys.exit(f"{name} has no reference answer")
         r = ref[name]; entry = {"mode": a.mode, "runs": []}
+        keys = r.get("order_keys")          # an ordered reference with tie groups: every hashed run records its own (see `tie_order`)
         checked = None          # (record, (class, reason)) when the case policy judged the checked answer
         if a.mode == "cold":
             if not a.cold_hook: sys.exit("--mode cold needs --cold-hook")
@@ -525,7 +649,7 @@ def cmd_run(a):
         elif not clear_engine_cache(a, entry):
             runs = 0
         else:
-            check, _ = one_run(a.url, q, a.timeout, keep=policy is not None)       # warm-up; for a large answer it is also the one answer check
+            check, _ = one_run(a.url, q, a.timeout, keep=policy is not None, keys=keys)       # warm-up; for a large answer it is also the one answer check
             v = judge(policy, name, check, r)
             checked = (check, v) if v else None
             if checked: entry["warmup_class"] = checked[1][0]
@@ -552,7 +676,7 @@ def cmd_run(a):
             t0 = time.time()   # wall-clock bounds of the run, so S1's cgroup samples can be joined per query (s1-report.py)
             drained = entry.get("timed_by") == "drain"
             first_cold = a.mode == "cold" and not entry["runs"]
-            rec, secs = one_run(a.url, q, a.timeout, drain_only=drained, keep=policy is not None and first_cold)
+            rec, secs = one_run(a.url, q, a.timeout, drain_only=drained, keep=policy is not None and first_cold, keys=keys)
             t1 = time.time()
             restart_after_timeout(a, rec, entry)
             if first_cold and policy is not None:
@@ -560,7 +684,7 @@ def cmd_run(a):
                 if v: checked = (rec, v)
             if drained and rec["status"] == "ok":
                 cls = entry["check_class"] if rec["bytes"] == drain_bytes and rec["tail_ok"] and rec.get("vars") is not None and rec.get("vars") == check.get("vars") else "unstable"
-                rec = {**rec, **{k: check[k] for k in ("rows", "bag", "seq") if k in check}}
+                rec = {**rec, **{k: check[k] for k in ("rows", "bag", "seq", "tie_order") if k in check}}
             else:
                 cls = classify(rec, r)
                 if policy is not None and checked and rec.get("status") == "ok" and rec.get("rows") == 0 and rec.get("vars") != checked[0].get("vars"):
@@ -570,7 +694,7 @@ def cmd_run(a):
                     cls = checked[1][0]                      # the same answer the case policy judged: it keeps the policy's class
                     entry.setdefault("policy_reasons", [])
                     if checked[1][1] not in entry["policy_reasons"]: entry["policy_reasons"].append(checked[1][1])
-            entry["runs"].append({"class": cls, "seconds": round(secs, 4), "t0": round(t0, 3), "t1": round(t1, 3), **{k: rec[k] for k in ("rows", "bag", "seq", "bytes") if k in rec},
+            entry["runs"].append({"class": cls, "seconds": round(secs, 4), "t0": round(t0, 3), "t1": round(t1, 3), **{k: rec[k] for k in ("rows", "bag", "seq", "bytes", "tie_order") if k in rec},
                                   **({"detail": rec["detail"]} if "detail" in rec else {})})
         if entry.get("timed_by") == "drain" and not entry["runs"] and entry["check_class"] not in GOOD_CLASSES:
             # a wrong or incomplete large answer is never timed; its class is recorded (without a time) for the report
@@ -582,7 +706,10 @@ def cmd_run(a):
         if ok_runs: entry["median_s"] = round(statistics.median(ok_runs), 4)
         if r.get("ordered") and entry["class"] in ("pass", "value-compatible"):
             accepted = checked[0].get("seq") if checked and checked[1][0] in ("pass", "value-compatible") else None      # a sequence the case policy accepted, with its reason
-            entry["order_matches_reference"] = all(x.get("seq") == r["seq"] or (accepted is not None and x.get("seq") == accepted) for x in entry["runs"])
+            entry["order_matches_reference"] = all(x.get("seq") == r["seq"] or (accepted is not None and x.get("seq") == accepted) or x.get("tie_order") for x in entry["runs"])
+            ties = sorted({x["tie_order"] for x in entry["runs"] if x.get("tie_order")})
+            if ties: entry["order_reasons"] = [TIE_REASONS[t] for t in ties]
+            if "order_strict_reason" in r: entry["order_strict_reason"] = r["order_strict_reason"]
         records[name] = entry
         print(f"{name:<8} {entry['class']:<17} {entry.get('median_s', '-')}", flush=True)
     summary = {}
@@ -622,6 +749,19 @@ def _body_qtime(n, ms):
 
 
 BYCASE = {}      # case name -> the SPARQL JSON the fake server answers it with (the case-policy tests)
+# Tie fixtures (Kaiming's and Jianlin's cases for `tie_order`): ORDER BY DESC(?d) LIMIT 4 over d=3: a b, d=2: c d e. The reference
+# keeps (3 a) (3 b) (2 c) (2 d); the LIMIT cuts the d=2 group, whose oracle is c d e.
+TIE_ROWS = {"ref": ["3a", "3b", "2c", "2d"], "interior": ["3b", "3a", "2c", "2d"], "boundary": ["3a", "3b", "2e", "2c"],
+            "invented": ["3a", "3b", "2c", "2z"], "keysout": ["2c", "3a", "3b", "2d"], "count": ["3a", "3b", "2c"],
+            "oracle": ["2c", "2d", "2e"], "dup": ["3a", "3b", "2c", "2c"]}
+TIE_QUERY = "SELECT ?d ?t WHERE { ?x <http://e/d> ?d . ?x <http://e/t> ?t } ORDER BY DESC(?d) LIMIT 4"
+
+
+def tie_doc(rows):
+    b = ",".join('{"d":{"type":"literal","value":"%s","datatype":"%sinteger"},"t":{"type":"literal","value":"%s"}}' % (r[0], XSD, r[1:]) for r in rows)
+    return '{"head":{"vars":["d","t"]},"results":{"bindings":[%s]}}' % b
+
+
 _ONE_ROW_9 = '{"head":{"vars":["n"]},"results":{"bindings":[{"n":{"type":"literal","value":"9","datatype":"' + XSD + 'integer"}}]}}'
 
 
@@ -646,6 +786,12 @@ def serve_fake(behaviors):
                 rows = ["1", "2"] if kind == "asc" else ["2", "1"]
                 self.wfile.write(('{"head":{"vars":["n"]},"results":{"bindings":[%s]}}' % ",".join('{"n":{"type":"literal","value":"%s","datatype":"%sinteger"}}' % (v, XSD) for v in rows)).encode()); return
             if kind == "raw": self.wfile.write(n.encode()); return
+            if kind == "ties":      # variant `n` of TIE_ROWS; the boundary-oracle request gets the oracle only if it pins d to 2 and drops the LIMIT
+                query = urllib.parse.parse_qs(self.body.decode())["query"][0]
+                if "sameTerm(" in query:
+                    good = 'sameTerm(?d, "2"^^<%sinteger>)' % XSD in query and "LIMIT" not in query and n != "refbad"
+                    self.wfile.write(tie_doc(TIE_ROWS["oracle"] if good else []).encode()); return
+                self.wfile.write(tie_doc(TIE_ROWS.get(n, TIE_ROWS["ref"])).encode()); return
             if kind == "flipvar":      # a non-empty answer: the right projection on the first request, a same-length renamed one on every later request
                 self.server.flipv = getattr(self.server, "flipv", 0) + 1
                 self.wfile.write((BYCASE["q_one"] if self.server.flipv == 1 else BYCASE["q_one_renamed"]).encode()); return
@@ -812,6 +958,38 @@ def gate_tests(port, behaviors_raw):
         check("an ordered query in the reference order: eligible, exit 0", rc == 0 and res and res["eligible"] and res["queries"]["q1"].get("order_matches_reference") is True)
         rc, res, _ = run("orderbad", "desc", ref="refordered.json")
         check("an ordered query in a different order: ineligible, exit 3", rc == 3 and res and res["eligible"] is False and res["queries"]["q1"].get("order_matches_reference") is False)
+        # ORDER BY over tied keys: any order inside a tie group, and any rows from the frozen oracle at a LIMIT cutoff, are correct
+        tdir = tmp / "tq"; tdir.mkdir(); (tdir / "q1.rq").write_text(TIE_QUERY)
+        def tie_run(name, variant, ref="reftie.json", qd=tdir):
+            out = tmp / f"{name}.json"
+            r = subprocess.run([sys.executable, __file__, "run", "--system", name, "--url", f"http://127.0.0.1:{port}/ties-{variant}", "--queries", str(qd),
+                                "--reference", str(tmp / ref), "--out", str(out), "--runs", "2", "--timeout", "30"], capture_output=True, text=True)
+            return r.returncode, (json.load(open(out))["queries"]["q1"], json.load(open(out))) if out.exists() else (None, None)
+        r = subprocess.run([sys.executable, __file__, "reference", "--url", f"http://127.0.0.1:{port}/ties-ref", "--queries", str(tdir), "--out", str(tmp / "reftie.json")], capture_output=True, text=True)
+        rq = json.load(open(tmp / "reftie.json"))["queries"]["q1"] if r.returncode == 0 else {}
+        check("reference: tie groups and a frozen oracle of the 3 rows tied at the cutoff", rq.get("order_keys") == ["d"] and len(rq.get("tie_groups", [])) == 2 and rq.get("boundary_oracle_rows") == 3 and rq.get("limit") == 4)
+        for variant, cls, eligible, label in (("interior", "pass", True, "rows reordered inside a tie: pass, eligible"),
+                                               ("boundary", "value-compatible", True, "another tied row from the oracle at the cutoff: value-compatible, eligible"),
+                                               ("invented", "mismatch", False, "a row with the boundary key that is not in the oracle: mismatch, ineligible"),
+                                               ("dup", "mismatch", False, "an oracle row twice where the oracle has it once: mismatch, ineligible"),
+                                               ("keysout", "mismatch", False, "sort keys out of order: ineligible"),
+                                               ("count", "mismatch", False, "one row short: mismatch, ineligible")):
+            rc, (e, res) = tie_run("tie" + variant, variant)
+            good = e is not None and res["eligible"] is eligible and (rc == 0) is eligible and (e["class"] == cls or (variant == "keysout" and not res["eligible"]))
+            check(label, good)
+        # a key that is not projected keeps the strict check, with the reason in the reference and in the ineligibility reason
+        hdir = tmp / "hq"; hdir.mkdir(); (hdir / "q1.rq").write_text(TIE_QUERY.replace("SELECT ?d ?t", "SELECT ?t").replace("DESC(?d)", "DESC(?d) ?x"))
+        subprocess.run([sys.executable, __file__, "reference", "--url", f"http://127.0.0.1:{port}/ties-ref", "--queries", str(hdir), "--out", str(tmp / "refhid.json")], capture_output=True, text=True)
+        hq = json.load(open(tmp / "refhid.json"))["queries"]["q1"] if (tmp / "refhid.json").exists() else {}
+        check("an ORDER BY key that is not projected: strict order check, reason recorded", "not a projected variable" in hq.get("order_strict_reason", "") and "tie_groups" not in hq)
+        # an oracle query that does not pin the boundary key (the fake answers it empty) stops the reference run
+        r = subprocess.run([sys.executable, __file__, "reference", "--url", f"http://127.0.0.1:{port}/ties-refbad", "--queries", str(tdir), "--out", str(tmp / "refbad.json")], capture_output=True, text=True)
+        check("a boundary oracle without the reference's own boundary rows stops the reference run", r.returncode != 0 and "oracle" in r.stderr and not (tmp / "refbad.json").exists())
+        check("order_spec: DESC(?d) LIMIT 4", order_spec(TIE_QUERY) == (["d"], 4, None))
+        check("order_spec: an expression key or OFFSET keeps the strict check",
+              order_spec("SELECT * {} ORDER BY DESC(?a + 1)")[0] is None and order_spec("SELECT * {} ORDER BY ?a LIMIT 2 OFFSET 2")[0] is None)
+        check("boundary_query pins the key, drops ORDER BY and LIMIT",
+              boundary_query(TIE_QUERY, {"d": {"type": "literal", "value": "2", "datatype": XSD + "integer"}}).endswith('FILTER(sameTerm(?d, "2"^^<%sinteger>))\n}' % XSD))
         # scored runs: a manifest and a fresh passing machine receipt, or the run does not start
         import manifest as mf
         ndate = datetime.datetime.now(datetime.timezone.utc)
@@ -1076,6 +1254,7 @@ def cmd_selftest(a):
     behaviors["/count8"] = ("count=8", 0); behaviors["/count9"] = ("count=9", 0); behaviors["/slow"] = ("slow", 50)
     behaviors["/count9s"] = ("count9s", 0); behaviors["/twice"] = ("twice", 0)
     behaviors["/slowfirst"] = ("slowfirst", 0); behaviors["/asc"] = ("asc", 0); behaviors["/desc"] = ("desc", 0)
+    for v in (*TIE_ROWS, "refbad"): behaviors[f"/ties-{v}"] = ("ties", v)
     ok &= gate_tests(port, behaviors)
     print("SELFTEST", "PASSED" if ok else "FAILED"); sys.exit(0 if ok else 1)
 
