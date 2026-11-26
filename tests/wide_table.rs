@@ -39,7 +39,7 @@ fn forced_table_union_and_residual_equal_plain_bgp_as_bags() {
         },
     )
     .unwrap();
-    assert_eq!(wide.tables.len(), 2);
+    assert_eq!(wide.table_count(), 2);
     let query = "SELECT ?s ?p ?q WHERE { ?s <urn:p> ?p . ?s <urn:q> ?q }";
     let expected = bag(query_with(&plain, query, &Options::default()).unwrap());
     let (result, trace) = triplelight::exec::plan_trace::capture(|| {

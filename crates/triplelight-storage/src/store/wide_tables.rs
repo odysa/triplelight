@@ -292,9 +292,15 @@ impl TableScan for Scan<'_> {
 /// A view with wide tables attached: every read goes to `inner`, and `wide_tables` returns `tables`. The tables must
 /// have been built from `inner` itself (same contents), which is the caller's promise; this is how embedded use and
 /// the A/B harness get tables before the disk format carries them.
-pub struct WithTables<S> { pub inner: S, pub tables: WideTables }
+pub struct WithTables<S> { inner: S, tables: WideTables }
 
 impl<S: Snapshot> WithTables<S> {
+    /// Catalog size for diagnostics, without exposing the mutable access-path representation.
+    pub fn table_count(&self) -> usize { self.tables.len() }
+    pub fn table_bytes(&self) -> u64 { self.tables.bytes() }
+    pub fn table_triples(&self) -> u64 { self.tables.table_triples() }
+    pub fn view_triples(&self) -> u64 { self.tables.view_triples() }
+
     /// Builds the tables of `inner` (two SPO scans) and attaches them.
     pub fn build(inner: S, options: BuildOptions) -> Result<Self, StorageError> {
         let rdf_type = inner.lookup(&triplelight_rdf::Term::from(

@@ -41,7 +41,7 @@ fn main() {
     let stats = Stats::from_snapshot(&snap).expect("stats");
     let stats_ms = t.elapsed().as_secs_f64() * 1e3;
     println!("open_ms={open_ms:.0} build_ms={build_ms:.0} stats_ms={stats_ms:.0} tables={} table_bytes={} table_triples={} view_triples={}",
-        snap.tables.len(), snap.tables.bytes(), snap.tables.table_triples(), snap.tables.view_triples());
+        snap.table_count(), snap.table_bytes(), snap.table_triples(), snap.view_triples());
     let arm_opts = |wide: bool| Options { stats: Some(&stats), force_wide_tables: wide, ..Options::default() };
     println!("query\tindex_ms\twide_ms\tratio\trows\tsame_bag");
     let (mut si, mut sw) = (0.0, 0.0);
