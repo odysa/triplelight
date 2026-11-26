@@ -71,6 +71,43 @@ fn num_cmp(x: Num, y: Num) -> Option<Ordering> {
     x.f().partial_cmp(&y.f())
 }
 
+/// ORDER BY and MIN/MAX compare numeric values without pair-dependent promotion.
+/// All NaNs sort after positive infinity and tie with each other.
+pub(super) fn order_num_cmp(x: Num, y: Num) -> Ordering {
+    if let (Num::Int(a), Num::Int(b)) = (x, y) {
+        return a.cmp(&b);
+    }
+    match (x.dec(), y.dec()) {
+        (Some(a), Some(b)) => a.cmp(&b),
+        (Some(a), None) => order_decimal_binary(a, y.f()),
+        (None, Some(b)) => order_decimal_binary(b, x.f()).reverse(),
+        (None, None) => x.f().partial_cmp(&y.f()).unwrap_or_else(|| x.f().is_nan().cmp(&y.f().is_nan())),
+    }
+}
+
+fn order_decimal_binary(decimal: Decimal, binary: f64) -> Ordering {
+    use num_bigint::BigInt;
+
+    if !binary.is_finite() {
+        return if binary == f64::NEG_INFINITY { Ordering::Greater } else { Ordering::Less };
+    }
+    // Compare (decimal mantissa / 10^scale) with (signed significand * 2^exponent) exactly.
+    // Float operands have already been rounded to f32 by the literal decoder.
+    let bits = binary.to_bits();
+    let field = ((bits >> 52) & 0x7ff) as i32;
+    let fraction = bits & ((1 << 52) - 1);
+    let significand = (fraction | (u64::from(field != 0) << 52)) as i64;
+    let signed = if binary.is_sign_negative() { -significand } else { significand };
+    let exponent = field.max(1) - 1023 - 52;
+    let base_ten = BigInt::from(decimal.mantissa());
+    let mut base_two = BigInt::from(signed) * BigInt::from(10u8).pow(decimal.scale());
+    if exponent < 0 {
+        return (base_ten << exponent.unsigned_abs()).cmp(&base_two);
+    }
+    base_two <<= exponent as u32;
+    base_ten.cmp(&base_two)
+}
+
 /// Exact decimal operations: the exact result is computed on integer mantissas (arbitrary precision) and accepted only
 /// if it fits `Decimal` (mantissa below 2^96, at most 28 fractional digits once trailing zeros are removed); otherwise it
 /// is a SPARQL error, never a rounded value. Only a non-terminating quotient (e.g. 1/3) is rounded to 28 digits, as
@@ -249,19 +286,23 @@ pub(super) fn order_cmp(a: Option<&Term>, b: Option<&Term>) -> Ordering {
     }
     match (a, b) {
         (Some(x), Some(y)) if class(a) == class(b) => {
-            if let Some(o) = compare(x, y) { return o }
             match (x, y) {
                 (Term::NamedNode(m), Term::NamedNode(n)) => m.as_str().cmp(n.as_str()),
                 (Term::BlankNode(m), Term::BlankNode(n)) => m.as_str().cmp(n.as_str()),
-                #[cfg(not(feature = "rdf-12"))]
-                (Term::Literal(m), Term::Literal(n)) => m.value().cmp(n.value()).then_with(|| m.datatype().as_str().cmp(n.datatype().as_str())),
-                // Language tag and base direction break the remaining ties, so `"a"@en--ltr`, `"a"@en--rtl` and
-                // `"a"@fr--ltr` never sort as equal.
-                #[cfg(feature = "rdf-12")]
-                (Term::Literal(m), Term::Literal(n)) => m.value().cmp(n.value())
-                    .then_with(|| m.datatype().as_str().cmp(n.datatype().as_str()))
-                    .then_with(|| m.language().cmp(&n.language()))
-                    .then_with(|| direction_rank(m.direction()).cmp(&direction_rank(n.direction()))),
+                (Term::Literal(m), Term::Literal(n)) => match (num(x), num(y)) {
+                    (Some(a), Some(b)) => order_num_cmp(a, b),
+                    // Valid numbers must be a contiguous class. Interleaving other literals by lexical
+                    // order would mix lexical and numeric order in the same chain of comparisons.
+                    (Some(_), None) => Ordering::Less,
+                    (None, Some(_)) => Ordering::Greater,
+                    (None, None) => {
+                        let order = m.value().cmp(n.value()).then_with(|| m.datatype().as_str().cmp(n.datatype().as_str()));
+                        #[cfg(feature = "rdf-12")]
+                        let order = order.then_with(|| m.language().cmp(&n.language()))
+                            .then_with(|| direction_rank(m.direction()).cmp(&direction_rank(n.direction())));
+                        order
+                    }
+                },
                 // The draft leaves two triple terms unordered; order them component-wise (subject, predicate,
                 // object), recursively, so distinct triple terms never tie.
                 #[cfg(feature = "rdf-12")]
@@ -923,7 +964,8 @@ pub(super) fn now_lexical() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{Literal, ebv, xsd};
+    use super::{Literal, Term, ebv, equal, order_cmp, xsd};
+    use std::cmp::Ordering;
 
     #[test]
     fn ebv_of_language_tagged_strings() {
@@ -944,5 +986,41 @@ mod tests {
         let invalid = Literal::new_typed_literal("z", xsd::BOOLEAN).into();
         let expected = if cfg!(feature = "rdf-12") { None } else { Some(false) };
         assert_eq!(ebv(&invalid), expected);
+    }
+
+    #[test]
+    fn order_by_numeric_keys_form_ordered_classes() {
+        let groups = [
+            vec![Literal::new_typed_literal("-INF", xsd::DOUBLE)],
+            vec![Literal::new_typed_literal("-10.1", xsd::DECIMAL)],
+            vec![Literal::new_typed_literal("-2", xsd::INTEGER)],
+            vec![Literal::new_typed_literal("-0", xsd::FLOAT), Literal::from(0i64)],
+            vec![Literal::new_typed_literal("4.9406564584124654E-324", xsd::DOUBLE)],
+            vec![Literal::new_typed_literal("0.1", xsd::DECIMAL)],
+            vec![Literal::new_typed_literal("0.1", xsd::DOUBLE)],
+            vec![Literal::new_typed_literal("0.1", xsd::FLOAT)],
+            vec![Literal::from(16_777_216i64), Literal::new_typed_literal("16777216", xsd::FLOAT)],
+            vec![Literal::from(16_777_217i64)],
+            vec![Literal::new_typed_literal("INF", xsd::FLOAT)],
+            vec![Literal::new_typed_literal("NaN", xsd::FLOAT), Literal::new_typed_literal("NaN", xsd::DOUBLE)],
+            vec![Literal::new_simple_literal("0.25")],
+            vec![Literal::new_typed_literal("invalid", xsd::INTEGER)],
+        ];
+        let keys: Vec<(usize, Term)> = groups.into_iter().enumerate()
+            .flat_map(|(rank, group)| group.into_iter().map(move |literal| (rank, literal.into())))
+            .collect();
+        for (a_rank, a) in &keys {
+            for (b_rank, b) in &keys {
+                assert_eq!(order_cmp(Some(a), Some(b)), a_rank.cmp(b_rank), "{a} vs {b}");
+            }
+        }
+    }
+
+    #[test]
+    fn order_by_refines_rounded_equality_without_changing_filter_comparison() {
+        let int = Literal::from(16_777_217i64).into();
+        let float = Literal::new_typed_literal("16777216", xsd::FLOAT).into();
+        assert_eq!(equal(&int, &float), Some(true));
+        assert_eq!(order_cmp(Some(&int), Some(&float)), Ordering::Greater);
     }
 }

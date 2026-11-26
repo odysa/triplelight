@@ -8,6 +8,14 @@ export interface Literal { termType: "Literal"; value: string; language: string;
 export interface Quad { termType: "Quad"; value: ""; subject: NamedNode | BlankNode | Quad; predicate: NamedNode; object: Term; graph: { termType: "DefaultGraph"; value: "" } }
 export type Term = NamedNode | BlankNode | Literal | Quad;
 
+/** A synchronous accumulator for one group and aggregate occurrence. */
+export interface AggregateState {
+  /** Receives bound arguments. The engine skips unbound arguments and expression errors. */
+  step(term: Term): void;
+  /** Returns the group's result, including for an empty implicit group. */
+  finish(): Term | null;
+}
+
 /** SELECT: one object per solution (with a null prototype); unbound variables are absent from it. */
 export interface BindingsResult { type: "bindings"; variables: string[]; bindings: Array<Record<string, Term>> }
 /** ASK. */
@@ -67,6 +75,8 @@ export class Database {
   loadExtension(name: string): void;
   /** Registers a synchronous callback under an absolute IRI for future queries and snapshots. */
   registerFunction(iri: string, callback: (...args: Term[]) => Term | null, arity?: number, pure?: boolean): void;
+  /** Registers a synchronous unary aggregate under an absolute IRI for future queries and snapshots. */
+  registerAggregateFunction(iri: string, factory: () => AggregateState): void;
   listExtensions(): ExtensionInfo[];
   /** A consistent view for several queries; later updates do not change it. */
   read(): Snapshot;

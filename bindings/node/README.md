@@ -49,3 +49,12 @@ must return promptly and must avoid mutating or reentering the database being
 queried. Cancellation skips queued calls and takes effect cooperatively for
 callbacks already running. Use `close()` when the database is finished,
 especially when a callback captures the database handle.
+
+`db.registerAggregateFunction(iri, factory)` registers a synchronous unary
+aggregate. Use `<urn:example>(?value)` or `<urn:example>(DISTINCT ?value)`.
+The factory returns a new object per group and aggregate occurrence.
+Its `step(term)` receives one bound RDF/JS term and returns `undefined`.
+The engine skips unbound arguments and expression errors. DISTINCT compares
+RDF term identity. Its `finish()` returns the group's result, including for
+an empty implicit group. A thrown error, Promise or invalid return leaves
+that group's result unbound. The same thread and cancellation rules apply.

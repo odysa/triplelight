@@ -6,9 +6,10 @@ use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use triplelight::embedded::{Database, DatabaseError, ReadSnapshot};
 use triplelight::exec::{Entailment, Interrupt, MemoryBudget, QueryLimits, QueryResult};
-use triplelight::extension::FunctionOptions;
+use triplelight::extension::{AggregateState, FunctionOptions};
 use std::sync::Arc;
 
+mod aggregate;
 mod scalar;
 
 create_exception!(_triplelight, TripleLightError, PyException);
@@ -267,6 +268,17 @@ impl PyDatabase {
         self.db
             .register_function(iri, FunctionOptions { arity, pure }, move |args: &[Term]| {
                 scalar::call(&callback, args)
+            })
+            .map_err(|error| pyo3::exceptions::PyValueError::new_err(error.to_string()))
+    }
+    fn register_aggregate_function(&self, iri: &str, factory: Bound<'_, PyAny>) -> PyResult<()> {
+        if !factory.is_callable() {
+            return Err(pyo3::exceptions::PyTypeError::new_err("factory must be callable"));
+        }
+        let factory = factory.unbind();
+        self.db
+            .register_aggregate_function(iri, move || -> Option<Box<dyn AggregateState>> {
+                aggregate::create(&factory)
             })
             .map_err(|error| pyo3::exceptions::PyValueError::new_err(error.to_string()))
     }

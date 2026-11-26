@@ -38,7 +38,7 @@ impl Interrupt {
         if self.is_cancelled() { return Some(QueryErrorKind::Cancelled) }
         self.deadline.is_some_and(|d| std::time::Instant::now() >= d).then_some(QueryErrorKind::Timeout)
     }
-    /// Unwinds the query if it was cancelled or is past its deadline (caught by `catching_storage`).
+    /// Unwinds the query if it was cancelled or is past its deadline.
     pub(crate) fn check(&self) {
         // `resume_unwind`, not `panic!`: a stop is not a bug, so the panic hook (which prints) does not run.
         if let Some(reason) = self.stop_reason() { std::panic::resume_unwind(Box::new(Interrupted(reason))) }

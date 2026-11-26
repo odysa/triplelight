@@ -29,3 +29,16 @@ owned RDF term, or return a nonzero status to signal a SPARQL expression error.
 
 The caller retains the context if registration fails. If it succeeds, the release callback runs after the last snapshot
 or registry reference is dropped. Host callbacks must support concurrent calls and must not reenter the database.
+
+## Unary aggregates
+
+`tl_register_aggregate_function` installs a factory under an absolute IRI for future read snapshots.
+In a query, use `<urn:example:aggregate>(?value)` or `<urn:example:aggregate>(DISTINCT ?value)`.
+The factory creates independent state per aggregate occurrence per group. The step callback receives one borrowed
+RDF term. The engine skips unbound arguments and expression errors. DISTINCT compares RDF term identity.
+Finish runs even for an empty implicit group and can return a term through `tl_scalar_set_term`.
+A callback error yields an unbound result for that group.
+
+The optional state destructor runs once for each successful factory call, including when a query fails or is
+canceled. The optional registration-context destructor runs after all snapshots and group states release it.
+See `include/triplelight.h` for the callback and ownership contract.
