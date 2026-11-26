@@ -353,10 +353,14 @@ impl DiskSnapshot {
         };
         let mut indexes = Vec::new();
         // With the six quad orders, every index takes a smaller share so the snapshot stays within its cache budget.
+        // The index files share their shares as one byte budget (#105), each keeping half of its own as a floor.
+        let index_files = order_count + if named_graphs { order_count } else { 0 };
+        let share = crate::disk_index::cache_budget_mb() as u64 * 1024 * 1024 / shares.max(1) as u64;
+        let budget = crate::disk_index::SharedBlockBudget::new(share * index_files as u64);
         let mut identities = expected[index_offset..].iter();
         for (i, name) in FILES[1..].iter().enumerate() {
             if !kept(i) { indexes.push(None); continue }
-            let index = DiskIndex::<3>::open_with_share(dir.join(name), shares)?;
+            let index = DiskIndex::<3>::open_in_budget(dir.join(name), shares, &budget, share / 2)?;
             if Some(&index.identity()) != identities.next() {
                 return Err(bad("index directory checksum mismatch"));
             }
@@ -370,7 +374,7 @@ impl DiskSnapshot {
             let mut quads = Vec::new();
             for (i, name) in QUAD_FILES.iter().enumerate() {
                 if !kept(i) { quads.push(None); continue }
-                let index = DiskIndex::<4>::open_with_share(dir.join(name), shares)?;
+                let index = DiskIndex::<4>::open_in_budget(dir.join(name), shares, &budget, share / 2)?;
                 if Some(&index.identity()) != identities.next() {
                     return Err(bad("quad index directory checksum mismatch"));
                 }

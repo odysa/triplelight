@@ -77,6 +77,10 @@ pub(crate) fn timed_read<T>(kind: usize, f: impl FnOnce() -> T) -> T {
 }
 /// Block-read totals in microseconds since the last call, then reset: `[index, dictionary]`.
 pub fn take_read_share() -> [u64; 2] { READ_NS.each_ref().map(|c| c.swap(0, Ordering::Relaxed) / 1000) }
+/// Decoded index-block bytes cached now, per trace slot (index files only), over every open base: a level, not a
+/// count, for the block-cache trace.
+static RESIDENT: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
+pub fn cache_resident_bytes() -> [u64; TRACE_SLOTS] { RESIDENT.each_ref().map(|c| c.load(Ordering::Relaxed)) }
 pub fn cache_trace_snapshot() -> [[u64; 5]; TRACE_SLOTS] {
     std::array::from_fn(|i| {
         [
@@ -373,10 +377,118 @@ pub struct DiskIndex<const N: usize = 3> {
     compressed: bool,
     /// The format allows tag-rotated block columns (`RDFIDX04`/`RDFQIX02`).
     rotated: bool,
-    cache: Vec<RwLock<CacheShard<N>>>,
+    cache: Arc<BlockCache<N>>,
     shard_capacity: usize,
     trace_slot: Option<usize>,
 }
+
+/// The block caches of one base's index files, sharing one byte budget (#105). Each file keeps a floor, half the
+/// fixed share it had before, so a scan of one file cannot starve another; above the floors the budget goes to
+/// whichever file's blocks stay hot. Room is made by one global CLOCK hand: it visits the files above their floor in
+/// turn and advances that file's CLOCK one entry (a referenced block loses its bit, an unreferenced one is evicted),
+/// so idle files' cold blocks go first and a hot file keeps its working set. Every shard is taken with `try_write`
+/// only, never waiting, so no two caches can wait on each other; a busy shard is skipped. Concurrent misses can
+/// overshoot the budget by a block each, as they already could.
+pub(crate) struct SharedBlockBudget {
+    capacity: u64,
+    used: AtomicU64,
+    members: std::sync::Mutex<Vec<std::sync::Weak<dyn ClockMember>>>,
+    hand: AtomicUsize,
+}
+/// A cache that `SharedBlockBudget` can take room from.
+trait ClockMember: Send + Sync {
+    /// Bytes this cache holds, and the floor below which it gives none.
+    fn used(&self) -> u64;
+    fn floor(&self) -> u64;
+    /// Advances one shard's CLOCK by one entry, if that shard can be locked without waiting: the bytes evicted
+    /// (0 when the entry kept a second chance), or `None` for a busy or empty shard.
+    fn clock_step(&self) -> Option<u64>;
+}
+impl SharedBlockBudget {
+    pub(crate) fn new(capacity: u64) -> Arc<Self> {
+        Arc::new(SharedBlockBudget { capacity, used: AtomicU64::new(0), members: Default::default(), hand: AtomicUsize::new(0) })
+    }
+    fn register(&self, member: std::sync::Weak<dyn ClockMember>) {
+        self.members.lock().unwrap_or_else(|p| p.into_inner()).push(member);
+    }
+    /// Evicts until `need` more bytes fit, or gives up after a bounded number of steps (busy shards, every file at
+    /// its floor): the caller inserts anyway, a bounded overshoot.
+    fn make_room(&self, need: u64) {
+        if self.used.load(Ordering::Relaxed) + need <= self.capacity { return }
+        let members: Vec<Arc<dyn ClockMember>> = self.members.lock().unwrap_or_else(|p| p.into_inner()).iter().filter_map(std::sync::Weak::upgrade).collect();
+        if members.is_empty() { return }
+        // Two full CLOCK passes over every shard of every file at most (a second chance costs one pass).
+        let steps = members.len() * CACHE_SHARDS * 2 * 64;
+        for _ in 0..steps {
+            if self.used.load(Ordering::Relaxed) + need <= self.capacity { return }
+            let m = &members[self.hand.fetch_add(1, Ordering::Relaxed) % members.len()];
+            if m.used() <= m.floor() { continue }
+            m.clock_step();
+        }
+    }
+}
+/// Shards per index cache.
+const CACHE_SHARDS: usize = 16;
+
+/// One index file's block cache: shards of decoded blocks under CLOCK, alone (at most `shard_capacity` blocks per
+/// shard) or in a base's `SharedBlockBudget` (`shared`: the budget and this file's floor in bytes).
+struct BlockCache<const N: usize> {
+    shards: Vec<RwLock<CacheShard<N>>>,
+    /// Blocks held, over all shards.
+    blocks: AtomicU64,
+    shared: Option<(Arc<SharedBlockBudget>, u64)>,
+    /// The shard `clock_step` visits next.
+    hand: AtomicUsize,
+    trace_slot: Option<usize>,
+}
+impl<const N: usize> BlockCache<N> {
+    /// Bytes one cached block is charged.
+    const BLOCK_BYTES: u64 = BLOCK_ROWS * row_bytes(N);
+    fn new(shared: Option<(Arc<SharedBlockBudget>, u64)>, trace_slot: Option<usize>) -> Self {
+        BlockCache {
+            shards: (0..CACHE_SHARDS).map(|_| RwLock::new(CacheShard { entries: HashMap::new(), clock: VecDeque::new(), generation: 0 })).collect(),
+            blocks: AtomicU64::new(0),
+            shared,
+            hand: AtomicUsize::new(0),
+            trace_slot,
+        }
+    }
+    /// Counts `n` blocks in (`n` > 0) or out, here and in the shared budget.
+    fn charge(&self, n: i64) {
+        if n >= 0 { self.blocks.fetch_add(n as u64, Ordering::Relaxed); } else { self.blocks.fetch_sub(n.unsigned_abs(), Ordering::Relaxed); }
+        if let Some(i) = self.trace_slot {
+            let bytes = n.unsigned_abs() * Self::BLOCK_BYTES;
+            if n >= 0 { RESIDENT[i].fetch_add(bytes, Ordering::Relaxed); } else { RESIDENT[i].fetch_sub(bytes, Ordering::Relaxed); }
+        }
+        if let Some((budget, _)) = &self.shared {
+            let bytes = n.unsigned_abs() * Self::BLOCK_BYTES;
+            if n >= 0 { budget.used.fetch_add(bytes, Ordering::Relaxed); } else { budget.used.fetch_sub(bytes, Ordering::Relaxed); }
+        }
+    }
+    /// One CLOCK step on `cache` (its write lock held): `Some(true)` evicted, `Some(false)` a second chance.
+    fn step_locked(&self, cache: &mut CacheShard<N>) -> Option<bool> {
+        let old = cache.clock.pop_front()?;
+        let referenced = cache.entries.get(&old).is_some_and(|e| e.1.swap(false, Ordering::Relaxed));
+        if referenced {
+            cache.clock.push_back(old);
+            return Some(false);
+        }
+        cache.entries.remove(&old);
+        self.charge(-1);
+        if cache_trace_enabled() && let Some(i) = self.trace_slot { EVICTIONS[i].fetch_add(1, Ordering::Relaxed); }
+        Some(true)
+    }
+}
+impl<const N: usize> ClockMember for BlockCache<N> {
+    fn used(&self) -> u64 { self.blocks.load(Ordering::Relaxed) * Self::BLOCK_BYTES }
+    fn floor(&self) -> u64 { self.shared.as_ref().map_or(0, |(_, floor)| *floor) }
+    fn clock_step(&self) -> Option<u64> {
+        let shard = &self.shards[self.hand.fetch_add(1, Ordering::Relaxed) % self.shards.len()];
+        let mut cache = shard.try_write().ok()?;
+        self.step_locked(&mut cache).map(|evicted| if evicted { Self::BLOCK_BYTES } else { 0 })
+    }
+}
+
 impl<const N: usize> DiskIndex<N>
 where
     Width<N>: SupportedWidth<N>,
@@ -389,7 +501,16 @@ where
     pub(super) fn shard_capacity(&self) -> usize { self.shard_capacity }
     /// Opens with a block cache of `1 / shares` of the snapshot budget (the dictionary takes three shares; a
     /// triple-only snapshot's six orders one each, so 9; with the six quad orders of a named-graph base, 15).
-    pub fn open_with_share(path: impl AsRef<Path>, shares: usize) -> io::Result<Self> {
+    pub fn open_with_share(path: impl AsRef<Path>, shares: usize) -> io::Result<Self> { Self::open_cached(path, shares, None) }
+    /// Opens in `budget`, the byte budget a base's index files share, keeping at least `floor` bytes of blocks once it
+    /// has them (a base gives each file half of the `1 / shares` it would otherwise have alone).
+    pub(crate) fn open_in_budget(path: impl AsRef<Path>, shares: usize, budget: &Arc<SharedBlockBudget>, floor: u64) -> io::Result<Self> {
+        let index = Self::open_cached(path, shares, Some((Arc::clone(budget), floor)))?;
+        let member: Arc<dyn ClockMember> = index.cache.clone();
+        budget.register(Arc::downgrade(&member));
+        Ok(index)
+    }
+    fn open_cached(path: impl AsRef<Path>, shares: usize, shared: Option<(Arc<SharedBlockBudget>, u64)>) -> io::Result<Self> {
         let trace_slot = match path.as_ref().file_name().and_then(|v| v.to_str()) {
             Some("spo") => Some(0),
             Some("sop") => Some(1),
@@ -492,15 +613,7 @@ where
             blocks: entries,
             compressed,
             rotated,
-            cache: (0..16)
-                .map(|_| {
-                    RwLock::new(CacheShard {
-                        entries: HashMap::new(),
-                        clock: VecDeque::new(),
-                        generation: 0,
-                    })
-                })
-                .collect(),
+            cache: Arc::new(BlockCache::new(shared, trace_slot)),
             shard_capacity: cache_budget_mb()
                 .saturating_mul(1024 * 1024)
                 .checked_div(shares.max(1) * 16 * BLOCK_ROWS as usize * row_bytes(N) as usize)
@@ -512,10 +625,11 @@ where
         self.identity
     }
     pub fn clear_cache(&self) -> io::Result<()> {
-        for shard in &self.cache {
+        for shard in &self.cache.shards {
             let mut cache = shard
                 .write()
                 .map_err(|_| io::Error::other("index cache lock poisoned"))?;
+            self.cache.charge(-(cache.entries.len() as i64));
             cache.entries.clear();
             cache.clock.clear();
             cache.generation += 1;
@@ -555,7 +669,7 @@ where
         Ok(rows)
     }
     fn block_shared(&self, id: u64) -> io::Result<Arc<Vec<[TermId; N]>>> {
-        let shard = &self.cache[(id as usize) % self.cache.len()];
+        let shard = &self.cache.shards[(id as usize) % self.cache.shards.len()];
         let poisoned = || io::Error::other("index cache lock poisoned");
         // Hit: shared read lock only, so concurrent readers of hot blocks don't serialize.
         let generation = {
@@ -577,6 +691,8 @@ where
         let r = Arc::new(self.read_block(id)?);
         #[cfg(test)]
         if let Some(hook) = MISS_HOOK.with(|h| h.borrow_mut().take()) { hook(self as &dyn std::any::Any) }
+        // In a shared budget, room is made before this shard is locked, so the global hand can take from it too.
+        if let Some((budget, _)) = &self.cache.shared { budget.make_room(BlockCache::<N>::BLOCK_BYTES) }
         let mut cache = shard.write().map_err(|_| poisoned())?;
         if let Some((value, referenced)) = cache.entries.get(&id) {
             referenced.store(true, Ordering::Relaxed);
@@ -586,20 +702,15 @@ where
             // A clear_cache ran while we read: don't repopulate the cleared cache with a pre-clear read.
             return Ok(r);
         }
-        while cache.entries.len() >= self.shard_capacity {
-            let old = cache.clock.pop_front().expect("cache clock consistent");
-            let entry = cache.entries.get(&old).expect("cache entry consistent");
-            if entry.1.swap(false, Ordering::Relaxed) {
-                cache.clock.push_back(old);
-            } else {
-                cache.entries.remove(&old);
-                if cache_trace_enabled() && let Some(i) = self.trace_slot {
-                    EVICTIONS[i].fetch_add(1, Ordering::Relaxed);
-                }
+        // Alone, a full shard evicts its own cold blocks; in a shared budget the global hand already made room.
+        if self.cache.shared.is_none() {
+            while cache.entries.len() >= self.shard_capacity {
+                if self.cache.step_locked(&mut cache).is_none() { break }
             }
         }
         cache.entries.insert(id, (Arc::clone(&r), AtomicBool::new(true)));
         cache.clock.push_back(id);
+        self.cache.charge(1);
         Ok(r)
     }
     /// Reads, checksums, decodes and validates one block from the file (no caching).
@@ -984,6 +1095,37 @@ mod tests {
         assert!(index.block_slice_uncached(256, 512).is_err());
         std::fs::remove_file(path).unwrap();
     }
+    /// Two index files in one shared budget: the one being read grows past half the budget (its old fixed share)
+    /// by taking the idle file's cold blocks, the idle one keeps its floor, and the total stays within the budget.
+    #[test]
+    fn a_shared_budget_gives_a_hot_file_the_idle_files_room_down_to_its_floor() {
+        let dir = std::env::temp_dir().join(format!("rdf-shared-budget-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let rows: Vec<[TermId; 3]> = (1..=40 * BLOCK_ROWS).map(|i| [TermId(i), TermId(1), TermId(2)]).collect();
+        let block = BlockCache::<3>::BLOCK_BYTES;
+        // room for 20 blocks in all; each file's old share would be 10, its floor is 4
+        let budget = SharedBlockBudget::new(20 * block);
+        let open = |name: &str| {
+            let mut bytes = Vec::new();
+            write_index(&mut bytes, rows.clone().into_iter()).unwrap();
+            std::fs::write(dir.join(name), &bytes).unwrap();
+            DiskIndex::<3>::open_in_budget(dir.join(name), 2, &budget, 4 * block).unwrap()
+        };
+        let (hot, idle) = (open("hot"), open("idle"));
+        // the idle file is read once, end to end: it fills its half
+        for i in 0..10 { idle.get(i * BLOCK_ROWS).unwrap(); }
+        // the hot file reads 16 blocks over and over (more than its old share of 10)
+        for _ in 0..4 { for i in 0..16 { hot.block_shared(i).unwrap(); } }
+        let (h, d) = (hot.cache.used() / block, idle.cache.used() / block);
+        assert!(h >= 15, "the hot file grew past its old share: {h} blocks (idle {d})");
+        assert!(d >= 4, "the idle file kept its floor: {d} blocks");
+        assert!(h + d <= 20 + 1, "the budget holds: {h} + {d}");
+        // clearing a file returns its bytes to the budget
+        hot.clear_cache().unwrap();
+        assert_eq!(budget.used.load(Ordering::Relaxed), idle.cache.used());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
     #[test]
     fn clear_cache_invalidates_thread_memo() {
         // Warm a block on this thread, corrupt it on disk, clear caches: the next read must hit disk and fail.
@@ -1037,12 +1179,12 @@ mod tests {
         let index = DiskIndex::<3>::open(&path).unwrap();
         MISS_HOOK.with(|h| *h.borrow_mut() = Some(Box::new(|ix: &dyn std::any::Any| ix.downcast_ref::<DiskIndex>().unwrap().clear_cache().unwrap())));
         assert!(index.block_shared(1).is_ok());
-        let shard = index.cache[1 % index.cache.len()].read().unwrap();
+        let shard = index.cache.shards[1 % index.cache.shards.len()].read().unwrap();
         assert!(!shard.entries.contains_key(&1), "pre-clear read must not repopulate the cleared shard");
         drop(shard);
         // Without a concurrent clear, a miss is cached as usual.
         assert!(index.block_shared(2).is_ok());
-        assert!(index.cache[2 % index.cache.len()].read().unwrap().entries.contains_key(&2));
+        assert!(index.cache.shards[2 % index.cache.shards.len()].read().unwrap().entries.contains_key(&2));
         std::fs::remove_file(path).unwrap();
     }
     /// `RDFIDX03` files (no rotated columns) stay readable, and `RDFIDX04` stores mixed-tag columns in less space.

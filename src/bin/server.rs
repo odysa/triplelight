@@ -223,6 +223,8 @@ fn answer<'a, S: triplelight::storage::Snapshot>(snap: &'a S, q: &str, opts: &Op
             eprintln!("block_cache {name} hits={} misses={} pread_calls={} pread_bytes={} evictions={}",d[0],d[1],d[2],d[3],d[4]);
         }
         // Process-wide counters, reset at request entry: exact for one request at a time, like the cache lines above.
+        let resident = triplelight::storage::disk_index::cache_resident_bytes();
+        eprintln!("block_cache_resident_mb spo={} sop={} pso={} pos={} osp={} ops={} quads={}", resident[0] >> 20, resident[1] >> 20, resident[2] >> 20, resident[3] >> 20, resident[4] >> 20, resident[5] >> 20, resident[8] >> 20);
         let [same, gallop, full] = triplelight::storage::disk_index::take_probe_trace();
         eprintln!("probe_trace same_block={same} gallop={gallop} full={full}");
     }
