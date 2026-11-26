@@ -197,6 +197,11 @@ fn num(t: &Term) -> Option<Num> {
     }
 }
 
+/// Exact integer/decimal value for the conservative ID-range proof. Float/double cannot use that proof.
+pub(super) fn range_decimal(l: triplelight_rdf::LiteralRef<'_>) -> Option<Decimal> {
+    num(&l.into_owned().into())?.dec()
+}
+
 pub(super) fn string_value(t: &Term) -> Option<String> {
     match t {
         Term::Literal(l) => Some(l.value().to_string()),

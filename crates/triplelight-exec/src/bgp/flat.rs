@@ -20,6 +20,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         filters: &[(&Expression, Vec<usize>)],
         ranges: &range::Ranges,
         whole_bgp: bool,
+        table_ranges: Option<Vec<Option<(TermId, TermId)>>>,
         mut trace: Option<&mut plan_trace::Trace>,
     ) -> Vec<TermId> {
         let width = self.vars.len();
@@ -30,7 +31,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             }))
             .collect();
         let predicates: Vec<TermId> = star.columns.iter().map(|(p, _)| *p).collect();
-        let table_ranges = self.table_intervals(&star.columns, filters);
+        let table_ranges = table_ranges.unwrap_or_else(|| self.table_intervals(&star.columns, filters));
         let mut numeric_memo: crate::id_hash::IdMap<Option<expr::Num>> = crate::id_hash::IdMap::default();
         let mut out = Vec::new();
         let started = trace.as_ref().map(|_| Instant::now());
@@ -191,18 +192,56 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 interrupt: self.interrupt,
                 budget: self.budget,
             };
-            let candidate = self.force_wide_tables.then(|| g.wide_tables()).flatten()
+            // A zero-row pushed range already proves this BGP empty. Automatic table
+            // selection cannot improve it, and even catalog lookup matters at this scale.
+            let consider_table = self.force_wide_tables
+                || (self.auto_wide_tables && !ranges.values().any(|range| range.rows == 0));
+            let candidate = consider_table.then(|| g.wide_tables()).flatten()
                 .and_then(|catalog| {
                     table_plan::recognize_stars(&pats, unbound_start).into_iter().find_map(|star| {
+                        // An automatic table can answer only a complete two-pattern star.
+                        // Reject other shapes before probing the catalog or proving intervals.
+                        if !self.force_wide_tables && (star.pattern_indices.len() != pats.len()
+                            || star.pattern_indices.len() != 2
+                            || !star.columns.iter().all(|(_, object)| matches!(object, Slot::Var(_)))
+                            || !self.range_reorderable.contains(&(patterns.as_ptr() as usize))) {
+                            return None;
+                        }
                         let tables = catalog.tables_with(&star.predicates);
-                        (!tables.is_empty()).then_some((star, tables, catalog))
+                        if tables.is_empty() { return None }
+                        let mut intervals = None;
+                        if !self.force_wide_tables {
+                            let index_start_rows = star.columns.iter().filter_map(|&(predicate, object)| {
+                                let Slot::Var(slot) = object else { return None };
+                                Some(ranges.get(&(predicate, slot)).map_or_else(
+                                    || g.count(Perm::Pso, &[predicate]).unwrap_or_else(|e| storage_failure(e)),
+                                    |range| range.rows,
+                                ))
+                            }).min().unwrap_or(0);
+                            // The provisional 4% selectivity gate can reject an index plan
+                            // without the extra dictionary and interval work. In particular,
+                            // an empty pushed range has zero rows and needs no table proof.
+                            let subjects = tables.iter().fold(0u64, |n, &table| {
+                                n.saturating_add(catalog.meta(table).subjects)
+                            });
+                            if subjects == 0 || (index_start_rows as f64) < 0.04 * subjects as f64 {
+                                return None;
+                            }
+                            let bounds = self.table_intervals(&star.columns, filters);
+                            if !bounds.iter().any(Option::is_some) { return None }
+                            if !table_plan::select_auto(catalog, &star, &tables, index_start_rows, &bounds) {
+                                return None;
+                            }
+                            intervals = Some(bounds);
+                        }
+                        Some((star, tables, catalog, intervals))
                     })
                 });
-            if let Some((star, tables, catalog)) = candidate {
+            if let Some((star, tables, catalog, intervals)) = candidate {
                 let star_pats: Vec<_> = star.pattern_indices.iter().map(|&i| pats[i]).collect();
                 let mut out = self.evaluate_wide(
                     g, catalog, &star, &tables, &star_pats, flat, filters, &ranges,
-                    star_pats.len() == pats.len(),
+                    star_pats.len() == pats.len(), intervals,
                     tr.as_mut(),
                 );
                 if star_pats.len() != pats.len() && !out.is_empty() {
@@ -225,7 +264,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                     // through the ordinary indexes, preserving their joins.
                     out = bgp.eval_greedy(&remaining, &[], out, &mut post, None);
                 }
-                (out, "wide-forced")
+                (out, if self.force_wide_tables { "wide-forced" } else { "wide-auto" })
             } else if self.wcoj
                 && unbound_start
                 && pats.len() >= 3

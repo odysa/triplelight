@@ -125,6 +125,11 @@ fn date_interval_filters_table_values_before_expansion() {
         !trace.iter().any(|line| line.contains("access=probe")),
         "covered subjects need no index residual: {trace:?}"
     );
+    let (auto_result, auto_trace) = triplelight::exec::plan_trace::capture(|| {
+        query_with(&wide, query, &Options { auto_wide_tables: true, ..Options::default() }).unwrap()
+    });
+    assert_eq!(bag(auto_result), expected);
+    assert!(auto_trace.iter().any(|line| line.contains("strategy=wide-auto")), "{auto_trace:?}");
     let without_range = Options {
         force_wide_tables: true,
         range_pushdown: false,
@@ -137,6 +142,106 @@ fn date_interval_filters_table_values_before_expansion() {
     drop(wide);
     drop(plain);
     std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn numeric_interval_uses_value_order_only_when_ids_prove_it() {
+    const YEARS: &str = r#"
+<urn:a> <urn:year> "1900"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:a> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:a> <urn:part> <urn:x> .
+<urn:b> <urn:year> "1911"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:b> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:b> <urn:part> <urn:y> .
+<urn:c> <urn:year> "1912"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:c> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:c> <urn:part> <urn:z> .
+"#;
+    const NONMONOTONE: &str = r#"
+<urn:a> <urn:year> "9"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:a> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:a> <urn:part> <urn:x> .
+<urn:b> <urn:year> "10"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:b> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:b> <urn:part> <urn:y> .
+<urn:c> <urn:year> "11"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:c> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:c> <urn:part> <urn:z> .
+"#;
+    const DECIMAL: &str = r#"
+<urn:a> <urn:year> "1909"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:a> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:a> <urn:part> <urn:x> .
+<urn:b> <urn:year> "1910.5"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+<urn:b> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:b> <urn:part> <urn:y> .
+<urn:c> <urn:year> "1911"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:c> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:Prize> .
+<urn:c> <urn:part> <urn:z> .
+"#;
+    for (data, query, interval) in [
+        (YEARS, "SELECT ?s ?part WHERE { ?s <urn:year> ?year . ?s <urn:part> ?part . FILTER(?year >= 1911 && ?year < 1912) }", true),
+        (NONMONOTONE, "SELECT ?s ?part WHERE { ?s <urn:year> ?year . ?s <urn:part> ?part . FILTER(?year >= 10 && ?year < 11) }", false),
+        (DECIMAL, "SELECT ?s ?part WHERE { ?s <urn:year> ?year . ?s <urn:part> ?part . FILTER(?year >= 1910.5 && ?year < 1911.0) }", true),
+    ] {
+        let memory = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+        let dir = std::env::temp_dir().join(format!("triplelight-wide-numeric-{}-{interval}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        write_disk_snapshot(&dir, &memory).unwrap();
+        let plain = DiskSnapshot::open(&dir).unwrap();
+        let wide = WithTables::build(DiskSnapshot::open(&dir).unwrap(), BuildOptions { min_fill: 0.0, min_share: 0.0 }).unwrap();
+        let expected = bag(query_with(&plain, query, &Options::default()).unwrap());
+        assert_eq!(expected.len(), 1);
+        let (result, trace) = triplelight::exec::plan_trace::capture(|| {
+            query_with(&wide, query, &Options { force_wide_tables: true, ..Options::default() }).unwrap()
+        });
+        assert_eq!(bag(result), expected);
+        assert!(trace.iter().any(|line| line.contains(if interval { "table_ranges=1" } else { "table_ranges=0" })), "{trace:?}");
+        drop(wide);
+        drop(plain);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+}
+
+#[test]
+fn numeric_range_keeps_delta_integer_beside_inline_string() {
+    use std::sync::Arc;
+    use triplelight::model::{id_tag, Change, DatasetChange, GraphTarget};
+    use triplelight::store::Overlay;
+    use triplelight::storage::Dictionary;
+    use triplelight_rdf::{Literal, NamedNode, Triple};
+
+    let mut data = String::new();
+    for n in 100..200 {
+        data.push_str(&format!(
+            "<urn:s{n}> <urn:value> \"{n}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n"
+        ));
+    }
+    data.push_str("<urn:inline> <urn:value> \"250\" .\n");
+    let base = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let inline = Literal::new_simple_literal("250");
+    assert_eq!(base.lookup(&inline.clone().into()).unwrap().unwrap().0 >> 60, id_tag::INLINE);
+
+    let delta_integer = Literal::new_typed_literal("250", triplelight_rdf::vocab::xsd::INTEGER);
+    let added = Triple::new(
+        NamedNode::new("urn:delta").unwrap(),
+        NamedNode::new("urn:value").unwrap(),
+        delta_integer.clone(),
+    );
+    let overlay = Overlay::from_base(Arc::new(base))
+        .with_dataset_changes(&[DatasetChange::Quad(GraphTarget::Default, Change::Insert, added)])
+        .unwrap().0;
+    assert_eq!(overlay.lookup(&delta_integer.into()).unwrap().unwrap().0 >> 60, id_tag::DELTA);
+
+    let query = "SELECT ?s ?v WHERE { ?s <urn:value> ?v . FILTER(?v >= 190 && ?v < 300) }";
+    let unpushed = bag(query_with(&overlay, query, &Options { range_pushdown: false, ..Options::default() }).unwrap());
+    let (default_result, default_trace) = triplelight::exec::plan_trace::capture(|| query_with(&overlay, query, &Options::default()).unwrap());
+    assert_eq!(bag(default_result), unpushed);
+    assert!(!default_trace.iter().any(|line| line.contains("ranges=1")), "{default_trace:?}");
+    let (pushed, trace) = triplelight::exec::plan_trace::capture(|| query_with(&overlay, query, &Options { numeric_range_pushdown: true, ..Options::default() }).unwrap());
+    assert_eq!(unpushed.len(), 11);
+    assert_eq!(bag(pushed), unpushed);
+    assert!(trace.iter().any(|line| line.contains("ranges=1")), "{trace:?}");
 }
 
 #[test]
@@ -177,5 +282,10 @@ fn constant_objects_and_embedded_stars_preserve_bags() {
         });
         assert_eq!(bag(result), expected, "{query}");
         assert!(trace.iter().any(|line| line.contains("strategy=wide-forced")), "{query}: {trace:?}");
+        let (auto_result, auto_trace) = triplelight::exec::plan_trace::capture(|| {
+            query_with(&wide, query, &Options { auto_wide_tables: true, ..Options::default() }).unwrap()
+        });
+        assert_eq!(bag(auto_result), expected, "{query}");
+        assert!(!auto_trace.iter().any(|line| line.contains("strategy=wide-auto")), "{query}: {auto_trace:?}");
     }
 }

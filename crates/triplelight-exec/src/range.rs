@@ -1,5 +1,6 @@
 //! Range-filter pushdown (`Options::range_pushdown`): a BGP pattern `?s <p> ?d` whose object is constrained by FILTER
-//! conjuncts `?d >= c`, `?d > c`, `?d <= c`, `?d < c` (or mirrored) with constant `xsd:date` literals scans only the
+//! conjuncts `?d >= c`, `?d > c`, `?d <= c`, `?d < c` (or mirrored) with canonical `xsd:date` or
+//! integer/decimal constants scans only the
 //! objects of `<p>` whose IDs can satisfy them, instead of every object. The conjuncts stay pushed filters of the
 //! BGP (`apply_filters`), so the ID interval only has to be a superset of the matching terms, never exact.
 //!
@@ -36,6 +37,15 @@
 //!    object at or above `id_tag::DELTA` unrestricted; the residual filter decides those. Triples inserted with an
 //!    already stored literal object carry a base ID and are found by the merged overlay scan inside the interval.
 //!
+//! Numeric values have a separate proof. On first use per predicate and snapshot, at most `CHECK_LIMIT` distinct
+//! stored literal objects are decoded in ID order. The executor's own numeric comparison must show that every
+//! parseable numeric object is an integer or decimal and that values are nondecreasing. The verified numeric IDs
+//! are cached; each later bound uses binary search. This refuses float/double predicates and nonmonotone integer
+//! spellings (e.g. "9", "10"). Other datatypes inside a table interval are false positives removed by the residual
+//! FILTER. A numeric bound never assumes that N-Triples lexical order is numeric value order.
+//! The ordinary triple-index path requires `Options::numeric_range_pushdown` for numeric bounds; it is off by
+//! default. Explicitly selected wide tables may still use numeric intervals when `range_pushdown` is on.
+//!
 //! A range is pushed only if it holds at most `MAX_FRACTION` of the predicate's triples (exact per-object counts
 //! against `count(POS, [p])`); a denser one leaves the BGP's plan exactly as without the pushdown. Each decision is
 //! logged on the server's `phase_trace` line (`range_pushdown=on:0.031,...`) under `TRIPLELIGHT_TRACE_PHASES`.
@@ -48,6 +58,7 @@
 //! ORDER BY it slices is provably tie-free (`tie_free`).
 use super::pattern::Slot;
 use super::{storage_failure, Ctx, UNBOUND};
+use super::expr;
 use crate::model::{id_tag, Perm, TermId};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression, GraphPattern};
 use crate::storage::Snapshot;
@@ -55,6 +66,7 @@ use triplelight_rdf::vocab::xsd;
 use triplelight_rdf::{Literal, NamedNode, TermRef};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use rust_decimal::Decimal;
 
 /// Distinct stored-literal objects of one predicate decoded for the canonical-form check; above this the pushdown is
 /// off for that predicate.
@@ -65,6 +77,7 @@ const END_LITERAL: TermId = TermId((id_tag::LITERAL + 1) << 60);
 const MAX_FRACTION: f64 = 0.15;
 /// IDs from here up (delta, scratch, inline) are not in base dictionary order.
 const FIRST_UNORDERED: TermId = TermId(id_tag::DELTA << 60);
+const NUMERIC_MARKER: &str = "ordered integer/decimal objects";
 
 /// The objects a ranged pattern scans (ascending: the literal ID interval, then every unordered ID) and the number of
 /// its triples with those objects.
@@ -89,9 +102,10 @@ fn canonical_date(v: &str) -> bool {
 }
 
 /// The constant's datatype if `l` is a supported literal in canonical form.
-fn ordered_constant(l: &Literal) -> Option<&'static str> {
+fn ordered_constant(l: &Literal, allow_numeric: bool) -> Option<&'static str> {
     let dt = xsd::DATE.as_str();
-    (l.datatype().as_str() == dt && canonical(dt, l.value())).then_some(dt)
+    if l.datatype().as_str() == dt && canonical(dt, l.value()) { return Some(dt) }
+    allow_numeric.then(|| expr::range_decimal(l.as_ref())).flatten().map(|_| NUMERIC_MARKER)
 }
 
 /// Adds to `out` the BGPs of `p` (by the address of their pattern list) whose solution order cannot change the
@@ -238,12 +252,13 @@ struct Bound {
     side: Side,
     datatype: &'static str,
     text: String,
+    numeric: Option<Decimal>,
 }
 
 impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     /// `(column, bound)` if `e` is a comparison of a variable with an order-preserving constant. Negations,
     /// disjunctions and anything else are not bounds (they stay ordinary filters).
-    fn range_bound(&self, e: &Expression) -> Option<(usize, Bound)> {
+    fn range_bound(&self, e: &Expression, allow_numeric: bool) -> Option<(usize, Bound)> {
         let (side, v, l) = match e {
             Expression::Greater(a, b) | Expression::GreaterOrEqual(a, b) | Expression::Less(a, b) | Expression::LessOrEqual(a, b) => {
                 let (var_left, v, l) = match (a.as_ref(), b.as_ref()) {
@@ -263,13 +278,14 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             }
             _ => return None,
         };
-        let datatype = ordered_constant(l)?;
+        let datatype = ordered_constant(l, allow_numeric)?;
         let col = *self.vars.get(v.as_str())?;
-        Some((col, Bound { side, datatype, text: triplelight_rdf::Term::from(l.clone()).to_string() }))
+        let numeric = (datatype == NUMERIC_MARKER).then(|| expr::range_decimal(l.as_ref())).flatten();
+        Some((col, Bound { side, datatype, text: triplelight_rdf::Term::from(l.clone()).to_string(), numeric }))
     }
 
-    /// The ranged patterns of a BGP: `?s <p> ?d` where some pushed conjuncts bound `?d`, the
-    /// store orders literal IDs by text, and `<p>`'s stored `xsd:date` objects are canonical. Empty when the switch
+    /// The ranged patterns of a BGP: `?s <p> ?d` where some pushed conjuncts bound `?d`, and the
+    /// stored literal objects pass the date or numeric ID-order proof. Empty when the switch
     /// is off, inside GRAPH / FROM (the active graph is not `snap`), or nothing applies.
     /// Patterns whose subject or object `first` (the first input row) binds are skipped: they are read through the
     /// bound value, and computing their range would only cost (e.g. once per row of an EXISTS).
@@ -280,7 +296,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         if !self.range_reorderable.contains(&(patterns.as_ptr() as usize)) { return out }
         let mut bounds: HashMap<usize, Vec<Bound>> = HashMap::new();
         for (e, _) in filters {
-            if let Some((col, b)) = self.range_bound(e) { bounds.entry(col).or_default().push(b) }
+            if let Some((col, b)) = self.range_bound(e, self.numeric_range_pushdown) { bounds.entry(col).or_default().push(b) }
         }
         if bounds.is_empty() { return out }
         for pat in pats {
@@ -308,7 +324,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         if !self.range_pushdown || filters.is_empty() || self.data.get().is_some() { return out }
         let mut bounds: HashMap<usize, Vec<Bound>> = HashMap::new();
         for (e, _) in filters {
-            if let Some((col, b)) = self.range_bound(e) { bounds.entry(col).or_default().push(b) }
+            if let Some((col, b)) = self.range_bound(e, true) { bounds.entry(col).or_default().push(b) }
         }
         for (i, &(p, object)) in columns.iter().enumerate() {
             let Slot::Var(slot) = object else { continue };
@@ -351,6 +367,22 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let datatype = bounds[0].datatype;
         // Bounds of different datatypes cannot all hold; leave such a conjunction to the filter.
         if bounds.iter().any(|b| b.datatype != datatype) { return None }
+        if datatype == NUMERIC_MARKER {
+            let literals = self.ordered_literal_objects(p, datatype)?;
+            let mut start = 0;
+            let mut end = literals.len();
+            for b in bounds {
+                let index = self.numeric_bound_index(&literals, b);
+                match b.side {
+                    Side::Lower { .. } => start = start.max(index),
+                    Side::Upper { .. } => end = end.min(index),
+                }
+            }
+            let (lo, hi) = if start < end {
+                (literals[start], TermId(literals[end - 1].0 + 1))
+            } else { (FIRST_LITERAL, FIRST_LITERAL) };
+            return Some((lo, hi, literals));
+        }
         // The text bounds first: a store that cannot promise them (`None`) skips the object enumeration below.
         let (mut lo, mut hi) = (FIRST_LITERAL, END_LITERAL);
         for b in bounds {
@@ -360,6 +392,30 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         }
         let literals = self.ordered_literal_objects(p, datatype)?;
         Some((lo, hi, literals))
+    }
+
+    /// Binary-search the monotone, cached numeric IDs. The first query pays for the bounded proof; later bounds
+    /// decode only O(log n) terms. A lower bound finds the first satisfying value; an upper bound finds the first
+    /// value past the upper limit.
+    fn numeric_bound_index(&self, ids: &[TermId], bound: &Bound) -> usize {
+        let mut left = 0;
+        let mut right = ids.len();
+        while left < right {
+            let mid = left + (right - left) / 2;
+            let mut cmp = None;
+            self.snap.with_term(ids[mid], &mut |t| {
+                if let TermRef::Literal(l) = t {
+                    cmp = expr::range_decimal(l).map(|n| n.cmp(&bound.numeric.unwrap()));
+                }
+            }).unwrap_or_else(|e| storage_failure(e));
+            let cmp = cmp.expect("memoized numeric object must compare with integer/decimal bound");
+            let before = match bound.side {
+                Side::Lower { strict } => cmp.is_lt() || (strict && cmp.is_eq()),
+                Side::Upper { inclusive } => cmp.is_lt() || (inclusive && cmp.is_eq()),
+            };
+            if before { left = mid + 1 } else { right = mid }
+        }
+        left
     }
 
     /// Appends the distinct objects of `p` in `[from, to)` (`to = None`: no upper end), ascending, found by index
@@ -377,8 +433,9 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         true
     }
 
-    /// The stored-literal objects of `p`, ascending, if every one of `datatype` is in canonical form (condition 3 of
-    /// the module documentation); `None` otherwise or above `CHECK_LIMIT` objects. Cached in the snapshot's
+    /// The stored-literal objects of `p` (only numeric IDs for the numeric key), ascending, if the date canonical-form
+    /// or numeric monotonicity proof holds;
+    /// `None` otherwise or above `CHECK_LIMIT` objects. Cached in the snapshot's
     /// `object_memo` (immutable views only), else per query.
     fn ordered_literal_objects(&self, p: TermId, datatype: &'static str) -> Option<Arc<[TermId]>> {
         let key = (p, datatype);
@@ -395,9 +452,29 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let mut ids = Vec::new();
         let mut ok = self.objects_until(p, FIRST_LITERAL, Some(END_LITERAL), CHECK_LIMIT, &mut ids);
         if ok {
-            self.snap.with_terms(&ids, &mut |_, t| {
-                if let TermRef::Literal(l) = t && l.datatype().as_str() == datatype && !canonical(datatype, l.value()) { ok = false }
+            let mut numeric = (datatype == NUMERIC_MARKER).then(|| vec![None; ids.len()]);
+            self.snap.with_terms(&ids, &mut |position, t| {
+                let TermRef::Literal(l) = t else { return };
+                if datatype == NUMERIC_MARKER {
+                    if l.datatype() == xsd::FLOAT || l.datatype() == xsd::DOUBLE { ok = false; return }
+                    let Some(n) = expr::range_decimal(l) else { return };
+                    numeric.as_mut().unwrap()[position] = Some(n);
+                } else if l.datatype().as_str() == datatype && !canonical(datatype, l.value()) { ok = false }
             }).unwrap_or_else(|e| storage_failure(e));
+            if let Some(numeric) = numeric {
+                let mut previous = None;
+                let mut numeric_ids = Vec::new();
+                for (id, n) in ids.into_iter().zip(numeric) {
+                    let Some(n) = n else { continue };
+                    if previous.is_some_and(|prev: Decimal| prev > n) {
+                        ok = false;
+                        break;
+                    }
+                    previous = Some(n);
+                    numeric_ids.push(id);
+                }
+                return ok.then(|| numeric_ids.into());
+            }
         }
         ok.then(|| ids.into())
     }
