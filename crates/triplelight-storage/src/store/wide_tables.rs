@@ -598,11 +598,11 @@ mod tests {
         while let Some(b) = scan.next_batch() { let b = b.unwrap(); sizes.push(b.len()); subjects.extend(b.subjects) }
         assert_eq!(sizes, vec![1024, 1024, 452]);
         assert!(subjects.windows(2).all(|w| w[0] < w[1]) && subjects.len() == 2500);
-        // a selective range still yields full batches when enough rows qualify: ~1/3 of 2500 rows in one batch
+        // with a range, batches are still full: only the last one may be short
         let mut scan = wide.scan(t, &[p1, p2], &[None, Some((lo, hi))]);
-        let mut batches = 0;
-        while let Some(b) = scan.next_batch() { assert!(!b.unwrap().is_empty()); batches += 1 }
-        assert_eq!(batches, 1);
+        let sizes: Vec<usize> = std::iter::from_fn(|| scan.next_batch()).map(|b| b.unwrap().len()).collect();
+        let total: usize = sizes.iter().sum();
+        assert!(total > 0 && sizes.len() == total.div_ceil(TABLE_BATCH_ROWS), "{sizes:?}");
     }
 
     #[test]
