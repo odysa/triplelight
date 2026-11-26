@@ -268,7 +268,9 @@ impl Database {
     }
 
     /// `query_json`, written to `out` window by window instead of built as one `String`: the first bytes are written before the later rows are
-    /// serialized, and peak memory is the id rows plus one window rather than the whole body. The bytes are exactly those of `query_json`.
+    /// serialized, and peak memory is the id rows plus two windows rather than the whole body. The bytes are exactly those of `query_json`.
+    /// That memory bound holds for answers kept as id rows; an ASK, or a SELECT the executor already decoded, is built as one string and
+    /// then written. The function never calls `out.flush()`: a caller writing through a `BufWriter` must flush it.
     ///
     /// On `QueryWriteError::Output`, or a `Query` error after output began, `out` holds a prefix of the answer that never reaches the closing
     /// `]}}`: invalid JSON, never a complete-looking wrong answer. Do not use what was written.
