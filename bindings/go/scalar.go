@@ -153,6 +153,14 @@ func appendScalarLiteral(out *strings.Builder, term *Term) bool {
 	}
 	out.WriteByte('"')
 	if term.Language != "" {
+		const rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+		datatype := rdf + "langString"
+		if term.Direction != "" {
+			datatype = rdf + "dirLangString"
+		}
+		if term.Datatype != "" && term.Datatype != datatype {
+			return false
+		}
 		if strings.IndexFunc(term.Language, func(r rune) bool {
 			return !(r == '-' || 'a' <= r && r <= 'z' || 'A' <= r && r <= 'Z' || '0' <= r && r <= '9')
 		}) >= 0 {

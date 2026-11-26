@@ -61,6 +61,9 @@ func TestScalarFunctionExpressionErrors(t *testing.T) {
 		"urn:go:invalid": func([]*Term) (*Term, error) {
 			return &Term{Kind: IRI, Value: "invalid IRI"}, nil
 		},
+		"urn:go:bad-lang-datatype": func([]*Term) (*Term, error) {
+			return &Term{Kind: Literal, Value: "1", Language: "en", Datatype: xsd + "int"}, nil
+		},
 		"urn:go:arity": func([]*Term) (*Term, error) { return &Term{Kind: Literal, Value: "called"}, nil },
 	}
 	for iri, callback := range callbacks {
@@ -68,19 +71,21 @@ func TestScalarFunctionExpressionErrors(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	r, err := db.Query("SELECT (<urn:go:panics>() AS ?a) (<urn:go:returns-error>() AS ?b) (<urn:go:nil>() AS ?c) (<urn:go:invalid>() AS ?d) (<urn:go:arity>(42) AS ?e) (<urn:go:arity>() AS ?f) WHERE {}")
+	r, err := db.Query(`SELECT (<urn:go:panics>() AS ?a) (<urn:go:returns-error>() AS ?b)
+		(<urn:go:nil>() AS ?c) (<urn:go:invalid>() AS ?d) (<urn:go:arity>(42) AS ?e)
+		(<urn:go:bad-lang-datatype>() AS ?f) (<urn:go:arity>() AS ?g) WHERE {}`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(r.Rows) != 1 || len(r.Rows[0]) != 6 {
+	if len(r.Rows) != 1 || len(r.Rows[0]) != 7 {
 		t.Fatalf("result shape: %+v", r)
 	}
-	for i, term := range r.Rows[0][:5] {
+	for i, term := range r.Rows[0][:6] {
 		if term != nil {
 			t.Errorf("column %d should be unbound: %+v", i, term)
 		}
 	}
-	if term := r.Rows[0][5]; term == nil || term.Value != "called" {
+	if term := r.Rows[0][6]; term == nil || term.Value != "called" {
 		t.Errorf("zero-argument result: %+v", term)
 	}
 }
