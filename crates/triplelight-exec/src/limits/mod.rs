@@ -32,11 +32,16 @@ impl Interrupt {
         use std::sync::atomic::Ordering::Relaxed;
         self.cancelled.load(Relaxed) || self.flag.as_ref().is_some_and(|f| f.load(Relaxed))
     }
+    /// Returns the current interruption reason without unwinding across a host binding.
+    #[doc(hidden)]
+    pub fn stop_reason(&self) -> Option<QueryErrorKind> {
+        if self.is_cancelled() { return Some(QueryErrorKind::Cancelled) }
+        self.deadline.is_some_and(|d| std::time::Instant::now() >= d).then_some(QueryErrorKind::Timeout)
+    }
     /// Unwinds the query if it was cancelled or is past its deadline (caught by `catching_storage`).
     pub(crate) fn check(&self) {
         // `resume_unwind`, not `panic!`: a stop is not a bug, so the panic hook (which prints) does not run.
-        if self.is_cancelled() { std::panic::resume_unwind(Box::new(Interrupted(QueryErrorKind::Cancelled))) }
-        if self.deadline.is_some_and(|d| std::time::Instant::now() >= d) { std::panic::resume_unwind(Box::new(Interrupted(QueryErrorKind::Timeout))) }
+        if let Some(reason) = self.stop_reason() { std::panic::resume_unwind(Box::new(Interrupted(reason))) }
     }
 }
 
