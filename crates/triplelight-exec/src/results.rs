@@ -6,19 +6,37 @@ use triplelight_rdf::TermRef;
 use triplelight_rdf::{Term, Variable};
 use std::fmt::Write;
 
+/// True if `b` must be escaped in a JSON string: `"`, `\` or a C0 control. Each is one ASCII byte, never part of a
+/// multi-byte UTF-8 sequence.
+#[inline(always)]
+fn needs_escape(b: u8) -> bool { (b < 0x20) | (b == b'"') | (b == b'\\') }
+
+/// A JSON string. Most values (IRIs above all) contain no byte that needs escaping: a branchless fold over the bytes,
+/// which the compiler vectorizes, finds that, and the string is copied in one piece. Otherwise the clean runs between
+/// escaped bytes are copied whole (#105: per-byte work here was the largest part of formatting 8M-row answers).
 fn esc(s: &str, out: &mut String) {
     out.push('"');
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if (c as u32) < 0x20 => { let _ = write!(out, "\\u{:04x}", c as u32); }
-            c => out.push(c),
-        }
+    if !s.as_bytes().iter().fold(false, |any, &b| any | needs_escape(b)) {
+        out.push_str(s);
+        out.push('"');
+        return;
     }
+    let mut start = 0;
+    for (i, &b) in s.as_bytes().iter().enumerate() {
+        let quoted = match b {
+            b'"' => "\\\"",
+            b'\\' => "\\\\",
+            b'\n' => "\\n",
+            b'\r' => "\\r",
+            b'\t' => "\\t",
+            0..=0x1f => "",
+            _ => continue,
+        };
+        out.push_str(&s[start..i]);
+        if quoted.is_empty() { let _ = write!(out, "\\u{b:04x}"); } else { out.push_str(quoted) }
+        start = i + 1;
+    }
+    out.push_str(&s[start..]);
     out.push('"');
 }
 
@@ -182,7 +200,7 @@ impl std::fmt::Display for WriteIdsError {
 }
 impl std::error::Error for WriteIdsError {}
 
-/// The bytes of `serialize_ids_v`, written to `w` window by window instead of built as one `String`. Peak memory is one window of
+/// The bytes of `serialize_ids_v`, written to `w` window by window instead of built as one `String`. Peak memory is two windows of
 /// rows; the first bytes leave before the later windows are serialized. On error the output so far is a truncated body.
 pub fn serialize_ids_to<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: &D, store_has_rdf12: bool, w: &mut dyn std::io::Write) -> Result<(), WriteIdsError> {
     let mut stream = IdsJsonStream::new(sol, store_has_rdf12);
@@ -194,7 +212,7 @@ pub fn serialize_ids_to<D: Dictionary + Sync + ?Sized>(sol: &IdSolutions, dict: 
 
 /// SPARQL JSON for id solutions, pulled one piece at a time: the head, then one parallel window of rows per call, then the
 /// closing braces. `S` is `&IdSolutions` or an owned `IdSolutions`, so a response body can own its rows and be read lazily
-/// (peak memory is one window, and the first piece is available before the later rows are decoded). The pieces concatenate to
+/// (peak memory is two windows, the one being returned and the next one formatted meanwhile, and the first piece is available before the later rows are decoded). The pieces concatenate to
 /// exactly `serialize_ids_v`. After an `Err` the stream is unusable: the output so far is a truncated body.
 pub struct IdsJsonStream<S> {
     sol: S,
@@ -203,6 +221,9 @@ pub struct IdsJsonStream<S> {
     next_item: usize,
     first_rows: bool,
     finished: bool,
+    /// The next window, formatted on the pool while the previous piece was being joined (its chunk strings and end), or the
+    /// error that formatting it hit, returned on the call after the piece that was already complete.
+    ahead: Option<Result<(Vec<String>, usize), crate::storage::StorageError>>,
 }
 
 impl<S: std::borrow::Borrow<IdSolutions>> IdsJsonStream<S> {
@@ -212,7 +233,7 @@ impl<S: std::borrow::Borrow<IdSolutions>> IdsJsonStream<S> {
         let version12 = store_has_rdf12 || rows.scratch.values().any(is_rdf12);
         let mut head = String::new();
         let writer = SolutionsWriter::start(&rows.vars, version12, &mut head);
-        Self { sol, writer, head: Some(head), next_item: 0, first_rows: true, finished: false }
+        Self { sol, writer, head: Some(head), next_item: 0, first_rows: true, finished: false, ahead: None }
     }
 
     /// The next piece of the body, or `None` once the closing braces have been returned.
@@ -232,15 +253,25 @@ impl<S: std::borrow::Borrow<IdSolutions>> IdsJsonStream<S> {
         }
         let chunk = w * 4096;
         let window = chunk * rayon::current_num_threads().max(1) * 4;
-        let end = (self.next_item + window).min(sol.ids.len());
         let writer = &self.writer;
-        let strings: Vec<String> = sol.ids[self.next_item..end].par_chunks(chunk)
-            .map(|c| rows_json(sol, writer, dict, c, w)).collect::<Result<_, _>>()?;
-        let mut piece = String::with_capacity(strings.iter().map(String::len).sum());
-        for s in &strings {
-            piece.push_str(if self.first_rows { s.strip_prefix(',').unwrap_or(s) } else { s });
-            self.first_rows = false;
-        }
+        let format = |from: usize| -> Result<(Vec<String>, usize), crate::storage::StorageError> {
+            let end = (from + window).min(sol.ids.len());
+            let strings = sol.ids[from..end].par_chunks(chunk).map(|c| rows_json(sol, writer, dict, c, w)).collect::<Result<_, _>>()?;
+            Ok((strings, end))
+        };
+        // This window was formatted ahead during the previous call, or (on the first rows call) is formatted now.
+        let (strings, end) = match self.ahead.take() { Some(ready) => ready?, None => format(self.next_item)? };
+        // Joining this window's chunks is serial, so the next window is formatted on the pool meanwhile (#105: the pool
+        // otherwise sat idle through every join). Two windows are alive at once, not one.
+        let first_rows = self.first_rows;
+        let join = || {
+            let mut piece = String::with_capacity(strings.iter().map(String::len).sum());
+            for (i, s) in strings.iter().enumerate() { piece.push_str(if first_rows && i == 0 { s.strip_prefix(',').unwrap_or(s) } else { s }) }
+            piece
+        };
+        let (piece, ahead) = if end < sol.ids.len() { let (p, a) = rayon::join(join, || format(end)); (p, Some(a)) } else { (join(), None) };
+        self.first_rows = false;
+        self.ahead = ahead;
         self.next_item = end;
         Ok(Some(piece))
     }
@@ -410,6 +441,35 @@ mod tests {
         QueryResult::Solutions { vars: vars.iter().map(|v| Variable::new_unchecked(*v)).collect(), rows }
     }
     fn lf(s: &str) -> String { s.replace("\r\n", "\n") }
+
+    /// `esc` copies clean runs whole; it must write exactly what the earlier char-by-char escaper wrote.
+    #[test]
+    fn esc_matches_the_char_by_char_escaper() {
+        fn reference(s: &str) -> String {
+            let mut out = String::from('"');
+            for c in s.chars() {
+                match c {
+                    '"' => out.push_str("\\\""),
+                    '\\' => out.push_str("\\\\"),
+                    '\n' => out.push_str("\\n"),
+                    '\r' => out.push_str("\\r"),
+                    '\t' => out.push_str("\\t"),
+                    c if (c as u32) < 0x20 => { let _ = write!(out, "\\u{:04x}", c as u32); }
+                    c => out.push(c),
+                }
+            }
+            out.push('"');
+            out
+        }
+        let all_controls: String = (0u8..0x20).map(char::from).collect();
+        for s in ["", "http://www.Department0.University0.edu/UndergraduateStudent123", "\"", "\\", "a\"b\\c\nd\re\tf",
+                  "\u{0}\u{1}\u{1f}\u{7f}", "Grüße, 東京 😀 \"quoted\"\n", "\u{7f}\u{80}\u{2028}\u{2029}", "trailing\\", "\"leading",
+                  all_controls.as_str(), "x\u{1b}[0m😀\u{0}"] {
+            let mut got = String::new();
+            esc(s, &mut got);
+            assert_eq!(got, reference(s), "{s:?}");
+        }
+    }
 
     /// The mixed example of the SPARQL 1.2 CSV/TSV drafts (2026-11-16), without the directional literal.
     fn mixed() -> QueryResult {
