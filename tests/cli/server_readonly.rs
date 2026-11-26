@@ -4,9 +4,13 @@ use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+use super::server_spawn::spawn_server;
 
 const ROWS: usize = 2_000;
+/// How long one attempt to start a server may take (`spawn_server`).
+const UP: Duration = Duration::from_secs(60);
 
 struct Server(Child);
 impl Drop for Server {
@@ -20,14 +24,6 @@ fn serve(store: &Path, port: u16, extra: &[&Path], flags: &[&str]) -> Child {
     cmd.arg("serve-store").arg(store).arg(port.to_string()).args(flags);
     for p in extra { cmd.arg(p); }
     cmd.stdout(Stdio::null()).stderr(Stdio::piped()).env_remove("TRIPLELIGHT_UPDATE_TOKEN").env_remove("TRIPLELIGHT_HOST").spawn().unwrap()
-}
-
-fn wait_up(port: u16) {
-    let deadline = Instant::now() + Duration::from_secs(60);
-    while TcpStream::connect(("127.0.0.1", port)).is_err() {
-        assert!(Instant::now() < deadline, "server on {port} did not start");
-        std::thread::sleep(Duration::from_millis(30));
-    }
 }
 
 fn post(port: u16, path: &str, ctype: &str, body: &str) -> String {
@@ -69,20 +65,18 @@ fn several_read_only_servers_share_one_store_and_change_nothing() {
     let store = root.join("store");
 
     // A writer builds the store (with a base on disk), answers once, and goes away.
-    let wport = free_port();
-    let writer = Server(serve(&store, wport, &[], &["--disk", "--init", data.to_str().unwrap()]));
-    wait_up(wport);
+    let (wport, w) = spawn_server(&store, &["--disk", "--init", data.to_str().unwrap()], &[], UP);
+    let writer = Server(w);
     assert!(count(wport).contains(&format!("\"{ROWS}\"")), "the writer sees all rows");
     drop(writer);
     std::thread::sleep(Duration::from_millis(300));
     let before = listing(&store);
 
     // Two read-only servers at once, each answering from the same store.
-    let (p1, p2) = (free_port(), free_port());
-    let r1 = Server(serve(&store, p1, &[], &["--disk", "--read-only"]));
-    wait_up(p1);
-    let r2 = Server(serve(&store, p2, &[], &["--disk", "--read-only"]));
-    wait_up(p2);
+    let (p1, c1) = spawn_server(&store, &["--disk", "--read-only"], &[], UP);
+    let r1 = Server(c1);
+    let (p2, c2) = spawn_server(&store, &["--disk", "--read-only"], &[], UP);
+    let r2 = Server(c2);
     for p in [p1, p2] { assert!(count(p).contains(&format!("\"{ROWS}\"")), "read-only server on {p} answers with every row"); }
 
     // A writer is refused while readers are open, naming the reason.
@@ -102,9 +96,8 @@ fn several_read_only_servers_share_one_store_and_change_nothing() {
     assert_eq!(listing(&store), before, "serving read-only must not create, change or remove anything under the store directory");
 
     // The store is whole: a writer opens it again and sees the same rows.
-    let wport = free_port();
-    let writer = Server(serve(&store, wport, &[], &["--disk"]));
-    wait_up(wport);
+    let (wport, w) = spawn_server(&store, &["--disk"], &[], UP);
+    let writer = Server(w);
     assert!(count(wport).contains(&format!("\"{ROWS}\"")));
     drop(writer);
     let _ = std::fs::remove_dir_all(&root);

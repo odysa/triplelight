@@ -1,9 +1,11 @@
 //! SPARQL JSON answers stream: an HTTP/1.1 client gets a chunked body, an HTTP/1.0 client the same bytes closed by the
 //! connection, and both are the complete answer. Runs only when the `server` feature is built.
 use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::process::{Child, Command, Stdio};
-use std::time::{Duration, Instant};
+use std::net::TcpStream;
+use std::process::Child;
+use std::time::Duration;
+
+use super::server_spawn::spawn_server;
 
 /// Enough rows to span several serialization windows (4,096 x threads x 4 single-column rows) on any machine we run on.
 const ROWS: usize = 450_000;
@@ -23,18 +25,9 @@ fn start(name: &str, rows: usize) -> Server {
     for i in 0..rows { nt.push_str(&format!("<urn:s{i}> <urn:p> \"v{i}\" .\n")) }
     std::fs::write(&data, nt).unwrap();
     let store = dir.join("store");
-    let port = { let l = TcpListener::bind("127.0.0.1:0").unwrap(); l.local_addr().unwrap().port() };
-    let child = Command::new(env!("CARGO_BIN_EXE_triplelight"))
-        .arg("serve-store").arg(&store).arg(port.to_string()).arg("--init").arg(&data)
-        .stdout(Stdio::null()).stderr(Stdio::null())
-        .env_remove("TRIPLELIGHT_UPDATE_TOKEN").env_remove("TRIPLELIGHT_HOST").spawn().unwrap();
-    let server = Server(child, port, dir);
-    let deadline = Instant::now() + Duration::from_secs(120);
-    while TcpStream::connect(("127.0.0.1", port)).is_err() {
-        assert!(Instant::now() < deadline, "server did not start");
-        std::thread::sleep(Duration::from_millis(50));
-    }
-    server
+    // `--init` loads `rows` triples before the server binds, hence the long wait per attempt
+    let (port, child) = spawn_server(&store, &["--init", data.to_str().unwrap()], &[], Duration::from_secs(120));
+    Server(child, port, dir)
 }
 
 fn query(port: u16, version: &str, q: &str) -> Vec<u8> {

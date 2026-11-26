@@ -1,9 +1,11 @@
 //! `serve-store` update authorization: read-only mode, bearer token, and refusal to expose open updates beyond
 //! loopback. Runs only when the `server` feature is built.
 use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::process::{Child, Command, Stdio};
+use std::net::TcpStream;
+use std::process::{Child, Command};
 use std::time::{Duration, Instant};
+
+use super::server_spawn::spawn_server;
 
 /// Each test picks a free port, releases it and starts a server on it; tests in this file run one at a time so a
 /// parallel test cannot take that port in between (which would send requests to the wrong server).
@@ -22,51 +24,8 @@ fn start_with(name: &str, flags: &[&str], token: Option<&str>, env: &[(&str, &st
     let _ = std::fs::remove_dir_all(&dir);
     let mut env: Vec<(&str, &str)> = env.to_vec();
     if let Some(t) = token { env.push(("TRIPLELIGHT_UPDATE_TOKEN", t)); }
-    let (port, child) = spawn_server(&dir, flags, &env);
+    let (port, child) = spawn_server(&dir, flags, &env, Duration::from_secs(10));
     Server(child, port, dir, guard)
-}
-
-/// Starts `serve-store <dir> <port> <flags>` on a free port and waits until it serves. The port is picked and
-/// released before the server binds it, and other test modules (the stream and read-only ones) pick ports in
-/// parallel, so another test can take it in between: this server then exits (it says why on stderr) while the other
-/// test's server answers on the port, and a request sent there reaches the wrong server, which is reset when that
-/// test ends (#128: a "connection reset" before any HTTP status). A connect that succeeds does not show whose
-/// server it reached, so the server's own "serving SPARQL at ...:<port>" line on stderr is the signal, and a child
-/// that exits first is retried on a fresh port, a few times.
-fn spawn_server(dir: &std::path::Path, flags: &[&str], env: &[(&str, &str)]) -> (u16, Child) {
-    use std::io::BufRead;
-    (0..4).find_map(|attempt| {
-        let port = { let l = TcpListener::bind("127.0.0.1:0").unwrap(); l.local_addr().unwrap().port() };
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_triplelight"));
-        cmd.arg("serve-store").arg(dir).arg(port.to_string()).args(flags).stdout(Stdio::null()).stderr(Stdio::piped())
-            .env_remove("TRIPLELIGHT_UPDATE_TOKEN").env_remove("TRIPLELIGHT_HOST");
-        for (k, v) in env { cmd.env(k, v); }
-        let mut child = cmd.spawn().unwrap();
-        // stderr is drained as it is written (a server that logs more than a pipe buffer never blocks on it), and
-        // the serving line is reported as soon as it appears.
-        let stderr = child.stderr.take().unwrap();
-        let (ready, serving) = std::sync::mpsc::channel();
-        let banner = format!("serving SPARQL at http://127.0.0.1:{port}/");
-        let log = std::thread::spawn(move || {
-            let mut seen = String::new();
-            for line in std::io::BufReader::new(stderr).lines().map_while(Result::ok) {
-                if line.contains(&banner) { let _ = ready.send(()); }
-                seen.push_str(&line);
-                seen.push('\n');
-            }
-            seen
-        });
-        match serving.recv_timeout(Duration::from_secs(10)) {
-            Ok(()) if child.try_wait().unwrap().is_none() => return Some((port, child)),
-            _ => {}
-        }
-        let exited = child.try_wait().unwrap();
-        let _ = child.kill();
-        let _ = child.wait();
-        let why = log.join().unwrap_or_default();
-        assert!(attempt < 3, "server did not start after {} attempts (exited: {exited:?}): {why}", attempt + 1);
-        None
-    }).unwrap()
 }
 
 fn post(port: u16, path: &str, ctype: &str, body: &str, auth: Option<&str>) -> String {
@@ -137,7 +96,7 @@ fn read_only_rejects_updates_but_answers_queries() {
     let mut writer = start("ro", &[], None);
     let _ = writer.0.kill();
     let _ = writer.0.wait();
-    let (port, mut reader) = spawn_server(&writer.2, &["--read-only"], &[]);
+    let (port, mut reader) = spawn_server(&writer.2, &["--read-only"], &[], Duration::from_secs(10));
     assert!(post(port, "/update", "application/sparql-update", "", None).contains(" 403 "));
     assert!(post(port, "/sparql", "application/sparql-query", ASK, None).contains("false"));
     let _ = reader.kill();
