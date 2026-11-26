@@ -127,6 +127,10 @@ pub trait Snapshot: Dictionary + Send + Sync {
     /// per-predicate check), shared by every query on it. Only an immutable view may return one; `None` (the default)
     /// makes the executor recompute per query.
     fn object_memo(&self) -> Option<&ObjectMemo> { None }
+    /// The wide tables of this view (#140), an extra access path for subject stars; see `crate::wide`. Only a view
+    /// whose contents equal the tables' (an immutable base, or an overlay with an empty delta over it) may return
+    /// them. Inferred-triple views (RDFS) and named-graph views without tables return `None` (the default).
+    fn wide_tables(&self) -> Option<&dyn crate::wide::TableCatalog> { None }
 }
 
 /// A text index's confirmed matches and literals that still require scalar matching.
