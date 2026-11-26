@@ -6,19 +6,27 @@ use triplelight_rdf::TermRef;
 use triplelight_rdf::{Term, Variable};
 use std::fmt::Write;
 
+/// A JSON string. Only `"`, `\` and the C0 controls need escaping, and each is one ASCII byte (never part of a
+/// multi-byte UTF-8 sequence), so the clean runs between them are copied whole: an IRI usually has none and is one
+/// copy (#105: pushing char by char was most of the formatting time on 8M-row answers).
 fn esc(s: &str, out: &mut String) {
     out.push('"');
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if (c as u32) < 0x20 => { let _ = write!(out, "\\u{:04x}", c as u32); }
-            c => out.push(c),
-        }
+    let mut start = 0;
+    for (i, &b) in s.as_bytes().iter().enumerate() {
+        let quoted = match b {
+            b'"' => "\\\"",
+            b'\\' => "\\\\",
+            b'\n' => "\\n",
+            b'\r' => "\\r",
+            b'\t' => "\\t",
+            0..=0x1f => "",
+            _ => continue,
+        };
+        out.push_str(&s[start..i]);
+        if quoted.is_empty() { let _ = write!(out, "\\u{b:04x}"); } else { out.push_str(quoted) }
+        start = i + 1;
     }
+    out.push_str(&s[start..]);
     out.push('"');
 }
 
@@ -410,6 +418,35 @@ mod tests {
         QueryResult::Solutions { vars: vars.iter().map(|v| Variable::new_unchecked(*v)).collect(), rows }
     }
     fn lf(s: &str) -> String { s.replace("\r\n", "\n") }
+
+    /// `esc` copies clean runs whole; it must write exactly what the earlier char-by-char escaper wrote.
+    #[test]
+    fn esc_matches_the_char_by_char_escaper() {
+        fn reference(s: &str) -> String {
+            let mut out = String::from('"');
+            for c in s.chars() {
+                match c {
+                    '"' => out.push_str("\\\""),
+                    '\\' => out.push_str("\\\\"),
+                    '\n' => out.push_str("\\n"),
+                    '\r' => out.push_str("\\r"),
+                    '\t' => out.push_str("\\t"),
+                    c if (c as u32) < 0x20 => { let _ = write!(out, "\\u{:04x}", c as u32); }
+                    c => out.push(c),
+                }
+            }
+            out.push('"');
+            out
+        }
+        let all_controls: String = (0u8..0x20).map(char::from).collect();
+        for s in ["", "http://www.Department0.University0.edu/UndergraduateStudent123", "\"", "\\", "a\"b\\c\nd\re\tf",
+                  "\u{0}\u{1}\u{1f}\u{7f}", "Grüße, 東京 😀 \"quoted\"\n", "\u{7f}\u{80}\u{2028}\u{2029}", "trailing\\", "\"leading",
+                  all_controls.as_str(), "x\u{1b}[0m😀\u{0}"] {
+            let mut got = String::new();
+            esc(s, &mut got);
+            assert_eq!(got, reference(s), "{s:?}");
+        }
+    }
 
     /// The mixed example of the SPARQL 1.2 CSV/TSV drafts (2026-11-16), without the directional literal.
     fn mixed() -> QueryResult {
