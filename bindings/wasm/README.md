@@ -26,8 +26,8 @@ returns, including the Promise-returning forms; use a Web Worker for large data 
 SELECT and ASK; CONSTRUCT and DESCRIBE go through `query`. Blank-node labels are scoped to each `load` call.
 
 Register a synchronous SPARQL function with `db.registerFunction(iri, callback, arity?, pure?)`.
-The callback receives one RDF/JS term per argument. Return an RDF/JS term, or return `null` to signal a
-SPARQL expression error. Thrown exceptions and invalid return values also become expression errors.
+The callback receives one RDF/JS term per argument. WebAssembly callbacks support RDF 1.1 terms.
+Return an RDF/JS term, or return `null` to signal a SPARQL expression error. Thrown exceptions and invalid return values also become expression errors.
 Set `pure` only for functions whose result depends only on their arguments, since the query can reuse those results.
 
 ```js
@@ -37,6 +37,7 @@ const result = await db.query('SELECT (<urn:echo>("hello"@en) AS ?value) WHERE {
 
 A snapshot retains the registrations it saw when `db.read()` was called. Callbacks run on the calling JavaScript
 thread in both query forms. Keep callbacks synchronous and avoid reentering the database they are evaluating.
+Updating that database from its callback can trigger a recursive-borrow panic.
 Call `free()` on databases and snapshots when finished, particularly if a callback retains either object.
 
 Not in this version: persistence (OPFS / IndexedDB), the HTTP server, and multithreaded WebAssembly.
