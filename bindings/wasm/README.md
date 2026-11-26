@@ -40,4 +40,10 @@ thread in both query forms. Keep callbacks synchronous and avoid reentering the 
 Updating that database from its callback can trigger a recursive-borrow panic.
 Call `free()` on databases and snapshots when finished, particularly if a callback retains either object.
 
+`db.registerAggregateFunction(iri, factory)` registers a synchronous unary aggregate. Use `<urn:example>(?value)`
+or `<urn:example>(DISTINCT ?value)`. The factory returns a new object per group and aggregate occurrence.
+Its `step(term)` receives one bound RDF/JS term and returns `undefined`. Unbound arguments and expression
+errors are skipped. DISTINCT compares RDF term identity. Its `finish()` returns the aggregate result, including
+for an empty implicit group. A thrown error, Promise or invalid result leaves the group's result unbound.
+
 Not in this version: persistence (OPFS / IndexedDB), the HTTP server, and multithreaded WebAssembly.
