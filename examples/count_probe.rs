@@ -45,7 +45,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         raw_ids: false,
         general_group: false,
         count_pushdown: true,
-        range_pushdown: true,
+        range_pushdown: true, numeric_range_pushdown: false,
         char_pairs: true,
         sorted_probe: true,
         force_wide_tables: false, auto_wide_tables: false,
