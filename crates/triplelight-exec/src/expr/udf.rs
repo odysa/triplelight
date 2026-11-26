@@ -62,6 +62,7 @@ impl RegisteredFunction {
 }
 
 /// A synchronous accumulator for one aggregate occurrence in one group.
+/// The evaluator skips unbound arguments and expression errors, so neither reaches `step`.
 pub trait AggregateState {
     /// Processes one bound argument. `None` makes this group's result unbound.
     fn step(&mut self, term: &Term) -> Option<()>;
