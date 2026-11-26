@@ -15,7 +15,8 @@ last byte) and must match its byte count (docs/large-answer-timing-v1).
 
 Ordered queries with tied sort keys (`tie_order`): the reference records the answer's groups of equal ORDER BY keys and, when a LIMIT
 cuts through a group, a frozen oracle of every row tied at that key. A run may reorder rows inside a group and, at the cutoff, return
-other rows from the oracle (value-compatible); an ORDER BY key that is not a projected variable keeps the strict order check.
+other rows from the oracle (value-compatible). Ties are by RDF term identity (narrower integer types read as xsd:integer), not by value
+equality. A value-compatible answer is held to the same rule on its normalized rows. An ORDER BY key that is not a projected variable keeps the strict order check.
 
 One system at a time. Every response is hashed while it streams (rows are not kept), so a 7.9M-row answer needs bounded
 memory. Each query and system gets a record with a class: pass, value-compatible, mismatch, incomplete, timeout, error.
@@ -64,7 +65,7 @@ class Fold:
         # digests of the last group with multiplicity (the group a LIMIT may cut through), so `tie_order` can accept any order inside a tie
         self.keys = ORDER_KEYS
         self.groups = [] if ORDER_KEYS else None
-        self.last = {}; self.last_key = None
+        self.last = {}; self.last_norm = {}; self.last_key = None
     def add(self, row):
         if self.rows is not None:
             if len(self.rows) < KEEP_CAP: self.rows.append(row)
@@ -75,25 +76,27 @@ class Fold:
         self.bag = (self.bag + int.from_bytes(hashlib.blake2b(a.encode(), digest_size=16).digest(), "big")) % (1 << 128)
         self.bag_norm = (self.bag_norm + int.from_bytes(hashlib.blake2b(b.encode(), digest_size=16).digest(), "big")) % (1 << 128)
         self.seq.update(a.encode() + b"\n")
-        if self.groups is not None: self.group(row, a)
-    def group(self, row, a):
-        k = "\t".join(term(row.get(v), False) for v in self.keys)
+        if self.groups is not None: self.group(row, a, b)
+    def group(self, row, a, b):
+        # ties are by RDF term identity (lexical form and datatype, narrower integer types read as xsd:integer), not by value equality
+        k = "\t".join(term(row.get(v), True) for v in self.keys)
         kh = hashlib.blake2b(k.encode(), digest_size=8).hexdigest()
         if not self.groups or self.groups[-1][0] != kh:
             if len(self.groups) >= GROUP_CAP: self.groups = None; return
-            self.groups.append([kh, 0, 0]); self.last = {}; self.last_key = {v: row.get(v) for v in self.keys}
+            self.groups.append([kh, 0, 0, 0]); self.last = {}; self.last_norm = {}; self.last_key = {v: row.get(v) for v in self.keys}
         g = self.groups[-1]
-        h = hashlib.blake2b(a.encode(), digest_size=16).digest()
-        g[1] += 1; g[2] = (g[2] + int.from_bytes(h, "big")) % (1 << 128)
+        h = hashlib.blake2b(a.encode(), digest_size=16).digest(); hn = hashlib.blake2b(b.encode(), digest_size=16).digest()
+        g[1] += 1; g[2] = (g[2] + int.from_bytes(h, "big")) % (1 << 128); g[3] = (g[3] + int.from_bytes(hn, "big")) % (1 << 128)
         if self.last is not None:
-            if len(self.last) >= GROUP_CAP: self.last = None
-            else: self.last[h.hex()] = self.last.get(h.hex(), 0) + 1
+            if len(self.last) >= GROUP_CAP or len(self.last_norm) >= GROUP_CAP: self.last = None
+            else: self.last[h.hex()] = self.last.get(h.hex(), 0) + 1; self.last_norm[hn.hex()] = self.last_norm.get(hn.hex(), 0) + 1
     def result(self):
         r = {"rows": self.n, "bag": f"{self.bag:032x}", "bag_norm": f"{self.bag_norm:032x}", "seq": self.seq.hexdigest(), "vars": list(self.vars)}
         if self.rows is not None: r["answer"] = {"vars": self.vars, "rows": self.rows}
         if self.groups is not None:
-            r["tie_groups"] = [[k, n, f"{b:032x}"] for k, n, b in self.groups]
-            if self.last is not None and self.groups: r["boundary_rows"] = self.last; r["boundary_key"] = self.last_key
+            r["tie_groups"] = [[k, n, f"{b:032x}", f"{bn:032x}"] for k, n, b, bn in self.groups]
+            if self.last is not None and self.groups:
+                r["boundary_rows"], r["boundary_rows_norm"], r["boundary_key"] = self.last, self.last_norm, self.last_key
         return r
 
 
@@ -309,7 +312,7 @@ def order_spec(query):
     """(keys, limit, None) for a query whose top-level tail is `ORDER BY` plain variables (optionally ASC(..)/DESC(..)) and an optional
     LIMIT, or (None, None, reason) for anything else (an expression key, OFFSET, a clause the check cannot see through): those keep the
     strict order check."""
-    tail = query[query.rfind("}") + 1:]
+    tail = query[query.rfind("}") + 1:]      # only ORDER BY and LIMIT may follow the last brace: `boundary_query` relies on it
     if re.search(r"\bOFFSET\b", tail, re.I): return None, None, "the query has an OFFSET, so its first rows may also be cut from a tie group"
     m = re.fullmatch(r"\s*ORDER\s+BY\s+(.*?)\s*(?:LIMIT\s+(\d+))?\s*", tail, re.I | re.S)
     if not m: return None, None, "the ORDER BY is not followed only by an optional LIMIT"
@@ -340,21 +343,24 @@ def boundary_query(query, key):
         t = sparql_term(b)
         if t is None: return None
         conds.append(f"sameTerm(?{v}, {t})")
-    i = query.rfind("}")
+    i = query.rfind("}")      # the top-level WHERE's closing brace: `order_spec` admits only ORDER BY and LIMIT after it; keep the two in step
     return query[:i] + "\n  FILTER(" + " && ".join(conds) + ")\n}"
 
 
-def tie_order(rec, ref):
+def tie_order(rec, ref, norm=False):
     """Why an ordered answer whose sequence differs from the reference's is still a correct order, or None. "order": the same rows, and
     rows were reordered only inside groups of equal sort keys. "boundary": additionally, the last group (the one a LIMIT cut through)
     holds other tied rows, every one of them (with multiplicity) from the frozen oracle of all rows tied at that key. Every group before
-    it must hold exactly the reference's rows; the sequence of sort keys and the size of every group must be the reference's."""
+    it must hold exactly the reference's rows; the sequence of sort keys and the size of every group must be the reference's. With `norm`
+    the rows are compared in the normalized form of `bag_norm` (narrower integer types as xsd:integer), for a value-compatible answer."""
     g, rg = rec.get("tie_groups"), ref.get("tie_groups")
     if not g or not rg or rec.get("rows") != ref.get("rows") or len(g) != len(rg): return None
     if any(a[0] != b[0] or a[1] != b[1] for a, b in zip(g, rg)): return None
-    if any(a[2] != b[2] for a, b in zip(g[:-1], rg[:-1])): return None
-    if g[-1][2] == rg[-1][2]: return "order"
-    oracle, rows = ref.get("boundary_oracle"), rec.get("boundary_rows")
+    i, sfx = (3, "_norm") if norm else (2, "")
+    if any(len(a) <= i or len(b) <= i for a, b in zip(g, rg)): return None
+    if any(a[i] != b[i] for a, b in zip(g[:-1], rg[:-1])): return None
+    if g[-1][i] == rg[-1][i]: return "order"
+    oracle, rows = ref.get("boundary_oracle" + sfx), rec.get("boundary_rows" + sfx)
     if oracle is None or rows is None: return None
     return "boundary" if all(oracle.get(h, 0) >= n for h, n in rows.items()) else None
 
@@ -367,10 +373,12 @@ def classify(rec, ref):
     """pass | value-compatible | mismatch | incomplete | timeout | error, for one run record against the reference. An ordered answer
     whose order is valid by `tie_order` is marked `tie_order` on the record (and a cutoff choice among tied rows is value-compatible)."""
     cls = _classify(rec, ref)
-    if ref.get("ordered") and rec.get("status") == "ok" and cls in ("pass", "mismatch") and rec.get("seq") != ref.get("seq"):
+    if ref.get("ordered") and rec.get("status") == "ok" and cls in GOOD_CLASSES + ("mismatch",) and rec.get("seq") != ref.get("seq"):
         if "vars" in ref and rec.get("vars") != ref["vars"]: return cls
-        why = tie_order(rec, ref)
+        why = tie_order(rec, ref) if cls != "value-compatible" else None
         if why: rec["tie_order"] = why; return "value-compatible" if why == "boundary" else cls
+        why = tie_order(rec, ref, norm=True)          # the same rule on the normalized rows: the answer is at best value-compatible
+        if why: rec["tie_order"] = why; return "value-compatible"
     return cls
 
 
@@ -441,7 +449,7 @@ def reference_order(a, q, rec):
     oracle = orc.get("boundary_rows")
     if oracle is None or len(orc.get("tie_groups") or ()) != 1: return {**rec, "order_strict_reason": "the boundary oracle is not a single tie group within the cap"}
     if any(oracle.get(h, 0) < n for h, n in got["boundary_rows"].items()): sys.exit("the boundary oracle does not contain the reference's own boundary rows")
-    return {**out, "limit": limit, "boundary_oracle": oracle, "boundary_oracle_rows": orc["rows"]}
+    return {**out, "limit": limit, "boundary_oracle": oracle, "boundary_oracle_norm": orc["boundary_rows_norm"], "boundary_oracle_rows": orc["rows"]}
 
 
 def run_hook(hook, url):
@@ -755,12 +763,13 @@ BYCASE = {}      # case name -> the SPARQL JSON the fake server answers it with 
 # keeps (3 a) (3 b) (2 c) (2 d); the LIMIT cuts the d=2 group, whose oracle is c d e.
 TIE_ROWS = {"ref": ["3a", "3b", "2c", "2d"], "interior": ["3b", "3a", "2c", "2d"], "boundary": ["3a", "3b", "2e", "2c"],
             "invented": ["3a", "3b", "2c", "2z"], "keysout": ["2c", "3a", "3b", "2d"], "count": ["3a", "3b", "2c"],
-            "oracle": ["2c", "2d", "2e"], "dup": ["3a", "3b", "2c", "2c"]}
+            "oracle": ["2c", "2d", "2e"], "dup": ["3a", "3b", "2c", "2c"], "vc": ["3b", "3a", "2e", "2c"]}
 TIE_QUERY = "SELECT ?d ?t WHERE { ?x <http://e/d> ?d . ?x <http://e/t> ?t } ORDER BY DESC(?d) LIMIT 4"
 
 
-def tie_doc(rows):
-    b = ",".join('{"d":{"type":"literal","value":"%s","datatype":"%sinteger"},"t":{"type":"literal","value":"%s"}}' % (r[0], XSD, r[1:]) for r in rows)
+def tie_doc(rows, dt="integer"):
+    """`vc` serves the keys as xsd:int (as QLever does): value-compatible with the xsd:integer reference."""
+    b = ",".join('{"d":{"type":"literal","value":"%s","datatype":"%s%s"},"t":{"type":"literal","value":"%s"}}' % (r[0], XSD, dt, r[1:]) for r in rows)
     return '{"head":{"vars":["d","t"]},"results":{"bindings":[%s]}}' % b
 
 
@@ -793,7 +802,7 @@ def serve_fake(behaviors):
                 if "sameTerm(" in query:
                     good = 'sameTerm(?d, "2"^^<%sinteger>)' % XSD in query and "LIMIT" not in query and n != "refbad"
                     self.wfile.write(tie_doc(TIE_ROWS["oracle"] if good else []).encode()); return
-                self.wfile.write(tie_doc(TIE_ROWS.get(n, TIE_ROWS["ref"])).encode()); return
+                self.wfile.write(tie_doc(TIE_ROWS.get(n, TIE_ROWS["ref"]), "int" if n == "vc" else "integer").encode()); return
             if kind == "flipvar":      # a non-empty answer: the right projection on the first request, a same-length renamed one on every later request
                 self.server.flipv = getattr(self.server, "flipv", 0) + 1
                 self.wfile.write((BYCASE["q_one"] if self.server.flipv == 1 else BYCASE["q_one_renamed"]).encode()); return
@@ -973,6 +982,7 @@ def gate_tests(port, behaviors_raw):
         for variant, cls, eligible, label in (("interior", "pass", True, "rows reordered inside a tie: pass, eligible"),
                                                ("boundary", "value-compatible", True, "another tied row from the oracle at the cutoff: value-compatible, eligible"),
                                                ("invented", "mismatch", False, "a row with the boundary key that is not in the oracle: mismatch, ineligible"),
+                                               ("vc", "value-compatible", True, "xsd:int keys, interior reorder and another oracle row at the cutoff: value-compatible, eligible"),
                                                ("dup", "mismatch", False, "an oracle row twice where the oracle has it once: mismatch, ineligible"),
                                                ("keysout", "mismatch", False, "sort keys out of order: ineligible"),
                                                ("count", "mismatch", False, "one row short: mismatch, ineligible")):
