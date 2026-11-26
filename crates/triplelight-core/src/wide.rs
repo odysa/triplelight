@@ -79,6 +79,9 @@ pub const TABLE_BATCH_ROWS: usize = 1024;
 
 /// The tables of one immutable view.
 pub trait TableCatalog: Send + Sync {
+    /// Whether any table has this predicate as a column. A catalog that cannot answer cheaply
+    /// returns true so the planner still checks its tables normally.
+    fn has_predicate(&self, _predicate: TermId) -> bool { true }
     /// Every table whose columns include all of `predicates` (duplicates allowed), ascending.
     fn tables_with(&self, predicates: &[TermId]) -> Vec<TableId>;
     fn meta(&self, table: TableId) -> &TableMeta;

@@ -322,6 +322,8 @@ impl WideTables {
 }
 
 impl TableCatalog for WideTables {
+    fn has_predicate(&self, predicate: TermId) -> bool { self.by_predicate.contains_key(&predicate) }
+
     fn tables_with(&self, predicates: &[TermId]) -> Vec<TableId> {
         let Some((&first, rest)) = predicates.split_first() else { return Vec::new() };
         let Some(candidates) = self.by_predicate.get(&first) else { return Vec::new() };
@@ -621,7 +623,7 @@ impl<S: Snapshot> Snapshot for WithTables<S> {
     fn has_rdf12_terms(&self) -> bool { self.inner.has_rdf12_terms() }
     fn text_candidates(&self, tokens: &[&str], limit: usize) -> Option<triplelight_core::storage::TextCandidates> { self.inner.text_candidates(tokens, limit) }
     fn object_memo(&self) -> Option<&triplelight_core::storage::ObjectMemo> { self.inner.object_memo() }
-    fn wide_tables(&self) -> Option<&dyn TableCatalog> { Some(&self.tables) }
+    fn wide_tables(&self) -> Option<&dyn TableCatalog> { (!self.tables.is_empty()).then_some(&self.tables) }
 }
 
 #[cfg(test)]
@@ -689,6 +691,8 @@ mod tests {
         assert_eq!(wide.len(), 2, "Review and Offer");
         // the untyped `loose` subjects have reviewFor and date but no table, so neither predicate is covered
         let (rf, dt) = (snap.lookup(&iri("reviewFor").into()).unwrap().unwrap(), snap.lookup(&iri("date").into()).unwrap().unwrap());
+        assert!(wide.has_predicate(rf) && wide.has_predicate(dt));
+        assert!(!wide.has_predicate(TermId(u64::MAX)));
         assert!(!wide.covers_all_subjects(rf) && !wide.covers_all_subjects(dt));
         let p1 = snap.lookup(&iri("reviewFor").into()).unwrap().unwrap();
         let p2 = snap.lookup(&iri("date").into()).unwrap().unwrap();
@@ -713,6 +717,13 @@ mod tests {
         let r1 = snap.lookup(&iri("review1").into()).unwrap().unwrap();
         assert_eq!(got.iter().filter(|r| r[0] == r0).count(), 2);
         assert_eq!(got.iter().filter(|r| r[0] == r1).count(), 0);
+    }
+
+    #[test]
+    fn an_empty_catalog_is_absent_from_the_snapshot() {
+        let wide = WithTables::build(MemorySnapshot::from_triples(Vec::new()), BuildOptions::default()).unwrap();
+        assert_eq!(wide.table_count(), 0);
+        assert!(wide.wide_tables().is_none());
     }
 
     #[test]
