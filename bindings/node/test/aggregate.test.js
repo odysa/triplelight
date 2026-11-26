@@ -1,6 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 const { Database } = require("..");
 
 function count() {
@@ -55,12 +56,42 @@ test("contains callback failures and cancels an active aggregate", async () => {
   assert.deepEqual(result.bindings.map(Object.keys), [[]]);
 
   const controller = new AbortController();
+  let finished = false;
   db.registerAggregateFunction("urn:node:abort", () => ({
     step() { controller.abort(); },
-    finish() { throw new Error("canceled group reached finish"); },
+    finish() { finished = true; return null; },
   }));
   await assert.rejects(db.query('SELECT (<urn:node:abort>(?v) AS ?n) WHERE { VALUES ?v { "x" } }',
     { signal: controller.signal }), { kind: "InterruptedError", timedOut: false });
+  assert.equal(finished, false);
   assert.equal(db.querySync("ASK {}").boolean, true);
   db.close();
+});
+
+test("terminating a Node worker releases in-flight aggregate callbacks", () => {
+  const script = `
+    const { Worker } = require("node:worker_threads");
+    const worker = new Worker(\`
+      const { parentPort, workerData } = require("node:worker_threads");
+      const { Database } = require(workerData);
+      const db = Database.inMemory();
+      db.registerAggregateFunction("urn:slow", () => ({
+        step() {
+          parentPort.postMessage("stepped");
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
+        },
+        finish() { return null; },
+      }));
+      for (let i = 0; i < 4; i++) {
+        db.query("SELECT (<urn:slow>(?v) AS ?n) WHERE { VALUES ?v { 1 2 3 } }");
+      }
+    \`, { eval: true, workerData: ${JSON.stringify(require.resolve(".."))} });
+    worker.once("message", () => worker.terminate().then(() => console.log("terminated")));
+  `;
+  const child = spawnSync(process.execPath, ["-e", script], {
+    encoding: "utf8", timeout: 10000, killSignal: "SIGKILL",
+  });
+  assert.ifError(child.error);
+  assert.equal(child.status, 0, child.stderr);
+  assert.match(child.stdout, /terminated/);
 });
