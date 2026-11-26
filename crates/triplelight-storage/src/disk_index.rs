@@ -80,6 +80,11 @@ pub fn take_read_share() -> [u64; 2] { READ_NS.each_ref().map(|c| c.swap(0, Orde
 /// Decoded index-block bytes cached now, per trace slot (index files only), over every open base: a level, not a
 /// count, for the block-cache trace.
 static RESIDENT: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
+/// Block reads answered by a thread's memo (`block`), per trace slot, which the shard counters never see. With
+/// `HITS` they give every block access a query makes, the count an encoded cache would decode on (#144).
+static MEMO_HITS: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
+/// Memo hits since the last call, then reset.
+pub fn take_memo_hits() -> [u64; TRACE_SLOTS] { MEMO_HITS.each_ref().map(|c| c.swap(0, Ordering::Relaxed)) }
 pub fn cache_resident_bytes() -> [u64; TRACE_SLOTS] { RESIDENT.each_ref().map(|c| c.load(Ordering::Relaxed)) }
 pub fn cache_trace_snapshot() -> [[u64; 5]; TRACE_SLOTS] {
     std::array::from_fn(|i| {
@@ -658,6 +663,7 @@ where
         let epoch = self.epoch.load(Ordering::Acquire);
         let memo = <Width<N> as SupportedWidth<N>>::memo();
         if let Some(rows) = memo.with(|m| m.borrow().iter().flatten().find(|e| e.0 == self.instance && e.1 == epoch && e.2 == id).map(|e| Arc::clone(&e.3))) {
+            if cache_trace_enabled() && let Some(i) = self.trace_slot { MEMO_HITS[i].fetch_add(1, Ordering::Relaxed); }
             return Ok(rows);
         }
         let rows = self.block_shared(id)?;

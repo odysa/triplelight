@@ -168,7 +168,7 @@ fn explain<S: triplelight::storage::Snapshot>(req: &mut tiny_http::Request, snap
 /// One SPARQL query against a snapshot, as an HTTP response. Errors: 400 (bad query), 501 (unsupported), 500 (storage);
 /// never an empty result in place of a failure.
 fn answer<'a, S: triplelight::storage::Snapshot>(snap: &'a S, q: &str, opts: &Options<'_>, fmt: Format) -> Reply<'a> {
-    let before = triplelight::storage::disk_index::cache_trace_enabled().then(|| { triplelight::storage::disk_index::take_probe_trace(); triplelight::storage::disk_index::cache_trace_snapshot() });
+    let before = triplelight::storage::disk_index::cache_trace_enabled().then(|| { triplelight::storage::disk_index::take_probe_trace(); triplelight::storage::disk_index::take_memo_hits(); triplelight::storage::disk_index::cache_trace_snapshot() });
     let phases = triplelight::exec::phase::enabled().then(|| { triplelight::exec::phase::take(); triplelight::exec::phase::take_ranges(); Instant::now() });
     let exec_done = std::cell::Cell::new(None::<Instant>);
     let shape = std::cell::Cell::new((0usize, 0usize));
@@ -223,6 +223,8 @@ fn answer<'a, S: triplelight::storage::Snapshot>(snap: &'a S, q: &str, opts: &Op
             eprintln!("block_cache {name} hits={} misses={} pread_calls={} pread_bytes={} evictions={}",d[0],d[1],d[2],d[3],d[4]);
         }
         // Process-wide counters, reset at request entry: exact for one request at a time, like the cache lines above.
+        let memo = triplelight::storage::disk_index::take_memo_hits();
+        eprintln!("block_cache_memo_hits spo={} sop={} pso={} pos={} osp={} ops={} quads={}", memo[0], memo[1], memo[2], memo[3], memo[4], memo[5], memo[8]);
         let resident = triplelight::storage::disk_index::cache_resident_bytes();
         eprintln!("block_cache_resident_mb spo={} sop={} pso={} pos={} osp={} ops={} quads={}", resident[0] >> 20, resident[1] >> 20, resident[2] >> 20, resident[3] >> 20, resident[4] >> 20, resident[5] >> 20, resident[8] >> 20);
         let [same, gallop, full] = triplelight::storage::disk_index::take_probe_trace();
