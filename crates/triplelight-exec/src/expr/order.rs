@@ -8,11 +8,10 @@ type Key = (Option<super::Num>, Option<Term>);
 
 fn key_of(t: Option<Term>) -> Key { (t.as_ref().and_then(super::num), t) }
 
-/// `order_cmp` on two keys. Two numbers take `num_cmp` first, which is what `order_cmp` computes for them through
-/// `compare`; anything else, and two numbers that `num_cmp` cannot order (NaN), take `order_cmp` itself. So the result
-/// is `order_cmp`'s in every case, numerically equal keys of different types or forms included.
+/// `order_cmp` on two keys. Two numbers take `order_num_cmp`, which is what `order_cmp` computes for two numeric
+/// literals; anything else takes `order_cmp` itself. So the result is `order_cmp`'s in every case.
 fn key_cmp(a: &Key, b: &Key) -> Ordering {
-    if let (Some(x), Some(y)) = (a.0, b.0) && let Some(o) = super::num_cmp(x, y) { return o }
+    if let (Some(x), Some(y)) = (a.0, b.0) { return super::order_num_cmp(x, y) }
     super::order_cmp(a.1.as_ref(), b.1.as_ref())
 }
 
@@ -135,8 +134,8 @@ fn order_reference(n: usize, desc: &[bool], limit: Option<usize>, mut key: impl 
             for keys in [1usize, 2] {
                 let desc: Vec<bool> = (0..keys).map(|k| (trial + k) % 2 == 0).collect();
                 for limit in [None, Some(1), Some(3), Some(n / 2), Some(n + 1)] {
-                    // Some mixes are not a total order under `order_cmp` (the 2^24 promotion, NaN against numbers), and
-                    // the standard sorts may panic on those: then both versions must panic, otherwise agree exactly.
+                    // A comparator that is not a total order can make the standard sorts panic; both versions run under
+                    // `catch_unwind` so such a regression in `order_cmp` reports here instead of aborting the test.
                     let run = |f: fn(usize, &[bool], Option<usize>, &dyn Fn(usize, usize) -> Option<Term>) -> Vec<usize>| {
                         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(n, &desc, limit, &|i, k| rows[i][k].clone())))
                     };
@@ -144,13 +143,13 @@ fn order_reference(n: usize, desc: &[bool], limit: Option<usize>, mut key: impl 
                     let old = run(|n, d, l, key| order_reference(n, d, l, key));
                     match (new, old) {
                         (Ok(a), Ok(b)) => assert_eq!(a, b, "trial {trial}, keys {keys}, limit {limit:?}"),
-                        (Err(_), Err(_)) => panicked += 1,
+                        (Err(_), Err(_)) => panicked += 1, // `order_cmp` is a total order since #347: none expected
                         (a, b) => panic!("trial {trial}, keys {keys}, limit {limit:?}: new {:?}, old {:?}", a.is_ok(), b.is_ok()),
                     }
                 }
             }
         }
-        eprintln!("{panicked} sorts panicked in both versions (order_cmp is not a total order on those keys)");
+        assert_eq!(panicked, 0, "{panicked} sorts panicked: order_cmp should be a total order");
     }
 
     /// The comparator itself, on every pair of the pool: exactly `order_cmp`.
