@@ -88,6 +88,7 @@ fn limited<T: Send>(
         Some(t) => return Err(pyo3::exceptions::PyValueError::new_err(format!("timeout must be a non-negative number of seconds, not {t}"))),
     };
     let budget = match memory_mb {
+        None if spill => return Err(pyo3::exceptions::PyValueError::new_err("spill=True needs memory_mb: spilling applies only under a memory budget")),
         None => None,
         Some(0) => return Err(pyo3::exceptions::PyValueError::new_err("memory_mb must be positive")),
         // `spill=True`: GROUP BY over the budget spills to TRIPLELIGHT_SCRATCH_DIR (else the temp directory) (#111)

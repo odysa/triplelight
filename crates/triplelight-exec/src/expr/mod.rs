@@ -2,6 +2,7 @@
 pub(super) mod extend;
 mod filter;
 pub(crate) mod order;
+mod sort;
 pub(crate) mod text;
 #[doc(hidden)]
 pub mod udf;

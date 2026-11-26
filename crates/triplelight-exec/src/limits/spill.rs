@@ -12,74 +12,75 @@ use std::hash::{BuildHasher, Hasher};
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 
-/// The rows of one operator's input, split by key hash into run files.
-pub(crate) struct Partitions {
+/// Rows written to a few record files under one locked scratch directory: a partitioned input (files are hash
+/// partitions, `partition`) or sorted runs (files are runs, each already in order). Removed when it drops.
+pub(crate) struct Spill {
     dir: PathBuf,
     /// Held (locked) while the directory exists: `sweep_stale` leaves it alone.
     _lock: File,
     width: usize,
     rows: Vec<u64>,
-    bytes: u64,
 }
 
-impl Partitions {
-    /// Writes `rows` (each `width` IDs) into `parts` run files under a new directory in `scratch`, routed by a hash of
-    /// the IDs at `key_cols`, through one `buffer`-byte writer per file (the caller charges `parts * buffer`). `seq` is
-    /// each row's position in `rows`.
+impl Spill {
+    /// Writes `records`, each `(file, seq, row)` with `row` of `width` IDs, into `files` record files under a new
+    /// directory in `scratch`, through one `buffer`-byte writer per file (the caller charges `files * buffer`). Each
+    /// file keeps its records in the order given. `check` runs every 4096 records (cancellation). The bytes written
+    /// count as spilled (`phase::spilled`).
     pub(crate) fn write<'r>(
         scratch: &Path,
         width: usize,
-        key_cols: &[usize],
-        (parts, buffer): (usize, usize),
-        rows: impl IntoIterator<Item = &'r [TermId]>,
+        (files, buffer): (usize, usize),
+        records: impl IntoIterator<Item = (usize, u64, &'r [TermId])>,
         mut check: impl FnMut(),
-    ) -> io::Result<Partitions> {
+    ) -> io::Result<Spill> {
         let (dir, lock) = fresh_dir(scratch)?;
         // From here on the directory is owned, so an error or unwind below still removes it.
-        let mut out = Partitions { dir, _lock: lock, width, rows: vec![0; parts], bytes: 0 };
-        let mut files = Vec::with_capacity(parts);
-        for p in 0..parts { files.push(BufWriter::with_capacity(buffer, File::create(out.path(p))?)); }
-        let hasher = std::hash::RandomState::new();
-        let mut record = Vec::with_capacity(8 * (width + 1));
-        for (seq, row) in rows.into_iter().enumerate() {
-            if seq % 4096 == 0 { check() }
-            let mut h = hasher.build_hasher();
-            for &c in key_cols { h.write_u64(row[c].0) }
-            let p = (h.finish() % parts as u64) as usize;
+        let mut out = Spill { dir, _lock: lock, width, rows: vec![0; files] };
+        let mut writers = Vec::with_capacity(files);
+        for f in 0..files { writers.push(BufWriter::with_capacity(buffer, File::create(out.path(f))?)); }
+        let (mut record, mut bytes) = (Vec::with_capacity(8 * (width + 1)), 0u64);
+        for (n, (f, seq, row)) in records.into_iter().enumerate() {
+            if n % 4096 == 0 { check() }
             record.clear();
-            record.extend_from_slice(&(seq as u64).to_le_bytes());
+            record.extend_from_slice(&seq.to_le_bytes());
             for id in row { record.extend_from_slice(&id.0.to_le_bytes()) }
-            files[p].write_all(&record)?;
-            out.rows[p] += 1;
-            out.bytes += record.len() as u64;
+            writers[f].write_all(&record)?;
+            out.rows[f] += 1;
+            bytes += record.len() as u64;
         }
         // Scratch runs need no durability: flush (keeping its error), no fsync.
-        for f in files { f.into_inner().map_err(|e| e.into_error())?; }
+        for w in writers { w.into_inner().map_err(|e| e.into_error())?; }
+        crate::phase::spilled(bytes);
         Ok(out)
     }
-    pub(crate) fn count(&self) -> usize { self.rows.len() }
-    /// Rows in partition `p`.
-    pub(crate) fn rows(&self, p: usize) -> u64 { self.rows[p] }
-    pub(crate) fn bytes(&self) -> u64 { self.bytes }
-    /// The rows of partition `p` with their input positions, in input order.
-    pub(crate) fn read(&self, p: usize) -> io::Result<(Vec<u64>, Vec<Vec<TermId>>)> {
-        let n = self.rows[p] as usize;
-        let mut file = BufReader::with_capacity(1 << 16, File::open(self.path(p))?);
-        let (mut seqs, mut rows) = (Vec::with_capacity(n), Vec::with_capacity(n));
+    pub(crate) fn files(&self) -> usize { self.rows.len() }
+    /// Records in file `f`.
+    pub(crate) fn rows(&self, f: usize) -> u64 { self.rows[f] }
+    /// File `f`'s `(seq, row)` records, in the order written, read as a stream through a `buffer`-byte reader.
+    pub(crate) fn read(&self, f: usize, buffer: usize) -> io::Result<impl Iterator<Item = io::Result<(u64, Vec<TermId>)>> + use<>> {
+        let mut file = BufReader::with_capacity(buffer, File::open(self.path(f))?);
         let mut buf = vec![0u8; 8 * (self.width + 1)];
-        for _ in 0..n {
+        Ok((0..self.rows[f]).map(move |_| {
             file.read_exact(&mut buf)?;
             let mut words = buf.as_chunks::<8>().0.iter().map(|b| u64::from_le_bytes(*b));
-            seqs.push(words.next().unwrap());
-            rows.push(words.map(TermId).collect());
-        }
-        Ok((seqs, rows))
+            let seq = words.next().unwrap();
+            Ok((seq, words.map(TermId).collect()))
+        }))
     }
-    fn path(&self, p: usize) -> PathBuf { self.dir.join(format!("part-{p}")) }
+    fn path(&self, f: usize) -> PathBuf { self.dir.join(format!("file-{f}")) }
 }
 
-impl Drop for Partitions {
+impl Drop for Spill {
     fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.dir); }
+}
+
+/// The partition of `row` among `parts`, by a hash of its IDs at `key_cols` under `hasher`: inputs routed with the same
+/// `hasher` and `parts` put equal keys in partitions of the same number (a partitioned join).
+pub(crate) fn partition(hasher: &std::hash::RandomState, key_cols: &[usize], row: &[TermId], parts: usize) -> usize {
+    let mut h = hasher.build_hasher();
+    for &c in key_cols { h.write_u64(row[c].0) }
+    (h.finish() % parts as u64) as usize
 }
 
 const PREFIX: &str = ".rdf-spill-";
@@ -121,22 +122,26 @@ pub fn sweep_stale(scratch: &Path) -> io::Result<usize> {
         Err(e) => return Err(e),
     };
     let mut removed = 0;
-    for entry in entries {
-        let entry = entry?;
+    // An entry that fails (another process removing or renaming its own directory meanwhile, say) is skipped: the
+    // sweep is best-effort and goes on with the rest.
+    let is_stale = |entry: &std::fs::DirEntry| -> io::Result<bool> {
         let name = entry.file_name();
-        let Some(name) = name.to_str() else { continue };
+        let Some(name) = name.to_str() else { return Ok(false) };
         let path = entry.path();
-        let stale = if name.starts_with(NEW_PREFIX) {
+        Ok(if name.starts_with(NEW_PREFIX) {
             entry.metadata()?.modified()?.elapsed().is_ok_and(|age| age > std::time::Duration::from_secs(3600))
         } else if name.starts_with(PREFIX) && path.is_dir() {
-            // An owner holds the lock; a directory without one (only possible from an older build) is stale too.
+            // An owner holds the lock. A directory without one (only from a build before LOCK files) is stale too:
+            // a server of that build still running on the same scratch directory would lose its runs.
             match File::open(path.join("LOCK")) {
                 Ok(lock) => lock.try_lock().is_ok(),
                 Err(e) if e.kind() == io::ErrorKind::NotFound => true,
                 Err(e) => return Err(e),
             }
-        } else { false };
-        if stale && std::fs::remove_dir_all(&path).is_ok() { removed += 1 }
+        } else { false })
+    };
+    for entry in entries.flatten() {
+        if is_stale(&entry).unwrap_or(false) && std::fs::remove_dir_all(entry.path()).is_ok() { removed += 1 }
     }
     Ok(removed)
 }
@@ -164,12 +169,15 @@ mod tests {
     fn rows_come_back_by_partition_in_input_order_and_the_directory_is_removed() {
         let scratch = std::env::temp_dir().join(format!("rdf-spill-test-{}", std::process::id()));
         let rows: Vec<Vec<TermId>> = (0..10_000u64).map(|i| vec![TermId(i % 37 + 1), TermId(i + 1)]).collect();
-        let parts = Partitions::write(&scratch, 2, &[0], (8, 1 << 16), rows.iter().map(Vec::as_slice), || {}).unwrap();
+        let hasher = std::hash::RandomState::new();
+        let records = rows.iter().enumerate().map(|(s, r)| (partition(&hasher, &[0], r, 8), s as u64, r.as_slice()));
+        let parts = Spill::write(&scratch, 2, (8, 1 << 16), records, || {}).unwrap();
         let dir = parts.dir.clone();
         assert!(dir.is_dir());
         let mut seen = vec![false; rows.len()];
-        for p in 0..parts.count() {
-            let (seqs, got) = parts.read(p).unwrap();
+        let read = |p: usize| -> (Vec<u64>, Vec<Vec<TermId>>) { parts.read(p, 4096).unwrap().map(Result::unwrap).unzip() };
+        for p in 0..parts.files() {
+            let (seqs, got) = read(p);
             assert!(seqs.windows(2).all(|w| w[0] < w[1]), "input order within a partition");
             for (s, r) in seqs.iter().zip(&got) {
                 assert_eq!(&rows[*s as usize], r);
@@ -177,8 +185,8 @@ mod tests {
             }
             // one key lives in one partition
             let keys: std::collections::HashSet<_> = got.iter().map(|r| r[0]).collect();
-            for q in (0..parts.count()).filter(|&q| q != p) {
-                assert!(parts.read(q).unwrap().1.iter().all(|r| !keys.contains(&r[0])));
+            for q in (0..parts.files()).filter(|&q| q != p) {
+                assert!(read(q).1.iter().all(|r| !keys.contains(&r[0])));
             }
         }
         assert!(seen.iter().all(|&s| s));
@@ -193,7 +201,7 @@ mod tests {
         let rows: Vec<Vec<TermId>> = (0..20_000u64).map(|i| vec![TermId(i + 1)]).collect();
         let mut calls = 0;
         let stopped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            Partitions::write(&scratch, 1, &[0], (4, 1 << 12), rows.iter().map(Vec::as_slice), || { calls += 1; if calls == 3 { panic!("stop") } })
+            Spill::write(&scratch, 1, (4, 1 << 12), rows.iter().enumerate().map(|(s, r)| (s % 4, s as u64, r.as_slice())), || { calls += 1; if calls == 3 { panic!("stop") } })
         }));
         assert!(stopped.is_err());
         assert_eq!(std::fs::read_dir(&scratch).unwrap().count(), 0, "no run directory is left behind");
@@ -205,7 +213,7 @@ mod tests {
         let scratch = std::env::temp_dir().join(format!("rdf-spill-sweep-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&scratch);
         let rows: Vec<Vec<TermId>> = (0..100u64).map(|i| vec![TermId(i + 1)]).collect();
-        let live = Partitions::write(&scratch, 1, &[0], (2, 1 << 12), rows.iter().map(Vec::as_slice), || {}).unwrap();
+        let live = Spill::write(&scratch, 1, (2, 1 << 12), rows.iter().enumerate().map(|(s, r)| (s % 2, s as u64, r.as_slice())), || {}).unwrap();
         // A killed process's directory: locked by nobody (this one was never locked), plus one with an unheld LOCK.
         let dead = scratch.join(format!("{PREFIX}999999-0"));
         std::fs::create_dir_all(&dead).unwrap();

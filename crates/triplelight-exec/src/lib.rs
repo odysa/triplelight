@@ -656,8 +656,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 // itself; otherwise evaluate the right group on its own and join the solution sets.
                 if scope_safe(right) { self.eval(right, l) } else {
                     let r = self.eval(right, vec![self.empty_row()]);
-                    let _table = self.reserve(r.len() as u64 * (self.row_bytes() + 32));
-                    phase::join(|| join_rows(l, r))
+                    phase::join(|| self.join_within_budget(l, r))
                 }
             }
             GraphPattern::LeftJoin { left, right, expression } => self.eval_left_join(left, right, expression, input),
@@ -679,8 +678,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                     for (i, x) in r.iter_mut().enumerate() { if !keep.contains(&i) { *x = UNBOUND } }
                     r
                 }).collect();
-                let _table = self.reserve(projected.len() as u64 * (self.row_bytes() + 32));
-                phase::join(|| join_rows(input, projected))
+                phase::join(|| self.join_within_budget(input, projected))
             }
             GraphPattern::Distinct { inner } | GraphPattern::Reduced { inner } => {
                 let mut seen = HashSet::new();
@@ -862,41 +860,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         // If the expression errors, Extend leaves this fresh column unbound. The operand columns
         // are unchanged, so ordering by the alias reproduces both values and expression errors.
         (!names.iter().any(|name| name == variable.as_str())).then_some((expression, col))
-    }
-
-    fn sort_rows(
-        &self,
-        expression: &[OrderExpression],
-        limit: Option<usize>,
-        rows: Vec<Row>,
-        alias: Option<(&Expression, usize)>,
-    ) -> Vec<Row> {
-        let keys_by_column: Vec<_> = expression.iter().map(|key| {
-            let e = match key { OrderExpression::Asc(e) | OrderExpression::Desc(e) => e };
-            let column = match e {
-                Expression::Variable(v) => self.vars.get(v.as_str()).copied(),
-                e => alias.filter(|(bound, _)| *bound == e).map(|(_, col)| col),
-            };
-            (e, column)
-        }).collect();
-        // Column keys decode once per distinct ID. Other expressions are evaluated per row.
-        let mut memo: HashMap<TermId, Option<Term>> = HashMap::new();
-        let mut computed = 0usize;
-        let mut key_of = |r: &Row, (e, column): (&Expression, Option<usize>)| -> Option<Term> {
-            computed += 1;
-            if computed.is_multiple_of(4096) { self.check() }
-            match column {
-                Some(i) if r[i] == UNBOUND => None,
-                Some(i) => memo.entry(r[i]).or_insert_with(|| Some(self.resolve(r[i]))).clone(),
-                None => self.value(e, r),
-            }
-        };
-        let desc: Vec<bool> = expression.iter().map(|e| matches!(e, OrderExpression::Desc(_))).collect();
-        // Sort keys: one decoded term (about 48 bytes) per row and key, at most.
-        let _keys = self.reserve(rows.len() as u64 * desc.len() as u64 * 48);
-        let idx = expr::order::order(rows.len(), &desc, limit, |i, k| key_of(&rows[i], keys_by_column[k]));
-        let mut rows: Vec<Option<Row>> = rows.into_iter().map(Some).collect();
-        idx.into_iter().map(|i| rows[i].take().unwrap()).collect()
     }
 
     fn eval_slice(&self, inner: &GraphPattern, start: &usize, length: &Option<usize>, input: Vec<Row>) -> Vec<Row> {
