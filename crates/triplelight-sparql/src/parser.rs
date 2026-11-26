@@ -65,8 +65,7 @@ pub fn parse_query_with_aggregates(
     base_iri: Option<&str>,
     is_aggregate: Option<&dyn Fn(&str) -> bool>,
 ) -> R<Query> {
-    let mut p = Parser::new(text, base_iri)?;
-    p.is_custom_aggregate = is_aggregate;
+    let mut p = Parser::new(text, base_iri, is_aggregate)?;
     p.prologue()?;
     let q = p.query()?;
     p.expect_eof()?;
@@ -77,7 +76,7 @@ pub fn parse_query_with_aggregates(
 
 /// Parses a SPARQL 1.1 update request.
 pub fn parse_update(text: &str, base_iri: Option<&str>) -> R<Update> {
-    let mut p = Parser::new(text, base_iri)?;
+    let mut p = Parser::new(text, base_iri, None)?;
     let mut operations = Vec::new();
     loop {
         p.prologue()?;
@@ -139,7 +138,7 @@ fn xsd(local: &str) -> NamedNode { NamedNode::new_unchecked(format!("{XSD}{local
 fn rdf(local: &str) -> NamedNode { NamedNode::new_unchecked(format!("{RDF}{local}")) }
 
 impl<'a> Parser<'a> {
-    fn new(src: &'a str, base: Option<&str>) -> R<Self> {
+    fn new(src: &'a str, base: Option<&str>, is_custom_aggregate: Option<&'a dyn Fn(&str) -> bool>) -> R<Self> {
         let toks = tokenize(src).map_err(|e| Self::error_at(src, e.pos, e.message))?;
         use std::hash::{BuildHasher, Hasher};
         let mut h = std::collections::hash_map::RandomState::new().build_hasher();
@@ -151,7 +150,7 @@ impl<'a> Parser<'a> {
         };
         Ok(Parser {
             src, toks, i: 0, base: base.map(str::to_string), base_parsed, prefixes: HashMap::new(), salt, counter: 0,
-            bnode_block: HashMap::new(), block: 0, data_bnodes: HashSet::new(), template: false, last_group_filtered: false, depth: 0, operators: 0, aggregates: None, in_aggregate: false, is_custom_aggregate: None,
+            bnode_block: HashMap::new(), block: 0, data_bnodes: HashSet::new(), template: false, last_group_filtered: false, depth: 0, operators: 0, aggregates: None, in_aggregate: false, is_custom_aggregate,
         })
     }
 
