@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 
 /// One position of a compiled triple pattern: a constant (`None` when the term is not in the dictionary, so the
 /// pattern matches nothing) or the row column of a variable.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) enum Slot { Const(Option<TermId>), Var(usize) }
 
 /// Variables of one pattern, in slot order.

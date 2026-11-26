@@ -138,3 +138,44 @@ fn date_interval_filters_table_values_before_expansion() {
     drop(plain);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn constant_objects_and_embedded_stars_preserve_bags() {
+    const MIXED: &str = r#"
+<urn:a> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:T> .
+<urn:a> <urn:p> <urn:x> .
+<urn:a> <urn:p> <urn:y> .
+<urn:a> <urn:q> <urn:d1> .
+<urn:a> <urn:q> <urn:d2> .
+<urn:b> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <urn:T> .
+<urn:b> <urn:p> <urn:x> .
+<urn:c> <urn:p> <urn:x> .
+<urn:c> <urn:q> <urn:d3> .
+<urn:x> <urn:link> <urn:r1> .
+<urn:y> <urn:link> <urn:r2> .
+<urn:x> <urn:other> <urn:u1> .
+<urn:x> <urn:third> <urn:v1> .
+<urn:y> <urn:other> <urn:u2> .
+<urn:y> <urn:third> <urn:v2> .
+"#;
+    let plain = MemorySnapshot::from_ntriples(MIXED.as_bytes()).unwrap();
+    let wide = WithTables::build(
+        MemorySnapshot::from_ntriples(MIXED.as_bytes()).unwrap(),
+        BuildOptions { min_fill: 0.0, min_share: 0.0 },
+    ).unwrap();
+    let queries = [
+        ("SELECT ?s ?q WHERE { ?s <urn:p> <urn:x> . ?s <urn:q> ?q }", 3),
+        ("SELECT ?s ?p ?q ?r WHERE { ?s <urn:p> ?p . ?s <urn:q> ?q . ?p <urn:link> ?r }", 5),
+        ("SELECT ?s ?p ?q ?r WHERE { ?s <urn:p> ?p . ?s <urn:q> ?q . ?p <urn:link> ?r . FILTER(?r = <urn:r1>) }", 3),
+        ("SELECT ?s ?p ?q ?r WHERE { ?p <urn:link> ?r . ?p <urn:other> ?u . ?p <urn:third> ?v . ?s <urn:p> ?p . ?s <urn:q> ?q }", 5),
+    ];
+    for (query, count) in queries {
+        let expected = bag(query_with(&plain, query, &Options::default()).unwrap());
+        assert_eq!(expected.len(), count);
+        let (result, trace) = triplelight::exec::plan_trace::capture(|| {
+            query_with(&wide, query, &Options { force_wide_tables: true, ..Options::default() }).unwrap()
+        });
+        assert_eq!(bag(result), expected, "{query}");
+        assert!(trace.iter().any(|line| line.contains("strategy=wide-forced")), "{query}: {trace:?}");
+    }
+}
