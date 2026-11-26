@@ -87,6 +87,7 @@ pub struct Limits { interrupt: Option<Arc<triplelight::exec::Interrupt>>, memory
 impl Limits {
     fn new(interrupt: Option<&Interrupt>, memory_mb: Option<u32>, spill: Option<bool>) -> Result<Self> {
         if memory_mb == Some(0) { return Err(Error::new(Status::InvalidArg, "memoryMb must be positive".to_string())) }
+        if spill == Some(true) && memory_mb.is_none() { return Err(Error::new(Status::InvalidArg, "spill needs memoryMb: spilling applies only under a memory budget".to_string())) }
         Ok(Limits { interrupt: interrupt.map(|i| Arc::clone(&i.0)), memory_mb, spill: spill.unwrap_or(false) })
     }
     fn with<T>(&self, f: impl FnOnce(QueryLimits<'_>) -> T) -> T {

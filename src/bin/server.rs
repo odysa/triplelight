@@ -53,19 +53,21 @@ fn query_timeout(args: &[String]) -> Option<std::time::Duration> {
 /// `TRIPLELIGHT_SCRATCH_DIR` (else the system temporary directory) instead of failing (#111); `spill_bytes=` on the
 /// `TRIPLELIGHT_TRACE_PHASES` line shows how much it wrote. Point the variable at a local disk with room for the largest
 /// intermediate result: a tmpfs is charged to memory.
+/// Removes spill directories a killed server left in the scratch directory (#111): nobody holds their locks any more.
+/// Run once at startup by a server with a query memory budget, the only kind that spills.
+fn sweep_stale_spills() {
+    let scratch = MemoryBudget::default_scratch_dir();
+    match triplelight::exec::sweep_stale_spills(&scratch) {
+        Ok(0) => {}
+        Ok(n) => eprintln!("removed {n} stale spill directories from {}", scratch.display()),
+        Err(e) => eprintln!("could not sweep stale spill directories in {}: {e}", scratch.display()),
+    }
+}
+
 fn query_memory(args: &[String]) -> Option<u64> {
     let v = args.iter().find_map(|a| a.strip_prefix("--query-memory-mb="))?;
     match v.parse::<u64>() {
-        Ok(n) if n > 0 => {
-            // Spill directories left by a server that was killed mid-query (#111): nobody holds their locks any more.
-            let scratch = MemoryBudget::default_scratch_dir();
-            match triplelight::exec::sweep_stale_spills(&scratch) {
-                Ok(0) => {}
-                Ok(n) => eprintln!("removed {n} stale spill directories from {}", scratch.display()),
-                Err(e) => eprintln!("could not sweep stale spill directories in {}: {e}", scratch.display()),
-            }
-            Some(n << 20)
-        }
+        Ok(n) if n > 0 => Some(n << 20),
         _ => { eprintln!("--query-memory-mb must be a positive integer, not {v:?}"); std::process::exit(2) }
     }
 }
@@ -252,6 +254,7 @@ fn serve_store(args: &[String], auth: &UpdateAuth) {
     let ablations = ablations(args);
     let timeout = query_timeout(args);
     let memory = query_memory(args);
+    if memory.is_some() { sweep_stale_spills() }
     let t = Instant::now();
     let disk = args.iter().any(|a| a == "--disk");
     let store = if args.iter().any(|a| a == "--read-only") {
@@ -492,6 +495,7 @@ fn serve_memory(args: &[String]) {
             let ablations = ablations(args);
             let timeout = query_timeout(args);
             let memory = query_memory(args);
+            if memory.is_some() { sweep_stale_spills() }
             let server = listen(port);
             eprintln!("serving SPARQL at http://127.0.0.1:{port}/sparql");
             // One worker per core: queries run concurrently against the same immutable snapshot.

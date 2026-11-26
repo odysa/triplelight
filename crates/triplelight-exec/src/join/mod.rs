@@ -1,4 +1,5 @@
 //! Joins of materialized solution sets (subquery results joined back into the outer rows, OPTIONAL's merge).
+mod spilled;
 use crate::{Row, UNBOUND};
 use crate::model::TermId;
 use std::collections::HashMap;
@@ -9,8 +10,7 @@ use std::collections::HashMap;
 /// join is used.
 pub(crate) fn join_rows(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
     if left.is_empty() || right.is_empty() { return Vec::new() }
-    let width = left[0].len();
-    let key: Vec<usize> = (0..width).filter(|&i| left.iter().all(|r| r[i] != UNBOUND) && right.iter().all(|r| r[i] != UNBOUND)).collect();
+    let key = join_key(&left, &right);
     if !key.is_empty() && left.len().saturating_mul(right.len()) > 64 {
         if let [column] = key.as_slice() {
             return join_one_bound_column(&left, &right, *column);
@@ -31,6 +31,12 @@ pub(crate) fn join_rows(left: Vec<Row>, right: Vec<Row>) -> Vec<Row> {
         out.extend(right.iter().filter_map(|b| merge_compatible(a, b)));
     }
     out
+}
+
+/// The columns bound in every row on both sides: a sound hash key for `join_rows`.
+pub(crate) fn join_key(left: &[Row], right: &[Row]) -> Vec<usize> {
+    let width = left.first().or(right.first()).map_or(0, Vec::len);
+    (0..width).filter(|&i| left.iter().all(|r| r[i] != UNBOUND) && right.iter().all(|r| r[i] != UNBOUND)).collect()
 }
 
 fn join_one_bound_column(left: &[Row], right: &[Row], column: usize) -> Vec<Row> {

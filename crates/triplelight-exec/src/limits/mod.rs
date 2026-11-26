@@ -78,7 +78,15 @@ impl MemoryBudget {
     /// the in-memory one on the same data.
     #[doc(hidden)]
     pub fn with_spill_rows(mut self, rows: usize) -> Self { self.spill_rows = Some(rows); self }
-    pub(crate) fn spill_rows(&self) -> Option<usize> { self.spill_rows }
+    /// Whether a blocking input of `rows` rows must spill whatever it needs (`with_spill_rows`, with a scratch directory).
+    pub(crate) fn forces_spill(&self, rows: usize) -> bool { self.scratch_dir.is_some() && self.spill_rows.is_some_and(|n| rows > n) }
+    /// Where a blocking input of `rows` rows whose working set needs `bytes` should spill, if it should: when the budget
+    /// has a scratch directory and either the input is forced to spill or `bytes` do not fit what is free. The one spill
+    /// decision every spilling operator asks.
+    pub(crate) fn spill_dir_for(&self, rows: usize, bytes: u64) -> Option<&std::path::Path> {
+        let dir = self.scratch_dir.as_deref()?;
+        (self.forces_spill(rows) || bytes > self.available()).then_some(dir)
+    }
     pub fn limit(&self) -> u64 { self.limit }
     pub fn used(&self) -> u64 { self.used.load(std::sync::atomic::Ordering::Relaxed) }
     pub fn available(&self) -> u64 { self.limit.saturating_sub(self.used()) }
