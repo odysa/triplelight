@@ -21,7 +21,36 @@ pub struct TlScalarArgs {
     pub bytes: *const u8,
 }
 
+impl TlScalarArgs {
+    pub(super) fn with_terms<T>(
+        terms: &[Term],
+        call: impl FnOnce(&Self) -> Option<T>,
+    ) -> Option<T> {
+        let mut arena = Builder::default();
+        let cells = terms
+            .iter()
+            .map(|term| arena.term(term))
+            .collect::<Result<Vec<_>, _>>()
+            .ok()?;
+        call(&Self {
+            len: cells.len(),
+            cells: cells.as_ptr(),
+            n_terms: arena.terms.len(),
+            terms: arena.terms.as_ptr(),
+            n_bytes: arena.bytes.len(),
+            bytes: arena.bytes.as_ptr(),
+        })
+    }
+}
+
 pub struct TlScalarOutput(Option<Term>);
+
+impl TlScalarOutput {
+    pub(super) fn capture(call: impl FnOnce(&mut Self) -> i32) -> Option<Term> {
+        let mut output = Self(None);
+        if call(&mut output) == TL_OK { output.0 } else { None }
+    }
+}
 
 pub type TlScalarCallback =
     unsafe extern "C" fn(*mut c_void, *const TlScalarArgs, *mut TlScalarOutput) -> i32;
@@ -53,23 +82,9 @@ struct Scalar(Arc<Callback>);
 
 impl ScalarFunction for Scalar {
     fn call(&self, args: &[Term]) -> Option<Term> {
-        let mut arena = Builder::default();
-        let cells = args
-            .iter()
-            .map(|term| arena.term(term))
-            .collect::<Result<Vec<_>, _>>()
-            .ok()?;
-        let args = TlScalarArgs {
-            len: cells.len(),
-            cells: cells.as_ptr(),
-            n_terms: arena.terms.len(),
-            terms: arena.terms.as_ptr(),
-            n_bytes: arena.bytes.len(),
-            bytes: arena.bytes.as_ptr(),
-        };
-        let mut output = TlScalarOutput(None);
-        let status = unsafe { (self.0.call)(self.0.context, &args, &mut output) };
-        if status == TL_OK { output.0 } else { None }
+        TlScalarArgs::with_terms(args, |args| {
+            TlScalarOutput::capture(|output| unsafe { (self.0.call)(self.0.context, args, output) })
+        })
     }
 }
 

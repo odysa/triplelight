@@ -167,7 +167,7 @@ int32_t tl_load_extension(const tl_db *db, const char *name, size_t len, tl_erro
 /* Returns name, compiled_in and loaded columns. Release the result with tl_result_free. */
 int32_t tl_list_extensions(const tl_db *db, tl_result **out, tl_error **err);
 
-/* Borrowed scalar arguments, in call order. Cells are 1-based indices into terms; nested triple terms and string
+/* Borrowed callback arguments, in call order. Cells are 1-based indices into terms; nested triple terms and string
  * offsets use the same layout as tl_result_view. All pointers are valid only during the callback. */
 typedef struct tl_scalar_args {
     size_t len;
@@ -193,6 +193,33 @@ int32_t tl_scalar_set_term(tl_scalar_output *output, const char *term, size_t le
  * and a scalar callback must not reenter or mutate the database evaluating it. */
 int32_t tl_register_function(const tl_db *db, const char *iri, size_t len, size_t arity, int32_t pure,
                              tl_scalar_callback callback, void *context, tl_scalar_release release, tl_error **err);
+
+typedef int32_t (*tl_aggregate_create)(void *context, void **state);
+typedef int32_t (*tl_aggregate_step)(void *state, const tl_scalar_args *arg);
+typedef int32_t (*tl_aggregate_finish)(void *state, tl_scalar_output *output);
+
+typedef struct tl_aggregate_callbacks {
+    tl_aggregate_create create;
+    tl_aggregate_step step;
+    tl_aggregate_finish finish;
+    tl_scalar_release drop_state;
+    tl_scalar_release release_context;
+} tl_aggregate_callbacks;
+
+/* Register a unary SPARQL aggregate for future snapshots. The callback table is copied.
+ * create, step and finish are required; drop_state and release_context may be NULL.
+ * create receives a NULL-initialized state slot and runs for each group and aggregate occurrence, including an
+ * empty implicit group. On TL_OK the optional drop_state runs exactly once for that state, even on query failure
+ * or cancellation. On failure create retains responsibility for any state it allocated.
+ * step borrows one bound term (arg->len is 1). Unbound arguments and expression errors are skipped. DISTINCT
+ * passes each RDF term at most once per group. finish can use tl_scalar_set_term. A nonzero callback status or
+ * missing output leaves the aggregate result unbound. State callbacks run on the evaluating query thread.
+ * Successful registration transfers context ownership. release_context runs once after all registry, snapshot
+ * and group references are gone, on any thread. Failed registration leaves context ownership with the caller.
+ * Factory calls may overlap and can begin before registration returns. Callbacks must not unwind through C or
+ * reenter or mutate the database evaluating them. */
+int32_t tl_register_aggregate_function(const tl_db *db, const char *iri, size_t len,
+                                      const tl_aggregate_callbacks *callbacks, void *context, tl_error **err);
 
 /* SELECT solutions as an Arrow C Stream written into caller-allocated *out.
  * - out must be non-null (checked before the query runs); on failure *out is left untouched.
