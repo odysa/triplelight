@@ -19,11 +19,15 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         input: Vec<TermId>,
         filters: &[(&Expression, Vec<usize>)],
         ranges: &range::Ranges,
+        whole_bgp: bool,
         mut trace: Option<&mut plan_trace::Trace>,
     ) -> Vec<TermId> {
         let width = self.vars.len();
         let bound: HashSet<usize> = std::iter::once(star.subject_slot)
-            .chain(star.columns.iter().map(|(_, slot)| *slot))
+            .chain(star.columns.iter().filter_map(|(_, object)| match object {
+                Slot::Var(slot) => Some(*slot),
+                Slot::Const(_) => None,
+            }))
             .collect();
         let predicates: Vec<TermId> = star.columns.iter().map(|(p, _)| *p).collect();
         let table_ranges = self.table_intervals(&star.columns, filters);
@@ -47,8 +51,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                     let base = flat.len();
                     flat.resize(base + width, UNBOUND);
                     flat[base + star.subject_slot] = batch.subjects[row];
-                    for (column, &(_, slot)) in star.columns.iter().enumerate() {
-                        flat[base + slot] = batch.values[column][row];
+                    for (column, &(_, object)) in star.columns.iter().enumerate() {
+                        if let Slot::Var(slot) = object {
+                            flat[base + slot] = batch.values[column][row];
+                        }
                     }
                 }
                 self.fits((out.len().saturating_add(flat.len()) as u64).saturating_mul(8));
@@ -69,6 +75,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }
         if let (Some(trace), Some(started)) = (trace.as_deref_mut(), started) {
             trace.note("tables", tables.len());
+            trace.note("star_patterns", star.pattern_indices.len());
             trace.note("table_ranges", table_ranges.iter().filter(|r| r.is_some()).count());
             trace.note("table_subjects", scanned);
             trace.note("table_bytes", bytes);
@@ -127,14 +134,16 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             );
         };
         let initial = vec![vec![UNBOUND; width]];
-        let residual = match self.planned_order_est(patterns, &initial, ranges, trace.is_some()) {
+        // A partial star is renumbered locally. Its pattern IDs do not match
+        // the full BGP trace, so omit per-pattern residual trace in that case.
+        let residual = match self.planned_order_est(patterns, &initial, ranges, whole_bgp && trace.is_some()) {
             Some((order, estimates)) => {
-                if let Some(trace) = trace.as_deref_mut() {
+                if let Some(trace) = trace.as_deref_mut().filter(|_| whole_bgp) {
                     trace.planned(&order, estimates);
                 }
-                bgp.eval_order(patterns, &order, input, &mut post, trace.as_deref_mut())
+                bgp.eval_order(patterns, &order, input, &mut post, trace.as_deref_mut().filter(|_| whole_bgp))
             }
-            None => bgp.eval_greedy(patterns, input, &mut post, trace),
+            None => bgp.eval_greedy(patterns, input, &mut post, trace.filter(|_| whole_bgp)),
         };
         self.fits((out.len().saturating_add(residual.len()) as u64).saturating_mul(8));
         out.extend(residual);
@@ -182,29 +191,41 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 interrupt: self.interrupt,
                 budget: self.budget,
             };
-            let star = self.force_wide_tables
-                .then(|| table_plan::recognize_star(&pats, unbound_start))
-                .flatten();
-            let tables = star
-                .as_ref()
-                .and_then(|s| g.wide_tables().map(|c| c.tables_with(&s.predicates)));
-            if let (Some(star), Some(tables), Some(catalog)) = (star, tables, g.wide_tables())
-                && !tables.is_empty()
-            {
-                (
-                    self.evaluate_wide(
-                        g,
-                        catalog,
-                        &star,
-                        &tables,
-                        &pats,
-                        flat,
-                        filters,
-                        &ranges,
-                        tr.as_mut(),
-                    ),
-                    "wide-forced",
-                )
+            let candidate = self.force_wide_tables.then(|| g.wide_tables()).flatten()
+                .and_then(|catalog| {
+                    table_plan::recognize_stars(&pats, unbound_start).into_iter().find_map(|star| {
+                        let tables = catalog.tables_with(&star.predicates);
+                        (!tables.is_empty()).then_some((star, tables, catalog))
+                    })
+                });
+            if let Some((star, tables, catalog)) = candidate {
+                let star_pats: Vec<_> = star.pattern_indices.iter().map(|&i| pats[i]).collect();
+                let mut out = self.evaluate_wide(
+                    g, catalog, &star, &tables, &star_pats, flat, filters, &ranges,
+                    star_pats.len() == pats.len(),
+                    tr.as_mut(),
+                );
+                if star_pats.len() != pats.len() && !out.is_empty() {
+                    let remaining: Vec<_> = pats.iter().enumerate()
+                        .filter_map(|(i, pat)| (!star.pattern_indices.contains(&i)).then_some(*pat))
+                        .collect();
+                    let bound: HashSet<usize> = std::iter::once(star.subject_slot)
+                        .chain(star.columns.iter().filter_map(|(_, object)| match object {
+                            Slot::Var(slot) => Some(*slot),
+                            Slot::Const(_) => None,
+                        }))
+                        .collect();
+                    let mut applied: Vec<bool> = filters.iter()
+                        .map(|(_, vs)| vs.iter().all(|slot| bound.contains(slot)))
+                        .collect();
+                    let mut post = |rows: &mut Vec<TermId>, available: &HashSet<usize>| {
+                        self.apply_filters(rows, w, filters, available, &mut applied, &mut numeric_filter_memo)
+                    };
+                    // The remaining patterns extend the table-produced rows
+                    // through the ordinary indexes, preserving their joins.
+                    out = bgp.eval_greedy(&remaining, out, &mut post, None);
+                }
+                (out, "wide-forced")
             } else if self.wcoj
                 && unbound_start
                 && pats.len() >= 3

@@ -13,48 +13,48 @@ use triplelight_core::wide::{TableCatalog, TableId};
 #[derive(Clone, Debug)]
 pub(super) struct Star {
     pub subject_slot: usize,
+    /// Indices of the patterns answered by the table, in BGP order.
+    pub pattern_indices: Vec<usize>,
     /// In pattern order, so the scanner can fill the existing BGP row slots.
-    pub columns: Vec<(TermId, usize)>,
+    pub columns: Vec<(TermId, Slot)>,
     /// Sorted, unique predicate IDs for the catalog lookup.
     pub predicates: Vec<TermId>,
 }
 
-/// Recognizes the narrow shape whose table expansion has no equality joins:
-/// one subject variable, distinct fixed predicates and distinct object variables.
-/// Constants, repeated object variables and mixed BGPs are left to the triple path.
-pub(super) fn recognize_star(patterns: &[[Slot; 3]], all_unbound: bool) -> Option<Star> {
-    if !all_unbound || patterns.len() < 2 {
-        return None;
-    }
-    let subject_slot = match patterns[0][0] {
-        Slot::Var(slot) => slot,
-        Slot::Const(_) => return None,
-    };
-    let mut predicates = Vec::with_capacity(patterns.len());
-    let mut columns = Vec::with_capacity(patterns.len());
-    let mut objects = HashSet::with_capacity(patterns.len());
+/// Finds stars whose table expansion has no equality joins: one subject
+/// variable, distinct fixed predicates and distinct object variables or
+/// constants. Largest first; the caller tries each until its catalog has a
+/// matching table. Other patterns remain ordinary index joins.
+pub(super) fn recognize_stars(patterns: &[[Slot; 3]], all_unbound: bool) -> Vec<Star> {
+    if !all_unbound || patterns.len() < 2 { return Vec::new() }
+    let mut stars = Vec::new();
+    let mut subjects = HashSet::new();
     for pattern in patterns {
-        if !matches!(pattern[0], Slot::Var(slot) if slot == subject_slot) {
-            return None;
+        let Slot::Var(subject_slot) = pattern[0] else { continue };
+        if !subjects.insert(subject_slot) { continue }
+        let mut predicates = Vec::new();
+        let mut columns = Vec::new();
+        let mut pattern_indices = Vec::new();
+        let mut objects = HashSet::new();
+        for (i, pattern) in patterns.iter().enumerate() {
+            if !matches!(pattern[0], Slot::Var(slot) if slot == subject_slot) { continue }
+            let Slot::Const(Some(predicate)) = pattern[1] else { continue };
+            if predicates.contains(&predicate) { continue }
+            match pattern[2] {
+                Slot::Var(slot) if slot != subject_slot && objects.insert(slot) => {},
+                Slot::Const(Some(id)) if id.0 < u64::MAX => {},
+                _ => continue,
+            }
+            predicates.push(predicate);
+            columns.push((predicate, pattern[2]));
+            pattern_indices.push(i);
         }
-        let predicate = match pattern[1] {
-            Slot::Const(Some(id)) => id,
-            _ => return None,
-        };
-        let object = match pattern[2] {
-            Slot::Var(slot) if slot != subject_slot && objects.insert(slot) => slot,
-            _ => return None,
-        };
-        predicates.push(predicate);
-        columns.push((predicate, object));
+        if pattern_indices.len() < 2 { continue }
+        predicates.sort_unstable();
+        stars.push(Star { subject_slot, pattern_indices, columns, predicates });
     }
-    predicates.sort_unstable();
-    predicates.dedup();
-    (predicates.len() == patterns.len()).then_some(Star {
-        subject_slot,
-        columns,
-        predicates,
-    })
+    stars.sort_by_key(|star| std::cmp::Reverse(star.pattern_indices.len()));
+    stars
 }
 
 /// A residual estimate must include the indexed BGP over subjects not assigned
@@ -182,29 +182,35 @@ mod tests {
     }
 
     #[test]
-    fn recognizes_only_the_initial_safe_star_shape() {
+    fn recognizes_star_with_constants_inside_a_larger_bgp() {
         let patterns = star();
-        let got = recognize_star(&patterns, true).unwrap();
+        let got = recognize_stars(&patterns, true).remove(0);
         assert_eq!(got.subject_slot, 0);
+        assert_eq!(got.pattern_indices, vec![0, 1]);
         assert_eq!(got.predicates, vec![TermId(10), TermId(20)]);
-        assert_eq!(got.columns, vec![(TermId(10), 1), (TermId(20), 2)]);
-        assert!(recognize_star(&patterns, false).is_none());
-        assert!(recognize_star(&patterns[..1], true).is_none());
+        assert_eq!(got.columns, vec![(TermId(10), Slot::Var(1)), (TermId(20), Slot::Var(2))]);
+        assert!(recognize_stars(&patterns, false).is_empty());
+        assert!(recognize_stars(&patterns[..1], true).is_empty());
         let mut repeated_object = patterns;
         repeated_object[1][2] = Slot::Var(1);
-        assert!(recognize_star(&repeated_object, true).is_none());
+        assert!(recognize_stars(&repeated_object, true).is_empty());
         let mut variable_predicate = patterns;
         variable_predicate[1][1] = Slot::Var(3);
-        assert!(recognize_star(&variable_predicate, true).is_none());
+        assert!(recognize_stars(&variable_predicate, true).is_empty());
         let mut duplicate_predicate = patterns;
         duplicate_predicate[1][1] = Slot::Const(Some(TermId(10)));
-        assert!(recognize_star(&duplicate_predicate, true).is_none());
+        assert!(recognize_stars(&duplicate_predicate, true).is_empty());
         let mut other_subject = patterns;
         other_subject[1][0] = Slot::Var(4);
-        assert!(recognize_star(&other_subject, true).is_none());
+        assert!(recognize_stars(&other_subject, true).is_empty());
         let mut object_constant = patterns;
         object_constant[1][2] = Slot::Const(Some(TermId(30)));
-        assert!(recognize_star(&object_constant, true).is_none());
+        assert_eq!(
+            recognize_stars(&object_constant, true).remove(0).columns[1],
+            (TermId(20), Slot::Const(Some(TermId(30))))
+        );
+        let mixed = [patterns[0], [Slot::Var(3), Slot::Const(Some(TermId(40))), Slot::Var(1)], patterns[1]];
+        assert_eq!(recognize_stars(&mixed, true).remove(0).pattern_indices, vec![0, 2]);
     }
 
     struct Mock {
@@ -256,7 +262,7 @@ mod tests {
 
     #[test]
     fn costing_includes_all_tables_and_the_residual() {
-        let spec = recognize_star(&star(), true).unwrap();
+        let spec = recognize_stars(&star(), true).remove(0);
         let one_table = TableMeta {
             subjects: 100,
             subject_bytes: 800,

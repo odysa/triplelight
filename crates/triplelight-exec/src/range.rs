@@ -291,14 +291,22 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     /// Conservative ID intervals for a wide-table star, in its column order. Unlike the index path, a dense
     /// interval is useful here: the scan already visits each subject and can reject values before row expansion.
     /// A single interval cannot also include unordered overlay IDs, so any such object leaves that column unbounded.
-    pub(super) fn table_intervals(&self, columns: &[(TermId, usize)], filters: &[(&Expression, Vec<usize>)]) -> Vec<Option<(TermId, TermId)>> {
+    pub(super) fn table_intervals(&self, columns: &[(TermId, Slot)], filters: &[(&Expression, Vec<usize>)]) -> Vec<Option<(TermId, TermId)>> {
         let mut out = vec![None; columns.len()];
+        // A fixed object is always an exact single-ID interval. Unlike a
+        // FILTER range, it does not depend on dictionary text ordering.
+        for (i, &(_, object)) in columns.iter().enumerate() {
+            if let Slot::Const(Some(id)) = object {
+                out[i] = id.0.checked_add(1).map(|next| (id, TermId(next)));
+            }
+        }
         if !self.range_pushdown || filters.is_empty() || self.data.get().is_some() { return out }
         let mut bounds: HashMap<usize, Vec<Bound>> = HashMap::new();
         for (e, _) in filters {
             if let Some((col, b)) = self.range_bound(e) { bounds.entry(col).or_default().push(b) }
         }
-        for (i, &(p, slot)) in columns.iter().enumerate() {
+        for (i, &(p, object)) in columns.iter().enumerate() {
+            let Slot::Var(slot) = object else { continue };
             let Some(bs) = bounds.get(&slot) else { continue };
             let Some((lo, hi, _)) = self.literal_interval(p, bs) else { continue };
             // Delta, scratch and inline terms do not follow the base literal text order. The table scanner has
