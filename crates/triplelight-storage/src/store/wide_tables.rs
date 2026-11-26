@@ -252,16 +252,36 @@ impl TableScan for Scan<'_> {
     fn next_batch(&mut self) -> Option<Result<TableBatch, StorageError>> {
         let n = self.table.subjects.len();
         if self.pending.is_none() && self.next >= n { return None }
-        let mut out = TableBatch { subjects: Vec::new(), values: vec![Vec::new(); self.columns.len()] };
-        while out.len() < TABLE_BATCH_ROWS {
+        let k = self.columns.len();
+        let mut out = TableBatch { subjects: Vec::with_capacity(TABLE_BATCH_ROWS), values: (0..k).map(|_| Vec::with_capacity(TABLE_BATCH_ROWS)).collect() };
+        'subjects: while out.len() < TABLE_BATCH_ROWS {
             let (i, mut idx) = match self.pending.take() {
                 Some(p) => p,
                 None => {
                     if self.next >= n { break }
                     let i = self.next;
                     self.next += 1;
+                    // Fast path: every requested column has exactly one value for this subject (most cells in a
+                    // well-filled table), so the subject yields at most one row and nothing is copied twice.
+                    if self.columns.iter().all(|col| col.offsets[i + 1] - col.offsets[i] == 1) {
+                        self.counters.subjects_scanned += 1;
+                        self.counters.values_read += k as u64;
+                        self.counters.bytes_read += 8 + 16 * k as u64;
+                        for (c, col) in self.columns.iter().enumerate() {
+                            let v = col.values[col.offsets[i] as usize];
+                            if let Some((lo, hi)) = self.ranges[c] && !(v >= lo && v < hi) {
+                                // undo the values pushed for this subject's earlier columns
+                                for done in &mut out.values[..c] { done.pop(); }
+                                continue 'subjects;
+                            }
+                            out.values[c].push(v);
+                        }
+                        out.subjects.push(self.table.subjects[i]);
+                        self.counters.rows_emitted += 1;
+                        continue;
+                    }
                     if !self.load(i) { continue }
-                    (i, vec![0usize; self.columns.len()])
+                    (i, vec![0usize; k])
                 }
             };
             let subject = self.table.subjects[i];

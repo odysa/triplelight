@@ -43,6 +43,16 @@ fn main() {
     println!("open_ms={open_ms:.0} build_ms={build_ms:.0} stats_ms={stats_ms:.0} tables={} table_bytes={} table_triples={} view_triples={}",
         snap.table_count(), snap.table_bytes(), snap.table_triples(), snap.view_triples());
     let arm_opts = |wide: bool| Options { stats: Some(&stats), force_wide_tables: wide, ..Options::default() };
+    // ROUNDS = 0: profiling mode, the table arm only, 40 runs per query, no comparison
+    if rounds == 0 {
+        for q in queries {
+            let text = std::fs::read_to_string(q).expect("query file");
+            let t = Instant::now();
+            for _ in 0..40 { query_with(&snap, &text, &arm_opts(true)).expect("query"); }
+            println!("{q}\twide-only 40 runs\t{:.1} ms each", t.elapsed().as_secs_f64() * 1e3 / 40.0);
+        }
+        return;
+    }
     println!("query\tindex_ms\twide_ms\tratio\trows\tsame_bag");
     let (mut si, mut sw) = (0.0, 0.0);
     for q in queries {
