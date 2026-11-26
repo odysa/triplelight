@@ -15,6 +15,8 @@ mod rdf12_tests;
 mod memory;
 pub use memory::MemorySnapshot;
 
+pub mod wide_tables;
+
 #[cfg(unix)]
 pub mod disk_index;
 
