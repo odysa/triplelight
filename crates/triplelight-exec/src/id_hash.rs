@@ -1,47 +1,31 @@
 //! A hasher for maps keyed by one `TermId`. Filter memos look a term up once per row (millions of rows on a large
-//! scan), and the standard SipHash costs more than the work the memo saves. A `TermId` is a single `u64` the engine
-//! assigned, not text a client controls, so a fixed mixing function is enough: the murmur3 64-bit finalizer spreads
-//! every input bit over the output, which hashbrown needs because it takes its control bits from the top of the hash.
+//! scan), and the standard SipHash costs more than the work the memo saves. foldhash is a few cycles per key and, like
+//! SipHash, is seeded at random per map: some IDs carry client bytes (the in-memory store inlines short strings into
+//! the ID), so a fixed function would let a client choose colliding keys.
 use std::collections::HashMap;
-use std::hash::{BuildHasherDefault, Hasher};
 
 use crate::model::TermId;
 
-#[derive(Default, Clone, Copy)]
-pub(crate) struct IdHasher(u64);
-
-impl Hasher for IdHasher {
-    fn finish(&self) -> u64 {
-        let mut x = self.0;
-        x ^= x >> 33;
-        x = x.wrapping_mul(0xff51_afd7_ed55_8ccd);
-        x ^= x >> 33;
-        x = x.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
-        x ^ (x >> 33)
-    }
-    fn write_u64(&mut self, n: u64) { self.0 = self.0.rotate_left(5) ^ n }
-    fn write(&mut self, bytes: &[u8]) {
-        for chunk in bytes.chunks(8) {
-            let mut word = [0u8; 8];
-            word[..chunk.len()].copy_from_slice(chunk);
-            self.write_u64(u64::from_le_bytes(word));
-        }
-    }
-}
-
-/// A map keyed by term ID, hashed with [`IdHasher`].
-pub(crate) type IdMap<V> = HashMap<TermId, V, BuildHasherDefault<IdHasher>>;
+/// A map keyed by term ID, hashed with seeded foldhash.
+pub(crate) type IdMap<V> = HashMap<TermId, V, foldhash::fast::RandomState>;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::hash::BuildHasher;
 
     #[test]
     fn neighbouring_ids_spread_over_the_top_bits() {
-        use std::hash::BuildHasher;
-        let build = BuildHasherDefault::<IdHasher>::default();
+        let build = foldhash::fast::RandomState::default();
         let tops: std::collections::HashSet<u64> = (0..4096u64).map(|i| build.hash_one(TermId((3 << 60) | i)) >> 57).collect();
-        assert_eq!(tops.len(), 128, "the 7 control bits take every value");
+        assert_eq!(tops.len(), 128, "hashbrown's 7 control bits take every value");
+    }
+
+    #[test]
+    fn two_maps_hash_differently() {
+        let (a, b) = (foldhash::fast::RandomState::default(), foldhash::fast::RandomState::default());
+        let id = TermId((0xf << 60) | 0x0300_0000_0061_6263);
+        assert!((0..8u64).any(|i| a.hash_one(TermId(id.0 + i)) != b.hash_one(TermId(id.0 + i))), "the seed is not random per map");
     }
 
     #[test]

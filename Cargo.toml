@@ -39,6 +39,7 @@ oxiri = "0.2.11"
 rust_decimal = { version = "1", default-features = false, features = ["std"] }
 num-bigint = { version = "0.4", default-features = false, features = ["std"] }
 rayon = "1.12.0"
+foldhash = "0.2.0"
 hashbrown = { version = "0.17", default-features = false }
 regex = "1.13.1"
 sha2 = "0.11"
