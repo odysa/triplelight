@@ -648,3 +648,43 @@ fn rdf12_terms_are_unaffected() {
     }
     assert_eq!(answers(&base.snap, &select(&range), &opts(true)).len(), 10);
 }
+
+/// The sort-merge join behind a pushed range (`extend_sort_merge`, #105): a selective date range over many
+/// subjects that are not all reviews (as BSBM's `dc:date` covers reviews, products and offers), joined to
+/// `?r <urn:for> ?p` whose range is too large for the whole-range hash table. Some reviews have two dates in the range
+/// (duplicate keys on the left) and some have several products (several matches on the right); every combination
+/// must appear exactly as often as without the range, and as in the memory store.
+#[test]
+fn a_sort_merge_after_a_range_keeps_every_multiplicity() {
+    let mut nt = String::new();
+    let days = 200; // each day about 0.5% of the dates, so a short window is pushed
+    for i in 0..60_000usize {
+        let day = 1 + i % days;
+        let form = format!("2007-{:02}-{:02}", 1 + (day - 1) / 28 % 12, 1 + (day - 1) % 28);
+        nt += &format!("<urn:s{i}> <urn:date> {} .\n", d(&form));
+        if i % 3 == 0 {
+            nt += &format!("<urn:s{i}> <urn:for> <urn:p{}> .\n", i % 97);
+            if i % 9 == 0 { nt += &format!("<urn:s{i}> <urn:for> <urn:q{}> .\n", i % 89) }
+        }
+    }
+    // Reviews with a second, different in-range date (a duplicate key on the left after the range).
+    for i in (0..60_000usize).step_by(60) {
+        let day = 1 + i % days;
+        let form = format!("2007-{:02}-{:02}", 1 + (day - 1) / 28 % 12, 2 + (day - 1) % 27);
+        nt += &format!("<urn:s{i}> <urn:date> {} .\n", d(&form));
+    }
+    // Many `for` triples on other subjects, so the right side is larger than twice the range's rows.
+    for i in 0..40_000usize { nt += &format!("<urn:x{i}> <urn:for> <urn:p{}> .\n", i % 97) }
+    let base = disk("sortmerge", &nt);
+    let reference = memory(&nt);
+    for cond in [format!("?d >= {} && ?d < {}", d("2007-01-01"), d("2007-01-15")), format!("?d >= {} && ?d <= {}", d("2007-03-01"), d("2007-03-20"))] {
+        for q in [
+            format!("SELECT ?r ?p WHERE {{ ?r <urn:date> ?d . ?r <urn:for> ?p FILTER({cond}) }}"),
+            format!("SELECT ?p (COUNT(?r) AS ?n) WHERE {{ ?r <urn:date> ?d . ?r <urn:for> ?p FILTER({cond}) }} GROUP BY ?p"),
+        ] {
+            let (got, _, _) = on_off(&base.snap, &q);
+            assert!(!got.is_empty(), "{q}");
+            assert_eq!(got, answers(&reference, &q, &opts(true)), "{q}");
+        }
+    }
+}

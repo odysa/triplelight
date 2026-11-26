@@ -250,6 +250,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         if let Some(out) = self.extend_range(pat, rows) { return (out, "range") }
         if let Some(out) = self.extend_member_set(pat, rows) { return (out, "member-set") }
         if let Some(out) = self.extend_merge(pat, rows) { return (out, "merge") }
+        if let Some(out) = self.extend_sort_merge(pat, rows) { return (out, "sort-merge") }
         if let Some(out) = self.extend_hash(pat, rows) { return (out, "hash") }
         if let Some(out) = self.extend_sorted(pat, rows) { return (out, "sorted") }
         if rows.len() / w.max(1) >= 2 * MORSEL {
@@ -325,6 +326,44 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             out
         }).collect();
         Some(parts.concat())
+    }
+
+    /// Sort-merge join for the semi-join case of `extend_hash`: a BGP with a pushed-down range (so its solution order
+    /// cannot reach the answers, `range::reorderable_bgps`), many rows arriving unsorted on the join key (e.g. a date
+    /// range's reviews, products and offers in date order, joined to `?review bsbm:reviewFor ?product`), and a
+    /// constant's range too large for the whole-range hash table but within `PROBE_ROWS` per row. Instead of a key
+    /// set, a filtered scan into a hash table and one random lookup per row, the rows are sorted by the key and
+    /// `extend_merge` walks the permutation `(constant, key, free)` beside them. The bag of solutions is the hash
+    /// join's; only their order differs, which the pushed range already makes free.
+    fn extend_sort_merge(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
+        let w = self.w;
+        if w == 0 || self.ranges.is_none() { return None }
+        let n = rows.len() / w;
+        if n < MERGE_MIN_ROWS || n > u32::MAX as usize { return None }
+        let first = &rows[..w];
+        let (mut cpos, mut kpos, mut fpos) = (None, None, None);
+        for (i, s) in pat.iter().enumerate() {
+            match s {
+                Slot::Const(Some(_)) => { if cpos.is_some() { return None } cpos = Some(i) }
+                Slot::Const(None) => return None,
+                Slot::Var(v) if first[*v] != UNBOUND => { if kpos.is_some() { return None } kpos = Some(i) }
+                Slot::Var(_) => { if fpos.is_some() { return None } fpos = Some(i) }
+            }
+        }
+        let (cpos, kpos, fpos) = (cpos?, kpos?, fpos?);
+        let (Slot::Const(Some(c)), Slot::Var(kv), Slot::Var(fv)) = (pat[cpos], pat[kpos], pat[fpos]) else { return None };
+        if kv == fv { return None }
+        if rows.chunks_exact(w).any(|r| r[kv] == UNBOUND || r[fv] != UNBOUND) { return None }
+        // Exactly the case `extend_hash` would take as a semi-join: larger than the whole-range table allows.
+        let perm = Perm::ALL.into_iter().find(|p| p.order() == [cpos, kpos, fpos])?;
+        let total = self.count(perm, &[c]);
+        if (total <= 2 * n as u64 && total <= 1 << 24) || total > PROBE_ROWS * n as u64 { return None }
+        let mut order: Vec<u32> = (0..n as u32).collect();
+        order.par_sort_unstable_by_key(|&i| rows[i as usize * w + kv]);
+        let mut sorted = Vec::with_capacity(rows.len());
+        for &i in &order { let i = i as usize; sorted.extend_from_slice(&rows[i * w..(i + 1) * w]) }
+        drop(order);
+        self.extend_merge(pat, &sorted)
     }
 
     /// Membership filter for a pattern with two constants and one variable bound in every row (e.g.
