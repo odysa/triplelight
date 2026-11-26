@@ -177,6 +177,17 @@ class Database:
         """
         self._db.register_function(iri, callback, arity=arity, pure=pure)
 
+    def register_aggregate_function(self, iri: str, factory: Callable[[], object]) -> None:
+        """Register a synchronous unary aggregate for future queries and snapshots.
+
+        The factory returns a fresh object per group and aggregate occurrence. Its
+        ``step(value)`` receives a bound RDF term and returns ``None``. The engine
+        skips unbound arguments and expression errors. Its ``finish()`` returns an
+        RDF term, including for an empty implicit group. An exception or invalid
+        callback result leaves the aggregate result unbound.
+        """
+        self._db.register_aggregate_function(iri, factory)
+
     def list_extensions(self) -> list[ExtensionInfo]:
         """Return build availability and load state."""
         return [ExtensionInfo(*entry) for entry in self._db.list_extensions()]
