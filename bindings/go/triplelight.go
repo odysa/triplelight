@@ -316,8 +316,26 @@ func decode(v *C.tl_result_view) *Result {
 			out.Vars = append(out.Vars, str(s))
 		}
 	}
-	terms := make([]Term, int(v.n_terms))
-	for i, t := range unsafe.Slice(v.terms, int(v.n_terms)) {
+	terms := decodeTerms(unsafe.Slice(v.terms, int(v.n_terms)), str)
+	width := int(v.n_vars)
+	cells := unsafe.Slice(v.cells, int(v.n_rows)*width)
+	backing := decodeCells(cells, terms)
+	out.Rows = make([][]*Term, int(v.n_rows))
+	for i := range out.Rows {
+		out.Rows[i] = backing[i*width : (i+1)*width : (i+1)*width]
+	}
+	return out
+}
+
+func decodeTerms(table []C.tl_term, str func(C.tl_str) string) []Term {
+	terms := make([]Term, len(table))
+	for i, t := range table {
+		if TermKind(t.kind) == Triple {
+			// A triple term stores 1-based term indices in these fields, not byte offsets.
+			terms[i] = Term{Kind: Triple, Subject: &terms[t.value.off-1],
+				Predicate: &terms[t.value.len-1], Object: &terms[t.language.off-1]}
+			continue
+		}
 		terms[i] = Term{Kind: TermKind(t.kind), Value: str(t.value), Language: str(t.language), Datatype: str(t.datatype)}
 		switch t.direction {
 		case C.TL_DIR_LTR:
@@ -325,23 +343,16 @@ func decode(v *C.tl_result_view) *Result {
 		case C.TL_DIR_RTL:
 			terms[i].Direction = "rtl"
 		}
-		if TermKind(t.kind) == Triple {
-			// a triple term stores the 1-based indices of its parts in value.off, value.len and language.off
-			terms[i].Value, terms[i].Language = "", ""
-			terms[i].Subject, terms[i].Predicate, terms[i].Object = &terms[t.value.off-1], &terms[t.value.len-1], &terms[t.language.off-1]
-		}
 	}
-	width := int(v.n_vars)
-	cells := unsafe.Slice(v.cells, int(v.n_rows)*width)
+	return terms
+}
+
+func decodeCells(cells []C.uint32_t, terms []Term) []*Term {
 	backing := make([]*Term, len(cells))
 	for i, c := range cells {
 		if c != 0 {
 			backing[i] = &terms[c-1]
 		}
 	}
-	out.Rows = make([][]*Term, int(v.n_rows))
-	for i := range out.Rows {
-		out.Rows[i] = backing[i*width : (i+1)*width : (i+1)*width]
-	}
-	return out
+	return backing
 }
