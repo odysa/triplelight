@@ -233,7 +233,7 @@ impl TableCatalog for WideTables {
         let t = &self.tables[table as usize];
         let columns = predicates.iter().map(|&p| t.column(p).expect("scan of a predicate that is not a column")).collect();
         let ranges = (0..predicates.len()).map(|i| ranges.get(i).copied().flatten()).collect();
-        Box::new(Scan { table: t, columns, ranges, next: 0, counters: ScanCounters::default(), picked: vec![Vec::new(); predicates.len()], pending: None })
+        Box::new(Scan { table: t, columns, ranges, next: 0, counters: ScanCounters::default(), picked: vec![Vec::new(); predicates.len()], pending: None, scratch: Vec::with_capacity(BLOCK) })
     }
 }
 
@@ -249,6 +249,8 @@ struct Scan<'a> {
     /// over `picked`, the last column varying fastest). A subject's rows may therefore span batches, so a huge
     /// product never makes one huge batch.
     pending: Option<(usize, Vec<usize>)>,
+    /// A decoded block, reused across batches.
+    scratch: Vec<u64>,
 }
 
 impl Scan<'_> {
@@ -354,15 +356,20 @@ impl Scan<'_> {
             let blk = lo / BLOCK;
             for (c, col) in self.columns.iter().enumerate() {
                 let Some((a, b)) = self.ranges[c] else { continue };
-                col.values.select_in_range(blk, a.0, b.0, &mut sel);
+                col.values.select_in_range(blk, a.0, b.0, &mut self.scratch, &mut sel);
                 if sel.is_empty() { break }
             }
+            // gather from decoded blocks: one sequential decode per column beats a random `get` per row
             self.counters.values_read += (hi - lo) as u64 * k as u64;
             if sel.is_empty() { continue }
-            let out = TableBatch {
-                subjects: sel.iter().map(|&r| TermId(self.table.subjects.get(lo + r as usize))).collect(),
-                values: self.columns.iter().map(|col| sel.iter().map(|&r| col.value(lo + r as usize)).collect()).collect(),
+            let scratch = &mut self.scratch;
+            let mut gather = |p: &PackedIds| -> Vec<TermId> {
+                p.decode_block(blk, scratch);
+                sel.iter().map(|&r| TermId(scratch[r as usize])).collect()
             };
+            let subjects = gather(&self.table.subjects);
+            let values = self.columns.iter().map(|col| gather(&col.values)).collect();
+            let out = TableBatch { subjects, values };
             self.counters.rows_emitted += out.len() as u64;
             return Some(Ok(out));
         }

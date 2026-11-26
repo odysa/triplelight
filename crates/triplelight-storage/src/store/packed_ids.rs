@@ -43,7 +43,6 @@ impl PackedIds {
     }
 
     pub fn len(&self) -> usize { self.len }
-    pub fn is_empty(&self) -> bool { self.len == 0 }
 
     /// Heap bytes of the encoding.
     pub fn bytes(&self) -> u64 { (self.base.len() * 8 + self.width.len() + self.start.len() * 4 + self.words.len() * 8) as u64 }
@@ -79,24 +78,37 @@ impl PackedIds {
         blk * BLOCK + lo
     }
 
-    /// Appends `values[a..b]` to `out`.
-    pub fn decode_into(&self, a: usize, b: usize, out: &mut Vec<u64>) {
-        out.reserve(b.saturating_sub(a));
-        for i in a..b { out.push(self.get(i)) }
+    /// Replaces `out` with block `blk`'s values, decoded sequentially (one pass over its words).
+    pub fn decode_block(&self, blk: usize, out: &mut Vec<u64>) {
+        out.clear();
+        let n = (self.len - blk * BLOCK).min(BLOCK);
+        let (base, w) = (self.base[blk], self.width[blk] as usize);
+        if w == 0 { out.resize(n, base); return }
+        let words = &self.words[self.start[blk] as usize..];
+        let mask = if w == 64 { u64::MAX } else { (1u64 << w) - 1 };
+        let mut bit = 0usize;
+        out.extend((0..n).map(|_| {
+            let (at, sh) = (bit / 64, bit % 64);
+            let lo = words[at] >> sh;
+            let v = if sh + w > 64 { lo | (words[at + 1] << (64 - sh)) } else { lo };
+            bit += w;
+            base + (v & mask)
+        }));
     }
 
     /// Keeps in `sel` (positions relative to block `blk`'s first value, ascending) those whose value is in
-    /// `lo..hi`, comparing codes against the range shifted by the block's base.
-    pub fn select_in_range(&self, blk: usize, lo: u64, hi: u64, sel: &mut Vec<u32>) {
+    /// `lo..hi`. The block's base and width settle blocks wholly inside or outside without decoding.
+    pub fn select_in_range(&self, blk: usize, lo: u64, hi: u64, scratch: &mut Vec<u64>, sel: &mut Vec<u32>) {
         let base = self.base[blk];
         if hi <= base { sel.clear(); return }
         let clo = lo.saturating_sub(base);
-        let chi = hi - base;
         let w = self.width[blk];
         let max_code = if w >= 64 { u64::MAX } else { (1u64 << w) - 1 };
-        if clo == 0 && chi > max_code { return } // the whole block is inside
+        if clo == 0 && hi - base > max_code { return } // the whole block is inside
         if clo > max_code { sel.clear(); return }
-        sel.retain(|&r| { let c = self.code(blk, r as usize); c >= clo && c < chi });
+        // partly inside: decode the block once, then compare (`scratch` is overwritten)
+        self.decode_block(blk, scratch);
+        sel.retain(|&r| { let v = scratch[r as usize]; v >= lo && v < hi });
     }
 }
 
@@ -120,15 +132,15 @@ mod tests {
             let p = PackedIds::from_slice(v);
             assert_eq!(p.len(), v.len());
             for (i, &e) in v.iter().enumerate() { assert_eq!(p.get(i), e) }
-            let mut d = Vec::new();
-            p.decode_into(0, v.len(), &mut d);
+            let (mut d, mut blk) = (Vec::new(), Vec::new());
+            for b in 0..v.len().div_ceil(BLOCK) { p.decode_block(b, &mut blk); d.extend_from_slice(&blk) }
             assert_eq!(&d, v);
             for _ in 0..20 {
                 let (a, b) = { let (a, b) = (rnd(), rnd()); if v.is_empty() { (a.min(b), a.max(b)) } else { let (a, b) = (v[(a % v.len() as u64) as usize], v[(b % v.len() as u64) as usize]); (a.min(b), a.max(b).saturating_add(rnd() % 2)) } };
                 for blk in 0..v.len().div_ceil(BLOCK) {
                     let n = (v.len() - blk * BLOCK).min(BLOCK);
                     let mut sel: Vec<u32> = (0..n as u32).collect();
-                    p.select_in_range(blk, a, b, &mut sel);
+                    p.select_in_range(blk, a, b, &mut Vec::new(), &mut sel);
                     let want: Vec<u32> = (0..n as u32).filter(|&r| { let e = v[blk * BLOCK + r as usize]; e >= a && e < b }).collect();
                     assert_eq!(sel, want);
                 }
