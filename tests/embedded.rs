@@ -371,8 +371,8 @@ impl std::io::Write for Limited {
     fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
 }
 
-fn big_database(rows: usize) -> (Database, PathBuf) {
-    let file = temp("writer-data").with_extension("nt");
+fn big_database(name: &str, rows: usize) -> (Database, PathBuf) {
+    let file = temp(name).with_extension("nt");      // one file per test: tests run in parallel in one process
     std::fs::write(&file, (0..rows).map(|i| format!("<urn:s{i}> <urn:p> \"v{i}\" .\n")).collect::<String>()).unwrap();
     let db = Database::in_memory();
     db.load(&file).unwrap();
@@ -381,7 +381,7 @@ fn big_database(rows: usize) -> (Database, PathBuf) {
 
 #[test]
 fn query_json_to_writer_writes_exactly_the_bytes_of_query_json() {
-    let (db, file) = big_database(300_000);      // several serialization windows on any machine
+    let (db, file) = big_database("writer-data-1", 300_000);      // several serialization windows on any machine
     for q in ["SELECT ?s ?o WHERE { ?s <urn:p> ?o }", "SELECT ?s WHERE { ?s <urn:p> \"v7\" }", "SELECT ?s WHERE { ?s <urn:absent> ?o }", "ASK { <urn:s1> <urn:p> ?o }", "SELECT (COUNT(*) AS ?n) WHERE { ?s <urn:p> ?o }"] {
         let mut out = Vec::new();
         db.query_json_to_writer(q, &mut out).unwrap();
@@ -396,7 +396,7 @@ fn query_json_to_writer_writes_exactly_the_bytes_of_query_json() {
 
 #[test]
 fn a_writer_that_fails_partway_leaves_an_invalid_prefix_and_an_output_error() {
-    let (db, file) = big_database(300_000);
+    let (db, file) = big_database("writer-data-2", 300_000);
     let q = "SELECT ?s ?o WHERE { ?s <urn:p> ?o }";
     let whole = db.query_json(q).unwrap();
     let mut out = Limited { bytes: Vec::new(), limit: 1 << 20 };
@@ -426,7 +426,7 @@ fn errors_before_the_first_byte_leave_the_writer_untouched() {
 
 #[test]
 fn query_json_to_writer_honors_limits_before_writing() {
-    let (db, file) = big_database(2_000);
+    let (db, file) = big_database("writer-data-3", 2_000);
     let interrupt = triplelight::exec::Interrupt::new();
     interrupt.cancel();
     let mut out = Vec::new();
