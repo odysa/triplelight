@@ -39,7 +39,8 @@ fn pattern_unsupported(p: &GraphPattern, ds: bool, functions: Option<&dyn Functi
         })),
         GraphPattern::Group { inner, aggregates, .. } => pattern_unsupported(inner, ds, functions).or_else(|| aggregates.iter().find_map(|(_, a)| match a {
             AggregateExpression::FunctionCall { expr, name, .. } => match name {
-                crate::sparql::AggregateFunction::Custom(f) => Some(format!("custom aggregate <{}> is not supported", f.as_str())),
+                crate::sparql::AggregateFunction::Custom(f) if functions.and_then(|lookup| lookup.aggregate(f.as_str())).is_none() =>
+                    Some(format!("custom aggregate <{}> is not supported", f.as_str())),
                 _ => expr_unsupported(expr, ds, functions),
             },
             AggregateExpression::CountSolutions { .. } => None,

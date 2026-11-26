@@ -1,4 +1,4 @@
-//! Scalar function callbacks supplied by an embedded database's captured registry.
+//! Function callbacks supplied by an embedded database's captured registry.
 use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Arc;
@@ -61,10 +61,53 @@ impl RegisteredFunction {
     }
 }
 
-/// Immutable lookup used by validation and evaluation of the same query.
+/// A synchronous accumulator for one aggregate occurrence in one group.
+/// The evaluator skips unbound arguments and expression errors, so neither reaches `step`.
+pub trait AggregateState {
+    /// Processes one bound argument. `None` makes this group's result unbound.
+    fn step(&mut self, term: &Term) -> Option<()>;
+
+    /// Returns the group's result. `None` leaves the result unbound.
+    fn finish(&mut self) -> Option<Term>;
+}
+
+/// A factory called on the query thread for each group, including an empty implicit group.
+/// Callbacks must not reenter the evaluating database. Destructors must not panic.
+pub trait AggregateFunction: Send + Sync + 'static {
+    fn create(&self) -> Option<Box<dyn AggregateState>>;
+}
+
+impl<F> AggregateFunction for F
+where
+    F: Fn() -> Option<Box<dyn AggregateState>> + Send + Sync + 'static,
+{
+    fn create(&self) -> Option<Box<dyn AggregateState>> {
+        self()
+    }
+}
+
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct RegisteredAggregate(Arc<dyn AggregateFunction>);
+
+impl RegisteredAggregate {
+    pub fn new(factory: impl AggregateFunction) -> Self {
+        Self(Arc::new(factory))
+    }
+
+    pub(crate) fn create(&self) -> Option<Box<dyn AggregateState>> {
+        self.0.create()
+    }
+}
+
+/// Immutable lookup used by parsing, validation and evaluation of the same query.
 #[doc(hidden)]
 pub trait FunctionLookup: Sync {
     fn scalar(&self, iri: &str) -> Option<&RegisteredFunction>;
+
+    fn aggregate(&self, _iri: &str) -> Option<&RegisteredAggregate> {
+        None
+    }
 }
 
 /// Extension providers borrowed from one captured registry.

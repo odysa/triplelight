@@ -10,7 +10,7 @@ An explicit RDFS query through `query_with_entailment` loads RDFS automatically.
 
 ## Register a Rust extension
 
-Implement `Extension::register` to declare an entailment provider, a graph validator, and any scalar functions it supplies. Call `Database::register_extension` with that implementation. Registrations become visible together after the callback succeeds. Registered providers are selected by extension name through `query_with_extension` or `validate_with_extension`. Official names are reserved.
+Implement `Extension::register` to declare an entailment provider, a graph validator, and any scalar or aggregate functions it supplies. Call `Database::register_extension` with that implementation. Registrations become visible together after the callback succeeds. Registered providers are selected by extension name through `query_with_extension` or `validate_with_extension`. Official names are reserved.
 
 An entailment provider wraps the active graph with a read-only `Snapshot` view. The executor supplies IDs for virtual predicates that are absent from the store dictionary. Named graphs and an explicit `FROM` merge each receive their own view. A validator receives the data and shapes graphs as triples.
 
@@ -50,6 +50,26 @@ as opaque. A cache entry requires an existing ID for every evaluated argument,
 and the memory charge includes an estimate based on the result's RDF spelling.
 
 These extensions are linked Rust crates. Standalone shared-library installation and loading are future work.
+
+## Register an aggregate function in Rust
+
+`Database::register_aggregate_function(iri, factory)` registers a unary
+aggregate. A linked extension uses `Registrar::aggregate_function`. The
+factory implements `AggregateFunction` and creates one `AggregateState` per
+group and per aggregate occurrence. Scalar and aggregate registrations share
+the same IRI namespace.
+
+Use `<urn:example:aggregate>(?value)` or
+`<urn:example:aggregate>(DISTINCT ?value)` in SELECT, HAVING or ORDER BY.
+Unbound or errored arguments are skipped. DISTINCT passes each RDF term
+once, using term identity. The engine calls `finish` on empty implicit
+groups too. A callback error or panic leaves that aggregate result unbound.
+Query cancellation and deadlines are checked between calls. Keep the state
+synchronous, avoid reentering the database and keep destructors panic-free.
+
+Aggregate registrations follow the same snapshot and query rules as scalar
+registrations. The query memory budget accounts for the DISTINCT set.
+Application-owned accumulator memory is outside that budget.
 
 ### OWL 2 RL equivalence
 

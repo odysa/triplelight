@@ -2,11 +2,12 @@
 //! directory is unusable, and when the grouped answer itself does not fit.
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use triplelight::embedded::{Database, DatabaseError};
 use triplelight::exec::{Entailment, Interrupt, MemoryBudget, QueryLimits};
-use triplelight::extension::FunctionOptions;
-use triplelight::rdf::Term;
+use triplelight::extension::{AggregateState, FunctionOptions};
+use triplelight::rdf::{Literal, Term};
 
 /// A fresh, empty scratch directory for one test, removed when it drops.
 struct Scratch(PathBuf);
@@ -69,6 +70,58 @@ fn an_unusable_scratch_directory_is_a_storage_error() {
     let got = db.query_with_limits(q, Entailment::Simple, QueryLimits { interrupt: None, memory: Some(&budget) });
     assert!(matches!(got, Err(DatabaseError::Storage(_))), "{got:?}");
     assert_eq!(scratch.entries(), 1, "only the file itself");
+    assert_eq!(budget.used(), 0);
+}
+
+#[test]
+fn spilled_custom_aggregates_evaluate_each_group_once() {
+    #[derive(Default)]
+    struct Count(i64);
+    impl AggregateState for Count {
+        fn step(&mut self, _: &Term) -> Option<()> {
+            self.0 += 1;
+            Some(())
+        }
+
+        fn finish(&mut self) -> Option<Term> {
+            Some(Literal::from(self.0).into())
+        }
+    }
+
+    let db = db_with(4000);
+    let scratch = Scratch::new("custom-aggregate");
+    let partition_dir = scratch.0.clone();
+    let states = Arc::new(AtomicUsize::new(0));
+    let started = Arc::clone(&states);
+    db.register_aggregate_function(
+        "urn:example:count",
+        move || -> Option<Box<dyn AggregateState>> {
+            std::fs::read_dir(&partition_dir).ok()?.next()?.ok()?;
+            started.fetch_add(1, Ordering::Relaxed);
+            Some(Box::new(Count::default()))
+        },
+    )
+    .unwrap();
+    let query = "SELECT ?o (<urn:example:count>(?s) AS ?total) \
+                 (<urn:example:count>(DISTINCT ?o) AS ?unique) \
+                 WHERE { ?s <http://ex/p> ?o } GROUP BY ?o ORDER BY ?o";
+    let expected = db
+        .query_json(&query.replace("<urn:example:count>", "COUNT"))
+        .unwrap();
+    let budget = MemoryBudget::new(64 << 20).with_scratch_dir(&scratch.0).with_spill_rows(100);
+    let spilled = db
+        .query_json_with_limits(
+            query,
+            Entailment::Simple,
+            QueryLimits {
+                interrupt: None,
+                memory: Some(&budget),
+            },
+        )
+        .unwrap();
+    assert_eq!(spilled, expected);
+    assert_eq!(states.load(Ordering::Relaxed), 2 * 97);
+    assert_eq!(scratch.entries(), 0);
     assert_eq!(budget.used(), 0);
 }
 

@@ -44,7 +44,7 @@ pub mod results;
 use crate::model::{Perm, TermId};
 use crate::storage::{DatasetView, Snapshot};
 use crate::opt::stats::Stats;
-use triplelight_rdf::{BlankNode, Literal, Term, Variable};
+use triplelight_rdf::{BlankNode, Term, Variable};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression, Function, GraphPattern, OrderExpression};
 use crate::sparql::{GroundTerm, NamedNodePattern, TermPattern, TriplePattern};
 use crate::sparql::Query;
@@ -212,7 +212,9 @@ fn catching_storage<T>(f: impl FnOnce() -> Result<T, QueryError>) -> Result<T, Q
 }
 
 fn run<S: Snapshot>(snap: &S, dataset: Option<&dyn DatasetView>, text: &str, opts: &Options<'_>, extensions: udf::QueryExtensions<'_>) -> Result<QueryResult, QueryError> {
-    let q = phase::parse(|| crate::sparql::parse_query(text, None)).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
+    let is_aggregate = |iri: &str| extensions.functions.and_then(|f| f.aggregate(iri)).is_some();
+    let lookup = extensions.functions.map(|_| &is_aggregate as &dyn Fn(&str) -> bool);
+    let q = phase::parse(|| crate::sparql::parse_query_with_aggregates(text, None, lookup)).map_err(|e| QueryError::new(QueryErrorKind::Syntax, e.to_string()))?;
     run_query(snap, dataset, &q, opts, extensions)
 }
 
@@ -967,68 +969,6 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         }).collect()
     }
 
-    fn aggregate(&self, agg: &AggregateExpression, rows: &[Row]) -> Option<Term> {
-        match agg {
-            AggregateExpression::CountSolutions { distinct } => {
-                let n = if *distinct { rows.iter().collect::<HashSet<_>>().len() } else { rows.len() };
-                Some(Literal::from(n as i64).into())
-            }
-            AggregateExpression::FunctionCall { name, expr, distinct } => {
-                // SPARQL 1.1 §18.5: the expression is evaluated per solution; an error (including an unbound
-                // variable) makes SUM/AVG/MIN/MAX/GROUP_CONCAT an error (unbound result). COUNT counts the non-error
-                // values; SAMPLE returns a non-error value. (Matches Jena.)
-                // Expressions are deterministic (NOW/RAND/UUID/BNODE are unsupported); EXISTS reads other variables.
-                let single = match expr_vars(expr).as_slice() { [v] if !impure(expr) => self.vars.get(v).copied(), _ => None };
-                let evaluated: Vec<Option<Term>> = match single {
-                    Some(vi) => {
-                        let e: &Expression = expr;
-                        let addr = e as *const Expression as usize;
-                        let eid = {
-                            let mut m = self.agg_arg_slots.borrow_mut();
-                            match m.get(&addr) {
-                                Some((q, slot)) if q == e => *slot,
-                                _ => { let slot = self.memo_slots.get(); self.memo_slots.set(slot + 1); m.insert(addr, (e.clone(), slot)); slot }
-                            }
-                        };
-                        rows.iter().map(|r| {
-                            let key = (eid, r[vi]);
-                            if let Some(v) = self.agg_arg_memo.borrow().get(&key) { return v.clone() }
-                            let v = self.value(expr, r);
-                            let mut m = self.agg_arg_memo.borrow_mut();
-                            if m.len() < MEMO_CAP { m.insert(key, v.clone()); }
-                            v
-                        }).collect()
-                    }
-                    None => rows.iter().map(|r| self.value(expr, r)).collect(),
-                };
-                let has_error = evaluated.iter().any(Option::is_none);
-                let mut vals: Vec<Term> = evaluated.into_iter().flatten().collect();
-                if *distinct { let mut s = HashSet::new(); vals.retain(|v| s.insert(v.clone())); }
-                let strict = !matches!(name, AggregateFunction::Count | AggregateFunction::Sample);
-                if strict && has_error { return None }
-                match name {
-                    AggregateFunction::Count => Some(Literal::from(vals.len() as i64).into()),
-                    // Same accumulation as the ID-level fast path (`expr::num_add`): float sums round once.
-                    AggregateFunction::Sum => vals.iter().try_fold(expr::Num::Int(0), |a, b| expr::num_add(a, expr::term_num(b)?)).map(|n| n.term()),
-                    AggregateFunction::Avg => {
-                        if vals.is_empty() { return Some(Literal::from(0i64).into()) }
-                        let s = vals.iter().try_fold(expr::Num::Int(0), |a, b| expr::num_add(a, expr::term_num(b)?))?;
-                        expr::num_div_count(s, vals.len() as i64).map(|n| n.term())
-                    }
-                    AggregateFunction::Min => vals.into_iter().min_by(|a, b| expr::order_cmp(Some(a), Some(b))),
-                    AggregateFunction::Max => vals.into_iter().max_by(|a, b| expr::order_cmp(Some(a), Some(b))),
-                    AggregateFunction::Sample => vals.into_iter().next(),
-                    AggregateFunction::GroupConcat { separator } => {
-                        let sep = separator.as_deref().unwrap_or(" ");
-                        let s: Vec<String> = vals.iter().filter_map(expr::string_value).collect();
-                        Some(Literal::new_simple_literal(s.join(sep)).into())
-                    }
-                    AggregateFunction::Custom(_) => None,
-                }
-            }
-        }
-    }
-
     // ---------- basic graph patterns ----------
     fn slot_of(&self, tp: &TermPattern) -> Slot {
         match tp {
@@ -1451,7 +1391,7 @@ fn memo_safe(p: &GraphPattern) -> bool {
         | GraphPattern::Project { inner, .. } => memo_safe(inner),
         GraphPattern::Group { inner, aggregates, .. } => memo_safe(inner) && aggregates.iter().all(|(_, aggregate)| match aggregate {
             AggregateExpression::CountSolutions { .. } => true,
-            AggregateExpression::FunctionCall { expr, .. } => !impure(expr),
+            AggregateExpression::FunctionCall { name, expr, .. } => !matches!(name, AggregateFunction::Custom(_)) && !impure(expr),
         }),
     }
 }
