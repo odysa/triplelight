@@ -63,7 +63,7 @@ fn decimal_function_term(value: Decimal) -> Term {
 }
 
 /// Integers and decimals compare exactly; float/double by promoted f64.
-fn num_cmp(x: Num, y: Num) -> Option<Ordering> {
+pub(super) fn num_cmp(x: Num, y: Num) -> Option<Ordering> {
     if let (Num::Int(i), Num::Int(j)) = (x, y) { return Some(i.cmp(&j)) }
     if let (Some(a), Some(b)) = (x.dec(), y.dec()) { return Some(a.cmp(&b)) }
     // Promotion converts each operand to the common type first: compared as float, a decimal is rounded to binary32.
@@ -186,15 +186,24 @@ pub(super) fn num_op(op: char, x: Num, y: Num) -> Option<Num> {
 
 fn num(t: &Term) -> Option<Num> {
     let Term::Literal(l) = t else { return None };
-    let local = xsd_local(l)?;
+    num_literal(l.datatype().as_str(), l.value())
+}
+
+/// Parse a borrowed literal with exactly the same rules as expression evaluation.
+pub(super) fn num_literal(datatype: &str, value: &str) -> Option<Num> {
+    let local = datatype.strip_prefix("http://www.w3.org/2001/XMLSchema#")?;
     if !NUMERIC.contains(&local) { return None }
-    let v = l.value().trim();
+    let v = value.trim();
     match local {
         "double" => parse_xsd_float(v).map(Num::Dbl),
         "float" => parse_xsd_float(v).map(|d| Num::Flt(d as f32 as f64)),
         "decimal" => parse_decimal(v).map(Num::Dec),
         _ => v.trim_start_matches('+').parse().ok().map(Num::Int),
     }
+}
+
+pub(super) fn numeric_datatype(datatype: &str) -> bool {
+    datatype.strip_prefix("http://www.w3.org/2001/XMLSchema#").is_some_and(|local| NUMERIC.contains(&local))
 }
 
 pub(super) fn string_value(t: &Term) -> Option<String> {
