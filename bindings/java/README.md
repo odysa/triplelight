@@ -19,6 +19,19 @@ library path. Requires Java 25. `Database` is thread-safe; `close()` waits for c
 Results are copied into plain Java objects in one pass: the native string arena is copied once, each distinct term is
 decoded once and shared across rows, and the cell array is read as one `int[]`.
 
+## Scalar SPARQL callbacks
+
+```java
+db.registerFunction("urn:example:echo", 1, true, arguments -> arguments[0]);
+Result result = db.query("SELECT (<urn:example:echo>(<urn:value>) AS ?value) WHERE {}");
+```
+
+The callback receives Java-owned RDF terms. Return one term, or return `null` or throw an exception to signal a
+SPARQL expression error. Pass `null` for the arity to accept any argument count. Set `pure` only when the callback
+has no side effects and its result depends solely on the arguments. Calls can run concurrently. Keep callbacks
+brief and avoid calls back into the evaluating database. The registry keeps each callback alive until native code
+releases the registration. This API requires a C library with scalar callback support.
+
 ## Arrow output
 
 `Database.queryArrow(sparql, streamAddress)` fills a caller-owned `struct ArrowArrayStream`, for example

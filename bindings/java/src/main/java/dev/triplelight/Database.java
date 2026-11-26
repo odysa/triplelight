@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static java.lang.foreign.ValueLayout.*;
@@ -108,6 +109,38 @@ public final class Database implements AutoCloseable {
 
     /** Build availability and load state for an extension. */
     public record ExtensionInfo(String name, boolean compiledIn, boolean loaded) {}
+
+    /** A synchronous scalar over Java-owned RDF terms. Return null or throw an exception for an expression error. */
+    @FunctionalInterface
+    public interface ScalarFunction {
+        Term apply(Term[] arguments) throws Exception;
+    }
+
+    /**
+     * Register a scalar function for subsequent queries. Null {@code arity} accepts any argument count.
+     * A pure callback depends only on its arguments and permits query-local memoization. The native registry owns
+     * the callback after successful registration. Calls can run concurrently and must neither reenter nor mutate
+     * the evaluating database.
+     */
+    public void registerFunction(String iri, Integer arity, boolean pure, ScalarFunction function) {
+        Objects.requireNonNull(iri, "iri");
+        Objects.requireNonNull(function, "function");
+        if (arity != null && arity < 0) throw new IllegalArgumentException("scalar arity must be non-negative");
+        lock.readLock().lock();
+        try {
+            MemorySegment h = live();
+            if (Native.REGISTER_FUNCTION == null || Native.SCALAR_SET_TERM == null) {
+                throw new TripleLightException(TripleLightException.Kind.UNSUPPORTED, "native library lacks scalar callbacks");
+            }
+            ScalarCallbacks.register(h, iri, arity == null ? -1L : arity.longValue(), pure, function);
+        } catch (TripleLightException error) {
+            throw error;
+        } catch (Throwable error) {
+            throw internal(error);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
 
     /** Loads a linked official extension for this database. */
     public void loadExtension(String name) {
@@ -252,9 +285,26 @@ public final class Database implements AutoCloseable {
             for (int i = 0; i < nVars; i++) names[i] = str(bytes, vs, i * Native.STR.byteSize());
             vars = List.of(names);
         }
+        Term[] terms = decodeTerms(v.get(ADDRESS, Native.VIEW_TERMS), nTerms, bytes);
+        long nCells = (long) nRows * nVars;
+        int[] cells = nCells == 0 ? new int[0]
+                : v.get(ADDRESS, Native.VIEW_CELLS).reinterpret(nCells * 4).toArray(JAVA_INT);
+        List<Term[]> rows = new ArrayList<>(nRows);
+        for (int r = 0; r < nRows; r++) {
+            Term[] row = new Term[nVars];
+            for (int c = 0; c < nVars; c++) {
+                int idx = cells[r * nVars + c];
+                row[c] = idx == 0 ? null : terms[idx - 1];
+            }
+            rows.add(row);
+        }
+        return new Result(kind == 2 ? Result.Type.TRIPLES : Result.Type.BINDINGS, vars, rows, false);
+    }
+
+    static Term[] decodeTerms(MemorySegment table, int nTerms, byte[] bytes) {
         Term[] terms = new Term[nTerms];
         if (nTerms > 0) {
-            MemorySegment ts = v.get(ADDRESS, Native.VIEW_TERMS).reinterpret(Native.TERM.byteSize() * nTerms);
+            MemorySegment ts = table.reinterpret(Native.TERM.byteSize() * nTerms);
             String lastDatatype = null;
             for (int i = 0; i < nTerms; i++) {
                 long base = i * Native.TERM.byteSize();
@@ -274,26 +324,11 @@ public final class Database implements AutoCloseable {
                     }
                 };
             }
-        }
-        if (nTerms > 0) {
-            MemorySegment ts = v.get(ADDRESS, Native.VIEW_TERMS).reinterpret(Native.TERM.byteSize() * nTerms);
             for (int i = 0; i < nTerms; i++) {
                 if (terms[i] == null && ts.get(JAVA_BYTE, (long) i * Native.TERM.byteSize()) == 4) terms[i] = resolveTriple(ts, terms, i);
             }
         }
-        long nCells = (long) nRows * nVars;
-        int[] cells = nCells == 0 ? new int[0]
-                : v.get(ADDRESS, Native.VIEW_CELLS).reinterpret(nCells * 4).toArray(JAVA_INT);
-        List<Term[]> rows = new ArrayList<>(nRows);
-        for (int r = 0; r < nRows; r++) {
-            Term[] row = new Term[nVars];
-            for (int c = 0; c < nVars; c++) {
-                int idx = cells[r * nVars + c];
-                row[c] = idx == 0 ? null : terms[idx - 1];
-            }
-            rows.add(row);
-        }
-        return new Result(kind == 2 ? Result.Type.TRIPLES : Result.Type.BINDINGS, vars, rows, false);
+        return terms;
     }
 
     private static String str(byte[] bytes, MemorySegment s, long at) {
