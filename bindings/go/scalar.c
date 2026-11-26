@@ -6,7 +6,7 @@ static int32_t scalar_call(void *context, const tl_scalar_args *args, tl_scalar_
 }
 
 static void scalar_release(void *context) {
-    triplelightGoScalarRelease(*(uintptr_t *)context);
+    triplelightGoCallbackRelease(*(uintptr_t *)context);
     free(context);
 }
 

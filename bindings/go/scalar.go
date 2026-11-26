@@ -62,33 +62,39 @@ func (d *DB) RegisterFunction(iri string, options ScalarFunctionOptions, call Sc
 
 //export triplelightGoScalarCall
 func triplelightGoScalarCall(handle C.uintptr_t, args *C.tl_scalar_args, output *C.tl_scalar_output) (status C.int32_t) {
-	defer func() {
-		if recover() != nil {
-			status = C.TL_ERR_INTERNAL
-		}
-	}()
+	status = C.TL_ERR_INTERNAL
+	defer containCallbackPanic()
+	result, err := cgo.Handle(handle).Value().(ScalarFunction)(decodeCallbackArgs(args))
+	if err != nil {
+		return C.TL_ERR_INVALID_ARGUMENT
+	}
+	return writeCallbackTerm(output, result)
+}
+
+func containCallbackPanic() { _ = recover() }
+
+func decodeCallbackArgs(args *C.tl_scalar_args) []*Term {
 	arena := string(unsafe.Slice((*byte)(unsafe.Pointer(args.bytes)), int(args.n_bytes)))
 	terms := decodeTerms(unsafe.Slice(args.terms, int(args.n_terms)), func(s C.tl_str) string {
 		return arena[s.off : s.off+s.len]
 	})
-	cells := decodeCells(unsafe.Slice(args.cells, int(args.len)), terms)
-	result, err := cgo.Handle(handle).Value().(ScalarFunction)(cells)
-	if err != nil {
-		return C.TL_ERR_INVALID_ARGUMENT
-	}
+	return decodeCells(unsafe.Slice(args.cells, int(args.len)), terms)
+}
+
+func writeCallbackTerm(output *C.tl_scalar_output, result *Term) C.int32_t {
 	var term strings.Builder
 	if !appendScalarTerm(&term, result, 0) {
 		return C.TL_ERR_INVALID_ARGUMENT
 	}
 	value := term.String()
 	p, n := cstr(value)
-	status = C.tl_scalar_set_term(output, p, n)
+	status := C.tl_scalar_set_term(output, p, n)
 	runtime.KeepAlive(value)
 	return status
 }
 
-//export triplelightGoScalarRelease
-func triplelightGoScalarRelease(handle C.uintptr_t) {
+//export triplelightGoCallbackRelease
+func triplelightGoCallbackRelease(handle C.uintptr_t) {
 	cgo.Handle(handle).Delete()
 }
 
