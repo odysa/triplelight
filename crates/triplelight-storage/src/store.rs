@@ -43,6 +43,7 @@ use std::sync::{Arc, Mutex, RwLock};
 
 mod group_commit;
 pub mod wide_tables;
+mod packed_ids;
 mod named;
 #[cfg(unix)]
 pub(crate) mod text_postings;

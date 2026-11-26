@@ -3,12 +3,16 @@
 //! Subjects are grouped by their set of `rdf:type` objects. A group becomes a table when its columns (the union of
 //! its subjects' predicates) are filled well enough and it holds a large enough share of the triples; untyped
 //! subjects and small or sparse groups stay triples-only. Each table keeps its subjects ascending, one CSR column
-//! per predicate (offsets into a value array, values ascending per subject) and a bitset for `member`.
+//! per predicate (offsets into a value array, values ascending per subject) and a bitset for `member`. Subjects,
+//! offsets and values are frame-of-reference bit-packed (`PackedIds`); a column whose every subject has exactly
+//! one value stores no offsets.
 //! Built by two SPO scans; the view's indexes are untouched, so tables are only an extra access path.
 use std::collections::{BTreeMap, HashMap};
 
 use triplelight_core::model::{Perm, TermId};
 use triplelight_core::wide::{ColumnMeta, ScanCounters, TableBatch, TableCatalog, TableId, TableMeta, TableScan, TABLE_BATCH_ROWS};
+
+use super::packed_ids::{PackedIds, BLOCK};
 
 use crate::{Snapshot, StorageError};
 
@@ -27,23 +31,30 @@ impl Default for BuildOptions {
 
 struct Column {
     predicate: TermId,
-    /// `offsets[i]..offsets[i + 1]` are subject `i`'s values; empty when the column is dense (`values[i]` is
+    /// `offsets[i]..offsets[i + 1]` are subject `i`'s values; `None` when the column is dense (`values[i]` is
     /// subject `i`'s only value, for every subject).
-    offsets: Vec<u64>,
-    values: Vec<TermId>,
+    offsets: Option<PackedIds>,
+    values: PackedIds,
 }
 
 impl Column {
-    fn dense(&self) -> bool { self.offsets.is_empty() }
+    fn dense(&self) -> bool { self.offsets.is_none() }
     /// Subject `i`'s values as an index range into `values`.
+    #[inline]
     fn span(&self, i: usize) -> (usize, usize) {
-        if self.dense() { (i, i + 1) } else { (self.offsets[i] as usize, self.offsets[i + 1] as usize) }
+        match &self.offsets { None => (i, i + 1), Some(o) => (o.get(i) as usize, o.get(i + 1) as usize) }
     }
+    #[inline]
+    fn value(&self, k: usize) -> TermId { TermId(self.values.get(k)) }
+    fn bytes(&self) -> u64 { self.values.bytes() + self.offsets.as_ref().map_or(0, PackedIds::bytes) }
 }
+
+/// A column while the tables fill.
+struct Filling { offsets: Vec<u64>, values: Vec<u64> }
 
 struct Table {
     meta: TableMeta,
-    subjects: Vec<TermId>,
+    subjects: PackedIds,
     /// Sorted by predicate.
     columns: Vec<Column>,
     /// Bit `id - first` is set for every subject (`first` = the smallest), when the subjects' ID span is dense
@@ -129,58 +140,51 @@ impl WideTables {
             .collect();
         chosen.sort();
         let index: HashMap<Vec<TermId>, usize> = chosen.iter().enumerate().map(|(i, (k, _))| (k.clone(), i)).collect();
-        let mut tables: Vec<Table> = chosen.iter().map(|(_, preds)| Table {
-            meta: TableMeta { subjects: 0, columns: Vec::new(), subject_bytes: 0 },
-            subjects: Vec::new(),
-            columns: preds.iter().map(|&p| Column { predicate: p, offsets: vec![0], values: Vec::new() }).collect(),
-            first: 0,
-            bits: None,
-        }).collect();
-        // Pass 2: fill them.
-        if !tables.is_empty() {
+        // Pass 2: fill them (plain arrays), then pack.
+        let mut filling: Vec<(Vec<u64>, Vec<Filling>)> = chosen.iter()
+            .map(|(_, preds)| (Vec::new(), preds.iter().map(|_| Filling { offsets: vec![0], values: Vec::new() }).collect()))
+            .collect();
+        if !filling.is_empty() {
             for_each_subject(snap, |s| {
                 let key = type_key(&s.rows, rdf_type);
                 let Some(&t) = index.get(&key) else { return };
-                let table = &mut tables[t];
-                table.subjects.push(s.subject);
+                let (subjects, cols) = &mut filling[t];
+                subjects.push(s.subject.0);
                 let mut j = 0;
-                for col in &mut table.columns {
-                    while j < s.rows.len() && s.rows[j].0 < col.predicate { j += 1 }
-                    while j < s.rows.len() && s.rows[j].0 == col.predicate { col.values.push(s.rows[j].1); j += 1 }
+                for (col, &p) in cols.iter_mut().zip(&chosen[t].1) {
+                    while j < s.rows.len() && s.rows[j].0 < p { j += 1 }
+                    while j < s.rows.len() && s.rows[j].0 == p { col.values.push(s.rows[j].1.0); j += 1 }
                     col.offsets.push(col.values.len() as u64);
                 }
             })?;
         }
-        // A column in which every subject has exactly one value needs no offsets: drop them (8 bytes per subject).
-        for table in &mut tables {
-            for col in &mut table.columns {
-                if col.values.len() == table.subjects.len() && col.offsets.windows(2).all(|w| w[1] - w[0] == 1) {
-                    col.offsets = Vec::new();
-                }
-            }
-        }
-        let mut by_predicate: HashMap<TermId, Vec<TableId>> = HashMap::new();
-        for (t, table) in tables.iter_mut().enumerate() {
-            let (first, last) = (table.subjects.first().map_or(0, |s| s.0), table.subjects.last().map_or(0, |s| s.0));
-            table.first = first;
+        let mut tables: Vec<Table> = Vec::with_capacity(filling.len());
+        for ((subjects, cols), (_, preds)) in filling.into_iter().zip(&chosen) {
+            let n = subjects.len();
+            let (first, last) = (subjects.first().copied().unwrap_or(0), subjects.last().copied().unwrap_or(0));
             // IDs carry a kind tag in their top bits, so a table mixing IRIs and blank nodes spans ~2^60: only
             // allocate the bitset when it costs at most one word per subject (64 bits), else binary-search.
             let words = (last - first) / 64 + 1;
-            if words <= (table.subjects.len() as u64).max(1024) {
+            let bits = (words <= (n as u64).max(1024)).then(|| {
                 let mut bits = vec![0u64; words as usize];
-                for s in &table.subjects { let k = s.0 - first; bits[(k / 64) as usize] |= 1 << (k % 64) }
-                table.bits = Some(bits);
-            }
-            table.meta = TableMeta {
-                subjects: table.subjects.len() as u64,
-                columns: table.columns.iter().map(|c| ColumnMeta {
-                    predicate: c.predicate,
-                    non_null: if c.dense() { c.values.len() as u64 } else { c.offsets.windows(2).filter(|w| w[1] > w[0]).count() as u64 },
-                    values: c.values.len() as u64,
-                    bytes: (c.offsets.len() * 8 + c.values.len() * 8) as u64,
-                }).collect(),
-                subject_bytes: (table.subjects.len() * 8 + table.bits.as_ref().map_or(0, Vec::len) * 8) as u64,
-            };
+                for s in &subjects { let k = s - first; bits[(k / 64) as usize] |= 1 << (k % 64) }
+                bits
+            });
+            let mut metas = Vec::with_capacity(cols.len());
+            let columns = cols.into_iter().zip(preds).map(|(c, &p)| {
+                let non_null = c.offsets.windows(2).filter(|w| w[1] > w[0]).count() as u64;
+                // every subject exactly one value: no offsets
+                let dense = c.values.len() == n && c.offsets.windows(2).all(|w| w[1] - w[0] == 1);
+                let col = Column { predicate: p, offsets: (!dense).then(|| PackedIds::from_slice(&c.offsets)), values: PackedIds::from_slice(&c.values) };
+                metas.push(ColumnMeta { predicate: p, non_null, values: c.values.len() as u64, bytes: col.bytes() });
+                col
+            }).collect();
+            let subjects = PackedIds::from_slice(&subjects);
+            let meta = TableMeta { subjects: n as u64, columns: metas, subject_bytes: subjects.bytes() + bits.as_ref().map_or(0, Vec::len) as u64 * 8 };
+            tables.push(Table { meta, subjects, columns, first, bits });
+        }
+        let mut by_predicate: HashMap<TermId, Vec<TableId>> = HashMap::new();
+        for (t, table) in tables.iter().enumerate() {
             for c in &table.columns { by_predicate.entry(c.predicate).or_default().push(t as TableId) }
         }
         let mut in_tables: HashMap<TermId, u64> = HashMap::new();
@@ -218,7 +222,10 @@ impl TableCatalog for WideTables {
                 let Some(k) = subject.0.checked_sub(t.first) else { return false };
                 bits.get((k / 64) as usize).is_some_and(|w| w >> (k % 64) & 1 == 1)
             }
-            None => t.subjects.binary_search(&subject).is_ok(),
+            None => {
+                let i = t.subjects.partition_point(subject.0);
+                i < t.subjects.len() && t.subjects.get(i) == subject.0
+            }
         }
     }
 
@@ -251,14 +258,14 @@ impl Scan<'_> {
         self.counters.bytes_read += 8;
         for (c, col) in self.columns.iter().enumerate() {
             let (a, b) = col.span(i);
-            let vals = &col.values[a..b];
-            self.counters.values_read += vals.len() as u64;
-            self.counters.bytes_read += 8 + 8 * vals.len() as u64;
+            self.counters.values_read += (b - a) as u64;
+            self.counters.bytes_read += 8 + 8 * (b - a) as u64;
             let picked = &mut self.picked[c];
             picked.clear();
+            let vals = (a..b).map(|k| col.value(k));
             match self.ranges[c] {
-                Some((lo, hi)) => picked.extend(vals.iter().copied().filter(|v| *v >= lo && *v < hi)),
-                None => picked.extend_from_slice(vals),
+                Some((lo, hi)) => picked.extend(vals.filter(|v| *v >= lo && *v < hi)),
+                None => picked.extend(vals),
             }
             if picked.is_empty() { return false }
         }
@@ -287,7 +294,7 @@ impl TableScan for Scan<'_> {
                         self.counters.values_read += k as u64;
                         self.counters.bytes_read += 8 + 16 * k as u64;
                         for (c, col) in self.columns.iter().enumerate() {
-                            let v = col.values[col.span(i).0];
+                            let v = col.value(col.span(i).0);
                             if let Some((lo, hi)) = self.ranges[c] && !(v >= lo && v < hi) {
                                 // undo the values pushed for this subject's earlier columns
                                 for done in &mut out.values[..c] { done.pop(); }
@@ -295,7 +302,7 @@ impl TableScan for Scan<'_> {
                             }
                             out.values[c].push(v);
                         }
-                        out.subjects.push(self.table.subjects[i]);
+                        out.subjects.push(TermId(self.table.subjects.get(i)));
                         self.counters.rows_emitted += 1;
                         continue;
                     }
@@ -303,7 +310,7 @@ impl TableScan for Scan<'_> {
                     (i, vec![0usize; k])
                 }
             };
-            let subject = self.table.subjects[i];
+            let subject = TermId(self.table.subjects.get(i));
             loop {
                 out.subjects.push(subject);
                 for (c, &k) in idx.iter().enumerate() { out.values[c].push(self.picked[c][k]) }
@@ -343,16 +350,18 @@ impl Scan<'_> {
             self.counters.bytes_read += (hi - lo) as u64 * (8 + 16 * k as u64);
             sel.clear();
             sel.extend(0..(hi - lo) as u32);
+            // batches start at multiples of TABLE_BATCH_ROWS, which is the packing block, so batch = block
+            let blk = lo / BLOCK;
             for (c, col) in self.columns.iter().enumerate() {
                 let Some((a, b)) = self.ranges[c] else { continue };
-                let vals = &col.values[lo..hi];
-                sel.retain(|&r| { let v = vals[r as usize]; v >= a && v < b });
+                col.values.select_in_range(blk, a.0, b.0, &mut sel);
+                if sel.is_empty() { break }
             }
             self.counters.values_read += (hi - lo) as u64 * k as u64;
             if sel.is_empty() { continue }
             let out = TableBatch {
-                subjects: sel.iter().map(|&r| self.table.subjects[lo + r as usize]).collect(),
-                values: self.columns.iter().map(|col| sel.iter().map(|&r| col.values[lo + r as usize]).collect()).collect(),
+                subjects: sel.iter().map(|&r| TermId(self.table.subjects.get(lo + r as usize))).collect(),
+                values: self.columns.iter().map(|col| sel.iter().map(|&r| col.value(lo + r as usize)).collect()).collect(),
             };
             self.counters.rows_emitted += out.len() as u64;
             return Some(Ok(out));
@@ -561,7 +570,7 @@ mod tests {
             let c = scan.counters();
             let n = wide.meta(t).subjects;
             assert_eq!((c.subjects_scanned, c.values_read, c.rows_emitted), (n, if is_dense { 2 * n } else { c.values_read }, got.len() as u64));
-            if is_dense { assert_eq!(wide.meta(t).columns.iter().map(|c| c.bytes).sum::<u64>(), 2 * n * 8, "no offsets") }
+            if is_dense { assert!(wide.meta(t).columns.iter().map(|c| c.bytes).sum::<u64>() < 2 * n * 8, "packed, no offsets") }
         }
     }
 
