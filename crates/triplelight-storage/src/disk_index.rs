@@ -348,7 +348,8 @@ where
     pub fn seek_value(&mut self, prefix: &[TermId], target: TermId) -> io::Result<Option<TermId>> { self.index.seek_value_from(&mut self.hint, prefix, target) }
 }
 /// Block-directory searches by kind (`TRIPLELIGHT_TRACE_BLOCK_CACHE`): the hinted block was the answer, a galloping
-/// search forward from it, a binary search of the whole directory. Process-wide; logging only.
+/// search forward from it, a binary search of the whole directory. Process-wide and reset by whoever takes them, so a
+/// per-request reading is exact only when one request runs at a time (as the cache counters); logging only.
 static PROBE_SEARCHES: [AtomicU64; 3] = [const { AtomicU64::new(0) }; 3];
 const PROBE_SAME_BLOCK: usize = 0;
 const PROBE_GALLOP: usize = 1;
@@ -1066,7 +1067,7 @@ mod tests {
             std::fs::remove_file(&path).unwrap();
         }
     }
-    /// A cursor answers every count and seek exactly as the stateless `range` / `seek_value` do, for probe sequences
+    /// A cursor answers every count and seek as a sorted-row model does (and as the stateless `range`), for probe sequences
     /// that mostly ascend (landing in the same block, galloping ahead across many blocks) and sometimes jump back.
     #[test]
     fn a_cursor_answers_like_the_stateless_searches() {
@@ -1080,10 +1081,15 @@ mod tests {
         }
         assert!(rows.len() > 20 * BLOCK_ROWS as usize, "spans many blocks: {}", rows.len());
         let mut bytes = Vec::new();
-        write_index(&mut bytes, rows.into_iter()).unwrap();
+        write_index(&mut bytes, rows.clone().into_iter()).unwrap();
         std::fs::write(&path, &bytes).unwrap();
         let index = DiskIndex::<3>::open(&path).unwrap();
         let mut cursor = index.cursor();
+        // An oracle independent of the block search: the sorted rows themselves.
+        let model_count = |prefix: &[TermId]| rows.iter().filter(|r| r[..prefix.len()] == *prefix).count() as u64;
+        let model_seek = |prefix: &[TermId], target: TermId| {
+            rows.iter().filter(|r| r[..prefix.len()] == *prefix && r[prefix.len()] >= target).map(|r| r[prefix.len()]).min()
+        };
         let mut state = 0x9e37_79b9_7f4a_7c15u64;
         let mut next = |m: u64| { state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407); (state >> 33) % m };
         let (mut p, mut s) = (1u64, 0u64);
@@ -1097,11 +1103,12 @@ mod tests {
             let (pid, sid) = (TermId(p), TermId(s));
             for prefix in [vec![pid], vec![pid, sid], vec![pid, sid, TermId(1 + next(4))]] {
                 let want = index.range(&prefix).unwrap();
+                assert_eq!(want.end - want.start, model_count(&prefix), "stateless count {prefix:?}");
                 assert_eq!(cursor.count(&prefix).unwrap(), want.end - want.start, "count {prefix:?}");
             }
-            assert_eq!(cursor.seek_value(&[pid], sid).unwrap(), index.seek_value(&[pid], sid).unwrap(), "seek {p} {s}");
+            assert_eq!(cursor.seek_value(&[pid], sid).unwrap(), model_seek(&[pid], sid), "seek {p} {s}");
             let target = TermId(next(6));
-            assert_eq!(cursor.seek_value(&[pid, sid], target).unwrap(), index.seek_value(&[pid, sid], target).unwrap(), "seek {p} {s} {target:?}");
+            assert_eq!(cursor.seek_value(&[pid, sid], target).unwrap(), model_seek(&[pid, sid], target), "seek {p} {s} {target:?}");
         }
         std::fs::remove_file(&path).unwrap();
     }

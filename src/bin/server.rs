@@ -222,6 +222,7 @@ fn answer<'a, S: triplelight::storage::Snapshot>(snap: &'a S, q: &str, opts: &Op
             let d: Vec<u64> = (0..5).map(|j|after[i][j].saturating_sub(before[i][j])).collect();
             eprintln!("block_cache {name} hits={} misses={} pread_calls={} pread_bytes={} evictions={}",d[0],d[1],d[2],d[3],d[4]);
         }
+        // Process-wide counters, reset at request entry: exact for one request at a time, like the cache lines above.
         let [same, gallop, full] = triplelight::storage::disk_index::take_probe_trace();
         eprintln!("probe_trace same_block={same} gallop={gallop} full={full}");
     }
