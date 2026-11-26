@@ -1186,6 +1186,7 @@ fn spilled_group_by_matches_the_in_memory_answer_and_cleans_up() {
         // flat single-key COUNT(*) and COUNT(?v), first-seen group order
         "SELECT ?k (COUNT(*) AS ?n) WHERE { ?s <http://ex/q> ?k } GROUP BY ?k",
         "SELECT ?k (COUNT(?v) AS ?n) WHERE { ?s <http://ex/q> ?k . ?s <http://ex/p> ?v } GROUP BY ?k",
+        "SELECT ?k (COUNT(?v) AS ?n) WHERE { ?s <http://ex/q> ?k . ?s <http://ex/p> ?v } GROUP BY ?k HAVING (COUNT(?v) > 50) ORDER BY DESC(COUNT(?v)) ?k",
         // fast aggregates, two keys
         "SELECT ?k ?v (SUM(?v) AS ?t) (MIN(?s) AS ?lo) (MAX(?s) AS ?hi) (AVG(?v) AS ?m) WHERE { ?s <http://ex/q> ?k . ?s <http://ex/p> ?v } GROUP BY ?k ?v",
         "SELECT ?k (COUNT(DISTINCT ?v) AS ?d) (SAMPLE(?v) AS ?x) WHERE { ?s <http://ex/q> ?k . ?s <http://ex/p> ?v } GROUP BY ?k",
