@@ -197,6 +197,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             let consider_table = self.force_wide_tables
                 || (self.auto_wide_tables && !ranges.values().any(|range| range.rows == 0));
             let candidate = consider_table.then(|| g.wide_tables()).flatten()
+                // Most BGPs cannot touch any built table. Avoid star recognition and
+                // catalog lookup when none of their fixed predicates is a table column.
+                .filter(|catalog| pats.iter().any(|pattern| match pattern[1] {
+                    Slot::Const(Some(predicate)) => catalog.has_predicate(predicate),
+                    _ => false,
+                }))
                 .and_then(|catalog| {
                     table_plan::recognize_stars(&pats, unbound_start).into_iter().find_map(|star| {
                         // An automatic table can answer only a complete two-pattern star.
