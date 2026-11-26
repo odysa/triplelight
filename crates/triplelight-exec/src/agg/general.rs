@@ -2,7 +2,7 @@
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression};
 use crate::storage::Snapshot;
 use crate::{Ctx, MEMO_CAP, Row, expr, expr_vars, impure};
-use std::collections::HashSet;
+use crate::id_hash::FastSet;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use triplelight_rdf::{Literal, Term};
 
@@ -11,7 +11,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         match agg {
             AggregateExpression::CountSolutions { distinct } => {
                 let n = if *distinct {
-                    rows.iter().collect::<HashSet<_>>().len()
+                    rows.iter().collect::<FastSet<_>>().len()
                 } else {
                     rows.len()
                 };
@@ -71,7 +71,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 let has_error = evaluated.iter().any(Option::is_none);
                 let mut vals: Vec<Term> = evaluated.into_iter().flatten().collect();
                 if *distinct {
-                    let mut s = HashSet::new();
+                    let mut s = FastSet::default();
                     vals.retain(|v| s.insert(v.clone()));
                 }
                 let strict = !matches!(name, AggregateFunction::Count | AggregateFunction::Sample);
@@ -125,7 +125,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
     ) -> Option<Term> {
         let factory = self.functions?.aggregate(iri)?;
         let mut state = self.call_aggregate(|| factory.create())??;
-        let mut seen = HashSet::new();
+        let mut seen = FastSet::default();
         let mut held = self.reserve(0);
         let mut bytes = 0u64;
         for row in rows {

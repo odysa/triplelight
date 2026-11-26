@@ -466,12 +466,12 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// variables, so rows that differ elsewhere (e.g. many offers of one product) share one evaluation.
     /// Keys use a slot id, not the pattern's address: rewrites evaluate temporary patterns whose addresses are
     /// reused, so a slot is only reused when the pattern at that address is structurally the same.
-    exists_memo: RefCell<HashMap<(usize, usize, Vec<TermId>), bool>>,
+    exists_memo: RefCell<id_hash::FastMap<(usize, usize, Vec<TermId>), bool>>,
     exists_vars: RefCell<HashMap<usize, (GraphPattern, usize, Option<Vec<usize>>)>>,
     memo_slots: std::cell::Cell<usize>,
     /// Aggregate argument values memoized per expression and per ID of its single variable: the same term (e.g.
     /// one offer's price) recurs in many groups, and evaluating it means a dictionary decode each time.
-    agg_arg_memo: RefCell<HashMap<(usize, TermId), Option<Term>>>,
+    agg_arg_memo: RefCell<id_hash::FastMap<(usize, TermId), Option<Term>>>,
     agg_arg_slots: RefCell<HashMap<usize, (Expression, usize)>>,
     functions: Option<&'a dyn udf::FunctionLookup>,
     function_memo: Option<RefCell<udf::Memo<'a>>>,
@@ -529,9 +529,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             order_limit: std::cell::Cell::new(None),
             base: base.clone(),
             now,
-            exists_memo: RefCell::new(HashMap::new()),
+            exists_memo: RefCell::new(id_hash::FastMap::default()),
             exists_vars: RefCell::new(HashMap::new()),
-            agg_arg_memo: RefCell::new(HashMap::new()),
+            agg_arg_memo: RefCell::new(id_hash::FastMap::default()),
             agg_arg_slots: RefCell::new(HashMap::new()),
             functions: extensions.functions,
             function_memo: (!extensions.disable_function_memo && extensions.functions.is_some()).then(RefCell::default),
@@ -754,7 +754,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         // Numeric comparisons (a HAVING over aggregate results, #121) on numbers, each distinct ID decoded once; a row
         // the numeric path cannot evaluate takes `ebv`.
         let fast = expr::NumFilter::compile(expr, &self.vars);
-        let mut nums: HashMap<TermId, Option<expr::Num>> = HashMap::new();
+        let mut nums: id_hash::IdMap<Option<expr::Num>> = id_hash::IdMap::default();
         let mut val = |id: TermId| *nums.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
         phase::filter(|| rows.into_iter().filter(|r| match fast.as_ref().map(|f| f.eval(r, &mut val)) {
             Some(Ok(b)) => b == Some(true),
@@ -785,9 +785,9 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         // the result is a number, and only distinct results become terms (`intern_num`). A row the numeric path cannot
         // evaluate (a non-numeric input) takes the general evaluator, so the values are those of `value` either way.
         let fast = expr::NumExpr::compile_value(expression, &self.vars);
-        let mut nums: HashMap<TermId, Option<expr::Num>> = HashMap::new();
+        let mut nums: id_hash::IdMap<Option<expr::Num>> = id_hash::IdMap::default();
         let mut val = |id: TermId| *nums.entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
-        let mut results: HashMap<expr::NumKey, TermId> = HashMap::new();
+        let mut results: id_hash::FastMap<expr::NumKey, TermId> = id_hash::FastMap::default();
         let rows = self.eval(inner, input);
         phase::extend(|| rows.into_iter().filter_map(|mut r| {
             let id = match fast.as_ref().map(|f| f.value(&r, &mut val)) {
@@ -943,7 +943,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
 
     fn group_general(&self, keys: &[Variable], aggs: &[(Variable, AggregateExpression)], kidx: &[usize], rows: Vec<Row>) -> Vec<Row> {
         let mut groups: Vec<(Vec<TermId>, Vec<Row>)> = Vec::new();
-        let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
+        let mut pos: id_hash::FastMap<Vec<TermId>, usize> = id_hash::FastMap::default();
         // The groups hold every row again, plus a key and a table entry per group.
         let mut held = self.reserve(rows.len() as u64 * self.row_bytes());
         for (n, r) in rows.into_iter().enumerate() {
@@ -1251,12 +1251,12 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         // Every row must bind exactly the same P variables (so one key layout describes all of them).
         if rows.iter().any(|r| idx.iter().any(|&i| (r[i] != UNBOUND) != key.contains(&i))) { return None }
         let mut reps: Vec<Row> = Vec::new();
-        let mut seen: HashSet<Vec<TermId>> = HashSet::new();
+        let mut seen: id_hash::FastSet<Vec<TermId>> = id_hash::FastSet::default();
         for r in rows {
             let k: Vec<TermId> = key.iter().map(|&i| r[i]).collect();
             if seen.insert(k) { let mut x = self.empty_row(); for &i in &key { x[i] = r[i] } reps.push(x) }
         }
-        let hits: HashSet<Vec<TermId>> = self.eval(p, reps).iter().map(|r| key.iter().map(|&i| r[i]).collect()).collect();
+        let hits: id_hash::FastSet<Vec<TermId>> = self.eval(p, reps).iter().map(|r| key.iter().map(|&i| r[i]).collect()).collect();
         Some(rows.iter().filter(|r| hits.contains(&key.iter().map(|&i| r[i]).collect::<Vec<_>>()) != neg).cloned().collect())
     }
 

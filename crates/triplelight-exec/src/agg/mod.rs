@@ -19,7 +19,7 @@ use triplelight_rdf::{Literal, Term, Variable};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression};
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use crate::id_hash::{FastMap, FastSet};
 
 #[derive(Clone, Copy)]
 enum Kind { CountAll { distinct: bool }, Count, Sum, Avg, Min, Max, Sample }
@@ -27,7 +27,7 @@ enum Kind { CountAll { distinct: bool }, Count, Sum, Avg, Min, Max, Sample }
 struct Spec { kind: Kind, col: usize, distinct: bool, out: usize }
 
 enum State {
-    CountAll(u64, Option<HashSet<Vec<TermId>>>),
+    CountAll(u64, Option<FastSet<Vec<TermId>>>),
     Count(u64),
     /// Running sum; `None` once a SPARQL error occurred (non-numeric value or integer overflow).
     Sum(Option<Num>, u64),
@@ -61,7 +61,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             return None;
         }
 
-        let mut values = HashMap::new();
+        let mut values = FastMap::default();
         for row in groups.iter().flat_map(|(_, members)| members) {
             let id = row[col];
             if values.len() == super::MEMO_CAP && !values.contains_key(&id) {
@@ -88,7 +88,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
 
     /// GROUP BY one key with one COUNT(*) (`value_col` `None`) or COUNT(?v), over rows given as ID slices.
     fn count_one_key<'r>(&self, rows: impl IntoIterator<Item = &'r [TermId]>, key_col: usize, value_col: Option<usize>, out_col: usize) -> Vec<Row> {
-        let mut positions = HashMap::new();
+        let mut positions = FastMap::default();
         let mut groups: Vec<(TermId, i64)> = Vec::new();
         let bytes_per_group = 64 + 8 + 32;
         let mut held = self.reserve(0);
@@ -107,7 +107,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         }
         Self::resize(&mut held, groups.len() as u64 * bytes_per_group);
         // Counts repeat across groups (most are small), so each distinct count becomes a term once.
-        let mut terms: HashMap<i64, TermId> = HashMap::new();
+        let mut terms: FastMap<i64, TermId> = FastMap::default();
         groups.into_iter().map(|(key, count)| {
             let mut out = self.empty_row();
             out[key_col] = key;
@@ -163,8 +163,8 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             }
             return Some(grouped);
         }
-        let nums: RefCell<HashMap<TermId, Option<Num>>> = RefCell::new(HashMap::new());
-        let terms: RefCell<HashMap<TermId, Term>> = RefCell::new(HashMap::new());
+        let nums: RefCell<FastMap<TermId, Option<Num>>> = RefCell::new(FastMap::default());
+        let terms: RefCell<FastMap<TermId, Term>> = RefCell::new(FastMap::default());
         let num = |id: TermId| *nums.borrow_mut().entry(id).or_insert_with(|| expr::term_num(&self.resolve(id)));
         let cmp = |a: TermId, b: TermId| -> Ordering {
             let mut t = terms.borrow_mut();
@@ -174,15 +174,15 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         };
         let fresh = || -> Vec<State> {
             specs.iter().map(|s| match s.kind {
-                Kind::CountAll { distinct } => State::CountAll(0, distinct.then(HashSet::new)),
+                Kind::CountAll { distinct } => State::CountAll(0, distinct.then(FastSet::default)),
                 Kind::Count => State::Count(0),
                 Kind::Sum | Kind::Avg => State::Sum(Some(Num::Int(0)), 0),
                 Kind::Min | Kind::Max | Kind::Sample => State::Best(None),
             }).collect()
         };
         // Per group and aggregate: the distinct values already folded (only for DISTINCT aggregates over a variable).
-        let mut groups: Vec<(Vec<TermId>, Vec<State>, Vec<Option<HashSet<TermId>>>)> = Vec::new();
-        let mut pos: HashMap<Vec<TermId>, usize> = HashMap::new();
+        let mut groups: Vec<(Vec<TermId>, Vec<State>, Vec<Option<FastSet<TermId>>>)> = Vec::new();
+        let mut pos: FastMap<Vec<TermId>, usize> = FastMap::default();
         let mut key: Vec<TermId> = Vec::with_capacity(kidx.len());
         // MIN/MAX per (group, aggregate) that met an error.
         let mut poisoned: Vec<bool> = Vec::new();
@@ -195,7 +195,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 Some(&g) => g,
                 None => {
                     pos.insert(key.clone(), groups.len());
-                    let seen = specs.iter().map(|s| (s.distinct && !matches!(s.kind, Kind::CountAll { .. })).then(HashSet::new)).collect();
+                    let seen = specs.iter().map(|s| (s.distinct && !matches!(s.kind, Kind::CountAll { .. })).then(FastSet::default)).collect();
                     groups.push((key.clone(), fresh(), seen));
                     // A key, its aggregate states and a table entry per group, charged every 4096 groups.
                     if groups.len().is_multiple_of(4096) { Self::resize(&mut held, groups.len() as u64 * (64 + 8 * kidx.len() as u64 + 32 * specs.len() as u64)) }

@@ -268,7 +268,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         if rows.chunks_exact(w).any(|r| r[*v] == UNBOUND) { return None }
         let total = self.count(perm, &prefix[..2]);
         if total > n_rows as u64 || total > 1 << 24 { return None }
-        let mut set: HashSet<TermId> = HashSet::with_capacity(total as usize);
+        let mut set: crate::id_hash::FastSet<TermId> = crate::id_hash::fast_set(total as usize);
         for b in self.snap.scan(perm, &prefix[..2]) {
             let b = b.unwrap_or_else(|e| storage_failure(e));
             set.extend(b.cols[2].iter().copied());
@@ -312,9 +312,9 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         // entries, so the 2^24 cap of the whole-range table does not apply.
         let semi = !whole && self.ranges.is_some() && total <= PROBE_ROWS * n_rows as u64 && total <= u64::from(u32::MAX);
         if !whole && !semi { return None }
-        let keys: Option<HashSet<TermId>> = semi.then(|| rows.chunks_exact(w).map(|r| r[kv]).collect());
+        let keys: Option<crate::id_hash::FastSet<TermId>> = semi.then(|| rows.chunks_exact(w).map(|r| r[kv]).collect());
         let mut vals: Vec<TermId> = Vec::with_capacity(if semi { n_rows } else { total as usize });
-        let mut index: HashMap<TermId, (u32, u32)> = HashMap::new();
+        let mut index: crate::id_hash::IdMap<(u32, u32)> = crate::id_hash::IdMap::default();
         for b in self.snap.scan(perm, &[c]) {
             let b = b.unwrap_or_else(|e| storage_failure(e));
             for i in 0..b.len() {
