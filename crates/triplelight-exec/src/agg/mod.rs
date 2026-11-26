@@ -138,12 +138,29 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 _ => return None,
             });
         }
-        if let ([key_col], [Spec { kind, col, distinct: false, out }]) = (kidx, specs.as_slice()) {
-            match kind {
-                Kind::CountAll { distinct: false } => return Some(self.count_one_key(rows.iter().map(Vec::as_slice), *key_col, None, *out)),
-                Kind::Count => return Some(self.count_one_key(rows.iter().map(Vec::as_slice), *key_col, Some(*col), *out)),
-                _ => {}
+        if let ([key_col], [Spec { kind, col, distinct: false, out }, aliases @ ..]) =
+            (kidx, specs.as_slice())
+            && aggs[1..].iter().all(|(_, aggregate)| aggregate == &aggs[0].1)
+            && let Some(value_col) = match kind {
+                Kind::CountAll { distinct: false } => Some(None),
+                Kind::Count => Some(Some(*col)),
+                _ => None,
             }
+        {
+            let mut grouped = self.count_one_key(
+                rows.iter().map(Vec::as_slice), *key_col, value_col, *out,
+            );
+            // The input rows and output slots stay intact when HAVING reuses the projected COUNT.
+            if !aliases.is_empty() {
+                for (i, row) in grouped.iter_mut().enumerate() {
+                    if i.is_multiple_of(4096) { self.check() }
+                    let count = row[*out];
+                    for alias in aliases {
+                        row[alias.out] = count;
+                    }
+                }
+            }
+            return Some(grouped);
         }
         let nums: RefCell<HashMap<TermId, Option<Num>>> = RefCell::new(HashMap::new());
         let terms: RefCell<HashMap<TermId, Term>> = RefCell::new(HashMap::new());
