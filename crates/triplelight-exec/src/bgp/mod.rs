@@ -10,6 +10,71 @@ use crate::model::{Perm, TermId, TripleBatch};
 use crate::storage::Snapshot;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
+use triplelight_sparql::algebra::{GraphPattern, OrderExpression, TriplePattern};
+
+/// Identify output-only leaves of a SELECT over one filtered BGP.
+pub(super) struct ProjectedBgp {
+    patterns: usize,
+    outputs: Vec<String>,
+}
+
+impl ProjectedBgp {
+    pub(super) fn from_select(mut pattern: &GraphPattern) -> Option<Self> {
+        let mut outputs = Vec::new();
+        loop {
+            pattern = match pattern {
+                GraphPattern::Project { inner, variables } => {
+                    outputs.extend(variables.iter().map(|v| v.as_str().to_owned()));
+                    inner
+                }
+                GraphPattern::OrderBy { inner, expression } => {
+                    for key in expression {
+                        let (OrderExpression::Asc(e) | OrderExpression::Desc(e)) = key;
+                        if super::impure(e) {
+                            return None;
+                        }
+                        super::walk_expr(e, &mut outputs);
+                    }
+                    inner
+                }
+                GraphPattern::Distinct { inner } => inner,
+                // SPARQL leaves the order of tied solutions unspecified. This rule may
+                // change which tied rows survive a slice with ORDER BY.
+                GraphPattern::Slice { inner, .. }
+                    if matches!(super::range::slice_input(inner), GraphPattern::OrderBy { .. }) => inner,
+                GraphPattern::Filter { inner, expr } => {
+                    let GraphPattern::Bgp { patterns } = inner.as_ref() else { return None };
+                    if patterns.len() < 2 || super::impure(expr) {
+                        return None;
+                    }
+                    #[cfg(feature = "rdf-12")]
+                    if patterns.iter().any(super::triple_term::has_triple_term) {
+                        return None;
+                    }
+                    let filter_vars = super::expr_vars(expr);
+                    outputs.retain(|v| !filter_vars.contains(v));
+                    return (!outputs.is_empty()).then_some(Self { patterns: patterns.as_ptr() as usize, outputs });
+                }
+                // Other consumers, including aggregates and unordered slices, keep their order.
+                _ => return None,
+            };
+        }
+    }
+
+    pub(super) fn matches(&self, patterns: &[TriplePattern]) -> bool {
+        patterns.as_ptr() as usize == self.patterns
+    }
+
+    pub(super) fn leaves(&self, patterns: &[[Slot; 3]], lookup: impl Fn(&str) -> Option<usize>) -> Vec<usize> {
+        patterns.iter().enumerate().filter_map(|(i, p)| {
+            let [Slot::Var(_), Slot::Const(Some(_)), Slot::Var(object)] = *p else { return None };
+            let output = self.outputs.iter().any(|name| lookup(name) == Some(object));
+            let sole_occurrence = || patterns.iter().flatten()
+                .filter(|slot| matches!(slot, Slot::Var(v) if *v == object)).take(2).count() == 1;
+            (output && sole_occurrence()).then_some(i)
+        }).collect()
+    }
+}
 
 /// Rows per parallel work unit.
 const MORSEL: usize = 1024;
@@ -88,15 +153,22 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// Greedy order with exact index counts, evaluated by index nested-loop joins.
     /// `post` runs after every join step with the set of variables bound so far (used to apply filters as early as
     /// their variables are bound).
-    pub fn eval_greedy(&self, pats: &[[Slot; 3]], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>), mut trace: Option<&mut Trace>) -> Vec<TermId> {
+    pub fn eval_greedy(&self, pats: &[[Slot; 3]], leaves: &[usize], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>), mut trace: Option<&mut Trace>) -> Vec<TermId> {
         let w = self.w;
         if rows.is_empty() { return rows }
         let mut remaining: Vec<usize> = (0..pats.len()).collect();
         let mut bound = self.bound_in_every_row(&rows);
         while !remaining.is_empty() && !rows.is_empty() {
             let sample = rows[..w].to_vec();
-            let (k, _) = remaining.iter().enumerate().map(|(k, &pi)| (k, self.estimate(&pats[pi], &bound, &sample)))
-                .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap()).unwrap();
+            let is_bound_leaf = |pi: usize| {
+                leaves.contains(&pi) && matches!(pats[pi][0], Slot::Var(v) if bound.contains(&v))
+            };
+            // A bound output-only leaf unlocks neither a filter nor another join. On
+            // equal estimated fanout, let the other pattern reduce the input first.
+            let (k, _, _) = remaining.iter().enumerate()
+                .map(|(k, &pi)| (k, pi, self.estimate(&pats[pi], &bound, &sample)))
+                .min_by(|a, b| a.2.partial_cmp(&b.2).unwrap()
+                    .then_with(|| is_bound_leaf(a.1).cmp(&is_bound_leaf(b.1)))).unwrap();
             let pi = remaining.remove(k);
             rows = self.join_step(&pats[pi], pi, &rows, &mut bound, post, trace.as_deref_mut());
         }

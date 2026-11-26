@@ -460,6 +460,7 @@ pub(crate) struct Ctx<'a, S: Snapshot + ?Sized> {
     /// BGPs (by the address of their pattern list in the query) whose solution order cannot change the answers:
     /// the only ones range pushdown may reorder (`range::reorderable_bgps`).
     range_reorderable: HashSet<usize>,
+    projected_bgp: Option<bgp::ProjectedBgp>,
     /// LIMIT (+OFFSET) of a Slice directly above the next ORDER BY (through at most a Project): lets ORDER BY keep
     /// only the first `k` rows (stable top-k) instead of sorting everything. Taken by that ORDER BY.
     order_limit: std::cell::Cell<Option<usize>>,
@@ -533,6 +534,10 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
             csr: RefCell::new(path::CsrCache::new(opts.csr_paths, csr_limits)),
             range_checks: RefCell::new(HashMap::new()),
             range_reorderable,
+            projected_bgp: match query {
+                Query::Select { .. } if spec.is_none() => bgp::ProjectedBgp::from_select(pattern),
+                _ => None,
+            },
             order_limit: std::cell::Cell::new(None),
             base: base.clone(),
             now,

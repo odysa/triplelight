@@ -45,6 +45,48 @@ fn filter_optional_order_limit() {
 }
 
 #[test]
+fn output_leaf_follows_a_filter_at_equal_cost() {
+    let data = r#"
+<urn:a> <urn:kind> <urn:anchor> .
+<urn:a> <urn:label> "A" .
+<urn:a> <urn:label> "B" .
+<urn:a> <urn:n> "1"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:a> <urn:n> "2"^^<http://www.w3.org/2001/XMLSchema#integer> .
+<urn:missing> <urn:kind> <urn:other> .
+<urn:missing> <urn:n> "3"^^<http://www.w3.org/2001/XMLSchema#integer> .
+"#;
+    let snapshot = MemorySnapshot::from_ntriples(data.as_bytes()).unwrap();
+    let options = triplelight::exec::Options { range_pushdown: false, ..Default::default() };
+    let body = "?s <urn:label> ?label . ?s <urn:kind> <urn:anchor> . ?s <urn:n> ?n . FILTER(?n > 1)";
+    let select = format!("SELECT ?label WHERE {{ {body} }}");
+    let explain = |q: &str| triplelight::exec::plan_trace::explain(&snapshot, q, &options).unwrap();
+    let ordered = format!("{select} ORDER BY ?n");
+    let trace = explain(&format!("{ordered} LIMIT 1"));
+    assert!(trace.contains("order=1,2,0"), "{trace}");
+    let unordered_trace = explain(&format!("{select} LIMIT 1"));
+    assert!(unordered_trace.contains("order=1,0,2"), "{unordered_trace}");
+    let group_trace = explain(&format!("SELECT (GROUP_CONCAT(?label) AS ?labels) WHERE {{ {body} }}"));
+    assert!(group_trace.contains("order=1,0,2"), "{group_trace}");
+
+    let labels = |q: &str| {
+        let QueryResult::Solutions { rows, .. } =
+            triplelight::exec::query_with(&snapshot, q, &options).unwrap() else { panic!("expected solutions") };
+        rows.into_iter().map(|row| row[0].as_ref().unwrap().to_string()).collect::<Vec<_>>()
+    };
+    let mut full = labels(&ordered);
+    full.sort();
+    assert_eq!(full, ["\"A\"", "\"B\""]);
+    let tied = labels(&format!("{ordered} LIMIT 1"));
+    assert_eq!(tied.len(), 1);
+    assert!(full.contains(&tied[0]));
+
+    let including_missing = ordered.replace("<urn:anchor>", "?kind");
+    let mut full_with_missing = labels(&including_missing);
+    full_with_missing.sort();
+    assert_eq!(full_with_missing, full);
+}
+
+#[test]
 fn mixed_numeric_order_matches_the_top_k_prefix() {
     let q = r#"
         PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
