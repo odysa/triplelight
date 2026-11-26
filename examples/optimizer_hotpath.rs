@@ -33,6 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         range_pushdown: true,
                         char_pairs: true,
                         sorted_probe: true,
+                        force_wide_tables: false,
                         csr_paths: true,
                         entailment: Default::default(),
                         interrupt: None,

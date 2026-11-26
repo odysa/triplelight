@@ -175,9 +175,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 interrupt: self.interrupt,
                 budget: self.budget,
             };
-            let wide = std::env::var_os("TRIPLELIGHT_FORCE_WIDE").is_some()
-                && std::env::var_os("TRIPLELIGHT_DISABLE_WIDE").is_none();
-            let star = wide
+            let star = self.force_wide_tables
                 .then(|| table_plan::recognize_star(&pats, unbound_start))
                 .flatten();
             let tables = star

@@ -1,5 +1,4 @@
-//! A separate test binary so its diagnostic environment switch cannot affect
-//! other query tests running in parallel.
+//! Differential bag check for the optional wide-table BGP access path.
 use triplelight::exec::{Options, QueryResult, query_with};
 use triplelight::storage::MemorySnapshot;
 use triplelight::storage::wide_tables::{BuildOptions, WithTables};
@@ -42,10 +41,8 @@ fn forced_table_union_and_residual_equal_plain_bgp_as_bags() {
     assert_eq!(wide.tables.len(), 2);
     let query = "SELECT ?s ?p ?q WHERE { ?s <urn:p> ?p . ?s <urn:q> ?q }";
     let expected = bag(query_with(&plain, query, &Options::default()).unwrap());
-    // SAFETY: this file is one test binary with one test; no concurrent queries.
-    unsafe { std::env::set_var("TRIPLELIGHT_FORCE_WIDE", "1") };
     let (result, trace) = triplelight::exec::plan_trace::capture(|| {
-        query_with(&wide, query, &Options::default()).unwrap()
+        query_with(&wide, query, &Options { force_wide_tables: true, ..Options::default() }).unwrap()
     });
     assert!(
         trace

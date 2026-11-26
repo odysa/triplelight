@@ -60,7 +60,7 @@ fn union_distinct_group_ask() {
 #[test]
 fn leapfrog_matches_bind_join() {
     let q = "SELECT ?a ?b ?c WHERE { ?a <http://ex/knows> ?b . ?b <http://ex/knows> ?c . ?c <http://ex/knows> ?a }";
-    let run = |wcoj| match triplelight::exec::query_with(&store(), q, &triplelight::exec::Options { stats: None, wcoj, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, csr_paths: true, entailment: Default::default(), interrupt: None, memory_budget: None }).unwrap() {
+    let run = |wcoj| match triplelight::exec::query_with(&store(), q, &triplelight::exec::Options { stats: None, wcoj, raw_ids: false, general_group: false, count_pushdown: true, range_pushdown: true, char_pairs: true, sorted_probe: true, force_wide_tables: false, csr_paths: true, entailment: Default::default(), interrupt: None, memory_budget: None }).unwrap() {
         QueryResult::Solutions { rows, .. } => { let mut v: Vec<String> = rows.iter().map(|r| format!("{r:?}")).collect(); v.sort(); v }
         _ => unreachable!(),
     };
