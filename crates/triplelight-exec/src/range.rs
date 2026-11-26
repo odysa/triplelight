@@ -56,7 +56,7 @@
 //! ORDER BY it slices is provably tie-free (`tie_free`).
 use super::pattern::Slot;
 use super::{storage_failure, Ctx, UNBOUND};
-use super::expr::{self, Num};
+use super::expr;
 use crate::model::{id_tag, Perm, TermId};
 use crate::sparql::{AggregateExpression, AggregateFunction, Expression, GraphPattern};
 use crate::storage::Snapshot;
@@ -64,6 +64,7 @@ use triplelight_rdf::vocab::xsd;
 use triplelight_rdf::{Literal, NamedNode, TermRef};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use rust_decimal::Decimal;
 
 /// Distinct stored-literal objects of one predicate decoded for the canonical-form check; above this the pushdown is
 /// off for that predicate.
@@ -102,9 +103,7 @@ fn canonical_date(v: &str) -> bool {
 fn ordered_constant(l: &Literal) -> Option<&'static str> {
     let dt = xsd::DATE.as_str();
     if l.datatype().as_str() == dt && canonical(dt, l.value()) { return Some(dt) }
-    expr::num_literal(l.datatype().as_str(), l.value())
-        .filter(|n| n.rank() <= 1)
-        .map(|_| NUMERIC_MARKER)
+    expr::range_decimal(l.as_ref()).map(|_| NUMERIC_MARKER)
 }
 
 /// Adds to `out` the BGPs of `p` (by the address of their pattern list) whose solution order cannot change the
@@ -246,7 +245,7 @@ struct Bound {
     side: Side,
     datatype: &'static str,
     text: String,
-    numeric: Option<Num>,
+    numeric: Option<Decimal>,
 }
 
 impl<S: Snapshot + ?Sized> Ctx<'_, S> {
@@ -274,7 +273,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         };
         let datatype = ordered_constant(l)?;
         let col = *self.vars.get(v.as_str())?;
-        let numeric = (datatype == NUMERIC_MARKER).then(|| expr::num_literal(l.datatype().as_str(), l.value())).flatten();
+        let numeric = (datatype == NUMERIC_MARKER).then(|| expr::range_decimal(l.as_ref())).flatten();
         Some((col, Bound { side, datatype, text: triplelight_rdf::Term::from(l.clone()).to_string(), numeric }))
     }
 
@@ -399,8 +398,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             let mut cmp = None;
             self.snap.with_term(ids[mid], &mut |t| {
                 if let TermRef::Literal(l) = t {
-                    cmp = expr::num_literal(l.datatype().as_str(), l.value())
-                        .and_then(|n| expr::num_cmp(n, bound.numeric.unwrap()));
+                    cmp = expr::range_decimal(l).map(|n| n.cmp(&bound.numeric.unwrap()));
                 }
             }).unwrap_or_else(|e| storage_failure(e));
             let cmp = cmp.expect("memoized numeric object must compare with integer/decimal bound");
@@ -451,8 +449,8 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
             self.snap.with_terms(&ids, &mut |position, t| {
                 let TermRef::Literal(l) = t else { return };
                 if datatype == NUMERIC_MARKER {
-                    if !expr::numeric_datatype(l.datatype().as_str()) { return }
-                    let Some(n) = expr::num_literal(l.datatype().as_str(), l.value()) else { return };
+                    if l.datatype() == xsd::FLOAT || l.datatype() == xsd::DOUBLE { ok = false; return }
+                    let Some(n) = expr::range_decimal(l) else { return };
                     numeric.as_mut().unwrap()[position] = Some(n);
                 } else if l.datatype().as_str() == datatype && !canonical(datatype, l.value()) { ok = false }
             }).unwrap_or_else(|e| storage_failure(e));
@@ -461,7 +459,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 let mut numeric_ids = Vec::new();
                 for (id, n) in ids.into_iter().zip(numeric) {
                     let Some(n) = n else { continue };
-                    if n.rank() > 1 || previous.is_some_and(|prev| !expr::num_cmp(prev, n).is_some_and(|order| order.is_le())) {
+                    if previous.is_some_and(|prev: Decimal| prev > n) {
                         ok = false;
                         break;
                     }
