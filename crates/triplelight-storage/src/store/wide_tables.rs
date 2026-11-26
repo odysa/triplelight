@@ -279,6 +279,12 @@ impl WideTables {
             let packed = PackedIds::read(&mut input)?;
             // `member` and `partition_point` need ascending subjects.
             if packed.len() as u64 != subjects || (1..packed.len()).any(|i| packed.get(i - 1) >= packed.get(i)) { return Err(bad("subjects")) }
+            // The membership bitset, when present, has exactly the subjects' bits set.
+            if let Some(bits) = &bits {
+                let set: u64 = bits.iter().map(|w| u64::from(w.count_ones())).sum();
+                let each = (0..packed.len()).all(|i| packed.get(i).checked_sub(first).is_some_and(|k| bits.get((k / 64) as usize).is_some_and(|w| w >> (k % 64) & 1 == 1)));
+                if set != subjects || !each { return Err(bad("membership bitset")) }
+            }
             let mut cols = Vec::with_capacity(meta.columns.len());
             for m in &meta.columns {
                 let predicate = TermId(take_u64(&mut input)?);
@@ -546,8 +552,10 @@ pub enum Rebuild {
 impl WithTables<crate::DiskSnapshot> {
     /// A disk base with its tables: read from its `tables.v1` when that file was written for this base (its manifest
     /// identity), these build options and this `rdf:type` ID, else built and written there (temp file, fsync,
-    /// rename, directory fsync). Only a failure to read the base itself is an error.
-    pub fn open(inner: crate::DiskSnapshot, options: BuildOptions) -> Result<(Self, TablesSource), StorageError> {
+    /// rename, directory fsync). Only a failure to read the base itself is an error. With `persist` false (a store
+    /// opened read-only, which promises never to write to its directory) built tables are never written, and are
+    /// reported as `BuiltUnsaved`.
+    pub fn open(inner: crate::DiskSnapshot, options: BuildOptions, persist: bool) -> Result<(Self, TablesSource), StorageError> {
         use crate::Dictionary;
         let rdf_type = inner.lookup(&triplelight_rdf::Term::from(
             triplelight_rdf::NamedNode::new("http://www.w3.org/1999/02/22-rdf-syntax-ns#type").expect("valid IRI")))?;
@@ -562,6 +570,7 @@ impl WithTables<crate::DiskSnapshot> {
             Err(_) => Rebuild::Damaged,
         };
         let tables = WideTables::build(&inner, rdf_type, options)?;
+        if !persist { return Ok((WithTables { inner, tables }, TablesSource::BuiltUnsaved { reason })) }
         let source = match write_atomically(&dir, &tables.encode(base, options, rdf_type)) {
             Ok(()) => TablesSource::Built { reason },
             Err(_) => TablesSource::BuiltUnsaved { reason },
@@ -573,6 +582,10 @@ impl WithTables<crate::DiskSnapshot> {
 /// Writes `bytes` as `dir/tables.v1`: a temporary file, fsynced, renamed over it, then the directory fsynced.
 fn write_atomically(dir: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
+    // A crash between create and rename leaves a temporary file: remove any before writing a new one.
+    for entry in std::fs::read_dir(dir)?.flatten() {
+        if entry.file_name().to_string_lossy().starts_with(&format!(".{TABLE_FILE}.tmp-")) { let _ = std::fs::remove_file(entry.path()); }
+    }
     let tmp = dir.join(format!(".{TABLE_FILE}.tmp-{}", std::process::id()));
     let written = (|| {
         let mut f = std::fs::File::create(&tmp)?;
@@ -848,18 +861,18 @@ mod tests {
         let snap = data();
         let dir = disk_base("roundtrip", &snap);
         let options = BuildOptions { min_fill: 0.6, min_share: 0.0 };
-        let (built, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options).unwrap();
+        let (built, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options, true).unwrap();
         assert_eq!(source, TablesSource::Built { reason: Rebuild::Missing });
         assert!(built.table_count() > 0);
         let subjects: Vec<TermId> = built.first_keys(Perm::Spo).unwrap();
         let want = catalog_view(&built.tables, &subjects);
-        let (loaded, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options).unwrap();
+        let (loaded, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options, true).unwrap();
         assert_eq!(source, TablesSource::Loaded);
         assert_eq!(catalog_view(&loaded.tables, &subjects), want);
         // other build options: rebuilt (and rewritten), not loaded
-        let (_, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), BuildOptions { min_fill: 0.5, min_share: 0.0 }).unwrap();
+        let (_, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), BuildOptions { min_fill: 0.5, min_share: 0.0 }, true).unwrap();
         assert_eq!(source, TablesSource::Built { reason: Rebuild::Stale });
-        let (_, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options).unwrap();
+        let (_, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options, true).unwrap();
         assert_eq!(source, TablesSource::Built { reason: Rebuild::Stale }, "the file now holds the 0.5 tables");
         let bytes = std::fs::read(dir.join(TABLE_FILE)).unwrap();
         // A flipped byte anywhere: the open still succeeds, the tables are rebuilt and identical, and the indexes
@@ -869,11 +882,33 @@ mod tests {
             let mut bad = bytes.clone();
             bad[at] ^= 0x10;
             std::fs::write(dir.join(TABLE_FILE), &bad).unwrap();
-            let (again, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options).unwrap();
+            let (again, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options, true).unwrap();
             assert_eq!(source, TablesSource::Built { reason: Rebuild::Damaged }, "flipped byte {at}");
             assert_eq!(catalog_view(&again.tables, &subjects), want, "flipped byte {at}");
             assert_eq!(again.count(Perm::Spo, &[]).unwrap(), triples);
         }
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// A read-only open (`persist` false) builds the tables but writes nothing into the base directory, not even a
+    /// temporary file; a stale temporary file from a crashed writer is removed by the next writable open.
+    #[test]
+    fn a_read_only_open_writes_nothing_and_a_writable_one_clears_crash_leftovers() {
+        let dir = disk_base("readonly", &data());
+        let options = BuildOptions { min_fill: 0.6, min_share: 0.0 };
+        let listing = |d: &std::path::Path| { let mut v: Vec<_> = std::fs::read_dir(d).unwrap().map(|e| e.unwrap().file_name()).collect(); v.sort(); v };
+        let before = listing(&dir);
+        let (tables, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options, false).unwrap();
+        assert_eq!(source, TablesSource::BuiltUnsaved { reason: Rebuild::Missing });
+        assert!(tables.table_count() > 0);
+        assert_eq!(listing(&dir), before, "a read-only open created no file");
+        std::fs::write(dir.join(format!(".{TABLE_FILE}.tmp-999999")), b"partial").unwrap();
+        let (_, source) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), options, true).unwrap();
+        assert_eq!(source, TablesSource::Built { reason: Rebuild::Missing });
+        let mut want = before.clone();
+        want.push(TABLE_FILE.into());
+        want.sort();
+        assert_eq!(listing(&dir), want, "the leftover is gone and only tables.v1 was added");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -885,9 +920,9 @@ mod tests {
         // the same data plus one triple: a different base, whose manifest identity differs
         let snap_b = data_with(vec![Triple::new(iri("extra"), iri("date"), Literal::new_simple_literal("2010-01-01"))]);
         let b = disk_base("foreign-b", &snap_b);
-        WithTables::open(crate::DiskSnapshot::open(&a).unwrap(), options).unwrap();
+        WithTables::open(crate::DiskSnapshot::open(&a).unwrap(), options, true).unwrap();
         std::fs::copy(a.join(TABLE_FILE), b.join(TABLE_FILE)).unwrap();
-        let (_, source) = WithTables::open(crate::DiskSnapshot::open(&b).unwrap(), options).unwrap();
+        let (_, source) = WithTables::open(crate::DiskSnapshot::open(&b).unwrap(), options, true).unwrap();
         assert_eq!(source, TablesSource::Built { reason: Rebuild::Stale });
         for d in [a, b] { std::fs::remove_dir_all(d).unwrap() }
     }
@@ -898,7 +933,7 @@ mod tests {
     fn an_overlay_with_changes_shows_no_tables() {
         let snap = data();
         let dir = disk_base("delta", &snap);
-        let (with, _) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), BuildOptions { min_fill: 0.6, min_share: 0.0 }).unwrap();
+        let (with, _) = WithTables::open(crate::DiskSnapshot::open(&dir).unwrap(), BuildOptions { min_fill: 0.6, min_share: 0.0 }, true).unwrap();
         let base = crate::store::Overlay::from_base(std::sync::Arc::new(with));
         assert!(base.wide_tables().is_some());
         let before = base.count(Perm::Spo, &[]).unwrap();
