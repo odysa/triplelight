@@ -79,6 +79,8 @@ pub(super) fn encode<const N: usize>(rows: &[[TermId; N]], rotate: bool) -> io::
 }
 
 /// `rotate`: the file's format allows tag-rotated columns (`RDFIDX04`/`RDFQIX02`); older blocks never set the flag.
+/// The decoded block as a new `Vec` (tests; the cache decodes into a reused buffer with `decode_into`).
+#[cfg(test)]
 pub(super) fn decode<const N: usize>(data: &[u8], count: usize, rotate: bool) -> io::Result<Vec<[TermId; N]>> {
     let mut rows = Vec::new();
     decode_into(data, count, rotate, &mut rows)?;
