@@ -447,7 +447,9 @@ where
         if check.finalize().as_slice() != footer {
             return Err(invalid("index header/directory checksum mismatch"));
         }
-        let mut entries = Vec::new();
+        // Exactly one entry per block: grown by `push`, the directory's capacity rounded up to a power of two, a
+        // quarter of it unused on average (#153: 144 MiB of BI's four directories, 36 MiB of it spare capacity).
+        let mut entries = Vec::with_capacity(raw.len() / entry_size as usize);
         let mut data_pos = HEADER;
         for (i, item) in raw.chunks_exact(entry_size as usize).enumerate() {
             let w = row_bytes(N) as usize;
@@ -983,6 +985,20 @@ mod tests {
         std::fs::write(&path, bad).unwrap();
         assert!(index.block_slice_uncached(256, 512).is_err());
         std::fs::remove_file(path).unwrap();
+    }
+    /// The block directory holds exactly one entry per block, with no spare capacity (it stays resident for the
+    /// index's lifetime).
+    #[test]
+    fn the_block_directory_has_no_spare_capacity() {
+        let path = std::env::temp_dir().join(format!("rdf-dircap-{}", std::process::id()));
+        let rows: Vec<_> = (1..=700 * BLOCK_ROWS).map(|i| [TermId(i), TermId(1), TermId(2)]).collect();
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.into_iter()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let index = DiskIndex::<3>::open(&path).unwrap();
+        assert_eq!(index.blocks.len(), 700);
+        assert_eq!(index.blocks.capacity(), index.blocks.len());
+        std::fs::remove_file(&path).unwrap();
     }
     #[test]
     fn clear_cache_invalidates_thread_memo() {
