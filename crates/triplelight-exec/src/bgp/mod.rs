@@ -117,6 +117,26 @@ pub(crate) fn sort_merge_applies(order_free: bool, n: u64, total: u64) -> bool {
         && total <= PROBE_ROWS * n
 }
 
+/// Reorders `rows` (rows of `w` IDs) in place so that row `i` becomes the old row `order[i]`, following each cycle of
+/// the permutation with one row of scratch: the sort-merge's extra memory is the `u32` order, not a second copy of the
+/// rows (#148's peak). Consumes `order` (every entry is overwritten with a marker).
+fn permute_rows(rows: &mut [TermId], w: usize, order: &mut [u32]) {
+    const DONE: u32 = u32::MAX;
+    let mut tmp = vec![TermId(0); w];
+    for start in 0..order.len() {
+        if order[start] == DONE { continue }
+        tmp.copy_from_slice(&rows[start * w..(start + 1) * w]);
+        let mut j = start;
+        loop {
+            let k = order[j] as usize;
+            order[j] = DONE;
+            if k == start { rows[j * w..(j + 1) * w].copy_from_slice(&tmp); break }
+            rows.copy_within(k * w..(k + 1) * w, j * w);
+            j = k;
+        }
+    }
+}
+
 #[cfg(test)]
 mod sort_merge_window {
     use super::*;
@@ -129,6 +149,19 @@ mod sort_merge_window {
         assert!(!sort_merge_applies(true, n, PROBE_ROWS * n + 1), "past PROBE_ROWS per row: probes");
         assert!(!sort_merge_applies(true, MERGE_MIN_ROWS as u64 - 1, 1 << 30), "too few rows to pay for a sort");
         assert!(sort_merge_applies(true, 1 << 24, (1 << 24) + 1), "within 2n but past the whole-table cap: a semi-join");
+    }
+    #[test]
+    fn permuting_rows_in_place_matches_a_gather() {
+        let mut state = 0x9e37_79b9_7f4a_7c15u64;
+        for (n, w) in [(0usize, 3usize), (1, 1), (2, 2), (7, 3), (1000, 4), (4096, 2)] {
+            let rows: Vec<TermId> = (0..n * w).map(|i| TermId(i as u64 * 31 + 7)).collect();
+            let mut order: Vec<u32> = (0..n as u32).collect();
+            for i in (1..n).rev() { state ^= state << 13; state ^= state >> 7; state ^= state << 17; order.swap(i, (state % (i as u64 + 1)) as usize) }
+            let want: Vec<TermId> = order.iter().flat_map(|&i| rows[i as usize * w..(i as usize + 1) * w].to_vec()).collect();
+            let mut got = rows.clone();
+            permute_rows(&mut got, w, &mut order);
+            assert_eq!(got, want, "n {n} w {w}");
+        }
     }
     #[test]
     fn the_shape_is_one_constant_one_bound_key_one_free_variable() {
@@ -193,17 +226,20 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
 
     /// One join step shared by both evaluation orders: extend `rows` by pattern `pat`, mark its variables bound, then
     /// let `post` apply whatever has become evaluable. With a plan trace (`plan_trace`), records the step as pattern `pi`.
-    fn join_step(&self, pat: &[Slot; 3], pi: usize, rows: &[TermId], bound: &mut HashSet<usize>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>), trace: Option<&mut Trace>) -> Vec<TermId> {
+    /// Takes `rows` by value: the step may reorder them in place (`extend_sort_merge`), and they are dropped after it.
+    fn join_step(&self, pat: &[Slot; 3], pi: usize, mut rows: Vec<TermId>, bound: &mut HashSet<usize>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>), trace: Option<&mut Trace>) -> Vec<TermId> {
         let t = trace.is_some().then(std::time::Instant::now);
-        let (mut out, access) = self.extend_via(pat, rows);
+        let (mut out, access) = self.extend_via(pat, &mut rows);
+        let input = rows.len();
+        drop(rows);
         let extended = out.len();
-        let step_bytes = (rows.len() + out.len()) as u64 * 8;
+        let step_bytes = (input + out.len()) as u64 * 8;
         if let Some(b) = self.budget && step_bytes > b.available() {
             super::limits::over_budget(super::OverBudget { requested: step_bytes, available: b.available() })
         }
         for s in pat { if let Slot::Var(v) = s { bound.insert(*v); } }
         post(&mut out, bound);
-        if let (Some(tr), Some(t)) = (trace, t) { let w = self.w.max(1); tr.step(Some(pi), access, rows.len() / w, extended / w, out.len() / w, t) }
+        if let (Some(tr), Some(t)) = (trace, t) { let w = self.w.max(1); tr.step(Some(pi), access, input / w, extended / w, out.len() / w, t) }
         out
     }
 
@@ -227,7 +263,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
                 .min_by(|a, b| a.2.partial_cmp(&b.2).unwrap()
                     .then_with(|| is_bound_leaf(a.1).cmp(&is_bound_leaf(b.1)))).unwrap();
             let pi = remaining.remove(k);
-            rows = self.join_step(&pats[pi], pi, &rows, &mut bound, post, trace.as_deref_mut());
+            rows = self.join_step(&pats[pi], pi, std::mem::take(&mut rows), &mut bound, post, trace.as_deref_mut());
         }
         rows
     }
@@ -236,7 +272,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         let mut bound = if rows.is_empty() { HashSet::new() } else { self.bound_in_every_row(&rows) };
         for &pi in order {
             if rows.is_empty() { break }
-            rows = self.join_step(&pats[pi], pi, &rows, &mut bound, post, trace.as_deref_mut());
+            rows = self.join_step(&pats[pi], pi, std::mem::take(&mut rows), &mut bound, post, trace.as_deref_mut());
         }
         rows
     }
@@ -295,15 +331,21 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     }
 
     /// Index nested-loop join of `rows` with one pattern: one index range read per input row.
-    pub fn extend(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> { self.extend_via(pat, rows).0 }
+    pub fn extend(&self, pat: &[Slot; 3], mut rows: Vec<TermId>) -> Vec<TermId> { self.extend_via(pat, &mut rows).0 }
 
-    /// `extend`, also naming the access path it took (for `plan_trace`).
-    fn extend_via(&self, pat: &[Slot; 3], rows: &[TermId]) -> (Vec<TermId>, &'static str) {
-        let w = self.w;
+    /// `extend`, also naming the access path it took (for `plan_trace`). `rows` may be left reordered (by the
+    /// sort-merge, which sorts them in place rather than copying them); callers drop them after the step.
+    fn extend_via(&self, pat: &[Slot; 3], rows: &mut Vec<TermId>) -> (Vec<TermId>, &'static str) {
         if let Some(out) = self.extend_range(pat, rows) { return (out, "range") }
         if let Some(out) = self.extend_member_set(pat, rows) { return (out, "member-set") }
         if let Some(out) = self.extend_merge(pat, rows) { return (out, "merge") }
         if let Some(out) = self.extend_sort_merge(pat, rows) { return (out, "sort-merge") }
+        self.extend_rest(pat, rows)
+    }
+
+    /// The access paths after the sort-merge, on rows it leaves untouched.
+    fn extend_rest(&self, pat: &[Slot; 3], rows: &[TermId]) -> (Vec<TermId>, &'static str) {
+        let w = self.w;
         if let Some(out) = self.extend_hash(pat, rows) { return (out, "hash") }
         if let Some(out) = self.extend_sorted(pat, rows) { return (out, "sorted") }
         if rows.len() / w.max(1) >= 2 * MORSEL {
@@ -388,7 +430,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// set, a filtered scan into a hash table and one random lookup per row, the rows are sorted by the key and
     /// `extend_merge` walks the permutation `(constant, key, free)` beside them. The bag of solutions is the hash
     /// join's; only their order differs, which the pushed range already makes free.
-    fn extend_sort_merge(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
+    fn extend_sort_merge(&self, pat: &[Slot; 3], rows: &mut [TermId]) -> Option<Vec<TermId>> {
         let w = self.w;
         if w == 0 { return None }
         let n = rows.len() / w;
@@ -402,10 +444,9 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         if !sort_merge_applies(self.ranges.is_some(), n as u64, self.count(perm, &[c])) { return None }
         let mut order: Vec<u32> = (0..n as u32).collect();
         order.par_sort_unstable_by_key(|&i| rows[i as usize * w + kv]);
-        let mut sorted = Vec::with_capacity(rows.len());
-        for &i in &order { let i = i as usize; sorted.extend_from_slice(&rows[i * w..(i + 1) * w]) }
+        permute_rows(rows, w, &mut order);
         drop(order);
-        self.extend_merge(pat, &sorted)
+        self.extend_merge(pat, rows)
     }
 
     /// Membership filter for a pattern with two constants and one variable bound in every row (e.g.
@@ -642,7 +683,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             let k=if order.is_some(){0}else{
                 remaining.iter().enumerate().map(|(k,&pi)|(k,self.estimate(&pats[pi],&bound,&rows[..self.w]))).min_by(|a,b|a.1.partial_cmp(&b.1).unwrap()).unwrap().0
             };
-            let pi=remaining.remove(k);rows=self.extend(&pats[pi],&rows);
+            let pi=remaining.remove(k);rows=self.extend(&pats[pi],std::mem::take(&mut rows));
             for s in &pats[pi]{if let Slot::Var(v)=s{bound.insert(*v);}}
         }
         if rows.is_empty(){return 0;}
@@ -1067,13 +1108,13 @@ pub(crate) mod sorted_probe_tests {
         for pat in &patterns {
             let sorted = on.extend_sorted(pat, &rows).expect("unsorted input with a single bound key");
             assert_eq!(sorted, off.extend_seq(pat, &rows), "{pat:?}");
-            assert_eq!(on.extend(pat, &rows), off.extend(pat, &rows), "{pat:?}");
+            assert_eq!(on.extend(pat, rows.clone()), off.extend(pat, rows.clone()), "{pat:?}");
         }
         // Not taken: an UNBOUND key in some row, two bound key variables, input already in key order, or off.
         let mut holes = rows.clone();
         holes[w * 5] = UNBOUND;
         assert!(on.extend_sorted(&patterns[0], &holes).is_none());
-        assert_eq!(on.extend(&patterns[0], &holes), off.extend(&patterns[0], &holes));
+        assert_eq!(on.extend(&patterns[0], holes.clone()), off.extend(&patterns[0], holes.clone()));
         let mut both = rows.clone();
         both[2] = TermId(7); // first row binds ?2 too
         assert!(on.extend_sorted(&patterns[2], &both).is_none());
