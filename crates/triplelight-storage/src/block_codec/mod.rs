@@ -1,8 +1,8 @@
 //! Internal codec for one block of sorted triple IDs, the per-block checksum (`crc32c`) and the in-place reader
 //! over an encoded block (`view`).
 
-// The encoded-block reader #144's two-tier cache is built on; only its tests use it until that lands.
-#[cfg_attr(not(test), allow(dead_code))]
+// The encoded-block reader #144's two-tier cache is built on; only its own tests use it until that lands.
+#[allow(dead_code)]
 pub(crate) mod view;
 use crate::model::TermId;
 use std::io::{self, ErrorKind};

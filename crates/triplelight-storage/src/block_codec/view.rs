@@ -111,7 +111,7 @@ impl<'a, const N: usize> BlockView<'a, N> {
             let col = &self.bytes[d.col_start[c]..];
             let bit = range.start * w;
             let (mut at, mut acc, mut have) = (bit / 8, 0u128, 0usize);
-            if w > 0 && bit % 8 != 0 { acc = (col[at] >> (bit % 8)) as u128; have = 8 - bit % 8; at += 1 }
+            if w > 0 && !bit.is_multiple_of(8) { acc = (col[at] >> (bit % 8)) as u128; have = 8 - bit % 8; at += 1 }
             let mask = if w == 0 { 0 } else { u128::MAX >> (128 - w) };
             let mut next = || -> u64 {
                 if w == 0 { return 0 }
@@ -263,7 +263,7 @@ mod tests {
         let mut i = 10usize;
         for _ in 0..2000 {
             // Mostly ascending keys, sometimes a jump back (the #349 cursor's occasional backward probe).
-            i = if rng(&mut s) % 20 == 0 { (rng(&mut s) as usize) % 256 } else { (i + (rng(&mut s) as usize) % 4) % 256 };
+            i = if rng(&mut s).is_multiple_of(20) { (rng(&mut s) as usize) % 256 } else { (i + (rng(&mut s) as usize) % 4) % 256 };
             pos = view.seek_from(pos, &rows[i], &mut mini);
             assert_eq!(pos.row as usize, i);
             assert_eq!(mini.rows()[i - pos.mini as usize * MINI_ROWS], rows[i]);
