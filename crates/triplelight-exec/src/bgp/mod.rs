@@ -1138,4 +1138,29 @@ pub(crate) mod sorted_probe_tests {
         assert!(b.extend_merge(&[Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)], &unsorted).is_none());
         assert!(b.extend_merge(&[Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(2)], &rows).is_none());
     }
+
+    /// The hash step charges its tables and output (#111): with no budget nothing changes, a step that fits a
+    /// generous budget gives the same rows and returns every byte it held, and one whose tables cannot fit ends the
+    /// query with `ResourceLimit` before building them.
+    #[test]
+    fn the_hash_step_fits_a_budget_it_fits_and_refuses_one_it_does_not() {
+        let t: Vec<[u64; 3]> = (1..=3000u64).map(|s| [s, 1000, 5000 + s % 97]).collect();
+        let snap = Triples::new(&t);
+        let w = 2;
+        // Unsorted keys (no merge join), every key bound and the object free: the whole-range hash table.
+        let rows: Vec<TermId> = (0..2000u64).flat_map(|i| [TermId(1 + (i * 2654435761) % 3000), UNBOUND]).collect();
+        let pat = [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)];
+        let free = Bgp { snap: &snap, w, ranges: None, sorted_probe: false, interrupt: None, budget: None };
+        let want = free.extend_hash(&pat, &rows).expect("the hash path applies");
+        assert_eq!(want, free.extend_seq(&pat, &rows));
+        let roomy = super::super::MemoryBudget::new(64 << 20);
+        let b = Bgp { budget: Some(&roomy), ..free };
+        assert_eq!(b.extend_hash(&pat, &rows).unwrap(), want);
+        assert_eq!(roomy.used(), 0, "the step's charge is returned");
+        let tight = super::super::MemoryBudget::new(4 << 10);
+        let b = Bgp { budget: Some(&tight), ..free };
+        let stopped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.extend_hash(&pat, &rows)));
+        assert!(stopped.is_err_and(|p| p.is::<super::super::limits::OverBudgetStop>()));
+        assert_eq!(tight.used(), 0);
+    }
 }
