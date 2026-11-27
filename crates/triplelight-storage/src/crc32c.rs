@@ -24,9 +24,9 @@ pub(crate) fn crc32c(data: &[u8]) -> u32 {
 unsafe fn hw_aarch64(data: &[u8]) -> u32 {
     use std::arch::aarch64::{__crc32cb, __crc32cd};
     let mut crc = !0u32;
-    let mut words = data.chunks_exact(8);
-    for w in &mut words { crc = __crc32cd(crc, u64::from_le_bytes(w.try_into().unwrap())) }
-    for &b in words.remainder() { crc = __crc32cb(crc, b) }
+    let (words, rest) = data.as_chunks::<8>();
+    for w in words { crc = __crc32cd(crc, u64::from_le_bytes(*w)) }
+    for &b in rest { crc = __crc32cb(crc, b) }
     !crc
 }
 
@@ -35,9 +35,9 @@ unsafe fn hw_aarch64(data: &[u8]) -> u32 {
 unsafe fn hw_x86(data: &[u8]) -> u32 {
     use std::arch::x86_64::{_mm_crc32_u64, _mm_crc32_u8};
     let mut crc = !0u32;
-    let mut words = data.chunks_exact(8);
-    for w in &mut words { crc = _mm_crc32_u64(crc as u64, u64::from_le_bytes(w.try_into().unwrap())) as u32 }
-    for &b in words.remainder() { crc = _mm_crc32_u8(crc, b) }
+    let (words, rest) = data.as_chunks::<8>();
+    for w in words { crc = _mm_crc32_u64(crc as u64, u64::from_le_bytes(*w)) as u32 }
+    for &b in rest { crc = _mm_crc32_u8(crc, b) }
     !crc
 }
 
