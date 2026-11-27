@@ -487,8 +487,9 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         // values are exactly `total`; the semi-join keeps every value of a kept key, so its values are charged as
         // they grow, before each reallocation.
         let kept = if semi { total.min(n_rows as u64) } else { total };
-        let fixed = if semi { table_bytes(n_rows as u64, HASH_SET_SLOT) } else { 0 } + table_bytes(kept, HASH_MAP_SLOT);
-        let vals_charged = |cap: usize| fixed + cap as u64 * 8;
+        let set_bytes = if semi { table_bytes(n_rows as u64, HASH_SET_SLOT) } else { 0 };
+        let map_bytes = table_bytes(kept, HASH_MAP_SLOT);
+        let vals_charged = |cap: usize| set_bytes + map_bytes + cap as u64 * 8;
         let mut vals_cap = if semi { n_rows } else { total as usize };
         let mut held = self.charge(vals_charged(vals_cap));
         let grow = |held: &mut Option<super::limits::Reservation<'a>>, bytes: u64| if let (Some(r), Some(b)) = (held.as_mut(), self.budget) {
@@ -520,15 +521,21 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
             }
         }
         drop(keys);
-        // The output's exact size first, so it is allocated (and charged) once instead of growing by doubling, which
-        // briefly holds the old and new buffers together.
-        // One probe per row: each row's (start, len) is kept (8 B a row) so the emit loop does not look it up again.
-        grow(&mut held, vals_charged(vals_cap) + n_rows as u64 * 8);
+        // The charge follows what is alive at each stage. One probe per row: each row's (start, len) is kept (8 B a
+        // row) so the emit loop does not look it up again; then the map is dropped, and the output is allocated once
+        // at its exact size (growing by doubling would briefly hold the old and new buffers together).
+        let (vals_bytes, spans_bytes) = (vals_cap as u64 * 8, n_rows as u64 * 8);
+        grow(&mut held, map_bytes + vals_bytes + spans_bytes);
         let spans: Vec<(u32, u32)> = rows.chunks_exact(w).map(|r| index.get(&r[kv]).copied().unwrap_or((0, 0))).collect();
-        let extensions: usize = spans.iter().map(|&(_, len)| len as usize).sum();
-        grow(&mut held, vals_charged(vals_cap) + n_rows as u64 * 8 + extensions as u64 * w as u64 * 8);
         drop(index);
-        let mut out = Vec::with_capacity(extensions * w);
+        // An output too large to count or address ends the query as over budget rather than overflowing.
+        let out_len = spans.iter().try_fold(0usize, |n, &(_, len)| n.checked_add(len as usize)).and_then(|n| n.checked_mul(w));
+        let out_bytes = out_len.and_then(|n| (n as u64).checked_mul(8)).and_then(|b| b.checked_add(vals_bytes + spans_bytes));
+        let Some((out_len, out_bytes)) = out_len.zip(out_bytes) else {
+            super::limits::over_budget(super::OverBudget { requested: u64::MAX, available: self.budget.map_or(0, |b| b.available()) })
+        };
+        grow(&mut held, out_bytes);
+        let mut out = Vec::with_capacity(out_len);
         for (r, &(start, len)) in rows.chunks_exact(w).zip(&spans) {
             for &f in &vals[start as usize..(start + len) as usize] {
                 out.extend_from_slice(r);
