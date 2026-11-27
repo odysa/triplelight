@@ -74,3 +74,13 @@ fn other_shapes_keep_the_full_evaluation() {
     assert_eq!(rows("SELECT DISTINCT ?o WHERE { ?s <http://ex/p> ?o } LIMIT 100").len(), 7);
     assert_eq!(rows("SELECT ?s WHERE { ?s <http://ex/p> ?o FILTER(?o = <http://ex/o2>) } LIMIT 100").len(), 7);
 }
+
+#[test]
+fn all_constant_patterns_and_projected_variables_outside_the_pattern() {
+    // No variable at all: the early stop is a membership test.
+    assert!(ask("ASK { <http://ex/s0> <http://ex/q> \"x\" }"));
+    assert!(!ask("ASK { <http://ex/s0> <http://ex/q> \"y\" }"));
+    // A projected variable the pattern never binds stays unbound in every row.
+    let r = rows("SELECT ?z WHERE { ?s ?p ?o } LIMIT 1");
+    assert_eq!(r, vec![vec!["-".to_string()]]);
+}
