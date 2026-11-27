@@ -300,7 +300,7 @@ where
             for id in block.last().unwrap() {
                 meta.extend_from_slice(&id.0.to_le_bytes());
             }
-            if crc { meta.extend_from_slice(&super::crc32c::crc32c(&bytes).to_le_bytes()) } else { meta.extend_from_slice(&Sha256::digest(&bytes)) }
+            if crc { meta.extend_from_slice(&super::block_codec::crc32c::crc32c(&bytes).to_le_bytes()) } else { meta.extend_from_slice(&Sha256::digest(&bytes)) }
             meta.extend_from_slice(&(bytes.len() as u64).to_le_bytes());
             out.write_all(&bytes)?;
             block.clear();
@@ -656,7 +656,7 @@ where
             .ok_or_else(|| invalid("missing block directory entry"))?;
         let mut bytes = vec![0; meta.length];
         read_exact_at_traced(&self.file, &mut bytes, meta.offset, self.trace_slot)?;
-        let intact = if self.crc { super::crc32c::crc32c(&bytes).to_le_bytes() == meta.checksum[..4] } else { Sha256::digest(&bytes).as_slice() == meta.checksum };
+        let intact = if self.crc { super::block_codec::crc32c::crc32c(&bytes).to_le_bytes() == meta.checksum[..4] } else { Sha256::digest(&bytes).as_slice() == meta.checksum };
         if !intact {
             return Err(invalid("index block checksum mismatch"));
         }
