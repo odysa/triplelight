@@ -26,6 +26,9 @@ mod base_format;
 mod block_codec;
 
 #[cfg(unix)]
+mod crc32c;
+
+#[cfg(unix)]
 mod term_block_codec;
 
 #[cfg(unix)]
