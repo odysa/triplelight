@@ -98,7 +98,7 @@ pub(crate) fn bgp<T>(f: impl FnOnce() -> T) -> T {
 static RANGES: std::sync::Mutex<Vec<(bool, f64)>> = std::sync::Mutex::new(Vec::new());
 
 /// Records one range-pushdown decision (`range.rs`) when tracing is on: whether the range was pushed and the
-/// fraction of the predicate's triples it covers (a lower bound once it exceeds the gate, where counting stops).
+/// fraction of the predicate's triples it covers. A per-object count that stops at the gate reports a lower bound.
 pub(crate) fn range_decision(pushed: bool, frac: f64) {
     if enabled() && let Ok(mut r) = RANGES.lock() { r.push((pushed, frac)) }
 }

@@ -3,7 +3,7 @@
 //! that answers are identical with the switch on and off (and to the in-memory store, which never pushes down), and
 //! the scan-row counter shows when the pushdown is (or must not be) taken.
 use triplelight::exec::{query_with, Options, QueryResult};
-use triplelight::model::{Perm, TermId, TripleBatch};
+use triplelight::model::{Perm, TermId, TripleBatch, id_tag};
 use triplelight::opt::Stats;
 use triplelight::storage::{write_disk_snapshot, Dictionary, DiskBase, DiskSnapshot, MemorySnapshot, Snapshot, StorageError};
 use triplelight::store::{Store, StoreUpdate};
@@ -34,8 +34,10 @@ fn disk(name: &str, nt: &str) -> Disk {
 fn memory(nt: &str) -> MemorySnapshot { MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap() }
 
 /// Forwards everything to `inner` and counts its scans and the triples they return.
-struct Counting<'a> { inner: &'a dyn Snapshot, rows: AtomicUsize, scans: AtomicUsize }
-fn counting(inner: &dyn Snapshot) -> Counting<'_> { Counting { inner, rows: AtomicUsize::new(0), scans: AtomicUsize::new(0) } }
+struct Counting<'a> { inner: &'a dyn Snapshot, rows: AtomicUsize, scans: AtomicUsize, count_intervals: bool }
+fn counting(inner: &dyn Snapshot) -> Counting<'_> {
+    Counting { inner, rows: AtomicUsize::new(0), scans: AtomicUsize::new(0), count_intervals: true }
+}
 impl Dictionary for Counting<'_> {
     fn lookup(&self, t: &Term) -> Result<Option<TermId>, StorageError> { self.inner.lookup(t) }
     fn literal_text_bound(&self, text: &str, strict: bool) -> Result<Option<TermId>, StorageError> { self.inner.literal_text_bound(text, strict) }
@@ -50,6 +52,9 @@ impl Snapshot for Counting<'_> {
     }
     fn scan_for_stats(&self) -> Box<dyn Iterator<Item = Result<TripleBatch, StorageError>> + '_> { self.inner.scan_for_stats() }
     fn count(&self, p: Perm, k: &[TermId]) -> Result<u64, StorageError> { self.inner.count(p, k) }
+    fn count_pos_interval(&self, p: TermId, lo: TermId, hi: Option<TermId>) -> Result<Option<u64>, StorageError> {
+        if self.count_intervals { self.inner.count_pos_interval(p, lo, hi) } else { Ok(None) }
+    }
     fn seek(&self, p: Perm, k: &[TermId], t: TermId) -> Result<Option<TermId>, StorageError> { self.inner.seek(p, k, t) }
     fn has_rdf12_terms(&self) -> bool { self.inner.has_rdf12_terms() }
 }
@@ -133,6 +138,71 @@ fn literal_text_bound_is_the_text_order_lower_bound() {
     }
     // Stores without text-ordered IDs make no promise.
     assert_eq!(memory(&base_nt()).literal_text_bound(&d("2007-10-10"), false).unwrap(), None);
+}
+
+#[test]
+fn date_pos_interval_counts_and_gate_match_per_object_counts() {
+    let mut nt = base_nt();
+    // Repeat dates unevenly so the POS counts must include every subject and span several blocks.
+    for i in 0..REVIEWS {
+        for j in 0..(20 + i % 17) {
+            nt += &format!("<urn:extra-{i}-{j}> <urn:date> {} .\n", d(&form(i)));
+        }
+    }
+    let base = disk("pos-interval", &nt);
+    let snap = &base.snap;
+    let p = snap.lookup(&Term::NamedNode(triplelight_rdf::NamedNode::new("urn:date").unwrap())).unwrap().unwrap();
+    let first_literal = TermId(id_tag::LITERAL << 60);
+    let end_literal = TermId((id_tag::LITERAL + 1) << 60);
+    let unordered = TermId(id_tag::DELTA << 60);
+    let mut counts = Vec::new();
+    let mut next = first_literal;
+    while let Some(o) = snap.seek(Perm::Pos, &[p], next).unwrap() {
+        counts.push((o, snap.count(Perm::Pos, &[p, o]).unwrap()));
+        let Some(after) = o.0.checked_add(1) else { break };
+        next = TermId(after);
+    }
+    let tail = counts.iter().filter(|(o, _)| *o >= unordered).map(|(_, n)| n).sum::<u64>();
+    assert_eq!(snap.count_pos_interval(p, unordered, None).unwrap(), Some(tail));
+    let total = snap.count(Perm::Pos, &[p]).unwrap();
+    let limit = (total as f64 * 0.15) as u64;
+    assert_eq!(snap.count_pos_interval(p, first_literal, Some(end_literal)).unwrap(), Some(total - 1));
+    assert_eq!(snap.count_pos_interval(p, end_literal, Some(first_literal)).unwrap(), Some(0));
+
+    let mut rng = 0x5eed_u64;
+    let mut random = |n: usize| {
+        rng = rng.wrapping_mul(6364136223846793005).wrapping_add(1);
+        ((rng >> 32) as usize) % n
+    };
+    let mut decisions = [false; 2];
+    for trial in 0..64 {
+        let start = random(REVIEWS);
+        let end = (start + random(if trial % 2 == 0 { 30 } else { REVIEWS })).min(REVIEWS - 1);
+        let (lower, upper) = (form(start), form(end));
+        let (strict, inclusive) = (random(2) == 1, random(2) == 1);
+        let lo = snap.literal_text_bound(&d(&lower), strict).unwrap().unwrap();
+        let hi = snap.literal_text_bound(&d(&upper), inclusive).unwrap().unwrap();
+        let selected = || counts.iter().filter(|(o, _)| (lo <= *o && *o < hi) || *o >= unordered);
+        let full = selected().map(|(_, n)| n).sum::<u64>();
+        let rows = snap.count_pos_interval(p, lo, Some(hi)).unwrap().unwrap() + tail;
+        assert_eq!(rows, full, "{lower}..{upper} strict={strict} inclusive={inclusive}");
+
+        let mut partial = 0;
+        for (_, n) in selected() {
+            partial += n;
+            if partial > limit { break }
+        }
+        assert_eq!(rows <= limit, partial <= limit);
+        decisions[(rows <= limit) as usize] = true;
+        let lo_op = if strict { ">" } else { ">=" };
+        let hi_op = if inclusive { "<=" } else { "<" };
+        let q = select(&format!("?d {lo_op} {} && ?d {hi_op} {}", d(&lower), d(&upper)));
+        let fast = counting(snap);
+        let old = Counting { count_intervals: false, ..counting(snap) };
+        assert_eq!(answers(&fast, &q, &opts(true)), answers(&old, &q, &opts(true)), "{q}");
+        assert_eq!(fast.rows.load(Ordering::Relaxed), old.rows.load(Ordering::Relaxed), "{q}");
+    }
+    assert_eq!(decisions, [true, true]);
 }
 
 #[test]
@@ -272,6 +342,12 @@ fn updates_in_the_delta_are_returned() {
     let init = dir.join("init.nt");
     std::fs::write(&init, base_nt()).unwrap();
     let store = Store::open_with(dir.join("db"), Some(&init), Box::new(DiskBase { workers: 1 })).unwrap();
+    let predicate = |name: &str| Term::NamedNode(triplelight_rdf::NamedNode::new(name).unwrap());
+    let old = store.snapshot();
+    let date = old.lookup(&predicate("urn:date")).unwrap().unwrap();
+    let other = old.lookup(&predicate("urn:other")).unwrap().unwrap();
+    let unordered = TermId(id_tag::DELTA << 60);
+    assert_eq!(old.count_pos_interval(date, unordered, None).unwrap(), Some(0));
     store.update(&format!(
         "INSERT DATA {{ <urn:new1> <urn:date> {} . <urn:new2> <urn:date> {} . <urn:new3> <urn:date> {} . <urn:new4> <urn:date> \"2007-10-30\" . <urn:new1> <urn:for> <urn:p0> }}",
         // A date first seen in the delta (no day 29 is in the base), one already in the base dictionary, and a
@@ -292,7 +368,13 @@ fn updates_in_the_delta_are_returned() {
         assert!(on_off(snap, &joined).0.iter().any(|r| r.starts_with("<urn:new1>")));
         got
     };
-    let before = check(&*store.snapshot(), true);
+    let changed = store.snapshot();
+    assert_eq!(changed.count_pos_interval(date, unordered, None).unwrap(), None);
+    assert_eq!(changed.count_pos_interval(other, unordered, None).unwrap(), Some(0));
+    assert_eq!(old.count_pos_interval(date, unordered, None).unwrap(), Some(0));
+    let before = check(&*changed, true);
+    drop(old);
+    drop(changed);
     // After compaction "2007-10-23Z" is a base literal: no pushdown, same answers.
     store.compact().unwrap();
     assert_eq!(check(&*store.snapshot(), false), before);

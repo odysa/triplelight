@@ -727,6 +727,13 @@ impl Snapshot for DiskSnapshot {
         self.index(kept).first_keys()
     }
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError> { super::derived_order::count(self, perm, prefix) }
+    fn count_pos_interval(&self, p: TermId, lo: TermId, hi: Option<TermId>) -> Result<Option<u64>, StorageError> {
+        let Some(index) = self.kept(Perm::Pos) else { return Ok(None) };
+        if hi.is_some_and(|hi| hi <= lo) { return Ok(Some(0)) }
+        let max = TermId(u64::MAX);
+        let high = hi.map_or([p, max, max], |hi| [p, hi, TermId(0)]);
+        Ok(Some(index.count_interval([p, lo, TermId(0)], high, hi.is_none())?))
+    }
     fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
         super::derived_order::seek(self, perm, prefix, target)
     }

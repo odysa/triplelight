@@ -258,6 +258,11 @@ impl Snapshot for Overlay {
         merged_count(&*self.base, &self.delta.adds[slot(perm)], &self.delta.dels[slot(perm)], perm, prefix)
     }
 
+    fn count_pos_interval(&self, p: TermId, lo: TermId, hi: Option<TermId>) -> Result<Option<u64>, StorageError> {
+        if !self.delta.untouched(Perm::Pos, &[p]) { return Ok(None) }
+        self.base.count_pos_interval(p, lo, hi)
+    }
+
     fn seek(&self, perm: Perm, prefix: &[TermId], target: TermId) -> Result<Option<TermId>, StorageError> {
         merged_seek(&*self.base, &self.delta.adds[slot(perm)], &self.delta.dels[slot(perm)], perm, prefix, target)
     }

@@ -681,6 +681,14 @@ where
         if hint.keep { hint.rows = Some((block, Arc::clone(&rows))) }
         Ok(Some((block, rows)))
     }
+    /// Count rows between full keys without scanning the blocks in between.
+    pub(super) fn count_interval(&self, low: [TermId; N], high: [TermId; N], include_high: bool) -> io::Result<u64> {
+        let mut hint = Hint { keep: true, ..Hint::default() };
+        let start = self.bound_from(&mut hint, low, false)?;
+        let end = self.bound_from(&mut hint, high, include_high)?;
+        Ok(end.saturating_sub(start))
+    }
+
     pub fn range(&self, prefix: &[TermId]) -> io::Result<std::ops::Range<u64>> { self.range_from(&mut Hint::default(), prefix) }
     fn range_from(&self, hint: &mut Hint<N>, prefix: &[TermId]) -> io::Result<std::ops::Range<u64>> {
         if prefix.len() > N {
