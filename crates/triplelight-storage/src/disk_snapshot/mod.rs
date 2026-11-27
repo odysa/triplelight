@@ -580,7 +580,8 @@ impl DiskSnapshot {
             Ok(())
         })
     }
-    pub(crate) fn manifest_identity(&self) -> [u8; 32] { self.manifest_sha }
+    /// SHA-256 of the manifest: the base's identity (side files such as persisted statistics bind to it).
+    pub fn manifest_identity(&self) -> [u8; 32] { self.manifest_sha }
     /// This base with its wide tables (#140), kept beside it as `tables.v1` and bound to its manifest identity: read
     /// when that file matches, else built and, when `persist`, written (`WithTables::open_persisted`). A store opened
     /// read-only passes `persist` false and never writes to the base directory.

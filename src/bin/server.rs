@@ -495,6 +495,12 @@ fn serve_memory(args: &[String]) {
             // then come from the cost model, which a work gate skips for small queries (round-2 benchmarks).
             let stats: std::sync::RwLock<Option<std::sync::Arc<Stats>>> = std::sync::RwLock::new(None);
             let want_stats = !args.iter().any(|a| a == "--no-stats");
+            // `--stats-file <path>`: a disk snapshot's statistics are loaded from there when the file verifies against
+            // this base (its manifest identity), and with `--persist-stats` written there after a scan. The snapshot's
+            // own directory is never written, so a shared or pinned store stays byte-identical.
+            let stats_file = args.iter().position(|a| a == "--stats-file").and_then(|i| args.get(i + 1)).map(std::path::PathBuf::from);
+            let persist_stats = args.iter().any(|a| a == "--persist-stats");
+            if persist_stats && stats_file.is_none() { eprintln!("--persist-stats needs --stats-file <path>"); std::process::exit(2) }
             eprintln!("optimizer statistics: {}", if want_stats { "building in background" } else { "off" });
             let ablations = ablations(args);
             let timeout = query_timeout(args);
@@ -506,10 +512,29 @@ fn serve_memory(args: &[String]) {
             let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
             let (server, snap, stats) = (&server, &snap, &stats);
             std::thread::scope(|scope| {
+            let stats_file = &stats_file;
             if want_stats { scope.spawn(move || {
                 let t = Instant::now();
+                use triplelight::storage::Snapshot as _;
+                let bound = match snap { crate::Backend::Disk(d) => Some(d.manifest_identity()), crate::Backend::Memory(_) => None }
+                    .zip(snap.count(triplelight::model::Perm::Spo, &[]).ok());
+                if let (Some(path), Some((identity, triples))) = (stats_file, bound)
+                    && let Some((st, bytes)) = triplelight::embedded::stats_file::load_bound(path, 0, identity, triples) {
+                    *stats.write().unwrap() = Some(std::sync::Arc::new(st));
+                    eprintln!("statistics ready after {:.2}s (loaded {bytes} bytes from {})", t.elapsed().as_secs_f64(), path.display());
+                    return;
+                }
                 match Stats::from_snapshot(snap) {
-                    Ok(st) => { *stats.write().unwrap() = Some(std::sync::Arc::new(st)); eprintln!("statistics ready after {:.2}s", t.elapsed().as_secs_f64()) }
+                    Ok(st) => {
+                        if persist_stats && let (Some(path), Some((identity, triples))) = (stats_file, bound) {
+                            match triplelight::embedded::stats_file::store_bound(path, 0, identity, &st, triples) {
+                                Ok(()) => eprintln!("statistics written to {}", path.display()),
+                                Err(e) => eprintln!("statistics not written to {} ({e})", path.display()),
+                            }
+                        }
+                        *stats.write().unwrap() = Some(std::sync::Arc::new(st));
+                        eprintln!("statistics ready after {:.2}s", t.elapsed().as_secs_f64())
+                    }
                     Err(e) => eprintln!("statistics failed ({e}); continuing with greedy join order"),
                 }
             }); }

@@ -702,6 +702,45 @@ impl ReadSnapshot {
 }
 
 #[cfg(test)]
+mod bound_stats_tests {
+    use super::stats_file::{load_bound, store_bound};
+    use crate::model::Perm;
+    use crate::opt::stats::Stats;
+    use crate::storage::{MemorySnapshot, Snapshot as _};
+
+    /// A statistics file bound to a base identity (`serve --disk --stats-file`): loading it gives statistics that
+    /// encode to exactly the bytes of a fresh build, and a file for another identity, generation or triple count is
+    /// ignored rather than trusted.
+    #[test]
+    fn a_bound_statistics_file_loads_the_built_bytes_and_nothing_else() {
+        let nt: String = (0..300).map(|i| format!("<http://ex/s{}> <http://ex/p{}> <http://ex/o{}> .\n", i % 37, i % 5, i % 11)).collect();
+        let snap = MemorySnapshot::from_ntriples(nt.as_bytes()).unwrap();
+        let built = Stats::from_snapshot(&snap).unwrap();
+        let triples = snap.count(Perm::Spo, &[]).unwrap();
+        let dir = std::env::temp_dir().join(format!("tl-bound-stats-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("lubm.stats");
+        let identity = [7u8; 32];
+        store_bound(&path, 0, identity, &built, triples).unwrap();
+        let (loaded, bytes) = load_bound(&path, 0, identity, triples).expect("verifies");
+        assert_eq!(loaded.encode(), built.encode(), "loaded statistics are the built ones, byte for byte");
+        assert_eq!(bytes, std::fs::metadata(&path).unwrap().len());
+        assert!(load_bound(&path, 0, [8u8; 32], triples).is_none(), "another base's file");
+        assert!(load_bound(&path, 1, identity, triples).is_none(), "another generation");
+        assert!(load_bound(&path, 0, identity, triples + 1).is_none(), "a different triple count");
+        assert!(store_bound(&path, 0, identity, &built, triples + 1).is_err(), "statistics of another base are not written");
+        let mut damaged = std::fs::read(&path).unwrap();
+        let last = damaged.len() - 1;
+        damaged[last] ^= 1;
+        std::fs::write(&path, &damaged).unwrap();
+        assert!(load_bound(&path, 0, identity, triples).is_none(), "a damaged payload");
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1, "no temp files left behind");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+}
+
+#[cfg(test)]
 mod memory_tests {
     use super::*;
     #[test]
@@ -763,7 +802,7 @@ mod memory_tests {
 /// Layout: `TLSIDE01`, generation (u64 LE), sha256 of the exact `base-<generation>/MANIFEST` bytes, payload length
 /// (u64 LE), sha256 of the payload, payload (`Stats::encode`). The file is disposable: anything that does not verify
 /// is ignored (the caller rescans) and replaced by the next scan.
-mod stats_file {
+pub mod stats_file {
     use super::Stats;
     use sha2::{Digest, Sha256};
     use std::io::Write;
@@ -781,12 +820,17 @@ mod stats_file {
 
     /// The statistics and the file size, or `None` if the file is missing, foreign, stale or malformed.
     pub(super) fn load(dir: &Path, generation: u64, base_triples: u64) -> Option<(Stats, u64)> {
-        let p = path(dir, generation);
-        if std::fs::metadata(&p).ok()?.len() > MAX_FILE { return None }
-        let buf = std::fs::read(&p).ok()?;
+        load_bound(&path(dir, generation), generation, manifest_sha(dir, generation).ok()?, base_triples)
+    }
+
+    /// `load` from an explicit file bound to `(generation, identity)`: `serve --disk --stats-file` passes 0 and the
+    /// disk snapshot's manifest identity, so a file written for another base is ignored and the base is never written.
+    pub fn load_bound(p: &Path, generation: u64, identity: [u8; 32], base_triples: u64) -> Option<(Stats, u64)> {
+        if std::fs::metadata(p).ok()?.len() > MAX_FILE { return None }
+        let buf = std::fs::read(p).ok()?;
         if buf.len() < HEADER || &buf[..8] != MAGIC { return None }
         let field = |a: usize| u64::from_le_bytes(buf[a..a + 8].try_into().unwrap());
-        if field(8) != generation || buf[16..48] != manifest_sha(dir, generation).ok()? { return None }
+        if field(8) != generation || buf[16..48] != identity { return None }
         let len = usize::try_from(field(48)).ok()?;
         let payload = buf.get(HEADER..)?;
         if payload.len() != len || buf[56..88] != Sha256::digest(payload)[..] { return None }
@@ -796,15 +840,7 @@ mod stats_file {
     /// Writes the file for `generation` (unique temp name, fsync, rename, fsync of the directory) and removes
     /// statistics files and temp files of other generations. The caller holds the store and its generation lock.
     pub(super) fn store(dir: &Path, generation: u64, stats: &Stats, base_triples: u64) -> std::io::Result<()> {
-        if stats.triple_count != base_triples { return Err(std::io::Error::other("statistics do not describe this base")) }
-        let payload = stats.encode();
-        let mut out = Vec::with_capacity(HEADER + payload.len());
-        out.extend_from_slice(MAGIC);
-        out.extend_from_slice(&generation.to_le_bytes());
-        out.extend_from_slice(&manifest_sha(dir, generation)?);
-        out.extend_from_slice(&(payload.len() as u64).to_le_bytes());
-        out.extend_from_slice(&Sha256::digest(&payload));
-        out.extend_from_slice(&payload);
+        let out = encode_file(generation, manifest_sha(dir, generation)?, stats, base_triples)?;
         let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos());
         let tmp = dir.join(format!("stats-{generation}.v1.tmp-{}-{nonce}", std::process::id()));
         let result = (|| {
@@ -824,6 +860,35 @@ mod stats_file {
             }
         }
         Ok(())
+    }
+
+    fn encode_file(generation: u64, identity: [u8; 32], stats: &Stats, base_triples: u64) -> std::io::Result<Vec<u8>> {
+        if stats.triple_count != base_triples { return Err(std::io::Error::other("statistics do not describe this base")) }
+        let payload = stats.encode();
+        let mut out = Vec::with_capacity(HEADER + payload.len());
+        out.extend_from_slice(MAGIC);
+        out.extend_from_slice(&generation.to_le_bytes());
+        out.extend_from_slice(&identity);
+        out.extend_from_slice(&(payload.len() as u64).to_le_bytes());
+        out.extend_from_slice(&Sha256::digest(&payload));
+        out.extend_from_slice(&payload);
+        Ok(out)
+    }
+
+    /// Writes `stats` to an explicit file bound to `(generation, identity)` (`serve --disk --stats-file
+    /// --persist-stats`): a unique temp name beside it, fsync, rename. Nothing else is written or removed.
+    pub fn store_bound(p: &Path, generation: u64, identity: [u8; 32], stats: &Stats, base_triples: u64) -> std::io::Result<()> {
+        let out = encode_file(generation, identity, stats, base_triples)?;
+        let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos());
+        let tmp = p.with_extension(format!("tmp-{}-{nonce}", std::process::id()));
+        let result = (|| {
+            let mut f = std::fs::OpenOptions::new().write(true).create_new(true).open(&tmp)?;
+            f.write_all(&out)?;
+            f.sync_all()?;
+            std::fs::rename(&tmp, p)
+        })();
+        if result.is_err() { let _ = std::fs::remove_file(&tmp); }
+        result
     }
 }
 
