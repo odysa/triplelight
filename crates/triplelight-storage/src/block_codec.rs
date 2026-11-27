@@ -80,6 +80,14 @@ pub(super) fn encode<const N: usize>(rows: &[[TermId; N]], rotate: bool) -> io::
 
 /// `rotate`: the file's format allows tag-rotated columns (`RDFIDX04`/`RDFQIX02`); older blocks never set the flag.
 pub(super) fn decode<const N: usize>(data: &[u8], count: usize, rotate: bool) -> io::Result<Vec<[TermId; N]>> {
+    let mut rows = Vec::new();
+    decode_into(data, count, rotate, &mut rows)?;
+    Ok(rows)
+}
+
+/// As `decode`, into `rows` (cleared first), so a cache can reuse an evicted block's buffer (#152: a fresh 6 KB
+/// allocation per miss, freed later on whichever thread evicts it, costs more under mimalloc).
+pub(super) fn decode_into<const N: usize>(data: &[u8], count: usize, rotate: bool, rows: &mut Vec<[TermId; N]>) -> io::Result<()> {
     if count == 0 || count > 256 || data.len() < header_len(N) {
         return Err(invalid("invalid compressed block"));
     }
@@ -90,7 +98,8 @@ pub(super) fn decode<const N: usize>(data: &[u8], count: usize, rotate: bool) ->
     if widths.iter().any(|w| *w > 64) || (rotated.iter().any(|r| *r) && !rotate) || rotated[0] {
         return Err(invalid("invalid column bit width"));
     }
-    let mut rows = vec![[TermId(0); N]; count];
+    rows.clear();
+    rows.resize(count, [TermId(0); N]);
     let mut cursor = header_len(N);
     for col in 0..N {
         let width = widths[col] as usize;
@@ -103,7 +112,7 @@ pub(super) fn decode<const N: usize>(data: &[u8], count: usize, rotate: bool) ->
         let (mut acc, mut bits, mut at) = (0u128, 0usize, 0usize);
         let mask = (1u128 << width) - 1; // width <= 64, checked above
         let mut last = base[col];
-        for row in &mut rows {
+        for row in rows.iter_mut() {
             while bits < width {
                 acc |= (slice[at] as u128) << bits;
                 bits += 8;
@@ -126,14 +135,14 @@ pub(super) fn decode<const N: usize>(data: &[u8], count: usize, rotate: bool) ->
         }
         // Undo the tag rotation in a separate pass, so the unpacking loop stays branch-free for every column.
         if rotated[col] {
-            for row in &mut rows { row[col] = TermId(row[col].0.rotate_right(TAG_BITS)) }
+            for row in rows.iter_mut() { row[col] = TermId(row[col].0.rotate_right(TAG_BITS)) }
         }
         cursor = end;
     }
     if cursor != data.len() {
         return Err(invalid("compressed block trailing bytes"));
     }
-    Ok(rows)
+    Ok(())
 }
 
 #[cfg(test)]

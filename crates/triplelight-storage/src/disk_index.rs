@@ -8,7 +8,7 @@ use std::io::{self, ErrorKind, Write};
 use std::os::unix::fs::FileExt;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, OnceLock, RwLock};
+use std::sync::{Arc, Mutex, OnceLock, RwLock};
 
 const MAGIC_V2: &[u8; 8] = b"RDFIDX02";
 const MAGIC_V3: &[u8; 8] = b"RDFIDX03";
@@ -35,6 +35,9 @@ static MISSES: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SL
 static READS: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
 static BYTES: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
 static EVICTIONS: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
+/// Index block misses decoded into a reused (evicted) buffer, and into a fresh allocation (trace only).
+static BUFFERS_REUSED: AtomicU64 = AtomicU64::new(0);
+static BUFFERS_FRESH: AtomicU64 = AtomicU64::new(0);
 pub fn cache_trace_enabled() -> bool {
     *TRACE_ENABLED.get_or_init(|| std::env::var_os("TRIPLELIGHT_TRACE_BLOCK_CACHE").is_some())
 }
@@ -77,6 +80,10 @@ pub(crate) fn timed_read<T>(kind: usize, f: impl FnOnce() -> T) -> T {
 }
 /// Block-read totals in microseconds since the last call, then reset: `[index, dictionary]`.
 pub fn take_read_share() -> [u64; 2] { READ_NS.each_ref().map(|c| c.swap(0, Ordering::Relaxed) / 1000) }
+/// (reused, fresh): index block misses decoded into an evicted block's buffer, and into a new allocation.
+pub fn block_buffer_trace() -> (u64, u64) {
+    (BUFFERS_REUSED.load(Ordering::Relaxed), BUFFERS_FRESH.load(Ordering::Relaxed))
+}
 pub fn cache_trace_snapshot() -> [[u64; 5]; TRACE_SLOTS] {
     std::array::from_fn(|i| {
         [
@@ -313,7 +320,16 @@ struct CacheShard<const N: usize> {
     clock: VecDeque<u64>,
     /// Bumped by `clear_cache`; a block read from disk is inserted only if no clear happened since its lookup began.
     generation: u64,
+    /// Evicted blocks nobody else held, kept for the next miss to decode into (at most `spare_limit`, which is taken
+    /// out of the entries' capacity, so entries and spares together stay within `shard_capacity`). A miss takes one
+    /// under the read lock that found the miss, hence the inner mutex; eviction pushes under the write lock, which
+    /// needs no locking (`get_mut`).
+    spare: Mutex<Vec<Arc<Vec<[TermId; N]>>>>,
 }
+/// Spare buffers per shard: in steady state a miss takes one and its insert's eviction returns one. Shards too small
+/// to give up that many cached blocks keep none.
+const SPARE_BUFFERS: usize = 2;
+fn spare_limit(shard_capacity: usize) -> usize { if shard_capacity > 4 * SPARE_BUFFERS { SPARE_BUFFERS } else { 0 } }
 #[doc(hidden)]
 pub const MEMO_SLOTS: usize = 8;
 /// (index instance, cache epoch, block id, rows). Up to `MEMO_SLOTS` decoded blocks per long-lived thread stay
@@ -498,6 +514,7 @@ where
                         entries: HashMap::new(),
                         clock: VecDeque::new(),
                         generation: 0,
+                        spare: Mutex::new(Vec::new()),
                     })
                 })
                 .collect(),
@@ -518,6 +535,7 @@ where
                 .map_err(|_| io::Error::other("index cache lock poisoned"))?;
             cache.entries.clear();
             cache.clock.clear();
+            cache.spare.get_mut().map_err(|_| io::Error::other("index cache lock poisoned"))?.clear();
             cache.generation += 1;
         }
         #[cfg(test)]
@@ -558,7 +576,7 @@ where
         let shard = &self.cache[(id as usize) % self.cache.len()];
         let poisoned = || io::Error::other("index cache lock poisoned");
         // Hit: shared read lock only, so concurrent readers of hot blocks don't serialize.
-        let generation = {
+        let (generation, buffer) = {
             let cache = shard.read().map_err(|_| poisoned())?;
             if let Some((value, referenced)) = cache.entries.get(&id) {
                 if cache_trace_enabled() && let Some(i) = self.trace_slot {
@@ -567,14 +585,23 @@ where
                 referenced.store(true, Ordering::Relaxed);
                 return Ok(Arc::clone(value));
             }
-            cache.generation
+            // A miss: take a spare buffer in the same lock acquisition (`try_lock`: never wait; allocate instead).
+            let buffer = cache.spare.try_lock().ok().and_then(|mut spare| spare.pop());
+            (cache.generation, buffer)
         };
         if cache_trace_enabled() && let Some(i) = self.trace_slot {
             MISSES[i].fetch_add(1, Ordering::Relaxed);
         }
         // Miss: read, verify and decode without holding the lock. Concurrent misses on one block may each read and
         // decode it (first insert wins), so decoded blocks can transiently exceed the nominal cache budget.
-        let r = Arc::new(self.read_block(id)?);
+        let trace = cache_trace_enabled();
+        let mut r = match buffer {
+            Some(b) => { if trace { BUFFERS_REUSED.fetch_add(1, Ordering::Relaxed); } b }
+            None => { if trace { BUFFERS_FRESH.fetch_add(1, Ordering::Relaxed); } Arc::new(Vec::new()) }
+        };
+        // A spare is held only by the shard's list, which gave it up: no other reference exists.
+        let rows = Arc::get_mut(&mut r).expect("a spare buffer is unshared");
+        timed_read(READ_INDEX, || self.read_block_into(id, rows))?;
         #[cfg(test)]
         if let Some(hook) = MISS_HOOK.with(|h| h.borrow_mut().take()) { hook(self as &dyn std::any::Any) }
         let mut cache = shard.write().map_err(|_| poisoned())?;
@@ -586,15 +613,24 @@ where
             // A clear_cache ran while we read: don't repopulate the cleared cache with a pre-clear read.
             return Ok(r);
         }
-        while cache.entries.len() >= self.shard_capacity {
+        let cache = &mut *cache;
+        let spare = cache.spare.get_mut().map_err(|_| poisoned())?;
+        // Spare buffers count as cached blocks: entries get `shard_capacity - spare_limit`, so the shard holds at most
+        // `shard_capacity` blocks' rows.
+        let spares = spare_limit(self.shard_capacity);
+        while cache.entries.len() >= self.shard_capacity - spares {
             let old = cache.clock.pop_front().expect("cache clock consistent");
             let entry = cache.entries.get(&old).expect("cache entry consistent");
             if entry.1.swap(false, Ordering::Relaxed) {
                 cache.clock.push_back(old);
             } else {
-                cache.entries.remove(&old);
+                let (mut rows, _) = cache.entries.remove(&old).expect("cache entry consistent");
                 if cache_trace_enabled() && let Some(i) = self.trace_slot {
                     EVICTIONS[i].fetch_add(1, Ordering::Relaxed);
+                }
+                // Keep the buffer only if nobody else holds the block (a reader or a thread's memo may).
+                if spare.len() < spares && Arc::get_mut(&mut rows).is_some() {
+                    spare.push(rows);
                 }
             }
         }
@@ -607,6 +643,12 @@ where
         timed_read(READ_INDEX, || self.read_block_untimed(id))
     }
     fn read_block_untimed(&self, id: u64) -> io::Result<Vec<[TermId; N]>> {
+        let mut rows = Vec::new();
+        self.read_block_into(id, &mut rows)?;
+        Ok(rows)
+    }
+    /// As `read_block_untimed`, decoding into `rows` (its previous contents are discarded; its allocation is reused).
+    fn read_block_into(&self, id: u64, rows: &mut Vec<[TermId; N]>) -> io::Result<()> {
         let start = id
             .checked_mul(BLOCK_ROWS)
             .ok_or_else(|| invalid("block overflow"))?;
@@ -623,11 +665,12 @@ where
         if Sha256::digest(&bytes).as_slice() != meta.checksum {
             return Err(invalid("index block checksum mismatch"));
         }
-        let rows: Vec<_> = if self.compressed {
-            super::block_codec::decode::<N>(&bytes, n, self.rotated)?
+        if self.compressed {
+            super::block_codec::decode_into::<N>(&bytes, n, self.rotated, rows)?
         } else {
-            bytes.chunks_exact(row_bytes(N) as usize).map(decode_row::<N>).collect()
-        };
+            rows.clear();
+            rows.extend(bytes.chunks_exact(row_bytes(N) as usize).map(decode_row::<N>));
+        }
         if rows.iter().any(|r| r.iter().any(|id| id.0 == 0))
             || rows.windows(2).any(|w| w[0] >= w[1])
             || rows.last() != Some(&meta.last)
@@ -635,7 +678,7 @@ where
         {
             return Err(invalid("invalid index block ordering"));
         }
-        Ok(rows)
+        Ok(())
     }
     fn row(&self, i: u64) -> io::Result<[TermId; N]> {
         if i >= self.rows {
@@ -983,6 +1026,37 @@ mod tests {
         std::fs::write(&path, bad).unwrap();
         assert!(index.block_slice_uncached(256, 512).is_err());
         std::fs::remove_file(path).unwrap();
+    }
+    /// A miss decodes into an evicted block's buffer only when nothing else holds that block: a block a reader still
+    /// holds keeps its rows, every read returns the right rows, and entries plus spares stay within the shard's
+    /// capacity (#152's cross-thread free).
+    #[test]
+    fn evicted_buffers_are_reused_only_when_unshared() {
+        let path = std::env::temp_dir().join(format!("rdf-reuse-{}", std::process::id()));
+        let blocks = 16 * 40;
+        let rows: Vec<_> = (1..=blocks * BLOCK_ROWS).map(|i| [TermId(i), TermId(1 + i % 7), TermId(2 + i % 11)]).collect();
+        let mut bytes = Vec::new();
+        write_index(&mut bytes, rows.iter().copied()).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        let mut index = DiskIndex::<3>::open(&path).unwrap();
+        index.shard_capacity = 10;
+        let want = |id: u64| rows[(id * BLOCK_ROWS) as usize..((id + 1) * BLOCK_ROWS) as usize].to_vec();
+        // Every block of shard 0, twice: the shard holds 8 entries and 2 spares, so most reads evict.
+        let held = index.block_shared(0).unwrap();
+        for _ in 0..2 {
+            for id in (0..blocks).step_by(16) {
+                assert_eq!(*index.block_shared(id).unwrap(), want(id), "block {id}");
+                let shard = index.cache[0].read().unwrap();
+                let spare = shard.spare.lock().unwrap();
+                assert!(shard.entries.len() + spare.len() <= index.shard_capacity, "within capacity");
+                assert!(spare.iter().all(|b| Arc::strong_count(b) == 1), "a spare is unshared");
+            }
+        }
+        assert_eq!(*held, want(0), "a block held outside the cache is never reused");
+        assert!(!index.cache[0].read().unwrap().spare.lock().unwrap().is_empty(), "evicted buffers were kept for reuse");
+        index.clear_cache().unwrap();
+        assert!(index.cache[0].read().unwrap().spare.lock().unwrap().is_empty(), "clear drops the spares too");
+        std::fs::remove_file(&path).unwrap();
     }
     #[test]
     fn clear_cache_invalidates_thread_memo() {
