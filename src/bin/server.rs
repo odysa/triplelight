@@ -216,6 +216,7 @@ fn answer<'a, S: triplelight::storage::Snapshot>(snap: &'a S, q: &str, opts: &Op
             Reply::Whole(tiny_http::Response::from_string(msg).with_status_code(code))
         }
     } })();
+    triplelight::storage::disk_index::flush_block_log();
     if let Some(before) = before {
         let after = triplelight::storage::disk_index::cache_trace_snapshot();
         for (i,name) in ["spo","sop","pso","pos","osp","ops","dictionary.term","dictionary.id","quads"].iter().enumerate() {

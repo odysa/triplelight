@@ -20,6 +20,40 @@ const MAGIC_QUAD_V1: &[u8; 8] = b"RDFQIX01";
 /// `RDFQIX01` plus tag-rotated columns, as `RDFIDX04` is to `RDFIDX03`.
 const MAGIC_QUAD_V2: &[u8; 8] = b"RDFQIX02";
 const HEADER: u64 = 24;
+const ACCESS_SEEK: u8 = 0;
+const ACCESS_SCAN: u8 = 1;
+const ACCESS_POINT: u8 = 2;
+
+/// Development-only block access log for the #144 cache simulator: with `TRIPLELIGHT_TRACE_BLOCK_IDS=<file>`, every
+/// block lookup (before the per-thread memo) appends 16 bytes: order slot, kind (0 seek, 1 scan, 2 point), rows
+/// touched (u16), thread number (u32), block id (u64), little-endian. One global writer, so the log keeps the order
+/// in which lookups happened. Off by default: one relaxed load per lookup.
+mod block_log {
+    use std::io::{BufWriter, Write};
+    use std::sync::{Mutex, OnceLock};
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static LOG: OnceLock<Option<Mutex<BufWriter<std::fs::File>>>> = OnceLock::new();
+    static NEXT_THREAD: AtomicU32 = AtomicU32::new(0);
+    thread_local! { static THREAD: u32 = NEXT_THREAD.fetch_add(1, Ordering::Relaxed); }
+    fn log() -> &'static Option<Mutex<BufWriter<std::fs::File>>> {
+        LOG.get_or_init(|| std::env::var_os("TRIPLELIGHT_TRACE_BLOCK_IDS")
+            .and_then(|p| std::fs::File::create(p).ok())
+            .map(|f| Mutex::new(BufWriter::with_capacity(1 << 20, f))))
+    }
+    pub(super) fn record(slot: Option<usize>, kind: u8, rows: u16, block: u64) {
+        let Some(log) = log() else { return };
+        let mut rec = [0u8; 16];
+        rec[0] = slot.map_or(255, |s| s as u8);
+        rec[1] = kind;
+        rec[2..4].copy_from_slice(&rows.to_le_bytes());
+        rec[4..8].copy_from_slice(&THREAD.with(|t| *t).to_le_bytes());
+        rec[8..].copy_from_slice(&block.to_le_bytes());
+        if let Ok(mut w) = log.lock() { let _ = w.write_all(&rec); }
+    }
+    /// Flushes the log (the server calls it after each request, so a killed server loses at most one request).
+    pub fn flush() { if let Some(log) = log() && let Ok(mut w) = log.lock() { let _ = w.flush(); } }
+}
+pub use block_log::flush as flush_block_log;
 /// Cache shares of a triple-only snapshot (see `DiskIndex::open_with_share`).
 pub const DEFAULT_SHARES: usize = 9;
 /// Cache shares when a base also has the six quad orders.
@@ -536,7 +570,10 @@ where
     pub fn is_empty(&self) -> bool {
         self.rows == 0
     }
-    fn block(&self, id: u64) -> io::Result<Arc<Vec<[TermId; N]>>> {
+    fn block(&self, id: u64) -> io::Result<Arc<Vec<[TermId; N]>>> { self.block_as(id, ACCESS_SEEK, 0) }
+    /// `block`, logging the access (`kind`, rows touched) when the development block trace is on (#144).
+    fn block_as(&self, id: u64, kind: u8, rows_touched: u16) -> io::Result<Arc<Vec<[TermId; N]>>> {
+        block_log::record(self.trace_slot, kind, rows_touched, id);
         // Per-thread memo of recently used blocks: leapfrog seeks and index nested-loop probes hit the same few
         // blocks back to back from every rayon worker, and taking the shard mutex each time serialized them
         // (mutex waits dominated a disk LUBM-1000 Q2 profile). Blocks are immutable for an index instance, so a
@@ -644,7 +681,7 @@ where
                 "index row out of bounds",
             ));
         }
-        Ok(self.block(i / BLOCK_ROWS)?[(i % BLOCK_ROWS) as usize])
+        Ok(self.block_as(i / BLOCK_ROWS, ACCESS_POINT, 1)?[(i % BLOCK_ROWS) as usize])
     }
     /// The first row `>= key` (`> key` when `upper`), as a position; `hint` is where the previous search landed.
     fn bound_from(&self, hint: &mut Hint<N>, key: [TermId; N], upper: bool) -> io::Result<u64> {
@@ -702,9 +739,9 @@ where
         if start >= end || end > self.rows {
             return Err(invalid("invalid block slice"));
         }
-        let rows = self.block(start / BLOCK_ROWS)?;
-        let from = (start % BLOCK_ROWS) as usize;
         let count = (end - start).min(BLOCK_ROWS - start % BLOCK_ROWS) as usize;
+        let rows = self.block_as(start / BLOCK_ROWS, ACCESS_SCAN, count as u16)?;
+        let from = (start % BLOCK_ROWS) as usize;
         Ok(rows[from..from + count].to_vec())
     }
     /// Read a full-scan block without populating the shared query cache.
