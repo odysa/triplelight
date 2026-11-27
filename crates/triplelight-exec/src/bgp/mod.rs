@@ -107,7 +107,7 @@ pub(crate) fn sort_merge_shape(pat: &[Slot; 3], bound: impl Fn(usize) -> bool) -
 }
 
 /// Whether a step of that shape is a sort-merge rather than a hash join: in a BGP whose output order is free
-/// (`order_free`; today the executor passes "a range was pushed", which implies it), with `n` input rows and `total` rows under the constant, and exactly in the window where
+/// (`order_free`: the executor passes `range::reorderable_bgps` membership, which a pushed range implies), with `n` input rows and `total` rows under the constant, and exactly in the window where
 /// `extend_hash` would build a semi-join (not a whole-range table, and within `PROBE_ROWS` per input row).
 /// Shared with the wide-table selector's index cost estimate (#140).
 pub(crate) fn sort_merge_applies(order_free: bool, n: u64, total: u64) -> bool {
@@ -152,6 +152,9 @@ pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
     /// Patterns whose object scan is restricted by a pushed-down range filter (`range.rs`), by (predicate, object
     /// variable). Used only when the pattern's subject and object are unbound.
     pub ranges: Option<&'a Ranges>,
+    /// This BGP's solution order cannot reach the answers (`range::reorderable_bgps`, the guard of range pushdown):
+    /// `extend_sort_merge` may then return rows in key order instead of input order, with or without a pushed range.
+    pub order_free: bool,
     /// Sort-then-probe (`Options::sorted_probe`): see `extend_sorted`.
     pub sorted_probe: bool,
     /// Checked every `CHECK_ROWS` input rows of a probe or merge join (`Options::interrupt`).
@@ -393,13 +396,16 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         if w == 0 { return None }
         let n = rows.len() / w;
         // Cheap exits first: the full check below needs a scan of every row and an index count.
-        if !sort_merge_applies(self.ranges.is_some(), n as u64, PROBE_ROWS * n as u64) { return None }
+        // Key-order output only where the BGP's order is free (#105): `order_free` (`range::reorderable_bgps`); a range
+        // is pushed only into such a BGP, so #357's case is a subset.
+        let order_free = self.order_free || self.ranges.is_some();
+        if !sort_merge_applies(order_free, n as u64, PROBE_ROWS * n as u64) { return None }
         let first = rows.get(..w)?;
         let (cpos, kpos, fpos) = sort_merge_shape(pat, |v| first[v] != UNBOUND)?;
         let (Slot::Const(Some(c)), Slot::Var(kv), Slot::Var(fv)) = (pat[cpos], pat[kpos], pat[fpos]) else { return None };
         if rows.chunks_exact(w).any(|r| r[kv] == UNBOUND || r[fv] != UNBOUND) { return None }
         let perm = Perm::ALL.into_iter().find(|p| p.order() == [cpos, kpos, fpos])?;
-        if !sort_merge_applies(self.ranges.is_some(), n as u64, self.count(perm, &[c])) { return None }
+        if !sort_merge_applies(order_free, n as u64, self.count(perm, &[c])) { return None }
         let mut order: Vec<u32> = (0..n as u32).collect();
         order.par_sort_unstable_by_key(|&i| rows[i as usize * w + kv]);
         let mut sorted = Vec::with_capacity(rows.len());
@@ -1029,6 +1035,33 @@ pub(crate) mod sorted_probe_tests {
         }
     }
 
+    /// Sort-merge returns rows in key order, so it may run only where the BGP's order is free (#105): with
+    /// `order_free` false and no pushed range it is never taken and `extend` keeps input order; with it true it is
+    /// taken and returns the same bag of rows.
+    #[test]
+    fn sort_merge_runs_only_where_the_order_is_free() {
+        let mut rng = 0x9e37_79b9_7f4a_7c15u64;
+        let mut next = |m: u64| { rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17; rng % m };
+        // 10,000 subjects with three objects each under one predicate: 30,000 triples against ~4,500 rows, inside the
+        // sort-merge window (more than 2n, at most PROBE_ROWS * n).
+        let t: Vec<[u64; 3]> = (1..=10_000u64).flat_map(|s| (0..3).map(move |k| [s, 1000, 20_000 + s * 3 + k])).collect();
+        let snap = Triples::new(&t);
+        let w = 2;
+        let n = MERGE_MIN_ROWS + 400;
+        let mut rows = Vec::with_capacity(n * w);
+        for _ in 0..n { rows.push(TermId(1 + next(12_000))); rows.push(UNBOUND) } // unsorted keys, duplicates, some without matches
+        let pat = [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)];
+        let fixed = Bgp { snap: &snap, w, ranges: None, order_free: false, sorted_probe: true, interrupt: None, budget: None };
+        let free = Bgp { order_free: true, ..fixed };
+        let input_order = fixed.extend_seq(&pat, &rows);
+        assert!(fixed.extend_sort_merge(&pat, &rows).is_none(), "order not free: no sort-merge");
+        assert_eq!(fixed.extend(&pat, &rows), input_order, "order not free: input order kept");
+        let merged = free.extend_sort_merge(&pat, &rows).expect("order free, inside the window");
+        let bag = |v: &[TermId]| { let mut r: Vec<&[TermId]> = v.chunks_exact(w).collect(); r.sort(); r.into_iter().flatten().copied().collect::<Vec<_>>() };
+        assert_eq!(bag(&merged), bag(&input_order), "same rows");
+        assert!(merged.chunks_exact(w).map(|r| r[0]).is_sorted(), "key order");
+    }
+
     #[test]
     fn sorted_probe_output_is_identical_and_in_input_order() {
         let mut rng = 0x2545_f491_4f6c_dd1du64;
@@ -1056,8 +1089,8 @@ pub(crate) mod sorted_probe_tests {
         }
         rows[2] = UNBOUND; // the first row decides the key: only ?0 bound
         rows[w] = rows[0]; // a duplicate key next to it
-        let on = Bgp { snap: &snap, w, ranges: None, sorted_probe: true, interrupt: None, budget: None };
-        let off = Bgp { snap: &snap, w, ranges: None, sorted_probe: false, interrupt: None, budget: None };
+        let on = Bgp { snap: &snap, w, ranges: None, order_free: false, sorted_probe: true, interrupt: None, budget: None };
+        let off = Bgp { snap: &snap, w, ranges: None, order_free: false, sorted_probe: false, interrupt: None, budget: None };
         let patterns = [
             [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)], // key as subject
             [Slot::Var(1), Slot::Const(Some(TermId(1001))), Slot::Var(0)], // key as object
@@ -1101,7 +1134,7 @@ pub(crate) mod sorted_probe_tests {
         let mut keys: Vec<u64> = (0..MERGE_MORSEL as u64 * 2 + 777).map(|i| 1 + (i * 2654435761) % 470).collect();
         keys.sort_unstable();
         let rows: Vec<TermId> = keys.iter().flat_map(|&k| [TermId(k), UNBOUND, TermId(9)]).collect();
-        let b = Bgp { snap: &snap, w, ranges: None, sorted_probe: false, interrupt: None, budget: None };
+        let b = Bgp { snap: &snap, w, ranges: None, order_free: false, sorted_probe: false, interrupt: None, budget: None };
         for pat in [
             [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)],
             [Slot::Var(1), Slot::Const(Some(TermId(1001))), Slot::Var(0)],

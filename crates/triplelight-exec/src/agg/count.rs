@@ -102,7 +102,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
                 ((0, 0), "count-empty")
             } else {
                 on_data!(self, |g| {
-                    let join=bgp::Bgp { snap:g,w:self.vars.len(),ranges:None,sorted_probe:self.sorted_probe,interrupt:self.interrupt,budget:self.budget };
+                    let join=bgp::Bgp { snap:g,w:self.vars.len(),ranges:None,order_free:false,sorted_probe:self.sorted_probe,interrupt:self.interrupt,budget:self.budget };
                     if let Some(center) = star {
                         (join.count_star(&pats, center), "count-star")
                     } else if self.wcoj && pats.len()>=3 && pattern::cyclic(&pats) {
