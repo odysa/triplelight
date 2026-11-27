@@ -81,10 +81,23 @@ pub fn take_read_share() -> [u64; 2] { READ_NS.each_ref().map(|c| c.swap(0, Orde
 /// count, for the block-cache trace.
 static RESIDENT: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
 /// Block reads answered by a thread's memo (`block`), per trace slot, which the shard counters never see. With
-/// `HITS` they give every block access a query makes, the count an encoded cache would decode on (#144).
-static MEMO_HITS: [AtomicU64; TRACE_SLOTS] = [const { AtomicU64::new(0) }; TRACE_SLOTS];
-/// Memo hits since the last call, then reset.
-pub fn take_memo_hits() -> [u64; TRACE_SLOTS] { MEMO_HITS.each_ref().map(|c| c.swap(0, Ordering::Relaxed)) }
+/// `HITS` they give every block access a query makes, the count an encoded cache would decode on (#144). The memo hit
+/// is the hottest path there is, so each thread counts on its own cache line and the trace sums them when it prints:
+/// no shared atomic per hit, and nothing at all with tracing off.
+type MemoHits = [AtomicU64; TRACE_SLOTS];
+static MEMO_HIT_THREADS: std::sync::Mutex<Vec<Arc<MemoHits>>> = std::sync::Mutex::new(Vec::new());
+thread_local! {
+    static MEMO_HITS: Arc<MemoHits> = {
+        let mine = Arc::new([const { AtomicU64::new(0) }; TRACE_SLOTS]);
+        MEMO_HIT_THREADS.lock().unwrap_or_else(|p| p.into_inner()).push(Arc::clone(&mine));
+        mine
+    };
+}
+/// Memo hits over every thread since the last call, then reset.
+pub fn take_memo_hits() -> [u64; TRACE_SLOTS] {
+    let threads = MEMO_HIT_THREADS.lock().unwrap_or_else(|p| p.into_inner());
+    std::array::from_fn(|i| threads.iter().map(|t| t[i].swap(0, Ordering::Relaxed)).sum())
+}
 pub fn cache_resident_bytes() -> [u64; TRACE_SLOTS] { RESIDENT.each_ref().map(|c| c.load(Ordering::Relaxed)) }
 pub fn cache_trace_snapshot() -> [[u64; 5]; TRACE_SLOTS] {
     std::array::from_fn(|i| {
@@ -397,7 +410,10 @@ pub struct DiskIndex<const N: usize = 3> {
 pub(crate) struct SharedBlockBudget {
     capacity: u64,
     used: AtomicU64,
+    /// The files registered so far; frozen into `sealed` once the base has opened them all.
     members: std::sync::Mutex<Vec<std::sync::Weak<dyn ClockMember>>>,
+    /// The member list after `seal`: read on every miss at a full budget, with no lock and no allocation.
+    sealed: OnceLock<Box<[std::sync::Weak<dyn ClockMember>]>>,
     hand: AtomicUsize,
 }
 /// A cache that `SharedBlockBudget` can take room from.
@@ -411,7 +427,7 @@ trait ClockMember: Send + Sync {
 }
 impl SharedBlockBudget {
     pub(crate) fn new(capacity: u64) -> Arc<Self> {
-        Arc::new(SharedBlockBudget { capacity, used: AtomicU64::new(0), members: Default::default(), hand: AtomicUsize::new(0) })
+        Arc::new(SharedBlockBudget { capacity, used: AtomicU64::new(0), members: Default::default(), sealed: OnceLock::new(), hand: AtomicUsize::new(0) })
     }
     /// Counts `bytes` in (positive) or out.
     fn charge(&self, bytes: i64) {
@@ -423,17 +439,24 @@ impl SharedBlockBudget {
     fn register(&self, member: std::sync::Weak<dyn ClockMember>) {
         self.members.lock().unwrap_or_else(|p| p.into_inner()).push(member);
     }
+    /// Freezes the member list once every file is registered, so `make_room` reads it without a lock. Called by the
+    /// base after it has opened its index files; files registered later are not members.
+    pub(crate) fn seal(&self) {
+        let members = std::mem::take(&mut *self.members.lock().unwrap_or_else(|p| p.into_inner()));
+        let _ = self.sealed.set(members.into_boxed_slice());
+    }
     /// Evicts until `need` more bytes fit, or gives up after a bounded number of steps (busy shards, every file at
-    /// its floor): the caller inserts anyway, a bounded overshoot.
+    /// its floor): the caller inserts anyway, a bounded overshoot. Before `seal` there is no room-making (the base is
+    /// still opening, and nothing is cached yet).
     fn make_room(&self, need: u64) {
         if self.used.load(Ordering::Relaxed) + need <= self.capacity { return }
-        let members: Vec<Arc<dyn ClockMember>> = self.members.lock().unwrap_or_else(|p| p.into_inner()).iter().filter_map(std::sync::Weak::upgrade).collect();
+        let Some(members) = self.sealed.get() else { return };
         if members.is_empty() { return }
         // Two full CLOCK passes over every shard of every file at most (a second chance costs one pass).
         let steps = members.len() * CACHE_SHARDS * 2 * 64;
         for _ in 0..steps {
             if self.used.load(Ordering::Relaxed) + need <= self.capacity { return }
-            let m = &members[self.hand.fetch_add(1, Ordering::Relaxed) % members.len()];
+            let Some(m) = members[self.hand.fetch_add(1, Ordering::Relaxed) % members.len()].upgrade() else { continue };
             if m.used() <= m.floor() { continue }
             m.clock_step();
         }
@@ -469,7 +492,8 @@ impl<const N: usize> BlockCache<N> {
     /// Counts `n` blocks in (`n` > 0) or out, here and in the shared budget.
     fn charge(&self, n: i64) {
         if n >= 0 { self.blocks.fetch_add(n as u64, Ordering::Relaxed); } else { self.blocks.fetch_sub(n.unsigned_abs(), Ordering::Relaxed); }
-        if let Some(i) = self.trace_slot {
+        // A level for the trace only: kept while tracing (fixed per process), so it costs nothing otherwise.
+        if cache_trace_enabled() && let Some(i) = self.trace_slot {
             let bytes = n.unsigned_abs() * Self::BLOCK_BYTES;
             if n >= 0 { RESIDENT[i].fetch_add(bytes, Ordering::Relaxed); } else { RESIDENT[i].fetch_sub(bytes, Ordering::Relaxed); }
         }
@@ -708,7 +732,7 @@ where
         let epoch = self.epoch.load(Ordering::Acquire);
         let memo = <Width<N> as SupportedWidth<N>>::memo();
         if let Some(rows) = memo.with(|m| m.borrow().iter().flatten().find(|e| e.0 == self.instance && e.1 == epoch && e.2 == id).map(|e| Arc::clone(&e.3))) {
-            if cache_trace_enabled() && let Some(i) = self.trace_slot { MEMO_HITS[i].fetch_add(1, Ordering::Relaxed); }
+            if cache_trace_enabled() && let Some(i) = self.trace_slot { MEMO_HITS.with(|c| c[i].fetch_add(1, Ordering::Relaxed)); }
             return Ok(rows);
         }
         let rows = self.block_shared(id)?;
@@ -1128,6 +1152,7 @@ mod tests {
             DiskIndex::<3>::open_in_budget(dir.join(name), 2, &budget, 4 * block).unwrap()
         };
         let (hot, idle) = (open("hot"), open("idle"));
+        budget.seal();
         // the idle file is read once, end to end: it fills its half
         for i in 0..10 { idle.get(i * BLOCK_ROWS).unwrap(); }
         // the hot file reads 16 blocks over and over (more than its old share of 10)

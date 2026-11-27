@@ -389,6 +389,8 @@ impl DiskSnapshot {
         } else {
             None
         };
+        // Every index file is registered: the shared budget can freeze its member list.
+        budget.seal();
         // RDFSNAP7: the triple-term parts table, the last identity.
         let triple_terms = if version == 7 {
             let index = DiskIndex::<4>::open(dir.join(TRIPLE_TERMS_FILE))?;
