@@ -82,7 +82,8 @@ written by a pre-release `rdf-12` build (main e51312ec, before #168) has no `tri
   ID's 4-bit kind tag rotated to the low bits, flagged by the top bit of its width byte. The encoder does this when it
   is narrower, as for an SPO object column that mixes IRIs, literals and inline numbers; `RDFIDX03` readers refuse such
   a file by its magic. The block directory, holding each block's last key, checksum (4 bytes of CRC-32C, or 32 of SHA-256 before
-  `RDFIDX05`) and byte length, is read at open; its own footer stays a SHA-256.
+  `RDFIDX05`) and byte length, is read at open; its own footer stays a SHA-256 and is the file's identity. In `RDFIDX05` that
+  identity binds block contents via CRC-32C: it detects accidental change, not deliberate change.
 - **Quad orders** (`RDFSNAP5`/`6`) are the files `gspo` … `gops` (format `RDFQIX03`, per-block CRC-32C; `RDFQIX02` and `RDFQIX01` are still read): the same layout with four IDs
   per row, graph first. The **catalog** `graphs` (`RDFGRA01`) lists every named graph's ID and triple count, empty
   graphs included.

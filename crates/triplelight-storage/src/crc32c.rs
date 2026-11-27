@@ -1,6 +1,8 @@
-//! CRC-32C (Castagnoli), the per-block checksum of `RDFIDX05`/`RDFQIX03` index files: about 0.3 ns per byte-row in
+//! CRC-32C (Castagnoli), the per-block checksum of `RDFIDX05`/`RDFQIX03` index files: 0.2-1.2 ns per row in
 //! hardware against SHA-256's 7-20 ns per row, which cost more than decoding the block (#143). It detects accidental
-//! corruption, as the SHA-256 it replaces did there; the files are not authenticated either way.
+//! corruption (bit rot, torn writes, bad reads; every burst of up to 32 bits). A file's identity, the SHA-256 of its
+//! header and directory, then binds block contents via CRC-32C: it detects accidental change, not deliberate change.
+//! The files are not authenticated in any format.
 
 /// CRC-32C of `data` (initial value and final XOR `0xffff_ffff`, reflected, as iSCSI and ext4).
 pub(crate) fn crc32c(data: &[u8]) -> u32 {

@@ -17,7 +17,9 @@ const MAGIC_V3: &[u8; 8] = b"RDFIDX03";
 const MAGIC_V4: &[u8; 8] = b"RDFIDX04";
 /// `RDFIDX04` with a CRC-32C per block instead of SHA-256, and a 4-byte checksum in each directory entry (#143: the
 /// SHA-256 of a block cost more than decoding it). Written by default; `RDFIDX03`/`RDFIDX04` stay readable. The
-/// header/directory footer stays SHA-256, so file identities are unchanged in kind.
+/// footer is still a SHA-256 of header and directory, and is the file's identity; since the directory now holds a
+/// CRC-32C per block, that identity binds block contents via CRC-32C: it detects accidental change, not deliberate
+/// change (the files are not authenticated in any format).
 const MAGIC_V5: &[u8; 8] = b"RDFIDX05";
 /// Graph-first quad indexes (task #36): four IDs per row, otherwise the `RDFIDX03` layout.
 const MAGIC_QUAD_V1: &[u8; 8] = b"RDFQIX01";
