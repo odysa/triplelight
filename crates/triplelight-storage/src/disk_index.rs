@@ -15,10 +15,18 @@ const MAGIC_V3: &[u8; 8] = b"RDFIDX03";
 /// `RDFIDX03` plus tag-rotated columns in blocks (`block_codec::ROTATED`, task #105). Written by default; `RDFIDX03`
 /// files stay readable.
 const MAGIC_V4: &[u8; 8] = b"RDFIDX04";
+/// `RDFIDX04` with a CRC-32C per block instead of SHA-256, and a 4-byte checksum in each directory entry (#143: the
+/// SHA-256 of a block cost more than decoding it). Written by default; `RDFIDX03`/`RDFIDX04` stay readable. The
+/// footer is still a SHA-256 of header and directory, and is the file's identity; since the directory now holds a
+/// CRC-32C per block, that identity binds block contents via CRC-32C: it detects accidental change, not deliberate
+/// change (the files are not authenticated in any format).
+const MAGIC_V5: &[u8; 8] = b"RDFIDX05";
 /// Graph-first quad indexes (task #36): four IDs per row, otherwise the `RDFIDX03` layout.
 const MAGIC_QUAD_V1: &[u8; 8] = b"RDFQIX01";
 /// `RDFQIX01` plus tag-rotated columns, as `RDFIDX04` is to `RDFIDX03`.
 const MAGIC_QUAD_V2: &[u8; 8] = b"RDFQIX02";
+/// `RDFQIX02` with per-block CRC-32C, as `RDFIDX05` is to `RDFIDX04`.
+const MAGIC_QUAD_V3: &[u8; 8] = b"RDFQIX03";
 const HEADER: u64 = 24;
 /// Cache shares of a triple-only snapshot (see `DiskIndex::open_with_share`).
 pub const DEFAULT_SHARES: usize = 9;
@@ -123,9 +131,12 @@ fn invalid(reason: &'static str) -> io::Error {
 /// width has its own per-thread block memo, so the triple index's hot path is unchanged.
 pub struct Width<const N: usize>;
 pub trait SupportedWidth<const N: usize> {
-    /// The compressed format written, which allows tag-rotated columns.
+    /// The compressed format written: tag-rotated columns allowed, per-block CRC-32C.
     #[doc(hidden)]
     const MAGIC: &'static [u8; 8];
+    /// The previous format: tag-rotated columns allowed, per-block SHA-256. Still read.
+    #[doc(hidden)]
+    const SHA_ROTATED: &'static [u8; 8];
     /// The previous compressed format (no rotated columns), still read.
     #[doc(hidden)]
     const OLDER: &'static [u8; 8];
@@ -133,12 +144,14 @@ pub trait SupportedWidth<const N: usize> {
     fn memo() -> &'static std::thread::LocalKey<std::cell::RefCell<[MemoEntry<N>; MEMO_SLOTS]>>;
 }
 impl SupportedWidth<3> for Width<3> {
-    const MAGIC: &'static [u8; 8] = MAGIC_V4;
+    const MAGIC: &'static [u8; 8] = MAGIC_V5;
+    const SHA_ROTATED: &'static [u8; 8] = MAGIC_V4;
     const OLDER: &'static [u8; 8] = MAGIC_V3;
     fn memo() -> &'static std::thread::LocalKey<std::cell::RefCell<[MemoEntry<3>; MEMO_SLOTS]>> { &BLOCK_MEMO }
 }
 impl SupportedWidth<4> for Width<4> {
-    const MAGIC: &'static [u8; 8] = MAGIC_QUAD_V2;
+    const MAGIC: &'static [u8; 8] = MAGIC_QUAD_V3;
+    const SHA_ROTATED: &'static [u8; 8] = MAGIC_QUAD_V2;
     const OLDER: &'static [u8; 8] = MAGIC_QUAD_V1;
     fn memo() -> &'static std::thread::LocalKey<std::cell::RefCell<[MemoEntry<4>; MEMO_SLOTS]>> { &BLOCK_MEMO_QUAD }
 }
@@ -220,8 +233,8 @@ where
     Width<N>: SupportedWidth<N>,
 {
     #[cfg(test)]
-    if WRITE_OLDER_ON_THIS_THREAD.with(|c| c.get()) { return write_index_format(out, count, rows, false) }
-    write_index_format(out, count, rows, true)
+    if WRITE_OLDER_ON_THIS_THREAD.with(|c| c.get()) { return write_index_format(out, count, rows, Format::Older) }
+    write_index_format(out, count, rows, Format::Current)
 }
 #[cfg(test)]
 thread_local! {
@@ -242,19 +255,35 @@ pub(super) fn set_index_format_of_this_thread(_older: bool) {
     #[cfg(test)]
     WRITE_OLDER_ON_THIS_THREAD.with(|c| c.set(_older));
 }
-/// `rotate`: the current format (`SupportedWidth::MAGIC`, tag-rotated columns allowed); otherwise the previous one
-/// (`OLDER`), which tests use to check that older files stay readable.
+/// Which compressed format an index is written in. Only `Current` is written outside tests; the others let tests
+/// check that files from older binaries stay readable.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Format {
+    /// `SupportedWidth::MAGIC`: tag-rotated columns, per-block CRC-32C.
+    Current,
+    /// `SupportedWidth::SHA_ROTATED`: tag-rotated columns, per-block SHA-256.
+    #[cfg_attr(not(test), allow(dead_code))]
+    ShaRotated,
+    /// `SupportedWidth::OLDER`: no rotated columns, per-block SHA-256.
+    #[cfg_attr(not(test), allow(dead_code))]
+    Older,
+}
 fn write_index_format<const N: usize>(
     mut out: impl Write,
     count: u64,
     rows: impl Iterator<Item = io::Result<[TermId; N]>>,
-    rotate: bool,
+    format: Format,
 ) -> io::Result<()>
 where
     Width<N>: SupportedWidth<N>,
 {
+    let (rotate, crc) = (format != Format::Older, format == Format::Current);
     let mut header = [0u8; 24];
-    header[..8].copy_from_slice(if rotate { <Width<N> as SupportedWidth<N>>::MAGIC } else { <Width<N> as SupportedWidth<N>>::OLDER });
+    header[..8].copy_from_slice(match format {
+        Format::Current => <Width<N> as SupportedWidth<N>>::MAGIC,
+        Format::ShaRotated => <Width<N> as SupportedWidth<N>>::SHA_ROTATED,
+        Format::Older => <Width<N> as SupportedWidth<N>>::OLDER,
+    });
     header[8..16].copy_from_slice(&count.to_le_bytes());
     header[16..].copy_from_slice(&BLOCK_ROWS.to_le_bytes());
     out.write_all(&header)?;
@@ -271,7 +300,7 @@ where
             for id in block.last().unwrap() {
                 meta.extend_from_slice(&id.0.to_le_bytes());
             }
-            meta.extend_from_slice(&Sha256::digest(&bytes));
+            if crc { meta.extend_from_slice(&super::block_codec::crc32c::crc32c(&bytes).to_le_bytes()) } else { meta.extend_from_slice(&Sha256::digest(&bytes)) }
             meta.extend_from_slice(&(bytes.len() as u64).to_le_bytes());
             out.write_all(&bytes)?;
             block.clear();
@@ -371,8 +400,10 @@ pub struct DiskIndex<const N: usize = 3> {
     identity: [u8; 32],
     blocks: Vec<BlockMeta<N>>,
     compressed: bool,
-    /// The format allows tag-rotated block columns (`RDFIDX04`/`RDFQIX02`).
+    /// The format allows tag-rotated block columns (`RDFIDX04`/`RDFQIX02` and later).
     rotated: bool,
+    /// Blocks carry a CRC-32C (`RDFIDX05`/`RDFQIX03`) in the first 4 bytes of `BlockMeta::checksum`, not a SHA-256.
+    crc: bool,
     cache: Vec<RwLock<CacheShard<N>>>,
     shard_capacity: usize,
     trace_slot: Option<usize>,
@@ -404,18 +435,21 @@ where
         let file = File::open(path)?;
         let mut header = [0; 24];
         read_exact_at(&file, &mut header, 0)?;
-        let (compressed, rotated) = match &header[..8] {
-            m if N == 3 && m == MAGIC_V2 => (false, false),
-            m if m == <Width<N> as SupportedWidth<N>>::OLDER => (true, false),
-            m if m == <Width<N> as SupportedWidth<N>>::MAGIC => (true, true),
+        let (compressed, rotated, crc) = match &header[..8] {
+            m if N == 3 && m == MAGIC_V2 => (false, false, false),
+            m if m == <Width<N> as SupportedWidth<N>>::OLDER => (true, false, false),
+            m if m == <Width<N> as SupportedWidth<N>>::SHA_ROTATED => (true, true, false),
+            m if m == <Width<N> as SupportedWidth<N>>::MAGIC => (true, true, true),
             _ => return Err(invalid("bad index magic or version")),
         };
+        // Directory entry: last row, the block checksum (4 bytes of CRC-32C or 32 of SHA-256), the block's length.
+        let sum_len: usize = if crc { 4 } else { 32 };
         let rows = u64::from_le_bytes(header[8..16].try_into().unwrap());
         if u64::from_le_bytes(header[16..24].try_into().unwrap()) != BLOCK_ROWS {
             return Err(invalid("bad block size"));
         }
         let blocks = rows.div_ceil(BLOCK_ROWS);
-        let entry_size = if compressed { row_bytes(N) + 40 } else { META };
+        let entry_size = if compressed { row_bytes(N) + sum_len as u64 + 8 } else { META };
         let meta_len = blocks
             .checked_mul(entry_size)
             .ok_or_else(|| invalid("index length overflow"))?;
@@ -452,14 +486,15 @@ where
         for (i, item) in raw.chunks_exact(entry_size as usize).enumerate() {
             let w = row_bytes(N) as usize;
             let last = decode_row::<N>(&item[..w]);
-            let checksum = item[w..w + 32].try_into().unwrap();
+            let mut checksum = [0u8; 32];
+            checksum[..sum_len].copy_from_slice(&item[w..w + sum_len]);
             if last.iter().any(|x| x.0 == 0)
                 || entries.last().is_some_and(|b: &BlockMeta<N>| b.last >= last)
             {
                 return Err(invalid("invalid block directory"));
             }
             let len = if compressed {
-                u64::from_le_bytes(item[w + 32..w + 40].try_into().unwrap())
+                u64::from_le_bytes(item[w + sum_len..w + sum_len + 8].try_into().unwrap())
             } else {
                 (rows - (i as u64) * BLOCK_ROWS).min(BLOCK_ROWS) * ROW
             };
@@ -492,6 +527,7 @@ where
             blocks: entries,
             compressed,
             rotated,
+            crc,
             cache: (0..16)
                 .map(|_| {
                     RwLock::new(CacheShard {
@@ -620,7 +656,8 @@ where
             .ok_or_else(|| invalid("missing block directory entry"))?;
         let mut bytes = vec![0; meta.length];
         read_exact_at_traced(&self.file, &mut bytes, meta.offset, self.trace_slot)?;
-        if Sha256::digest(&bytes).as_slice() != meta.checksum {
+        let intact = if self.crc { super::block_codec::crc32c::crc32c(&bytes).to_le_bytes() == meta.checksum[..4] } else { Sha256::digest(&bytes).as_slice() == meta.checksum };
+        if !intact {
             return Err(invalid("index block checksum mismatch"));
         }
         let rows: Vec<_> = if self.compressed {
@@ -1054,9 +1091,9 @@ mod tests {
             .map(|i| [tag(1, 10 + i / 6), tag(1, 3 + i % 6), tag([1, 3, 0xf][(i % 3) as usize], 1 + i * 37)])
             .collect();
         let (mut current, mut older) = (Vec::new(), Vec::new());
-        write_index_format(&mut current, rows.len() as u64, rows.iter().copied().map(Ok), true).unwrap();
-        write_index_format(&mut older, rows.len() as u64, rows.iter().copied().map(Ok), false).unwrap();
-        assert_eq!(&current[..8], MAGIC_V4);
+        write_index_format(&mut current, rows.len() as u64, rows.iter().copied().map(Ok), Format::Current).unwrap();
+        write_index_format(&mut older, rows.len() as u64, rows.iter().copied().map(Ok), Format::Older).unwrap();
+        assert_eq!(&current[..8], MAGIC_V5);
         assert_eq!(&older[..8], MAGIC_V3);
         assert!(current.len() * 3 < older.len() * 2, "rotated object columns: {} against {} bytes", current.len(), older.len());
         for (name, bytes) in [("current", &current), ("older", &older)] {
@@ -1067,6 +1104,37 @@ mod tests {
             let got: Vec<[TermId; 3]> = (0..index.len()).map(|i| index.get(i).unwrap()).collect();
             assert_eq!(got, rows, "{name}");
             let r = index.range(&[rows[700][0]]).unwrap(); assert_eq!(r.end - r.start, 6, "{name}");
+            std::fs::remove_file(&path).unwrap();
+        }
+    }
+    /// Each readable format (`RDFIDX03`, `RDFIDX04` with SHA-256, `RDFIDX05` with CRC-32C) reads back the same rows, and
+    /// in each one a single flipped byte in a block is caught when that block is read (#143).
+    #[test]
+    fn every_format_reads_the_same_rows_and_rejects_a_flipped_block_byte() {
+        let rows: Vec<[TermId; 3]> = (0..1500u64).map(|i| [TermId(1 + i / 5), TermId(2 + i % 5), TermId(7 + i * 3)]).collect();
+        for (format, magic, entry) in [(Format::Older, MAGIC_V3, 24 + 40), (Format::ShaRotated, MAGIC_V4, 24 + 40), (Format::Current, MAGIC_V5, 24 + 12)] {
+            let mut bytes = Vec::new();
+            write_index_format(&mut bytes, rows.len() as u64, rows.iter().copied().map(Ok), format).unwrap();
+            assert_eq!(&bytes[..8], magic, "{format:?}");
+            let path = std::env::temp_dir().join(format!("rdf-index-flip-{format:?}-{}", std::process::id()));
+            std::fs::write(&path, &bytes).unwrap();
+            let index = DiskIndex::<3>::open(&path).unwrap();
+            assert_eq!(index.blocks.len(), rows.len().div_ceil(BLOCK_ROWS as usize), "{format:?}");
+            // The directory sits before the 32-byte footer: one entry per block, of this format's size.
+            let directory = bytes.len() - 32 - index.blocks.len() * entry;
+            assert_eq!(directory as u64, index.blocks.last().map(|b| b.offset + b.length as u64).unwrap(), "{format:?} entry size");
+            index.validate().unwrap();
+            assert_eq!((0..index.len()).map(|i| index.get(i).unwrap()).collect::<Vec<_>>(), rows, "{format:?}");
+            // Flip one byte in the middle of block 2's encoded bytes: reading that block fails, the others still read.
+            let meta = index.blocks[2];
+            drop(index);
+            let mut bad = bytes.clone();
+            bad[(meta.offset as usize) + meta.length / 2] ^= 0x10;
+            std::fs::write(&path, &bad).unwrap();
+            let index = DiskIndex::<3>::open(&path).unwrap();
+            let err = index.get(2 * BLOCK_ROWS).unwrap_err();
+            assert!(err.to_string().contains("checksum mismatch"), "{format:?}: {err}");
+            assert_eq!(index.get(0).unwrap(), rows[0], "{format:?}: block 0 is intact");
             std::fs::remove_file(&path).unwrap();
         }
     }
@@ -1131,7 +1199,7 @@ mod tests {
         assert!(rows.len() > 2 * BLOCK_ROWS as usize, "spans several blocks: {}", rows.len());
         let mut bytes = Vec::new();
         write_index(&mut bytes, rows.clone().into_iter()).unwrap();
-        assert_eq!(&bytes[..8], MAGIC_QUAD_V2);
+        assert_eq!(&bytes[..8], MAGIC_QUAD_V3);
         std::fs::write(&path, &bytes).unwrap();
         let index = DiskIndex::<4>::open(&path).unwrap();
         index.validate().unwrap();
