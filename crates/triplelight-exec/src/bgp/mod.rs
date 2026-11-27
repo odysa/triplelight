@@ -87,6 +87,9 @@ const PROBE_ROWS: u64 = 20;
 /// (`Bgp::extend_merge`), and the rows per such morsel.
 const MERGE_MIN_ROWS: usize = 4096;
 const MERGE_MORSEL: usize = 8192;
+/// Morsels per batch of a large merge step (`extend_merge`), per worker: enough that a batch keeps every worker busy,
+/// while the step holds one batch's unfiltered output (plus the next batch in flight) instead of all of it.
+const MERGE_BATCH_MORSELS_PER_WORKER: usize = 2;
 
 /// The pattern shape `extend_sort_merge` handles: exactly one constant, one variable already bound (the merge key)
 /// and one free variable, as `(constant, key, free)` slot positions. `bound` says whether a variable is bound in
@@ -193,16 +196,22 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
 
     /// One join step shared by both evaluation orders: extend `rows` by pattern `pat`, mark its variables bound, then
     /// let `post` apply whatever has become evaluable. With a plan trace (`plan_trace`), records the step as pattern `pi`.
-    fn join_step(&self, pat: &[Slot; 3], pi: usize, rows: &[TermId], bound: &mut HashSet<usize>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>), trace: Option<&mut Trace>) -> Vec<TermId> {
+    fn join_step(&self, pat: &[Slot; 3], pi: usize, rows: &[TermId], bound: &mut HashSet<usize>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>, bool), trace: Option<&mut Trace>) -> Vec<TermId> {
         let t = trace.is_some().then(std::time::Instant::now);
-        let (mut out, access) = self.extend_via(pat, rows);
-        let extended = out.len();
+        for s in pat { if let Slot::Var(v) = s { bound.insert(*v); } }
+        // A large merge step hands its output to `post` part by part as it goes (`extend_merge`), so the filters that
+        // become evaluable here run before the whole output exists (#148: BI q3 m002 kept 17% of 2.85M rows). Parts
+        // are filtered without marking the filters applied; the final call below marks them, on no rows.
+        let shared: &HashSet<usize> = &*bound;
+        let (mut out, access, extended, batched) = {
+            let mut sink = |part: &mut Vec<TermId>| post(part, shared, false);
+            self.extend_via(pat, rows, &mut sink)
+        };
         let step_bytes = (rows.len() + out.len()) as u64 * 8;
         if let Some(b) = self.budget && step_bytes > b.available() {
             super::limits::over_budget(super::OverBudget { requested: step_bytes, available: b.available() })
         }
-        for s in pat { if let Slot::Var(v) = s { bound.insert(*v); } }
-        post(&mut out, bound);
+        if batched { post(&mut Vec::new(), bound, true) } else { post(&mut out, bound, true) }
         if let (Some(tr), Some(t)) = (trace, t) { let w = self.w.max(1); tr.step(Some(pi), access, rows.len() / w, extended / w, out.len() / w, t) }
         out
     }
@@ -210,7 +219,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// Greedy order with exact index counts, evaluated by index nested-loop joins.
     /// `post` runs after every join step with the set of variables bound so far (used to apply filters as early as
     /// their variables are bound).
-    pub fn eval_greedy(&self, pats: &[[Slot; 3]], leaves: &[usize], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>), mut trace: Option<&mut Trace>) -> Vec<TermId> {
+    pub fn eval_greedy(&self, pats: &[[Slot; 3]], leaves: &[usize], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>, bool), mut trace: Option<&mut Trace>) -> Vec<TermId> {
         let w = self.w;
         if rows.is_empty() { return rows }
         let mut remaining: Vec<usize> = (0..pats.len()).collect();
@@ -232,7 +241,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         rows
     }
 
-    pub fn eval_order(&self, pats: &[[Slot; 3]], order: &[usize], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>), mut trace: Option<&mut Trace>) -> Vec<TermId> {
+    pub fn eval_order(&self, pats: &[[Slot; 3]], order: &[usize], mut rows: Vec<TermId>, post: &mut dyn FnMut(&mut Vec<TermId>, &HashSet<usize>, bool), mut trace: Option<&mut Trace>) -> Vec<TermId> {
         let mut bound = if rows.is_empty() { HashSet::new() } else { self.bound_in_every_row(&rows) };
         for &pi in order {
             if rows.is_empty() { break }
@@ -295,15 +304,23 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     }
 
     /// Index nested-loop join of `rows` with one pattern: one index range read per input row.
-    pub fn extend(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> { self.extend_via(pat, rows).0 }
+    pub fn extend(&self, pat: &[Slot; 3], rows: &[TermId]) -> Vec<TermId> { self.extend_via(pat, rows, &mut |_| {}).0 }
 
-    /// `extend`, also naming the access path it took (for `plan_trace`).
-    fn extend_via(&self, pat: &[Slot; 3], rows: &[TermId]) -> (Vec<TermId>, &'static str) {
+    /// `extend`, also naming the access path it took (for `plan_trace`). Returns the output, the path, the rows the
+    /// step produced before any filtering, and whether `sink` already filtered the output part by part (only a large
+    /// merge does; see `extend_merge`).
+    fn extend_via(&self, pat: &[Slot; 3], rows: &[TermId], sink: &mut dyn FnMut(&mut Vec<TermId>)) -> (Vec<TermId>, &'static str, usize, bool) {
+        let whole = |(out, access): (Vec<TermId>, &'static str)| { let n = out.len(); (out, access, n, false) };
+        if let Some(out) = self.extend_range(pat, rows) { return whole((out, "range")) }
+        if let Some(out) = self.extend_member_set(pat, rows) { return whole((out, "member-set")) }
+        if let Some((out, made, batched)) = self.extend_merge(pat, rows, sink) { return (out, "merge", made, batched) }
+        if let Some((out, made, batched)) = self.extend_sort_merge(pat, rows, sink) { return (out, "sort-merge", made, batched) }
+        whole(self.extend_rest(pat, rows))
+    }
+
+    /// The access paths after the merges, which return their whole output for the step's single `post`.
+    fn extend_rest(&self, pat: &[Slot; 3], rows: &[TermId]) -> (Vec<TermId>, &'static str) {
         let w = self.w;
-        if let Some(out) = self.extend_range(pat, rows) { return (out, "range") }
-        if let Some(out) = self.extend_member_set(pat, rows) { return (out, "member-set") }
-        if let Some(out) = self.extend_merge(pat, rows) { return (out, "merge") }
-        if let Some(out) = self.extend_sort_merge(pat, rows) { return (out, "sort-merge") }
         if let Some(out) = self.extend_hash(pat, rows) { return (out, "hash") }
         if let Some(out) = self.extend_sorted(pat, rows) { return (out, "sorted") }
         if rows.len() / w.max(1) >= 2 * MORSEL {
@@ -320,7 +337,16 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// permutation `(constant, key, free)` once, positioned at its first key (`Snapshot::scan_from`), and walks it
     /// alongside the rows. Per row, the values come in index order, as a probe's would, and rows keep their order, so
     /// the output equals the probe join's.
-    fn extend_merge(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
+    ///
+    /// Above one batch (`MERGE_BATCH_MORSELS_PER_WORKER` morsels per worker), the step's filters run as it goes: each
+    /// morsel's output goes through `sink` and only the kept rows stay, so the step never holds its whole unfiltered
+    /// output (#148). `sink` is the step's `post`, which is not `Send` (it evaluates filters through the query
+    /// context), so it runs on this thread, on batch i, while a scoped thread computes batch i+1's morsels on the
+    /// worker pool: the workers never wait on the filter. The path is chosen once, for the whole input; every morsel
+    /// starts its own walk at its first key, so equal keys split between morsels or batches meet every match. The kept
+    /// parts are concatenated once at the end, at their exact size. Returns (output, rows produced before `sink`,
+    /// whether `sink` ran).
+    fn extend_merge(&self, pat: &[Slot; 3], rows: &[TermId], sink: &mut dyn FnMut(&mut Vec<TermId>)) -> Option<(Vec<TermId>, usize, bool)> {
         let w = self.w;
         if w == 0 { return None }
         let n = rows.len() / w;
@@ -342,7 +368,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         if !rows.chunks_exact(w).map(|r| r[kv]).is_sorted() { return None }
         let perm = Perm::ALL.into_iter().find(|p| p.order() == [cpos, kpos, fpos])?;
         if self.count(perm, &[c]) > PROBE_ROWS * n as u64 { return None }
-        let parts: Vec<Vec<TermId>> = rows.par_chunks(w * MERGE_MORSEL).map(|chunk| {
+        let morsel = |chunk: &[TermId]| -> Vec<TermId> {
             let (lo, hi) = (chunk[kv], chunk[chunk.len() - w + kv]);
             let mut out = Vec::with_capacity(chunk.len());
             let mut scan = self.snap.scan_from(perm, &[c], lo);
@@ -377,8 +403,35 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
                 }
             }
             out
-        }).collect();
-        Some(parts.concat())
+        };
+        let run = |batch: &[TermId]| -> Vec<Vec<TermId>> { batch.par_chunks(w * MERGE_MORSEL).map(&morsel).collect() };
+        let run = &run;
+        let batch_rows = MERGE_MORSEL * (MERGE_BATCH_MORSELS_PER_WORKER * rayon::current_num_threads()).max(8);
+        if n <= batch_rows {
+            let out = run(rows).concat();
+            let made = out.len();
+            return Some((out, made, false));
+        }
+        let batches: Vec<&[TermId]> = rows.chunks(w * batch_rows).collect();
+        let (mut kept, mut made): (Vec<Vec<TermId>>, usize) = (Vec::new(), 0);
+        let mut current = run(batches[0]);
+        for i in 0..batches.len() {
+            let parts = std::mem::take(&mut current);
+            let next = std::thread::scope(|scope| {
+                let ahead = batches.get(i + 1).map(|&b| scope.spawn(move || run(b)));
+                for mut part in parts {
+                    made += part.len();
+                    if let Some(b) = self.budget && (part.len() as u64) * 8 > b.available() {
+                        super::limits::over_budget(super::OverBudget { requested: part.len() as u64 * 8, available: b.available() })
+                    }
+                    sink(&mut part);
+                    if !part.is_empty() { kept.push(part) }
+                }
+                ahead.map(|h| h.join().unwrap_or_else(|e| std::panic::resume_unwind(e)))
+            });
+            if let Some(next) = next { current = next }
+        }
+        Some((kept.concat(), made, true))
     }
 
     /// Sort-merge join for the semi-join case of `extend_hash`: a BGP with a pushed-down range (so its solution order
@@ -388,7 +441,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// set, a filtered scan into a hash table and one random lookup per row, the rows are sorted by the key and
     /// `extend_merge` walks the permutation `(constant, key, free)` beside them. The bag of solutions is the hash
     /// join's; only their order differs, which the pushed range already makes free.
-    fn extend_sort_merge(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
+    fn extend_sort_merge(&self, pat: &[Slot; 3], rows: &[TermId], sink: &mut dyn FnMut(&mut Vec<TermId>)) -> Option<(Vec<TermId>, usize, bool)> {
         let w = self.w;
         if w == 0 { return None }
         let n = rows.len() / w;
@@ -405,7 +458,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         let mut sorted = Vec::with_capacity(rows.len());
         for &i in &order { let i = i as usize; sorted.extend_from_slice(&rows[i * w..(i + 1) * w]) }
         drop(order);
-        self.extend_merge(pat, &sorted)
+        self.extend_merge(pat, &sorted, sink)
     }
 
     /// Membership filter for a pattern with two constants and one variable bound in every row (e.g.
@@ -1087,6 +1140,33 @@ pub(crate) mod sorted_probe_tests {
         assert!(on.extend_sorted(&patterns[0], &rows[..w * (SORTED_PROBE_MIN_ROWS - 1)]).is_none());
     }
 
+    /// A merge step larger than one batch hands each morsel's output to the sink (the step's filters) while the next
+    /// batch computes, and keeps only what the sink keeps: the same rows, in the same order, as filtering the whole
+    /// unbatched output. Runs of equal keys cross every morsel and batch boundary (#148).
+    #[test]
+    fn a_batched_merge_keeps_what_filtering_the_whole_output_keeps() {
+        let mut t = Vec::new();
+        for s in 1..=60u64 { for j in 0..(1 + s % 4) { t.push([s, 1000, 1 + (s * 7 + j * 13) % 500]) } }
+        let snap = Triples::new(&t);
+        let w = 3;
+        let batch_rows = MERGE_MORSEL * (MERGE_BATCH_MORSELS_PER_WORKER * rayon::current_num_threads()).max(8);
+        let mut keys: Vec<u64> = (0..2 * batch_rows as u64 + 4321).map(|i| 1 + (i * 2654435761) % 64).collect();
+        keys.sort_unstable();
+        let rows: Vec<TermId> = keys.iter().flat_map(|&k| [TermId(k), UNBOUND, TermId(9)]).collect();
+        let b = Bgp { snap: &snap, w, ranges: None, sorted_probe: false, interrupt: None, budget: None };
+        let pat = [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)];
+        let keep = |v: &mut Vec<TermId>| { *v = v.chunks_exact(w).filter(|r| r[1].0 % 2 == 1).flatten().copied().collect() };
+        let (whole, made_whole, batched_whole) = b.extend_merge(&pat, &rows, &mut |_| {}).expect("sorted keys, dense enough");
+        assert!(batched_whole, "the input spans several batches");
+        let mut want = whole;
+        keep(&mut want);
+        let (got, made, batched) = b.extend_merge(&pat, &rows, &mut |v| keep(v)).unwrap();
+        assert!(batched);
+        assert_eq!(made, made_whole, "rows produced before the sink");
+        assert_eq!(got, want);
+        assert!(!got.is_empty() && got.len() < made, "the sink kept some rows and dropped others");
+    }
+
     /// The merge join over key-sorted rows equals the probe join row for row: duplicate keys, keys without matches,
     /// keys past the last index key, morsel boundaries inside a key's run, the key as subject or as object.
     #[test]
@@ -1106,13 +1186,13 @@ pub(crate) mod sorted_probe_tests {
             [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)],
             [Slot::Var(1), Slot::Const(Some(TermId(1001))), Slot::Var(0)],
         ] {
-            let merged = b.extend_merge(&pat, &rows).expect("sorted keys, dense enough");
+            let merged = b.extend_merge(&pat, &rows, &mut |_| {}).expect("sorted keys, dense enough").0;
             assert_eq!(merged, b.extend_seq(&pat, &rows), "{pat:?}");
         }
         // Not taken: unsorted keys, or the free variable already bound.
         let mut unsorted = rows.clone();
         unsorted.swap(0, w * 100);
-        assert!(b.extend_merge(&[Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)], &unsorted).is_none());
-        assert!(b.extend_merge(&[Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(2)], &rows).is_none());
+        assert!(b.extend_merge(&[Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)], &unsorted, &mut |_| {}).is_none());
+        assert!(b.extend_merge(&[Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(2)], &rows, &mut |_| {}).is_none());
     }
 }

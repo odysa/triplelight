@@ -136,7 +136,7 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         let w = self.vars.len();
         let mut flat: Vec<TermId> = out.concat();
         let all: HashSet<usize> = (0..w).collect();
-        self.apply_filters(&mut flat, w, filters, &all, &mut vec![false; filters.len()], &mut super::id_hash::IdMap::default());
+        self.apply_filters(&mut flat, w, filters, &all, &mut vec![false; filters.len()], true, &mut super::id_hash::IdMap::default());
         flat.chunks_exact(w).map(<[TermId]>::to_vec).collect()
     }
 

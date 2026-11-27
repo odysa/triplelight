@@ -8,11 +8,13 @@ use std::collections::HashSet;
 use triplelight_rdf::Term;
 
 impl<S: Snapshot + ?Sized> Ctx<'_, S> {
-    /// Applies each not-yet-applied filter whose variables are all bound, keeping rows whose filter is true.
-    pub(crate) fn apply_filters(&self, rows: &mut Vec<TermId>, w: usize, filters: &[(&Expression, Vec<usize>)], bound: &HashSet<usize>, applied: &mut [bool], numeric_memo: &mut id_hash::IdMap<Option<expr::Num>>) {
+    /// Applies each not-yet-applied filter whose variables are all bound, keeping rows whose filter is true. With
+    /// `mark`, records those filters as applied; without it (one batch of a step's output, `Bgp::join_step`) they stay
+    /// pending, so the step's other batches and its final call apply them too.
+    pub(crate) fn apply_filters(&self, rows: &mut Vec<TermId>, w: usize, filters: &[(&Expression, Vec<usize>)], bound: &HashSet<usize>, applied: &mut [bool], mark: bool, numeric_memo: &mut id_hash::IdMap<Option<expr::Num>>) {
         phase::filter(|| for (k, (e, vs)) in filters.iter().enumerate() {
             if applied[k] || !vs.iter().all(|v| bound.contains(v)) { continue }
-            applied[k] = true;
+            if mark { applied[k] = true }
             if let Some(kept) = self.filter_text_literals(e, rows, w) {
                 *rows = kept;
                 continue;

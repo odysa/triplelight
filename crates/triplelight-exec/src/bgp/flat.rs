@@ -65,6 +65,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                     filters,
                     &bound,
                     &mut vec![false; filters.len()],
+                    true,
                     &mut numeric_memo,
                 );
                 out.extend(flat);
@@ -111,7 +112,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         };
         let mut applied = vec![false; filters.len()];
         let mut pruned = false;
-        let mut post = |rows: &mut Vec<TermId>, available: &HashSet<usize>| {
+        let mut post = |rows: &mut Vec<TermId>, available: &HashSet<usize>, mark: bool| {
             if !pruned && available.contains(&star.subject_slot) {
                 let mut kept = Vec::with_capacity(rows.len());
                 for row in rows.chunks_exact(width) {
@@ -123,7 +124,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                     }
                 }
                 *rows = kept;
-                pruned = true;
+                // One batch of a step (`mark` false) leaves the pruning pending for the step's other batches.
+                pruned = mark;
             }
             self.apply_filters(
                 rows,
@@ -131,6 +133,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 filters,
                 available,
                 &mut applied,
+                mark,
                 &mut numeric_memo,
             );
         };
@@ -263,8 +266,8 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                     let mut applied: Vec<bool> = filters.iter()
                         .map(|(_, vs)| vs.iter().all(|slot| bound.contains(slot)))
                         .collect();
-                    let mut post = |rows: &mut Vec<TermId>, available: &HashSet<usize>| {
-                        self.apply_filters(rows, w, filters, available, &mut applied, &mut numeric_filter_memo)
+                    let mut post = |rows: &mut Vec<TermId>, available: &HashSet<usize>, mark: bool| {
+                        self.apply_filters(rows, w, filters, available, &mut applied, mark, &mut numeric_filter_memo)
                     };
                     // The remaining patterns extend the table-produced rows
                     // through the ordinary indexes, preserving their joins.
@@ -298,6 +301,7 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                         filters,
                         &all,
                         &mut vec![false; filters.len()],
+                        true,
                         &mut numeric_filter_memo,
                     )
                 }
@@ -307,13 +311,14 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 (out, "leapfrog")
             } else {
                 let mut applied = vec![false; filters.len()];
-                let mut post = |rows: &mut Vec<TermId>, bound: &HashSet<usize>| {
+                let mut post = |rows: &mut Vec<TermId>, bound: &HashSet<usize>, mark: bool| {
                     self.apply_filters(
                         rows,
                         w,
                         filters,
                         bound,
                         &mut applied,
+                        mark,
                         &mut numeric_filter_memo,
                     )
                 };
