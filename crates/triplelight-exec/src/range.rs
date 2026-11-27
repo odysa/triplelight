@@ -46,8 +46,9 @@
 //! The ordinary triple-index path requires `Options::numeric_range_pushdown` for numeric bounds; it is off by
 //! default. Explicitly selected wide tables may still use numeric intervals when `range_pushdown` is on.
 //!
-//! A range is pushed only if it holds at most `MAX_FRACTION` of the predicate's triples (exact per-object counts
-//! against `count(POS, [p])`); a denser one leaves the BGP's plan exactly as without the pushdown. Each decision is
+//! A range is pushed only if it holds at most `MAX_FRACTION` of the predicate's triples. A kept POS index can
+//! count the date interval and unordered tail directly. Other paths sum per-object counts up to the cutoff.
+//! A denser range leaves the BGP's plan exactly as without the pushdown. Each decision is
 //! logged on the server's `phase_trace` line (`range_pushdown=on:0.031,...`) under `TRIPLELIGHT_TRACE_PHASES`.
 //! A wide-table scan instead applies the same canonical-literal bounds before row expansion, even for dense
 //! ranges. It uses a single ID interval only when the predicate has no unordered overlay objects.
@@ -341,26 +342,41 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
 
     fn object_range(&self, p: TermId, bounds: &[Bound]) -> Option<ObjRange> {
         let (lo, hi, literals) = self.literal_interval(p, bounds)?;
-        let mut objects: Vec<TermId> = if lo < hi {
+        let ordered = if lo < hi {
             let a = literals.partition_point(|&x| x < lo);
             let b = literals.partition_point(|&x| x < hi);
-            literals[a..b].to_vec()
-        } else { Vec::new() };
-        self.objects_until(p, FIRST_UNORDERED, None, usize::MAX, &mut objects);
-        // Selectivity gate: a range holding more than `MAX_FRACTION` of the predicate's triples is not pushed, so the
-        // pattern keeps exactly the unranged plan (reading most of a predicate object by object, then joining in
-        // object order, loses to its subject-ordered scan). Exact counts, one per object, stopping past the limit.
+            &literals[a..b]
+        } else { &[] };
         let total = self.snap.count(Perm::Pos, &[p]).unwrap_or_else(|e| storage_failure(e));
         let limit = (total as f64 * MAX_FRACTION) as u64;
+
+        // Date proofs keep every stored literal of the predicate. A numeric proof keeps only numeric IDs, so its
+        // interval may include other literals that the per-object sum skips.
+        if bounds[0].datatype != NUMERIC_MARKER && let Some(rows) = self.count_date_range(p, lo, hi, !ordered.is_empty()) {
+            let pushed = record_range_decision(rows, total, limit);
+            return pushed.then(|| ObjRange { objects: self.range_objects(p, ordered), rows });
+        }
+
+        let objects = self.range_objects(p, ordered);
         let mut rows = 0u64;
         for &o in &objects {
             rows += self.snap.count(Perm::Pos, &[p, o]).unwrap_or_else(|e| storage_failure(e));
             if rows > limit { break }
         }
-        let frac = if total == 0 { 0.0 } else { rows as f64 / total as f64 };
-        let pushed = rows <= limit;
-        super::phase::range_decision(pushed, frac);
-        pushed.then_some(ObjRange { objects, rows })
+        record_range_decision(rows, total, limit).then_some(ObjRange { objects, rows })
+    }
+
+    fn count_date_range(&self, p: TermId, lo: TermId, hi: TermId, has_literals: bool) -> Option<u64> {
+        let count = |lo, hi| self.snap.count_pos_interval(p, lo, hi).unwrap_or_else(|e| storage_failure(e));
+        let unordered = count(FIRST_UNORDERED, None)?;
+        let ordered = if has_literals { count(lo, Some(hi))? } else { 0 };
+        Some(ordered + unordered)
+    }
+
+    fn range_objects(&self, p: TermId, ordered: &[TermId]) -> Vec<TermId> {
+        let mut objects = ordered.to_vec();
+        self.objects_until(p, FIRST_UNORDERED, None, usize::MAX, &mut objects);
+        objects
     }
 
     fn literal_interval(&self, p: TermId, bounds: &[Bound]) -> Option<(TermId, TermId, Arc<[TermId]>)> {
@@ -478,6 +494,13 @@ impl<S: Snapshot + ?Sized> Ctx<'_, S> {
         }
         ok.then(|| ids.into())
     }
+}
+
+fn record_range_decision(rows: u64, total: u64, limit: u64) -> bool {
+    let frac = if total == 0 { 0.0 } else { rows as f64 / total as f64 };
+    let pushed = rows <= limit;
+    super::phase::range_decision(pushed, frac);
+    pushed
 }
 
 #[cfg(test)]

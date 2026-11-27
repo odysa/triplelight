@@ -118,6 +118,12 @@ pub trait Snapshot: Dictionary + Send + Sync {
     }
     /// Exact number of triples matching the prefix (from block index / aggregated counts, no full scan).
     fn count(&self, perm: Perm, prefix: &[TermId]) -> Result<u64, StorageError>;
+    /// Exact number of visible triples with predicate `p` and object ID in `[lo, hi)`.
+    /// A missing upper end includes all IDs from `lo` upward. Returns `None` when the
+    /// backend cannot count the interval directly.
+    fn count_pos_interval(&self, _p: TermId, _lo: TermId, _hi: Option<TermId>) -> Result<Option<u64>, StorageError> {
+        Ok(None)
+    }
     /// Seek support for leapfrog joins: smallest value >= `target` in key position `prefix.len()` under `prefix`.
     fn seek(
         &self,
