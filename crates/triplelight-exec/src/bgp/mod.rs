@@ -162,6 +162,10 @@ pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
 
 /// Input rows between two interrupt checks inside a probe join (each row may extend into many).
 const CHECK_ROWS: usize = 64;
+/// Bytes per entry of the hash step's tables, with the slack of a table at most 7/8 full that grows by doubling:
+/// a `FastSet<TermId>` slot is 8 bytes plus a control byte, an `IdMap<(u32, u32)>` slot 16 plus one.
+const HASH_SET_ENTRY: u64 = 2 * 9;
+const HASH_MAP_ENTRY: u64 = 2 * 17;
 
 /// Appends `row` extended by one matching index row, where `value(k)` is that row's value at key position `k`.
 /// A variable bound by the row must equal the index value (repeated variable); otherwise the candidate is dropped.
@@ -471,6 +475,11 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         // entries, so the 2^24 cap of the whole-range table does not apply.
         let semi = !whole && self.ranges.is_some() && total <= PROBE_ROWS * n_rows as u64 && total <= u64::from(u32::MAX);
         if !whole && !semi { return None }
+        // Working memory, charged to the query budget before it is built (#111): the semi-join's key set, the values
+        // and the key -> (start, len) map, at most one entry per kept key, each sized with hash-table slack.
+        let kept = if semi { n_rows as u64 } else { total.min(n_rows as u64) };
+        let tables = if semi { n_rows as u64 * HASH_SET_ENTRY } else { 0 } + if semi { n_rows as u64 } else { total } * 8 + kept * HASH_MAP_ENTRY;
+        let mut held = self.charge(tables);
         let keys: Option<crate::id_hash::FastSet<TermId>> = semi.then(|| rows.chunks_exact(w).map(|r| r[kv]).collect());
         let mut vals: Vec<TermId> = Vec::with_capacity(if semi { n_rows } else { total as usize });
         let mut index: crate::id_hash::IdMap<(u32, u32)> = crate::id_hash::IdMap::default();
@@ -484,7 +493,15 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
                 vals.push(f);
             }
         }
-        let mut out = Vec::with_capacity(rows.len());
+        drop(keys);
+        // The output's exact size first, so it is allocated (and charged) once instead of growing by doubling, which
+        // briefly holds the old and new buffers together.
+        let extensions: usize = rows.chunks_exact(w).map(|r| index.get(&r[kv]).map_or(0, |e| e.1 as usize)).sum();
+        if let (Some(r), Some(b)) = (held.as_mut(), self.budget) {
+            let total = tables + extensions as u64 * w as u64 * 8;
+            r.try_resize(total).unwrap_or_else(|_| super::limits::over_budget(super::OverBudget { requested: total, available: b.available() + r.bytes() }));
+        }
+        let mut out = Vec::with_capacity(extensions * w);
         for r in rows.chunks_exact(w) {
             if let Some(&(start, len)) = index.get(&r[kv]) {
                 for &f in &vals[start as usize..(start + len) as usize] {
@@ -494,7 +511,13 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
                 }
             }
         }
+        drop(held);
         Some(out)
+    }
+
+    /// Charges `bytes` of a join step's working memory to the query budget, or ends the query with `ResourceLimit`.
+    fn charge(&self, bytes: u64) -> Option<super::limits::Reservation<'a>> {
+        self.budget.map(|b| b.try_charge(bytes).unwrap_or_else(|e| super::limits::over_budget(e)))
     }
 
     /// Sort-then-probe: a probe join of many rows (at least `SORTED_PROBE_MIN_ROWS`) whose pattern has exactly one
