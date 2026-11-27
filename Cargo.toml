@@ -111,8 +111,8 @@ rayon.workspace = true
 rustyline = { version = "18.0.1", default-features = false, optional = true }
 unicode-width = "0.2"
 
-# glibc malloc costs ~20-25% on Linux (BSBM/LUBM in the VM); on macOS the system allocator is as fast, so Linux only.
-[target.'cfg(target_os = "linux")'.dependencies]
+# The CLI uses the same allocator on Linux and macOS.
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
 mimalloc = { version = "0.1", default-features = false }
 
 # tiny-http 0.12.0 with per-connection read/write timeouts and non-fatal accept errors (#123). The diff against
