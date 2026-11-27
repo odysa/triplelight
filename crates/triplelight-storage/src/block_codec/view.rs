@@ -105,26 +105,31 @@ impl<'a, const N: usize> BlockView<'a, N> {
         let range = self.mini_range(m);
         let d = self.dir;
         for c in 0..N {
-            let w = d.width[c] as u32;
+            let w = d.width[c] as usize;
+            // Stream the column's bits from this miniblock's first row, LSB-first as `block_codec` packs them, reading
+            // each byte once.
             let col = &self.bytes[d.col_start[c]..];
-            let mask = if w == 0 { 0 } else { u64::MAX >> (64 - w) };
-            let get = |row: usize| -> u64 {
+            let bit = range.start * w;
+            let (mut at, mut acc, mut have) = (bit / 8, 0u128, 0usize);
+            if w > 0 && bit % 8 != 0 { acc = (col[at] >> (bit % 8)) as u128; have = 8 - bit % 8; at += 1 }
+            let mask = if w == 0 { 0 } else { u128::MAX >> (128 - w) };
+            let mut next = || -> u64 {
                 if w == 0 { return 0 }
-                let bit = row * w as usize;
-                let (byte, shift) = (bit / 8, (bit % 8) as u32);
-                // At most 64 + 7 bits: read up to 9 bytes into a u128.
-                let mut acc = 0u128;
-                for (k, b) in col[byte..(byte + 9).min(col.len())].iter().enumerate() { acc |= (*b as u128) << (8 * k) }
-                ((acc >> shift) as u64) & mask
+                while have < w { acc |= (col[at] as u128) << have; at += 1; have += 8 }
+                let v = (acc & mask) as u64;
+                acc >>= w;
+                have -= w;
+                v
             };
             if c == 0 {
                 let mut v = d.firsts[m][0].0;
+                next(); // this row's own delta: its value is the miniblock's recorded first row
                 mini.rows[0][0] = TermId(v);
-                for (i, row) in range.clone().enumerate().skip(1) { v += get(row); mini.rows[i][0] = TermId(v) }
+                for row in mini.rows[1..range.len()].iter_mut() { v += next(); row[0] = TermId(v) }
             } else {
-                for (i, row) in range.clone().enumerate() {
-                    let v = d.base[c] + get(row);
-                    mini.rows[i][c] = TermId(if d.rotated[c] { v.rotate_right(TAG_BITS) } else { v });
+                for row in mini.rows[..range.len()].iter_mut() {
+                    let v = d.base[c] + next();
+                    row[c] = TermId(if d.rotated[c] { v.rotate_right(TAG_BITS) } else { v });
                 }
             }
         }
