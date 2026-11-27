@@ -128,7 +128,7 @@ mod sort_merge_window {
         assert!(!sort_merge_applies(true, n, 2 * n), "a whole-range table: extend_hash builds it");
         assert!(!sort_merge_applies(true, n, PROBE_ROWS * n + 1), "past PROBE_ROWS per row: probes");
         assert!(!sort_merge_applies(true, MERGE_MIN_ROWS as u64 - 1, 1 << 30), "too few rows to pay for a sort");
-        assert!(sort_merge_applies(true, MERGE_MIN_ROWS as u64, (1 << 24) + 1), "past the whole-table cap");
+        assert!(sort_merge_applies(true, 1 << 24, (1 << 24) + 1), "within 2n but past the whole-table cap: a semi-join");
     }
     #[test]
     fn the_shape_is_one_constant_one_bound_key_one_free_variable() {
