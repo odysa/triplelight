@@ -22,6 +22,15 @@ Rust callers can run SPARQL `LOAD` through `Database::update_with_loader`. The c
 
 One process may open a directory at a time; share one database among application threads, for example through `Arc<Database>`. An advisory OS file lock rejects concurrent opens before recovery and remains held until the store drops. Programs and older TripleLight builds that ignore the lock must not open the directory concurrently; do not delete or replace its `LOCK` file. File-lock semantics depend on the filesystem. The persistent store supports Unix platforms (Linux, macOS) and needs Rust 1.100 (the version `rust-toolchain.toml` pins). `Database::in_memory()` has no directory or lock. This is an early (0.1) Rust interface: not a stable ABI, not full SPARQL (unsupported features return an error), and not a multi-process server. The C ABI, Python, Node.js, WebAssembly, Go and Java bindings wrap this same database; see `bindings/*/README.md`.
 
+## Memory allocator
+
+The `triplelight` executable, including its HTTP server, uses mimalloc on Linux and macOS. In-process use of the library follows the host application's allocator. A Rust application that wants to use mimalloc can add it as a dependency and set it once as the global allocator in the application:
+
+```rust
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+```
+
 ## Async
 
 With the `async` feature, `triplelight::async_embedded` offers the same database as an async API that works on any

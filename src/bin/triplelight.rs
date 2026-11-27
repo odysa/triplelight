@@ -5,7 +5,7 @@ use triplelight::storage::{MemorySnapshot, DiskSnapshot, Dictionary, Snapshot, S
 use triplelight::model::{Perm, TermId, TripleBatch};
 use triplelight_rdf::{Term, TermRef};
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
