@@ -162,10 +162,16 @@ pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
 
 /// Input rows between two interrupt checks inside a probe join (each row may extend into many).
 const CHECK_ROWS: usize = 64;
-/// Bytes per entry of the hash step's tables, with the slack of a table at most 7/8 full that grows by doubling:
-/// a `FastSet<TermId>` slot is 8 bytes plus a control byte, an `IdMap<(u32, u32)>` slot 16 plus one.
-const HASH_SET_ENTRY: u64 = 2 * 9;
-const HASH_MAP_ENTRY: u64 = 2 * 17;
+/// Bytes of a hash table (std's SwissTable) allocated for `n` entries of `slot` bytes: a power-of-two bucket count
+/// keeping the table at most 7/8 full, one control byte per bucket plus one 16-byte group. The hash step allocates its
+/// tables at this size up front, so they never grow (no old and new table alive together).
+fn table_bytes(n: u64, slot: u64) -> u64 {
+    let buckets = if n < 4 { 4 } else if n < 8 { 8 } else { (n * 8).div_ceil(7).next_power_of_two() };
+    buckets * (slot + 1) + 16
+}
+/// Slot bytes of the hash step's tables: a `FastSet<TermId>` key, an `IdMap<(u32, u32)>` key and value.
+const HASH_SET_SLOT: u64 = 8;
+const HASH_MAP_SLOT: u64 = 16;
 
 /// Appends `row` extended by one matching index row, where `value(k)` is that row's value at key position `k`.
 /// A variable bound by the row must equal the index value (repeated variable); otherwise the candidate is dropped.
@@ -481,16 +487,20 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         // values are exactly `total`; the semi-join keeps every value of a kept key, so its values are charged as
         // they grow, before each reallocation.
         let kept = if semi { total.min(n_rows as u64) } else { total };
-        let fixed = if semi { n_rows as u64 * HASH_SET_ENTRY } else { 0 } + kept * HASH_MAP_ENTRY;
+        let fixed = if semi { table_bytes(n_rows as u64, HASH_SET_SLOT) } else { 0 } + table_bytes(kept, HASH_MAP_SLOT);
         let vals_charged = |cap: usize| fixed + cap as u64 * 8;
         let mut vals_cap = if semi { n_rows } else { total as usize };
         let mut held = self.charge(vals_charged(vals_cap));
         let grow = |held: &mut Option<super::limits::Reservation<'a>>, bytes: u64| if let (Some(r), Some(b)) = (held.as_mut(), self.budget) {
             r.try_resize(bytes).unwrap_or_else(|_| super::limits::over_budget(super::OverBudget { requested: bytes, available: b.available() + r.bytes() }));
         };
-        let keys: Option<crate::id_hash::FastSet<TermId>> = semi.then(|| rows.chunks_exact(w).map(|r| r[kv]).collect());
+        let keys: Option<crate::id_hash::FastSet<TermId>> = semi.then(|| {
+            let mut ks = crate::id_hash::FastSet::with_capacity_and_hasher(n_rows, Default::default());
+            ks.extend(rows.chunks_exact(w).map(|r| r[kv]));
+            ks
+        });
         let mut vals: Vec<TermId> = Vec::with_capacity(vals_cap);
-        let mut index: crate::id_hash::IdMap<(u32, u32)> = crate::id_hash::IdMap::default();
+        let mut index: crate::id_hash::IdMap<(u32, u32)> = crate::id_hash::IdMap::with_capacity_and_hasher(kept as usize, Default::default());
         for b in self.snap.scan(perm, &[c]) {
             let b = b.unwrap_or_else(|e| storage_failure(e));
             for i in 0..b.len() {
@@ -499,9 +509,12 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
                 let e = index.entry(k).or_insert((vals.len() as u32, 0));
                 e.1 += 1;
                 if vals.len() == vals_cap {
-                    vals_cap = (vals_cap * 2).max(1024);
+                    // A reallocation may move the values: old and new buffers are both alive until it returns.
+                    let next = (vals_cap * 2).max(1024);
+                    grow(&mut held, vals_charged(vals_cap) + next as u64 * 8);
+                    vals.reserve_exact(next - vals.len());
+                    vals_cap = next;
                     grow(&mut held, vals_charged(vals_cap));
-                    vals.reserve_exact(vals_cap - vals.len());
                 }
                 vals.push(f);
             }
@@ -1176,16 +1189,25 @@ pub(crate) mod sorted_probe_tests {
         assert_eq!(tight.used(), 0);
     }
 
+    /// A table is charged at its allocated bucket count: 3,584 entries fit 4,096 buckets at 7/8, 3,585 need 8,192.
+    #[test]
+    fn hash_tables_are_charged_at_their_bucket_capacity() {
+        assert_eq!(table_bytes(3584, HASH_MAP_SLOT), 4096 * 17 + 16);
+        assert_eq!(table_bytes(3585, HASH_MAP_SLOT), 8192 * 17 + 16);
+        assert_eq!(table_bytes(0, HASH_SET_SLOT), 4 * 9 + 16);
+    }
+
     /// The whole-range map holds one entry per distinct scanned key, which can exceed the input's rows: a budget
     /// that would fit a map sized by the input refuses the step (#366 review).
     #[test]
     fn the_whole_range_map_is_charged_for_every_distinct_key() {
         let t: Vec<[u64; 3]> = (1..=3000u64).map(|s| [s, 1000, 5000 + s % 97]).collect();
         let snap = Triples::new(&t);
-        let rows: Vec<TermId> = (0..2000u64).flat_map(|i| [TermId(1 + (i * 2654435761) % 3000), UNBOUND]).collect();
+        let rows: Vec<TermId> = (0..1500u64).flat_map(|i| [TermId(1 + (i * 2654435761) % 3000), UNBOUND]).collect();
         let pat = [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)];
-        // A map sized by the 2,000 input rows needs 2,000 x HASH_MAP_ENTRY + 3,000 x 8 bytes; 3,000 keys need more.
-        let by_rows = 2000 * HASH_MAP_ENTRY + 3000 * 8;
+        // A map sized by the 1,500 input rows needs table_bytes(1500) + 3,000 x 8 bytes; 3,000 keys need a larger table.
+        let by_rows = table_bytes(1500, HASH_MAP_SLOT) + 3000 * 8;
+        assert!(table_bytes(3000, HASH_MAP_SLOT) > table_bytes(1500, HASH_MAP_SLOT), "the test needs a larger table");
         let budget = super::super::MemoryBudget::new(by_rows + 1024);
         let b = Bgp { snap: &snap, w: 2, ranges: None, sorted_probe: false, interrupt: None, budget: Some(&budget) };
         let stopped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.extend_hash(&pat, &rows)));
@@ -1210,7 +1232,7 @@ pub(crate) mod sorted_probe_tests {
         assert_eq!(Bgp { budget: Some(&roomy), ..free }.extend_hash(&pat, &rows).unwrap(), want);
         assert_eq!(roomy.used(), 0);
         // Enough for the up-front charge (values sized by the 1,024 rows), not for the values' growth past them.
-        let up_front = 1024 * HASH_SET_ENTRY + 1024 * HASH_MAP_ENTRY + 1024 * 8;
+        let up_front = table_bytes(1024, HASH_SET_SLOT) + table_bytes(1024, HASH_MAP_SLOT) + 1024 * 8;
         let tight = super::super::MemoryBudget::new(up_front + 512);
         let b = Bgp { budget: Some(&tight), ..free };
         let stopped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.extend_hash(&pat, &rows)));
