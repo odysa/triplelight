@@ -335,7 +335,7 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
 
     /// `extend`, also naming the access path it took (for `plan_trace`). `rows` may be left reordered (by the
     /// sort-merge, which sorts them in place rather than copying them); callers drop them after the step.
-    fn extend_via(&self, pat: &[Slot; 3], rows: &mut Vec<TermId>) -> (Vec<TermId>, &'static str) {
+    fn extend_via(&self, pat: &[Slot; 3], rows: &mut [TermId]) -> (Vec<TermId>, &'static str) {
         if let Some(out) = self.extend_range(pat, rows) { return (out, "range") }
         if let Some(out) = self.extend_member_set(pat, rows) { return (out, "member-set") }
         if let Some(out) = self.extend_merge(pat, rows) { return (out, "merge") }
