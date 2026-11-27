@@ -106,12 +106,12 @@ pub(crate) fn sort_merge_shape(pat: &[Slot; 3], bound: impl Fn(usize) -> bool) -
     (kv != fv).then_some((cpos, kpos, fpos))
 }
 
-/// Whether a step of that shape is a sort-merge rather than a hash join: behind a pushed range (the BGP's order is
-/// then free), with `n` input rows and `total` rows under the constant, and exactly in the window where
+/// Whether a step of that shape is a sort-merge rather than a hash join: in a BGP whose output order is free
+/// (`order_free`; today the executor passes "a range was pushed", which implies it), with `n` input rows and `total` rows under the constant, and exactly in the window where
 /// `extend_hash` would build a semi-join (not a whole-range table, and within `PROBE_ROWS` per input row).
 /// Shared with the wide-table selector's index cost estimate (#140).
-pub(crate) fn sort_merge_applies(pushed_range: bool, n: u64, total: u64) -> bool {
-    pushed_range
+pub(crate) fn sort_merge_applies(order_free: bool, n: u64, total: u64) -> bool {
+    order_free
         && (MERGE_MIN_ROWS as u64..=u32::MAX as u64).contains(&n)
         && !(total <= 2 * n && total <= 1 << 24)
         && total <= PROBE_ROWS * n
@@ -124,7 +124,7 @@ mod sort_merge_window {
     fn the_window_is_extend_hash_s_semi_join_case_behind_a_range() {
         let n = 1u64 << 20;
         assert!(sort_merge_applies(true, n, 3 * n), "a semi-join behind a range sort-merges");
-        assert!(!sort_merge_applies(false, n, 3 * n), "no pushed range: the BGP's order is not free");
+        assert!(!sort_merge_applies(false, n, 3 * n), "the BGP's order is not free");
         assert!(!sort_merge_applies(true, n, 2 * n), "a whole-range table: extend_hash builds it");
         assert!(!sort_merge_applies(true, n, PROBE_ROWS * n + 1), "past PROBE_ROWS per row: probes");
         assert!(!sort_merge_applies(true, MERGE_MIN_ROWS as u64 - 1, 1 << 30), "too few rows to pay for a sort");
