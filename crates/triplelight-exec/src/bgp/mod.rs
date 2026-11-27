@@ -87,6 +87,59 @@ const PROBE_ROWS: u64 = 20;
 /// (`Bgp::extend_merge`), and the rows per such morsel.
 const MERGE_MIN_ROWS: usize = 4096;
 const MERGE_MORSEL: usize = 8192;
+
+/// The pattern shape `extend_sort_merge` handles: exactly one constant, one variable already bound (the merge key)
+/// and one free variable, as `(constant, key, free)` slot positions. `bound` says whether a variable is bound in
+/// the input. Shared with the wide-table selector's index cost estimate (#140), so the two cannot drift apart.
+pub(crate) fn sort_merge_shape(pat: &[Slot; 3], bound: impl Fn(usize) -> bool) -> Option<(usize, usize, usize)> {
+    let (mut cpos, mut kpos, mut fpos) = (None, None, None);
+    for (i, s) in pat.iter().enumerate() {
+        match s {
+            Slot::Const(Some(_)) => { if cpos.is_some() { return None } cpos = Some(i) }
+            Slot::Const(None) => return None,
+            Slot::Var(v) if bound(*v) => { if kpos.is_some() { return None } kpos = Some(i) }
+            Slot::Var(_) => { if fpos.is_some() { return None } fpos = Some(i) }
+        }
+    }
+    let (cpos, kpos, fpos) = (cpos?, kpos?, fpos?);
+    let (Slot::Var(kv), Slot::Var(fv)) = (pat[kpos], pat[fpos]) else { return None };
+    (kv != fv).then_some((cpos, kpos, fpos))
+}
+
+/// Whether a step of that shape is a sort-merge rather than a hash join: in a BGP whose output order is free
+/// (`order_free`; today the executor passes "a range was pushed", which implies it), with `n` input rows and `total` rows under the constant, and exactly in the window where
+/// `extend_hash` would build a semi-join (not a whole-range table, and within `PROBE_ROWS` per input row).
+/// Shared with the wide-table selector's index cost estimate (#140).
+pub(crate) fn sort_merge_applies(order_free: bool, n: u64, total: u64) -> bool {
+    order_free
+        && (MERGE_MIN_ROWS as u64..=u32::MAX as u64).contains(&n)
+        && !(total <= 2 * n && total <= 1 << 24)
+        && total <= PROBE_ROWS * n
+}
+
+#[cfg(test)]
+mod sort_merge_window {
+    use super::*;
+    #[test]
+    fn the_window_is_extend_hash_s_semi_join_case_behind_a_range() {
+        let n = 1u64 << 20;
+        assert!(sort_merge_applies(true, n, 3 * n), "a semi-join behind a range sort-merges");
+        assert!(!sort_merge_applies(false, n, 3 * n), "the BGP's order is not free");
+        assert!(!sort_merge_applies(true, n, 2 * n), "a whole-range table: extend_hash builds it");
+        assert!(!sort_merge_applies(true, n, PROBE_ROWS * n + 1), "past PROBE_ROWS per row: probes");
+        assert!(!sort_merge_applies(true, MERGE_MIN_ROWS as u64 - 1, 1 << 30), "too few rows to pay for a sort");
+        assert!(sort_merge_applies(true, 1 << 24, (1 << 24) + 1), "within 2n but past the whole-table cap: a semi-join");
+    }
+    #[test]
+    fn the_shape_is_one_constant_one_bound_key_one_free_variable() {
+        let c = Slot::Const(Some(TermId(7)));
+        assert_eq!(sort_merge_shape(&[Slot::Var(0), c, Slot::Var(1)], |v| v == 0), Some((1, 0, 2)));
+        assert_eq!(sort_merge_shape(&[Slot::Var(0), c, Slot::Var(1)], |_| true), None, "two bound variables");
+        assert_eq!(sort_merge_shape(&[Slot::Var(0), c, Slot::Var(0)], |v| v == 0), None, "a repeated variable");
+        assert_eq!(sort_merge_shape(&[Slot::Var(0), Slot::Const(None), Slot::Var(1)], |v| v == 0), None, "an absent constant");
+    }
+}
+
 /// `intersect_count`: values of the smallest list per window, split across workers from this many on.
 const PAR_LIST: usize = 32_768;
 /// `intersect_count`: values per worker task.
@@ -337,27 +390,16 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
     /// join's; only their order differs, which the pushed range already makes free.
     fn extend_sort_merge(&self, pat: &[Slot; 3], rows: &[TermId]) -> Option<Vec<TermId>> {
         let w = self.w;
-        if w == 0 || self.ranges.is_none() { return None }
+        if w == 0 { return None }
         let n = rows.len() / w;
-        if n < MERGE_MIN_ROWS || n > u32::MAX as usize { return None }
-        let first = &rows[..w];
-        let (mut cpos, mut kpos, mut fpos) = (None, None, None);
-        for (i, s) in pat.iter().enumerate() {
-            match s {
-                Slot::Const(Some(_)) => { if cpos.is_some() { return None } cpos = Some(i) }
-                Slot::Const(None) => return None,
-                Slot::Var(v) if first[*v] != UNBOUND => { if kpos.is_some() { return None } kpos = Some(i) }
-                Slot::Var(_) => { if fpos.is_some() { return None } fpos = Some(i) }
-            }
-        }
-        let (cpos, kpos, fpos) = (cpos?, kpos?, fpos?);
+        // Cheap exits first: the full check below needs a scan of every row and an index count.
+        if !sort_merge_applies(self.ranges.is_some(), n as u64, PROBE_ROWS * n as u64) { return None }
+        let first = rows.get(..w)?;
+        let (cpos, kpos, fpos) = sort_merge_shape(pat, |v| first[v] != UNBOUND)?;
         let (Slot::Const(Some(c)), Slot::Var(kv), Slot::Var(fv)) = (pat[cpos], pat[kpos], pat[fpos]) else { return None };
-        if kv == fv { return None }
         if rows.chunks_exact(w).any(|r| r[kv] == UNBOUND || r[fv] != UNBOUND) { return None }
-        // Exactly the case `extend_hash` would take as a semi-join: larger than the whole-range table allows.
         let perm = Perm::ALL.into_iter().find(|p| p.order() == [cpos, kpos, fpos])?;
-        let total = self.count(perm, &[c]);
-        if (total <= 2 * n as u64 && total <= 1 << 24) || total > PROBE_ROWS * n as u64 { return None }
+        if !sort_merge_applies(self.ranges.is_some(), n as u64, self.count(perm, &[c])) { return None }
         let mut order: Vec<u32> = (0..n as u32).collect();
         order.par_sort_unstable_by_key(|&i| rows[i as usize * w + kv]);
         let mut sorted = Vec::with_capacity(rows.len());
