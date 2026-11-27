@@ -530,7 +530,9 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         drop(index);
         // An output too large to count or address ends the query as over budget rather than overflowing.
         let out_len = spans.iter().try_fold(0usize, |n, &(_, len)| n.checked_add(len as usize)).and_then(|n| n.checked_mul(w));
-        let out_bytes = out_len.and_then(|n| (n as u64).checked_mul(8)).and_then(|b| b.checked_add(vals_bytes + spans_bytes));
+        // `Layout::array` also enforces Vec's `isize::MAX` byte limit, so `with_capacity` below cannot panic.
+        let out_bytes = out_len.and_then(|n| std::alloc::Layout::array::<TermId>(n).ok())
+            .and_then(|l| (l.size() as u64).checked_add(vals_bytes + spans_bytes));
         let Some((out_len, out_bytes)) = out_len.zip(out_bytes) else {
             super::limits::over_budget(super::OverBudget { requested: u64::MAX, available: self.budget.map_or(0, |b| b.available()) })
         };
