@@ -293,9 +293,11 @@ fn unusable_stats_files_fall_back_to_a_scan() {
     let file = db_dir.join("stats-0.v1");
     let good = std::fs::read(&file).unwrap();
     let flip_payload = { let mut b = good.clone(); let i = b.len() - 1; b[i] ^= 1; b };
-    let wrong_generation = { let mut b = good.clone(); b[8] ^= 1; b };
+    // Header: magic (8), statistics algorithm version (4), generation (8), manifest SHA-256 (32), length, payload SHA.
+    let wrong_version = { let mut b = good.clone(); b[8] ^= 1; b };
+    let wrong_generation = { let mut b = good.clone(); b[12] ^= 1; b };
     for (what, bytes) in [("truncated", good[..good.len() / 2].to_vec()), ("payload bit flip", flip_payload),
-                          ("wrong generation", wrong_generation), ("empty", Vec::new())] {
+                          ("wrong algorithm version", wrong_version), ("wrong generation", wrong_generation), ("empty", Vec::new())] {
         std::fs::write(&file, &bytes).unwrap();
         let db = Database::open(&db_dir).unwrap();
         wait_stats(&db);
@@ -308,7 +310,7 @@ fn unusable_stats_files_fall_back_to_a_scan() {
     let manifest = db_dir.join("base-0").join("MANIFEST");
     let original = std::fs::read(&manifest).unwrap();
     let bound = std::fs::read(&file).unwrap();
-    let mut forged = bound.clone(); forged[16] ^= 1;
+    let mut forged = bound.clone(); forged[20] ^= 1;
     std::fs::write(&file, &forged).unwrap();
     let db = Database::open(&db_dir).unwrap();
     wait_stats(&db);

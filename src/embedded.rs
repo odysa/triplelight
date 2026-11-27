@@ -730,6 +730,12 @@ mod bound_stats_tests {
         assert!(load_bound(&path, 1, identity, triples).is_none(), "another generation");
         assert!(load_bound(&path, 0, identity, triples + 1).is_none(), "a different triple count");
         assert!(store_bound(&path, 0, identity, &built, triples + 1).is_err(), "statistics of another base are not written");
+        let good = std::fs::read(&path).unwrap();
+        let mut other_algo = good.clone();
+        other_algo[8] ^= 1;
+        std::fs::write(&path, &other_algo).unwrap();
+        assert_eq!(super::stats_file::load_bound_why(&path, 0, identity, triples).err(), Some("statistics algorithm version differs"));
+        std::fs::write(&path, &good).unwrap();
         let mut damaged = std::fs::read(&path).unwrap();
         let last = damaged.len() - 1;
         damaged[last] ^= 1;
@@ -808,8 +814,11 @@ pub mod stats_file {
     use std::io::Write;
     use std::path::{Path, PathBuf};
 
-    const MAGIC: &[u8; 8] = b"TLSIDE01";
-    const HEADER: usize = 8 + 8 + 32 + 8 + 32;
+    /// `TLSIDE02`: `TLSIDE01` plus the statistics algorithm version (`STATS_ALGO_VERSION`) after the magic. A
+    /// `TLSIDE01` file is ignored (the caller rescans and rewrites it).
+    const MAGIC: &[u8; 8] = b"TLSIDE02";
+    const HEADER: usize = 8 + 4 + 8 + 32 + 8 + 32;
+    const ALGO: u32 = crate::opt::stats::STATS_ALGO_VERSION;
     /// Refuse absurd files before reading them into memory.
     const MAX_FILE: u64 = 1 << 30;
 
@@ -826,15 +835,26 @@ pub mod stats_file {
     /// `load` from an explicit file bound to `(generation, identity)`: `serve --disk --stats-file` passes 0 and the
     /// disk snapshot's manifest identity, so a file written for another base is ignored and the base is never written.
     pub fn load_bound(p: &Path, generation: u64, identity: [u8; 32], base_triples: u64) -> Option<(Stats, u64)> {
-        if std::fs::metadata(p).ok()?.len() > MAX_FILE { return None }
-        let buf = std::fs::read(p).ok()?;
-        if buf.len() < HEADER || &buf[..8] != MAGIC { return None }
+        load_bound_why(p, generation, identity, base_triples).ok()
+    }
+
+    /// `load_bound`, saying why a file was not used (`serve --stats-file` logs it, so a run that expected loaded
+    /// statistics can tell it rescanned).
+    pub fn load_bound_why(p: &Path, generation: u64, identity: [u8; 32], base_triples: u64) -> Result<(Stats, u64), &'static str> {
+        let len = std::fs::metadata(p).map_err(|_| "missing")?.len();
+        if len > MAX_FILE { return Err("too large") }
+        let buf = std::fs::read(p).map_err(|_| "unreadable")?;
+        if buf.len() < HEADER || &buf[..8] != MAGIC { return Err("not a statistics file of this format") }
+        if u32::from_le_bytes(buf[8..12].try_into().unwrap()) != ALGO { return Err("statistics algorithm version differs") }
         let field = |a: usize| u64::from_le_bytes(buf[a..a + 8].try_into().unwrap());
-        if field(8) != generation || buf[16..48] != identity { return None }
-        let len = usize::try_from(field(48)).ok()?;
-        let payload = buf.get(HEADER..)?;
-        if payload.len() != len || buf[56..88] != Sha256::digest(payload)[..] { return None }
-        Some((Stats::decode(payload, base_triples).ok()?, buf.len() as u64))
+        if field(12) != generation { return Err("generation differs") }
+        if buf[20..52] != identity { return Err("written for another base") }
+        let payload = buf.get(HEADER..).ok_or("truncated")?;
+        if usize::try_from(field(52)).ok() != Some(payload.len()) || buf[60..92] != Sha256::digest(payload)[..] { return Err("checksum mismatch") }
+        // Statistics without characteristic pairs (a `TLSTATS1` payload) are not what this binary builds.
+        if payload.get(..8) != Some(crate::opt::stats::STATS_FORMAT.as_slice()) { return Err("payload without characteristic pairs") }
+        let stats = Stats::decode(payload, base_triples).map_err(|_| "triple count or payload invalid")?;
+        Ok((stats, buf.len() as u64))
     }
 
     /// Writes the file for `generation` (unique temp name, fsync, rename, fsync of the directory) and removes
@@ -867,6 +887,7 @@ pub mod stats_file {
         let payload = stats.encode();
         let mut out = Vec::with_capacity(HEADER + payload.len());
         out.extend_from_slice(MAGIC);
+        out.extend_from_slice(&ALGO.to_le_bytes());
         out.extend_from_slice(&generation.to_le_bytes());
         out.extend_from_slice(&identity);
         out.extend_from_slice(&(payload.len() as u64).to_le_bytes());
@@ -876,7 +897,9 @@ pub mod stats_file {
     }
 
     /// Writes `stats` to an explicit file bound to `(generation, identity)` (`serve --disk --stats-file
-    /// --persist-stats`): a unique temp name beside it, fsync, rename. Nothing else is written or removed.
+    /// --persist-stats`): a unique temp name beside it, fsync, rename. Nothing else is written or removed. The
+    /// directory is not fsynced after the rename (unlike `store`): the file is disposable, and a lost rename only
+    /// means the next start rescans.
     pub fn store_bound(p: &Path, generation: u64, identity: [u8; 32], stats: &Stats, base_triples: u64) -> std::io::Result<()> {
         let out = encode_file(generation, identity, stats, base_triples)?;
         let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos());

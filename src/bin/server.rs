@@ -501,6 +501,7 @@ fn serve_memory(args: &[String]) {
             let stats_file = args.iter().position(|a| a == "--stats-file").and_then(|i| args.get(i + 1)).map(std::path::PathBuf::from);
             let persist_stats = args.iter().any(|a| a == "--persist-stats");
             if persist_stats && stats_file.is_none() { eprintln!("--persist-stats needs --stats-file <path>"); std::process::exit(2) }
+            if stats_file.is_some() && matches!(snap, crate::Backend::Memory(_)) { eprintln!("--stats-file needs --disk (an in-memory snapshot has no base identity to bind to)"); std::process::exit(2) }
             eprintln!("optimizer statistics: {}", if want_stats { "building in background" } else { "off" });
             let ablations = ablations(args);
             let timeout = query_timeout(args);
@@ -518,11 +519,15 @@ fn serve_memory(args: &[String]) {
                 use triplelight::storage::Snapshot as _;
                 let bound = match snap { crate::Backend::Disk(d) => Some(d.manifest_identity()), crate::Backend::Memory(_) => None }
                     .zip(snap.count(triplelight::model::Perm::Spo, &[]).ok());
-                if let (Some(path), Some((identity, triples))) = (stats_file, bound)
-                    && let Some((st, bytes)) = triplelight::embedded::stats_file::load_bound(path, 0, identity, triples) {
-                    *stats.write().unwrap() = Some(std::sync::Arc::new(st));
-                    eprintln!("statistics ready after {:.2}s (loaded {bytes} bytes from {})", t.elapsed().as_secs_f64(), path.display());
-                    return;
+                if let (Some(path), Some((identity, triples))) = (stats_file, bound) {
+                    match triplelight::embedded::stats_file::load_bound_why(path, 0, identity, triples) {
+                        Ok((st, bytes)) => {
+                            *stats.write().unwrap() = Some(std::sync::Arc::new(st));
+                            eprintln!("statistics ready after {:.2}s (loaded {bytes} bytes from {})", t.elapsed().as_secs_f64(), path.display());
+                            return;
+                        }
+                        Err(why) => eprintln!("statistics file {} not used ({why}); scanning", path.display()),
+                    }
                 }
                 match Stats::from_snapshot(snap) {
                     Ok(st) => {

@@ -198,6 +198,7 @@ impl Stats {
     /// (12 bytes per subject, the pairs' only large auxiliary memory); the second counts the pairs, looking the
     /// object's set up by binary search. Auxiliary memory is otherwise bounded object sketches + CS/property
     /// summaries + the largest subject group + at most `MAX_PAIR_KEYS` pair counters.
+    /// Bump `STATS_ALGO_VERSION` when this changes what it computes (persisted statistics are bound to it).
     pub fn from_snapshot(snapshot: &dyn Snapshot) -> Result<Self, StatsError> {
         Self::from_scans(|| snapshot.scan_for_stats())
     }
@@ -1207,6 +1208,10 @@ mod sketch_tests {
 pub const STATS_FORMAT: &[u8; 8] = b"TLSTATS2";
 /// The previous version, without characteristic pairs. It still decodes (with no pairs: the pre-pairs estimates).
 pub const STATS_FORMAT_V1: &[u8; 8] = b"TLSTATS1";
+/// Version of what the statistics scan computes (estimators, sketches, pairs), separate from the byte format.
+/// Persisted statistics carry it and a file with another version is ignored, so a binary never plans with statistics
+/// it would not have built itself. **Bump it in any change to what `from_scans` computes.**
+pub const STATS_ALGO_VERSION: u32 = 1;
 
 /// Why a persisted statistics payload was rejected (the caller then rescans; never a query error).
 #[derive(Debug, PartialEq, Eq)]
