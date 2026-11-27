@@ -162,6 +162,16 @@ pub(super) struct Bgp<'a, S: Snapshot + ?Sized> {
 
 /// Input rows between two interrupt checks inside a probe join (each row may extend into many).
 const CHECK_ROWS: usize = 64;
+/// Bytes of a hash table (std's SwissTable) allocated for `n` entries of `slot` bytes: a power-of-two bucket count
+/// keeping the table at most 7/8 full, one control byte per bucket plus one 16-byte group. The hash step allocates its
+/// tables at this size up front, so they never grow (no old and new table alive together).
+fn table_bytes(n: u64, slot: u64) -> u64 {
+    let buckets = if n < 4 { 4 } else if n < 8 { 8 } else { (n * 8).div_ceil(7).next_power_of_two() };
+    buckets * (slot + 1) + 16
+}
+/// Slot bytes of the hash step's tables: a `FastSet<TermId>` key, an `IdMap<(u32, u32)>` key and value.
+const HASH_SET_SLOT: u64 = 8;
+const HASH_MAP_SLOT: u64 = 16;
 
 /// Appends `row` extended by one matching index row, where `value(k)` is that row's value at key position `k`.
 /// A variable bound by the row must equal the index value (repeated variable); otherwise the candidate is dropped.
@@ -471,9 +481,27 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
         // entries, so the 2^24 cap of the whole-range table does not apply.
         let semi = !whole && self.ranges.is_some() && total <= PROBE_ROWS * n_rows as u64 && total <= u64::from(u32::MAX);
         if !whole && !semi { return None }
-        let keys: Option<crate::id_hash::FastSet<TermId>> = semi.then(|| rows.chunks_exact(w).map(|r| r[kv]).collect());
-        let mut vals: Vec<TermId> = Vec::with_capacity(if semi { n_rows } else { total as usize });
-        let mut index: crate::id_hash::IdMap<(u32, u32)> = crate::id_hash::IdMap::default();
+        // Working memory, charged to the query budget before it is built (#111): the semi-join's key set, the
+        // key -> (start, len) map (one entry per distinct scanned key: up to `total` for the whole range, up to the
+        // input's keys for the semi-join) and the values, each table sized with hash-table slack. The whole range's
+        // values are exactly `total`; the semi-join keeps every value of a kept key, so its values are charged as
+        // they grow, before each reallocation.
+        let kept = if semi { total.min(n_rows as u64) } else { total };
+        let set_bytes = if semi { table_bytes(n_rows as u64, HASH_SET_SLOT) } else { 0 };
+        let map_bytes = table_bytes(kept, HASH_MAP_SLOT);
+        let vals_charged = |cap: usize| set_bytes + map_bytes + cap as u64 * 8;
+        let mut vals_cap = if semi { n_rows } else { total as usize };
+        let mut held = self.charge(vals_charged(vals_cap));
+        let grow = |held: &mut Option<super::limits::Reservation<'a>>, bytes: u64| if let (Some(r), Some(b)) = (held.as_mut(), self.budget) {
+            r.try_resize(bytes).unwrap_or_else(|_| super::limits::over_budget(super::OverBudget { requested: bytes, available: b.available() + r.bytes() }));
+        };
+        let keys: Option<crate::id_hash::FastSet<TermId>> = semi.then(|| {
+            let mut ks = crate::id_hash::FastSet::with_capacity_and_hasher(n_rows, Default::default());
+            ks.extend(rows.chunks_exact(w).map(|r| r[kv]));
+            ks
+        });
+        let mut vals: Vec<TermId> = Vec::with_capacity(vals_cap);
+        let mut index: crate::id_hash::IdMap<(u32, u32)> = crate::id_hash::IdMap::with_capacity_and_hasher(kept as usize, Default::default());
         for b in self.snap.scan(perm, &[c]) {
             let b = b.unwrap_or_else(|e| storage_failure(e));
             for i in 0..b.len() {
@@ -481,20 +509,49 @@ impl<'a, S: Snapshot + ?Sized> Bgp<'a, S> {
                 if keys.as_ref().is_some_and(|ks| !ks.contains(&k)) { continue }
                 let e = index.entry(k).or_insert((vals.len() as u32, 0));
                 e.1 += 1;
+                if vals.len() == vals_cap {
+                    // A reallocation may move the values: old and new buffers are both alive until it returns.
+                    let next = (vals_cap * 2).max(1024);
+                    grow(&mut held, vals_charged(vals_cap) + next as u64 * 8);
+                    vals.reserve_exact(next - vals.len());
+                    vals_cap = next;
+                    grow(&mut held, vals_charged(vals_cap));
+                }
                 vals.push(f);
             }
         }
-        let mut out = Vec::with_capacity(rows.len());
-        for r in rows.chunks_exact(w) {
-            if let Some(&(start, len)) = index.get(&r[kv]) {
-                for &f in &vals[start as usize..(start + len) as usize] {
-                    out.extend_from_slice(r);
-                    let at = out.len() - w;
-                    out[at + fv] = f;
-                }
+        drop(keys);
+        // The charge follows what is alive at each stage. One probe per row: each row's (start, len) is kept (8 B a
+        // row) so the emit loop does not look it up again; then the map is dropped, and the output is allocated once
+        // at its exact size (growing by doubling would briefly hold the old and new buffers together).
+        let (vals_bytes, spans_bytes) = (vals_cap as u64 * 8, n_rows as u64 * 8);
+        grow(&mut held, map_bytes + vals_bytes + spans_bytes);
+        let spans: Vec<(u32, u32)> = rows.chunks_exact(w).map(|r| index.get(&r[kv]).copied().unwrap_or((0, 0))).collect();
+        drop(index);
+        // An output too large to count or address ends the query as over budget rather than overflowing.
+        let out_len = spans.iter().try_fold(0usize, |n, &(_, len)| n.checked_add(len as usize)).and_then(|n| n.checked_mul(w));
+        // `Layout::array` also enforces Vec's `isize::MAX` byte limit, so `with_capacity` below cannot panic.
+        let out_bytes = out_len.and_then(|n| std::alloc::Layout::array::<TermId>(n).ok())
+            .and_then(|l| (l.size() as u64).checked_add(vals_bytes + spans_bytes));
+        let Some((out_len, out_bytes)) = out_len.zip(out_bytes) else {
+            super::limits::over_budget(super::OverBudget { requested: u64::MAX, available: self.budget.map_or(0, |b| b.available()) })
+        };
+        grow(&mut held, out_bytes);
+        let mut out = Vec::with_capacity(out_len);
+        for (r, &(start, len)) in rows.chunks_exact(w).zip(&spans) {
+            for &f in &vals[start as usize..(start + len) as usize] {
+                out.extend_from_slice(r);
+                let at = out.len() - w;
+                out[at + fv] = f;
             }
         }
+        drop(held);
         Some(out)
+    }
+
+    /// Charges `bytes` of a join step's working memory to the query budget, or ends the query with `ResourceLimit`.
+    fn charge(&self, bytes: u64) -> Option<super::limits::Reservation<'a>> {
+        self.budget.map(|b| b.try_charge(bytes).unwrap_or_else(|e| super::limits::over_budget(e)))
     }
 
     /// Sort-then-probe: a probe join of many rows (at least `SORTED_PROBE_MIN_ROWS`) whose pattern has exactly one
@@ -1114,5 +1171,81 @@ pub(crate) mod sorted_probe_tests {
         unsorted.swap(0, w * 100);
         assert!(b.extend_merge(&[Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)], &unsorted).is_none());
         assert!(b.extend_merge(&[Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(2)], &rows).is_none());
+    }
+
+    /// The hash step charges its tables and output (#111): with no budget nothing changes, a step that fits a
+    /// generous budget gives the same rows and returns every byte it held, and one whose tables cannot fit ends the
+    /// query with `ResourceLimit` before building them.
+    #[test]
+    fn the_hash_step_fits_a_budget_it_fits_and_refuses_one_it_does_not() {
+        let t: Vec<[u64; 3]> = (1..=3000u64).map(|s| [s, 1000, 5000 + s % 97]).collect();
+        let snap = Triples::new(&t);
+        let w = 2;
+        // Unsorted keys (no merge join), every key bound and the object free: the whole-range hash table.
+        let rows: Vec<TermId> = (0..2000u64).flat_map(|i| [TermId(1 + (i * 2654435761) % 3000), UNBOUND]).collect();
+        let pat = [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)];
+        let free = Bgp { snap: &snap, w, ranges: None, sorted_probe: false, interrupt: None, budget: None };
+        let want = free.extend_hash(&pat, &rows).expect("the hash path applies");
+        assert_eq!(want, free.extend_seq(&pat, &rows));
+        let roomy = super::super::MemoryBudget::new(64 << 20);
+        let b = Bgp { budget: Some(&roomy), ..free };
+        assert_eq!(b.extend_hash(&pat, &rows).unwrap(), want);
+        assert_eq!(roomy.used(), 0, "the step's charge is returned");
+        let tight = super::super::MemoryBudget::new(4 << 10);
+        let b = Bgp { budget: Some(&tight), ..free };
+        let stopped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.extend_hash(&pat, &rows)));
+        assert!(stopped.is_err_and(|p| p.is::<super::super::limits::OverBudgetStop>()));
+        assert_eq!(tight.used(), 0);
+    }
+
+    /// A table is charged at its allocated bucket count: 3,584 entries fit 4,096 buckets at 7/8, 3,585 need 8,192.
+    #[test]
+    fn hash_tables_are_charged_at_their_bucket_capacity() {
+        assert_eq!(table_bytes(3584, HASH_MAP_SLOT), 4096 * 17 + 16);
+        assert_eq!(table_bytes(3585, HASH_MAP_SLOT), 8192 * 17 + 16);
+        assert_eq!(table_bytes(0, HASH_SET_SLOT), 4 * 9 + 16);
+    }
+
+    /// The whole-range map holds one entry per distinct scanned key, which can exceed the input's rows: a budget
+    /// that would fit a map sized by the input refuses the step (#366 review).
+    #[test]
+    fn the_whole_range_map_is_charged_for_every_distinct_key() {
+        let t: Vec<[u64; 3]> = (1..=3000u64).map(|s| [s, 1000, 5000 + s % 97]).collect();
+        let snap = Triples::new(&t);
+        let rows: Vec<TermId> = (0..1500u64).flat_map(|i| [TermId(1 + (i * 2654435761) % 3000), UNBOUND]).collect();
+        let pat = [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)];
+        // A map sized by the 1,500 input rows needs table_bytes(1500) + 3,000 x 8 bytes; 3,000 keys need a larger table.
+        let by_rows = table_bytes(1500, HASH_MAP_SLOT) + 3000 * 8;
+        assert!(table_bytes(3000, HASH_MAP_SLOT) > table_bytes(1500, HASH_MAP_SLOT), "the test needs a larger table");
+        let budget = super::super::MemoryBudget::new(by_rows + 1024);
+        let b = Bgp { snap: &snap, w: 2, ranges: None, sorted_probe: false, interrupt: None, budget: Some(&budget) };
+        let stopped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.extend_hash(&pat, &rows)));
+        assert!(stopped.is_err_and(|p| p.is::<super::super::limits::OverBudgetStop>()));
+        assert_eq!(budget.used(), 0);
+    }
+
+    /// A semi-join keeps every value of a kept key, so its values can outgrow the input's row count: they are charged
+    /// as they grow, and a step whose values outgrow the budget stops before the reallocation (#366 review).
+    #[test]
+    fn semi_join_values_are_charged_as_they_grow() {
+        // 50 subjects x 100 values each; 1,024 input rows over keys 1..=20, so 2,000 values are kept for 1,024 rows.
+        let t: Vec<[u64; 3]> = (1..=50u64).flat_map(|s| (0..100u64).map(move |j| [s, 1000, 10_000 + s * 1000 + j])).collect();
+        let snap = Triples::new(&t);
+        let rows: Vec<TermId> = (0..1024u64).flat_map(|i| [TermId(1 + i % 20), UNBOUND]).collect();
+        let pat = [Slot::Var(0), Slot::Const(Some(TermId(1000))), Slot::Var(1)];
+        let ranges = Ranges::default();
+        let free = Bgp { snap: &snap, w: 2, ranges: Some(&ranges), sorted_probe: false, interrupt: None, budget: None };
+        let want = free.extend_hash(&pat, &rows).expect("the semi-join applies");
+        assert_eq!(want, free.extend_seq(&pat, &rows));
+        let roomy = super::super::MemoryBudget::new(64 << 20);
+        assert_eq!(Bgp { budget: Some(&roomy), ..free }.extend_hash(&pat, &rows).unwrap(), want);
+        assert_eq!(roomy.used(), 0);
+        // Enough for the up-front charge (values sized by the 1,024 rows), not for the values' growth past them.
+        let up_front = table_bytes(1024, HASH_SET_SLOT) + table_bytes(1024, HASH_MAP_SLOT) + 1024 * 8;
+        let tight = super::super::MemoryBudget::new(up_front + 512);
+        let b = Bgp { budget: Some(&tight), ..free };
+        let stopped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.extend_hash(&pat, &rows)));
+        assert!(stopped.is_err_and(|p| p.is::<super::super::limits::OverBudgetStop>()));
+        assert_eq!(tight.used(), 0);
     }
 }
