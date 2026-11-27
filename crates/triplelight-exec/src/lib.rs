@@ -889,6 +889,54 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
         (!names.iter().any(|name| name == variable.as_str())).then_some((expression, col))
     }
 
+    /// The first `need` solutions of `p` in index order, when `p` is a one-pattern BGP (optionally under a
+    /// projection) evaluated from a single all-unbound row; `None` for any other shape (the caller evaluates fully).
+    fn first_matches(&self, p: &GraphPattern, input: &[Row], need: usize) -> Option<Vec<Row>> {
+        if input.len() != 1 || input[0].iter().any(|&x| x != UNBOUND) { return None }
+        let (patterns, keep) = match p {
+            GraphPattern::Bgp { patterns } => (patterns, None),
+            GraphPattern::Project { inner, variables } => match inner.as_ref() {
+                GraphPattern::Bgp { patterns } => (patterns, Some(variables.iter().map(|v| self.var(v)).collect::<HashSet<usize>>())),
+                _ => return None,
+            },
+            _ => return None,
+        };
+        let [t] = patterns.as_slice() else { return None };
+        #[cfg(feature = "rdf-12")]
+        if triple_term::has_triple_term(t) { return None }
+        let slots = self.slots(t);
+        let mut out = Vec::new();
+        // EXPLAIN names this path: one pattern scanned in index order until `need` solutions.
+        let tr = plan_trace::enabled().then(|| plan_trace::Trace::new(patterns, 1));
+        if need == 0 || slots.iter().any(|s| matches!(s, Slot::Const(None))) {
+            if let Some(tr) = tr { tr.finish("empty", 0) }
+            return Some(out);
+        }
+        let fixed = slots.map(|s| if let Slot::Const(c) = s { c } else { None });
+        let (perm, prefix, n) = bgp::choose_perm(&fixed);
+        let order = perm.order();
+        on_data!(self, |g| for batch in g.scan(perm, &prefix[..n]) {
+            self.check();
+            let b = batch.unwrap_or_else(|e| storage_failure(e));
+            for ((&c0, &c1), &c2) in b.cols[0].iter().zip(&b.cols[1]).zip(&b.cols[2]) {
+                let key = [c0, c1, c2];
+                let mut row = self.empty_row();
+                // A repeated variable (`?x :p ?x`) must take the same value in every position it occupies.
+                let consistent = (0..3).all(|k| match slots[order[k]] {
+                    Slot::Const(_) => true,
+                    Slot::Var(v) => { let x = key[k]; if row[v] == UNBOUND { row[v] = x; true } else { row[v] == x } }
+                });
+                if !consistent { continue }
+                if let Some(keep) = &keep { for (j, x) in row.iter_mut().enumerate() { if !keep.contains(&j) { *x = UNBOUND } } }
+                out.push(row);
+                if out.len() == need { break }
+            }
+            if out.len() == need { break }
+        });
+        if let Some(tr) = tr { tr.finish("first-k", out.len()) }
+        Some(out)
+    }
+
     fn eval_slice(&self, inner: &GraphPattern, start: &usize, length: &Option<usize>, input: Vec<Row>) -> Vec<Row> {
         if let Some(l) = length {
             let direct = match inner {
@@ -897,6 +945,11 @@ impl<'a, S: Snapshot + ?Sized> Ctx<'a, S> {
                 _ => false,
             };
             if direct { self.order_limit.set(Some(start.saturating_add(*l))) }
+            // An unordered slice may return any `start + l` solutions: a one-pattern BGP stops its scan there
+            // instead of materializing every match (ASK and `LIMIT k` over one pattern, #153).
+            else if let Some(rows) = self.first_matches(inner, &input, start.saturating_add(*l)) {
+                return rows.into_iter().skip(*start).collect();
+            }
         }
         let rows = self.eval(inner, input);
         self.order_limit.set(None);
