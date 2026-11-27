@@ -10,6 +10,7 @@ mod range_pushdown;
 #[cfg(feature = "rdfs")]
 mod rdfs;
 mod results;
+mod unordered_limit;
 #[cfg(feature = "rdf-12")]
 mod sparql12;
 mod wide_table;
